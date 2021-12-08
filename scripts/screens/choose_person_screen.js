@@ -61,6 +61,8 @@ class ChoosePersonScreen extends Screen
 	hit()
 	{
 		//set id on application for saving
+		console.log('this.getPersonSelect().value:' + this.getPersonSelect().value);
+
 		this.mApplication.setPersonId(this.getPersonSelect().value);
 
 		APPLICATION.getCurrentScreen().setUrl("/php/classes/screens/choose_person.php?" +  this.getStandardParameters());
@@ -72,9 +74,11 @@ class ChoosePersonScreen extends Screen
 	hitChoosePerson()
 	{
 		var screen = APPLICATION.getCurrentScreen();
+		
 
 		//set id on application for saving
 		APPLICATION.setPersonId(this.getAttribute('id'));
+		console.log('this.getAttribute id:' + this.getAttribute('id'));
 
 		screen.setUrl("/php/classes/screens/choose_person.php?" +  screen.getStandardParameters());
                 screen.ajax();
@@ -146,51 +150,15 @@ class ChoosePersonScreen extends Screen
                 {
 
                         //load up persons option
-			var selectScreen      = this.getPersonSelect();
-			selectScreen.length   = 0;
 			this.mApplication.mPersonArray.length = 0;			
 
-                        for (var i = 0; i < this.mJson.persons.length; i++)
-                        {
-                        	var screenOpt      = document.createElement('option');
-                        	var applicationOpt = document.createElement('option');
-
-                               	screenOpt.value      = this.mJson.persons[i].id;
-                               	applicationOpt.value = this.mJson.persons[i].id;
-
-                               	var full_name = this.mJson.persons[i].first_name + ' ' + this.mJson.persons[i].middle_name + ' ' + this.mJson.persons[i].last_name;
-
-                               	screenOpt.innerHTML      = full_name;
-                               	applicationOpt.innerHTML = full_name;
-
-                               	selectScreen.appendChild(screenOpt);
-
-				//for application
-				this.mApplication.mPersonArray.push(new Person(this.mJson.persons[i].id, this.mJson.persons[i].first_name, this.mJson.persons[i].middle_name, this.mJson.persons[i].last_name, this.mJson.persons[i].player_id, this.mJson.persons[i].parent_id, this.mJson.persons[i].coach_id, this.mJson.persons[i].manager_id, this.mJson.persons[i].administrator_id));
-
-			}
-			this.mPersonsExist = selectScreen.length;
 		
-			//set value on screen with old one and THEN alos set app with value on this one
-
-		
-			if (this.mApplication.mPersonId)
-			{
-				//then we have old value so set this one to old and app to old
-				this.getPersonSelect().value = this.mApplication.mPersonId;
-			}
-			else
-			{
-				if (this.mJson.persons[0].id)
-				{
-					this.mApplication.setPersonId(this.mJson.persons[0].id);
-					this.getPersonSelect().value = APPLICATION.getPersonId();
-				}
-			}
+			//this.mApplication.setPersonId(this.mJson.persons[0].id);
 			
 			for (var i = 0; i < this.mJson.persons.length; i++)
                         {
                         	var textArray = new Array();
+				console.log('this.mJson.persons[i].id:' + this.mJson.persons[i].id);
                                 var item = new ChoosePersonItem(this.mApplication, this.mJson.persons[i], this.mJson.persons[i].first_name, textArray, this.mJson.persons[i].id);
                                 this.mItemArray.push(item);
                        	}
@@ -201,27 +169,4 @@ class ChoosePersonScreen extends Screen
                         }
 		}
 	}
-	/*
-        processPersons()
-        {
-                if (this.mJson)
-                {
-                        if (this.mJson.persons)
-                        {
-                                for (var i = 0; i < this.mJson.persons.length; i++)
-                                {
-                                        var textArray = new Array();
-                                        var item = new DeleteItem(this.mApplication, this.mJson.persons[i], this.mJson.persons[i].first_name, textArray, this.mJson.persons[i].id);
-                                        this.mItemArray.push(item);
-                                }
-
-                                for (var i = 0; i < this.mItemArray.length; i++)
-                                {
-                                        this.mItemArray[i].printToScreen();
-                                }
-                        }
-                }
-        }
-	*/
-
 }

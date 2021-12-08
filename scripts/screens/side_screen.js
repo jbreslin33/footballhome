@@ -47,6 +47,7 @@ class SideScreen extends Screen
                	document.getElementById("side_profile_id").style.visibility = "visible";
 
 		//loop throu array
+		//not getting here......
 		for (var i = 0; i < this.mApplication.mPersonArray.length; i++)
 		{
 			console.log('i:' + i);
