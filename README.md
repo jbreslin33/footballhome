@@ -4,50 +4,93 @@ A Progressive Web Application for soccer coaches to create practice/match events
 
 ## Architecture
 
-- **Frontend**: Vanilla JavaScript PWA (mobile-first)
-- **Backend**: C++ (Drogon) API + PostgreSQL
-- **Deployment**: Podman containers on Ubuntu
-- **Domain**: footballhome.org with SSL (Certbot)
+- **Frontend**: Vanilla JavaScript PWA (mobile-first, offline-capable)
+- **Backend**: Node.js Express API + PostgreSQL
+- **Deployment**: Podman/Docker containers
+- **Domain**: footballhome.org (HTTP ready, HTTPS optional)
 
 ## Quick Start
 
 ### Prerequisites
-- Podman installed
-- Domain pointing to server (footballhome.org)
+- Podman or Docker with docker-compose
+- Git
 
-### Development Setup
+### Local Development Setup
 
-1. **Start the stack:**
+1. **Clone the repository:**
 ```bash
-podman-compose up -d
+git clone <repository-url>
+cd footballhome
 ```
 
-2. **Setup SSL (first time only):**
+2. **Start the complete stack:**
 ```bash
-./scripts/setup-ssl.sh
+# Using Podman
+podman-compose up -d
+
+# OR using Docker
+docker-compose up -d
 ```
 
 3. **Access the application:**
-- Local: http://localhost
-- External: https://footballhome.org
+- **Local development**: http://localhost
+- **API directly**: http://localhost:3000
+- **Database**: localhost:5432 (user: footballapp, db: footballhome)
+
+The application will be fully functional locally with:
+- Sample team data (Thunder FC)
+- Sample events and RSVPs
+- Full PWA features (works offline after first load)
 
 ### Project Structure
 
 ```
 footballhome/
-├── frontend/           # Vanilla JS PWA
-│   ├── src/           # JavaScript modules
-│   ├── css/           # Stylesheets
-│   └── manifest.json  # PWA manifest
-├── backend/
-│   └── cpp/           # Drogon C++ API
-├── database/          # PostgreSQL schemas
-├── nginx/             # Reverse proxy config
-├── ssl/               # SSL certificates
-└── scripts/           # Deployment scripts
+├── frontend/              # Vanilla JS PWA
+│   ├── js/               # JavaScript modules (app.js, api.js)
+│   ├── css/              # Stylesheets (main.css, components.css)
+│   ├── index.html        # Main PWA interface
+│   ├── manifest.json     # PWA manifest
+│   ├── sw.js            # Service Worker
+│   └── nginx-simple.conf # Nginx proxy config
+├── backend/node/         # Node.js Express API
+│   ├── server.js        # API server with all endpoints
+│   ├── package.json     # Dependencies
+│   └── Dockerfile       # Container build
+├── database/            # PostgreSQL setup
+│   └── init.sql        # Schema + sample data
+├── docker-compose.yml   # Container orchestration
+└── scripts/            # Setup utilities
 ```
 
-## Core Features (Phase 1)
+### What You Get Locally
+
+When you run `podman-compose up -d` (or `docker-compose up -d`), you get:
+
+**3 Containers:**
+- `footballhome_web` - Nginx serving the PWA (port 80)
+- `footballhome_api` - Node.js API server (port 3000) 
+- `footballhome_db` - PostgreSQL database (port 5432)
+
+**Sample Data Included:**
+- **Team**: Thunder FC
+- **Users**: Coach Smith + 2 players (John Player, Jane Athlete)
+- **Events**: 3 upcoming events (practice, match, meeting)
+- **RSVPs**: Sample responses to events
+
+**API Endpoints Available:**
+- `GET /api/health` - Health check
+- `GET /api/teams/{id}/events` - Team events
+- `POST /api/events` - Create event
+- `POST /api/events/{id}/rsvp` - RSVP to event
+
+### Development Workflow
+
+The API client automatically detects localhost and uses the correct endpoints:
+- **Production**: `http://footballhome.org/api/...`
+- **Local**: `http://localhost:3000/api/...`
+
+## Core Features
 
 - Coach creates training/match events
 - Players RSVP to events
