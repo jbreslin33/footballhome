@@ -15,21 +15,39 @@ A Progressive Web Application for soccer coaches to create practice/match events
 - Podman or Docker with docker-compose
 - Git
 
-### Local Development Setup
+### Quick Setup (Automated)
+
+1. **Clone and setup everything:**
+```bash
+git clone https://github.com/jbreslin33/footballhome.git
+cd footballhome
+./setup.sh
+```
+
+The setup script will:
+- Install Podman or Docker if needed
+- Build and start all containers
+- Verify everything works
+- Show you access URLs
+
+### Manual Setup
 
 1. **Clone the repository:**
 ```bash
-git clone <repository-url>
+git clone https://github.com/jbreslin33/footballhome.git
 cd footballhome
 ```
 
 2. **Start the complete stack:**
 ```bash
-# Using Podman
-podman-compose up -d
+# Quick start (if Podman/Docker already installed)
+./start.sh
 
-# OR using Docker
-docker-compose up -d
+# OR manually with Podman
+podman-compose up -d --build
+
+# OR manually with Docker
+docker-compose up -d --build
 ```
 
 3. **Access the application:**
@@ -89,6 +107,40 @@ When you run `podman-compose up -d` (or `docker-compose up -d`), you get:
 The API client automatically detects localhost and uses the correct endpoints:
 - **Production**: `http://footballhome.org/api/...`
 - **Local**: `http://localhost:3000/api/...`
+
+### Troubleshooting
+
+**If containers won't start:**
+```bash
+# Check what's running
+podman ps -a
+# OR
+docker ps -a
+
+# View logs
+podman-compose logs
+# OR
+docker-compose logs
+
+# Restart everything
+./start.sh
+```
+
+**If localhost doesn't load:**
+- Wait 30 seconds after starting (database needs to initialize)
+- Check if port 80 is already in use: `sudo netstat -tulpn | grep :80`
+- Try accessing API directly: `curl http://localhost:3000/api/health`
+
+**Reset everything:**
+```bash
+# Stop and remove all containers/volumes
+podman-compose down -v
+# OR
+docker-compose down -v
+
+# Restart fresh
+./start.sh
+```
 
 ## Core Features
 
