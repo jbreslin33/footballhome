@@ -46,6 +46,9 @@ install_podman() {
         "macos")
             if command -v brew &> /dev/null; then
                 brew install podman podman-compose
+                echo "🔧 Initializing Podman VM..."
+                podman machine init --now || true
+                podman machine start || true
             else
                 echo "❌ Please install Homebrew first: https://brew.sh/"
                 exit 1
