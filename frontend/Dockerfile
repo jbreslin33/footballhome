@@ -4,7 +4,7 @@ FROM docker.io/nginx:alpine
 COPY . /usr/share/nginx/html/
 
 # Copy nginx configuration
-COPY nginx-simple.conf /etc/nginx/nginx.conf
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Expose ports
 EXPOSE 80 443

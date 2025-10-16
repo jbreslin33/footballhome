@@ -6,9 +6,7 @@ const urlsToCache = [
   '/css/components.css',
   '/js/app.js',
   '/js/api.js',
-  '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/manifest.json'
 ];
 
 // Install event - cache resources
@@ -82,8 +80,6 @@ self.addEventListener('sync', (event) => {
 self.addEventListener('push', (event) => {
   const options = {
     body: 'New event created! Check it out.',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-72x72.png',
     tag: 'new-event',
     data: {
       url: '/'

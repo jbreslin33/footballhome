@@ -3,7 +3,7 @@ class APIClient {
     constructor() {
         this.baseURL = window.location.hostname === 'localhost' 
             ? 'http://localhost:3000'
-            : 'http://footballhome.org';
+            : 'https://footballhome.org';
     }
 
     async request(endpoint, options = {}) {
