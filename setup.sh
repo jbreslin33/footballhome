@@ -5,7 +5,7 @@
 
 set -e  # Exit on any error
 
-echo "🏈 Football Home Setup Script 🏈"
+echo "⚽ Football Home Setup Script ⚽"
 echo "================================="
 
 # Function to detect OS
@@ -189,7 +189,7 @@ show_success() {
         echo "   Rebuild:  docker-compose up -d --build"
     fi
     echo ""
-    echo "🏈 Ready to manage your soccer team!"
+    echo "⚽ Ready to manage your soccer team!"
 }
 
 # Main script execution
