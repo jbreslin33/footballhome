@@ -63,11 +63,25 @@ CREATE TABLE rsvps (
     UNIQUE(event_id, user_id)
 );
 
+-- Magic tokens for RSVP links
+CREATE TABLE magic_tokens (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    token VARCHAR(255) UNIQUE NOT NULL,
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TIMESTAMP NOT NULL,
+    used_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(event_id, user_id)
+);
+
 -- Indexes for performance
 CREATE INDEX idx_events_team_date ON events(team_id, event_date);
 CREATE INDEX idx_rsvps_event ON rsvps(event_id);
 CREATE INDEX idx_team_members_team ON team_members(team_id);
 CREATE INDEX idx_team_members_user ON team_members(user_id);
+CREATE INDEX idx_magic_tokens_token ON magic_tokens(token);
+CREATE INDEX idx_magic_tokens_expires ON magic_tokens(expires_at);
 
 -- Sample data for development
 INSERT INTO teams (id, name, sport, season) VALUES 

@@ -14,7 +14,8 @@
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "helmet": "^7.0.0",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "twilio": "^4.19.0"
   },
   "keywords": ["soccer", "team", "management", "api"],
   "author": "Football Home",
