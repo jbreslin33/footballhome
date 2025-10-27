@@ -73,6 +73,33 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Get all events (for coach dashboard)
+app.get('/api/events', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        e.id,
+        e.title,
+        e.description,
+        e.event_type,
+        e.event_date,
+        e.location,
+        e.duration_minutes,
+        e.max_players,
+        e.created_at,
+        u.name as created_by_name
+      FROM events e
+      JOIN users u ON e.created_by = u.id
+      ORDER BY e.event_date DESC
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
 // Get all events for a team
 app.get('/api/teams/:teamId/events', async (req, res) => {
   try {
