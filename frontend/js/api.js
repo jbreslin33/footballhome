@@ -13,6 +13,7 @@ class APIClient {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include', // Include cookies for session management
         };
 
         const config = {

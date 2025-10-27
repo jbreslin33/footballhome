@@ -59,9 +59,31 @@ async function sendSMS(to, message) {
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost', 'http://localhost:80', 'https://footballhome.org'],
+  credentials: true
+}));
 app.use(morgan('combined'));
 app.use(express.json());
+
+// Session middleware
+app.use(session({
+  secret: 'your-secret-key-here', 
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false } // Set to true in production with HTTPS
+}));
+
+// Authentication middleware
+const requireAuth = (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({
+      success: false,
+      error: 'Authentication required'
+    });
+  }
+  next();
+};
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -73,8 +95,75 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Authentication endpoints
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  
+  // Demo credentials for testing
+  const demoUsers = [
+    { email: 'coach@thunderfc.com', password: 'coach123', role: 'coach', name: 'Coach Smith' },
+    { email: 'player@thunderfc.com', password: 'player123', role: 'player', name: 'Player Johnson' },
+    { email: 'demo@footballhome.org', password: 'demo', role: 'player', name: 'Demo User' }
+  ];
+  
+  const user = demoUsers.find(u => u.email === email && u.password === password);
+  
+  if (user) {
+    // Set session flag (in production you'd use proper session management)
+    if (req.session) {
+      req.session.user = user;
+    }
+    
+    res.json({
+      success: true,
+      user: {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      token: 'mock_jwt_token_here'
+    });
+  } else {
+    res.status(401).json({
+      success: false,
+      error: 'Invalid email or password'
+    });
+  }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  if (req.session) {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ success: false, error: 'Logout failed' });
+      }
+      res.json({ success: true, message: 'Logged out successfully' });
+    });
+  } else {
+    res.json({ success: true, message: 'Logged out successfully' });
+  }
+});
+
+app.get('/api/auth/me', (req, res) => {
+  if (req.session && req.session.user) {
+    res.json({
+      success: true,
+      id: '11111111-1111-1111-1111-111111111111',
+      name: req.session.user.name,
+      email: req.session.user.email,
+      role: req.session.user.role
+    });
+  } else {
+    res.status(401).json({
+      success: false,
+      error: 'Not authenticated'
+    });
+  }
+});
+
 // Get all events (for coach dashboard)
-app.get('/api/events', async (req, res) => {
+app.get('/api/events', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -101,7 +190,7 @@ app.get('/api/events', async (req, res) => {
 });
 
 // Get all events for a team
-app.get('/api/teams/:teamId/events', async (req, res) => {
+app.get('/api/teams/:teamId/events', requireAuth, async (req, res) => {
   try {
     const { teamId } = req.params;
     

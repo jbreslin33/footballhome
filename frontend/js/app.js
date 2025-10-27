@@ -2,15 +2,173 @@
 class FootballApp {
     constructor() {
         this.currentView = 'events';
-        this.currentTeamId = '550e8400-e29b-41d4-a716-446655440001'; // TODO: Get from auth
+        this.currentUser = null;
+        this.currentTeamId = null;
         this.init();
     }
 
-    init() {
+    async init() {
         this.setupNavigation();
         this.setupEventForm();
-        this.loadEvents();
+        
+        // Check authentication first
+        const isLoggedIn = await this.checkAuthentication();
+        if (isLoggedIn) {
+            this.loadEvents();
+        } else {
+            this.showLoginPrompt();
+        }
+        
         this.setupPWA();
+    }
+
+    async checkAuthentication() {
+        try {
+            const user = await API.getCurrentUser();
+            if (user && user.id) {
+                this.currentUser = user;
+                this.currentTeamId = '550e8400-e29b-41d4-a716-446655440001'; // TODO: Get from user's team
+                this.updateUIForLoggedInUser(user);
+                return true;
+            }
+        } catch (error) {
+            console.log('User not authenticated:', error.message);
+        }
+        
+        this.updateUIForLoggedOutUser();
+        return false;
+    }
+
+    updateUIForLoggedInUser(user) {
+        // Show welcome message
+        this.showWelcomeMessage(user);
+        
+        // Update profile info
+        const userRole = document.getElementById('user-role');
+        const userEmail = document.getElementById('user-email');
+        if (userRole) userRole.textContent = user.role || 'Player';
+        if (userEmail) userEmail.textContent = user.email || 'user@example.com';
+
+        // Show coach-only features if user is a coach
+        const coachElements = document.querySelectorAll('.coach-only');
+        coachElements.forEach(el => {
+            el.style.display = user.role === 'coach' ? 'block' : 'none';
+        });
+
+        // Show logout button
+        const logoutBtn = document.getElementById('nav-logout');
+        if (logoutBtn) {
+            logoutBtn.style.display = 'block';
+        }
+    }
+
+    updateUIForLoggedOutUser() {
+        // Hide coach-only features
+        const coachElements = document.querySelectorAll('.coach-only');
+        coachElements.forEach(el => {
+            el.style.display = 'none';
+        });
+
+        // Hide logout button
+        const logoutBtn = document.getElementById('nav-logout');
+        if (logoutBtn) {
+            logoutBtn.style.display = 'none';
+        }
+        
+        // Hide welcome message
+        this.hideWelcomeMessage();
+    }
+
+    showWelcomeMessage(user) {
+        const header = document.querySelector('.app-header .container');
+        let welcomeDiv = document.getElementById('welcome-message');
+        
+        if (!welcomeDiv) {
+            welcomeDiv = document.createElement('div');
+            welcomeDiv.id = 'welcome-message';
+            welcomeDiv.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 20px;
+                background: rgba(255, 255, 255, 0.9);
+                padding: 8px 15px;
+                border-radius: 20px;
+                font-size: 0.9em;
+                color: #2c3e50;
+                font-weight: 500;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            `;
+            header.style.position = 'relative';
+            header.appendChild(welcomeDiv);
+        }
+        
+        const roleTitle = user.role === 'coach' ? 'Coach' : 'Player';
+        welcomeDiv.textContent = `Welcome ${roleTitle} ${user.name || user.email.split('@')[0]}!`;
+    }
+
+    hideWelcomeMessage() {
+        const welcomeDiv = document.getElementById('welcome-message');
+        if (welcomeDiv) {
+            welcomeDiv.remove();
+        }
+    }
+
+    showLoginPrompt() {
+        const eventsList = document.getElementById('events-list');
+        eventsList.innerHTML = `
+            <div class="login-prompt">
+                <div class="login-card">
+                    <h2>⚽ Welcome to Football Home</h2>
+                    <p>Please log in to view your team's events and manage your RSVP responses.</p>
+                    
+                    <div class="login-form">
+                        <div class="form-group">
+                            <label for="login-email">Email</label>
+                            <input type="email" id="login-email" placeholder="Enter your email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password">Password</label>
+                            <input type="password" id="login-password" placeholder="Enter your password" required>
+                        </div>
+                        <button onclick="app.handleLogin()" class="btn btn-primary full-width">
+                            🔑 Log In
+                        </button>
+                        
+                        <div class="login-divider">
+                            <span>or</span>
+                        </div>
+                        
+                        <button onclick="app.showDemoMode()" class="btn btn-outline full-width">
+                            👁️ View Demo
+                        </button>
+                    </div>
+                    
+                    <div class="login-footer">
+                        <p>Don't have an account? Contact your team coach.</p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add Enter key functionality after DOM is updated
+        setTimeout(() => {
+            const emailInput = document.getElementById('login-email');
+            const passwordInput = document.getElementById('login-password');
+            
+            const handleEnterKey = (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    this.handleLogin();
+                }
+            };
+
+            if (emailInput) {
+                emailInput.addEventListener('keypress', handleEnterKey);
+            }
+            if (passwordInput) {
+                passwordInput.addEventListener('keypress', handleEnterKey);
+            }
+        }, 0);
     }
 
     setupNavigation() {
@@ -20,6 +178,19 @@ class FootballApp {
         navButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 const viewName = btn.id.replace('nav-', '');
+                
+                // Special handling for coach dashboard
+                if (viewName === 'coach') {
+                    window.location.href = '/coach';
+                    return;
+                }
+                
+                // Special handling for logout
+                if (viewName === 'logout') {
+                    this.logout();
+                    return;
+                }
+                
                 this.switchView(viewName);
             });
         });
@@ -211,6 +382,71 @@ class FootballApp {
                 document.body.removeChild(notification);
             }, 300);
         }, 3000);
+    }
+
+    async handleLogin() {
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+
+        console.log('Attempting login with:', { email, password: '***' });
+
+        if (!email || !password) {
+            this.showNotification('Please enter both email and password', 'error');
+            return;
+        }
+
+        try {
+            console.log('Calling API.login...');
+            const result = await API.login({ email, password });
+            console.log('Login result:', result);
+            
+            if (result.success) {
+                console.log('Login successful, updating UI...');
+                this.currentUser = result.user;
+                this.currentTeamId = '550e8400-e29b-41d4-a716-446655440001'; // TODO: Get from user's team
+                this.updateUIForLoggedInUser(result.user);
+                this.loadEvents();
+                this.showNotification('Welcome back!', 'success');
+            } else {
+                console.log('Login failed:', result);
+                this.showNotification('Login failed. Please check your credentials.', 'error');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            this.showNotification('Login failed. Please try again.', 'error');
+        }
+    }
+
+    showDemoMode() {
+        // Set demo user
+        this.currentUser = {
+            id: 'demo-user',
+            name: 'Demo User',
+            email: 'demo@footballhome.org',
+            role: 'player'
+        };
+        this.currentTeamId = '550e8400-e29b-41d4-a716-446655440001';
+        this.updateUIForLoggedInUser(this.currentUser);
+        this.loadEvents();
+        this.showNotification('Viewing in demo mode', 'info');
+    }
+
+    async logout() {
+        try {
+            await API.logout();
+            this.currentUser = null;
+            this.currentTeamId = null;
+            this.updateUIForLoggedOutUser();
+            this.showLoginPrompt();
+            this.showNotification('Logged out successfully', 'success');
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Still log out locally even if API call fails
+            this.currentUser = null;
+            this.currentTeamId = null;
+            this.updateUIForLoggedOutUser();
+            this.showLoginPrompt();
+        }
     }
 
     setupPWA() {
