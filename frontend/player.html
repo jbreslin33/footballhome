@@ -267,7 +267,7 @@
             }
             
             loadProfile(user) {
-                this.currentUser = user; // Store user data for editing
+                this.currentUser = user; // Simple caching - update when we save
                 const container = document.getElementById('profile-info');
                 
                 container.innerHTML = `
@@ -383,15 +383,16 @@
                 if (response.ok) {
                     const result = await response.json();
                     if (result.success) {
-                        // Fetch fresh user data from server instead of using cached response
-                        const freshUserResponse = await API.getCurrentUser();
-                        if (freshUserResponse && freshUserResponse.success && freshUserResponse.user) {
-                            profile.currentUser = freshUserResponse.user;
-                            profile.loadProfile(freshUserResponse.user);
-                            showMessage('Profile updated successfully!', 'success');
-                        } else {
-                            showMessage('Profile updated but unable to refresh data', 'error');
-                        }
+                        // Simple fix: just update the cached data with what we saved
+                        profile.currentUser = {
+                            ...profile.currentUser,
+                            name: formData.name,
+                            phone: formData.phone,
+                            position: formData.position,
+                            jersey_number: parseInt(formData.jersey_number)
+                        };
+                        profile.loadProfile(profile.currentUser);
+                        showMessage('Profile updated successfully!', 'success');
                     } else {
                         showMessage(result.message || 'Failed to update profile', 'error');
                     }
