@@ -80,26 +80,27 @@ class FootballApp {
     }
 
     showWelcomeMessage(user) {
-        const header = document.querySelector('.app-header .container');
+        const mainContent = document.querySelector('.main-content');
         let welcomeDiv = document.getElementById('welcome-message');
         
         if (!welcomeDiv) {
             welcomeDiv = document.createElement('div');
             welcomeDiv.id = 'welcome-message';
             welcomeDiv.style.cssText = `
-                position: absolute;
-                top: 10px;
+                position: fixed;
+                top: 90px;
                 right: 20px;
-                background: rgba(255, 255, 255, 0.9);
-                padding: 8px 15px;
-                border-radius: 20px;
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 25px;
                 font-size: 0.9em;
-                color: #2c3e50;
-                font-weight: 500;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                font-weight: 600;
+                box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+                z-index: 1000;
+                backdrop-filter: blur(10px);
             `;
-            header.style.position = 'relative';
-            header.appendChild(welcomeDiv);
+            document.body.appendChild(welcomeDiv);
         }
         
         const roleTitle = user.role === 'coach' ? 'Coach' : 'Player';
