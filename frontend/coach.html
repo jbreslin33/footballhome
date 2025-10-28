@@ -264,8 +264,8 @@
             async init() {
                 // Check authentication first
                 try {
-                    const user = await API.getCurrentUser();
-                    if (!user || user.role !== 'coach') {
+                    const response = await API.getCurrentUser();
+                    if (!response || !response.success || !response.user || response.user.role !== 'coach') {
                         // Redirect to main page if not a coach
                         window.location.href = '/';
                         return;

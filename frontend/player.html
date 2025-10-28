@@ -253,13 +253,13 @@
             async init() {
                 // Check authentication first
                 try {
-                    const user = await API.getCurrentUser();
-                    if (!user) {
+                    const response = await API.getCurrentUser();
+                    if (!response || !response.success || !response.user) {
                         // Redirect to main page if not authenticated
                         window.location.href = '/';
                         return;
                     }
-                    this.loadProfile(user);
+                    this.loadProfile(response.user);
                 } catch (error) {
                     console.error('Authentication check failed:', error);
                     window.location.href = '/';
