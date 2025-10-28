@@ -24,11 +24,11 @@ class FootballApp {
 
     async checkAuthentication() {
         try {
-            const user = await API.getCurrentUser();
-            if (user && user.id) {
-                this.currentUser = user;
+            const response = await API.getCurrentUser();
+            if (response && response.success && response.user && response.user.id) {
+                this.currentUser = response.user;
                 this.currentTeamId = '550e8400-e29b-41d4-a716-446655440001'; // TODO: Get from user's team
-                this.updateUIForLoggedInUser(user);
+                this.updateUIForLoggedInUser(response.user);
                 return true;
             }
         } catch (error) {
@@ -131,7 +131,7 @@ class FootballApp {
                             <label for="login-password">Password</label>
                             <input type="password" id="login-password" placeholder="Enter your password" required>
                         </div>
-                        <button onclick="app.handleLogin()" class="btn btn-primary full-width">
+                        <button onclick="app.handleLogin()" class="btn btn-primary full-width" style="transition: all 0.2s ease;">
                             🔑 Log In
                         </button>
                         
@@ -406,35 +406,55 @@ class FootballApp {
     }
 
     async handleLogin() {
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-
-        console.log('Attempting login with:', { email, password: '***' });
+        const emailInput = document.getElementById('login-email');
+        const passwordInput = document.getElementById('login-password');
+        const loginButton = document.querySelector('button[onclick="app.handleLogin()"]');
+        
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
 
         if (!email || !password) {
             this.showNotification('Please enter both email and password', 'error');
+            emailInput.focus();
             return;
         }
 
+        // Disable button and show loading state
+        const originalButtonText = loginButton.textContent;
+        loginButton.disabled = true;
+        loginButton.textContent = '🔄 Logging in...';
+        loginButton.style.opacity = '0.6';
+
         try {
-            console.log('Calling API.login...');
             const result = await API.login({ email, password });
-            console.log('Login result:', result);
             
-            if (result.success) {
-                console.log('Login successful, updating UI...');
+            if (result.success && result.user) {
                 this.currentUser = result.user;
                 this.currentTeamId = '550e8400-e29b-41d4-a716-446655440001'; // TODO: Get from user's team
                 this.updateUIForLoggedInUser(result.user);
                 this.loadEvents();
-                this.showNotification('Welcome back!', 'success');
+                this.showNotification(`Welcome back, ${result.user.name || result.user.email}!`, 'success');
             } else {
-                console.log('Login failed:', result);
-                this.showNotification('Login failed. Please check your credentials.', 'error');
+                this.showNotification('Login failed. Please check your email and password.', 'error');
+                passwordInput.focus();
+                passwordInput.select();
             }
         } catch (error) {
             console.error('Login error:', error);
-            this.showNotification('Login failed. Please try again.', 'error');
+            if (error.message.includes('500')) {
+                this.showNotification('Server error. Please try again in a moment.', 'error');
+            } else if (error.message.includes('network') || error.message.includes('fetch')) {
+                this.showNotification('Connection error. Please check your internet connection.', 'error');
+            } else {
+                this.showNotification('Login failed. Please try again.', 'error');
+            }
+            passwordInput.focus();
+            passwordInput.select();
+        } finally {
+            // Re-enable button
+            loginButton.disabled = false;
+            loginButton.textContent = originalButtonText;
+            loginButton.style.opacity = '1';
         }
     }
 

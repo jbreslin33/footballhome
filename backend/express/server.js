@@ -134,16 +134,12 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
     
-    // Set session with database user data
+    // Store minimal session data (database is source of truth for profile data)
     if (req.session) {
       req.session.user = {
         id: user.id,
         email: user.email,
-        name: user.name,
-        phone: user.phone,
-        role: user.role,
-        position: user.position,
-        jersey_number: user.jersey_number
+        role: user.role
       };
     }
     
@@ -178,134 +174,66 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // Update user profile
-app.put('/api/auth/update-profile', requireAuth, async (req, res) => {
-  try {
-    const { name, email, phone, position, jersey_number } = req.body;
-    const userEmail = req.session.user.email;
-    
-    // Try to update in database first
-    try {
-      const result = await pool.query(
-        'UPDATE users SET name = $1, phone = $2, position = $3, jersey_number = $4, updated_at = CURRENT_TIMESTAMP WHERE email = $5 RETURNING *',
-        [name, phone, position, jersey_number ? parseInt(jersey_number) : null, userEmail]
-      );
-      
-      if (result.rows.length > 0) {
-        // Database user updated successfully
-        const dbUser = result.rows[0];
-        const updatedUser = {
-          email: dbUser.email,
-          name: dbUser.name,
-          phone: dbUser.phone,
-          position: dbUser.position,
-          jersey_number: dbUser.jersey_number,
-          role: dbUser.role
-        };
-        
-        // Update session with database data
-        req.session.user = updatedUser;
-        
-        res.json({
-          success: true,
-          message: 'Profile updated successfully',
-          ...updatedUser
-        });
-      } else {
-        // User not found in database, treat as demo user
-        throw new Error('User not found in database');
-      }
-    } catch (dbError) {
-      console.log('Database update failed, treating as demo user:', dbError.message);
-      
-      // Fallback to session-only update for demo users
-      const updatedUser = {
-        ...req.session.user,
-        name: name || req.session.user.name,
-        phone: phone || req.session.user.phone,
-        position: position || req.session.user.position,
-        jersey_number: jersey_number ? parseInt(jersey_number) : req.session.user.jersey_number
-      };
-      
-      // Update session
-      req.session.user = updatedUser;
-      
-      res.json({
-        success: true,
-        message: 'Profile updated successfully (demo mode)',
-        ...updatedUser
-      });
+app.post('/api/auth/update-profile', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, message: 'Not authenticated' });
     }
-    
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update profile'
-    });
-  }
-});
 
-// Get current user
-app.get('/api/auth/me', async (req, res) => {
-  if (req.session && req.session.user) {
+    const { name, phone, position, jersey_number } = req.body;
+    
     try {
-      // Try to get fresh data from database
-      const result = await pool.query('SELECT * FROM users WHERE email = $1', [req.session.user.email]);
-      
-      if (result.rows.length > 0) {
-        // Return database user data
-        const dbUser = result.rows[0];
-        const userData = {
-          name: dbUser.name,
-          email: dbUser.email,
-          phone: dbUser.phone,
-          position: dbUser.position,
-          jersey_number: dbUser.jersey_number,
-          role: dbUser.role
+        // Update user in database
+        const result = await pool.query(
+            'UPDATE users SET name = $1, phone = $2, position = $3, jersey_number = $4, updated_at = NOW() WHERE id = $5 RETURNING *',
+            [name, phone, position, jersey_number, req.session.user.id]
+        );
+        
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        
+        const updatedUser = result.rows[0];
+        
+        // Only update minimal session data (just id and email for auth)
+        req.session.user = {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            role: updatedUser.role
         };
         
-        // Update session with fresh database data
-        req.session.user = { ...req.session.user, ...userData };
-        
         res.json({
-          success: true,
-          user: userData
+            success: true,
+            message: 'Profile updated successfully'
         });
-      } else {
-        // Fallback to session data for demo users
-        res.json({
-          success: true,
-          user: {
-            name: req.session.user.name,
-            email: req.session.user.email,
-            phone: req.session.user.phone,
-            position: req.session.user.position,
-            jersey_number: req.session.user.jersey_number,
-            role: req.session.user.role
-          }
-        });
-      }
     } catch (error) {
-      console.error('Database error in /api/auth/me:', error);
-      // Fallback to session data
-      res.json({
-        success: true,
-        user: {
-          name: req.session.user.name,
-          email: req.session.user.email,
-          phone: req.session.user.phone,
-          position: req.session.user.position,
-          jersey_number: req.session.user.jersey_number,
-          role: req.session.user.role
-        }
-      });
+        console.error('Error updating profile:', error);
+        res.status(500).json({ success: false, message: 'Database error' });
     }
-  } else {
-    res.status(401).json({
-      success: false,
-      error: 'Not authenticated'
-    });
-  }
+});// Get current user
+app.get('/api/auth/me', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, message: 'Not authenticated' });
+    }
+    
+    try {
+        // Always fetch fresh data from database
+        const result = await pool.query(
+            'SELECT id, email, name, phone, role, position, jersey_number FROM users WHERE id = $1',
+            [req.session.user.id]
+        );
+        
+        if (result.rows.length === 0) {
+            // User no longer exists in database, clear session
+            req.session.destroy();
+            return res.status(401).json({ success: false, message: 'User not found' });
+        }
+        
+        const user = result.rows[0];
+        res.json({ success: true, user: user });
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        res.status(500).json({ success: false, message: 'Database error' });
+    }
 });
 
 // Get all events (for coach dashboard)

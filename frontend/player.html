@@ -381,10 +381,20 @@
                 });
 
                 if (response.ok) {
-                    const updatedUser = await response.json();
-                    profile.currentUser = updatedUser;
-                    profile.loadProfile(updatedUser);
-                    showMessage('Profile updated successfully!', 'success');
+                    const result = await response.json();
+                    if (result.success) {
+                        // Fetch fresh user data from server instead of using cached response
+                        const freshUserResponse = await API.getCurrentUser();
+                        if (freshUserResponse && freshUserResponse.success && freshUserResponse.user) {
+                            profile.currentUser = freshUserResponse.user;
+                            profile.loadProfile(freshUserResponse.user);
+                            showMessage('Profile updated successfully!', 'success');
+                        } else {
+                            showMessage('Profile updated but unable to refresh data', 'error');
+                        }
+                    } else {
+                        showMessage(result.message || 'Failed to update profile', 'error');
+                    }
                 } else {
                     const error = await response.json();
                     showMessage(error.message || 'Failed to update profile', 'error');
