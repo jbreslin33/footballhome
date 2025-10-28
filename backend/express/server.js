@@ -103,35 +103,69 @@ app.get('/api/health', (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   
-  // Demo credentials for testing
-  const demoUsers = [
-    { email: 'coach@thunderfc.com', password: 'coach123', role: 'coach', name: 'Coach Smith' },
-    { email: 'player@thunderfc.com', password: 'player123', role: 'player', name: 'Player Johnson' },
-    { email: 'demo@footballhome.org', password: 'demo', role: 'player', name: 'Demo User' }
-  ];
-  
-  const user = demoUsers.find(u => u.email === email && u.password === password);
-  
-  if (user) {
-    // Set session flag (in production you'd use proper session management)
+  try {
+    // Look up user in database
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password'
+      });
+    }
+    
+    const user = result.rows[0];
+    
+    // For demo purposes, we'll check against simple password mapping
+    // In production, you would hash and compare passwords properly
+    const passwordMap = {
+      'coach@thunderfc.com': 'coach123',
+      'player@thunderfc.com': 'player123', 
+      'keeper@thunderfc.com': 'keeper123',
+      'striker@thunderfc.com': 'striker123',
+      'defender@thunderfc.com': 'defender123',
+      'demo@footballhome.org': 'demo'
+    };
+    
+    if (passwordMap[email] !== password) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password'
+      });
+    }
+    
+    // Set session with database user data
     if (req.session) {
-      req.session.user = user;
+      req.session.user = {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        role: user.role,
+        position: user.position,
+        jersey_number: user.jersey_number
+      };
     }
     
     res.json({
       success: true,
       user: {
-        id: '11111111-1111-1111-1111-111111111111',
+        id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        phone: user.phone,
+        role: user.role,
+        position: user.position,
+        jersey_number: user.jersey_number
       },
       token: 'mock_jwt_token_here'
     });
-  } else {
-    res.status(401).json({
+    
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
       success: false,
-      error: 'Invalid email or password'
+      error: 'Login failed'
     });
   }
 });
@@ -147,31 +181,60 @@ app.post('/api/auth/logout', (req, res) => {
 app.put('/api/auth/update-profile', requireAuth, async (req, res) => {
   try {
     const { name, email, phone, position, jersey_number } = req.body;
-    const userId = req.session.user.email; // Using email as user ID for demo
+    const userEmail = req.session.user.email;
     
-    // In a real app, you would update the database
-    // For demo purposes, we'll update the session and return success
-    const updatedUser = {
-      ...req.session.user,
-      name: name || req.session.user.name,
-      email: email || req.session.user.email,
-      phone: phone || req.session.user.phone,
-      position: position || req.session.user.position,
-      jersey_number: jersey_number ? parseInt(jersey_number) : req.session.user.jersey_number
-    };
-    
-    // Update session
-    req.session.user = updatedUser;
-    
-    // In production, you would update the database here:
-    // await pool.query('UPDATE users SET name = $1, email = $2, phone = $3, position = $4, jersey_number = $5 WHERE id = $6',
-    //   [name, email, phone, position, jersey_number, userId]);
-    
-    res.json({
-      success: true,
-      message: 'Profile updated successfully',
-      ...updatedUser
-    });
+    // Try to update in database first
+    try {
+      const result = await pool.query(
+        'UPDATE users SET name = $1, phone = $2, position = $3, jersey_number = $4, updated_at = CURRENT_TIMESTAMP WHERE email = $5 RETURNING *',
+        [name, phone, position, jersey_number ? parseInt(jersey_number) : null, userEmail]
+      );
+      
+      if (result.rows.length > 0) {
+        // Database user updated successfully
+        const dbUser = result.rows[0];
+        const updatedUser = {
+          email: dbUser.email,
+          name: dbUser.name,
+          phone: dbUser.phone,
+          position: dbUser.position,
+          jersey_number: dbUser.jersey_number,
+          role: dbUser.role
+        };
+        
+        // Update session with database data
+        req.session.user = updatedUser;
+        
+        res.json({
+          success: true,
+          message: 'Profile updated successfully',
+          ...updatedUser
+        });
+      } else {
+        // User not found in database, treat as demo user
+        throw new Error('User not found in database');
+      }
+    } catch (dbError) {
+      console.log('Database update failed, treating as demo user:', dbError.message);
+      
+      // Fallback to session-only update for demo users
+      const updatedUser = {
+        ...req.session.user,
+        name: name || req.session.user.name,
+        phone: phone || req.session.user.phone,
+        position: position || req.session.user.position,
+        jersey_number: jersey_number ? parseInt(jersey_number) : req.session.user.jersey_number
+      };
+      
+      // Update session
+      req.session.user = updatedUser;
+      
+      res.json({
+        success: true,
+        message: 'Profile updated successfully (demo mode)',
+        ...updatedUser
+      });
+    }
     
   } catch (error) {
     console.error('Error updating profile:', error);
@@ -182,15 +245,61 @@ app.put('/api/auth/update-profile', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/auth/me', (req, res) => {
+// Get current user
+app.get('/api/auth/me', async (req, res) => {
   if (req.session && req.session.user) {
-    res.json({
-      success: true,
-      id: '11111111-1111-1111-1111-111111111111',
-      name: req.session.user.name,
-      email: req.session.user.email,
-      role: req.session.user.role
-    });
+    try {
+      // Try to get fresh data from database
+      const result = await pool.query('SELECT * FROM users WHERE email = $1', [req.session.user.email]);
+      
+      if (result.rows.length > 0) {
+        // Return database user data
+        const dbUser = result.rows[0];
+        const userData = {
+          name: dbUser.name,
+          email: dbUser.email,
+          phone: dbUser.phone,
+          position: dbUser.position,
+          jersey_number: dbUser.jersey_number,
+          role: dbUser.role
+        };
+        
+        // Update session with fresh database data
+        req.session.user = { ...req.session.user, ...userData };
+        
+        res.json({
+          success: true,
+          user: userData
+        });
+      } else {
+        // Fallback to session data for demo users
+        res.json({
+          success: true,
+          user: {
+            name: req.session.user.name,
+            email: req.session.user.email,
+            phone: req.session.user.phone,
+            position: req.session.user.position,
+            jersey_number: req.session.user.jersey_number,
+            role: req.session.user.role
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Database error in /api/auth/me:', error);
+      // Fallback to session data
+      res.json({
+        success: true,
+        user: {
+          name: req.session.user.name,
+          email: req.session.user.email,
+          phone: req.session.user.phone,
+          position: req.session.user.position,
+          jersey_number: req.session.user.jersey_number,
+          role: req.session.user.role
+        }
+      });
+    }
   } else {
     res.status(401).json({
       success: false,
