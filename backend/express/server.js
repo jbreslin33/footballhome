@@ -6,6 +6,7 @@ const { Pool } = require('pg');
 const twilio = require('twilio');
 const sgMail = require('@sendgrid/mail');
 const session = require('express-session');
+const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -85,6 +86,9 @@ const requireAuth = (req, res, next) => {
   next();
 };
 
+// Serve static files from frontend directory
+app.use(express.static(path.join(__dirname, '../../frontend')));
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
@@ -134,14 +138,47 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/logout', (req, res) => {
   if (req.session) {
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ success: false, error: 'Logout failed' });
-      }
-      res.json({ success: true, message: 'Logged out successfully' });
+    req.session.destroy();
+  }
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// Update user profile
+app.put('/api/auth/update-profile', requireAuth, async (req, res) => {
+  try {
+    const { name, email, phone, position, jersey_number } = req.body;
+    const userId = req.session.user.email; // Using email as user ID for demo
+    
+    // In a real app, you would update the database
+    // For demo purposes, we'll update the session and return success
+    const updatedUser = {
+      ...req.session.user,
+      name: name || req.session.user.name,
+      email: email || req.session.user.email,
+      phone: phone || req.session.user.phone,
+      position: position || req.session.user.position,
+      jersey_number: jersey_number ? parseInt(jersey_number) : req.session.user.jersey_number
+    };
+    
+    // Update session
+    req.session.user = updatedUser;
+    
+    // In production, you would update the database here:
+    // await pool.query('UPDATE users SET name = $1, email = $2, phone = $3, position = $4, jersey_number = $5 WHERE id = $6',
+    //   [name, email, phone, position, jersey_number, userId]);
+    
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      ...updatedUser
     });
-  } else {
-    res.json({ success: true, message: 'Logged out successfully' });
+    
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile'
+    });
   }
 });
 
@@ -644,6 +681,24 @@ app.post('/api/events/:eventId/notify-team', async (req, res) => {
     console.error('Error sending team notifications:', error);
     res.status(500).json({ error: 'Failed to send team notifications' });
   }
+});
+
+// Frontend routes - serve specific HTML files for different pages
+app.get('/coach', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/coach.html'));
+});
+
+app.get('/player', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/player.html'));
+});
+
+app.get('/rsvp', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/rsvp.html'));
+});
+
+// Catch-all route - serve index.html for all other routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/index.html'));
 });
 
 // Test database connection on startup

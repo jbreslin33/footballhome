@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Profile - Football Home</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <style>
+        .profile-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .profile-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .profile-header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .profile-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .profile-info {
+            margin-bottom: 30px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .info-value {
+            color: #7f8c8d;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+            color: white;
+        }
+        
+        .edit-btn {
+            background: #3498db;
+        }
+        
+        .edit-btn:hover {
+            background: #2980b9;
+        }
+        
+        .logout-btn {
+            background: #e74c3c;
+        }
+        
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+        
+        .home-btn {
+            background: #27ae60;
+        }
+        
+        .home-btn:hover {
+            background: #229954;
+        }
+
+        .nav-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .nav-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .nav-logout-btn {
+            background: rgba(231, 76, 60, 0.8);
+            border-color: rgba(231, 76, 60, 0.8);
+        }
+
+        .nav-logout-btn:hover {
+            background: rgba(231, 76, 60, 1);
+            border-color: rgba(231, 76, 60, 1);
+        }
+
+        .edit-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .edit-input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+
+        .edit-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .save-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .save-btn:hover {
+            background: #229954;
+        }
+
+        .cancel-btn {
+            background: #95a5a6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .cancel-btn:hover {
+            background: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-header">
+        <div class="nav-container">
+            <h1 class="nav-title">👤 Player Profile</h1>
+            <div class="nav-actions">
+                <a href="/" class="nav-btn">🏠 Home</a>
+                <button class="nav-btn nav-logout-btn" onclick="handleLogout()">🚪 Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-container">
+        <div class="profile-header">
+            <h1>Your Player Profile</h1>
+        </div>
+        
+        <div class="profile-card">
+            <div class="profile-info" id="profile-info">
+                <!-- Profile info will be loaded here -->
+            </div>
+            
+            <div class="action-buttons">
+                <button class="action-btn edit-btn" onclick="editProfile()">✏️ Edit Profile</button>
+                <a href="/" class="action-btn home-btn">🏠 Back to Home</a>
+                <button class="action-btn logout-btn" onclick="handleLogout()">🚪 Logout</button>
+            </div>
+        </div>
+        
+        <div id="loading" style="text-align: center; padding: 40px; display: none;">
+            <p>Loading profile...</p>
+        </div>
+        
+        <div id="error" style="text-align: center; padding: 40px; display: none; color: #e74c3c;">
+            <p>Unable to load profile. Please refresh the page.</p>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        class PlayerProfile {
+            constructor() {
+                this.init();
+            }
+            
+            async init() {
+                // Check authentication first
+                try {
+                    const user = await API.getCurrentUser();
+                    if (!user) {
+                        // Redirect to main page if not authenticated
+                        window.location.href = '/';
+                        return;
+                    }
+                    this.loadProfile(user);
+                } catch (error) {
+                    console.error('Authentication check failed:', error);
+                    window.location.href = '/';
+                }
+            }
+            
+            loadProfile(user) {
+                this.currentUser = user; // Store user data for editing
+                const container = document.getElementById('profile-info');
+                
+                container.innerHTML = `
+                    <div class="info-item">
+                        <span class="info-label">Name:</span>
+                        <span class="info-value">${this.escapeHtml(user.name || 'Not set')}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Email:</span>
+                        <span class="info-value">${this.escapeHtml(user.email || 'Not set')}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Phone:</span>
+                        <span class="info-value">${this.escapeHtml(user.phone || 'Not set')}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Position:</span>
+                        <span class="info-value">${this.escapeHtml(user.position || 'Not set')}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Jersey Number:</span>
+                        <span class="info-value">${user.jersey_number || 'Not set'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Role:</span>
+                        <span class="info-value">${this.escapeHtml((user.role || 'player').charAt(0).toUpperCase() + (user.role || 'player').slice(1))}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Member Since:</span>
+                        <span class="info-value">2024</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value">Active</span>
+                    </div>
+                `;
+            }
+            
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+        
+        // Initialize profile when page loads
+        const profile = new PlayerProfile();
+
+        // Edit profile function
+        function editProfile() {
+            const profileInfo = document.getElementById('profile-info');
+            const currentUser = profile.currentUser;
+            
+            // Create edit form
+            profileInfo.innerHTML = `
+                <form id="edit-profile-form" onsubmit="saveProfile(event)">
+                    <div class="info-item">
+                        <span class="info-label">Name:</span>
+                        <input type="text" id="edit-name" class="edit-input" value="${escapeHtml(currentUser.name || '')}" placeholder="Enter your name">
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Email:</span>
+                        <input type="email" id="edit-email" class="edit-input" value="${escapeHtml(currentUser.email || '')}" placeholder="Enter your email">
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Phone:</span>
+                        <input type="tel" id="edit-phone" class="edit-input" value="${escapeHtml(currentUser.phone || '')}" placeholder="Enter your phone number">
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Position:</span>
+                        <select id="edit-position" class="edit-input">
+                            <option value="">Select Position</option>
+                            <option value="goalkeeper" ${currentUser.position === 'goalkeeper' ? 'selected' : ''}>Goalkeeper</option>
+                            <option value="defender" ${currentUser.position === 'defender' ? 'selected' : ''}>Defender</option>
+                            <option value="midfielder" ${currentUser.position === 'midfielder' ? 'selected' : ''}>Midfielder</option>
+                            <option value="forward" ${currentUser.position === 'forward' ? 'selected' : ''}>Forward</option>
+                        </select>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Jersey Number:</span>
+                        <input type="number" id="edit-jersey" class="edit-input" value="${currentUser.jersey_number || ''}" min="1" max="99" placeholder="Jersey number">
+                    </div>
+                    <div class="edit-actions">
+                        <button type="submit" class="save-btn">💾 Save Changes</button>
+                        <button type="button" class="cancel-btn" onclick="cancelEdit()">❌ Cancel</button>
+                    </div>
+                </form>
+            `;
+        }
+
+        // Save profile function
+        async function saveProfile(event) {
+            event.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('edit-name').value,
+                email: document.getElementById('edit-email').value,
+                phone: document.getElementById('edit-phone').value,
+                position: document.getElementById('edit-position').value,
+                jersey_number: document.getElementById('edit-jersey').value
+            };
+
+            try {
+                const response = await fetch('/api/auth/update-profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    const updatedUser = await response.json();
+                    profile.currentUser = updatedUser;
+                    profile.loadProfile(updatedUser);
+                    showMessage('Profile updated successfully!', 'success');
+                } else {
+                    const error = await response.json();
+                    showMessage(error.message || 'Failed to update profile', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                showMessage('Failed to update profile. Please try again.', 'error');
+            }
+        }
+
+        // Cancel edit function
+        function cancelEdit() {
+            profile.loadProfile(profile.currentUser);
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Show message function
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.textContent = message;
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 5px;
+                color: white;
+                font-weight: bold;
+                z-index: 1000;
+                ${type === 'success' ? 'background: #27ae60;' : 'background: #e74c3c;'}
+            `;
+            
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                document.body.removeChild(messageDiv);
+            }, 3000);
+        }
+
+        // Logout function
+        async function handleLogout() {
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    // Clear any local storage or session data
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    
+                    // Redirect to home page
+                    window.location.href = '/';
+                } else {
+                    console.error('Logout failed:', response.statusText);
+                    // Still redirect on failure since it's just a logout
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                // Redirect anyway since logout should always work
+                window.location.href = '/';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -177,13 +177,33 @@ class FootballApp {
         const views = document.querySelectorAll('.view');
 
         navButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (event) => {
+                event.preventDefault(); // Prevent any default button behavior
                 const viewName = btn.id.replace('nav-', '');
                 
                 // Special handling for coach dashboard
                 if (viewName === 'coach') {
                     window.location.href = '/coach';
                     return;
+                }
+                
+                // Special handling for profile - redirect based on user role
+                if (viewName === 'profile') {
+                    console.log('Profile clicked, current user:', this.currentUser);
+                    console.log('Current location:', window.location.href);
+                    // Always redirect for profile - don't fall through to switchView
+                    if (this.currentUser && this.currentUser.role === 'coach') {
+                        console.log('Redirecting coach to /coach');
+                        const coachUrl = window.location.origin + '/coach';
+                        console.log('Coach URL:', coachUrl);
+                        window.location.href = coachUrl;
+                    } else {
+                        console.log('Redirecting to player profile (default for any non-coach user)');
+                        const playerUrl = window.location.origin + '/player';
+                        console.log('Player URL:', playerUrl);
+                        window.location.href = playerUrl;
+                    }
+                    return; // Ensure we never fall through
                 }
                 
                 // Special handling for logout
