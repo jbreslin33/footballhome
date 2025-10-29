@@ -214,7 +214,7 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // Update user profile - now handles normalized schema
-app.post('/api/auth/update-profile', async (req, res) => {
+const updateProfileHandler = async (req, res) => {
     if (!req.session.user) {
         return res.status(401).json({ success: false, message: 'Not authenticated' });
     }
@@ -246,7 +246,11 @@ app.post('/api/auth/update-profile', async (req, res) => {
         console.error('Error updating profile:', error);
         res.status(500).json({ success: false, message: 'Database error' });
     }
-});
+};
+
+// Support both POST and PUT methods for profile updates
+app.post('/api/auth/update-profile', updateProfileHandler);
+app.put('/api/auth/update-profile', updateProfileHandler);
 
 // Get current user - updated for normalized schema
 app.get('/api/auth/me', async (req, res) => {
