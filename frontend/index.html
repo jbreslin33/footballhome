@@ -24,11 +24,10 @@
             <div class="container">
                 <h1 class="logo">⚽ Football Home</h1>
                 <nav class="main-nav">
-                    <button id="nav-events" class="nav-btn active">Events</button>
-                    <button id="nav-create" class="nav-btn">Create</button>
-                    <button id="nav-coach" class="nav-btn coach-only">Coach Dashboard</button>
-                    <button id="nav-profile" class="nav-btn">Profile</button>
-                    <button id="nav-logout" class="nav-btn logout-btn" style="display: none;">Logout</button>
+                    <button id="nav-events" class="nav-btn active">📅 Events</button>
+                    <button id="nav-coach" class="nav-btn coach-only">📊 Dashboard</button>
+                    <button id="nav-profile" class="nav-btn">👤 Profile</button>
+                    <button id="nav-logout" class="nav-btn logout-btn" style="display: none;">🚪 Logout</button>
                 </nav>
             </div>
         </header>
@@ -45,47 +44,7 @@
                     </div>
                 </section>
 
-                <!-- Create Event View -->
-                <section id="create-view" class="view">
-                    <h2>Create New Event</h2>
-                    <form id="create-event-form" class="event-form">
-                        <div class="form-group">
-                            <label for="event-title">Event Title</label>
-                            <input type="text" id="event-title" name="title" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="event-type">Type</label>
-                            <select id="event-type" name="event_type" required>
-                                <option value="training">Training</option>
-                                <option value="match">Match</option>
-                                <option value="meeting">Team Meeting</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="event-date">Date & Time</label>
-                            <input type="datetime-local" id="event-date" name="event_date" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="event-location">Location</label>
-                            <input type="text" id="event-location" name="location" placeholder="Pitch name or address">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="event-duration">Duration (minutes)</label>
-                            <input type="number" id="event-duration" name="duration_minutes" value="90" min="30" max="180">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="event-description">Description</label>
-                            <textarea id="event-description" name="description" rows="3"></textarea>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary">Create Event</button>
-                    </form>
-                </section>
+
 
                 <!-- Profile View -->
                 <section id="profile-view" class="view">

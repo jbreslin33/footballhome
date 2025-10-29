@@ -9,7 +9,6 @@ class FootballApp {
 
     async init() {
         this.setupNavigation();
-        this.setupEventForm();
         
         // Check authentication first
         const isLoggedIn = await this.checkAuthentication();
@@ -189,21 +188,12 @@ class FootballApp {
                 
                 // Special handling for profile - redirect based on user role
                 if (viewName === 'profile') {
-                    console.log('Profile clicked, current user:', this.currentUser);
-                    console.log('Current location:', window.location.href);
-                    // Always redirect for profile - don't fall through to switchView
                     if (this.currentUser && this.currentUser.role === 'coach') {
-                        console.log('Redirecting coach to /coach');
-                        const coachUrl = window.location.origin + '/coach';
-                        console.log('Coach URL:', coachUrl);
-                        window.location.href = coachUrl;
+                        window.location.href = '/coach-profile';
                     } else {
-                        console.log('Redirecting to player profile (default for any non-coach user)');
-                        const playerUrl = window.location.origin + '/player';
-                        console.log('Player URL:', playerUrl);
-                        window.location.href = playerUrl;
+                        window.location.href = '/player';
                     }
-                    return; // Ensure we never fall through
+                    return;
                 }
                 
                 // Special handling for logout
@@ -233,36 +223,7 @@ class FootballApp {
         this.currentView = viewName;
     }
 
-    setupEventForm() {
-        const form = document.getElementById('create-event-form');
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const formData = new FormData(form);
-            const eventData = {
-                team_id: this.currentTeamId,
-                title: formData.get('title'),
-                event_type: formData.get('event_type'),
-                event_date: formData.get('event_date'),
-                location: formData.get('location'),
-                duration_minutes: parseInt(formData.get('duration_minutes')),
-                description: formData.get('description')
-            };
 
-            try {
-                const response = await API.createEvent(eventData);
-                if (response.status === 'created') {
-                    this.showNotification('Event created successfully!', 'success');
-                    form.reset();
-                    this.switchView('events');
-                    this.loadEvents(); // Refresh events list
-                }
-            } catch (error) {
-                this.showNotification('Error creating event', 'error');
-                console.error('Create event error:', error);
-            }
-        });
-    }
 
     async loadEvents() {
         const eventsList = document.getElementById('events-list');
