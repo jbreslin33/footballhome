@@ -94,9 +94,10 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'footballhome-api',
-    version: '2.0.0',
+    version: '2.1.0',
     timestamp: new Date().toISOString(),
-    normalized: true
+    normalized: true,
+    many_to_many_roles: true
   });
 });
 
@@ -118,12 +119,17 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   
   try {
-    // Look up user with role information using normalized schema
+    // Look up user with role information using many-to-many structure
     const result = await pool.query(`
-      SELECT u.*, ur.name as role_name, ur.display_name as role_display 
+      SELECT 
+        u.*,
+        array_agg(r.name) FILTER (WHERE r.name IS NOT NULL AND ur.is_active = true) as roles,
+        array_agg(r.display_name) FILTER (WHERE r.display_name IS NOT NULL AND ur.is_active = true) as role_displays
       FROM users u 
-      JOIN user_roles ur ON u.user_role_id = ur.id 
-      WHERE u.email = $1
+      LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = true
+      LEFT JOIN roles r ON ur.role_id = r.id
+      WHERE u.email = $1 AND u.is_active = true
+      GROUP BY u.id
     `, [email]);
     
     if (result.rows.length === 0) {
@@ -138,6 +144,7 @@ app.post('/api/auth/login', async (req, res) => {
     // For demo purposes, we'll check against simple password mapping
     // In production, you would hash and compare passwords properly
     const passwordMap = {
+      'admin@thunderfc.com': 'admin123',
       'coach@thunderfc.com': 'coach123',
       'player@thunderfc.com': 'player123', 
       'keeper@thunderfc.com': 'keeper123',
@@ -158,7 +165,7 @@ app.post('/api/auth/login', async (req, res) => {
       req.session.user = {
         id: user.id,
         email: user.email,
-        role: user.role_name
+        roles: user.roles || []
       };
     }
 
@@ -180,7 +187,9 @@ app.post('/api/auth/login', async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role: user.role_name,
+        roles: user.roles || [],
+        role_displays: user.role_displays || [],
+        primary_role: (user.roles && user.roles[0]) || null,
         position: memberInfo.position_name || null,
         jersey_number: memberInfo.jersey_number || null,
         is_captain: memberInfo.is_captain || false
@@ -246,22 +255,25 @@ app.get('/api/auth/me', async (req, res) => {
     }
     
     try {
-        // Fetch user data with role and team member info
+        // Fetch user data with roles and team member info
         const result = await pool.query(`
             SELECT 
                 u.id, u.email, u.name, u.phone, u.date_of_birth,
-                u.emergency_contact, u.emergency_phone,
-                ur.name as role, ur.display_name as role_display,
-                tm.jersey_number, tm.is_captain, tm.is_active,
+                u.emergency_contact, u.emergency_phone, u.is_active,
+                array_agg(DISTINCT r.name) FILTER (WHERE r.name IS NOT NULL AND ur.is_active = true) as roles,
+                array_agg(DISTINCT r.display_name) FILTER (WHERE r.display_name IS NOT NULL AND ur.is_active = true) as role_displays,
+                tm.jersey_number, tm.is_captain, tm.is_active as team_active,
                 p.display_name as position, p.abbreviation as position_abbr,
                 t.name as team_name, s.display_name as sport
             FROM users u 
-            JOIN user_roles ur ON u.user_role_id = ur.id
+            LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = true
+            LEFT JOIN roles r ON ur.role_id = r.id
             LEFT JOIN team_members tm ON u.id = tm.user_id AND tm.is_active = true
             LEFT JOIN positions p ON tm.position_id = p.id
             LEFT JOIN teams t ON tm.team_id = t.id
             LEFT JOIN sports s ON t.sport_id = s.id
-            WHERE u.id = $1
+            WHERE u.id = $1 AND u.is_active = true
+            GROUP BY u.id, tm.jersey_number, tm.is_captain, tm.is_active, p.display_name, p.abbreviation, t.name, s.display_name
         `, [req.session.user.id]);
         
         if (result.rows.length === 0) {
@@ -278,12 +290,15 @@ app.get('/api/auth/me', async (req, res) => {
                 name: user.name,
                 email: user.email,
                 phone: user.phone,
-                role: user.role,
+                roles: user.roles || [],
+                role_displays: user.role_displays || [],
+                primary_role: (user.roles && user.roles[0]) || null,
                 position: user.position,
                 jersey_number: user.jersey_number,
                 is_captain: user.is_captain,
                 team_name: user.team_name,
-                sport: user.sport
+                sport: user.sport,
+                is_active: user.is_active
             }
         });
     } catch (error) {
@@ -756,8 +771,9 @@ app.post('/api/events/:eventId/notify-team', async (req, res) => {
       JOIN event_types et ON e.event_type_id = et.id
       JOIN team_members tm ON e.team_id = tm.team_id
       JOIN users u ON tm.user_id = u.id
-      JOIN user_roles ur ON u.user_role_id = ur.id
-      WHERE e.id = $1 AND ur.name = 'player' AND u.phone IS NOT NULL AND tm.is_active = true
+      JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = true
+      JOIN roles r ON ur.role_id = r.id
+      WHERE e.id = $1 AND r.name = 'player' AND u.phone IS NOT NULL AND tm.is_active = true AND u.is_active = true
     `, [eventId]);
 
     if (result.rows.length === 0) {
@@ -902,6 +918,114 @@ app.get('/api/rsvp-statuses', async (req, res) => {
   }
 });
 
+// Get all available roles
+app.get('/api/roles', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, name, display_name, description, permissions
+      FROM roles 
+      ORDER BY display_name
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching roles:', error);
+    res.status(500).json({ error: 'Failed to fetch roles' });
+  }
+});
+
+// Get user's roles
+app.get('/api/users/:userId/roles', requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const result = await pool.query(`
+      SELECT 
+        ur.id as assignment_id,
+        r.id as role_id,
+        r.name,
+        r.display_name,
+        ur.assigned_at,
+        ur.is_active,
+        ur.expires_at,
+        ur.notes,
+        assigner.name as assigned_by_name
+      FROM user_roles ur
+      JOIN roles r ON ur.role_id = r.id
+      LEFT JOIN users assigner ON ur.assigned_by = assigner.id
+      WHERE ur.user_id = $1
+      ORDER BY ur.assigned_at DESC
+    `, [userId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching user roles:', error);
+    res.status(500).json({ error: 'Failed to fetch user roles' });
+  }
+});
+
+// Assign role to user
+app.post('/api/users/:userId/roles', requireAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { roleId, notes, expiresAt } = req.body;
+    const assignedBy = req.session.user.id;
+
+    // Check if user already has this role
+    const existing = await pool.query(
+      'SELECT id FROM user_roles WHERE user_id = $1 AND role_id = $2',
+      [userId, roleId]
+    );
+
+    if (existing.rows.length > 0) {
+      // Update existing assignment
+      await pool.query(`
+        UPDATE user_roles 
+        SET is_active = true, assigned_by = $1, notes = $2, expires_at = $3, assigned_at = CURRENT_TIMESTAMP
+        WHERE user_id = $4 AND role_id = $5
+      `, [assignedBy, notes, expiresAt, userId, roleId]);
+    } else {
+      // Create new assignment
+      await pool.query(`
+        INSERT INTO user_roles (user_id, role_id, assigned_by, notes, expires_at)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [userId, roleId, assignedBy, notes, expiresAt]);
+    }
+
+    res.json({ success: true, message: 'Role assigned successfully' });
+  } catch (error) {
+    console.error('Error assigning role:', error);
+    res.status(500).json({ error: 'Failed to assign role' });
+  }
+});
+
+// Remove/deactivate role from user
+app.delete('/api/users/:userId/roles/:roleId', requireAuth, async (req, res) => {
+  try {
+    const { userId, roleId } = req.params;
+    
+    await pool.query(`
+      UPDATE user_roles 
+      SET is_active = false 
+      WHERE user_id = $1 AND role_id = $2
+    `, [userId, roleId]);
+
+    res.json({ success: true, message: 'Role removed successfully' });
+  } catch (error) {
+    console.error('Error removing role:', error);
+    res.status(500).json({ error: 'Failed to remove role' });
+  }
+});
+
+// Helper function to check if user has specific role
+async function userHasRole(userId, roleName) {
+  const result = await pool.query(`
+    SELECT 1 FROM user_roles ur
+    JOIN roles r ON ur.role_id = r.id
+    WHERE ur.user_id = $1 AND r.name = $2 AND ur.is_active = true
+    AND (ur.expires_at IS NULL OR ur.expires_at > CURRENT_TIMESTAMP)
+  `, [userId, roleName]);
+  
+  return result.rows.length > 0;
+}
+
 // Frontend routes - serve specific HTML files for different pages
 app.get('/coach', (req, res) => {
   res.sendFile(path.join(__dirname, '../../frontend/coach.html'));
@@ -936,7 +1060,7 @@ async function testConnection() {
 
 // Start server
 app.listen(port, '0.0.0.0', () => {
-  console.log(`⚽ Football Home API running on port ${port} (Normalized DB v2.0)`);
+  console.log(`⚽ Football Home API running on port ${port} (Many-to-Many Roles v2.1)`);
   testConnection();
 });
 

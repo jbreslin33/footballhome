@@ -68,7 +68,9 @@ PGPASSWORD=footballpass123 psql -h localhost -p 5432 -U footballapp -d footballh
 SELECT 
     'sports' as table_name, count(*) as record_count FROM sports
 UNION ALL SELECT 
-    'user_roles' as table_name, count(*) as record_count FROM user_roles  
+    'roles' as table_name, count(*) as record_count FROM roles  
+UNION ALL SELECT 
+    'user_roles' as table_name, count(*) as record_count FROM user_roles
 UNION ALL SELECT 
     'event_types' as table_name, count(*) as record_count FROM event_types
 UNION ALL SELECT 
@@ -94,24 +96,29 @@ echo -e "${GREEN}🎉 Database normalization complete!${NC}"
 echo ""
 echo -e "${GREEN}✅ Normalized tables created:${NC}"
 echo -e "   • sports (5 sports available)"
-echo -e "   • user_roles (admin, coach, player)"  
+echo -e "   • roles (admin, coach, player, assistant_coach, parent)"  
+echo -e "   • user_roles (many-to-many junction table)"
 echo -e "   • event_types (training, match, meeting, scrimmage)"
 echo -e "   • rsvp_statuses (yes, maybe, no with colors)"
 echo -e "   • positions (goalkeeper, defender, midfielder, forward)"
 echo -e "   • teams (updated with sport_id foreign key)"
-echo -e "   • users (updated with user_role_id foreign key)" 
+echo -e "   • users (no direct role reference - uses junction table)" 
 echo -e "   • team_members (updated with position_id foreign key)"
 echo -e "   • events (updated with event_type_id foreign key)"
 echo -e "   • rsvps (updated with rsvp_status_id foreign key)"
 echo ""
 echo -e "${GREEN}🌐 Application should be available at: http://localhost${NC}"
 echo -e "${GREEN}🔐 Demo credentials:${NC}"
+echo -e "   Admin: admin@thunderfc.com / admin123"
 echo -e "   Coach: coach@thunderfc.com / coach123"
 echo -e "   Player: player@thunderfc.com / player123"
+echo -e "   Multi-role Player: player@thunderfc.com / player123 (player + assistant_coach)"
 echo ""
 echo -e "${YELLOW}📋 Key improvements:${NC}"
 echo -e "   • Multi-sport support (not limited to soccer)"
-echo -e "   • Flexible user roles and permissions"
+echo -e "   • Many-to-many user roles (users can have multiple roles)"
+echo -e "   • Role assignment auditing (who assigned, when, notes)"
+echo -e "   • Temporary and expiring roles support"
 echo -e "   • Sport-specific positions and event types"
 echo -e "   • Colored RSVP statuses for better UX"
 echo -e "   • Proper foreign key relationships"

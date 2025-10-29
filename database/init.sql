@@ -14,12 +14,14 @@ CREATE TABLE sports (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- User roles lookup table
-CREATE TABLE user_roles (
+-- Roles lookup table (renamed from user_roles for clarity)
+CREATE TABLE roles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(20) UNIQUE NOT NULL,          -- 'coach', 'player', 'admin'
     display_name VARCHAR(50) NOT NULL,         -- 'Coach', 'Player', 'Administrator'
+    description TEXT,                          -- Role description
     permissions TEXT[],                        -- Array of permissions
+    is_system_role BOOLEAN DEFAULT false,      -- Cannot be deleted
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -71,20 +73,33 @@ CREATE TABLE teams (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Users table (now references role)
+-- Users table (no direct role reference - uses junction table)
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(100) NOT NULL,
     phone VARCHAR(20),
-    user_role_id UUID NOT NULL REFERENCES user_roles(id),
     password_hash VARCHAR(255) NOT NULL,
     avatar_url VARCHAR(500),
     date_of_birth DATE,
     emergency_contact VARCHAR(100),
     emergency_phone VARCHAR(20),
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User roles junction table (many-to-many: users can have multiple roles)
+CREATE TABLE user_roles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    assigned_by UUID REFERENCES users(id),      -- Who granted this role
+    is_active BOOLEAN DEFAULT true,             -- Role can be suspended
+    expires_at TIMESTAMP,                       -- Optional role expiration
+    notes TEXT,                                 -- Assignment notes
+    UNIQUE(user_id, role_id)                   -- Prevent duplicate role assignments
 );
 
 -- Team memberships (many-to-many: users can be on multiple teams)
@@ -155,7 +170,9 @@ CREATE INDEX idx_rsvps_status ON rsvps(rsvp_status_id);
 CREATE INDEX idx_team_members_team ON team_members(team_id);
 CREATE INDEX idx_team_members_user ON team_members(user_id);
 CREATE INDEX idx_team_members_position ON team_members(position_id);
-CREATE INDEX idx_users_role ON users(user_role_id);
+CREATE INDEX idx_user_roles_user ON user_roles(user_id);
+CREATE INDEX idx_user_roles_role ON user_roles(role_id);
+CREATE INDEX idx_user_roles_active ON user_roles(user_id, is_active);
 CREATE INDEX idx_teams_sport ON teams(sport_id);
 CREATE INDEX idx_positions_sport ON positions(sport_id);
 CREATE INDEX idx_event_types_sport ON event_types(sport_id);
@@ -172,11 +189,13 @@ INSERT INTO sports (id, name, display_name, default_event_duration, typical_team
 ('550e8400-e29b-41d4-a716-446655440104', 'baseball', 'Baseball', 180, 9),
 ('550e8400-e29b-41d4-a716-446655440105', 'volleyball', 'Volleyball', 90, 6);
 
--- User roles
-INSERT INTO user_roles (id, name, display_name, permissions) VALUES 
-('550e8400-e29b-41d4-a716-446655440201', 'admin', 'Administrator', ARRAY['manage_teams', 'manage_users', 'manage_events', 'send_notifications']),
-('550e8400-e29b-41d4-a716-446655440202', 'coach', 'Coach', ARRAY['manage_events', 'send_notifications', 'view_team']),
-('550e8400-e29b-41d4-a716-446655440203', 'player', 'Player', ARRAY['view_events', 'rsvp_events', 'view_profile']);
+-- Roles (renamed from user_roles)
+INSERT INTO roles (id, name, display_name, description, permissions, is_system_role) VALUES 
+('550e8400-e29b-41d4-a716-446655440201', 'admin', 'Administrator', 'System administrator with full access', ARRAY['manage_teams', 'manage_users', 'manage_events', 'send_notifications', 'manage_roles'], true),
+('550e8400-e29b-41d4-a716-446655440202', 'coach', 'Coach', 'Team coach with management capabilities', ARRAY['manage_events', 'send_notifications', 'view_team', 'manage_roster'], true),
+('550e8400-e29b-41d4-a716-446655440203', 'player', 'Player', 'Team player with basic access', ARRAY['view_events', 'rsvp_events', 'view_profile'], true),
+('550e8400-e29b-41d4-a716-446655440204', 'assistant_coach', 'Assistant Coach', 'Assistant coach with limited management', ARRAY['view_team', 'send_notifications'], false),
+('550e8400-e29b-41d4-a716-446655440205', 'parent', 'Parent/Guardian', 'Parent or guardian of a player', ARRAY['view_events', 'view_profile'], false);
 
 -- RSVP statuses
 INSERT INTO rsvp_statuses (id, name, display_name, sort_order, color) VALUES 
@@ -203,14 +222,30 @@ INSERT INTO teams (id, name, sport_id, season, primary_color, secondary_color) V
 ('550e8400-e29b-41d4-a716-446655440001', 'Thunder FC Demo', '550e8400-e29b-41d4-a716-446655440101', '2025/26 Season', '#e74c3c', '#ffffff'),
 ('550e8400-e29b-41d4-a716-446655440002', 'Lightning United', '550e8400-e29b-41d4-a716-446655440101', '2025/26 Season', '#3498db', '#ffffff');
 
--- Sample users
-INSERT INTO users (id, email, name, phone, user_role_id, password_hash) VALUES 
-('550e8400-e29b-41d4-a716-446655440100', 'coach@thunderfc.com', 'Coach Sarah Martinez', '+1-555-1893', '550e8400-e29b-41d4-a716-446655440202', '$2b$12$sample_hash_here'),
-('550e8400-e29b-41d4-a716-446655440101', 'player@thunderfc.com', 'Alex Johnson', '+1-555-2001', '550e8400-e29b-41d4-a716-446655440203', '$2b$12$sample_hash_here'),
-('550e8400-e29b-41d4-a716-446655440102', 'keeper@thunderfc.com', 'Maria Rodriguez', '+1-555-2002', '550e8400-e29b-41d4-a716-446655440203', '$2b$12$sample_hash_here'),
-('550e8400-e29b-41d4-a716-446655440103', 'defender@thunderfc.com', 'Emma Thompson', '+1-555-2003', '550e8400-e29b-41d4-a716-446655440203', '$2b$12$sample_hash_here'),
-('550e8400-e29b-41d4-a716-446655440104', 'striker@thunderfc.com', 'David Kim', '+1-555-2004', '550e8400-e29b-41d4-a716-446655440203', '$2b$12$sample_hash_here'),
-('550e8400-e29b-41d4-a716-446655440105', 'demo@footballhome.org', 'Demo User', '+1-555-2005', '550e8400-e29b-41d4-a716-446655440203', '$2b$12$sample_hash_here');
+-- Sample users (no direct role references)
+INSERT INTO users (id, email, name, phone, password_hash) VALUES 
+('550e8400-e29b-41d4-a716-446655440100', 'coach@thunderfc.com', 'Coach Sarah Martinez', '+1-555-1893', '$2b$12$sample_hash_here'),
+('550e8400-e29b-41d4-a716-446655440101', 'player@thunderfc.com', 'Alex Johnson', '+1-555-2001', '$2b$12$sample_hash_here'),
+('550e8400-e29b-41d4-a716-446655440102', 'keeper@thunderfc.com', 'Maria Rodriguez', '+1-555-2002', '$2b$12$sample_hash_here'),
+('550e8400-e29b-41d4-a716-446655440103', 'defender@thunderfc.com', 'Emma Thompson', '+1-555-2003', '$2b$12$sample_hash_here'),
+('550e8400-e29b-41d4-a716-446655440104', 'striker@thunderfc.com', 'David Kim', '+1-555-2004', '$2b$12$sample_hash_here'),
+('550e8400-e29b-41d4-a716-446655440105', 'demo@footballhome.org', 'Demo User', '+1-555-2005', '$2b$12$sample_hash_here'),
+('550e8400-e29b-41d4-a716-446655440106', 'admin@thunderfc.com', 'Admin Alice Cooper', '+1-555-1000', '$2b$12$sample_hash_here');
+
+-- User role assignments (many-to-many junction table)
+INSERT INTO user_roles (user_id, role_id, assigned_by, notes) VALUES
+-- Admin user has admin role
+('550e8400-e29b-41d4-a716-446655440106', '550e8400-e29b-41d4-a716-446655440201', NULL, 'System administrator'),
+-- Coach has coach role
+('550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440106', 'Head coach of Thunder FC'),
+-- Players have player role
+('550e8400-e29b-41d4-a716-446655440101', '550e8400-e29b-41d4-a716-446655440203', '550e8400-e29b-41d4-a716-446655440100', 'Team captain and midfielder'),
+('550e8400-e29b-41d4-a716-446655440102', '550e8400-e29b-41d4-a716-446655440203', '550e8400-e29b-41d4-a716-446655440100', 'Team goalkeeper'),
+('550e8400-e29b-41d4-a716-446655440103', '550e8400-e29b-41d4-a716-446655440203', '550e8400-e29b-41d4-a716-446655440100', 'Team defender'),
+('550e8400-e29b-41d4-a716-446655440104', '550e8400-e29b-41d4-a716-446655440203', '550e8400-e29b-41d4-a716-446655440100', 'Team striker'),
+('550e8400-e29b-41d4-a716-446655440105', '550e8400-e29b-41d4-a716-446655440203', '550e8400-e29b-41d4-a716-446655440100', 'Demo player account'),
+-- Example: Alex Johnson (captain) also has assistant coach role for youth team
+('550e8400-e29b-41d4-a716-446655440101', '550e8400-e29b-41d4-a716-446655440204', '550e8400-e29b-41d4-a716-446655440100', 'Assists with youth development');
 
 -- Team memberships with positions
 INSERT INTO team_members (team_id, user_id, position_id, jersey_number, is_captain) VALUES
