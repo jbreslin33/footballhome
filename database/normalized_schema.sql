@@ -1,8 +1,16 @@
--- Football Home Database Schema - Normalized Version
--- Version: 2.0 - Fully normalized with lookup tables
+-- Normalized Football Home Database Schema
+-- Complete normalization with lookup tables
 
 -- Create database extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Drop existing tables if they exist (since we're not preserving data)
+DROP TABLE IF EXISTS magic_tokens CASCADE;
+DROP TABLE IF EXISTS rsvps CASCADE;
+DROP TABLE IF EXISTS events CASCADE;
+DROP TABLE IF EXISTS team_members CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS teams CASCADE;
 
 -- Sports lookup table
 CREATE TABLE sports (
@@ -135,7 +143,7 @@ CREATE TABLE rsvps (
     UNIQUE(event_id, user_id)
 );
 
--- Magic tokens for RSVP links via email/SMS (unchanged)
+-- Magic tokens for RSVP links (unchanged)
 CREATE TABLE magic_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     token VARCHAR(255) UNIQUE NOT NULL,
