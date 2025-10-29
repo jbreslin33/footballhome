@@ -23,17 +23,24 @@ class FootballApp {
 
     async checkAuthentication() {
         try {
+            console.log('Checking authentication...');
             const response = await API.getCurrentUser();
-            if (response && response.success && response.user && response.user.id) {
+            console.log('Auth response:', response);
+            if (response && response.success && response.user && (response.user.id || response.user.email)) {
+                console.log('User authenticated:', response.user.email);
                 this.currentUser = response.user;
                 this.currentTeamId = '550e8400-e29b-41d4-a716-446655440001'; // TODO: Get from user's team
                 this.updateUIForLoggedInUser(response.user);
                 return true;
+            } else {
+                console.log('Authentication failed - response:', response);
+                console.log('User object:', response?.user);
             }
         } catch (error) {
-            console.log('User not authenticated:', error.message);
+            console.log('User not authenticated - error:', error.message);
         }
         
+        console.log('Updating UI for logged out user');
         this.updateUIForLoggedOutUser();
         return false;
     }
