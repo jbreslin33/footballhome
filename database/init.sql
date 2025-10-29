@@ -47,6 +47,16 @@ CREATE TABLE rsvp_statuses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Home/Away venue status lookup table
+CREATE TABLE home_away_statuses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(20) UNIQUE NOT NULL,          -- 'home', 'away', 'neutral'
+    display_name VARCHAR(50) NOT NULL,         -- 'Home', 'Away', 'Neutral Venue'
+    description TEXT,                          -- Additional context
+    sort_order INTEGER DEFAULT 0,             -- For display ordering
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Player positions lookup table (sport-specific)
 CREATE TABLE positions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -130,7 +140,7 @@ CREATE TABLE events (
     duration_minutes INTEGER,                   -- Will default from event_type if null
     max_players INTEGER,
     opponent_team_id UUID REFERENCES teams(id), -- For matches against other teams
-    home_away VARCHAR(10) CHECK (home_away IN ('home', 'away')),
+    home_away_status_id UUID REFERENCES home_away_statuses(id), -- Normalized venue status
     cancelled BOOLEAN DEFAULT false,
     cancellation_reason TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -203,6 +213,12 @@ INSERT INTO rsvp_statuses (id, name, display_name, sort_order, color) VALUES
 ('550e8400-e29b-41d4-a716-446655440302', 'maybe', 'Maybe', 2, '#f39c12'),
 ('550e8400-e29b-41d4-a716-446655440303', 'no', 'Not Attending', 3, '#e74c3c');
 
+-- Home/Away venue statuses
+INSERT INTO home_away_statuses (id, name, display_name, description, sort_order) VALUES 
+('550e8400-e29b-41d4-a716-446655440801', 'home', 'Home', 'Event at our home venue', 1),
+('550e8400-e29b-41d4-a716-446655440802', 'away', 'Away', 'Event at opponent or external venue', 2),
+('550e8400-e29b-41d4-a716-446655440803', 'neutral', 'Neutral Venue', 'Event at a neutral/shared venue', 3);
+
 -- Event types for soccer
 INSERT INTO event_types (id, sport_id, name, display_name, default_duration, requires_opponent) VALUES 
 ('550e8400-e29b-41d4-a716-446655440401', '550e8400-e29b-41d4-a716-446655440101', 'training', 'Training Session', 90, false),
@@ -256,8 +272,8 @@ INSERT INTO team_members (team_id, user_id, position_id, jersey_number, is_capta
 ('550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440104', '550e8400-e29b-41d4-a716-446655440504', 9, false),  -- David - Forward
 ('550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440105', '550e8400-e29b-41d4-a716-446655440504', 11, false); -- Demo - Forward
 
--- Sample events using normalized event types
-INSERT INTO events (id, team_id, created_by, event_type_id, title, description, event_date, location, duration_minutes) VALUES
-('550e8400-e29b-41d4-a716-446655440701', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440401', 'Weekly Training Session', 'Regular training focusing on passing and shooting', '2025-10-30 18:00:00', 'Thunder FC Training Ground', 90),
-('550e8400-e29b-41d4-a716-446655440702', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440402', 'Match vs Lightning United', 'League match against Lightning United', '2025-11-02 15:00:00', 'Thunder FC Stadium', 120),
-('550e8400-e29b-41d4-a716-446655440703', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440403', 'Team Strategy Meeting', 'Discussing tactics for upcoming matches', '2025-10-29 19:00:00', 'Thunder FC Clubhouse', 60);
+-- Sample events using normalized event types and home/away status
+INSERT INTO events (id, team_id, created_by, event_type_id, title, description, event_date, location, duration_minutes, home_away_status_id) VALUES
+('550e8400-e29b-41d4-a716-446655440701', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440401', 'Weekly Training Session', 'Regular training focusing on passing and shooting', '2025-10-30 18:00:00', 'Thunder FC Training Ground', 90, '550e8400-e29b-41d4-a716-446655440801'),
+('550e8400-e29b-41d4-a716-446655440702', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440402', 'Match vs Lightning United', 'League match against Lightning United', '2025-11-02 15:00:00', 'Thunder FC Stadium', 120, '550e8400-e29b-41d4-a716-446655440801'),
+('550e8400-e29b-41d4-a716-446655440703', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440403', 'Team Strategy Meeting', 'Discussing tactics for upcoming matches', '2025-10-29 19:00:00', 'Thunder FC Clubhouse', 60, '550e8400-e29b-41d4-a716-446655440801');
