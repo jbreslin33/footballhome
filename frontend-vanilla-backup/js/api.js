@@ -129,6 +129,13 @@ class APIClient {
         return this.request('/auth/me');
     }
 
+    async updateProfile(profileData) {
+        return this.request('/auth/profile', {
+            method: 'PUT',
+            body: JSON.stringify(profileData),
+        });
+    }
+
     // Utility method for handling offline scenarios
     async requestWithOfflineSupport(endpoint, options = {}) {
         try {

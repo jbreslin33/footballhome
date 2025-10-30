@@ -1,5 +1,56 @@
 /* Component-specific styles */
 
+/* Profile Edit Form */
+.profile-edit-form {
+  background: var(--surface-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+  margin-top: var(--spacing-md);
+  border: 1px solid var(--border-color);
+}
+
+.form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-color);
+}
+
+.form-input {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+}
+
+.form-checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.form-checkbox input[type="checkbox"] {
+  margin: 0;
+  margin-right: var(--spacing-xs);
+}
+
 /* Events Grid */
 .events-grid {
   display: grid;

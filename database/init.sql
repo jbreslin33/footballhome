@@ -1,5 +1,12 @@
--- Football Home Database Schema - Normalized Version
--- Version: 2.0 - Fully normalized with lookup tables
+-- Football Home Database Schema - Fully Normalized Version
+-- Version: 3.0 - 4NF compliant with separated practices/matches tables
+--
+-- Key normalization improvements:
+-- 1. Permissions extracted from roles table (4NF compliance)
+-- 2. Events separated into practices and matches tables (specialized data)
+-- 3. All lookup tables properly normalized
+-- 4. Many-to-many relationships with junction tables
+-- 5. Proper referential integrity with foreign keys
 
 -- Create database extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -14,15 +21,36 @@ CREATE TABLE sports (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Permissions lookup table (4NF compliant)
+CREATE TABLE permissions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(50) UNIQUE NOT NULL,          -- 'manage_teams', 'manage_users'
+    display_name VARCHAR(100) NOT NULL,        -- 'Manage Teams', 'Manage Users'
+    description TEXT,                          -- 'Create, edit, delete teams and rosters'
+    category VARCHAR(50),                      -- 'team_management', 'user_management'
+    is_system_permission BOOLEAN DEFAULT true, -- Cannot be deleted
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Roles lookup table (renamed from user_roles for clarity)
 CREATE TABLE roles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(20) UNIQUE NOT NULL,          -- 'coach', 'player', 'admin'
     display_name VARCHAR(50) NOT NULL,         -- 'Coach', 'Player', 'Administrator'
     description TEXT,                          -- Role description
-    permissions TEXT[],                        -- Array of permissions
     is_system_role BOOLEAN DEFAULT false,      -- Cannot be deleted
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Role permissions junction table (many-to-many, 4NF compliant)
+-- Note: granted_by reference to users will be added after users table is created
+CREATE TABLE role_permissions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    granted_by UUID,                           -- Will add FK constraint after users table
+    UNIQUE(role_id, permission_id)
 );
 
 -- Event types lookup table
@@ -31,10 +59,12 @@ CREATE TABLE event_types (
     sport_id UUID REFERENCES sports(id),       -- Different types per sport
     name VARCHAR(50) NOT NULL,                 -- 'training', 'match', 'meeting'
     display_name VARCHAR(100) NOT NULL,        -- 'Training Session', 'Match', 'Team Meeting'
+    category VARCHAR(20) NOT NULL,             -- 'practice', 'match', 'other'
     default_duration INTEGER DEFAULT 90,       -- Default duration for this type
     requires_opponent BOOLEAN DEFAULT false,   -- Does this event type need an opponent?
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(sport_id, name)
+    UNIQUE(sport_id, name),
+    CONSTRAINT valid_category CHECK (category IN ('practice', 'match', 'other'))
 );
 
 -- RSVP statuses lookup table
@@ -99,6 +129,10 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Add foreign key constraint for role_permissions.granted_by now that users table exists
+ALTER TABLE role_permissions ADD CONSTRAINT fk_role_permissions_granted_by 
+    FOREIGN KEY (granted_by) REFERENCES users(id);
+
 -- User roles junction table (many-to-many: users can have multiple roles)
 CREATE TABLE user_roles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -127,7 +161,7 @@ CREATE TABLE team_members (
     UNIQUE(team_id, jersey_number)              -- Jersey numbers unique per team
 );
 
--- Events (now references event_type)
+-- Base events table (common fields for all event types)
 CREATE TABLE events (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
@@ -139,12 +173,45 @@ CREATE TABLE events (
     location VARCHAR(255),
     duration_minutes INTEGER,                   -- Will default from event_type if null
     max_players INTEGER,
-    opponent_team_id UUID REFERENCES teams(id), -- For matches against other teams
-    home_away_status_id UUID REFERENCES home_away_statuses(id), -- Normalized venue status
     cancelled BOOLEAN DEFAULT false,
     cancellation_reason TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Practices table (extends events for training/practice sessions)
+CREATE TABLE practices (
+    id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
+    focus_areas TEXT[],                        -- ['passing', 'shooting', 'defense']
+    drill_plan TEXT,                           -- Detailed practice plan
+    equipment_needed TEXT[],                   -- ['cones', 'balls', 'bibs']
+    fitness_focus TEXT,                        -- 'endurance', 'strength', 'agility'
+    skill_level VARCHAR(20),                   -- 'beginner', 'intermediate', 'advanced'
+    weather_dependent BOOLEAN DEFAULT true,     -- Can practice be moved indoors?
+    indoor_alternative_location VARCHAR(255),  -- Backup venue
+    notes TEXT                                 -- Coach notes and observations
+);
+
+-- Matches table (extends events for competitive games)
+CREATE TABLE matches (
+    id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
+    opponent_team_id UUID NOT NULL REFERENCES teams(id),
+    home_away_status_id UUID NOT NULL REFERENCES home_away_statuses(id),
+    competition_name VARCHAR(100),             -- 'Premier League', 'Cup Final'
+    competition_round VARCHAR(50),             -- 'Quarter Final', 'Group Stage'
+    referee_name VARCHAR(100),
+    referee_phone VARCHAR(20),
+    home_team_score INTEGER,                   -- Final score (null if not played)
+    away_team_score INTEGER,
+    match_status VARCHAR(20) DEFAULT 'scheduled', -- 'scheduled', 'in_progress', 'completed', 'postponed'
+    weather_conditions TEXT,                   -- Match day weather
+    attendance INTEGER,                        -- Number of spectators
+    match_report TEXT,                         -- Post-match report
+    man_of_match UUID REFERENCES users(id),   -- Player of the match
+    yellow_cards INTEGER DEFAULT 0,
+    red_cards INTEGER DEFAULT 0,
+    kick_off_time TIME,                       -- Actual kick-off time
+    full_time_time TIME                       -- When match ended
 );
 
 -- RSVPs (now references rsvp_status)
@@ -175,6 +242,11 @@ CREATE TABLE magic_tokens (
 -- Indexes for performance
 CREATE INDEX idx_events_team_date ON events(team_id, event_date);
 CREATE INDEX idx_events_type ON events(event_type_id);
+CREATE INDEX idx_practices_focus ON practices(focus_areas);
+CREATE INDEX idx_matches_opponent ON matches(opponent_team_id);
+CREATE INDEX idx_matches_competition ON matches(competition_name);
+CREATE INDEX idx_matches_status ON matches(match_status);
+CREATE INDEX idx_matches_home_away ON matches(home_away_status_id);
 CREATE INDEX idx_rsvps_event ON rsvps(event_id);
 CREATE INDEX idx_rsvps_status ON rsvps(rsvp_status_id);
 CREATE INDEX idx_team_members_team ON team_members(team_id);
@@ -183,9 +255,13 @@ CREATE INDEX idx_team_members_position ON team_members(position_id);
 CREATE INDEX idx_user_roles_user ON user_roles(user_id);
 CREATE INDEX idx_user_roles_role ON user_roles(role_id);
 CREATE INDEX idx_user_roles_active ON user_roles(user_id, is_active);
+CREATE INDEX idx_role_permissions_role ON role_permissions(role_id);
+CREATE INDEX idx_role_permissions_permission ON role_permissions(permission_id);
 CREATE INDEX idx_teams_sport ON teams(sport_id);
 CREATE INDEX idx_positions_sport ON positions(sport_id);
 CREATE INDEX idx_event_types_sport ON event_types(sport_id);
+CREATE INDEX idx_event_types_category ON event_types(category);
+CREATE INDEX idx_permissions_category ON permissions(category);
 CREATE INDEX idx_magic_tokens_token ON magic_tokens(token);
 CREATE INDEX idx_magic_tokens_expires ON magic_tokens(expires_at);
 
@@ -199,13 +275,59 @@ INSERT INTO sports (id, name, display_name, default_event_duration, typical_team
 ('550e8400-e29b-41d4-a716-446655440104', 'baseball', 'Baseball', 180, 9),
 ('550e8400-e29b-41d4-a716-446655440105', 'volleyball', 'Volleyball', 90, 6);
 
--- Roles (renamed from user_roles)
-INSERT INTO roles (id, name, display_name, description, permissions, is_system_role) VALUES 
-('550e8400-e29b-41d4-a716-446655440201', 'admin', 'Administrator', 'System administrator with full access', ARRAY['manage_teams', 'manage_users', 'manage_events', 'send_notifications', 'manage_roles'], true),
-('550e8400-e29b-41d4-a716-446655440202', 'coach', 'Coach', 'Team coach with management capabilities', ARRAY['manage_events', 'send_notifications', 'view_team', 'manage_roster'], true),
-('550e8400-e29b-41d4-a716-446655440203', 'player', 'Player', 'Team player with basic access', ARRAY['view_events', 'rsvp_events', 'view_profile'], true),
-('550e8400-e29b-41d4-a716-446655440204', 'assistant_coach', 'Assistant Coach', 'Assistant coach with limited management', ARRAY['view_team', 'send_notifications'], false),
-('550e8400-e29b-41d4-a716-446655440205', 'parent', 'Parent/Guardian', 'Parent or guardian of a player', ARRAY['view_events', 'view_profile'], false);
+-- Permissions (4NF compliant)
+INSERT INTO permissions (id, name, display_name, description, category, is_system_permission) VALUES 
+('550e8400-e29b-41d4-a716-446655440601', 'manage_teams', 'Manage Teams', 'Create, edit, delete teams and rosters', 'team_management', true),
+('550e8400-e29b-41d4-a716-446655440602', 'manage_users', 'Manage Users', 'Create, edit, delete user accounts', 'user_management', true),
+('550e8400-e29b-41d4-a716-446655440603', 'manage_events', 'Manage Events', 'Create, edit, delete events and practices', 'event_management', true),
+('550e8400-e29b-41d4-a716-446655440604', 'send_notifications', 'Send Notifications', 'Send email/SMS notifications to team members', 'communication', true),
+('550e8400-e29b-41d4-a716-446655440605', 'manage_roles', 'Manage Roles', 'Assign and revoke user roles and permissions', 'user_management', true),
+('550e8400-e29b-41d4-a716-446655440606', 'view_team', 'View Team', 'View team roster and member details', 'team_access', true),
+('550e8400-e29b-41d4-a716-446655440607', 'manage_roster', 'Manage Roster', 'Add/remove players from team roster', 'team_management', true),
+('550e8400-e29b-41d4-a716-446655440608', 'view_events', 'View Events', 'View team events and schedules', 'event_access', true),
+('550e8400-e29b-41d4-a716-446655440609', 'rsvp_events', 'RSVP to Events', 'Respond to event invitations', 'event_access', true),
+('550e8400-e29b-41d4-a716-446655440610', 'view_profile', 'View Profile', 'View own profile and basic information', 'user_access', true);
+
+-- Roles (without permissions array)
+INSERT INTO roles (id, name, display_name, description, is_system_role) VALUES 
+('550e8400-e29b-41d4-a716-446655440201', 'admin', 'Administrator', 'System administrator with full access', true),
+('550e8400-e29b-41d4-a716-446655440202', 'coach', 'Coach', 'Team coach with management capabilities', true),
+('550e8400-e29b-41d4-a716-446655440203', 'player', 'Player', 'Team player with basic access', true),
+('550e8400-e29b-41d4-a716-446655440204', 'assistant_coach', 'Assistant Coach', 'Assistant coach with limited management', false),
+('550e8400-e29b-41d4-a716-446655440205', 'parent', 'Parent/Guardian', 'Parent or guardian of a player', false);
+
+-- Role permissions assignments (many-to-many junction)
+INSERT INTO role_permissions (role_id, permission_id) VALUES
+-- Admin gets all permissions
+('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440601'), -- manage_teams
+('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440602'), -- manage_users
+('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440603'), -- manage_events
+('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440604'), -- send_notifications
+('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440605'), -- manage_roles
+('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440606'), -- view_team
+('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440607'), -- manage_roster
+('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440608'), -- view_events
+('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440609'), -- rsvp_events
+('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440610'), -- view_profile
+-- Coach permissions
+('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440603'), -- manage_events
+('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440604'), -- send_notifications
+('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440606'), -- view_team
+('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440607'), -- manage_roster
+('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440608'), -- view_events
+('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440610'), -- view_profile
+-- Player permissions
+('550e8400-e29b-41d4-a716-446655440203', '550e8400-e29b-41d4-a716-446655440608'), -- view_events
+('550e8400-e29b-41d4-a716-446655440203', '550e8400-e29b-41d4-a716-446655440609'), -- rsvp_events
+('550e8400-e29b-41d4-a716-446655440203', '550e8400-e29b-41d4-a716-446655440610'), -- view_profile
+-- Assistant coach permissions
+('550e8400-e29b-41d4-a716-446655440204', '550e8400-e29b-41d4-a716-446655440606'), -- view_team
+('550e8400-e29b-41d4-a716-446655440204', '550e8400-e29b-41d4-a716-446655440604'), -- send_notifications
+('550e8400-e29b-41d4-a716-446655440204', '550e8400-e29b-41d4-a716-446655440608'), -- view_events
+('550e8400-e29b-41d4-a716-446655440204', '550e8400-e29b-41d4-a716-446655440610'), -- view_profile
+-- Parent permissions
+('550e8400-e29b-41d4-a716-446655440205', '550e8400-e29b-41d4-a716-446655440608'), -- view_events
+('550e8400-e29b-41d4-a716-446655440205', '550e8400-e29b-41d4-a716-446655440610'); -- view_profile
 
 -- RSVP statuses
 INSERT INTO rsvp_statuses (id, name, display_name, sort_order, color) VALUES 
@@ -220,11 +342,13 @@ INSERT INTO home_away_statuses (id, name, display_name, description, sort_order)
 ('550e8400-e29b-41d4-a716-446655440803', 'neutral', 'Neutral Venue', 'Event at a neutral/shared venue', 3);
 
 -- Event types for soccer
-INSERT INTO event_types (id, sport_id, name, display_name, default_duration, requires_opponent) VALUES 
-('550e8400-e29b-41d4-a716-446655440401', '550e8400-e29b-41d4-a716-446655440101', 'training', 'Training Session', 90, false),
-('550e8400-e29b-41d4-a716-446655440402', '550e8400-e29b-41d4-a716-446655440101', 'match', 'Match', 120, true),
-('550e8400-e29b-41d4-a716-446655440403', '550e8400-e29b-41d4-a716-446655440101', 'meeting', 'Team Meeting', 60, false),
-('550e8400-e29b-41d4-a716-446655440404', '550e8400-e29b-41d4-a716-446655440101', 'scrimmage', 'Scrimmage', 90, false);
+INSERT INTO event_types (id, sport_id, name, display_name, category, default_duration, requires_opponent) VALUES 
+('550e8400-e29b-41d4-a716-446655440401', '550e8400-e29b-41d4-a716-446655440101', 'training', 'Training Session', 'practice', 90, false),
+('550e8400-e29b-41d4-a716-446655440402', '550e8400-e29b-41d4-a716-446655440101', 'match', 'Match', 'match', 120, true),
+('550e8400-e29b-41d4-a716-446655440403', '550e8400-e29b-41d4-a716-446655440101', 'meeting', 'Team Meeting', 'other', 60, false),
+('550e8400-e29b-41d4-a716-446655440404', '550e8400-e29b-41d4-a716-446655440101', 'scrimmage', 'Scrimmage', 'practice', 90, false),
+('550e8400-e29b-41d4-a716-446655440405', '550e8400-e29b-41d4-a716-446655440101', 'friendly', 'Friendly Match', 'match', 90, true),
+('550e8400-e29b-41d4-a716-446655440406', '550e8400-e29b-41d4-a716-446655440101', 'fitness', 'Fitness Training', 'practice', 60, false);
 
 -- Soccer positions
 INSERT INTO positions (id, sport_id, name, display_name, abbreviation, sort_order) VALUES 
@@ -272,8 +396,54 @@ INSERT INTO team_members (team_id, user_id, position_id, jersey_number, is_capta
 ('550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440104', '550e8400-e29b-41d4-a716-446655440504', 9, false),  -- David - Forward
 ('550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440105', '550e8400-e29b-41d4-a716-446655440504', 11, false); -- Demo - Forward
 
--- Sample events using normalized event types and home/away status
-INSERT INTO events (id, team_id, created_by, event_type_id, title, description, event_date, location, duration_minutes, home_away_status_id) VALUES
-('550e8400-e29b-41d4-a716-446655440701', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440401', 'Weekly Training Session', 'Regular training focusing on passing and shooting', '2025-10-30 18:00:00', 'Thunder FC Training Ground', 90, '550e8400-e29b-41d4-a716-446655440801'),
-('550e8400-e29b-41d4-a716-446655440702', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440402', 'Match vs Lightning United', 'League match against Lightning United', '2025-11-02 15:00:00', 'Thunder FC Stadium', 120, '550e8400-e29b-41d4-a716-446655440801'),
-('550e8400-e29b-41d4-a716-446655440703', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440403', 'Team Strategy Meeting', 'Discussing tactics for upcoming matches', '2025-10-29 19:00:00', 'Thunder FC Clubhouse', 60, '550e8400-e29b-41d4-a716-446655440801');
+-- Sample events (base table)
+INSERT INTO events (id, team_id, created_by, event_type_id, title, description, event_date, location, duration_minutes, max_players) VALUES
+('550e8400-e29b-41d4-a716-446655440701', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440401', 'Weekly Training Session', 'Regular training focusing on passing and shooting', '2025-10-30 18:00:00', 'Thunder FC Training Ground', 90, 16),
+('550e8400-e29b-41d4-a716-446655440702', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440402', 'Match vs Lightning United', 'League match against Lightning United', '2025-11-02 15:00:00', 'Thunder FC Stadium', 120, 18),
+('550e8400-e29b-41d4-a716-446655440703', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440403', 'Team Strategy Meeting', 'Discussing tactics for upcoming matches', '2025-10-29 19:00:00', 'Thunder FC Clubhouse', 60, NULL),
+('550e8400-e29b-41d4-a716-446655440704', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440406', 'Fitness Training', 'Endurance and strength training session', '2025-11-01 17:30:00', 'Thunder FC Gym', 60, 20),
+('550e8400-e29b-41d4-a716-446655440705', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440405', 'Friendly vs Youth Academy', 'Friendly match against local youth academy', '2025-11-05 14:00:00', 'Academy Sports Ground', 90, 16);
+
+-- Sample practices (extends specific events)
+INSERT INTO practices (id, focus_areas, drill_plan, equipment_needed, fitness_focus, skill_level, weather_dependent, indoor_alternative_location, notes) VALUES
+('550e8400-e29b-41d4-a716-446655440701', 
+ ARRAY['passing', 'shooting', 'ball_control'], 
+ 'Warm-up (10min) → Passing drills (30min) → Shooting practice (30min) → Small-sided games (20min)',
+ ARRAY['cones', 'balls', 'training_bibs', 'goals'],
+ 'moderate',
+ 'intermediate',
+ true,
+ 'Thunder FC Indoor Hall',
+ 'Focus on short passing accuracy and first touch'
+),
+('550e8400-e29b-41d4-a716-446655440704', 
+ ARRAY['fitness', 'conditioning'], 
+ 'Dynamic warm-up (10min) → Circuit training (30min) → Core strength (20min)',
+ ARRAY['medicine_balls', 'resistance_bands', 'mats'],
+ 'endurance',
+ 'all_levels',
+ false,
+ NULL,
+ 'Monitor heart rates, ensure proper hydration'
+);
+
+-- Sample matches (extends specific events)
+INSERT INTO matches (id, opponent_team_id, home_away_status_id, competition_name, competition_round, referee_name, match_status, kick_off_time) VALUES
+('550e8400-e29b-41d4-a716-446655440702', 
+ '550e8400-e29b-41d4-a716-446655440002', 
+ '550e8400-e29b-41d4-a716-446655440801', 
+ 'Local Premier League', 
+ 'Round 8', 
+ 'John Smith', 
+ 'scheduled',
+ '15:00'
+),
+('550e8400-e29b-41d4-a716-446655440705', 
+ '550e8400-e29b-41d4-a716-446655440002', 
+ '550e8400-e29b-41d4-a716-446655440802', 
+ 'Friendly', 
+ NULL, 
+ 'Sarah Johnson', 
+ 'scheduled',
+ '14:00'
+);

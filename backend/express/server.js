@@ -69,10 +69,15 @@ app.use(express.json());
 
 // Session middleware
 app.use(session({
-  secret: 'your-secret-key-here', 
+  name: 'footballhome.session',
+  secret: process.env.SESSION_SECRET || 'your-secret-key-here-change-in-production', 
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false } // Set to true in production with HTTPS
+  cookie: { 
+    secure: false, // Set to true in production with HTTPS
+    httpOnly: true, // Prevent XSS attacks
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
 }));
 
 // Authentication middleware
@@ -94,10 +99,12 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'footballhome-api',
-    version: '2.1.0',
+    version: '3.0.0',
     timestamp: new Date().toISOString(),
     normalized: true,
-    many_to_many_roles: true
+    many_to_many_roles: true,
+    fourth_normal_form: true,
+    practices_matches_separated: true
   });
 });
 
@@ -119,18 +126,38 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   
   try {
-    // Look up user with role information using many-to-many structure
-    const result = await pool.query(`
-      SELECT 
-        u.*,
-        array_agg(r.name) FILTER (WHERE r.name IS NOT NULL AND ur.is_active = true) as roles,
-        array_agg(r.display_name) FILTER (WHERE r.display_name IS NOT NULL AND ur.is_active = true) as role_displays
-      FROM users u 
-      LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = true
-      LEFT JOIN roles r ON ur.role_id = r.id
-      WHERE u.email = $1 AND u.is_active = true
-      GROUP BY u.id
-    `, [email]);
+    // Add retry logic for database connection issues
+    let result;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        // Look up user with role information using many-to-many structure
+        result = await pool.query(`
+          SELECT 
+            u.*,
+            array_agg(r.name) FILTER (WHERE r.name IS NOT NULL AND ur.is_active = true) as roles,
+            array_agg(r.display_name) FILTER (WHERE r.display_name IS NOT NULL AND ur.is_active = true) as role_displays
+          FROM users u 
+          LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = true
+          LEFT JOIN roles r ON ur.role_id = r.id
+          WHERE u.email = $1 AND u.is_active = true
+          GROUP BY u.id
+        `, [email]);
+        break; // Success, exit retry loop
+      } catch (dbError) {
+        retryCount++;
+        console.log(`Database connection attempt ${retryCount}/${maxRetries} failed:`, dbError.message);
+        
+        if (retryCount >= maxRetries) {
+          throw dbError; // Re-throw if max retries reached
+        }
+        
+        // Wait before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+      }
+    }
     
     if (result.rows.length === 0) {
       return res.status(401).json({
@@ -208,9 +235,19 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/logout', (req, res) => {
   if (req.session) {
-    req.session.destroy();
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destruction error:', err);
+        return res.status(500).json({ success: false, error: 'Logout failed' });
+      }
+      
+      // Clear the session cookie
+      res.clearCookie('footballhome.session');
+      res.json({ success: true, message: 'Logged out successfully' });
+    });
+  } else {
+    res.json({ success: true, message: 'Already logged out' });
   }
-  res.json({ success: true, message: 'Logged out successfully' });
 });
 
 // Update user profile - now handles normalized schema
@@ -311,7 +348,7 @@ app.get('/api/auth/me', async (req, res) => {
     }
 });
 
-// Get all events - updated for normalized schema
+// Get all events with practices/matches data - normalized structure
 app.get('/api/events', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -321,6 +358,7 @@ app.get('/api/events', requireAuth, async (req, res) => {
         e.description,
         et.display_name as event_type,
         et.name as event_type_code,
+        et.category as event_category,
         e.event_date,
         e.location,
         e.duration_minutes,
@@ -329,12 +367,38 @@ app.get('/api/events', requireAuth, async (req, res) => {
         e.created_at,
         u.name as created_by_name,
         t.name as team_name,
-        s.display_name as sport
+        s.display_name as sport,
+        -- Practice-specific data
+        p.focus_areas,
+        p.drill_plan,
+        p.equipment_needed,
+        p.fitness_focus,
+        p.skill_level,
+        p.weather_dependent,
+        p.indoor_alternative_location,
+        p.notes as practice_notes,
+        -- Match-specific data
+        m.opponent_team_id,
+        ot.name as opponent_team_name,
+        has.display_name as home_away_status,
+        m.competition_name,
+        m.competition_round,
+        m.referee_name,
+        m.home_team_score,
+        m.away_team_score,
+        m.match_status,
+        m.weather_conditions,
+        m.attendance,
+        m.match_report
       FROM events e
       JOIN users u ON e.created_by = u.id
       JOIN event_types et ON e.event_type_id = et.id
       JOIN teams t ON e.team_id = t.id
       JOIN sports s ON t.sport_id = s.id
+      LEFT JOIN practices p ON e.id = p.id
+      LEFT JOIN matches m ON e.id = m.id
+      LEFT JOIN teams ot ON m.opponent_team_id = ot.id
+      LEFT JOIN home_away_statuses has ON m.home_away_status_id = has.id
       ORDER BY e.event_date DESC
     `);
 
@@ -345,7 +409,7 @@ app.get('/api/events', requireAuth, async (req, res) => {
   }
 });
 
-// Get all events for a team - updated for normalized schema
+// Get all events for a team with practices/matches data - normalized structure
 app.get('/api/teams/:teamId/events', requireAuth, async (req, res) => {
   try {
     const { teamId } = req.params;
@@ -357,16 +421,35 @@ app.get('/api/teams/:teamId/events', requireAuth, async (req, res) => {
         e.description,
         et.display_name as event_type,
         et.name as event_type_code,
+        et.category as event_category,
         e.event_date,
         e.location,
         e.duration_minutes,
         e.max_players,
         e.cancelled,
         e.created_at,
-        u.name as created_by_name
+        u.name as created_by_name,
+        -- Practice-specific data
+        p.focus_areas,
+        p.drill_plan,
+        p.equipment_needed,
+        p.fitness_focus,
+        p.skill_level,
+        -- Match-specific data
+        m.opponent_team_id,
+        ot.name as opponent_team_name,
+        has.display_name as home_away_status,
+        m.competition_name,
+        m.match_status,
+        m.home_team_score,
+        m.away_team_score
       FROM events e
       JOIN users u ON e.created_by = u.id
       JOIN event_types et ON e.event_type_id = et.id
+      LEFT JOIN practices p ON e.id = p.id
+      LEFT JOIN matches m ON e.id = m.id
+      LEFT JOIN teams ot ON m.opponent_team_id = ot.id
+      LEFT JOIN home_away_statuses has ON m.home_away_status_id = has.id
       WHERE e.team_id = $1
       ORDER BY e.event_date DESC
     `, [teamId]);
@@ -378,6 +461,57 @@ app.get('/api/teams/:teamId/events', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching events:', error);
     res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+// Get practices only
+app.get('/api/practices', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        e.id, e.title, e.description, e.event_date, e.location, e.duration_minutes,
+        e.max_players, e.cancelled, u.name as created_by_name, t.name as team_name,
+        p.focus_areas, p.drill_plan, p.equipment_needed, p.fitness_focus, 
+        p.skill_level, p.weather_dependent, p.indoor_alternative_location, p.notes
+      FROM events e
+      JOIN event_types et ON e.event_type_id = et.id
+      JOIN practices p ON e.id = p.id
+      JOIN users u ON e.created_by = u.id
+      JOIN teams t ON e.team_id = t.id
+      WHERE et.category = 'practice'
+      ORDER BY e.event_date DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching practices:', error);
+    res.status(500).json({ error: 'Failed to fetch practices' });
+  }
+});
+
+// Get matches only
+app.get('/api/matches', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        e.id, e.title, e.description, e.event_date, e.location, e.duration_minutes,
+        e.max_players, e.cancelled, u.name as created_by_name, t.name as team_name,
+        m.opponent_team_id, ot.name as opponent_team_name, has.display_name as home_away_status,
+        m.competition_name, m.competition_round, m.referee_name, m.home_team_score, 
+        m.away_team_score, m.match_status, m.weather_conditions, m.attendance, m.match_report
+      FROM events e
+      JOIN event_types et ON e.event_type_id = et.id
+      JOIN matches m ON e.id = m.id
+      JOIN users u ON e.created_by = u.id
+      JOIN teams t ON e.team_id = t.id
+      LEFT JOIN teams ot ON m.opponent_team_id = ot.id
+      LEFT JOIN home_away_statuses has ON m.home_away_status_id = has.id
+      WHERE et.category = 'match'
+      ORDER BY e.event_date DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching matches:', error);
+    res.status(500).json({ error: 'Failed to fetch matches' });
   }
 });
 
@@ -922,13 +1056,29 @@ app.get('/api/rsvp-statuses', async (req, res) => {
   }
 });
 
-// Get all available roles
+// Get all available roles with their permissions (4NF compliant)
 app.get('/api/roles', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, name, display_name, description, permissions
-      FROM roles 
-      ORDER BY display_name
+      SELECT 
+        r.id, 
+        r.name, 
+        r.display_name, 
+        r.description,
+        r.is_system_role,
+        array_agg(
+          json_build_object(
+            'id', p.id,
+            'name', p.name,
+            'display_name', p.display_name,
+            'category', p.category
+          )
+        ) FILTER (WHERE p.id IS NOT NULL) as permissions
+      FROM roles r
+      LEFT JOIN role_permissions rp ON r.id = rp.role_id
+      LEFT JOIN permissions p ON rp.permission_id = p.id
+      GROUP BY r.id, r.name, r.display_name, r.description, r.is_system_role
+      ORDER BY r.display_name
     `);
     res.json(result.rows);
   } catch (error) {
@@ -937,8 +1087,57 @@ app.get('/api/roles', requireAuth, async (req, res) => {
   }
 });
 
+// Get user's permissions from normalized structure
+app.get('/api/user/:userId/permissions', requireAuth, async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    const result = await pool.query(`
+      SELECT DISTINCT
+        p.id,
+        p.name,
+        p.display_name,
+        p.description,
+        p.category,
+        r.name as role_name,
+        r.display_name as role_display_name
+      FROM users u
+      JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = true
+      JOIN roles r ON ur.role_id = r.id
+      JOIN role_permissions rp ON r.id = rp.role_id
+      JOIN permissions p ON rp.permission_id = p.id
+      WHERE u.id = $1 AND u.is_active = true
+      ORDER BY p.category, p.name
+    `, [userId]);
+    
+    // Group permissions by category
+    const permissionsByCategory = result.rows.reduce((acc, row) => {
+      if (!acc[row.category]) {
+        acc[row.category] = [];
+      }
+      acc[row.category].push({
+        id: row.id,
+        name: row.name,
+        display_name: row.display_name,
+        description: row.description,
+        granted_via_role: row.role_display_name
+      });
+      return acc;
+    }, {});
+    
+    res.json({
+      user_id: userId,
+      permissions_by_category: permissionsByCategory,
+      total_permissions: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error fetching user permissions:', error);
+    res.status(500).json({ error: 'Failed to fetch user permissions' });
+  }
+});
+
 // Get user's roles
-app.get('/api/users/:userId/roles', requireAuth, async (req, res) => {
+app.get('/api/user/:userId/roles', requireAuth, async (req, res) => {
   try {
     const { userId } = req.params;
     const result = await pool.query(`

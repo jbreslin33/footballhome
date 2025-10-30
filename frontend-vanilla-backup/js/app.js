@@ -45,24 +45,38 @@ class FootballApp {
         return false;
     }
 
-    updateUIForLoggedInUser(user) {
-        // Show welcome message
-        this.showWelcomeMessage(user);
+    showUserLoggedIn(user) {
+        console.log('showUserLoggedIn called with user:', user);
         
+        // Store current user
+        this.currentUser = user;
+        this.currentTeamId = user.team_id || '550e8400-e29b-41d4-a716-446655440001';
+
         // Update profile info
         const userRole = document.getElementById('user-role');
         const userEmail = document.getElementById('user-email');
-        if (userRole) userRole.textContent = user.role || 'Player';
-        if (userEmail) userEmail.textContent = user.email || 'user@example.com';
+        const userName = document.getElementById('user-name');
+        const userPhone = document.getElementById('user-phone');
+        const userTeam = document.getElementById('user-team');
+        
+        console.log('Profile elements found:', { userRole, userEmail, userName, userPhone, userTeam });
+        
+        if (userRole) userRole.textContent = user.primary_role || 'Player';
+        if (userEmail) userEmail.textContent = user.email;
+        if (userName) userName.textContent = user.name || 'Not set';
+        if (userPhone) userPhone.textContent = user.phone || 'Not set';
+        if (userTeam) userTeam.textContent = 'Thunder FC'; // Static for now
 
         // Show coach-only features if user is a coach
         const coachElements = document.querySelectorAll('.coach-only');
+        console.log('Coach elements found:', coachElements.length, 'User primary_role:', user.primary_role);
         coachElements.forEach(el => {
-            el.style.display = user.role === 'coach' ? 'block' : 'none';
+            el.style.display = user.primary_role === 'coach' ? 'block' : 'none';
         });
 
-        // Show logout button
+        // Show nav logout button
         const logoutBtn = document.getElementById('nav-logout');
+        console.log('Nav logout button found:', logoutBtn);
         if (logoutBtn) {
             logoutBtn.style.display = 'block';
         }
@@ -80,6 +94,19 @@ class FootballApp {
         if (logoutBtn) {
             logoutBtn.style.display = 'none';
         }
+        
+        // Clear profile information
+        const userRole = document.getElementById('user-role');
+        const userEmail = document.getElementById('user-email');
+        const userTeam = document.getElementById('user-team');
+        const userName = document.getElementById('user-name');
+        const userPhone = document.getElementById('user-phone');
+        
+        if (userRole) userRole.textContent = 'Not logged in';
+        if (userEmail) userEmail.textContent = 'Not logged in';
+        if (userTeam) userTeam.textContent = 'No team';
+        if (userName) userName.textContent = 'Not logged in';
+        if (userPhone) userPhone.textContent = 'Not set';
         
         // Hide welcome message
         this.hideWelcomeMessage();
@@ -109,7 +136,7 @@ class FootballApp {
             document.body.appendChild(welcomeDiv);
         }
         
-        const roleTitle = user.role === 'coach' ? 'Coach' : 'Player';
+        const roleTitle = user.primary_role === 'coach' ? 'Coach' : 'Player';
         welcomeDiv.textContent = `Welcome ${roleTitle} ${user.name || user.email.split('@')[0]}!`;
     }
 
@@ -136,6 +163,10 @@ class FootballApp {
                         <div class="form-group">
                             <label for="login-password">Password</label>
                             <input type="password" id="login-password" placeholder="Enter your password" required>
+                            <div class="form-checkbox" style="margin-top: 8px;">
+                                <input type="checkbox" id="show-password" onchange="app.togglePasswordVisibility()">
+                                <label for="show-password" style="font-size: 0.9em; margin-left: 8px;">Show password</label>
+                            </div>
                         </div>
                         <button onclick="app.handleLogin()" class="btn btn-primary full-width" style="transition: all 0.2s ease;">
                             🔑 Log In
@@ -183,6 +214,11 @@ class FootballApp {
         const views = document.querySelectorAll('.view');
 
         navButtons.forEach(btn => {
+            // Skip logout button - it has its own event listener
+            if (btn.id === 'nav-logout') {
+                return;
+            }
+            
             btn.addEventListener('click', (event) => {
                 event.preventDefault(); // Prevent any default button behavior
                 const viewName = btn.id.replace('nav-', '');
@@ -193,25 +229,40 @@ class FootballApp {
                     return;
                 }
                 
-                // Special handling for profile - redirect based on user role
+                // Special handling for profile - show profile view
                 if (viewName === 'profile') {
-                    if (this.currentUser && this.currentUser.role === 'coach') {
-                        window.location.href = '/coach-profile';
-                    } else {
-                        window.location.href = '/player';
-                    }
-                    return;
-                }
-                
-                // Special handling for logout
-                if (viewName === 'logout') {
-                    this.logout();
+                    this.switchView('profile');
                     return;
                 }
                 
                 this.switchView(viewName);
             });
         });
+
+        // Setup nav logout button
+        const navLogoutBtn = document.getElementById('nav-logout');
+        if (navLogoutBtn) {
+            console.log('Setting up nav logout button event listener');
+            navLogoutBtn.addEventListener('click', (event) => {
+                console.log('Nav logout button clicked');
+                event.preventDefault();
+                event.stopPropagation();
+                this.logout();
+            });
+        }
+
+        // Setup profile logout button
+        const profileLogoutBtn = document.getElementById('profile-logout');
+        if (profileLogoutBtn) {
+            console.log('Setting up profile logout button event listener');
+            profileLogoutBtn.addEventListener('click', (event) => {
+                console.log('Profile logout button clicked');
+                event.preventDefault();
+                this.logout();
+            });
+        }
+
+        // Profile event listeners are set up in setupProfileEventListeners() when profile view is shown
     }
 
     switchView(viewName) {
@@ -228,6 +279,61 @@ class FootballApp {
         document.getElementById(`${viewName}-view`).classList.add('active');
 
         this.currentView = viewName;
+
+        // Setup profile event listeners when profile view is shown
+        if (viewName === 'profile') {
+            this.setupProfileEventListeners();
+        }
+    }
+
+    setupProfileEventListeners() {
+        console.log('Setting up profile event listeners...');
+        
+        // Use a slight delay to ensure DOM is ready
+        setTimeout(() => {
+            // Setup profile edit button
+            const editProfileBtn = document.getElementById('edit-profile-btn');
+            console.log('Edit profile button found:', editProfileBtn);
+            
+            if (editProfileBtn) {
+                // Remove any existing event listeners
+                const newBtn = editProfileBtn.cloneNode(true);
+                editProfileBtn.parentNode.replaceChild(newBtn, editProfileBtn);
+                console.log('New button replaced in DOM');
+                
+                newBtn.addEventListener('click', (event) => {
+                    console.log('Edit profile button clicked!');
+                    event.preventDefault();
+                    event.stopPropagation();
+                    this.showEditProfile();
+                });
+                
+                // Also add onclick as backup
+                newBtn.onclick = (event) => {
+                    console.log('Edit profile onclick triggered!');
+                    event.preventDefault();
+                    this.showEditProfile();
+                };
+            }
+
+            // Setup profile edit form
+            const editForm = document.getElementById('edit-profile-form');
+            if (editForm) {
+                editForm.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    this.handleProfileUpdate();
+                });
+            }
+
+            // Setup cancel edit button
+            const cancelEditBtn = document.getElementById('cancel-edit');
+            if (cancelEditBtn) {
+                cancelEditBtn.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    this.hideEditProfile();
+                });
+            }
+        }, 100);
     }
 
 
@@ -441,8 +547,11 @@ class FootballApp {
     }
 
     async logout() {
+        console.log('logout() method called');
         try {
+            console.log('Calling API.logout()...');
             await API.logout();
+            console.log('API logout successful');
             this.currentUser = null;
             this.currentTeamId = null;
             this.updateUIForLoggedOutUser();
@@ -455,6 +564,108 @@ class FootballApp {
             this.currentTeamId = null;
             this.updateUIForLoggedOutUser();
             this.showLoginPrompt();
+        }
+    }
+
+    showEditProfile() {
+        console.log('showEditProfile called, currentUser:', this.currentUser);
+        
+        if (!this.currentUser) {
+            this.showNotification('Please log in to edit your profile', 'error');
+            return;
+        }
+
+        // Populate form with current user data
+        document.getElementById('edit-name').value = this.currentUser.name || '';
+        document.getElementById('edit-phone').value = this.currentUser.phone || '';
+        document.getElementById('edit-emergency-contact').value = this.currentUser.emergency_contact || '';
+        document.getElementById('edit-emergency-phone').value = this.currentUser.emergency_phone || '';
+
+        // Show edit form, hide display
+        const profileDisplay = document.getElementById('profile-display');
+        const profileEdit = document.getElementById('profile-edit');
+        const editBtn = document.getElementById('edit-profile-btn');
+        
+        console.log('Profile elements:', { profileDisplay, profileEdit, editBtn });
+        
+        if (profileDisplay) profileDisplay.style.display = 'none';
+        if (profileEdit) profileEdit.style.display = 'block';
+        if (editBtn) editBtn.style.display = 'none';
+        
+        console.log('Profile edit form should now be visible');
+    }
+
+    hideEditProfile() {
+        // Show display, hide edit form
+        document.getElementById('profile-display').style.display = 'block';
+        document.getElementById('profile-edit').style.display = 'none';
+        document.getElementById('edit-profile-btn').style.display = 'inline-block';
+    }
+
+    async handleProfileUpdate() {
+        const name = document.getElementById('edit-name').value.trim();
+        const phone = document.getElementById('edit-phone').value.trim();
+        const emergencyContact = document.getElementById('edit-emergency-contact').value.trim();
+        const emergencyPhone = document.getElementById('edit-emergency-phone').value.trim();
+        const password = document.getElementById('edit-password').value.trim();
+
+        if (!name) {
+            this.showNotification('Name is required', 'error');
+            return;
+        }
+
+        try {
+            const profileData = {
+                name: name,
+                phone: phone,
+                emergency_contact: emergencyContact,
+                emergency_phone: emergencyPhone
+            };
+
+            // Only include password if it's provided
+            if (password) {
+                profileData.password = password;
+            }
+
+            const result = await API.updateProfile(profileData);
+
+            if (result.success) {
+                // Update current user data
+                this.currentUser.name = name;
+                this.currentUser.phone = phone;
+                this.currentUser.emergency_contact = emergencyContact;
+                this.currentUser.emergency_phone = emergencyPhone;
+
+                // Refresh the profile display
+                this.updateUIForLoggedInUser(this.currentUser);
+                this.hideEditProfile();
+                this.showNotification('Profile updated successfully', 'success');
+            } else {
+                throw new Error(result.message || 'Failed to update profile');
+            }
+        } catch (error) {
+            console.error('Profile update error:', error);
+            this.showNotification('Failed to update profile: ' + error.message, 'error');
+        }
+    }
+
+    togglePasswordVisibility() {
+        // Handle login password field
+        const loginPasswordInput = document.getElementById('login-password');
+        const showPasswordCheckbox = document.getElementById('show-password');
+        
+        if (showPasswordCheckbox && loginPasswordInput) {
+            loginPasswordInput.type = showPasswordCheckbox.checked ? 'text' : 'password';
+        }
+    }
+
+    toggleEditPasswordVisibility() {
+        // Handle edit profile password field
+        const editPasswordInput = document.getElementById('edit-password');
+        const showEditPasswordCheckbox = document.getElementById('show-edit-password');
+        
+        if (showEditPasswordCheckbox && editPasswordInput) {
+            editPasswordInput.type = showEditPasswordCheckbox.checked ? 'text' : 'password';
         }
     }
 
