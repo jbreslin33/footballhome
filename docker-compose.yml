@@ -43,6 +43,21 @@ services:
     networks:
       - footballhome_network
 
+  pgadmin:
+    image: docker.io/dpage/pgadmin4:latest
+    container_name: footballhome_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@footballhome.org
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      SCRIPT_NAME: /pgadmin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - footballhome_network
+
 volumes:
   postgres_data:
 
