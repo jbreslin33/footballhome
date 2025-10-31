@@ -629,6 +629,36 @@ app.post('/api/events/:eventId/rsvp', requireAuth, async (req, res) => {
   }
 });
 
+// Remove/delete RSVP
+app.delete('/api/events/:eventId/rsvp', requireAuth, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const user_id = req.user.id;
+
+    // Delete the RSVP
+    const result = await pool.query(
+      'DELETE FROM rsvps WHERE event_id = $1 AND user_id = $2 RETURNING *',
+      [eventId, user_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'No RSVP found to remove' 
+      });
+    }
+
+    res.json({
+      success: true,
+      status: 'rsvp_removed',
+      message: 'RSVP removed successfully'
+    });
+  } catch (error) {
+    console.error('Error removing RSVP:', error);
+    res.status(500).json({ error: 'Failed to remove RSVP' });
+  }
+});
+
 // Get RSVPs for an event - updated for normalized schema
 app.get('/api/events/:eventId/rsvps', async (req, res) => {
   try {

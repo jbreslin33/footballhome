@@ -71,7 +71,7 @@ class ApiService {
   }
 
   async updateProfile(profileData: Partial<User>): Promise<{ success: boolean; message?: string }> {
-    const response = await apiClient.put('/user/profile', profileData);
+    const response = await apiClient.put('/auth/update-profile', profileData);
     return response.data;
   }
 
@@ -97,6 +97,11 @@ class ApiService {
 
   async rsvpEvent(eventId: string, status: 'yes' | 'no' | 'maybe'): Promise<{ success: boolean }> {
     const response = await apiClient.post(`/events/${eventId}/rsvp`, { status });
+    return response.data;
+  }
+
+  async removeRsvp(eventId: string): Promise<{ success: boolean }> {
+    const response = await apiClient.delete(`/events/${eventId}/rsvp`);
     return response.data;
   }
 }

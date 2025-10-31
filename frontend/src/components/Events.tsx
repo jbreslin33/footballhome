@@ -9,7 +9,6 @@ import {
   Alert,
   Chip,
   IconButton,
-  Stack,
 } from '@mui/material';
 import {
   Add,
@@ -206,33 +205,161 @@ const Events: React.FC = () => {
                   </Box>
 
                   <Box sx={{ mt: 'auto', pt: 2 }}>
-                    <Button
-                      variant={rsvpStatus[event.id] === 'success' || event.user_rsvp_status ? 'contained' : 'outlined'}
-                      color={rsvpStatus[event.id] === 'success' || event.user_rsvp_status ? 'success' : rsvpStatus[event.id] === 'error' ? 'error' : 'primary'}
-                      fullWidth
-                      disabled={rsvpStatus[event.id] === 'loading'}
-                      onClick={async () => {
-                        try {
-                          setRsvpStatus(prev => ({ ...prev, [event.id]: 'loading' }));
-                          const response = await apiService.rsvpEvent(event.id, 'yes');
-                          if (response.success) {
-                            setRsvpStatus(prev => ({ ...prev, [event.id]: 'success' }));
-                            console.log('RSVP successful for event:', event.id);
-                          } else {
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        variant={event.user_rsvp_status === 'yes' ? 'contained' : 'outlined'}
+                        color="success"
+                        size="small"
+                        disabled={rsvpStatus[event.id] === 'loading'}
+                        sx={{ flex: 1 }}
+                        onClick={async () => {
+                          const newStatus = event.user_rsvp_status === 'yes' ? null : 'yes';
+                          try {
+                            setRsvpStatus(prev => ({ ...prev, [event.id]: 'loading' }));
+                            if (newStatus) {
+                              const response = await apiService.rsvpEvent(event.id, newStatus);
+                              if (response.success) {
+                                // Update the event's RSVP status locally
+                                const updatedEvents = events.map(e => 
+                                  e.id === event.id 
+                                    ? { ...e, user_rsvp_status: 'yes', user_rsvp_display: 'Yes' }
+                                    : e
+                                );
+                                setEvents(updatedEvents);
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'success' }));
+                              } else {
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
+                              }
+                            } else {
+                              // Remove RSVP
+                              const response = await apiService.removeRsvp(event.id);
+                              if (response.success) {
+                                const updatedEvents = events.map(e => 
+                                  e.id === event.id 
+                                    ? { ...e, user_rsvp_status: undefined, user_rsvp_display: undefined }
+                                    : e
+                                );
+                                setEvents(updatedEvents);
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'success' }));
+                              } else {
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
+                              }
+                            }
+                          } catch (error) {
                             setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
-                            console.error('RSVP failed:', response);
+                            console.error('RSVP error:', error);
                           }
-                        } catch (error) {
-                          setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
-                          console.error('RSVP error:', error);
-                        }
-                      }}
-                    >
-                      {rsvpStatus[event.id] === 'loading' ? 'RSVPing...' : 
-                       rsvpStatus[event.id] === 'success' || event.user_rsvp_status ? 
-                         `${event.user_rsvp_display || 'RSVP\'d'} ✓` : 
-                       rsvpStatus[event.id] === 'error' ? 'Failed' : 'RSVP'}
-                    </Button>
+                        }}
+                      >
+                        {event.user_rsvp_status === 'yes' ? 'Going ✓' : 'Yes'}
+                      </Button>
+                      
+                      <Button
+                        variant={event.user_rsvp_status === 'maybe' ? 'contained' : 'outlined'}
+                        color="warning"
+                        size="small"
+                        disabled={rsvpStatus[event.id] === 'loading'}
+                        sx={{ flex: 1 }}
+                        onClick={async () => {
+                          const newStatus = event.user_rsvp_status === 'maybe' ? null : 'maybe';
+                          try {
+                            setRsvpStatus(prev => ({ ...prev, [event.id]: 'loading' }));
+                            if (newStatus) {
+                              const response = await apiService.rsvpEvent(event.id, newStatus);
+                              if (response.success) {
+                                const updatedEvents = events.map(e => 
+                                  e.id === event.id 
+                                    ? { ...e, user_rsvp_status: 'maybe', user_rsvp_display: 'Maybe' }
+                                    : e
+                                );
+                                setEvents(updatedEvents);
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'success' }));
+                              } else {
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
+                              }
+                            } else {
+                              // Remove RSVP
+                              const response = await apiService.removeRsvp(event.id);
+                              if (response.success) {
+                                const updatedEvents = events.map(e => 
+                                  e.id === event.id 
+                                    ? { ...e, user_rsvp_status: undefined, user_rsvp_display: undefined }
+                                    : e
+                                );
+                                setEvents(updatedEvents);
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'success' }));
+                              } else {
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
+                              }
+                            }
+                          } catch (error) {
+                            setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
+                            console.error('RSVP error:', error);
+                          }
+                        }}
+                      >
+                        {event.user_rsvp_status === 'maybe' ? 'Maybe ✓' : 'Maybe'}
+                      </Button>
+                      
+                      <Button
+                        variant={event.user_rsvp_status === 'no' ? 'contained' : 'outlined'}
+                        color="error"
+                        size="small"
+                        disabled={rsvpStatus[event.id] === 'loading'}
+                        sx={{ flex: 1 }}
+                        onClick={async () => {
+                          const newStatus = event.user_rsvp_status === 'no' ? null : 'no';
+                          try {
+                            setRsvpStatus(prev => ({ ...prev, [event.id]: 'loading' }));
+                            if (newStatus) {
+                              const response = await apiService.rsvpEvent(event.id, newStatus);
+                              if (response.success) {
+                                const updatedEvents = events.map(e => 
+                                  e.id === event.id 
+                                    ? { ...e, user_rsvp_status: 'no', user_rsvp_display: 'No' }
+                                    : e
+                                );
+                                setEvents(updatedEvents);
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'success' }));
+                              } else {
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
+                              }
+                            } else {
+                              // Remove RSVP
+                              const response = await apiService.removeRsvp(event.id);
+                              if (response.success) {
+                                const updatedEvents = events.map(e => 
+                                  e.id === event.id 
+                                    ? { ...e, user_rsvp_status: undefined, user_rsvp_display: undefined }
+                                    : e
+                                );
+                                setEvents(updatedEvents);
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'success' }));
+                              } else {
+                                setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
+                              }
+                            }
+                          } catch (error) {
+                            setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
+                            console.error('RSVP error:', error);
+                          }
+                        }}
+                      >
+                        {event.user_rsvp_status === 'no' ? 'Not Going ✓' : 'No'}
+                      </Button>
+                    </Box>
+                    
+                    {rsvpStatus[event.id] === 'loading' && (
+                      <Typography variant="caption" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
+                        Updating RSVP...
+                      </Typography>
+                    )}
+                    
+                    {rsvpStatus[event.id] === 'error' && (
+                      <Typography variant="caption" color="error" sx={{ display: 'block', textAlign: 'center', mt: 1 }}>
+                        Failed to update RSVP
+                      </Typography>
+                    )}
                   </Box>
                 </CardContent>
               </Card>
