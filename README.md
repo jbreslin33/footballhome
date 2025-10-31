@@ -6,13 +6,13 @@ A Progressive Web Application for soccer coaches to create practice/match events
 
 - **Frontend**: Vanilla JavaScript PWA (mobile-first, offline-capable)
 - **Backend**: Node.js Express API + PostgreSQL
-- **Deployment**: Podman/Docker containers
+- **Deployment**: Docker containers
 - **Domain**: footballhome.org (HTTP ready, HTTPS optional)
 
 ## Quick Start
 
 ### Prerequisites
-- Podman or Docker with docker-compose
+- Docker with docker-compose
 - Git
 
 ### Quick Setup (Automated)
@@ -25,7 +25,7 @@ cd footballhome
 ```
 
 The setup script will:
-- Install Podman or Docker if needed
+- Install Docker if needed
 - Build and start all containers
 - Verify everything works
 - Show you access URLs
@@ -40,11 +40,8 @@ cd footballhome
 
 2. **Start the complete stack:**
 ```bash
-# Quick start (if Podman/Docker already installed)
-./start.sh
-
-# OR manually with Podman
-podman-compose up -d --build
+# Quick start (if Docker already installed)
+docker compose up -d --build
 
 # OR manually with Docker
 docker-compose up -d --build
@@ -83,7 +80,7 @@ footballhome/
 
 ### What You Get Locally
 
-When you run `podman-compose up -d` (or `docker-compose up -d`), you get:
+When you run `docker compose up -d`, you get:
 
 **3 Containers:**
 - `footballhome_web` - Nginx serving the PWA (port 80)
@@ -113,12 +110,12 @@ The API client automatically detects localhost and uses the correct endpoints:
 **If containers won't start:**
 ```bash
 # Check what's running
-podman ps -a
+docker ps -a
 # OR
 docker ps -a
 
 # View logs
-podman-compose logs
+docker compose logs
 # OR
 docker-compose logs
 
@@ -134,7 +131,7 @@ docker-compose logs
 **Reset everything:**
 ```bash
 # Stop and remove all containers/volumes
-podman-compose down -v
+docker compose down -v
 # OR
 docker-compose down -v
 
@@ -153,6 +150,6 @@ docker-compose down -v
 ## Development Workflow
 
 1. Make changes to frontend/backend
-2. Rebuild containers: `podman-compose build`
+2. Rebuild containers: `docker compose build`
 3. Test locally, then externally via footballhome.org
-4. Check logs: `podman logs footballhome_api`
+4. Check logs: `docker logs footballhome_api`
