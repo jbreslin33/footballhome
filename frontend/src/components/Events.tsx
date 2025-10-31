@@ -26,6 +26,7 @@ const Events: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [rsvpStatus, setRsvpStatus] = useState<{[eventId: string]: 'loading' | 'success' | 'error'}>({});
 
   useEffect(() => {
     loadEvents();
@@ -197,14 +198,30 @@ const Events: React.FC = () => {
 
                   <Box sx={{ mt: 'auto', pt: 2 }}>
                     <Button
-                      variant="outlined"
+                      variant={rsvpStatus[event.id] === 'success' ? 'contained' : 'outlined'}
+                      color={rsvpStatus[event.id] === 'success' ? 'success' : rsvpStatus[event.id] === 'error' ? 'error' : 'primary'}
                       fullWidth
-                      onClick={() => {
-                        // TODO: Implement RSVP functionality
-                        console.log('RSVP clicked for event:', event.id);
+                      disabled={rsvpStatus[event.id] === 'loading'}
+                      onClick={async () => {
+                        try {
+                          setRsvpStatus(prev => ({ ...prev, [event.id]: 'loading' }));
+                          const response = await apiService.rsvpEvent(event.id, 'yes');
+                          if (response.success) {
+                            setRsvpStatus(prev => ({ ...prev, [event.id]: 'success' }));
+                            console.log('RSVP successful for event:', event.id);
+                          } else {
+                            setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
+                            console.error('RSVP failed:', response);
+                          }
+                        } catch (error) {
+                          setRsvpStatus(prev => ({ ...prev, [event.id]: 'error' }));
+                          console.error('RSVP error:', error);
+                        }
                       }}
                     >
-                      RSVP
+                      {rsvpStatus[event.id] === 'loading' ? 'RSVPing...' : 
+                       rsvpStatus[event.id] === 'success' ? 'RSVP\'d ✓' : 
+                       rsvpStatus[event.id] === 'error' ? 'Failed' : 'RSVP'}
                     </Button>
                   </Box>
                 </CardContent>

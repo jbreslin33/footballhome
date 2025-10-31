@@ -88,6 +88,7 @@ const requireAuth = (req, res, next) => {
       error: 'Authentication required'
     });
   }
+  req.user = req.session.user; // Set req.user for access in route handlers
   next();
 };
 
@@ -577,10 +578,13 @@ app.post('/api/events', async (req, res) => {
 });
 
 // RSVP to event - updated for normalized schema
-app.post('/api/events/:eventId/rsvp', async (req, res) => {
+app.post('/api/events/:eventId/rsvp', requireAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
-    const { user_id, status_name, notes } = req.body;
+    const { status, notes } = req.body;
+    const user_id = req.user.id; // Get user ID from authenticated session
+
+    const status_name = status || 'attending'; // Default to attending
 
     // Get RSVP status ID from name
     const statusResult = await pool.query(
@@ -607,6 +611,7 @@ app.post('/api/events/:eventId/rsvp', async (req, res) => {
     `, [eventId, user_id, rsvp_status_id, notes]);
 
     res.json({
+      success: true,
       status: 'rsvp_updated',
       message: 'RSVP submitted successfully',
       rsvp: result.rows[0]

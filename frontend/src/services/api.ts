@@ -93,7 +93,7 @@ class ApiService {
     return response.data;
   }
 
-  async rsvpEvent(eventId: string, status: 'attending' | 'not_attending' | 'maybe'): Promise<{ success: boolean }> {
+  async rsvpEvent(eventId: string, status: 'yes' | 'no' | 'maybe'): Promise<{ success: boolean }> {
     const response = await apiClient.post(`/events/${eventId}/rsvp`, { status });
     return response.data;
   }
