@@ -443,7 +443,10 @@ app.get('/api/teams/:teamId/events', requireAuth, async (req, res) => {
         m.competition_name,
         m.match_status,
         m.home_team_score,
-        m.away_team_score
+        m.away_team_score,
+        -- Current user's RSVP status
+        rs.name as user_rsvp_status,
+        rs.display_name as user_rsvp_display
       FROM events e
       JOIN users u ON e.created_by = u.id
       JOIN event_types et ON e.event_type_id = et.id
@@ -451,9 +454,11 @@ app.get('/api/teams/:teamId/events', requireAuth, async (req, res) => {
       LEFT JOIN matches m ON e.id = m.id
       LEFT JOIN teams ot ON m.opponent_team_id = ot.id
       LEFT JOIN home_away_statuses has ON m.home_away_status_id = has.id
+      LEFT JOIN rsvps r ON e.id = r.event_id AND r.user_id = $2
+      LEFT JOIN rsvp_statuses rs ON r.rsvp_status_id = rs.id
       WHERE e.team_id = $1
       ORDER BY e.event_date DESC
-    `, [teamId]);
+    `, [teamId, req.user.id]);
 
     // Format events to match frontend expectations
     const formattedEvents = result.rows.map(event => ({
@@ -464,7 +469,9 @@ app.get('/api/teams/:teamId/events', requireAuth, async (req, res) => {
       event_time: event.event_date.toTimeString().substring(0, 5), // Convert to HH:MM
       location: event.location,
       event_type: event.event_type,
-      created_at: event.created_at
+      created_at: event.created_at,
+      user_rsvp_status: event.user_rsvp_status,
+      user_rsvp_display: event.user_rsvp_display
     }));
 
     res.json({

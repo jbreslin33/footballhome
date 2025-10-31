@@ -40,6 +40,8 @@ export interface Event {
   location: string;
   event_type: string;
   created_at: string;
+  user_rsvp_status?: string;
+  user_rsvp_display?: string;
 }
 
 export interface ApiResponse<T> {

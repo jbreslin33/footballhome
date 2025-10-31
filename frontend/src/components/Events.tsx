@@ -43,6 +43,15 @@ const Events: React.FC = () => {
       if (response.success) {
         setEvents(response.events);
         setError('');
+        
+        // Initialize RSVP status based on existing RSVPs
+        const initialRsvpStatus: {[eventId: string]: 'loading' | 'success' | 'error'} = {};
+        response.events.forEach(event => {
+          if (event.user_rsvp_status) {
+            initialRsvpStatus[event.id] = 'success';
+          }
+        });
+        setRsvpStatus(initialRsvpStatus);
       } else {
         setError(response.error || 'Failed to load events');
       }
@@ -198,8 +207,8 @@ const Events: React.FC = () => {
 
                   <Box sx={{ mt: 'auto', pt: 2 }}>
                     <Button
-                      variant={rsvpStatus[event.id] === 'success' ? 'contained' : 'outlined'}
-                      color={rsvpStatus[event.id] === 'success' ? 'success' : rsvpStatus[event.id] === 'error' ? 'error' : 'primary'}
+                      variant={rsvpStatus[event.id] === 'success' || event.user_rsvp_status ? 'contained' : 'outlined'}
+                      color={rsvpStatus[event.id] === 'success' || event.user_rsvp_status ? 'success' : rsvpStatus[event.id] === 'error' ? 'error' : 'primary'}
                       fullWidth
                       disabled={rsvpStatus[event.id] === 'loading'}
                       onClick={async () => {
@@ -220,7 +229,8 @@ const Events: React.FC = () => {
                       }}
                     >
                       {rsvpStatus[event.id] === 'loading' ? 'RSVPing...' : 
-                       rsvpStatus[event.id] === 'success' ? 'RSVP\'d ✓' : 
+                       rsvpStatus[event.id] === 'success' || event.user_rsvp_status ? 
+                         `${event.user_rsvp_display || 'RSVP\'d'} ✓` : 
                        rsvpStatus[event.id] === 'error' ? 'Failed' : 'RSVP'}
                     </Button>
                   </Box>
