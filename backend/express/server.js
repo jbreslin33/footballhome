@@ -5,8 +5,18 @@ const morgan = require('morgan');
 const { Pool } = require('pg');
 const twilio = require('twilio');
 const sgMail = require('@sendgrid/mail');
-const session = require('express-session');
 const path = require('path');
+const { 
+  generateToken, 
+  hashPassword, 
+  comparePassword, 
+  blacklistToken,
+  requireJWTAuth, 
+  optionalJWTAuth,
+  requireRole,
+  requireAdmin,
+  requireCoachOrAdmin 
+} = require('./middleware/auth');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -67,30 +77,8 @@ app.use(cors({
 app.use(morgan('combined'));
 app.use(express.json());
 
-// Session middleware
-app.use(session({
-  name: 'footballhome.session',
-  secret: process.env.SESSION_SECRET || 'your-secret-key-here-change-in-production', 
-  resave: false,
-  saveUninitialized: false,
-  cookie: { 
-    secure: false, // Set to true in production with HTTPS
-    httpOnly: true, // Prevent XSS attacks
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
-
-// Authentication middleware
-const requireAuth = (req, res, next) => {
-  if (!req.session || !req.session.user) {
-    return res.status(401).json({
-      success: false,
-      error: 'Authentication required'
-    });
-  }
-  req.user = req.session.user; // Set req.user for access in route handlers
-  next();
-};
+// JWT Authentication is now handled by middleware/auth.js
+// Legacy session-based authentication has been replaced
 
 // Serve static files from frontend directory
 app.use(express.static(path.join(__dirname, '../../frontend')));
@@ -169,32 +157,42 @@ app.post('/api/auth/login', async (req, res) => {
     
     const user = result.rows[0];
     
-    // For demo purposes, we'll check against simple password mapping
-    // In production, you would hash and compare passwords properly
-    const passwordMap = {
-      'admin@thunderfc.com': 'admin123',
-      'coach@thunderfc.com': 'coach123',
-      'player@thunderfc.com': 'player123', 
-      'keeper@thunderfc.com': 'keeper123',
-      'striker@thunderfc.com': 'striker123',
-      'defender@thunderfc.com': 'defender123',
-      'demo@footballhome.org': 'demo'
-    };
+    // Check if user has a hashed password in database
+    let isValidPassword = false;
     
-    if (passwordMap[email] !== password) {
+    if (user.password_hash) {
+      // Use bcrypt to compare hashed password
+      isValidPassword = await comparePassword(password, user.password_hash);
+    } else {
+      // Fallback to demo password mapping for existing users without hashed passwords
+      const passwordMap = {
+        'admin@thunderfc.com': 'admin123',
+        'coach@thunderfc.com': 'coach123',
+        'player@thunderfc.com': 'player123', 
+        'keeper@thunderfc.com': 'keeper123',
+        'striker@thunderfc.com': 'striker123',
+        'defender@thunderfc.com': 'defender123',
+        'demo@footballhome.org': 'demo'
+      };
+      
+      isValidPassword = passwordMap[email] === password;
+      
+      // If login successful with demo password, hash and store it
+      if (isValidPassword) {
+        const hashedPassword = await hashPassword(password);
+        await pool.query(
+          'UPDATE users SET password_hash = $1 WHERE id = $2',
+          [hashedPassword, user.id]
+        );
+        console.log(`✅ Migrated password to hash for user: ${email}`);
+      }
+    }
+    
+    if (!isValidPassword) {
       return res.status(401).json({
         success: false,
         error: 'Invalid email or password'
       });
-    }
-    
-    // Store minimal session data (database is source of truth for profile data)
-    if (req.session) {
-      req.session.user = {
-        id: user.id,
-        email: user.email,
-        roles: user.roles || []
-      };
     }
 
     // Get team member info including position
@@ -207,6 +205,13 @@ app.post('/api/auth/login', async (req, res) => {
     `, [user.id]);
 
     const memberInfo = memberResult.rows[0] || {};
+    
+    // Generate JWT token
+    const token = generateToken({
+      id: user.id,
+      email: user.email,
+      roles: user.roles || []
+    });
     
     res.json({
       success: true,
@@ -222,7 +227,7 @@ app.post('/api/auth/login', async (req, res) => {
         jersey_number: memberInfo.jersey_number || null,
         is_captain: memberInfo.is_captain || false
       },
-      token: 'mock_jwt_token_here'
+      token: token
     });
     
   } catch (error) {
@@ -234,36 +239,35 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.post('/api/auth/logout', (req, res) => {
-  if (req.session) {
-    req.session.destroy((err) => {
-      if (err) {
-        console.error('Session destruction error:', err);
-        return res.status(500).json({ success: false, error: 'Logout failed' });
-      }
-      
-      // Clear the session cookie
-      res.clearCookie('footballhome.session');
-      res.json({ success: true, message: 'Logged out successfully' });
+app.post('/api/auth/logout', requireJWTAuth, async (req, res) => {
+  try {
+    // Blacklist the current JWT token
+    if (req.token) {
+      await blacklistToken(req.token);
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Logged out successfully' 
     });
-  } else {
-    res.json({ success: true, message: 'Already logged out' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Logout failed' 
+    });
   }
 });
 
-// Update user profile - now handles normalized schema
+// Update user profile - now handles normalized schema with JWT auth
 const updateProfileHandler = async (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ success: false, message: 'Not authenticated' });
-    }
-
     const { name, phone, position_id, jersey_number } = req.body;
     
     try {
         // Update user basic info
         await pool.query(
             'UPDATE users SET name = $1, phone = $2, updated_at = NOW() WHERE id = $3',
-            [name, phone, req.session.user.id]
+            [name, phone, req.user.id]
         );
         
         // Update team member info if position or jersey provided
@@ -273,7 +277,7 @@ const updateProfileHandler = async (req, res) => {
                 SET position_id = COALESCE($1, position_id), 
                     jersey_number = COALESCE($2, jersey_number)
                 WHERE user_id = $3 AND is_active = true
-            `, [position_id || null, jersey_number || null, req.session.user.id]);
+            `, [position_id || null, jersey_number || null, req.user.id]);
         }
         
         res.json({
@@ -287,15 +291,11 @@ const updateProfileHandler = async (req, res) => {
 };
 
 // Support both POST and PUT methods for profile updates
-app.post('/api/auth/update-profile', updateProfileHandler);
-app.put('/api/auth/update-profile', updateProfileHandler);
+app.post('/api/auth/update-profile', requireJWTAuth, updateProfileHandler);
+app.put('/api/auth/update-profile', requireJWTAuth, updateProfileHandler);
 
-// Get current user - updated for normalized schema
-app.get('/api/auth/me', async (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ success: false, message: 'Not authenticated' });
-    }
-    
+// Get current user - updated for normalized schema with JWT auth
+app.get('/api/auth/me', requireJWTAuth, async (req, res) => {
     try {
         // Fetch user data with roles and team member info
         const result = await pool.query(`
@@ -316,11 +316,9 @@ app.get('/api/auth/me', async (req, res) => {
             LEFT JOIN sports s ON t.sport_id = s.id
             WHERE u.id = $1 AND u.is_active = true
             GROUP BY u.id, tm.jersey_number, tm.is_captain, tm.is_active, p.display_name, p.abbreviation, t.name, s.display_name
-        `, [req.session.user.id]);
+        `, [req.user.id]);
         
         if (result.rows.length === 0) {
-            // User no longer exists in database, clear session
-            req.session.destroy();
             return res.status(401).json({ success: false, message: 'User not found' });
         }
         
@@ -350,7 +348,7 @@ app.get('/api/auth/me', async (req, res) => {
 });
 
 // Get all events with practices/matches data - normalized structure
-app.get('/api/events', requireAuth, async (req, res) => {
+app.get('/api/events', requireJWTAuth, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -411,7 +409,7 @@ app.get('/api/events', requireAuth, async (req, res) => {
 });
 
 // Get all events for a team with practices/matches data - normalized structure
-app.get('/api/teams/:teamId/events', requireAuth, async (req, res) => {
+app.get('/api/teams/:teamId/events', requireJWTAuth, async (req, res) => {
   try {
     const { teamId } = req.params;
     
@@ -486,7 +484,7 @@ app.get('/api/teams/:teamId/events', requireAuth, async (req, res) => {
 });
 
 // Get practices only
-app.get('/api/practices', requireAuth, async (req, res) => {
+app.get('/api/practices', requireJWTAuth, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -510,7 +508,7 @@ app.get('/api/practices', requireAuth, async (req, res) => {
 });
 
 // Get matches only
-app.get('/api/matches', requireAuth, async (req, res) => {
+app.get('/api/matches', requireJWTAuth, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -563,7 +561,7 @@ app.post('/api/events', async (req, res) => {
     }
 
     const event_type_id = eventTypeResult.rows[0].id;
-    const created_by = req.session?.user?.id || '550e8400-e29b-41d4-a716-446655440100';
+    const created_by = req.user?.id || '550e8400-e29b-41d4-a716-446655440100';
 
     const result = await pool.query(`
       INSERT INTO events (
@@ -594,7 +592,7 @@ app.post('/api/events', async (req, res) => {
 });
 
 // RSVP to event - updated for normalized schema
-app.post('/api/events/:eventId/rsvp', requireAuth, async (req, res) => {
+app.post('/api/events/:eventId/rsvp', requireJWTAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
     const { status, notes } = req.body;
@@ -639,7 +637,7 @@ app.post('/api/events/:eventId/rsvp', requireAuth, async (req, res) => {
 });
 
 // Remove/delete RSVP
-app.delete('/api/events/:eventId/rsvp', requireAuth, async (req, res) => {
+app.delete('/api/events/:eventId/rsvp', requireJWTAuth, async (req, res) => {
   try {
     const { eventId } = req.params;
     const user_id = req.user.id;
@@ -1121,7 +1119,7 @@ app.get('/api/rsvp-statuses', async (req, res) => {
 });
 
 // Get all available roles with their permissions (4NF compliant)
-app.get('/api/roles', requireAuth, async (req, res) => {
+app.get('/api/roles', requireJWTAuth, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -1152,7 +1150,7 @@ app.get('/api/roles', requireAuth, async (req, res) => {
 });
 
 // Get user's permissions from normalized structure
-app.get('/api/user/:userId/permissions', requireAuth, async (req, res) => {
+app.get('/api/user/:userId/permissions', requireJWTAuth, async (req, res) => {
   const { userId } = req.params;
   
   try {
@@ -1201,7 +1199,7 @@ app.get('/api/user/:userId/permissions', requireAuth, async (req, res) => {
 });
 
 // Get user's roles
-app.get('/api/user/:userId/roles', requireAuth, async (req, res) => {
+app.get('/api/user/:userId/roles', requireJWTAuth, async (req, res) => {
   try {
     const { userId } = req.params;
     const result = await pool.query(`
@@ -1229,11 +1227,11 @@ app.get('/api/user/:userId/roles', requireAuth, async (req, res) => {
 });
 
 // Assign role to user
-app.post('/api/users/:userId/roles', requireAuth, async (req, res) => {
+app.post('/api/users/:userId/roles', requireJWTAuth, async (req, res) => {
   try {
     const { userId } = req.params;
     const { roleId, notes, expiresAt } = req.body;
-    const assignedBy = req.session.user.id;
+    const assignedBy = req.user.id;
 
     // Check if user already has this role
     const existing = await pool.query(
@@ -1264,7 +1262,7 @@ app.post('/api/users/:userId/roles', requireAuth, async (req, res) => {
 });
 
 // Remove/deactivate role from user
-app.delete('/api/users/:userId/roles/:roleId', requireAuth, async (req, res) => {
+app.delete('/api/users/:userId/roles/:roleId', requireJWTAuth, async (req, res) => {
   try {
     const { userId, roleId } = req.params;
     

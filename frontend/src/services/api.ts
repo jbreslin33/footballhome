@@ -4,11 +4,34 @@ const API_BASE_URL = '/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // Include cookies for session management
+  withCredentials: true, // Keep cookies if other endpoints rely on them
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Simple token management for JWT
+const TOKEN_KEY = 'footballhome_token';
+
+export function setAuthToken(token: string | null) {
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+    delete apiClient.defaults.headers.common['Authorization'];
+  }
+}
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+// Initialize token from storage if present
+const existingToken = getAuthToken();
+if (existingToken) {
+  apiClient.defaults.headers.common['Authorization'] = `Bearer ${existingToken}`;
+}
 
 export interface User {
   id: string;
@@ -54,11 +77,20 @@ export interface ApiResponse<T> {
 class ApiService {
   async login(email: string, password: string): Promise<LoginResponse> {
     const response = await apiClient.post('/auth/login', { email, password });
+    // Persist token for subsequent requests
+    if (response.data && response.data.token) {
+      setAuthToken(response.data.token);
+    }
     return response.data;
   }
 
   async logout(): Promise<void> {
-    await apiClient.post('/auth/logout');
+    try {
+      await apiClient.post('/auth/logout');
+    } finally {
+      // Always clear local token on logout
+      setAuthToken(null);
+    }
   }
 
   async getCurrentUser(): Promise<{ success: boolean; user?: User }> {
