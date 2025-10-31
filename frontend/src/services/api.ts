@@ -73,7 +73,7 @@ class ApiService {
     return response.data;
   }
 
-  async getTeamEvents(teamId: string): Promise<{ success: boolean; events: Event[] }> {
+  async getTeamEvents(teamId: string): Promise<{ success: boolean; events: Event[]; error?: string }> {
     const response = await apiClient.get(`/teams/${teamId}/events`);
     return response.data;
   }

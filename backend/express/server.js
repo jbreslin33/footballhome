@@ -454,9 +454,22 @@ app.get('/api/teams/:teamId/events', requireAuth, async (req, res) => {
       ORDER BY e.event_date DESC
     `, [teamId]);
 
+    // Format events to match frontend expectations
+    const formattedEvents = result.rows.map(event => ({
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      event_date: event.event_date.toISOString().split('T')[0], // Convert to YYYY-MM-DD
+      event_time: event.event_date.toTimeString().substring(0, 5), // Convert to HH:MM
+      location: event.location,
+      event_type: event.event_type,
+      created_at: event.created_at
+    }));
+
     res.json({
+      success: true,
       team_id: teamId,
-      events: result.rows
+      events: formattedEvents
     });
   } catch (error) {
     console.error('Error fetching events:', error);

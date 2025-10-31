@@ -37,14 +37,23 @@ const Events: React.FC = () => {
       const teamId = '550e8400-e29b-41d4-a716-446655440001'; // Default team ID
       const response = await apiService.getTeamEvents(teamId);
       
+      console.log('Events API response:', response);
+      
       if (response.success) {
         setEvents(response.events);
+        setError('');
       } else {
-        setError('Failed to load events');
+        setError(response.error || 'Failed to load events');
       }
-    } catch (err) {
-      setError('Failed to load events');
+    } catch (err: any) {
       console.error('Load events error:', err);
+      if (err.response?.status === 401) {
+        setError('Authentication required. Please log in again.');
+      } else if (err.response?.data?.error) {
+        setError(err.response.data.error);
+      } else {
+        setError('Failed to load events. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
