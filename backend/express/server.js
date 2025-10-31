@@ -559,7 +559,7 @@ app.post('/api/events', async (req, res) => {
     `, [event_type_name || 'training', team_id]);
 
     if (eventTypeResult.rows.length === 0) {
-      return res.status(400).json({ error: 'Invalid event type for this sport' });
+      return res.status(400).json({ success: false, error: 'Invalid event type for this sport' });
     }
 
     const event_type_id = eventTypeResult.rows[0].id;
@@ -573,14 +573,23 @@ app.post('/api/events', async (req, res) => {
       RETURNING *
     `, [team_id, created_by, event_type_id, title, description, event_date, location, duration_minutes, max_players]);
 
+    const eventData = result.rows[0];
+    const eventDateTime = new Date(eventData.event_date);
+    
+    // Format the response to match frontend expectations
+    const formattedEvent = {
+      ...eventData,
+      event_type: event_type_name || 'training',
+      event_time: eventDateTime.toTimeString().split(' ')[0].substring(0, 5) // HH:MM format
+    };
+
     res.status(201).json({
-      status: 'created',
-      message: 'Event created successfully',
-      event: result.rows[0]
+      success: true,
+      event: formattedEvent
     });
   } catch (error) {
     console.error('Error creating event:', error);
-    res.status(500).json({ error: 'Failed to create event' });
+    res.status(500).json({ success: false, error: 'Failed to create event' });
   }
 });
 

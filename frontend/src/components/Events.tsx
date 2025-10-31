@@ -19,6 +19,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService, Event } from '../services/api';
+import CreateEventForm from './CreateEventForm';
 
 const Events: React.FC = () => {
   const { isCoach } = useAuth();
@@ -26,6 +27,7 @@ const Events: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [rsvpStatus, setRsvpStatus] = useState<{[eventId: string]: 'loading' | 'success' | 'error'}>({});
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
     loadEvents();
@@ -100,6 +102,11 @@ const Events: React.FC = () => {
     }
   };
 
+  const handleEventCreated = (newEvent: Event) => {
+    // Add the new event to the beginning of the events list
+    setEvents(prev => [newEvent, ...prev]);
+  };
+
   if (loading) {
     return (
       <Container>
@@ -120,10 +127,7 @@ const Events: React.FC = () => {
           <Button
             variant="contained"
             startIcon={<Add />}
-            onClick={() => {
-              // TODO: Implement create event functionality
-              console.log('Create event clicked');
-            }}
+            onClick={() => setShowCreateForm(true)}
           >
             Create Event
           </Button>
@@ -146,10 +150,7 @@ const Events: React.FC = () => {
               variant="contained"
               startIcon={<Add />}
               sx={{ mt: 2 }}
-              onClick={() => {
-                // TODO: Implement create event functionality
-                console.log('Create first event clicked');
-              }}
+              onClick={() => setShowCreateForm(true)}
             >
               Create First Event
             </Button>
@@ -366,6 +367,12 @@ const Events: React.FC = () => {
           ))}
         </Box>
       )}
+      
+      <CreateEventForm
+        open={showCreateForm}
+        onClose={() => setShowCreateForm(false)}
+        onEventCreated={handleEventCreated}
+      />
     </Container>
   );
 };
