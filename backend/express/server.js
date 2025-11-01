@@ -422,7 +422,7 @@ app.get('/api/teams/:teamId/events', requireJWTAuth, async (req, res) => {
         et.name as event_type_code,
         et.category as event_category,
         e.event_date,
-        e.location,
+        v.name as location,
         e.duration_minutes,
         e.max_players,
         e.cancelled,
@@ -448,6 +448,7 @@ app.get('/api/teams/:teamId/events', requireJWTAuth, async (req, res) => {
       FROM events e
       JOIN users u ON e.created_by = u.id
       JOIN event_types et ON e.event_type_id = et.id
+      LEFT JOIN venues v ON e.venue_id = v.id
       LEFT JOIN practices p ON e.id = p.id
       LEFT JOIN matches m ON e.id = m.id
       LEFT JOIN teams ot ON m.opponent_team_id = ot.id
@@ -537,6 +538,7 @@ app.get('/api/matches', requireJWTAuth, async (req, res) => {
 // Create new event - updated for normalized schema
 app.post('/api/events', async (req, res) => {
   try {
+    console.log('Create event request body:', req.body);
     const {
       team_id,
       title,
@@ -547,6 +549,7 @@ app.post('/api/events', async (req, res) => {
       duration_minutes,
       max_players
     } = req.body;
+    console.log('Extracted location:', location);
 
     // Get event type ID from name and team's sport
     const eventTypeResult = await pool.query(`
@@ -563,22 +566,58 @@ app.post('/api/events', async (req, res) => {
     const event_type_id = eventTypeResult.rows[0].id;
     const created_by = req.user?.id || '550e8400-e29b-41d4-a716-446655440100';
 
+    // Handle venue - find existing or create new
+    let venue_id = null;
+    if (location) {
+      console.log('Looking for venue:', location);
+      // First try to find existing venue by name
+      const existingVenue = await pool.query(`
+        SELECT id FROM venues WHERE name = $1 LIMIT 1
+      `, [location]);
+      
+      console.log('Found existing venues:', existingVenue.rows.length);
+      if (existingVenue.rows.length > 0) {
+        venue_id = existingVenue.rows[0].id;
+        console.log('Using existing venue_id:', venue_id);
+      } else {
+        // Create a new basic venue
+        const newVenue = await pool.query(`
+          INSERT INTO venues (name, short_name, venue_type, city, capacity, owned_by_team)
+          VALUES ($1, $2, 'field', 'Unknown', 30, false)
+          RETURNING id
+        `, [location, location]);
+        venue_id = newVenue.rows[0].id;
+      }
+    }
+
     const result = await pool.query(`
       INSERT INTO events (
         team_id, created_by, event_type_id, title, description,
-        event_date, location, duration_minutes, max_players
+        event_date, venue_id, duration_minutes, max_players
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [team_id, created_by, event_type_id, title, description, event_date, location, duration_minutes, max_players]);
+    `, [team_id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, max_players]);
 
     const eventData = result.rows[0];
     const eventDateTime = new Date(eventData.event_date);
+    
+    // Get venue name for frontend compatibility
+    let venueName = location; // fallback to original location
+    if (eventData.venue_id) {
+      const venueResult = await pool.query(`
+        SELECT name FROM venues WHERE id = $1
+      `, [eventData.venue_id]);
+      if (venueResult.rows.length > 0) {
+        venueName = venueResult.rows[0].name;
+      }
+    }
     
     // Format the response to match frontend expectations
     const formattedEvent = {
       ...eventData,
       event_type: event_type_name || 'training',
-      event_time: eventDateTime.toTimeString().split(' ')[0].substring(0, 5) // HH:MM format
+      event_time: eventDateTime.toTimeString().split(' ')[0].substring(0, 5), // HH:MM format
+      location: venueName // Add location field for frontend compatibility
     };
 
     res.status(201).json({
