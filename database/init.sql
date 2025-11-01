@@ -560,3 +560,156 @@ INSERT INTO matches (id, opponent_team_id, home_away_status_id, competition_name
  'scheduled',
  '14:00'
 );
+
+-- =============================================================================
+-- ADDITIONAL NORMALIZED TABLES FOR COMPLETE SYSTEM
+-- =============================================================================
+
+-- Notification types lookup table (for granular notification control)
+CREATE TABLE notification_types (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(50) UNIQUE NOT NULL,          -- 'event_created', 'event_cancelled', 'rsvp_reminder'
+    display_name VARCHAR(100) NOT NULL,        -- 'Event Created', 'Event Cancelled', 'RSVP Reminder'
+    description TEXT,                          -- 'Notification when new events are created'
+    category VARCHAR(50),                      -- 'event_management', 'rsvp_system', 'team_updates'
+    default_enabled BOOLEAN DEFAULT true,      -- Default setting for new users
+    is_system_notification BOOLEAN DEFAULT true, -- Cannot be disabled
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User notification preferences (many-to-many with notification types)
+CREATE TABLE user_notification_preferences (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    notification_type_id UUID NOT NULL REFERENCES notification_types(id) ON DELETE CASCADE,
+    email_enabled BOOLEAN DEFAULT true,        -- Send via email
+    sms_enabled BOOLEAN DEFAULT false,         -- Send via SMS  
+    push_enabled BOOLEAN DEFAULT true,         -- Send push notifications
+    advance_hours INTEGER DEFAULT 24,         -- Hours in advance to send (for reminders)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, notification_type_id)
+);
+
+-- Recurring pattern types lookup
+CREATE TABLE recurrence_patterns (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(30) UNIQUE NOT NULL,          -- 'weekly', 'biweekly', 'monthly'
+    display_name VARCHAR(50) NOT NULL,         -- 'Weekly', 'Every 2 Weeks', 'Monthly'
+    description TEXT,                          -- 'Repeats every week on the same day'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Event recurrence (for recurring training sessions, etc.)
+CREATE TABLE event_recurrences (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    parent_event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE, -- Template event
+    recurrence_pattern_id UUID NOT NULL REFERENCES recurrence_patterns(id),
+    start_date DATE NOT NULL,                  -- When recurrence begins
+    end_date DATE,                            -- When recurrence ends (NULL = indefinite)
+    interval_count INTEGER DEFAULT 1,         -- Every N weeks/months
+    days_of_week INTEGER[],                   -- For weekly: [1,3,5] = Mon,Wed,Fri
+    week_of_month INTEGER,                    -- For monthly: 1st week, 2nd week, etc.
+    max_occurrences INTEGER,                  -- Alternative to end_date
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Ensure either end_date or max_occurrences is specified, but not both
+    CONSTRAINT recurrence_end_constraint CHECK (
+        (end_date IS NOT NULL AND max_occurrences IS NULL) OR
+        (end_date IS NULL AND max_occurrences IS NOT NULL) OR
+        (end_date IS NOT NULL AND max_occurrences IS NOT NULL)
+    )
+);
+
+-- Generated events from recurring patterns
+CREATE TABLE recurring_event_instances (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_recurrence_id UUID NOT NULL REFERENCES event_recurrences(id) ON DELETE CASCADE,
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    occurrence_date DATE NOT NULL,             -- Which occurrence this represents
+    is_exception BOOLEAN DEFAULT false,       -- Was this instance modified from template?
+    exception_reason TEXT,                    -- Why this instance was modified
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(event_recurrence_id, occurrence_date)
+);
+
+-- Notification log (audit trail of sent notifications)
+CREATE TABLE notification_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    notification_type_id UUID NOT NULL REFERENCES notification_types(id),
+    event_id UUID REFERENCES events(id) ON DELETE SET NULL, -- Related event (if applicable)
+    delivery_method VARCHAR(20) NOT NULL,      -- 'email', 'sms', 'push'
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) DEFAULT 'sent',         -- 'sent', 'failed', 'delivered', 'read'
+    message_content TEXT,                      -- The actual message sent
+    recipient_address VARCHAR(255),            -- Email/phone where sent
+    error_message TEXT,                       -- If delivery failed
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT valid_delivery_method CHECK (delivery_method IN ('email', 'sms', 'push')),
+    CONSTRAINT valid_status CHECK (status IN ('sent', 'failed', 'delivered', 'read', 'bounced'))
+);
+
+-- Session management (for better security)
+CREATE TABLE user_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_token VARCHAR(255) UNIQUE NOT NULL,
+    refresh_token VARCHAR(255) UNIQUE,
+    ip_address INET,                          -- Client IP address
+    user_agent TEXT,                          -- Browser/app info
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    is_active BOOLEAN DEFAULT true
+);
+
+-- Additional indexes for new tables
+CREATE INDEX idx_notification_prefs_user ON user_notification_preferences(user_id);
+CREATE INDEX idx_notification_prefs_type ON user_notification_preferences(notification_type_id);
+CREATE INDEX idx_event_recurrences_parent ON event_recurrences(parent_event_id);
+CREATE INDEX idx_event_recurrences_pattern ON event_recurrences(recurrence_pattern_id);
+CREATE INDEX idx_recurring_instances_recurrence ON recurring_event_instances(event_recurrence_id);
+CREATE INDEX idx_recurring_instances_event ON recurring_event_instances(event_id);
+CREATE INDEX idx_notification_log_user ON notification_log(user_id);
+CREATE INDEX idx_notification_log_event ON notification_log(event_id);
+CREATE INDEX idx_notification_log_sent_at ON notification_log(sent_at);
+CREATE INDEX idx_user_sessions_user ON user_sessions(user_id);
+CREATE INDEX idx_user_sessions_token ON user_sessions(session_token);
+CREATE INDEX idx_user_sessions_expires ON user_sessions(expires_at);
+CREATE INDEX idx_notification_types_category ON notification_types(category);
+CREATE INDEX idx_recurrence_patterns_name ON recurrence_patterns(name);
+
+-- Insert notification types
+INSERT INTO notification_types (id, name, display_name, description, category, default_enabled, is_system_notification) VALUES
+('550e8400-e29b-41d4-a716-446655440901', 'event_created', 'Event Created', 'Notification when new events are created', 'event_management', true, false),
+('550e8400-e29b-41d4-a716-446655440902', 'event_cancelled', 'Event Cancelled', 'Notification when events are cancelled', 'event_management', true, true),
+('550e8400-e29b-41d4-a716-446655440903', 'event_updated', 'Event Updated', 'Notification when event details change', 'event_management', true, false),
+('550e8400-e29b-41d4-a716-446655440904', 'rsvp_reminder', 'RSVP Reminder', 'Reminder to respond to event invitations', 'rsvp_system', true, false),
+('550e8400-e29b-41d4-a716-446655440905', 'event_reminder', 'Event Reminder', 'Reminder about upcoming events', 'rsvp_system', true, false),
+('550e8400-e29b-41d4-a716-446655440906', 'team_announcement', 'Team Announcement', 'General team announcements', 'team_updates', true, false),
+('550e8400-e29b-41d4-a716-446655440907', 'roster_changes', 'Roster Changes', 'Notification of team roster updates', 'team_updates', false, false),
+('550e8400-e29b-41d4-a716-446655440908', 'match_result', 'Match Results', 'Notification of match scores and results', 'team_updates', true, false);
+
+-- Insert recurrence patterns
+INSERT INTO recurrence_patterns (id, name, display_name, description) VALUES
+('550e8400-e29b-41d4-a716-446655441001', 'weekly', 'Weekly', 'Repeats every week on the same day and time'),
+('550e8400-e29b-41d4-a716-446655441002', 'biweekly', 'Every 2 Weeks', 'Repeats every two weeks on the same day'),
+('550e8400-e29b-41d4-a716-446655441003', 'monthly', 'Monthly', 'Repeats monthly on the same date'),
+('550e8400-e29b-41d4-a716-446655441004', 'monthly_by_day', 'Monthly by Day', 'Repeats monthly on the same day of week (e.g., first Monday)'),
+('550e8400-e29b-41d4-a716-446655441005', 'custom', 'Custom Pattern', 'Custom recurrence pattern defined by interval');
+
+-- Insert default notification preferences for existing users
+INSERT INTO user_notification_preferences (user_id, notification_type_id, email_enabled, sms_enabled, push_enabled)
+SELECT 
+    u.id as user_id,
+    nt.id as notification_type_id,
+    nt.default_enabled as email_enabled,
+    false as sms_enabled,  -- SMS disabled by default
+    nt.default_enabled as push_enabled
+FROM users u
+CROSS JOIN notification_types nt
+ON CONFLICT (user_id, notification_type_id) DO NOTHING;
