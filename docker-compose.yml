@@ -1,0 +1,62 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: footballhome_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: footballhome
+      POSTGRES_USER: footballhome_user
+      POSTGRES_PASSWORD: footballhome_pass
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      # Mount our init.sql to automatically create schema
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      # Persistent data storage
+      - db_data:/var/lib/postgresql/data
+      # Optional: custom postgresql.conf for performance tuning
+      # - ./database/postgresql.conf:/etc/postgresql/postgresql.conf
+    networks:
+      - footballhome_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U footballhome_user -d footballhome"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin - Database Administration Interface
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: footballhome_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      # Persistent pgAdmin data
+      - pgadmin_data:/var/lib/pgadmin
+      # Pre-configure database connection
+      - ./docker/pgadmin-servers.json:/pgadmin4/servers.json:ro
+    networks:
+      - footballhome_network
+    depends_on:
+      db:
+        condition: service_healthy
+
+# Named volumes for persistent data
+volumes:
+  db_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+# Custom network for service communication
+networks:
+  footballhome_network:
+    driver: bridge
