@@ -23,3 +23,21 @@ VALUES (
     'Soccer division of Lighthouse 1893 athletic organization'
 ) ON CONFLICT (club_id, sport_id, slug) DO NOTHING;
 
+-- Insert the teams
+INSERT INTO teams (name, division_id, age_group, skill_level, season, description) VALUES
+('Lighthouse 1893 SC', 
+ (SELECT id FROM sport_divisions WHERE slug = 'lighthouse-1893-soccer'), 
+ 'Adult', 'First Team', '2024/25', 'Men''s first team'),
+
+('Lighthouse Women''s Club', 
+ (SELECT id FROM sport_divisions WHERE slug = 'lighthouse-1893-soccer'), 
+ 'Adult', 'First Team', '2024/25', 'Women''s team'),
+
+('Lighthouse Boys Club', 
+ (SELECT id FROM sport_divisions WHERE slug = 'lighthouse-1893-soccer'), 
+ 'Youth', 'Competitive', '2024/25', 'Boys youth team'),
+
+('Lighthouse Old Timers Club', 
+ (SELECT id FROM sport_divisions WHERE slug = 'lighthouse-1893-soccer'), 
+ 'Adult', 'Recreational', '2024/25', 'Veterans/older players team');
+
