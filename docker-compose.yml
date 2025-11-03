@@ -12,8 +12,11 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      # Mount our complete production schema
+      # Mount database initialization files in order
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./database/leagues_data.sql:/docker-entrypoint-initdb.d/02-leagues.sql:ro
+      - ./database/venues_data.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
+      - ./database/lighthouse_1893_data.sql:/docker-entrypoint-initdb.d/04-lighthouse.sql:ro
       # Persistent data storage
       - db_data:/var/lib/postgresql/data
       # Optional: custom postgresql.conf for performance tuning
