@@ -107,7 +107,7 @@ CREATE TABLE positions (
     UNIQUE(sport_id, name)
 );
 
--- Leagues table (competition structure)
+-- Leagues table (top-level competition structure)
 CREATE TABLE leagues (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
@@ -122,6 +122,41 @@ CREATE TABLE leagues (
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- League conferences (geographical/organizational groupings within leagues)
+CREATE TABLE league_conferences (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,              -- 'Philadelphia', 'Lancaster', 'New Jersey'
+    display_name VARCHAR(150) NOT NULL,      -- 'Philadelphia Conference', 'Lancaster Conference'
+    slug VARCHAR(100) NOT NULL,              -- 'philadelphia', 'lancaster', 'new-jersey'
+    description TEXT,
+    contact_email VARCHAR(255),
+    contact_phone VARCHAR(20),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(league_id, slug)                  -- Unique conference slug per league
+);
+
+-- League divisions (competition divisions within conferences)
+CREATE TABLE league_divisions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    conference_id UUID NOT NULL REFERENCES league_conferences(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,              -- 'Division 1', 'Premier', 'Over 30'
+    display_name VARCHAR(150) NOT NULL,      -- 'Premier Division', 'Division 1', 'Over 30 Division'
+    slug VARCHAR(100) NOT NULL,              -- 'premier', 'division-1', 'over-30'
+    skill_level VARCHAR(50),                 -- 'Premier', 'Competitive', 'Recreational'
+    age_group VARCHAR(50),                   -- 'Adult', 'Over 30', 'U23'
+    description TEXT,
+    max_teams INTEGER,                       -- Maximum teams allowed in division
+    promotion_eligible BOOLEAN DEFAULT false, -- Can teams be promoted from this division
+    relegation_eligible BOOLEAN DEFAULT false, -- Can teams be relegated to this division
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(conference_id, slug)              -- Unique division slug per conference
 );
 
 -- Clubs table (pure organizational entities - no sport mixing)
@@ -165,12 +200,12 @@ CREATE TABLE sport_divisions (
     UNIQUE(club_id, sport_id, slug)            -- One division per sport per club per slug
 );
 
--- Teams table (now belongs to sport divisions)
+-- Teams table (now belongs to sport divisions and league divisions)
 CREATE TABLE teams (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
     division_id UUID NOT NULL REFERENCES sport_divisions(id),
-    league_id UUID REFERENCES leagues(id),      -- Optional league membership
+    league_division_id UUID REFERENCES league_divisions(id), -- Optional league division membership
     season VARCHAR(20),
     age_group VARCHAR(50),                      -- U12, U15, Adult, etc.
     skill_level VARCHAR(50),                    -- Beginner, Intermediate, Advanced
@@ -406,7 +441,11 @@ CREATE INDEX idx_user_roles_active ON user_roles(user_id, is_active);
 CREATE INDEX idx_role_permissions_role ON role_permissions(role_id);
 CREATE INDEX idx_role_permissions_permission ON role_permissions(permission_id);
 CREATE INDEX idx_teams_division ON teams(division_id);
-CREATE INDEX idx_teams_league ON teams(league_id);
+CREATE INDEX idx_teams_league_division ON teams(league_division_id);
+CREATE INDEX idx_league_conferences_league ON league_conferences(league_id);
+CREATE INDEX idx_league_conferences_slug ON league_conferences(slug);
+CREATE INDEX idx_league_divisions_conference ON league_divisions(conference_id);
+CREATE INDEX idx_league_divisions_slug ON league_divisions(slug);
 CREATE INDEX idx_sport_divisions_club ON sport_divisions(club_id);
 CREATE INDEX idx_sport_divisions_sport ON sport_divisions(sport_id);
 CREATE INDEX idx_sport_divisions_slug ON sport_divisions(slug);
