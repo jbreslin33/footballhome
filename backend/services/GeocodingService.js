@@ -1,3 +1,4 @@
+require('dotenv').config({ path: '../../.env' });
 const axios = require('axios');
 const NodeCache = require('node-cache');
 
@@ -10,6 +11,13 @@ class GeocodingService {
             daily: parseInt(process.env.GEOCODING_DAILY_LIMIT) || 1000,
             minute: parseInt(process.env.GEOCODING_RATE_LIMIT) || 50
         };
+        
+        if (!this.apiKey) {
+            console.error('❌ GOOGLE_MAPS_API_KEY not found in environment variables');
+            throw new Error('Google Maps API key is required');
+        }
+        
+        console.log('✅ GeocodingService initialized with rate limits:', this.limits);
     }
 
     // Rate limiting check
@@ -50,7 +58,7 @@ class GeocodingService {
             const cacheKey = this.getCacheKey(address);
             const cached = this.cache.get(cacheKey);
             if (cached) {
-                console.log(`Geocode cache hit for: ${address}`);
+                console.log(`📋 Geocode cache hit for: ${address}`);
                 return cached;
             }
 
@@ -64,7 +72,7 @@ class GeocodingService {
                 key: this.apiKey
             };
 
-            console.log(`Geocoding address: ${address}`);
+            console.log(`🗺️  Geocoding address: ${address}`);
             const response = await axios.get(url, { params });
 
             // Update request counters
@@ -86,14 +94,14 @@ class GeocodingService {
                 // Cache the result
                 this.cache.set(cacheKey, geocodeData);
                 
-                console.log(`Geocoded successfully: ${geocodeData.formatted_address}`);
+                console.log(`✅ Geocoded successfully: ${geocodeData.formatted_address}`);
                 return geocodeData;
             } else {
                 throw new Error(`Geocoding failed: ${response.data.status}`);
             }
 
         } catch (error) {
-            console.error(`Geocoding error for "${address}":`, error.message);
+            console.error(`❌ Geocoding error for "${address}":`, error.message);
             throw error;
         }
     }
@@ -123,8 +131,8 @@ class GeocodingService {
         return extracted;
     }
 
-    // Find venues within distance using Haversine formula
-    findNearbyCoordinates(lat1, lon1, lat2, lon2, maxDistanceMiles = 0.1) {
+    // Calculate distance between coordinates using Haversine formula
+    calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 3959; // Earth's radius in miles
         const dLat = this.toRadians(lat2 - lat1);
         const dLon = this.toRadians(lon2 - lon1);
@@ -132,8 +140,7 @@ class GeocodingService {
                 Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) *
                 Math.sin(dLon/2) * Math.sin(dLon/2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distance = R * c;
-        return distance <= maxDistanceMiles;
+        return R * c; // Distance in miles
     }
 
     toRadians(degrees) {
@@ -147,8 +154,15 @@ class GeocodingService {
             minute_requests: this.requestCount.minute,
             daily_limit: this.limits.daily,
             minute_limit: this.limits.minute,
-            cache_size: this.cache.keys().length
+            cache_size: this.cache.keys().length,
+            cache_stats: this.cache.getStats()
         };
+    }
+
+    // Clear cache
+    clearCache() {
+        this.cache.flushAll();
+        console.log('🗑️  Geocoding cache cleared');
     }
 }
 

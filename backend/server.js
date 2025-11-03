@@ -1,0 +1,113 @@
+require('dotenv').config({ path: '../.env' });
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const { Pool } = require('pg');
+
+// Import routes
+const venueRoutes = require('./routes/venues');
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Database connection - using environment variables from .env
+const pool = new Pool({
+    user: process.env.POSTGRES_USER || 'postgres',
+    host: process.env.POSTGRES_HOST || 'localhost',
+    database: process.env.POSTGRES_DB || 'footballhome',
+    password: process.env.POSTGRES_PASSWORD || 'password',
+    port: process.env.POSTGRES_PORT || 5432,
+});
+
+// Test database connection
+pool.connect((err, client, release) => {
+    if (err) {
+        console.error('❌ Error connecting to database:', err.message);
+        process.exit(1);
+    }
+    console.log('✅ Connected to PostgreSQL database');
+    release();
+});
+
+// Middleware
+app.use(helmet()); // Security headers
+app.use(cors()); // Enable CORS
+app.use(morgan('combined')); // Logging
+app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        service: 'footballhome-backend',
+        version: '1.0.0'
+    });
+});
+
+// API Routes
+app.use('/api/venues', venueRoutes);
+
+// Root endpoint
+app.get('/', (req, res) => {
+    res.json({
+        message: 'Football Home Backend API',
+        version: '1.0.0',
+        endpoints: {
+            health: '/health',
+            venues: '/api/venues',
+            geocoding_stats: '/api/venues/stats'
+        },
+        documentation: 'https://github.com/your-repo/footballhome'
+    });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('❌ Unhandled error:', err.stack);
+    res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'Not found',
+        message: `Route ${req.originalUrl} not found`
+    });
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+    console.log('\n🛑 Shutting down server...');
+    
+    try {
+        await pool.end();
+        console.log('✅ Database connections closed');
+        process.exit(0);
+    } catch (error) {
+        console.error('❌ Error during shutdown:', error.message);
+        process.exit(1);
+    }
+});
+
+// Start server
+app.listen(PORT, () => {
+    console.log(`🚀 Football Home Backend Server running on port ${PORT}`);
+    console.log(`📡 Health check: http://localhost:${PORT}/health`);
+    console.log(`🏟️  Venues API: http://localhost:${PORT}/api/venues`);
+    console.log(`📊 Stats API: http://localhost:${PORT}/api/venues/stats`);
+    
+    if (process.env.GOOGLE_MAPS_API_KEY) {
+        console.log('✅ Google Maps API key configured');
+    } else {
+        console.warn('⚠️  Google Maps API key not found');
+    }
+});
+
+module.exports = app;
