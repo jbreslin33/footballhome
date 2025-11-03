@@ -124,13 +124,13 @@ CREATE TABLE leagues (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Clubs table (parent organizations that can have multiple teams)
+-- Clubs table (pure organizational entities - no sport mixing)
 CREATE TABLE clubs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
     display_name VARCHAR(150) NOT NULL,
     slug VARCHAR(100) UNIQUE NOT NULL,
-    parent_club_id UUID REFERENCES clubs(id),   -- For sub-clubs or divisions
+    parent_club_id UUID REFERENCES clubs(id),   -- For organizational hierarchy only
     description TEXT,
     logo_url VARCHAR(500),
     website VARCHAR(500),
@@ -147,13 +147,30 @@ CREATE TABLE clubs (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Teams table (now references sport and belongs to a club and league)
+-- Sport divisions table (sport-specific divisions within clubs)
+CREATE TABLE sport_divisions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    club_id UUID NOT NULL REFERENCES clubs(id),
+    sport_id UUID NOT NULL REFERENCES sports(id),
+    name VARCHAR(100) NOT NULL,                 -- "Soccer Division", "Youth Soccer", etc.
+    display_name VARCHAR(150) NOT NULL,
+    slug VARCHAR(100) NOT NULL,                 -- "lighthouse-1893-soccer"
+    description TEXT,
+    logo_url VARCHAR(500),
+    primary_color VARCHAR(7),                   -- Division colors
+    secondary_color VARCHAR(7),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(club_id, sport_id, slug)            -- One division per sport per club per slug
+);
+
+-- Teams table (now belongs to sport divisions)
 CREATE TABLE teams (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
-    club_id UUID NOT NULL REFERENCES clubs(id),
+    division_id UUID NOT NULL REFERENCES sport_divisions(id),
     league_id UUID REFERENCES leagues(id),      -- Optional league membership
-    sport_id UUID NOT NULL REFERENCES sports(id),
     season VARCHAR(20),
     age_group VARCHAR(50),                      -- U12, U15, Adult, etc.
     skill_level VARCHAR(50),                    -- Beginner, Intermediate, Advanced
@@ -388,9 +405,11 @@ CREATE INDEX idx_user_roles_role ON user_roles(role_id);
 CREATE INDEX idx_user_roles_active ON user_roles(user_id, is_active);
 CREATE INDEX idx_role_permissions_role ON role_permissions(role_id);
 CREATE INDEX idx_role_permissions_permission ON role_permissions(permission_id);
-CREATE INDEX idx_teams_sport ON teams(sport_id);
-CREATE INDEX idx_teams_club ON teams(club_id);
+CREATE INDEX idx_teams_division ON teams(division_id);
 CREATE INDEX idx_teams_league ON teams(league_id);
+CREATE INDEX idx_sport_divisions_club ON sport_divisions(club_id);
+CREATE INDEX idx_sport_divisions_sport ON sport_divisions(sport_id);
+CREATE INDEX idx_sport_divisions_slug ON sport_divisions(slug);
 CREATE INDEX idx_clubs_parent ON clubs(parent_club_id) WHERE parent_club_id IS NOT NULL;
 CREATE INDEX idx_clubs_slug ON clubs(slug);
 CREATE INDEX idx_leagues_sport ON leagues(sport_id);
