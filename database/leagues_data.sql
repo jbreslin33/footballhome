@@ -10,3 +10,12 @@ AND NOT EXISTS (
     SELECT 1 FROM leagues l 
     WHERE l.name = 'APSL' AND l.sport_id = s.id AND l.season = '2024/25'
 );
+
+INSERT INTO leagues (name, display_name, sport_id, season, description) 
+SELECT 'TCWL', 'Tri County Women''s League', s.id, '2024/25', 'Women''s soccer league serving tri-county area'
+FROM sports s 
+WHERE s.name = 'soccer' 
+AND NOT EXISTS (
+    SELECT 1 FROM leagues l 
+    WHERE l.name = 'TCWL' AND l.sport_id = s.id AND l.season = '2024/25'
+);
