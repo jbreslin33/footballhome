@@ -196,7 +196,7 @@ class VenueService {
             venueData.photos ? JSON.stringify(venueData.photos) : null,
             venueData.formatted_address || null,
             venueData.international_phone_number || null,
-            venueData.data_source || 'user_added',
+            venueData.data_source || 'google_places',
             venueData.data_source === 'google_places' ? new Date() : null
         ];
 
@@ -214,9 +214,9 @@ class VenueService {
         try {
             const query = `
                 SELECT id, name, address, city, state, postal_code, country,
-                       contact_phone, contact_email, website, capacity, surface_type,
+                       phone, email, website, capacity, surface_type,
                        parking_available, notes,
-                       latitude, longitude,
+                       latitude, longitude, rating, data_source, place_id,
                        created_at, updated_at
                 FROM venues 
                 WHERE id = $1 AND is_active = TRUE
@@ -236,9 +236,9 @@ class VenueService {
             const offset = (page - 1) * limit;
             let query = `
                 SELECT id, name, venue_type, address, city, state, postal_code, country,
-                       contact_phone, contact_email, website, capacity, surface_type,
+                       phone, email, website, capacity, surface_type,
                        parking_available, notes,
-                       latitude, longitude,
+                       latitude, longitude, rating, data_source, place_id,
                        created_at, updated_at
                 FROM venues 
                 WHERE is_active = TRUE

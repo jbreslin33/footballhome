@@ -231,114 +231,27 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/venues - Create new venue with duplicate detection
-router.post('/', async (req, res) => {
-    try {
-        const result = await venueService.addVenue(req.body);
+// POST /api/venues - DISABLED: User venue creation removed in v2.1 (Google-only)
+// router.post('/', async (req, res) => {
+//     // User venue creation is no longer supported
+//     res.status(410).json({
+//         success: false,
+//         error: 'User venue creation is no longer supported',
+//         message: 'Only Google Places venues are supported. Use /api/venues/import/area to import venues.'
+//     });
+// });
 
-        if (result.status === 'duplicate_detected') {
-            return res.status(409).json({
-                success: false,
-                status: 'duplicate_detected',
-                message: result.message,
-                suggested_venues: result.suggested_venues,
-                geocoded_data: result.geocoded_data,
-                can_create_anyway: result.can_create_anyway
-            });
-        }
+// POST /api/venues/force - DISABLED: User venue creation removed in v2.1 (Google-only)
+// router.post('/force', async (req, res) => {
+//     // Force venue creation is no longer supported
+//     res.status(410).json({
+//         success: false,
+//         error: 'Force venue creation is no longer supported',
+//         message: 'Only Google Places venues are supported. Use /api/venues/import/area to import venues.'
+//     });
+// });
 
-        res.status(201).json({
-            success: true,
-            data: result.venue,
-            geocoded_data: result.geocoded_data
-        });
-    } catch (error) {
-        console.error('Error creating venue:', error.message);
-        
-        if (error.message.includes('limit exceeded')) {
-            res.status(429).json({ 
-                success: false,
-                error: 'Rate limit exceeded', 
-                retry_after: 60 
-            });
-        } else {
-            res.status(400).json({
-                success: false,
-                error: 'Failed to create venue',
-                message: error.message
-            });
-        }
-    }
-});
-
-// POST /api/venues/force - Force create venue (override duplicate detection)
-router.post('/force', async (req, res) => {
-    try {
-        const { 
-            name, 
-            address, 
-            city,
-            state,
-            zip_code,
-            country = 'US',
-            phone,
-            email,
-            website,
-            capacity,
-            field_type,
-            surface_type,
-            has_lights,
-            has_parking,
-            description
-        } = req.body;
-
-        if (!name || !address) {
-            return res.status(400).json({
-                success: false,
-                error: 'Venue name and address are required'
-            });
-        }
-
-        const fullAddress = `${address}, ${city || ''}, ${state || ''} ${zip_code || ''}, ${country}`.trim();
-        const geocodeData = await venueService.geocoding.geocode(fullAddress);
-
-        const venue = await venueService.createVenue({
-            name,
-            address,
-            city,
-            state,
-            zip_code,
-            country,
-            phone,
-            email,
-            website,
-            capacity,
-            field_type,
-            surface_type,
-            has_lights,
-            has_parking,
-            description,
-            latitude: geocodeData.latitude,
-            longitude: geocodeData.longitude,
-            formatted_address: geocodeData.formatted_address,
-            place_id: geocodeData.place_id,
-            confidence: geocodeData.confidence
-        });
-
-        res.status(201).json({
-            success: true,
-            data: venue,
-            geocoded_data: geocodeData
-        });
-    } catch (error) {
-        console.error('Error force creating venue:', error.message);
-        res.status(400).json({
-            success: false,
-            error: 'Failed to create venue',
-            message: error.message
-        });
-    }
-});
+// Remaining code from force create endpoint commented out - v2.1 cleanup
 
 // PUT /api/venues/:id/geocode - Update venue coordinates
 router.put('/:id/geocode', async (req, res) => {
