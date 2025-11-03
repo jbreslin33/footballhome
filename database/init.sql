@@ -1505,3 +1505,161 @@ COMMENT ON COLUMN venues.user_ratings_total IS 'Number of Google reviews';
 COMMENT ON COLUMN venues.data_source IS 'Source of venue data (google_places, user_added, imported)';
 COMMENT ON VIEW venues_with_google_data IS 'Enhanced venue view with Google Places data and calculated fields';
 COMMENT ON VIEW venues_google_mapping IS 'Venue data with Google Places standard field names for API consistency';
+
+-- ==============================================================================
+-- VENUE DEDUPLICATION FUNCTIONS
+-- ==============================================================================
+-- These functions help prevent duplicate venue entries by checking distance and name similarity
+
+-- Enable fuzzy text matching extension
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Function to calculate distance between two points (in miles)
+CREATE OR REPLACE FUNCTION calculate_distance_miles(
+    lat1 NUMERIC, lon1 NUMERIC, 
+    lat2 NUMERIC, lon2 NUMERIC
+) RETURNS NUMERIC AS $$
+DECLARE
+    earth_radius_miles CONSTANT NUMERIC := 3959;
+    dlat NUMERIC;
+    dlon NUMERIC;
+    a NUMERIC;
+    c NUMERIC;
+BEGIN
+    -- Handle NULL coordinates
+    IF lat1 IS NULL OR lon1 IS NULL OR lat2 IS NULL OR lon2 IS NULL THEN
+        RETURN NULL;
+    END IF;
+    
+    -- Convert degrees to radians
+    dlat := radians(lat2 - lat1);
+    dlon := radians(lon2 - lon1);
+    
+    -- Haversine formula
+    a := sin(dlat/2) * sin(dlat/2) + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2) * sin(dlon/2);
+    c := 2 * atan2(sqrt(a), sqrt(1-a));
+    
+    RETURN earth_radius_miles * c;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- Function to find nearby venues within specified radius
+CREATE OR REPLACE FUNCTION find_nearby_venues(
+    search_lat NUMERIC,
+    search_lon NUMERIC,
+    radius_miles NUMERIC DEFAULT 0.1
+) RETURNS TABLE(
+    venue_id UUID,
+    venue_name VARCHAR(255),
+    distance_miles NUMERIC,
+    formatted_address TEXT,
+    place_id VARCHAR(255)
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        v.id,
+        v.name,
+        calculate_distance_miles(search_lat, search_lon, v.latitude, v.longitude) AS distance,
+        v.formatted_address,
+        v.place_id
+    FROM venues v
+    WHERE 
+        v.latitude IS NOT NULL 
+        AND v.longitude IS NOT NULL
+        AND v.is_active = true
+        AND calculate_distance_miles(search_lat, search_lon, v.latitude, v.longitude) <= radius_miles
+    ORDER BY distance;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to find venues with similar names (fuzzy matching)
+CREATE OR REPLACE FUNCTION find_similar_venue_names(
+    search_name TEXT,
+    similarity_threshold REAL DEFAULT 0.6
+) RETURNS TABLE(
+    venue_id UUID,
+    venue_name VARCHAR(255),
+    similarity_score REAL,
+    formatted_address TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        v.id,
+        v.name,
+        similarity(v.name, search_name) as similarity,
+        v.formatted_address
+    FROM venues v
+    WHERE 
+        v.is_active = true
+        AND similarity(v.name, search_name) > similarity_threshold
+    ORDER BY similarity DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to check for potential duplicates before inserting
+CREATE OR REPLACE FUNCTION check_venue_duplicates(
+    venue_name TEXT,
+    venue_lat NUMERIC,
+    venue_lon NUMERIC,
+    radius_miles NUMERIC DEFAULT 0.1,
+    name_similarity REAL DEFAULT 0.7
+) RETURNS TABLE(
+    duplicate_type TEXT,
+    existing_venue_id UUID,
+    existing_venue_name VARCHAR(255),
+    distance_miles NUMERIC,
+    name_similarity_score REAL,
+    reason TEXT
+) AS $$
+BEGIN
+    -- Check for nearby venues with similar names
+    RETURN QUERY
+    SELECT 
+        'location_and_name'::TEXT as duplicate_type,
+        v.id as existing_venue_id,
+        v.name as existing_venue_name,
+        calculate_distance_miles(venue_lat, venue_lon, v.latitude, v.longitude) as distance,
+        similarity(v.name, venue_name) as name_sim,
+        'Venue within ' || radius_miles || ' miles with similar name' as reason
+    FROM venues v
+    WHERE 
+        v.is_active = true
+        AND v.latitude IS NOT NULL 
+        AND v.longitude IS NOT NULL
+        AND calculate_distance_miles(venue_lat, venue_lon, v.latitude, v.longitude) <= radius_miles
+        AND similarity(v.name, venue_name) > name_similarity
+    ORDER BY distance, name_sim DESC;
+    
+    -- If no close matches, check for exact name matches anywhere
+    IF NOT FOUND THEN
+        RETURN QUERY
+        SELECT 
+            'exact_name'::TEXT as duplicate_type,
+            v.id as existing_venue_id,
+            v.name as existing_venue_name,
+            calculate_distance_miles(venue_lat, venue_lon, v.latitude, v.longitude) as distance,
+            1.0::REAL as name_sim,
+            'Exact name match found' as reason
+        FROM venues v
+        WHERE 
+            v.is_active = true
+            AND LOWER(TRIM(v.name)) = LOWER(TRIM(venue_name))
+        ORDER BY distance NULLS LAST;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create index for better performance on distance queries
+CREATE INDEX IF NOT EXISTS idx_venues_coordinates ON venues (latitude, longitude) 
+WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
+
+-- Create index for name similarity searches (requires pg_trgm)
+CREATE INDEX IF NOT EXISTS idx_venues_name_gin ON venues USING gin (name gin_trgm_ops);
+
+-- Comments for venue deduplication functions
+COMMENT ON FUNCTION calculate_distance_miles(NUMERIC, NUMERIC, NUMERIC, NUMERIC) IS 'Calculate distance in miles between two coordinates using Haversine formula';
+COMMENT ON FUNCTION find_nearby_venues(NUMERIC, NUMERIC, NUMERIC) IS 'Find venues within specified radius (miles) of given coordinates';
+COMMENT ON FUNCTION find_similar_venue_names(TEXT, REAL) IS 'Find venues with similar names using fuzzy text matching';
+COMMENT ON FUNCTION check_venue_duplicates(TEXT, NUMERIC, NUMERIC, NUMERIC, REAL) IS 'Check for potential duplicate venues before insertion';
