@@ -1,6 +1,7 @@
 require('dotenv').config({ path: '../../.env' });
 const { Pool } = require('pg');
 const GeocodingService = require('./GeocodingService');
+const GooglePlacesService = require('./GooglePlacesService');
 
 class VenueService {
     constructor(db = null) {
@@ -14,7 +15,8 @@ class VenueService {
         });
         
         this.geocoding = new GeocodingService();
-        console.log('✅ VenueService initialized');
+        this.places = new GooglePlacesService();
+        console.log('✅ VenueService initialized with Google Places integration');
     }
 
     // Add venue with deduplication check
@@ -147,18 +149,23 @@ class VenueService {
         return result.rows;
     }
 
-    // Create new venue in database
+    // Create new venue in database with Google Places data
     async createVenue(venueData) {
         const query = `
             INSERT INTO venues (
                 name, venue_type, address, city, state, postal_code, country,
-                contact_phone, contact_email, website, capacity, surface_type,
+                phone, email, website, capacity, surface_type,
                 parking_available, notes,
                 latitude, longitude,
+                place_id, rating, user_ratings_total, price_level, business_status,
+                google_types, opening_hours, photos, formatted_address, 
+                international_phone_number, data_source, last_google_update,
                 created_at, updated_at
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW()
-            ) RETURNING id, name, venue_type, address, city, state, latitude, longitude, created_at;
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+                $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, NOW(), NOW()
+            ) RETURNING id, name, venue_type, address, city, state, latitude, longitude, 
+                       place_id, rating, data_source, created_at;
         `;
 
         const values = [
@@ -177,7 +184,20 @@ class VenueService {
             venueData.has_parking,
             venueData.description,
             venueData.latitude,
-            venueData.longitude
+            venueData.longitude,
+            // Google Places specific fields
+            venueData.place_id || null,
+            venueData.rating || null,
+            venueData.user_ratings_total || 0,
+            venueData.price_level || null,
+            venueData.business_status || null,
+            venueData.google_types ? JSON.stringify(venueData.google_types) : null,
+            venueData.opening_hours ? JSON.stringify(venueData.opening_hours) : null,
+            venueData.photos ? JSON.stringify(venueData.photos) : null,
+            venueData.formatted_address || null,
+            venueData.international_phone_number || null,
+            venueData.data_source || 'user_added',
+            venueData.data_source === 'google_places' ? new Date() : null
         ];
 
         const result = await this.db.query(query, values);
@@ -403,6 +423,223 @@ class VenueService {
     // Get geocoding service usage stats
     getGeocodingStats() {
         return this.geocoding.getUsageStats();
+    }
+
+    // Import soccer venues from Google Places in a specific area
+    async importSoccerVenuesFromArea(latitude, longitude, radiusKm = 50, venueType = 'all') {
+        try {
+            const radiusMeters = radiusKm * 1000;
+            console.log(`🔍 Searching for soccer venues within ${radiusKm}km of ${latitude}, ${longitude}`);
+            
+            // Search Google Places for soccer venues
+            const googleVenues = await this.places.searchSoccerVenues(latitude, longitude, radiusMeters, venueType);
+            
+            if (googleVenues.length === 0) {
+                console.log('ℹ️ No soccer venues found in this area');
+                return { imported: 0, skipped: 0, errors: 0, venues: [] };
+            }
+
+            const results = {
+                imported: 0,
+                skipped: 0,
+                errors: 0,
+                venues: []
+            };
+
+            for (const googleVenue of googleVenues) {
+                try {
+                    // Check if venue already exists by place_id
+                    const existingVenue = await this.db.query(
+                        'SELECT id, name FROM venues WHERE place_id = $1 AND is_active = TRUE',
+                        [googleVenue.place_id]
+                    );
+
+                    if (existingVenue.rows.length > 0) {
+                        console.log(`⚠️ Skipping ${googleVenue.name} - already exists`);
+                        results.skipped++;
+                        continue;
+                    }
+
+                    // Get detailed information from Google Places
+                    const detailedVenue = await this.places.getPlaceDetails(googleVenue.place_id);
+                    
+                    // Determine venue type based on Google Places types
+                    const venueTypeMapped = this.mapGoogleTypesToVenueType(googleVenue.types);
+
+                    // Create venue record with full Google Places data
+                    const addressComponents = this.extractAddressComponents(detailedVenue.formatted_address);
+                    const venueData = {
+                        name: detailedVenue.name,
+                        venue_type: venueTypeMapped,
+                        address: addressComponents.address,
+                        city: addressComponents.city,
+                        state: addressComponents.state,
+                        zip_code: addressComponents.zip,
+                        country: 'US', // Default, could be enhanced
+                        phone: detailedVenue.phone,
+                        email: null,
+                        website: detailedVenue.website,
+                        capacity: null, // Not available from Places API
+                        surface_type: null, // Could be inferred from name/description
+                        has_parking: null, // Not directly available
+                        description: `Imported from Google Places. Rating: ${detailedVenue.rating || 'N/A'}/5 (${detailedVenue.user_ratings_total || 0} reviews)`,
+                        latitude: detailedVenue.latitude,
+                        longitude: detailedVenue.longitude,
+                        // Google Places specific data
+                        place_id: detailedVenue.place_id,
+                        rating: detailedVenue.rating,
+                        user_ratings_total: detailedVenue.user_ratings_total,
+                        price_level: null, // Basic search doesn't include price_level
+                        business_status: 'OPERATIONAL', // Assume operational if found
+                        google_types: googleVenue.types,
+                        opening_hours: detailedVenue.opening_hours,
+                        photos: detailedVenue.photos,
+                        formatted_address: detailedVenue.formatted_address,
+                        data_source: 'google_places'
+                    };
+
+                    const createdVenue = await this.createVenue(venueData);
+                    
+                    console.log(`✅ Imported: ${createdVenue.name} (${createdVenue.id})`);
+                    results.imported++;
+                    results.venues.push(createdVenue);
+
+                    // Rate limiting delay
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                } catch (error) {
+                    console.error(`❌ Error importing ${googleVenue.name}:`, error.message);
+                    results.errors++;
+                }
+            }
+
+            console.log(`📊 Import completed: ${results.imported} imported, ${results.skipped} skipped, ${results.errors} errors`);
+            return results;
+
+        } catch (error) {
+            console.error('❌ Error importing soccer venues:', error.message);
+            throw error;
+        }
+    }
+
+    // Import famous soccer stadiums
+    async importFamousSoccerStadiums(country = 'US') {
+        try {
+            console.log(`🏟️ Importing famous soccer stadiums for ${country}...`);
+            
+            const stadiums = await this.places.getFamousSoccerStadiums(country);
+            
+            const results = {
+                imported: 0,
+                skipped: 0,
+                errors: 0,
+                venues: []
+            };
+
+            for (const stadium of stadiums) {
+                try {
+                    // Check if already exists
+                    const existing = await this.db.query(
+                        'SELECT id FROM venues WHERE place_id = $1 AND is_active = TRUE',
+                        [stadium.place_id]
+                    );
+
+                    if (existing.rows.length > 0) {
+                        results.skipped++;
+                        continue;
+                    }
+
+                    // Get detailed info
+                    const detailed = await this.places.getPlaceDetails(stadium.place_id);
+                    
+                    const venueData = {
+                        name: detailed.name,
+                        venue_type: 'stadium',
+                        address: this.extractAddressComponents(detailed.formatted_address).address,
+                        city: this.extractAddressComponents(detailed.formatted_address).city,
+                        state: this.extractAddressComponents(detailed.formatted_address).state,
+                        zip_code: this.extractAddressComponents(detailed.formatted_address).zip,
+                        country: country,
+                        phone: detailed.phone,
+                        website: detailed.website,
+                        capacity: null,
+                        surface_type: 'grass', // Most stadiums
+                        has_parking: true, // Most stadiums have parking
+                        description: `Professional soccer stadium. Rating: ${detailed.rating || 'N/A'}/5`,
+                        latitude: detailed.latitude,
+                        longitude: detailed.longitude,
+                        place_id: detailed.place_id
+                    };
+
+                    const created = await this.createVenue(venueData);
+                    results.imported++;
+                    results.venues.push(created);
+
+                    await new Promise(resolve => setTimeout(resolve, 200));
+
+                } catch (error) {
+                    results.errors++;
+                    console.error(`❌ Error importing stadium:`, error.message);
+                }
+            }
+
+            return results;
+
+        } catch (error) {
+            console.error('❌ Error importing famous stadiums:', error.message);
+            throw error;
+        }
+    }
+
+    // Map Google Places types to our venue types
+    mapGoogleTypesToVenueType(types) {
+        if (types.includes('stadium')) return 'stadium';
+        if (types.includes('school') || types.includes('university')) return 'field';
+        if (types.includes('park')) return 'field';
+        if (types.includes('gym')) return 'gym';
+        return 'field'; // Default
+    }
+
+    // Extract address components from formatted address
+    extractAddressComponents(formattedAddress) {
+        if (!formattedAddress) return { address: '', city: '', state: '', zip: '' };
+        
+        const parts = formattedAddress.split(', ');
+        return {
+            address: parts[0] || '',
+            city: parts[1] || '',
+            state: parts[2] ? parts[2].split(' ')[0] : '',
+            zip: parts[2] ? parts[2].split(' ')[1] : ''
+        };
+    }
+
+    // Search for venues by name/location using Google Places
+    async searchVenuesByName(query, location = null) {
+        try {
+            console.log(`🔍 Searching for venues: ${query}`);
+            
+            const results = await this.places.textSearch(query, location);
+            
+            // Filter to likely soccer venues
+            const soccerVenues = results.filter(venue => {
+                const name = venue.name.toLowerCase();
+                const types = venue.types.join(' ').toLowerCase();
+                
+                return name.includes('soccer') || 
+                       name.includes('football') || 
+                       name.includes('stadium') ||
+                       name.includes('field') ||
+                       name.includes('pitch') ||
+                       types.includes('stadium') ||
+                       types.includes('park');
+            });
+
+            return soccerVenues;
+
+        } catch (error) {
+            console.error('❌ Error searching venues by name:', error.message);
+            throw error;
+        }
     }
 
     // Close database connection (if we created our own pool)

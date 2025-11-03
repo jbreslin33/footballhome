@@ -55,6 +55,91 @@ router.get('/stats', async (req, res) => {
     }
 });
 
+// POST /api/venues/import/area - Import soccer venues from Google Places in specific area
+router.post('/import/area', async (req, res) => {
+    try {
+        const { latitude, longitude, radius = 25, venue_type = 'all' } = req.body;
+        
+        if (!latitude || !longitude) {
+            return res.status(400).json({
+                success: false,
+                error: 'Latitude and longitude are required'
+            });
+        }
+
+        console.log(`🔍 Starting venue import for area: ${latitude}, ${longitude} (${radius}km)`);
+        
+        const results = await venueService.importSoccerVenuesFromArea(
+            parseFloat(latitude),
+            parseFloat(longitude),
+            parseInt(radius),
+            venue_type
+        );
+
+        res.json({
+            success: true,
+            data: results,
+            message: `Import completed: ${results.imported} venues imported, ${results.skipped} skipped`
+        });
+    } catch (error) {
+        console.error('Error importing venues from area:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to import venues from area',
+            message: error.message
+        });
+    }
+});
+
+// POST /api/venues/import/stadiums - Import famous soccer stadiums
+router.post('/import/stadiums', async (req, res) => {
+    try {
+        const { country = 'US' } = req.body;
+        
+        console.log(`🏟️ Starting famous stadiums import for ${country}`);
+        
+        const results = await venueService.importFamousSoccerStadiums(country);
+
+        res.json({
+            success: true,
+            data: results,
+            message: `Stadium import completed: ${results.imported} stadiums imported`
+        });
+    } catch (error) {
+        console.error('Error importing famous stadiums:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to import famous stadiums',
+            message: error.message
+        });
+    }
+});
+
+// GET /api/venues/search/google/:query - Search Google Places for venues
+router.get('/search/google/:query', async (req, res) => {
+    try {
+        const { query } = req.params;
+        const { location } = req.query;
+        
+        const venues = await venueService.searchVenuesByName(query, location);
+        
+        res.json({
+            success: true,
+            data: venues,
+            count: venues.length,
+            query: query,
+            location: location || 'global'
+        });
+    } catch (error) {
+        console.error('Error searching Google Places:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to search Google Places',
+            message: error.message
+        });
+    }
+});
+
 // GET /api/venues/without-coordinates - Get venues that need geocoding
 router.get('/without-coordinates', async (req, res) => {
     try {

@@ -269,8 +269,9 @@ main() {
     print_info "Next steps:"
     print_info "1. Edit .env file with your Google Maps API key"
     print_info "2. Start the backend server: cd backend && node server.js"
-    print_info "3. Access pgAdmin at: http://localhost:5050"
-    print_info "4. Test API at: http://localhost:3001/health"
+    print_info "3. (Optional) Populate Google venue data: ./scripts/populate-google-venues.sh"
+    print_info "4. Access pgAdmin at: http://localhost:5050"
+    print_info "5. Test API at: http://localhost:3001/health"
     echo
     print_info "For detailed information, see DEPLOYMENT_GUIDE.md"
     echo

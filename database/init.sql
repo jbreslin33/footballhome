@@ -1,15 +1,23 @@
--- Football Home Database Schema - Fully Normalized Version
--- Version: 3.0 - 4NF compliant with separated practices/matches tables
+-- Football Home Database Schema - Complete Production Schema
+-- Version: 4.0 - Production ready with Google Places integration
 --
--- Key normalization improvements:
--- 1. Permissions extracted from roles table (4NF compliance)
--- 2. Events separated into practices and matches tables (specialized data)
--- 3. All lookup tables properly normalized
--- 4. Many-to-many relationships with junction tables
--- 5. Proper referential integrity with foreign keys
+-- This schema includes:
+-- 1. Fully normalized database (4NF compliant)
+-- 2. Google Places integration with all fields
+-- 3. Migration tracking system for future changes
+-- 4. Complete sample data for development
+-- 5. Optimized indexes and constraints
 
 -- Create database extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Create migrations tracking table for future changes
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255) UNIQUE NOT NULL,
+    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    checksum VARCHAR(64)
+);
 
 -- Sports lookup table
 CREATE TABLE sports (
@@ -161,7 +169,7 @@ CREATE TABLE team_members (
     UNIQUE(team_id, jersey_number)              -- Jersey numbers unique per team
 );
 
--- Venues table (normalized location data)
+-- Venues table (with complete Google Places integration)
 CREATE TABLE venues (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
@@ -176,6 +184,7 @@ CREATE TABLE venues (
     country VARCHAR(100) DEFAULT 'USA',
     latitude DECIMAL(10,8),                     -- For GPS coordinates
     longitude DECIMAL(11,8),
+    formatted_address TEXT,                     -- Google formatted address
     
     -- Venue specifications
     surface_type VARCHAR(50),                   -- 'grass', 'artificial_turf', 'indoor_court', 'hardwood', etc.
@@ -191,10 +200,11 @@ CREATE TABLE venues (
     weather_covered BOOLEAN DEFAULT false,      -- Indoor or covered facility
     parking_available BOOLEAN DEFAULT true,
     
-    -- Contact and booking
+    -- Contact and booking (Google-aligned field names)
     contact_name VARCHAR(100),
-    contact_phone VARCHAR(20),
-    contact_email VARCHAR(255),
+    phone VARCHAR(20),                          -- Renamed from contact_phone to match Google
+    email VARCHAR(255),                         -- Renamed from contact_email for consistency
+    international_phone_number VARCHAR(30),     -- Google Places field
     booking_required BOOLEAN DEFAULT false,
     hourly_rate DECIMAL(8,2),                   -- Cost per hour if applicable
     
@@ -211,6 +221,18 @@ CREATE TABLE venues (
     owned_by_team BOOLEAN DEFAULT false,
     venue_manager VARCHAR(100),
     
+    -- Google Places integration fields
+    place_id VARCHAR(255) UNIQUE,               -- Google Places unique identifier
+    rating DECIMAL(2,1),                        -- Google Places rating (1.0-5.0)
+    user_ratings_total INTEGER DEFAULT 0,       -- Number of Google reviews
+    price_level INTEGER,                        -- Google price level (0-4)
+    business_status VARCHAR(50),                -- Google business status
+    google_types JSONB,                         -- Array of Google Place types
+    opening_hours JSONB,                        -- Google opening hours data
+    photos JSONB,                               -- Array of Google photo references
+    data_source VARCHAR(50) DEFAULT 'user_added', -- Source of venue data
+    last_google_update TIMESTAMP,               -- Last sync with Google Places
+    
     -- Standard fields
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -220,7 +242,9 @@ CREATE TABLE venues (
     CONSTRAINT valid_coordinates CHECK (
         (latitude IS NULL AND longitude IS NULL) OR 
         (latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180)
-    )
+    ),
+    CONSTRAINT valid_rating CHECK (rating IS NULL OR (rating >= 1.0 AND rating <= 5.0)),
+    CONSTRAINT valid_price_level CHECK (price_level IS NULL OR (price_level >= 0 AND price_level <= 4))
 );
 
 -- Base events table (common fields for all event types)
@@ -326,6 +350,13 @@ CREATE INDEX idx_event_types_category ON event_types(category);
 CREATE INDEX idx_permissions_category ON permissions(category);
 CREATE INDEX idx_magic_tokens_token ON magic_tokens(token);
 CREATE INDEX idx_magic_tokens_expires ON magic_tokens(expires_at);
+
+-- Google Places indexes
+CREATE INDEX idx_venues_place_id ON venues(place_id) WHERE place_id IS NOT NULL;
+CREATE INDEX idx_venues_rating ON venues(rating) WHERE rating IS NOT NULL;
+CREATE INDEX idx_venues_data_source ON venues(data_source);
+CREATE INDEX idx_venues_business_status ON venues(business_status);
+CREATE INDEX idx_venues_phone ON venues(phone) WHERE phone IS NOT NULL;
 
 -- Insert lookup data
 
@@ -458,9 +489,9 @@ INSERT INTO team_members (team_id, user_id, position_id, jersey_number, is_capta
 ('550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440104', '550e8400-e29b-41d4-a716-446655440504', 9, false),  -- David - Forward
 ('550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440105', '550e8400-e29b-41d4-a716-446655440504', 11, false); -- Demo - Forward
 
--- Sample venues
+-- Sample venues (with Google Places field structure)
 INSERT INTO venues (id, name, short_name, venue_type, address, city, surface_type, capacity, 
-                   facilities, equipment_available, owned_by_team, directions, notes) VALUES
+                   facilities, equipment_available, owned_by_team, directions, notes, phone, email) VALUES
 
 -- Thunder FC venues (team-owned)
 ('550e8400-e29b-41d4-a716-446655440801', 
@@ -470,7 +501,8 @@ INSERT INTO venues (id, name, short_name, venue_type, address, city, surface_typ
  ARRAY['goals', 'cones', 'bibs', 'balls', 'first_aid'],
  true, 
  'Enter through main gate, training fields are behind the clubhouse',
- 'Primary training facility with 2 full-size grass fields'),
+ 'Primary training facility with 2 full-size grass fields',
+ '+1-555-0123', 'training@thunderfc.com'),
 
 ('550e8400-e29b-41d4-a716-446655440802',
  'Thunder FC Stadium', 'Stadium', 'stadium', 
@@ -479,7 +511,8 @@ INSERT INTO venues (id, name, short_name, venue_type, address, city, surface_typ
  ARRAY['goals', 'corner_flags', 'nets', 'first_aid', 'PA_system'],
  true,
  'Main entrance on Championship Blvd, player entrance on the east side',
- 'Home stadium for matches and major events'),
+ 'Home stadium for matches and major events',
+ '+1-555-0124', 'stadium@thunderfc.com'),
 
 ('550e8400-e29b-41d4-a716-446655440803',
  'Thunder FC Clubhouse', 'Clubhouse', 'clubhouse',
@@ -488,34 +521,14 @@ INSERT INTO venues (id, name, short_name, venue_type, address, city, surface_typ
  ARRAY['tables', 'chairs', 'whiteboard', 'projector_screen'],
  true,
  'Located at the training ground complex, main building',
- 'Meeting space, strategy sessions, team meals'),
+ 'Meeting space, strategy sessions, team meals',
+ '+1-555-0123', 'clubhouse@thunderfc.com');
 
-('550e8400-e29b-41d4-a716-446655440804',
- 'Thunder FC Gym', 'Gym', 'gym',
- '789 Fitness Lane', 'Thunderville', 'rubber_flooring', 25,
- ARRAY['changing_rooms', 'showers', 'equipment_storage', 'parking', 'air_conditioning'],
- ARRAY['weights', 'fitness_equipment', 'exercise_mats', 'agility_ladders', 'medicine_balls'],
- true,
- 'Located 5 minutes from main training ground, dedicated fitness facility',
- 'Indoor fitness and strength training facility'),
-
--- External venues
-('550e8400-e29b-41d4-a716-446655440805',
- 'Academy Sports Ground', 'Academy Ground', 'field',
- '321 Youth Development Dr', 'Neighboring City', 'artificial_turf', 40,
- ARRAY['changing_rooms', 'parking', 'spectator_seating'],
- ARRAY['goals', 'corner_flags', 'first_aid'],
- false,
- 'Take Highway 101 North, exit at Youth Development Dr, facility is 2 blocks on the right',
- 'Partner facility for friendly matches and joint training');
-
--- Sample events (base table)
+-- Sample events (base table) - using only venues that exist
 INSERT INTO events (id, team_id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, max_players) VALUES
 ('550e8400-e29b-41d4-a716-446655440701', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440401', 'Weekly Training Session', 'Regular training focusing on passing and shooting', '2025-10-30 18:00:00', '550e8400-e29b-41d4-a716-446655440801', 90, 16),
 ('550e8400-e29b-41d4-a716-446655440702', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440402', 'Match vs Lightning United', 'League match against Lightning United', '2025-11-02 15:00:00', '550e8400-e29b-41d4-a716-446655440802', 120, 18),
-('550e8400-e29b-41d4-a716-446655440703', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440403', 'Team Strategy Meeting', 'Discussing tactics for upcoming matches', '2025-10-29 19:00:00', '550e8400-e29b-41d4-a716-446655440803', 60, NULL),
-('550e8400-e29b-41d4-a716-446655440704', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440406', 'Fitness Training', 'Endurance and strength training session', '2025-11-01 17:30:00', '550e8400-e29b-41d4-a716-446655440804', 60, 20),
-('550e8400-e29b-41d4-a716-446655440705', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440405', 'Friendly vs Youth Academy', 'Friendly match against local youth academy', '2025-11-05 14:00:00', '550e8400-e29b-41d4-a716-446655440805', 90, 16);
+('550e8400-e29b-41d4-a716-446655440703', '550e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440100', '550e8400-e29b-41d4-a716-446655440403', 'Team Strategy Meeting', 'Discussing tactics for upcoming matches', '2025-10-29 19:00:00', '550e8400-e29b-41d4-a716-446655440803', 60, NULL);
 
 -- Sample practices (extends specific events)
 INSERT INTO practices (id, focus_areas, drill_plan, equipment_needed, fitness_focus, skill_level, weather_dependent, indoor_alternative_location, notes) VALUES
@@ -528,16 +541,6 @@ INSERT INTO practices (id, focus_areas, drill_plan, equipment_needed, fitness_fo
  true,
  'Thunder FC Indoor Hall',
  'Focus on short passing accuracy and first touch'
-),
-('550e8400-e29b-41d4-a716-446655440704', 
- ARRAY['fitness', 'conditioning'], 
- 'Dynamic warm-up (10min) → Circuit training (30min) → Core strength (20min)',
- ARRAY['medicine_balls', 'resistance_bands', 'mats'],
- 'endurance',
- 'all_levels',
- false,
- NULL,
- 'Monitor heart rates, ensure proper hydration'
 );
 
 -- Sample matches (extends specific events)
@@ -550,15 +553,6 @@ INSERT INTO matches (id, opponent_team_id, home_away_status_id, competition_name
  'John Smith', 
  'scheduled',
  '15:00'
-),
-('550e8400-e29b-41d4-a716-446655440705', 
- '550e8400-e29b-41d4-a716-446655440002', 
- '550e8400-e29b-41d4-a716-446655440802', 
- 'Friendly', 
- NULL, 
- 'Sarah Johnson', 
- 'scheduled',
- '14:00'
 );
 
 -- =============================================================================
@@ -713,3 +707,55 @@ SELECT
 FROM users u
 CROSS JOIN notification_types nt
 ON CONFLICT (user_id, notification_type_id) DO NOTHING;
+
+-- === GOOGLE PLACES INTEGRATION VIEWS ===
+
+-- Venues with Google data view
+CREATE OR REPLACE VIEW venues_with_google_data AS
+SELECT 
+    id, name, venue_type, address, formatted_address, city, state, postal_code, country,
+    latitude, longitude, place_id, rating, user_ratings_total, price_level, business_status,
+    google_types, opening_hours, photos, data_source, phone, website, capacity, surface_type,
+    parking_available, wheelchair_accessible, notes, is_active, created_at, updated_at,
+    last_google_update,
+    CASE 
+        WHEN rating IS NOT NULL AND rating >= 4.5 THEN 'Excellent'
+        WHEN rating IS NOT NULL AND rating >= 4.0 THEN 'Very Good'
+        WHEN rating IS NOT NULL AND rating >= 3.5 THEN 'Good'
+        WHEN rating IS NOT NULL AND rating >= 3.0 THEN 'Average'
+        WHEN rating IS NOT NULL THEN 'Below Average'
+        ELSE 'No Rating'
+    END as rating_category,
+    CASE WHEN data_source = 'google_places' THEN true ELSE false END as is_google_venue,
+    CASE WHEN place_id IS NOT NULL THEN true ELSE false END as has_google_data
+FROM venues
+WHERE is_active = true;
+
+-- Venues Google mapping view
+CREATE OR REPLACE VIEW venues_google_mapping AS
+SELECT 
+    id, name, place_id, formatted_address,
+    latitude as lat, longitude as lng,
+    phone as formatted_phone_number, international_phone_number,
+    website, rating, user_ratings_total, price_level, business_status,
+    google_types as types, opening_hours, photos,
+    venue_type, capacity, surface_type, parking_available, wheelchair_accessible, data_source
+FROM venues
+WHERE is_active = true;
+
+-- Record this as the baseline schema (no migrations needed for fresh installs)
+INSERT INTO schema_migrations (filename, checksum) VALUES
+('000_baseline_schema.sql', 'production_ready_baseline_v4.0')
+ON CONFLICT (filename) DO NOTHING;
+
+-- Add helpful comments for Google Places integration
+COMMENT ON TABLE venues IS 'Venues table with complete Google Places integration';
+COMMENT ON COLUMN venues.phone IS 'Primary phone number (Google: formatted_phone_number)';
+COMMENT ON COLUMN venues.email IS 'Contact email address';
+COMMENT ON COLUMN venues.international_phone_number IS 'International format phone number from Google Places';
+COMMENT ON COLUMN venues.place_id IS 'Google Places unique identifier';
+COMMENT ON COLUMN venues.rating IS 'Google Places rating (1.0-5.0)';
+COMMENT ON COLUMN venues.user_ratings_total IS 'Number of Google reviews';
+COMMENT ON COLUMN venues.data_source IS 'Source of venue data (google_places, user_added, imported)';
+COMMENT ON VIEW venues_with_google_data IS 'Enhanced venue view with Google Places data and calculated fields';
+COMMENT ON VIEW venues_google_mapping IS 'Venue data with Google Places standard field names for API consistency';
