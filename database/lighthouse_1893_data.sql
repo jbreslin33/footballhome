@@ -41,3 +41,14 @@ INSERT INTO teams (name, division_id, age_group, skill_level, season, descriptio
  (SELECT id FROM sport_divisions WHERE slug = 'lighthouse-1893-soccer'), 
  'Adult', 'Recreational', '2024/25', 'Veterans/older players team');
 
+-- Assign Lighthouse 1893 SC to APSL Delaware River Conference Premier Division
+UPDATE teams 
+SET league_division_id = (
+    SELECT ld.id 
+    FROM league_divisions ld
+    JOIN league_conferences lc ON ld.conference_id = lc.id
+    JOIN leagues l ON lc.league_id = l.id
+    WHERE l.name = 'APSL' AND lc.slug = 'delaware-river' AND ld.slug = 'premier'
+)
+WHERE name = 'Lighthouse 1893 SC';
+
