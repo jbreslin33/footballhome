@@ -148,6 +148,7 @@ CREATE TABLE league_divisions (
     display_name VARCHAR(150) NOT NULL,      -- 'Premier Division', 'Division 1', 'Over 30 Division'
     slug VARCHAR(100) NOT NULL,              -- 'premier', 'division-1', 'over-30'
     tier INTEGER NOT NULL DEFAULT 1,         -- Hierarchical ranking: 1=top tier, 2=second tier, etc.
+    hierarchy_group VARCHAR(50),             -- Groups divisions that are connected (e.g., 'adult', 'over30')
     skill_level VARCHAR(50),                 -- 'Premier', 'Competitive', 'Recreational'
     age_group VARCHAR(50),                   -- 'Adult', 'Over 30', 'U23'
     description TEXT,
@@ -158,6 +159,23 @@ CREATE TABLE league_divisions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(conference_id, slug)              -- Unique division slug per conference
+);
+
+-- Division relationships (promotion/relegation between divisions, can cross leagues)
+CREATE TABLE division_relationships (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    from_division_id UUID NOT NULL REFERENCES league_divisions(id) ON DELETE CASCADE,
+    to_division_id UUID NOT NULL REFERENCES league_divisions(id) ON DELETE CASCADE,
+    relationship_type VARCHAR(50) NOT NULL,  -- 'promotion', 'relegation', 'lateral_transfer'
+    geographic_condition TEXT,               -- e.g., 'northern_teams_to_metropolitan, southern_teams_to_delaware_river'
+    priority_order INTEGER DEFAULT 1,       -- For multiple promotion/relegation options
+    is_automatic BOOLEAN DEFAULT false,     -- Automatic vs discretionary moves
+    season VARCHAR(20),                     -- Which season this relationship applies to
+    description TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(from_division_id, to_division_id, relationship_type, season) -- Prevent duplicate relationships
 );
 
 -- Clubs table (pure organizational entities - no sport mixing)
@@ -448,6 +466,11 @@ CREATE INDEX idx_league_conferences_slug ON league_conferences(slug);
 CREATE INDEX idx_league_divisions_conference ON league_divisions(conference_id);
 CREATE INDEX idx_league_divisions_slug ON league_divisions(slug);
 CREATE INDEX idx_league_divisions_tier ON league_divisions(tier);
+CREATE INDEX idx_league_divisions_hierarchy_group ON league_divisions(hierarchy_group) WHERE hierarchy_group IS NOT NULL;
+CREATE INDEX idx_division_relationships_from ON division_relationships(from_division_id);
+CREATE INDEX idx_division_relationships_to ON division_relationships(to_division_id);
+CREATE INDEX idx_division_relationships_type ON division_relationships(relationship_type);
+CREATE INDEX idx_division_relationships_season ON division_relationships(season);
 CREATE INDEX idx_sport_divisions_club ON sport_divisions(club_id);
 CREATE INDEX idx_sport_divisions_sport ON sport_divisions(sport_id);
 CREATE INDEX idx_sport_divisions_slug ON sport_divisions(slug);

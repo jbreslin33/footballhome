@@ -144,6 +144,13 @@ JOIN leagues l ON lc.league_id = l.id
 WHERE l.name = 'CASA' AND lc.slug = 'philadelphia'
 AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'liga-2');
 
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Over 30', 'Over 30', 'over-30', 1, 'Premier', 'Over 30', 'Veterans division for players over 30'
+FROM league_conferences lc 
+JOIN leagues l ON lc.league_id = l.id 
+WHERE l.name = 'CASA' AND lc.slug = 'philadelphia'
+AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'over-30');
+
 -- Lancaster Conference Division
 INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
 SELECT lc.id, 'Liga 1', 'Liga 1', 'liga-1', 1, 'Premier', 'Adult', 'Top tier competitive division'
