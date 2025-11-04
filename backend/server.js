@@ -5,8 +5,15 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const { Pool } = require('pg');
 
+// Import middleware
+const { generalLimiter } = require('./middleware/rateLimit');
+const { setDbPool: setAuthDbPool } = require('./middleware/auth');
+
 // Import routes
-const venueRoutes = require('./routes/venues');
+// const venueRoutes = require('./routes/venues'); // Temporarily disabled - requires Google Maps API
+const { router: authRoutes, setDbPool: setAuthRoutesDbPool } = require('./routes/auth');
+const { router: eventsRoutes, setDbPool: setEventsDbPool } = require('./routes/events');
+const { router: rsvpsRoutes, setDbPool: setRsvpsDbPool } = require('./routes/rsvps');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -20,21 +27,32 @@ const pool = new Pool({
     port: process.env.POSTGRES_PORT || 5432,
 });
 
-// Test database connection
+// Test database connection and inject into routes
 pool.connect((err, client, release) => {
     if (err) {
         console.error('❌ Error connecting to database:', err.message);
         process.exit(1);
     }
     console.log('✅ Connected to PostgreSQL database');
+    
+    // Inject database pool into middleware and routes
+    setAuthDbPool(pool);
+    setAuthRoutesDbPool(pool);
+    setEventsDbPool(pool);
+    setRsvpsDbPool(pool);
+    
     release();
 });
 
 // Middleware
 app.use(helmet()); // Security headers
-app.use(cors()); // Enable CORS
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://footballhome.org:3000',
+    credentials: true
+})); // Enable CORS with credentials
 app.use(morgan('combined')); // Logging
 app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
+app.use(generalLimiter); // Rate limiting
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -47,7 +65,10 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use('/api/venues', venueRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/events', eventsRoutes);
+app.use('/api/rsvps', rsvpsRoutes);
+// app.use('/api/venues', venueRoutes); // Temporarily disabled - requires Google Maps API
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -56,8 +77,9 @@ app.get('/', (req, res) => {
         version: '1.0.0',
         endpoints: {
             health: '/health',
-            venues: '/api/venues',
-            geocoding_stats: '/api/venues/stats'
+            auth: '/api/auth',
+            events: '/api/events',
+            rsvps: '/api/rsvps'
         },
         documentation: 'https://github.com/your-repo/footballhome'
     });

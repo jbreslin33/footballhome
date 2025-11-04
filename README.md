@@ -1,68 +1,251 @@
 # Football Home ⚽
 
-Modern team management platform for football clubs and sports teams.
+A comprehensive team management system for football/soccer teams, built with React, Node.js, and PostgreSQL.
 
-## 🚀 Project Status
+## 🚀 Complete Setup from Scratch
 
-**Current Phase**: Database Foundation Complete  
-**Next**: Clean Development Environment Setup
+Football Home is designed to be completely rebuildable from scratch. Follow these steps:
 
-## 📁 Project Structure
+### Prerequisites
+```bash
+# Install Docker and Docker Compose (Ubuntu/Debian)
+sudo apt update
+sudo apt install docker.io docker-compose-plugin
 
+# Add your user to docker group
+sudo usermod -aG docker $USER
+# Log out and back in for group changes to take effect
+```
+
+### One-Command Setup
+```bash
+# Clone and setup everything
+git clone https://github.com/jbreslin33/footballhome.git
+cd footballhome
+./setup-complete.sh
+```
+
+### Manual Setup
+If you prefer manual control:
+
+```bash
+# 1. Create environment file
+cp .env.example .env
+# Edit .env with your settings
+
+# 2. Build and start services
+docker compose down --volumes  # Clean slate
+docker compose up -d --build   # Build and start
+
+# 3. Add to your hosts file (optional)
+echo '127.0.0.1 footballhome.org' | sudo tee -a /etc/hosts
+```
+
+## 🏈 Features
+
+### Core System
+- **Multi-League Management**: APSL, CASA, TCWL with promotion/relegation
+- **User Authentication**: JWT-based login/register with role management
+- **Event Management**: Create and manage practices, games, meetings
+- **RSVP System**: Players can respond to events, capacity management
+- **Team Organization**: Role-based permissions (players, coaches, admins)
+
+### League Structure
+- **6 APSL Conferences**: Delaware River, Metropolitan NY/NJ, Southeast, Mid-Atlantic, Northeast, South Atlantic
+- **CASA Divisions**: Liga 1, Liga 2, Over 30 with tier-based hierarchy
+- **TCWL Structure**: Division 1, 2, 3 for women's leagues
+- **Inter-league Promotion**: Geographic routing and complex relationships
+
+## 🌐 Access Points
+
+After running setup:
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **Frontend** | http://footballhome.org:3000 | Main application |
+| **Backend API** | http://footballhome.org:3001/api | REST API |
+| **pgAdmin** | http://footballhome.org:5050 | Database admin |
+| **Database** | localhost:5432 | Direct DB access |
+
+### Default Credentials
+- **pgAdmin**: admin@footballhome.org / admin123
+- **Database**: footballhome_user / footballhome_pass
+
+## 🏗️ Architecture
+
+### Tech Stack
+- **Frontend**: React 18 + TypeScript + React Router
+- **Backend**: Node.js + Express + JWT Authentication
+- **Database**: PostgreSQL 15 with comprehensive schema
+- **Infrastructure**: Docker + Docker Compose
+- **Security**: Rate limiting, input validation, CORS
+
+### Project Structure
 ```
 footballhome/
-├── database/           # Complete normalized schema (PostgreSQL)
-│   ├── init.sql       # Full database schema with sample data
-│   ├── README.md      # Database documentation
-│   └── NORMALIZATION_GUIDE.md
-└── README.md          # This file
+├── backend/              # Node.js API server
+│   ├── middleware/       # Auth, rate limiting
+│   ├── routes/          # API endpoints
+│   └── services/        # Business logic
+├── frontend/            # React application
+│   ├── src/components/  # React components
+│   └── src/contexts/    # Auth context
+├── database/            # SQL schema and data
+├── ssl/                # SSL certificates
+└── scripts/            # Utility scripts
 ```
 
-## 🎯 Roadmap
+## 🔧 Development
 
-- [x] **Database Design** - Fully normalized 4NF compliant schema
-- [ ] **Development Environment** - Docker setup for local development  
-- [ ] **Backend API** - Modern Express.js + TypeScript architecture
-- [ ] **Frontend App** - React + TypeScript + Material-UI
+### Backend Development
+```bash
+cd backend
+npm install
+npm run dev  # Development with nodemon
+```
 
-## 💾 Database Features
+### Frontend Development
+```bash
+cd frontend
+npm install
+npm start   # Development server
+```
 
-- **Multi-sport support** (Soccer, Basketball, Hockey, Baseball, Volleyball)
-- **Advanced role system** with many-to-many user roles
-- **Comprehensive event management** (Practices, Matches, Meetings)
-- **Venue management** with detailed facility information
-- **Notification system** with granular user preferences
-- **Recurring events** for regular training sessions
-- **Complete audit logging** and session management
+### Database Management
+```bash
+# Connect to database
+docker exec -it footballhome_db psql -U footballhome_user -d footballhome
 
-## 🛠️ Tech Stack (Planned)
+# View tables
+\dt
 
-### Database
-- PostgreSQL 15+ with UUID extensions
-- Fully normalized schema (4NF compliant)
-- 25+ tables with comprehensive relationships
+# Run migrations
+docker exec footballhome_db psql -U footballhome_user -d footballhome -f /docker-entrypoint-initdb.d/01-init.sql
+```
 
-### Backend (Coming)
-- Node.js + Express.js + TypeScript
-- JWT authentication with refresh tokens
-- RESTful API with comprehensive validation
-- Role-based permission system
+## 📊 API Endpoints
 
-### Frontend (Coming)  
-- React 18+ with TypeScript
-- Material-UI for consistent design
-- Responsive design for mobile/desktop
-- Real-time notifications
+### Authentication
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/me` - Get current user
 
-### DevOps (Coming)
-- Docker containerization
-- Environment-based configuration
-- Local development with hot reload
+### Events
+- `GET /api/events/team/:teamId` - Get team events
+- `POST /api/events` - Create event (coaches only)
+- `PUT /api/events/:eventId` - Update event
+- `DELETE /api/events/:eventId` - Delete event
 
-## 🚦 Getting Started
+### RSVPs
+- `POST /api/rsvps` - Create/update RSVP
+- `GET /api/rsvps/my-rsvps` - Get user's RSVPs
+- `GET /api/rsvps/event/:eventId/attendees` - Get event attendees
 
-Currently setting up development environment. Stay tuned!
+## 🔄 Rebuilding from Scratch
 
----
+The entire system can be rebuilt at any time:
 
-**Football Home** - Making team management simple and efficient. 🏆
+```bash
+# Complete cleanup and rebuild
+docker compose down --volumes --rmi all
+docker system prune -f
+./setup-complete.sh
+```
+
+This will:
+1. Remove all containers and volumes
+2. Delete all built images
+3. Rebuild everything from source
+4. Initialize fresh database
+5. Start all services
+
+## 🚢 Production Deployment
+
+### Environment Variables
+Key variables for production in `.env`:
+```bash
+# Security
+JWT_SECRET=your-super-secret-production-key
+NODE_ENV=production
+
+# Database
+POSTGRES_PASSWORD=strong-production-password
+
+# Frontend
+REACT_APP_API_URL=https://api.footballhome.org
+
+# SSL (if using)
+SSL_CERT_PATH=./ssl/footballhome.org.crt
+SSL_KEY_PATH=./ssl/footballhome.org.key
+```
+
+### SSL Setup
+```bash
+# Place SSL certificates in ssl/ directory
+./scripts/setup-ssl.sh
+```
+
+## 🧪 Testing
+
+### Manual Testing
+1. Register a new user at http://footballhome.org:3000/register
+2. Login and view dashboard
+3. Create events (if you have coach/admin role)
+4. Test RSVP functionality
+
+### Health Checks
+```bash
+# Check all services
+curl http://footballhome.org:3000/health  # Frontend
+curl http://footballhome.org:3001/health  # Backend
+docker compose ps                          # All services
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature-name`
+3. Make changes and test with `./setup-complete.sh`
+4. Commit: `git commit -m "Add feature"`
+5. Push: `git push origin feature-name`
+6. Create Pull Request
+
+## 📝 License
+
+MIT License - see LICENSE file for details.
+
+## 🆘 Troubleshooting
+
+### Common Issues
+
+**"Docker not found"**
+```bash
+sudo apt install docker.io docker-compose-plugin
+sudo usermod -aG docker $USER
+# Logout and login again
+```
+
+**"Port already in use"**
+```bash
+docker compose down
+sudo lsof -i :3000 :3001 :5432  # Find conflicting processes
+```
+
+**"Database connection failed"**
+```bash
+docker compose logs db           # Check database logs
+docker compose restart db       # Restart database
+```
+
+**"Frontend not loading"**
+```bash
+# Add to /etc/hosts if using footballhome.org locally
+echo '127.0.0.1 footballhome.org' | sudo tee -a /etc/hosts
+```
+
+### Getting Help
+- Check service logs: `docker compose logs [service-name]`
+- View all services: `docker compose ps`
+- Restart specific service: `docker compose restart [service-name]`
+- Complete reset: `./setup-complete.sh`
