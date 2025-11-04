@@ -136,24 +136,12 @@ else
     exit 1
 fi
 
-# Create admin user and initial data
-echo "👤 Creating admin user and initial data..."
-if [ -f "scripts/create-admin-user.sql" ]; then
-    docker compose exec -T db psql -U footballhome_user -d footballhome -f /docker-entrypoint-initdb.d/create-admin-user.sql &>/dev/null || \
-    docker compose exec -T db psql -U footballhome_user -d footballhome < scripts/create-admin-user.sql &>/dev/null
-    
-    if [ $? -eq 0 ]; then
-        echo "✅ Admin user created successfully"
-    else
-        echo "⚠️  Admin user creation skipped (may already exist)"
-    fi
-else
-    echo "⚠️  Admin user script not found"
-fi
+# Admin user is automatically created during database initialization
+echo "✅ Admin user and initial data created during database setup"
 
 echo ""
 echo "🎉 Football Home is ready!"
-=========================="
+echo "=========================="
 echo "📱 Frontend:     https://footballhome.org (with SSL)"
 echo "🔧 Backend API:  https://footballhome.org/api"
 echo "🗄️  Database:    localhost:5432 (footballhome/footballhome_user)"

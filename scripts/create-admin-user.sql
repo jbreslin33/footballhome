@@ -14,7 +14,7 @@ INSERT INTO users (
     'jbreslin@footballhome.org',
     'John Breslin', 
     '(555) 123-4567',
-    '$2b$10$rqgX8YHKQr1HsrK8O1234uXHZY3K7dY8HqPXW2QHyZc1J3L5M7N9O', -- Password: m13m13m1
+    '$2b$12$aMik5CFlh./4NOKwNgS/cuxkPyJTw/r2VNKGpvLT7GMvcBJixT9Q2', -- Password: m13m13m1
     true
 ) ON CONFLICT (email) DO NOTHING;
 
