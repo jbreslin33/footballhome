@@ -42,8 +42,9 @@ NODE_ENV=production
 PORT=3001
 
 # Frontend Configuration
-REACT_APP_API_URL=http://footballhome.org:3001/api
+REACT_APP_API_URL=https://footballhome.org/api
 REACT_APP_APP_NAME=Football Home
+FRONTEND_URL=https://footballhome.org
 
 # pgAdmin Configuration
 PGADMIN_DEFAULT_EMAIL=admin@footballhome.org
@@ -127,7 +128,7 @@ else
 fi
 
 # Check frontend
-if curl -f http://localhost:3000/health &>/dev/null; then
+if curl -f http://localhost:3000 &>/dev/null; then
     echo "✅ Frontend is ready"
 else
     echo "❌ Frontend is not ready"
@@ -135,20 +136,43 @@ else
     exit 1
 fi
 
+# Create admin user and initial data
+echo "👤 Creating admin user and initial data..."
+if [ -f "scripts/create-admin-user.sql" ]; then
+    docker compose exec -T db psql -U footballhome_user -d footballhome -f /docker-entrypoint-initdb.d/create-admin-user.sql &>/dev/null || \
+    docker compose exec -T db psql -U footballhome_user -d footballhome < scripts/create-admin-user.sql &>/dev/null
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Admin user created successfully"
+    else
+        echo "⚠️  Admin user creation skipped (may already exist)"
+    fi
+else
+    echo "⚠️  Admin user script not found"
+fi
+
 echo ""
 echo "🎉 Football Home is ready!"
-echo "=========================="
-echo "📱 Frontend:     http://footballhome.org:3000"
-echo "🔧 Backend API:  http://footballhome.org:3001/api"
+=========================="
+echo "📱 Frontend:     https://footballhome.org (with SSL)"
+echo "🔧 Backend API:  https://footballhome.org/api"
 echo "🗄️  Database:    localhost:5432 (footballhome/footballhome_user)"
 echo "⚡ pgAdmin:     http://footballhome.org:5050"
+echo ""
+echo "🔑 Default Admin Login:"
+echo "  Email: jbreslin@footballhome.org"
+echo "  Password: m13m13m1"
+echo "  Roles: admin, coach, player"
+echo "  Team: Lighthouse 1893 SC Men's First Team"
 echo ""
 echo "Default pgAdmin Login:"
 echo "  Email: admin@footballhome.org"
 echo "  Password: admin123"
 echo ""
-echo "To add footballhome.org to your local hosts:"
-echo "  echo '127.0.0.1 footballhome.org' | sudo tee -a /etc/hosts"
+echo "⚠️  SSL Prerequisites:"
+echo "  - SSL certificates must exist at ssl/footballhome.org.{crt,key}"
+echo "  - Nginx configuration must be installed and active"
+echo "  - Domain must resolve: echo '127.0.0.1 footballhome.org' | sudo tee -a /etc/hosts"
 echo ""
 echo "To view logs: docker compose logs -f [service]"
 echo "To stop: docker compose down"

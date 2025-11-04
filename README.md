@@ -211,7 +211,48 @@ docker compose ps                          # All services
 5. Push: `git push origin feature-name`
 6. Create Pull Request
 
-## 📝 License
+## � Full Reproducibility 
+
+Football Home is designed to be **100% reproducible** from scratch on any server:
+
+### What's Automated
+✅ **Database Schema**: Complete PostgreSQL setup with all tables  
+✅ **Admin User**: Default admin account with all roles  
+✅ **Sample Team**: Lighthouse 1893 SC with proper structure  
+✅ **Docker Build**: Multi-stage builds with proper dependencies  
+✅ **SSL Setup**: Self-signed certificates for development  
+✅ **Nginx Config**: Production-ready reverse proxy  
+✅ **Environment**: All required environment variables  
+
+### Production Deployment
+```bash
+# For production servers
+./setup-production.sh
+```
+
+This script:
+- Installs Docker and Nginx
+- Generates SSL certificates  
+- Configures nginx reverse proxy
+- Sets up domain resolution
+- Creates complete Football Home system
+- Provides admin login credentials
+
+### Backup & Restore
+```bash
+# Backup complete system
+docker compose exec db pg_dump -U footballhome_user footballhome > backup.sql
+tar -czf footballhome-backup.tar.gz backup.sql .env docker-compose.yml
+
+# Restore on new server
+git clone https://github.com/jbreslin33/footballhome.git
+cd footballhome
+tar -xzf footballhome-backup.tar.gz
+./setup-production.sh
+docker compose exec -T db psql -U footballhome_user -d footballhome < backup.sql
+```
+
+## �📝 License
 
 MIT License - see LICENSE file for details.
 
