@@ -147,6 +147,7 @@ CREATE TABLE league_divisions (
     name VARCHAR(100) NOT NULL,              -- 'Division 1', 'Premier', 'Over 30'
     display_name VARCHAR(150) NOT NULL,      -- 'Premier Division', 'Division 1', 'Over 30 Division'
     slug VARCHAR(100) NOT NULL,              -- 'premier', 'division-1', 'over-30'
+    tier INTEGER NOT NULL DEFAULT 1,         -- Hierarchical ranking: 1=top tier, 2=second tier, etc.
     skill_level VARCHAR(50),                 -- 'Premier', 'Competitive', 'Recreational'
     age_group VARCHAR(50),                   -- 'Adult', 'Over 30', 'U23'
     description TEXT,
@@ -446,6 +447,7 @@ CREATE INDEX idx_league_conferences_league ON league_conferences(league_id);
 CREATE INDEX idx_league_conferences_slug ON league_conferences(slug);
 CREATE INDEX idx_league_divisions_conference ON league_divisions(conference_id);
 CREATE INDEX idx_league_divisions_slug ON league_divisions(slug);
+CREATE INDEX idx_league_divisions_tier ON league_divisions(tier);
 CREATE INDEX idx_sport_divisions_club ON sport_divisions(club_id);
 CREATE INDEX idx_sport_divisions_sport ON sport_divisions(sport_id);
 CREATE INDEX idx_sport_divisions_slug ON sport_divisions(slug);

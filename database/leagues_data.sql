@@ -49,43 +49,43 @@ WHERE l.name = 'APSL' AND l.season = '2024/25'
 AND NOT EXISTS (SELECT 1 FROM league_conferences lc WHERE lc.league_id = l.id AND lc.slug = 'terminus');
 
 -- APSL Conference Divisions (single Premier division per conference per bylaws)
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Premier', 'Premier Division', 'premier', 'Premier', 'Adult', 'Premier level competition'
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Premier', 'Premier Division', 'premier', 1, 'Premier', 'Adult', 'Premier level competition'
 FROM league_conferences lc 
 JOIN leagues l ON lc.league_id = l.id 
 WHERE l.name = 'APSL' AND lc.slug = 'mayflower'
 AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'premier');
 
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Premier', 'Premier Division', 'premier', 'Premier', 'Adult', 'Premier level competition'
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Premier', 'Premier Division', 'premier', 1, 'Premier', 'Adult', 'Premier level competition'
 FROM league_conferences lc 
 JOIN leagues l ON lc.league_id = l.id 
 WHERE l.name = 'APSL' AND lc.slug = 'constitution'
 AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'premier');
 
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Premier', 'Premier Division', 'premier', 'Premier', 'Adult', 'Premier level competition'
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Premier', 'Premier Division', 'premier', 1, 'Premier', 'Adult', 'Premier level competition'
 FROM league_conferences lc 
 JOIN leagues l ON lc.league_id = l.id 
 WHERE l.name = 'APSL' AND lc.slug = 'metropolitan'
 AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'premier');
 
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Premier', 'Premier Division', 'premier', 'Premier', 'Adult', 'Premier level competition'
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Premier', 'Premier Division', 'premier', 1, 'Premier', 'Adult', 'Premier level competition'
 FROM league_conferences lc 
 JOIN leagues l ON lc.league_id = l.id 
 WHERE l.name = 'APSL' AND lc.slug = 'delaware-river'
 AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'premier');
 
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Premier', 'Premier Division', 'premier', 'Premier', 'Adult', 'Premier level competition'
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Premier', 'Premier Division', 'premier', 1, 'Premier', 'Adult', 'Premier level competition'
 FROM league_conferences lc 
 JOIN leagues l ON lc.league_id = l.id 
 WHERE l.name = 'APSL' AND lc.slug = 'mid-atlantic'
 AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'premier');
 
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Premier', 'Premier Division', 'premier', 'Premier', 'Adult', 'Premier level competition'
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Premier', 'Premier Division', 'premier', 1, 'Premier', 'Adult', 'Premier level competition'
 FROM league_conferences lc 
 JOIN leagues l ON lc.league_id = l.id 
 WHERE l.name = 'APSL' AND lc.slug = 'terminus'
@@ -130,26 +130,35 @@ WHERE l.name = 'CASA' AND l.season = '2024/25'
 AND NOT EXISTS (SELECT 1 FROM league_conferences lc WHERE lc.league_id = l.id AND lc.slug = 'central-new-jersey');
 
 -- Philadelphia Conference Divisions
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Premier', 'Premier Division', 'premier', 'Premier', 'Adult', 'Top tier competitive division'
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Liga 1', 'Liga 1', 'liga-1', 1, 'Premier', 'Adult', 'Top tier competitive division'
 FROM league_conferences lc 
 JOIN leagues l ON lc.league_id = l.id 
 WHERE l.name = 'CASA' AND lc.slug = 'philadelphia'
-AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'premier');
+AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'liga-1');
 
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Division 1', 'Division 1', 'division-1', 'Competitive', 'Adult', 'Second tier competitive division'
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Liga 2', 'Liga 2', 'liga-2', 2, 'Competitive', 'Adult', 'Second tier competitive division'
 FROM league_conferences lc 
 JOIN leagues l ON lc.league_id = l.id 
 WHERE l.name = 'CASA' AND lc.slug = 'philadelphia'
-AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'division-1');
+AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'liga-2');
 
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Over 30', 'Over 30 Division', 'over-30', 'Recreational', 'Over 30', 'Veterans division for players over 30'
+-- Lancaster Conference Division
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Liga 1', 'Liga 1', 'liga-1', 1, 'Premier', 'Adult', 'Top tier competitive division'
 FROM league_conferences lc 
 JOIN leagues l ON lc.league_id = l.id 
-WHERE l.name = 'CASA' AND lc.slug = 'philadelphia'
-AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'over-30');
+WHERE l.name = 'CASA' AND lc.slug = 'lancaster'
+AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'liga-1');
+
+-- Central New Jersey Conference Division
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Liga 1', 'Liga 1', 'liga-1', 1, 'Premier', 'Adult', 'Top tier competitive division'
+FROM league_conferences lc 
+JOIN leagues l ON lc.league_id = l.id 
+WHERE l.name = 'CASA' AND lc.slug = 'central-new-jersey'
+AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'liga-1');
 
 -- TCWL League Conference (single conference structure for smaller league)
 INSERT INTO league_conferences (league_id, name, display_name, slug, description)
@@ -159,23 +168,23 @@ WHERE l.name = 'TCWL' AND l.season = '2024/25'
 AND NOT EXISTS (SELECT 1 FROM league_conferences lc WHERE lc.league_id = l.id AND lc.slug = 'main');
 
 -- TCWL League Divisions
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Premier', 'Premier Division', 'premier', 'Premier', 'Adult', 'Top tier women''s competitive division'
-FROM league_conferences lc 
-JOIN leagues l ON lc.league_id = l.id 
-WHERE l.name = 'TCWL' AND lc.slug = 'main'
-AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'premier');
-
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Division 1', 'Division 1', 'division-1', 'Competitive', 'Adult', 'Second tier women''s competitive division'
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Division 1', 'Division 1', 'division-1', 1, 'Premier', 'Adult', 'Top tier women''s competitive division'
 FROM league_conferences lc 
 JOIN leagues l ON lc.league_id = l.id 
 WHERE l.name = 'TCWL' AND lc.slug = 'main'
 AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'division-1');
 
-INSERT INTO league_divisions (conference_id, name, display_name, slug, skill_level, age_group, description)
-SELECT lc.id, 'Recreational', 'Recreational Division', 'recreational', 'Recreational', 'Adult', 'Women''s recreational division for casual play'
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Division 2', 'Division 2', 'division-2', 2, 'Competitive', 'Adult', 'Second tier women''s competitive division'
 FROM league_conferences lc 
 JOIN leagues l ON lc.league_id = l.id 
 WHERE l.name = 'TCWL' AND lc.slug = 'main'
-AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'recreational');
+AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'division-2');
+
+INSERT INTO league_divisions (conference_id, name, display_name, slug, tier, skill_level, age_group, description)
+SELECT lc.id, 'Division 3', 'Division 3', 'division-3', 3, 'Recreational', 'Adult', 'Women''s recreational division for casual play'
+FROM league_conferences lc 
+JOIN leagues l ON lc.league_id = l.id 
+WHERE l.name = 'TCWL' AND lc.slug = 'main'
+AND NOT EXISTS (SELECT 1 FROM league_divisions ld WHERE ld.conference_id = lc.id AND ld.slug = 'division-3');
