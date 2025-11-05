@@ -6,8 +6,7 @@ interface RegisterFormData {
   email: string;
   password: string;
   confirmPassword: string;
-  first_name: string;
-  last_name: string;
+  name: string;
   phone: string;
 }
 
@@ -17,8 +16,7 @@ const Register: React.FC = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    first_name: '',
-    last_name: '',
+    name: '',
     phone: ''
   });
   const [loading, setLoading] = useState(false);
@@ -86,36 +84,19 @@ const Register: React.FC = () => {
             </div>
           )}
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="first_name">First Name</label>
-              <input
-                type="text"
-                id="first_name"
-                name="first_name"
-                value={formData.first_name}
-                onChange={handleChange}
-                required
-                disabled={loading}
-                placeholder="First name"
-                autoComplete="given-name"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="last_name">Last Name</label>
-              <input
-                type="text"
-                id="last_name"
-                name="last_name"
-                value={formData.last_name}
-                onChange={handleChange}
-                required
-                disabled={loading}
-                placeholder="Last name"
-                autoComplete="family-name"
-              />
-            </div>
+          <div className="form-group">
+            <label htmlFor="name">Full Name</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              required
+              disabled={loading}
+              placeholder="Enter your full name"
+              autoComplete="name"
+            />
           </div>
 
           <div className="form-group">

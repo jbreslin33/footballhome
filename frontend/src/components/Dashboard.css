@@ -36,19 +36,35 @@
   font-size: 0.95rem;
 }
 
-.logout-button {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+.admin-toggle-button {
+  background: #0066cc;
   color: white;
+  border: none;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: background-color 0.2s ease;
+  margin-right: 0.5rem;
+  transition: background-color 0.3s ease;
+}
+
+.admin-toggle-button:hover {
+  background: #0052a3;
+}
+
+.logout-button {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s ease;
 }
 
 .logout-button:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: #c82333;
 }
 
 .dashboard-main {

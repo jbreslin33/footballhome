@@ -25,10 +25,10 @@ const authenticateToken = async (req, res, next) => {
         
         // Verify user still exists and session is valid
         const result = await dbPool.query(`
-            SELECT u.id, u.email, u.first_name, u.last_name, u.is_active,
+            SELECT u.id, u.email, u.name, u.is_active,
                    us.id as session_id, us.expires_at
             FROM users u
-            LEFT JOIN user_sessions us ON u.id = us.user_id AND us.token_hash = $1 AND us.expires_at > NOW()
+            JOIN user_sessions us ON u.id = us.user_id AND us.id = $1 AND us.expires_at > NOW() AND us.is_active = true
             WHERE u.id = $2 AND u.is_active = true
         `, [decoded.sessionId, decoded.userId]);
 
@@ -166,7 +166,7 @@ const optionalAuth = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret-key');
         
         const result = await dbPool.query(`
-            SELECT u.id, u.email, u.first_name, u.last_name, u.is_active
+            SELECT u.id, u.email, u.name, u.is_active
             FROM users u
             WHERE u.id = $1 AND u.is_active = true
         `, [decoded.userId]);

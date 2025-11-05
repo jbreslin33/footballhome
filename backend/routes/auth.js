@@ -123,8 +123,7 @@ router.post('/register', authLimiter, async (req, res) => {
             user: {
                 id: user.id,
                 email: user.email,
-                first_name: user.first_name,
-                last_name: user.last_name,
+                name: user.name,
                 created_at: user.created_at
             },
             token: jwtToken,
@@ -200,10 +199,7 @@ router.post('/login', authLimiter, async (req, res) => {
             user: {
                 id: user.id,
                 email: user.email,
-                first_name: user.first_name,
-                last_name: user.last_name,
-                email_verified: user.email_verified,
-                last_login_at: user.last_login_at
+                name: user.name
             },
             token: jwtToken,
             expires_in: 86400 // 24 hours in seconds
@@ -258,8 +254,8 @@ router.get('/me', require('../middleware/auth').authenticateToken, async (req, r
     try {
         // Get user with roles
         const result = await dbPool.query(`
-            SELECT u.id, u.email, u.first_name, u.last_name, u.phone, 
-                   u.email_verified, u.created_at, u.last_login_at,
+            SELECT u.id, u.email, u.name, u.phone, 
+                   u.created_at,
                    COALESCE(json_agg(r.name) FILTER (WHERE r.name IS NOT NULL), '[]') as roles
             FROM users u
             LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = true

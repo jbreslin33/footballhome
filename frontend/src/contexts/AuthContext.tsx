@@ -5,12 +5,10 @@ import axios from 'axios';
 interface User {
   id: string;
   email: string;
-  first_name: string;
-  last_name: string;
-  email_verified: boolean;
+  name: string;
+  phone?: string;
   roles: string[];
   created_at: string;
-  last_login_at: string;
 }
 
 interface AuthContextType {
@@ -26,8 +24,7 @@ interface AuthContextType {
 interface RegisterData {
   email: string;
   password: string;
-  first_name: string;
-  last_name: string;
+  name: string;
   phone?: string;
 }
 
