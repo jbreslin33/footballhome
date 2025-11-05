@@ -70,6 +70,32 @@
   margin-bottom: 2rem;
 }
 
+.current-role-indicator {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.role-label {
+  color: #6c757d;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.active-role-badge {
+  background: linear-gradient(135deg, #0066cc 0%, #004499 100%);
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: 25px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  box-shadow: 0 2px 8px rgba(0,102,204,0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .page-title {
   color: #2c3e50;
   margin: 0 0 0.5rem 0;

@@ -59,12 +59,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = () => {
 
       <div className="admin-content">
         <div className="page-header">
-          <h1 className="page-title">
-            {roleComponents[activeRole as keyof typeof roleComponents]?.icon} {' '}
-            {roleComponents[activeRole as keyof typeof roleComponents]?.title}
-          </h1>
+          <div className="current-role-indicator">
+            <span className="role-label">You are viewing as:</span>
+            <div className="active-role-badge">
+              {roleComponents[activeRole as keyof typeof roleComponents]?.icon} {' '}
+              {roleComponents[activeRole as keyof typeof roleComponents]?.title}
+            </div>
+          </div>
           <div className="breadcrumb">
-            Admin Dashboard → {roleComponents[activeRole as keyof typeof roleComponents]?.title}
+            Football Home → Admin Dashboard → {roleComponents[activeRole as keyof typeof roleComponents]?.title}
           </div>
         </div>
         <ActiveComponent />

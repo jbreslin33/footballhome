@@ -19,12 +19,22 @@ const Dashboard: React.FC = () => {
           <h1>Football Home</h1>
           <div className="user-info">
             <span>Welcome, {user.name || user.email}!</span>
+            
+            {/* Current Mode Indicator */}
+            <div className="current-mode">
+              <span className="mode-label">Current Mode:</span>
+              <span className={`mode-badge ${showAdmin ? 'admin' : 'player'}`}>
+                {showAdmin ? '⚙️ Admin Dashboard' : '👤 Player Dashboard'}
+              </span>
+            </div>
+
             {hasAdminRoles && (
               <button 
                 onClick={() => setShowAdmin(!showAdmin)} 
-                className="admin-toggle-button"
+                className="mode-switch-button"
+                title={showAdmin ? 'Switch to Player Dashboard' : 'Switch to Admin Dashboard'}
               >
-                {showAdmin ? 'Player View' : 'Admin View'}
+                Switch to {showAdmin ? '👤 Player' : '⚙️ Admin'}
               </button>
             )}
             <button onClick={logout} className="logout-button">
@@ -38,6 +48,18 @@ const Dashboard: React.FC = () => {
         <AdminDashboard />
       ) : (
         <main className="dashboard-main">
+          <div className="current-view-header">
+            <div className="view-indicator">
+              <span className="view-label">You are viewing:</span>
+              <div className="view-badge player">
+                👤 Player Dashboard
+              </div>
+            </div>
+            <div className="view-breadcrumb">
+              Football Home → Player Dashboard
+            </div>
+          </div>
+          
           <div className="dashboard-grid">
             <div className="dashboard-card">
               <h2>My Events</h2>
