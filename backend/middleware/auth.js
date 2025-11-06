@@ -61,13 +61,22 @@ const requireRole = (roles) => {
         }
 
         try {
+            console.log('🔍 Checking roles for user:', req.user.id);
+            console.log('📊 dbPool status:', dbPool ? 'initialized' : 'NOT INITIALIZED');
+            
+            if (!dbPool) {
+                throw new Error('Database pool not initialized in auth middleware');
+            }
+            
             // Get user roles
             const result = await dbPool.query(`
-                SELECT r.name as role_name, r.permissions
+                SELECT r.name as role_name
                 FROM user_roles ur
                 JOIN roles r ON ur.role_id = r.id
                 WHERE ur.user_id = $1 AND ur.is_active = true
             `, [req.user.id]);
+            
+            console.log('✅ Role query successful, found roles:', result.rows.map(r => r.role_name));
 
             const userRoles = result.rows.map(row => row.role_name);
             
@@ -86,7 +95,14 @@ const requireRole = (roles) => {
             req.userRoles = userRoles;
             next();
         } catch (error) {
-            console.error('Role check error:', error);
+            console.error('❌ Role check error details:', {
+                message: error.message,
+                code: error.code,
+                detail: error.detail,
+                column: error.column,
+                table: error.table,
+                stack: error.stack
+            });
             return res.status(500).json({ 
                 error: 'Permission check failed',
                 code: 'PERMISSION_CHECK_ERROR'

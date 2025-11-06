@@ -16,6 +16,7 @@ const { router: eventsRoutes, setDbPool: setEventsDbPool } = require('./routes/e
 const { router: rsvpsRoutes, setDbPool: setRsvpsDbPool } = require('./routes/rsvps');
 const { router: practicesRoutes, setDbPool: setPracticesDbPool } = require('./routes/practices');
 const { router: teamsRoutes, setDbPool: setTeamsDbPool } = require('./routes/teams');
+const { router: matchesRoutes, setDbPool: setMatchesDbPool } = require('./routes/matches');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -45,6 +46,7 @@ pool.connect((err, client, release) => {
     setPracticesDbPool(pool);
     setTeamsDbPool(pool);
     setVenuesDbPool(pool);
+    setMatchesDbPool(pool);
     
     release();
 });
@@ -76,6 +78,7 @@ app.use('/api/rsvps', rsvpsRoutes);
 app.use('/api/practices', practicesRoutes);
 app.use('/api/teams', teamsRoutes);
 app.use('/api/venues', venueRoutes);
+app.use('/api/matches', matchesRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -89,7 +92,8 @@ app.get('/', (req, res) => {
             rsvps: '/api/rsvps',
             practices: '/api/practices',
             teams: '/api/teams',
-            venues: '/api/venues'
+            venues: '/api/venues',
+            matches: '/api/matches'
         },
         documentation: 'https://github.com/your-repo/footballhome'
     });

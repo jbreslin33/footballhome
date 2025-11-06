@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import PracticeForm from '../PracticeForm';
+import MatchForm from '../MatchForm';
 
 const TeamCoach: React.FC = () => {
   const [showPracticeForm, setShowPracticeForm] = useState(false);
-  const [activeView, setActiveView] = useState<'dashboard' | 'add-practice'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'add-practice' | 'add-match'>('dashboard');
 
   if (activeView === 'add-practice') {
     return (
@@ -21,6 +22,29 @@ const TeamCoach: React.FC = () => {
         </header>
         
         <PracticeForm 
+          onCancel={() => setActiveView('dashboard')} 
+          onSuccess={() => setActiveView('dashboard')}
+        />
+      </div>
+    );
+  }
+
+  if (activeView === 'add-match') {
+    return (
+      <div className="admin-section">
+        <header className="admin-header">
+          <button 
+            className="back-btn"
+            onClick={() => setActiveView('dashboard')}
+            style={{ marginRight: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            ← Back to Dashboard
+          </button>
+          <h1>⚽ Schedule Match</h1>
+          <p>Create a new match for your team</p>
+        </header>
+        
+        <MatchForm 
           onCancel={() => setActiveView('dashboard')} 
           onSuccess={() => setActiveView('dashboard')}
         />
@@ -104,6 +128,12 @@ const TeamCoach: React.FC = () => {
           <div className="admin-actions">
             <button className="primary-btn">Team Selection</button>
             <button className="secondary-btn">Match Prep</button>
+            <button 
+              className="secondary-btn"
+              onClick={() => setActiveView('add-match')}
+            >
+              Add Match
+            </button>
           </div>
         </div>
 
