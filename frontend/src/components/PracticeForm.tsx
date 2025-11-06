@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import './PracticeForm.css';
 
@@ -49,10 +49,19 @@ interface PracticeFormProps {
 }
 
 const PracticeForm: React.FC<PracticeFormProps> = ({ onSuccess, onCancel }) => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [venues, setVenues] = useState<Venue[]>([]);
+  
+  // Debug user authentication
+  useEffect(() => {
+    console.log('👤 User authentication status:', {
+      isAuthenticated: !!user,
+      userId: user?.id,
+      userEmail: user?.email
+    });
+  }, [user]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   
@@ -80,16 +89,29 @@ const PracticeForm: React.FC<PracticeFormProps> = ({ onSuccess, onCancel }) => {
   useEffect(() => {
     const loadData = async () => {
       try {
+        console.log('🔄 Loading practice form data...');
+        console.log('👤 Current user:', user);
+        console.log('🔑 Current token:', token ? 'Present' : 'Not present');
+        console.log('🌐 API service configured with base URL: /api');
+        
         // Load venues, teams, and event types
         const [venuesResponse, teamsResponse, eventTypesResponse] = await Promise.all([
-          axios.get('/api/venues'),
-          axios.get('/api/teams'),
-          axios.get('/api/events/types?category=practice')
+          api.get('/venues'),
+          api.get('/teams'),
+          api.get('/events/types?category=practice')
         ]);
+
+        console.log('📊 API Responses:', {
+          venues: venuesResponse.data.venues?.length || 0,
+          teams: teamsResponse.data.teams?.length || 0,
+          eventTypes: eventTypesResponse.data.event_types?.length || 0
+        });
 
         setVenues(venuesResponse.data.venues || []);
         setTeams(teamsResponse.data.teams || []);
         setEventTypes(eventTypesResponse.data.event_types || []);
+
+        console.log('✅ Practice form data loaded successfully');
 
         // Set default event type to training if available
         const trainingType = eventTypesResponse.data.event_types?.find((type: EventType) => type.name === 'training');
@@ -102,7 +124,14 @@ const PracticeForm: React.FC<PracticeFormProps> = ({ onSuccess, onCancel }) => {
         }
 
       } catch (error) {
-        console.error('Failed to load form data:', error);
+        console.error('❌ Failed to load form data:', error);
+        if (error instanceof Error) {
+          console.error('Error details:', {
+            message: error.message,
+            response: (error as any).response?.data,
+            status: (error as any).response?.status
+          });
+        }
         setError('Failed to load form data');
       }
     };
@@ -183,7 +212,7 @@ const PracticeForm: React.FC<PracticeFormProps> = ({ onSuccess, onCancel }) => {
         notes: formData.notes
       };
 
-      await axios.post('/api/practices', practiceData);
+      await api.post('/practices', practiceData);
       
       if (onSuccess) {
         onSuccess();

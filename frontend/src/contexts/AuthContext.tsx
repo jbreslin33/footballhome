@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
+import api, { setAuthToken } from '../services/api';
 
 // Types
 interface User {
@@ -35,11 +35,9 @@ interface AuthProviderProps {
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// API base URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-
-// Configure axios defaults
-axios.defaults.baseURL = API_BASE_URL;
+console.log('🔧 API Configuration:');
+console.log('  Using API service with base URL: /api');
+console.log('  window.location.origin:', window.location.origin);
 
 // Auth Provider Component
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
@@ -47,39 +45,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
-  // Set up axios interceptor for token
+  // Set up API auth token
   useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
+    setAuthToken(token);
   }, [token]);
 
-  // Response interceptor to handle token expiration
-  useEffect(() => {
-    const responseInterceptor = axios.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401 && token) {
-          // Token expired or invalid
-          logout();
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      axios.interceptors.response.eject(responseInterceptor);
-    };
-  }, [token]);
+  // Token expiration handling is now done in the API service
 
   // Load user on app start
   useEffect(() => {
     const loadUser = async () => {
       if (token) {
         try {
-          const response = await axios.get('/auth/me');
+          const response = await api.get('/auth/me');
           setUser(response.data.user);
         } catch (error) {
           console.error('Failed to load user:', error);
@@ -96,12 +74,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string): Promise<void> => {
     try {
-      const response = await axios.post('/auth/login', { email, password });
-      const { user: userData, token: newToken } = response.data;
+      const response = await api.post('/auth/login', { email, password });
+      const { token: newToken } = response.data;
       
-      setUser(userData);
+      // Set token first so the next request has authorization
       setToken(newToken);
       localStorage.setItem('token', newToken);
+      
+      // Now get full user data including roles
+      const userResponse = await api.get('/auth/me');
+      setUser(userResponse.data.user);
     } catch (error: any) {
       throw new Error(error.response?.data?.error || 'Login failed');
     }
@@ -109,7 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (userData: RegisterData): Promise<void> => {
     try {
-      const response = await axios.post('/auth/register', userData);
+      const response = await api.post('/auth/register', userData);
       const { user: newUser, token: newToken } = response.data;
       
       setUser(newUser);
@@ -123,13 +105,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     // Call logout endpoint (fire and forget)
     if (token) {
-      axios.post('/auth/logout').catch(console.error);
+      api.post('/auth/logout').catch(console.error);
     }
     
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
+    setAuthToken(null);
   };
 
   const updateUser = (userData: Partial<User>) => {

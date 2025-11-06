@@ -191,6 +191,18 @@ router.post('/login', authLimiter, async (req, res) => {
         const ipAddress = req.ip || req.connection.remoteAddress;
         const { sessionId, token } = await createUserSession(user.id, userAgent, ipAddress);
 
+        // Get user roles
+        const rolesResult = await dbPool.query(`
+            SELECT COALESCE(json_agg(r.name) FILTER (WHERE r.name IS NOT NULL), '[]') as roles
+            FROM user_roles ur
+            LEFT JOIN roles r ON ur.role_id = r.id
+            WHERE ur.user_id = $1 AND ur.is_active = true
+        `, [user.id]);
+
+        const userRoles = rolesResult.rows[0]?.roles || [];
+        console.log('🔍 LOGIN DEBUG - Roles result:', JSON.stringify(rolesResult.rows[0]));
+        console.log('🔍 LOGIN DEBUG - User roles array:', JSON.stringify(userRoles));
+
         // Generate JWT
         const jwtToken = generateToken(user.id, sessionId);
 
@@ -199,7 +211,8 @@ router.post('/login', authLimiter, async (req, res) => {
             user: {
                 id: user.id,
                 email: user.email,
-                name: user.name
+                name: user.name,
+                roles: userRoles
             },
             token: jwtToken,
             expires_in: 86400 // 24 hours in seconds
