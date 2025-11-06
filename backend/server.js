@@ -45,7 +45,6 @@ pool.connect((err, client, release) => {
     setPracticesDbPool(pool);
     setTeamsDbPool(pool);
     setVenuesDbPool(pool);
-    setVenuesDbPool(pool);
     
     release();
 });
@@ -53,7 +52,7 @@ pool.connect((err, client, release) => {
 // Middleware
 app.use(helmet()); // Security headers
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://footballhome.org:3000',
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true
 })); // Enable CORS with credentials
 app.use(morgan('combined')); // Logging
