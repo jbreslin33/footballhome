@@ -51,7 +51,8 @@ interface PracticeFormProps {
 const PracticeForm: React.FC<PracticeFormProps> = ({ onSuccess, onCancel }) => {
   const { user, token } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [venues, setVenues] = useState<Venue[]>([]);
   
   // Debug user authentication
@@ -212,11 +213,18 @@ const PracticeForm: React.FC<PracticeFormProps> = ({ onSuccess, onCancel }) => {
         notes: formData.notes
       };
 
-      await api.post('/practices', practiceData);
+      console.log('🚀 Submitting practice data:', practiceData);
+      const response = await api.post('/practices', practiceData);
+      console.log('✅ Practice created successfully:', response.data);
       
-      if (onSuccess) {
-        onSuccess();
-      }
+      setSuccess(true);
+      
+      // Redirect after a brief success message
+      setTimeout(() => {
+        if (onSuccess) {
+          onSuccess();
+        }
+      }, 2000);
     } catch (error: any) {
       console.error('Failed to create practice:', error);
       setError(error.response?.data?.error || 'Failed to create practice session');
@@ -236,6 +244,12 @@ const PracticeForm: React.FC<PracticeFormProps> = ({ onSuccess, onCancel }) => {
         {error && (
           <div className="error-message">
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="success-message">
+            ✅ Practice session created successfully! Redirecting...
           </div>
         )}
 
@@ -516,12 +530,12 @@ const PracticeForm: React.FC<PracticeFormProps> = ({ onSuccess, onCancel }) => {
                 Cancel
               </button>
             )}
-            <button
-              type="submit"
+            <button 
+              type="submit" 
               className="primary-button"
-              disabled={loading}
+              disabled={loading || success}
             >
-              {loading ? 'Creating...' : 'Create Practice Session'}
+              {success ? '✅ Created!' : loading ? 'Creating...' : 'Create Practice Session'}
             </button>
           </div>
         </form>

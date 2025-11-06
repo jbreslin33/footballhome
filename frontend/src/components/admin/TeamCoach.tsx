@@ -20,7 +20,10 @@ const TeamCoach: React.FC = () => {
           <p>Create a new training session for your team</p>
         </header>
         
-        <PracticeForm onCancel={() => setActiveView('dashboard')} />
+        <PracticeForm 
+          onCancel={() => setActiveView('dashboard')} 
+          onSuccess={() => setActiveView('dashboard')}
+        />
       </div>
     );
   }
