@@ -10,10 +10,12 @@ const { generalLimiter } = require('./middleware/rateLimit');
 const { setDbPool: setAuthDbPool } = require('./middleware/auth');
 
 // Import routes
-// const venueRoutes = require('./routes/venues'); // Temporarily disabled - requires Google Maps API
+const { router: venueRoutes, setDbPool: setVenuesDbPool } = require('./routes/venues-simple');
 const { router: authRoutes, setDbPool: setAuthRoutesDbPool } = require('./routes/auth');
 const { router: eventsRoutes, setDbPool: setEventsDbPool } = require('./routes/events');
 const { router: rsvpsRoutes, setDbPool: setRsvpsDbPool } = require('./routes/rsvps');
+const { router: practicesRoutes, setDbPool: setPracticesDbPool } = require('./routes/practices');
+const { router: teamsRoutes, setDbPool: setTeamsDbPool } = require('./routes/teams');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -40,6 +42,10 @@ pool.connect((err, client, release) => {
     setAuthRoutesDbPool(pool);
     setEventsDbPool(pool);
     setRsvpsDbPool(pool);
+    setPracticesDbPool(pool);
+    setTeamsDbPool(pool);
+    setVenuesDbPool(pool);
+    setVenuesDbPool(pool);
     
     release();
 });
@@ -68,7 +74,9 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/rsvps', rsvpsRoutes);
-// app.use('/api/venues', venueRoutes); // Temporarily disabled - requires Google Maps API
+app.use('/api/practices', practicesRoutes);
+app.use('/api/teams', teamsRoutes);
+app.use('/api/venues', venueRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -79,7 +87,10 @@ app.get('/', (req, res) => {
             health: '/health',
             auth: '/api/auth',
             events: '/api/events',
-            rsvps: '/api/rsvps'
+            rsvps: '/api/rsvps',
+            practices: '/api/practices',
+            teams: '/api/teams',
+            venues: '/api/venues'
         },
         documentation: 'https://github.com/your-repo/footballhome'
     });

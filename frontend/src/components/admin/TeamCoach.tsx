@@ -1,6 +1,30 @@
-import React from 'react';
+import React, { useState } from 'react';
+import PracticeForm from '../PracticeForm';
 
 const TeamCoach: React.FC = () => {
+  const [showPracticeForm, setShowPracticeForm] = useState(false);
+  const [activeView, setActiveView] = useState<'dashboard' | 'add-practice'>('dashboard');
+
+  if (activeView === 'add-practice') {
+    return (
+      <div className="admin-section">
+        <header className="admin-header">
+          <button 
+            className="back-btn"
+            onClick={() => setActiveView('dashboard')}
+            style={{ marginRight: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            ← Back to Dashboard
+          </button>
+          <h1>📋 Schedule Practice Session</h1>
+          <p>Create a new training session for your team</p>
+        </header>
+        
+        <PracticeForm onCancel={() => setActiveView('dashboard')} />
+      </div>
+    );
+  }
+
   return (
     <div className="admin-section">
       <header className="admin-header">
@@ -55,7 +79,12 @@ const TeamCoach: React.FC = () => {
           </div>
           <div className="admin-actions">
             <button className="primary-btn">Manage Training</button>
-            <button className="secondary-btn">Add Session</button>
+            <button 
+              className="secondary-btn"
+              onClick={() => setActiveView('add-practice')}
+            >
+              Add Session
+            </button>
           </div>
         </div>
 

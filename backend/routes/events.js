@@ -43,6 +43,39 @@ const updateEventSchema = Joi.object({
     return obj;
 });
 
+// Get event types (optionally filtered by category)
+router.get('/types', 
+    authenticateToken,
+    async (req, res) => {
+        try {
+            const { category } = req.query;
+            
+            let query = 'SELECT * FROM event_types WHERE 1=1';
+            const params = [];
+            
+            if (category) {
+                query += ' AND category = $1';
+                params.push(category);
+            }
+            
+            query += ' ORDER BY category, name';
+            
+            const result = await dbPool.query(query, params);
+            
+            res.json({
+                event_types: result.rows
+            });
+            
+        } catch (error) {
+            console.error('Get event types error:', error);
+            res.status(500).json({
+                error: 'Failed to get event types',
+                code: 'GET_EVENT_TYPES_ERROR'
+            });
+        }
+    }
+);
+
 // Get events for a team
 router.get('/team/:teamId', 
     authenticateToken,

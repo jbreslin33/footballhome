@@ -117,7 +117,7 @@ const requireTeamMembership = (teamIdParam = 'teamId') => {
         try {
             // Check if user is member of the team or has admin role
             const result = await dbPool.query(`
-                SELECT tm.team_id, tm.role as team_role, r.name as system_role
+                SELECT tm.team_id, 'member' as team_role, r.name as system_role
                 FROM team_members tm
                 LEFT JOIN user_roles ur ON ur.user_id = tm.user_id AND ur.is_active = true
                 LEFT JOIN roles r ON ur.role_id = r.id
