@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import AdminDashboard from './admin/AdminDashboard';
+import RSVPManager from './RSVPManager';
 import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showRSVPs, setShowRSVPs] = useState(false);
 
   if (!user) return null;
 
@@ -46,6 +48,25 @@ const Dashboard: React.FC = () => {
 
       {showAdmin ? (
         <AdminDashboard />
+      ) : showRSVPs ? (
+        <div className="dashboard-main">
+          <div className="current-view-header">
+            <button 
+              onClick={() => setShowRSVPs(false)}
+              className="back-button"
+              style={{ marginBottom: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              ← Back to Dashboard
+            </button>
+            <div className="view-indicator">
+              <span className="view-label">You are viewing:</span>
+              <div className="view-badge player">
+                📝 RSVP Management
+              </div>
+            </div>
+          </div>
+          <RSVPManager onClose={() => setShowRSVPs(false)} />
+        </div>
       ) : (
         <main className="dashboard-main">
           <div className="current-view-header">
@@ -70,7 +91,7 @@ const Dashboard: React.FC = () => {
             <div className="dashboard-card">
               <h2>My RSVPs</h2>
               <p>See your RSVP status for upcoming events and respond to new invitations.</p>
-              <button className="card-button" onClick={() => alert('RSVPs view would open here')}>View RSVPs</button>
+              <button className="card-button" onClick={() => setShowRSVPs(true)}>View RSVPs</button>
             </div>
 
             <div className="dashboard-card">
