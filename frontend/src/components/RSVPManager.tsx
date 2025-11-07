@@ -48,12 +48,15 @@ const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
 
   // Load upcoming events that need RSVP
   const loadUpcomingEvents = async () => {
+    console.log('📅 Loading upcoming events...');
     try {
       setLoading(true);
       
       // First get user's teams
+      console.log('👥 Fetching user teams...');
       const teamsResponse = await api.get('/teams');
       const userTeams = teamsResponse.data.teams || [];
+      console.log('👥 User teams:', userTeams.length, userTeams.map((t: any) => t.name));
       
       if (userTeams.length === 0) {
         setEvents([]);
@@ -62,16 +65,20 @@ const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
       }
       
       // Get events for all user's teams
+      console.log('📊 Fetching events for each team...');
       const eventPromises = userTeams.map((team: any) => 
         api.get(`/events/team/${team.id}`, {
           params: {
             start_date: new Date().toISOString(),
             limit: 20
           }
-        }).then(response => ({
-          ...response,
-          teamName: team.name
-        }))
+        }).then(response => {
+          console.log(`📊 Events for team ${team.name}:`, response.data.events?.length || 0);
+          return {
+            ...response,
+            teamName: team.name
+          };
+        })
       );
       
       const eventResponses = await Promise.all(eventPromises);
@@ -80,16 +87,20 @@ const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
       const allEvents = eventResponses.flatMap(response => 
         (response.data.events || []).map((event: any) => ({
           ...event,
-          team_name: response.teamName
+          team_name: response.teamName || event.team_name
         }))
       );
+      
+      console.log('📊 Total combined events:', allEvents.length);
+      console.log('📊 Events with RSVP status:', allEvents.map((e: any) => ({ id: e.id, title: e.title, rsvp: e.my_rsvp_status })));
       
       // Sort by event date
       allEvents.sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
       
       setEvents(allEvents);
+      console.log('✅ Events loaded successfully');
     } catch (err: any) {
-      console.error('Failed to load upcoming events:', err);
+      console.error('❌ Failed to load upcoming events:', err);
       setError('Failed to load upcoming events');
     } finally {
       setLoading(false);
@@ -126,27 +137,42 @@ const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
 
   // Handle RSVP submission
   const handleRSVP = async (eventId: string, status: 'attending' | 'not_attending' | 'maybe', notes: string = '') => {
+    console.log('🎯 RSVP handleRSVP called:', { eventId, status, notes });
+    
     try {
       setSubmitting(eventId);
+      console.log('📤 Submitting RSVP request...');
       
-      await api.post('/rsvps', {
+      const response = await api.post('/rsvps', {
         event_id: eventId,
         status,
         notes
       });
       
+      console.log('✅ RSVP request successful:', response.data);
+      
       // Refresh the current view
       if (activeTab === 'upcoming') {
+        console.log('🔄 Refreshing upcoming events...');
         loadUpcomingEvents();
       } else {
+        console.log('🔄 Refreshing my RSVPs...');
         loadMyRSVPs();
       }
       
+      console.log('🎉 RSVP process complete');
+      
     } catch (err: any) {
-      console.error('Failed to save RSVP:', err);
+      console.error('❌ Failed to save RSVP:', err);
+      console.error('❌ Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
       setError(err.response?.data?.error || 'Failed to save RSVP');
     } finally {
       setSubmitting(null);
+      console.log('🏁 RSVP submission finished');
     }
   };
 
