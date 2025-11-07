@@ -37,7 +37,7 @@ const reverseStatusMappings = {
 const rsvpSchema = Joi.object({
     event_id: Joi.string().uuid().required(),
     status: Joi.string().valid('attending', 'not_attending', 'maybe').required(),
-    notes: Joi.string().max(500).optional()
+    notes: Joi.string().max(500).allow('').optional()
 });
 
 const updateRsvpSchema = Joi.object({
@@ -417,7 +417,7 @@ router.get('/event/:eventId/attendees',
             const result = await dbPool.query(`
                 SELECT rs.name as status_name, rs.display_name as status_display, 
                        rs.color as status_color, r.notes, r.response_date,
-                       u.id as user_id, u.first_name, u.last_name, u.email,
+                       u.id as user_id, u.name as full_name, u.email,
                        p.name as position_name
                 FROM rsvps r
                 JOIN rsvp_statuses rs ON r.rsvp_status_id = rs.id
@@ -425,7 +425,7 @@ router.get('/event/:eventId/attendees',
                 LEFT JOIN team_members tm ON u.id = tm.user_id AND tm.team_id = $2
                 LEFT JOIN positions p ON tm.position_id = p.id
                 WHERE r.event_id = $1
-                ORDER BY rs.sort_order, u.last_name, u.first_name
+                ORDER BY rs.sort_order, u.name
             `, [eventId, teamId]);
 
             // Group by status
@@ -438,13 +438,13 @@ router.get('/event/:eventId/attendees',
 
             // Get all team members for no_response list
             const allMembers = await dbPool.query(`
-                SELECT u.id, u.first_name, u.last_name, u.email,
+                SELECT u.id, u.name as full_name, u.email,
                        p.name as position_name
                 FROM team_members tm
                 JOIN users u ON tm.user_id = u.id
                 LEFT JOIN positions p ON tm.position_id = p.id
                 WHERE tm.team_id = $1 AND tm.is_active = true
-                ORDER BY u.last_name, u.first_name
+                ORDER BY u.name
             `, [teamId]);
 
             const rsvpUserIds = new Set(result.rows.map(row => row.user_id));
@@ -454,8 +454,7 @@ router.get('/event/:eventId/attendees',
                 if (!rsvpUserIds.has(member.id)) {
                     attendees.no_response.push({
                         user_id: member.id,
-                        first_name: member.first_name,
-                        last_name: member.last_name,
+                        full_name: member.full_name,
                         email: member.email,
                         position_name: member.position_name,
                         status: null,
