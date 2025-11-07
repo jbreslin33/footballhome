@@ -12,11 +12,18 @@ const setDbPool = (pool) => {
     dbPool = pool;
 };
 
-// Status mappings to database UUIDs
+// Status mappings to database UUIDs - using actual database names
 const statusMappings = {
     'attending': '550e8400-e29b-41d4-a716-446655440301',     // yes
     'not_attending': '550e8400-e29b-41d4-a716-446655440303', // no  
     'maybe': '550e8400-e29b-41d4-a716-446655440302'          // maybe
+};
+
+// Database name to API name mapping
+const dbToApiStatusMappings = {
+    'yes': 'attending',
+    'no': 'not_attending',
+    'maybe': 'maybe'
 };
 
 // Reverse mapping for responses
@@ -76,8 +83,9 @@ router.post('/',
 
             // Check if user is member of the team
             const teamCheck = await dbPool.query(`
-                SELECT tm.team_id, tm.role as team_role
+                SELECT tm.team_id, p.name as position_name
                 FROM team_members tm
+                LEFT JOIN positions p ON tm.position_id = p.id
                 WHERE tm.user_id = $1 AND tm.team_id = $2 AND tm.is_active = true
             `, [req.user.id, event.team_id]);
 
@@ -257,7 +265,7 @@ router.get('/event/:eventId',
 
             const rsvp = result.rows[0];
             // Convert status to expected format
-            rsvp.status = reverseStatusMappings[statusMappings[rsvp.status_name]] || rsvp.status_name;
+            rsvp.status = dbToApiStatusMappings[rsvp.status_name] || rsvp.status_name;
 
             res.json({
                 rsvp: rsvp
@@ -340,7 +348,7 @@ router.get('/my-rsvps',
             // Convert status to expected format
             const rsvps = result.rows.map(rsvp => ({
                 ...rsvp,
-                status: reverseStatusMappings[statusMappings[rsvp.status_name]] || rsvp.status_name
+                status: dbToApiStatusMappings[rsvp.status_name] || rsvp.status_name
             }));
 
             res.json({
@@ -386,7 +394,7 @@ router.get('/event/:eventId/attendees',
 
             // Check authorization (team member or admin)
             const authCheck = await dbPool.query(`
-                SELECT tm.team_id, 'member' as team_role, r.name as system_role
+                SELECT tm.team_id, 'member' as membership_type, r.name as system_role
                 FROM team_members tm
                 LEFT JOIN user_roles ur ON ur.user_id = tm.user_id AND ur.is_active = true
                 LEFT JOIN roles r ON ur.role_id = r.id
@@ -410,7 +418,6 @@ router.get('/event/:eventId/attendees',
                 SELECT rs.name as status_name, rs.display_name as status_display, 
                        rs.color as status_color, r.notes, r.response_date,
                        u.id as user_id, u.first_name, u.last_name, u.email,
-                       tm.role as team_role,
                        p.name as position_name
                 FROM rsvps r
                 JOIN rsvp_statuses rs ON r.rsvp_status_id = rs.id
@@ -432,7 +439,7 @@ router.get('/event/:eventId/attendees',
             // Get all team members for no_response list
             const allMembers = await dbPool.query(`
                 SELECT u.id, u.first_name, u.last_name, u.email,
-                       tm.role as team_role, p.name as position_name
+                       p.name as position_name
                 FROM team_members tm
                 JOIN users u ON tm.user_id = u.id
                 LEFT JOIN positions p ON tm.position_id = p.id
@@ -450,7 +457,6 @@ router.get('/event/:eventId/attendees',
                         first_name: member.first_name,
                         last_name: member.last_name,
                         email: member.email,
-                        team_role: member.team_role,
                         position_name: member.position_name,
                         status: null,
                         notes: null,
@@ -461,7 +467,7 @@ router.get('/event/:eventId/attendees',
 
             // Group RSVPs by status
             result.rows.forEach(row => {
-                const statusKey = reverseStatusMappings[statusMappings[row.status_name]] || 'no_response';
+                const statusKey = dbToApiStatusMappings[row.status_name] || 'no_response';
                 if (attendees[statusKey]) {
                     attendees[statusKey].push({
                         ...row,
