@@ -143,11 +143,15 @@ const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
       setSubmitting(eventId);
       console.log('📤 Submitting RSVP request...');
       
-      const response = await api.post('/rsvps', {
+      const requestData = {
         event_id: eventId,
         status,
         notes
-      });
+      };
+      console.log('📝 Request payload:', requestData);
+      console.log('📝 Current token:', localStorage.getItem('token') ? 'Token exists' : 'No token found');
+      
+      const response = await api.post('/rsvps', requestData);
       
       console.log('✅ RSVP request successful:', response.data);
       
@@ -167,9 +171,12 @@ const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
       console.error('❌ Error details:', {
         message: err.message,
         response: err.response?.data,
-        status: err.response?.status
+        status: err.response?.status,
+        config: err.config
       });
-      setError(err.response?.data?.error || 'Failed to save RSVP');
+      console.error('❌ Full error response:', err.response);
+      console.error('❌ Request config:', err.config);
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to save RSVP');
     } finally {
       setSubmitting(null);
       console.log('🏁 RSVP submission finished');
