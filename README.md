@@ -285,8 +285,16 @@ docker compose restart db       # Restart database
 echo '127.0.0.1 footballhome.org' | sudo tee -a /etc/hosts
 ```
 
+**"Game/Match submission not working"**
+```bash
+# Rebuild backend container with latest code
+docker compose build backend --no-cache
+docker compose up -d backend
+```
+
 ### Getting Help
 - Check service logs: `docker compose logs [service-name]`
 - View all services: `docker compose ps`
 - Restart specific service: `docker compose restart [service-name]`
+- Force rebuild: `docker compose build --no-cache && docker compose up -d`
 - Complete reset: `./setup-complete.sh`
