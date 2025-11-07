@@ -12,7 +12,7 @@ const { setDbPool: setAuthDbPool } = require('./middleware/auth');
 // Import routes
 const { router: venueRoutes, setDbPool: setVenuesDbPool } = require('./routes/venues-simple');
 const { router: authRoutes, setDbPool: setAuthRoutesDbPool } = require('./routes/auth');
-const { router: eventsRoutes, setDbPool: setEventsDbPool } = require('./routes/events-test');
+const { router: eventsRoutes, setDbPool: setEventsDbPool } = require('./routes/events-simple');
 const { router: rsvpsRoutes, setDbPool: setRsvpsDbPool } = require('./routes/rsvps');
 const { router: practicesRoutes, setDbPool: setPracticesDbPool } = require('./routes/practices');
 const { router: teamsRoutes, setDbPool: setTeamsDbPool } = require('./routes/teams');
@@ -49,6 +49,8 @@ app.get('/health', (req, res) => {
         version: '1.0.0'
     });
 });
+
+console.log('🚀 ABOUT TO SETUP DATABASE AND ROUTES');
 
 // Setup database and routes immediately
 console.log('🔄 Setting up database connection and routes...');
