@@ -38,13 +38,30 @@ interface RSVPManagerProps {
 }
 
 const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
-  const { } = useAuth(); // Authentication context available if needed
+  const { login } = useAuth(); // Authentication context for token refresh
   const [activeTab, setActiveTab] = useState<'upcoming' | 'my-rsvps'>('upcoming');
   const [events, setEvents] = useState<Event[]>([]);
   const [rsvps, setRsvps] = useState<RSVP[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<string | null>(null);
+
+  // Temporary function to force token refresh
+  const forceTokenRefresh = async () => {
+    try {
+      console.log('🔄 Forcing token refresh...');
+      await login('jbreslin@footballhome.org', 'm13m13m1');
+      console.log('✅ Token refreshed successfully!');
+      setError(null);
+      // Reload events after token refresh
+      if (activeTab === 'upcoming') {
+        loadUpcomingEvents();
+      }
+    } catch (err: any) {
+      console.error('❌ Token refresh failed:', err);
+      setError('Failed to refresh token: ' + err.message);
+    }
+  };
 
   // Load upcoming events that need RSVP
   const loadUpcomingEvents = async () => {
@@ -229,6 +246,23 @@ const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
       <div className="rsvp-header">
         <h2>🗳️ RSVP Management</h2>
         <p>Respond to event invitations and manage your attendance</p>
+        <div style={{ marginBottom: '10px' }}>
+          <button 
+            onClick={forceTokenRefresh}
+            style={{
+              backgroundColor: '#f39c12',
+              color: 'white',
+              border: 'none',
+              padding: '5px 10px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px',
+              marginRight: '10px'
+            }}
+          >
+            🔄 Refresh Token (Temp Fix)
+          </button>
+        </div>
         {onClose && (
           <button className="close-btn" onClick={onClose}>×</button>
         )}
