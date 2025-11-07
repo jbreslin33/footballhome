@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import RSVPManager from '../RSVPManager';
 
 const PlayerView: React.FC = () => {
   const { user } = useAuth();
-  const [events, setEvents] = useState<any[]>([]);
-  const [rsvps, setRsvps] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [activeView, setActiveView] = useState<'dashboard' | 'rsvp-manager'>('dashboard');
 
   const handleEditProfile = () => {
     alert('Edit Profile functionality would open here');
@@ -16,7 +15,7 @@ const PlayerView: React.FC = () => {
   };
 
   const handleManageRSVPs = () => {
-    alert('RSVP management would open here');
+    setActiveView('rsvp-manager');
   };
 
   const handleViewStats = () => {
@@ -30,6 +29,28 @@ const PlayerView: React.FC = () => {
   const handleAccountSettings = () => {
     alert('Account settings would open here');
   };
+
+  // Show RSVP Manager if that's the active view
+  if (activeView === 'rsvp-manager') {
+    return (
+      <div className="admin-section">
+        <header className="admin-header">
+          <button 
+            className="back-btn"
+            onClick={() => setActiveView('dashboard')}
+            style={{ marginRight: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            ← Back to Dashboard
+          </button>
+          <h1>📝 RSVP Management</h1>
+          <p>Manage your event responses and attendance</p>
+        </header>
+        
+        <RSVPManager onClose={() => setActiveView('dashboard')} />
+      </div>
+    );
+  }
+
   return (
     <div className="admin-section">
       <header className="admin-header">

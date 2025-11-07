@@ -30,7 +30,27 @@ const pool = new Pool({
     port: process.env.POSTGRES_PORT || 5432,
 });
 
-// Test database connection and inject into routes
+// Middleware (set up before routes)
+app.use(helmet()); // Security headers
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true
+})); // Enable CORS with credentials
+app.use(morgan('combined')); // Logging
+app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
+app.use(generalLimiter); // Rate limiting
+
+// Health check endpoint (always available)
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        service: 'footballhome-backend',
+        version: '1.0.0'
+    });
+});
+
+// Test database connection and setup routes
 pool.connect((err, client, release) => {
     if (err) {
         console.error('❌ Error connecting to database:', err.message);
@@ -48,37 +68,17 @@ pool.connect((err, client, release) => {
     setVenuesDbPool(pool);
     setMatchesDbPool(pool);
     
+    // Mount API routes AFTER database connection is established
+    app.use('/api/auth', authRoutes);
+    app.use('/api/events', eventsRoutes);
+    app.use('/api/rsvps', rsvpsRoutes);
+    app.use('/api/practices', practicesRoutes);
+    app.use('/api/teams', teamsRoutes);
+    app.use('/api/venues', venueRoutes);
+    app.use('/api/matches', matchesRoutes);
+    
     release();
 });
-
-// Middleware
-app.use(helmet()); // Security headers
-app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true
-})); // Enable CORS with credentials
-app.use(morgan('combined')); // Logging
-app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
-app.use(generalLimiter); // Rate limiting
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        service: 'footballhome-backend',
-        version: '1.0.0'
-    });
-});
-
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/events', eventsRoutes);
-app.use('/api/rsvps', rsvpsRoutes);
-app.use('/api/practices', practicesRoutes);
-app.use('/api/teams', teamsRoutes);
-app.use('/api/venues', venueRoutes);
-app.use('/api/matches', matchesRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

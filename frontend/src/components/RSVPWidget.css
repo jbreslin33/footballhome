@@ -1,0 +1,227 @@
+/* RSVP Widget Styles */
+.rsvp-widget {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 0.5rem 0;
+}
+
+.rsvp-widget.compact {
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Error */
+.rsvp-error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rsvp-error button {
+  background: none;
+  border: none;
+  color: #721c24;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+/* Label */
+.rsvp-label {
+  margin-bottom: 0.75rem;
+}
+
+.rsvp-label span {
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+/* Current Status */
+.current-status {
+  margin-bottom: 0.75rem;
+}
+
+.rsvp-widget.compact .current-status {
+  margin-bottom: 0;
+}
+
+.status-indicator {
+  padding: 0.4rem 0.8rem;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.rsvp-widget.compact .status-indicator {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+/* RSVP Buttons */
+.rsvp-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.rsvp-widget.compact .rsvp-buttons {
+  margin-bottom: 0;
+}
+
+.rsvp-btn {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1.5px solid;
+  border-radius: 6px;
+  background: white;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rsvp-widget.compact .rsvp-btn {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  min-height: 30px;
+  min-width: 32px;
+}
+
+.rsvp-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Button Colors */
+.rsvp-btn.attending {
+  border-color: #27ae60;
+  color: #27ae60;
+}
+
+.rsvp-btn.attending:hover:not(:disabled) {
+  background: #27ae60;
+  color: white;
+}
+
+.rsvp-btn.attending.selected {
+  background: #27ae60;
+  color: white;
+}
+
+.rsvp-btn.maybe {
+  border-color: #f39c12;
+  color: #f39c12;
+}
+
+.rsvp-btn.maybe:hover:not(:disabled) {
+  background: #f39c12;
+  color: white;
+}
+
+.rsvp-btn.maybe.selected {
+  background: #f39c12;
+  color: white;
+}
+
+.rsvp-btn.not-attending {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
+.rsvp-btn.not-attending:hover:not(:disabled) {
+  background: #e74c3c;
+  color: white;
+}
+
+.rsvp-btn.not-attending.selected {
+  background: #e74c3c;
+  color: white;
+}
+
+/* Attendance Count */
+.attendance-count {
+  text-align: center;
+  border-top: 1px solid #e9ecef;
+  padding-top: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.rsvp-widget.compact .attendance-count {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+  text-align: left;
+}
+
+.attendance-count small {
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+/* Login Prompt */
+.login-prompt {
+  text-align: center;
+  padding: 1rem;
+  color: #6c757d;
+}
+
+.login-prompt small {
+  font-size: 0.85rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 480px) {
+  .rsvp-widget {
+    padding: 0.75rem;
+  }
+  
+  .rsvp-buttons {
+    flex-direction: column;
+  }
+  
+  .rsvp-btn {
+    font-size: 0.9rem;
+    padding: 0.75rem;
+  }
+  
+  .rsvp-widget.compact {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .rsvp-widget.compact .rsvp-buttons {
+    width: 100%;
+    flex-direction: row;
+  }
+}
+
+/* Focus States */
+.rsvp-btn:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+/* Animation */
+.rsvp-widget {
+  transition: all 0.2s ease;
+}
+
+.rsvp-widget:hover {
+  border-color: #dee2e6;
+}
