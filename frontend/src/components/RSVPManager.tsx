@@ -192,7 +192,10 @@ const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
         config: err.config
       });
       console.error('❌ Full error response:', err.response);
+      console.error('❌ Response data details:', err.response?.data);
       console.error('❌ Request config:', err.config);
+      console.error('❌ Request URL:', err.config?.url);
+      console.error('❌ Request data:', err.config?.data);
       setError(err.response?.data?.error || err.response?.data?.message || 'Failed to save RSVP');
     } finally {
       setSubmitting(null);
