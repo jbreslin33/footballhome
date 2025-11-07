@@ -91,17 +91,30 @@ router.get('/team/:teamId',
                 offset = 0 
             } = req.query;
 
+            // Status mappings for queries
+            const statusMappings = {
+                'attending': '550e8400-e29b-41d4-a716-446655440301',
+                'not_attending': '550e8400-e29b-41d4-a716-446655440303',
+                'maybe': '550e8400-e29b-41d4-a716-446655440302'
+            };
+
             let query = `
                 SELECT e.*, et.name as event_type_name, et.color as event_type_color,
                        v.name as venue_name, v.address as venue_address,
                        COUNT(r.id) as rsvp_count,
-                       COUNT(CASE WHEN r.status = 'attending' THEN 1 END) as attending_count,
-                       COUNT(CASE WHEN r.status = 'not_attending' THEN 1 END) as not_attending_count,
-                       COUNT(CASE WHEN r.status = 'maybe' THEN 1 END) as maybe_count,
-                       COUNT(CASE WHEN r.status IS NULL THEN 1 END) as no_response_count,
-                       MAX(CASE WHEN r.user_id = $1 THEN r.status END) as my_rsvp_status
+                       COUNT(CASE WHEN r.rsvp_status_id = '${statusMappings.attending}' THEN 1 END) as attending_count,
+                       COUNT(CASE WHEN r.rsvp_status_id = '${statusMappings.not_attending}' THEN 1 END) as not_attending_count,
+                       COUNT(CASE WHEN r.rsvp_status_id = '${statusMappings.maybe}' THEN 1 END) as maybe_count,
+                       COUNT(CASE WHEN r.rsvp_status_id IS NULL THEN 1 END) as no_response_count,
+                       MAX(CASE WHEN r.user_id = $1 THEN 
+                           CASE 
+                               WHEN r.rsvp_status_id = '${statusMappings.attending}' THEN 'attending'
+                               WHEN r.rsvp_status_id = '${statusMappings.not_attending}' THEN 'not_attending'
+                               WHEN r.rsvp_status_id = '${statusMappings.maybe}' THEN 'maybe'
+                           END
+                       END) as my_rsvp_status
                 FROM events e
-                LEFT JOIN event_types et ON e.event_type = et.name
+                LEFT JOIN event_types et ON e.event_type_id = et.id
                 LEFT JOIN venues v ON e.venue_id = v.id
                 LEFT JOIN rsvps r ON e.id = r.event_id
                 WHERE e.team_id = $2
@@ -160,15 +173,28 @@ router.get('/:eventId',
         try {
             const { eventId } = req.params;
 
+            // Status mappings for queries
+            const statusMappings = {
+                'attending': '550e8400-e29b-41d4-a716-446655440301',
+                'not_attending': '550e8400-e29b-41d4-a716-446655440303',
+                'maybe': '550e8400-e29b-41d4-a716-446655440302'
+            };
+
             // Get event with venue and RSVP details
             const result = await dbPool.query(`
                 SELECT e.*, et.name as event_type_name, et.color as event_type_color,
                        v.name as venue_name, v.address as venue_address, v.latitude, v.longitude,
                        t.name as team_name,
-                       MAX(CASE WHEN r.user_id = $1 THEN r.status END) as my_rsvp_status,
-                       MAX(CASE WHEN r.user_id = $1 THEN r.updated_at END) as my_rsvp_updated_at
+                       MAX(CASE WHEN r.user_id = $1 THEN 
+                           CASE 
+                               WHEN r.rsvp_status_id = '${statusMappings.attending}' THEN 'attending'
+                               WHEN r.rsvp_status_id = '${statusMappings.not_attending}' THEN 'not_attending'
+                               WHEN r.rsvp_status_id = '${statusMappings.maybe}' THEN 'maybe'
+                           END
+                       END) as my_rsvp_status,
+                       MAX(CASE WHEN r.user_id = $1 THEN r.response_date END) as my_rsvp_updated_at
                 FROM events e
-                LEFT JOIN event_types et ON e.event_type = et.name
+                LEFT JOIN event_types et ON e.event_type_id = et.id
                 LEFT JOIN venues v ON e.venue_id = v.id
                 LEFT JOIN teams t ON e.team_id = t.id
                 LEFT JOIN rsvps r ON e.id = r.event_id
@@ -210,9 +236,9 @@ router.get('/:eventId',
             const rsvpSummary = await dbPool.query(`
                 SELECT 
                     COUNT(*) as total_rsvps,
-                    COUNT(CASE WHEN status = 'attending' THEN 1 END) as attending,
-                    COUNT(CASE WHEN status = 'not_attending' THEN 1 END) as not_attending,
-                    COUNT(CASE WHEN status = 'maybe' THEN 1 END) as maybe
+                    COUNT(CASE WHEN rsvp_status_id = '550e8400-e29b-41d4-a716-446655440301' THEN 1 END) as attending,
+                    COUNT(CASE WHEN rsvp_status_id = '550e8400-e29b-41d4-a716-446655440303' THEN 1 END) as not_attending,
+                    COUNT(CASE WHEN rsvp_status_id = '550e8400-e29b-41d4-a716-446655440302' THEN 1 END) as maybe
                 FROM rsvps
                 WHERE event_id = $1
             `, [eventId]);

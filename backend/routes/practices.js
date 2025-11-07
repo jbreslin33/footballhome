@@ -56,8 +56,14 @@ router.get('/team/:teamId',
                        p.skill_level, p.weather_dependent, p.indoor_alternative_location,
                        p.notes as practice_notes,
                        COUNT(r.id) as rsvp_count,
-                       COUNT(CASE WHEN r.status = 'attending' THEN 1 END) as attending_count,
-                       MAX(CASE WHEN r.user_id = $1 THEN r.status END) as my_rsvp_status
+                       COUNT(CASE WHEN r.rsvp_status_id = '550e8400-e29b-41d4-a716-446655440301' THEN 1 END) as attending_count,
+                       MAX(CASE WHEN r.user_id = $1 THEN 
+                           CASE 
+                               WHEN r.rsvp_status_id = '550e8400-e29b-41d4-a716-446655440301' THEN 'attending'
+                               WHEN r.rsvp_status_id = '550e8400-e29b-41d4-a716-446655440303' THEN 'not_attending'
+                               WHEN r.rsvp_status_id = '550e8400-e29b-41d4-a716-446655440302' THEN 'maybe'
+                           END
+                       END) as my_rsvp_status
                 FROM events e
                 JOIN practices p ON e.id = p.id
                 JOIN event_types et ON e.event_type_id = et.id
@@ -124,7 +130,13 @@ router.get('/:practiceId',
                        p.focus_areas, p.drill_plan, p.equipment_needed, p.fitness_focus,
                        p.skill_level, p.weather_dependent, p.indoor_alternative_location,
                        p.notes as practice_notes,
-                       MAX(CASE WHEN r.user_id = $1 THEN r.status END) as my_rsvp_status,
+                       MAX(CASE WHEN r.user_id = $1 THEN 
+                         CASE r.rsvp_status_id
+                           WHEN '550e8400-e29b-41d4-a716-446655440301' THEN 'attending'
+                           WHEN '550e8400-e29b-41d4-a716-446655440302' THEN 'maybe'
+                           WHEN '550e8400-e29b-41d4-a716-446655440303' THEN 'not_attending'
+                         END
+                       END) as my_rsvp_status,
                        MAX(CASE WHEN r.user_id = $1 THEN r.updated_at END) as my_rsvp_updated_at
                 FROM events e
                 JOIN practices p ON e.id = p.id

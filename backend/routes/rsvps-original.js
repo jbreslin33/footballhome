@@ -123,15 +123,12 @@ router.post('/',
                     rsvp_status_id = EXCLUDED.rsvp_status_id,
                     notes = EXCLUDED.notes,
                     response_date = CURRENT_TIMESTAMP
-                RETURNING id, event_id, user_id, rsvp_status_id, notes, response_date
-            `, [event_id, req.user.id, statusId, notes]);
-
-            const rsvp = result.rows[0];
-            rsvp.status = status; // Add the string status for response
+                RETURNING *, $5 as status
+            `, [event_id, req.user.id, statusId, notes, status]);
 
             res.json({
                 message: 'RSVP saved successfully',
-                rsvp: rsvp
+                rsvp: result.rows[0]
             });
 
         } catch (error) {
@@ -178,25 +175,25 @@ router.put('/:eventId',
 
             // Get event for capacity check
             const eventResult = await dbPool.query(`
-                SELECT e.max_players,
-                       COUNT(r.id) FILTER (WHERE r.rsvp_status_id = $3 AND r.user_id != $2) as other_attending
+                SELECT e.max_participants,
+                       COUNT(r.id) FILTER (WHERE r.status = 'attending' AND r.user_id != $2) as other_attending
                 FROM events e
                 LEFT JOIN rsvps r ON e.id = r.event_id
                 WHERE e.id = $1
                 GROUP BY e.id
-            `, [eventId, req.user.id, statusMappings['attending']]);
+            `, [eventId, req.user.id]);
 
             const event = eventResult.rows[0];
 
             // Check capacity if changing to attending
-            if (status === 'attending' && event.max_players) {
+            if (status === 'attending' && event.max_participants) {
                 const otherAttending = parseInt(event.other_attending) || 0;
-                if (otherAttending >= event.max_players) {
+                if (otherAttending >= event.max_participants) {
                     return res.status(409).json({
                         error: 'Event is at maximum capacity',
                         code: 'EVENT_FULL',
                         details: {
-                            max_players: event.max_players,
+                            max_participants: event.max_participants,
                             current_attending: otherAttending
                         }
                     });
@@ -204,20 +201,16 @@ router.put('/:eventId',
             }
 
             // Update RSVP
-            const statusId = statusMappings[status];
             const result = await dbPool.query(`
                 UPDATE rsvps 
-                SET rsvp_status_id = $1, notes = $2, response_date = CURRENT_TIMESTAMP
+                SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP
                 WHERE event_id = $3 AND user_id = $4
-                RETURNING id, event_id, user_id, rsvp_status_id, notes, response_date
-            `, [statusId, notes, eventId, req.user.id]);
-
-            const rsvp = result.rows[0];
-            rsvp.status = status; // Add the string status for response
+                RETURNING *
+            `, [status, notes, eventId, req.user.id]);
 
             res.json({
                 message: 'RSVP updated successfully',
-                rsvp: rsvp
+                rsvp: result.rows[0]
             });
 
         } catch (error) {
@@ -239,11 +232,8 @@ router.get('/event/:eventId',
 
             // Get user's RSVP for this event
             const result = await dbPool.query(`
-                SELECT r.id, r.event_id, r.user_id, r.notes, r.response_date,
-                       rs.name as status_name, rs.display_name,
-                       e.title as event_title, e.event_date
+                SELECT r.*, e.title as event_title, e.start_time
                 FROM rsvps r
-                JOIN rsvp_statuses rs ON r.rsvp_status_id = rs.id
                 JOIN events e ON r.event_id = e.id
                 WHERE r.event_id = $1 AND r.user_id = $2
             `, [eventId, req.user.id]);
@@ -255,12 +245,8 @@ router.get('/event/:eventId',
                 });
             }
 
-            const rsvp = result.rows[0];
-            // Convert status to expected format
-            rsvp.status = reverseStatusMappings[statusMappings[rsvp.status_name]] || rsvp.status_name;
-
             res.json({
-                rsvp: rsvp
+                rsvp: result.rows[0]
             });
 
         } catch (error) {
@@ -288,18 +274,15 @@ router.get('/my-rsvps',
             } = req.query;
 
             let query = `
-                SELECT r.id, r.event_id, r.notes, r.response_date,
-                       rs.name as status_name, rs.display_name, rs.color,
-                       e.title as event_title, e.description, e.event_date,
-                       e.duration_minutes, t.name as team_name,
+                SELECT r.*, e.title, e.description, e.event_type, e.start_time, e.end_time,
+                       e.is_mandatory, t.name as team_name,
                        v.name as venue_name, v.address as venue_address,
-                       et.name as event_type_name, et.display_name as event_type_display
+                       et.color as event_type_color
                 FROM rsvps r
-                JOIN rsvp_statuses rs ON r.rsvp_status_id = rs.id
                 JOIN events e ON r.event_id = e.id
                 JOIN teams t ON e.team_id = t.id
                 LEFT JOIN venues v ON e.venue_id = v.id
-                LEFT JOIN event_types et ON e.event_type_id = et.id
+                LEFT JOIN event_types et ON e.event_type = et.name
                 WHERE r.user_id = $1
             `;
 
@@ -312,39 +295,30 @@ router.get('/my-rsvps',
             }
 
             if (status) {
-                const statusId = statusMappings[status];
-                if (statusId) {
-                    query += ` AND r.rsvp_status_id = $${++paramCount}`;
-                    queryParams.push(statusId);
-                }
+                query += ` AND r.status = $${++paramCount}`;
+                queryParams.push(status);
             }
 
             if (start_date) {
-                query += ` AND e.event_date >= $${++paramCount}`;
+                query += ` AND e.start_time >= $${++paramCount}`;
                 queryParams.push(start_date);
             }
 
             if (end_date) {
-                query += ` AND e.event_date <= $${++paramCount}`;
+                query += ` AND e.start_time <= $${++paramCount}`;
                 queryParams.push(end_date);
             }
 
             query += `
-                ORDER BY e.event_date DESC
+                ORDER BY e.start_time DESC
                 LIMIT $${++paramCount} OFFSET $${++paramCount}
             `;
             queryParams.push(parseInt(limit), parseInt(offset));
 
             const result = await dbPool.query(query, queryParams);
 
-            // Convert status to expected format
-            const rsvps = result.rows.map(rsvp => ({
-                ...rsvp,
-                status: reverseStatusMappings[statusMappings[rsvp.status_name]] || rsvp.status_name
-            }));
-
             res.json({
-                rsvps: rsvps,
+                rsvps: result.rows,
                 pagination: {
                     limit: parseInt(limit),
                     offset: parseInt(offset),
@@ -370,27 +344,28 @@ router.get('/event/:eventId/attendees',
             const { eventId } = req.params;
 
             // Get event and check permissions
-            const eventCheck = await dbPool.query(
+            const eventResult = await dbPool.query(
                 'SELECT team_id FROM events WHERE id = $1',
                 [eventId]
             );
 
-            if (eventCheck.rows.length === 0) {
+            if (eventResult.rows.length === 0) {
                 return res.status(404).json({
                     error: 'Event not found',
                     code: 'EVENT_NOT_FOUND'
                 });
             }
 
-            const teamId = eventCheck.rows[0].team_id;
+            const teamId = eventResult.rows[0].team_id;
 
-            // Check authorization (team member or admin)
+            // Check if user can view attendee list
             const authCheck = await dbPool.query(`
-                SELECT tm.team_id, 'member' as team_role, r.name as system_role
+                SELECT tm.team_id, tm.role as team_role, r.name as system_role
                 FROM team_members tm
                 LEFT JOIN user_roles ur ON ur.user_id = tm.user_id AND ur.is_active = true
                 LEFT JOIN roles r ON ur.role_id = r.id
                 WHERE tm.user_id = $1 AND tm.team_id = $2 AND tm.is_active = true
+                AND (tm.role IN ('coach', 'manager') OR r.name IN ('admin', 'super_admin'))
                 UNION
                 SELECT NULL, NULL, r.name
                 FROM user_roles ur
@@ -407,18 +382,16 @@ router.get('/event/:eventId/attendees',
 
             // Get RSVP details with user information
             const result = await dbPool.query(`
-                SELECT rs.name as status_name, rs.display_name as status_display, 
-                       rs.color as status_color, r.notes, r.response_date,
+                SELECT r.status, r.notes, r.updated_at,
                        u.id as user_id, u.first_name, u.last_name, u.email,
                        tm.role as team_role,
                        p.name as position_name
                 FROM rsvps r
-                JOIN rsvp_statuses rs ON r.rsvp_status_id = rs.id
                 JOIN users u ON r.user_id = u.id
                 LEFT JOIN team_members tm ON u.id = tm.user_id AND tm.team_id = $2
                 LEFT JOIN positions p ON tm.position_id = p.id
                 WHERE r.event_id = $1
-                ORDER BY rs.sort_order, u.last_name, u.first_name
+                ORDER BY r.status DESC, u.last_name, u.first_name
             `, [eventId, teamId]);
 
             // Group by status
@@ -454,20 +427,14 @@ router.get('/event/:eventId/attendees',
                         position_name: member.position_name,
                         status: null,
                         notes: null,
-                        response_date: null
+                        updated_at: null
                     });
                 }
             });
 
             // Group RSVPs by status
             result.rows.forEach(row => {
-                const statusKey = reverseStatusMappings[statusMappings[row.status_name]] || 'no_response';
-                if (attendees[statusKey]) {
-                    attendees[statusKey].push({
-                        ...row,
-                        status: statusKey
-                    });
-                }
+                attendees[row.status].push(row);
             });
 
             res.json({
