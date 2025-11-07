@@ -76,95 +76,36 @@ router.get('/types',
     }
 );
 
-// Get events for a team
-router.get('/team/:teamId', 
-    authenticateToken,
-    requireTeamMembership('teamId'),
-    async (req, res) => {
-        try {
-            const { teamId } = req.params;
-            const { 
-                start_date, 
-                end_date, 
-                event_type, 
-                limit = 50, 
-                offset = 0 
-            } = req.query;
 
-            // Status mappings for queries
-            const statusMappings = {
-                'attending': '550e8400-e29b-41d4-a716-446655440301',
-                'not_attending': '550e8400-e29b-41d4-a716-446655440303',
-                'maybe': '550e8400-e29b-41d4-a716-446655440302'
-            };
 
-            let query = `
-                SELECT e.*, et.name as event_type_name, et.color as event_type_color,
-                       v.name as venue_name, v.address as venue_address,
-                       COUNT(r.id) as rsvp_count,
-                       COUNT(CASE WHEN r.rsvp_status_id = '${statusMappings.attending}' THEN 1 END) as attending_count,
-                       COUNT(CASE WHEN r.rsvp_status_id = '${statusMappings.not_attending}' THEN 1 END) as not_attending_count,
-                       COUNT(CASE WHEN r.rsvp_status_id = '${statusMappings.maybe}' THEN 1 END) as maybe_count,
-                       COUNT(CASE WHEN r.rsvp_status_id IS NULL THEN 1 END) as no_response_count,
-                       MAX(CASE WHEN r.user_id = $1 THEN 
-                           CASE 
-                               WHEN r.rsvp_status_id = '${statusMappings.attending}' THEN 'attending'
-                               WHEN r.rsvp_status_id = '${statusMappings.not_attending}' THEN 'not_attending'
-                               WHEN r.rsvp_status_id = '${statusMappings.maybe}' THEN 'maybe'
-                           END
-                       END) as my_rsvp_status
-                FROM events e
-                LEFT JOIN event_types et ON e.event_type_id = et.id
-                LEFT JOIN venues v ON e.venue_id = v.id
-                LEFT JOIN rsvps r ON e.id = r.event_id
-                WHERE e.team_id = $2
-            `;
+// Test simple endpoint
+router.get('/test', (req, res) => {
+    res.json({ message: 'Events router is working!' });
+});
 
-            const queryParams = [req.user.id, teamId];
-            let paramCount = 2;
-
-            if (start_date) {
-                query += ` AND e.start_time >= $${++paramCount}`;
-                queryParams.push(start_date);
-            }
-
-            if (end_date) {
-                query += ` AND e.start_time <= $${++paramCount}`;
-                queryParams.push(end_date);
-            }
-
-            if (event_type) {
-                query += ` AND e.event_type = $${++paramCount}`;
-                queryParams.push(event_type);
-            }
-
-            query += `
-                GROUP BY e.id, et.name, et.color, v.name, v.address
-                ORDER BY e.start_time ASC
-                LIMIT $${++paramCount} OFFSET $${++paramCount}
-            `;
-            queryParams.push(parseInt(limit), parseInt(offset));
-
-            const result = await dbPool.query(query, queryParams);
-
-            res.json({
-                events: result.rows,
-                pagination: {
-                    limit: parseInt(limit),
-                    offset: parseInt(offset),
-                    total: result.rows.length
-                }
-            });
-
-        } catch (error) {
-            console.error('Get events error:', error);
-            res.status(500).json({
-                error: 'Failed to get events',
-                code: 'GET_EVENTS_ERROR'
-            });
-        }
+// Get events for a team - COMPLETELY REWRITTEN 
+router.get('/team/:teamId', authenticateToken, async (req, res) => {
+    console.log('🚀 EVENTS ROUTE ACCESSED - Team:', req.params.teamId);
+    
+    try {
+        const teamId = req.params.teamId;
+        
+        // Use the absolute simplest query possible
+        const query = 'SELECT id, title FROM events WHERE team_id = $1';
+        console.log('📝 Query:', query, 'Params:', [teamId]);
+        
+        const result = await dbPool.query(query, [teamId]);
+        console.log('✅ Query successful, rows:', result.rowCount);
+        
+        res.json({ events: result.rows });
+        
+    } catch (err) {
+        console.error('❌ ERROR:', err.message);
+        console.error('❌ ERROR CODE:', err.code);
+        console.error('❌ ERROR DETAIL:', err.detail);
+        res.status(500).json({ error: 'Database error' });
     }
-);
+});
 
 // Get single event details
 router.get('/:eventId',

@@ -15,12 +15,10 @@ interface Event {
   duration_minutes: number;
   max_players?: number;
   my_rsvp_status?: string;
-  rsvp_summary?: {
-    attending: number;
-    not_attending: number;
-    maybe: number;
-    total_rsvps: number;
-  };
+  attending_count?: number;
+  not_attending_count?: number;
+  maybe_count?: number;
+  no_response_count?: number;
 }
 
 interface RSVP {
@@ -52,15 +50,44 @@ const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
   const loadUpcomingEvents = async () => {
     try {
       setLoading(true);
-      // We'll need to get events from user's teams
-      const response = await api.get('/events', {
-        params: {
-          upcoming: true,
-          limit: 20
-        }
-      });
       
-      setEvents(response.data.events || []);
+      // First get user's teams
+      const teamsResponse = await api.get('/teams');
+      const userTeams = teamsResponse.data.teams || [];
+      
+      if (userTeams.length === 0) {
+        setEvents([]);
+        setError('You are not a member of any teams');
+        return;
+      }
+      
+      // Get events for all user's teams
+      const eventPromises = userTeams.map((team: any) => 
+        api.get(`/events/team/${team.id}`, {
+          params: {
+            start_date: new Date().toISOString(),
+            limit: 20
+          }
+        }).then(response => ({
+          ...response,
+          teamName: team.name
+        }))
+      );
+      
+      const eventResponses = await Promise.all(eventPromises);
+      
+      // Combine and add team names to events
+      const allEvents = eventResponses.flatMap(response => 
+        (response.data.events || []).map((event: any) => ({
+          ...event,
+          team_name: response.teamName
+        }))
+      );
+      
+      // Sort by event date
+      allEvents.sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
+      
+      setEvents(allEvents);
     } catch (err: any) {
       console.error('Failed to load upcoming events:', err);
       setError('Failed to load upcoming events');
@@ -242,8 +269,8 @@ const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
                         <div className="detail">
                           <span className="label">👥 Capacity:</span>
                           <span>
-                            {event.rsvp_summary?.attending || 0} / {event.max_players}
-                            {event.rsvp_summary?.attending && event.rsvp_summary.attending >= event.max_players && 
+                            {event.attending_count || 0} / {event.max_players}
+                            {event.attending_count && event.attending_count >= event.max_players && 
                               <span className="full-indicator"> (Full)</span>
                             }
                           </span>
@@ -296,15 +323,13 @@ const RSVPManager: React.FC<RSVPManagerProps> = ({ onClose }) => {
                       </button>
                     </div>
 
-                    {event.rsvp_summary && (
-                      <div className="attendance-summary">
-                        <small>
-                          Responses: {event.rsvp_summary.attending} attending, {' '}
-                          {event.rsvp_summary.maybe} maybe, {' '}
-                          {event.rsvp_summary.not_attending} not attending
-                        </small>
-                      </div>
-                    )}
+                    <div className="attendance-summary">
+                      <small>
+                        Responses: {event.attending_count || 0} attending, {' '}
+                        {event.maybe_count || 0} maybe, {' '}
+                        {event.not_attending_count || 0} not attending
+                      </small>
+                    </div>
                   </div>
                 );
               })

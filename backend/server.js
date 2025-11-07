@@ -12,7 +12,7 @@ const { setDbPool: setAuthDbPool } = require('./middleware/auth');
 // Import routes
 const { router: venueRoutes, setDbPool: setVenuesDbPool } = require('./routes/venues-simple');
 const { router: authRoutes, setDbPool: setAuthRoutesDbPool } = require('./routes/auth');
-const { router: eventsRoutes, setDbPool: setEventsDbPool } = require('./routes/events');
+const { router: eventsRoutes, setDbPool: setEventsDbPool } = require('./routes/events-test');
 const { router: rsvpsRoutes, setDbPool: setRsvpsDbPool } = require('./routes/rsvps');
 const { router: practicesRoutes, setDbPool: setPracticesDbPool } = require('./routes/practices');
 const { router: teamsRoutes, setDbPool: setTeamsDbPool } = require('./routes/teams');
@@ -50,35 +50,34 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Test database connection and setup routes
-pool.connect((err, client, release) => {
-    if (err) {
-        console.error('❌ Error connecting to database:', err.message);
-        process.exit(1);
-    }
-    console.log('✅ Connected to PostgreSQL database');
-    
-    // Inject database pool into middleware and routes
-    setAuthDbPool(pool);
-    setAuthRoutesDbPool(pool);
-    setEventsDbPool(pool);
-    setRsvpsDbPool(pool);
-    setPracticesDbPool(pool);
-    setTeamsDbPool(pool);
-    setVenuesDbPool(pool);
-    setMatchesDbPool(pool);
-    
-    // Mount API routes AFTER database connection is established
-    app.use('/api/auth', authRoutes);
-    app.use('/api/events', eventsRoutes);
-    app.use('/api/rsvps', rsvpsRoutes);
-    app.use('/api/practices', practicesRoutes);
-    app.use('/api/teams', teamsRoutes);
-    app.use('/api/venues', venueRoutes);
-    app.use('/api/matches', matchesRoutes);
-    
-    release();
-});
+// Setup database and routes immediately
+console.log('🔄 Setting up database connection and routes...');
+
+// Inject database pool into middleware and routes
+setAuthDbPool(pool);
+setAuthRoutesDbPool(pool);
+setEventsDbPool(pool);
+setRsvpsDbPool(pool);
+setPracticesDbPool(pool);
+setTeamsDbPool(pool);
+setVenuesDbPool(pool);
+setMatchesDbPool(pool);
+
+// Mount API routes
+console.log('🔧 Mounting API routes...');
+app.use('/api/auth', authRoutes);
+app.use('/api/events', eventsRoutes);
+app.use('/api/rsvps', rsvpsRoutes);
+app.use('/api/practices', practicesRoutes);
+app.use('/api/teams', teamsRoutes);
+app.use('/api/venues', venueRoutes);
+app.use('/api/matches', matchesRoutes);
+console.log('✅ API routes mounted successfully');
+
+// Test database connection asynchronously but don't block route mounting
+pool.query('SELECT 1')
+    .then(() => console.log('✅ Connected to PostgreSQL database - ROUTE SETUP SHOULD HAPPEN BEFORE THIS'))
+    .catch(err => console.error('❌ Database connection error:', err.message));
 
 // Root endpoint
 app.get('/', (req, res) => {
