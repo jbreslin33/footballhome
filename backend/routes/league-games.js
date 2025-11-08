@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, checkPermission } = require('../../middleware/auth');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 
 // Database pool will be set by server.js
 let pool;
@@ -168,7 +168,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/league-games - Create new league game (for scraping)
-router.post('/', authenticateToken, checkPermission('manage_games'), async (req, res) => {
+router.post('/', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
     const {
       season, home_team_id, away_team_id, scheduled_date,
@@ -241,7 +241,7 @@ router.post('/', authenticateToken, checkPermission('manage_games'), async (req,
 });
 
 // PUT /api/league-games/:id/result - Update match result (for live scraping)
-router.put('/:id/result', authenticateToken, checkPermission('manage_games'), async (req, res) => {
+router.put('/:id/result', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -276,7 +276,7 @@ router.put('/:id/result', authenticateToken, checkPermission('manage_games'), as
 });
 
 // POST /api/league-games/:id/events - Add match event
-router.post('/:id/events', authenticateToken, checkPermission('manage_games'), async (req, res) => {
+router.post('/:id/events', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const {
