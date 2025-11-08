@@ -17,6 +17,7 @@ const { router: rsvpsRoutes, setDbPool: setRsvpsDbPool } = require('./routes/rsv
 const { router: practicesRoutes, setDbPool: setPracticesDbPool } = require('./routes/practices');
 const { router: teamsRoutes, setDbPool: setTeamsDbPool } = require('./routes/teams');
 const { router: matchesRoutes, setDbPool: setMatchesDbPool } = require('./routes/matches');
+const { router: leagueGamesRoutes, setDbPool: setLeagueGamesDbPool } = require('./routes/league-games');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -64,6 +65,7 @@ setPracticesDbPool(pool);
 setTeamsDbPool(pool);
 setVenuesDbPool(pool);
 setMatchesDbPool(pool);
+setLeagueGamesDbPool(pool);
 
 // Mount API routes
 console.log('🔧 Mounting API routes...');
@@ -74,6 +76,7 @@ app.use('/api/practices', practicesRoutes);
 app.use('/api/teams', teamsRoutes);
 app.use('/api/venues', venueRoutes);
 app.use('/api/matches', matchesRoutes);
+app.use('/api/league-games', leagueGamesRoutes);
 console.log('✅ API routes mounted successfully');
 
 // Test database connection asynchronously but don't block route mounting
@@ -94,7 +97,8 @@ app.get('/', (req, res) => {
             practices: '/api/practices',
             teams: '/api/teams',
             venues: '/api/venues',
-            matches: '/api/matches'
+            matches: '/api/matches',
+            'league-games': '/api/league-games'
         },
         documentation: 'https://github.com/your-repo/footballhome'
     });
