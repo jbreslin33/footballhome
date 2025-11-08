@@ -8,7 +8,7 @@ import StatsManager from '../StatsManager';
 
 const PlayerView: React.FC = () => {
   const { user } = useAuth();
-  const [activeView, setActiveView] = useState<'dashboard' | 'rsvp-manager' | 'events-manager' | 'schedule-manager' | 'profile-settings' | 'stats-manager'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'rsvp-manager' | 'events-manager' | 'schedule-manager' | 'profile-settings' | 'stats-manager' | 'messages-placeholder'>('dashboard');
 
   const handleEditProfile = () => {
     setActiveView('profile-settings');
@@ -27,7 +27,7 @@ const PlayerView: React.FC = () => {
   };
 
   const handleViewMessages = () => {
-    alert('Team messages functionality would be implemented here');
+    setActiveView('messages-placeholder');
   };
 
   const handleAccountSettings = () => {
@@ -135,6 +135,43 @@ const PlayerView: React.FC = () => {
         </header>
         
         <StatsManager onClose={() => setActiveView('dashboard')} />
+      </div>
+    );
+  }
+
+  if (activeView === 'messages-placeholder') {
+    return (
+      <div className="admin-section">
+        <header className="admin-header">
+          <button 
+            className="back-btn"
+            onClick={() => setActiveView('dashboard')}
+            style={{ marginRight: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            ← Back to Dashboard
+          </button>
+          <h1>💬 Team Messages</h1>
+          <p>Team communication system</p>
+        </header>
+        
+        <div style={{ padding: '2rem', backgroundColor: 'white', borderRadius: '8px', margin: '2rem', textAlign: 'center' }}>
+          <h3>📧 Team Messages</h3>
+          <p>Team messaging functionality will be implemented here.</p>
+          <p>Features will include:</p>
+          <ul style={{ textAlign: 'left', maxWidth: '400px', margin: '0 auto' }}>
+            <li>Team announcements</li>
+            <li>Direct messages between players and coaches</li>
+            <li>Group chat functionality</li>
+            <li>Message notifications</li>
+            <li>File sharing capabilities</li>
+          </ul>
+          <button 
+            onClick={() => setActiveView('dashboard')}
+            style={{ marginTop: '2rem', padding: '0.75rem 2rem', backgroundColor: '#0066cc', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+          >
+            Back to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
