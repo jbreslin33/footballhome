@@ -48,6 +48,7 @@ echo '127.0.0.1 footballhome.org' | sudo tee -a /etc/hosts
 - **User Authentication**: JWT-based login/register with role management
 - **Event Management**: Create and manage practices, games, meetings
 - **RSVP System**: Players can respond to events, capacity management
+- **League Games Integration**: Import official match data from external leagues with comprehensive statistics tracking
 - **Team Organization**: Role-based permissions (players, coaches, admins)
 
 ### League Structure
@@ -121,7 +122,20 @@ docker exec -it footballhome_db psql -U footballhome_user -d footballhome
 
 # Run migrations
 docker exec footballhome_db psql -U footballhome_user -d footballhome -f /docker-entrypoint-initdb.d/01-init.sql
+
+# Apply league games migration
+docker exec footballhome_db psql -U footballhome_user -d footballhome -f /docker-entrypoint-initdb.d/migration_003_league_games.sql
 ```
+
+### League Games System
+The system includes comprehensive support for importing official league match data:
+
+- **External Integration**: Import matches from APSL, CASA, and other leagues
+- **Duplicate Prevention**: Automatic detection prevents importing the same match twice
+- **Rich Statistics**: Match events, player statistics, and comprehensive match data
+- **Team Integration**: Links external league games with internal team events
+
+See [`database/LEAGUE_GAMES_README.md`](database/LEAGUE_GAMES_README.md) for detailed documentation.
 
 ## 📊 API Endpoints
 
