@@ -2,12 +2,18 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import AdminDashboard from './admin/AdminDashboard';
 import RSVPManager from './RSVPManager';
+import EventsManager from './EventsManager';
+import ScheduleManager from './ScheduleManager';
+import ProfileSettings from './ProfileSettings';
 import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [showAdmin, setShowAdmin] = useState(false);
   const [showRSVPs, setShowRSVPs] = useState(false);
+  const [showEvents, setShowEvents] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   if (!user) return null;
 
@@ -67,6 +73,63 @@ const Dashboard: React.FC = () => {
           </div>
           <RSVPManager onClose={() => setShowRSVPs(false)} />
         </div>
+      ) : showEvents ? (
+        <div className="dashboard-main">
+          <div className="current-view-header">
+            <button 
+              onClick={() => setShowEvents(false)}
+              className="back-button"
+              style={{ marginBottom: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              ← Back to Dashboard
+            </button>
+            <div className="view-indicator">
+              <span className="view-label">You are viewing:</span>
+              <div className="view-badge player">
+                📅 My Events
+              </div>
+            </div>
+          </div>
+          <EventsManager onClose={() => setShowEvents(false)} />
+        </div>
+      ) : showSchedule ? (
+        <div className="dashboard-main">
+          <div className="current-view-header">
+            <button 
+              onClick={() => setShowSchedule(false)}
+              className="back-button"
+              style={{ marginBottom: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              ← Back to Dashboard
+            </button>
+            <div className="view-indicator">
+              <span className="view-label">You are viewing:</span>
+              <div className="view-badge player">
+                📅 Team Schedule
+              </div>
+            </div>
+          </div>
+          <ScheduleManager onClose={() => setShowSchedule(false)} />
+        </div>
+      ) : showProfile ? (
+        <div className="dashboard-main">
+          <div className="current-view-header">
+            <button 
+              onClick={() => setShowProfile(false)}
+              className="back-button"
+              style={{ marginBottom: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              ← Back to Dashboard
+            </button>
+            <div className="view-indicator">
+              <span className="view-label">You are viewing:</span>
+              <div className="view-badge player">
+                ⚙️ Profile Settings
+              </div>
+            </div>
+          </div>
+          <ProfileSettings onClose={() => setShowProfile(false)} />
+        </div>
       ) : (
         <main className="dashboard-main">
           <div className="current-view-header">
@@ -85,7 +148,7 @@ const Dashboard: React.FC = () => {
             <div className="dashboard-card">
               <h2>My Events</h2>
               <p>View and manage your upcoming events, practices, and games.</p>
-              <button className="card-button" onClick={() => alert('Events view would open here')}>View Events</button>
+              <button className="card-button" onClick={() => setShowEvents(true)}>View Events</button>
             </div>
 
             <div className="dashboard-card">
@@ -97,13 +160,13 @@ const Dashboard: React.FC = () => {
             <div className="dashboard-card">
               <h2>Team Schedule</h2>
               <p>Check your team's complete schedule and event calendar.</p>
-              <button className="card-button" onClick={() => alert('Schedule view would open here')}>View Schedule</button>
+              <button className="card-button" onClick={() => setShowSchedule(true)}>View Schedule</button>
             </div>
 
             <div className="dashboard-card">
               <h2>Profile Settings</h2>
               <p>Update your profile information and notification preferences.</p>
-              <button className="card-button" onClick={() => alert('Profile settings would open here')}>Edit Profile</button>
+              <button className="card-button" onClick={() => setShowProfile(true)}>Edit Profile</button>
             </div>
           </div>
 

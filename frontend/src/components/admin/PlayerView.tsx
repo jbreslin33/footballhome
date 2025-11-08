@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import RSVPManager from '../RSVPManager';
+import EventsManager from '../EventsManager';
+import ScheduleManager from '../ScheduleManager';
+import ProfileSettings from '../ProfileSettings';
+import StatsManager from '../StatsManager';
 
 const PlayerView: React.FC = () => {
   const { user } = useAuth();
-  const [activeView, setActiveView] = useState<'dashboard' | 'rsvp-manager'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'rsvp-manager' | 'events-manager' | 'schedule-manager' | 'profile-settings' | 'stats-manager'>('dashboard');
 
   const handleEditProfile = () => {
-    alert('Edit Profile functionality would open here');
+    setActiveView('profile-settings');
   };
 
   const handleViewSchedule = () => {
-    alert('Full schedule view would open here');
+    setActiveView('schedule-manager');
   };
 
   const handleManageRSVPs = () => {
@@ -19,18 +23,22 @@ const PlayerView: React.FC = () => {
   };
 
   const handleViewStats = () => {
-    alert('Full statistics view would open here');
+    setActiveView('stats-manager');
   };
 
   const handleViewMessages = () => {
-    alert('Team messages view would open here');
+    alert('Team messages functionality would be implemented here');
   };
 
   const handleAccountSettings = () => {
-    alert('Account settings would open here');
+    setActiveView('profile-settings');
   };
 
-  // Show RSVP Manager if that's the active view
+  const handleViewEvents = () => {
+    setActiveView('events-manager');
+  };
+
+  // Show specific views based on activeView
   if (activeView === 'rsvp-manager') {
     return (
       <div className="admin-section">
@@ -47,6 +55,86 @@ const PlayerView: React.FC = () => {
         </header>
         
         <RSVPManager onClose={() => setActiveView('dashboard')} />
+      </div>
+    );
+  }
+
+  if (activeView === 'events-manager') {
+    return (
+      <div className="admin-section">
+        <header className="admin-header">
+          <button 
+            className="back-btn"
+            onClick={() => setActiveView('dashboard')}
+            style={{ marginRight: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            ← Back to Dashboard
+          </button>
+          <h1>📅 My Events</h1>
+          <p>View and manage your upcoming events</p>
+        </header>
+        
+        <EventsManager onClose={() => setActiveView('dashboard')} />
+      </div>
+    );
+  }
+
+  if (activeView === 'schedule-manager') {
+    return (
+      <div className="admin-section">
+        <header className="admin-header">
+          <button 
+            className="back-btn"
+            onClick={() => setActiveView('dashboard')}
+            style={{ marginRight: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            ← Back to Dashboard
+          </button>
+          <h1>� Team Schedule</h1>
+          <p>View your complete team schedule</p>
+        </header>
+        
+        <ScheduleManager onClose={() => setActiveView('dashboard')} />
+      </div>
+    );
+  }
+
+  if (activeView === 'profile-settings') {
+    return (
+      <div className="admin-section">
+        <header className="admin-header">
+          <button 
+            className="back-btn"
+            onClick={() => setActiveView('dashboard')}
+            style={{ marginRight: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            ← Back to Dashboard
+          </button>
+          <h1>⚙️ Profile Settings</h1>
+          <p>Manage your account and preferences</p>
+        </header>
+        
+        <ProfileSettings onClose={() => setActiveView('dashboard')} />
+      </div>
+    );
+  }
+
+  if (activeView === 'stats-manager') {
+    return (
+      <div className="admin-section">
+        <header className="admin-header">
+          <button 
+            className="back-btn"
+            onClick={() => setActiveView('dashboard')}
+            style={{ marginRight: '1rem', padding: '0.5rem 1rem', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            ← Back to Dashboard
+          </button>
+          <h1>📊 My Statistics</h1>
+          <p>View your performance statistics</p>
+        </header>
+        
+        <StatsManager onClose={() => setActiveView('dashboard')} />
       </div>
     );
   }

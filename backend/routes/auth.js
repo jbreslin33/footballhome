@@ -297,6 +297,77 @@ router.get('/me', require('../middleware/auth').authenticateToken, async (req, r
     }
 });
 
+// Update user profile
+const updateProfileSchema = Joi.object({
+    name: Joi.string().min(1).max(100).required(),
+    phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).allow('').optional(),
+    emergency_contact: Joi.string().max(100).allow('').optional(),
+    emergency_phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).allow('').optional(),
+    date_of_birth: Joi.date().iso().allow('').optional(),
+    address: Joi.string().max(500).allow('').optional()
+});
+
+router.put('/profile', require('../middleware/auth').authenticateToken, async (req, res) => {
+    try {
+        // Validate input
+        const { error, value } = updateProfileSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({
+                error: 'Validation failed',
+                details: error.details.map(d => d.message),
+                code: 'VALIDATION_ERROR'
+            });
+        }
+
+        const { name, phone, emergency_contact, emergency_phone, date_of_birth, address } = value;
+
+        // Update user profile
+        const result = await dbPool.query(`
+            UPDATE users 
+            SET name = $1, 
+                phone = $2, 
+                emergency_contact = $3,
+                emergency_phone = $4,
+                date_of_birth = $5,
+                address = $6,
+                updated_at = CURRENT_TIMESTAMP 
+            WHERE id = $7
+            RETURNING id, email, name, phone, emergency_contact, emergency_phone, date_of_birth, address, created_at
+        `, [name, phone || null, emergency_contact || null, emergency_phone || null, date_of_birth || null, address || null, req.user.id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                error: 'User not found',
+                code: 'USER_NOT_FOUND'
+            });
+        }
+
+        // Get updated user with roles
+        const userWithRoles = await dbPool.query(`
+            SELECT u.id, u.email, u.name, u.phone, u.emergency_contact, u.emergency_phone, 
+                   u.date_of_birth, u.address, u.created_at,
+                   COALESCE(json_agg(r.name) FILTER (WHERE r.name IS NOT NULL), '[]') as roles
+            FROM users u
+            LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_active = true
+            LEFT JOIN roles r ON ur.role_id = r.id
+            WHERE u.id = $1
+            GROUP BY u.id
+        `, [req.user.id]);
+
+        res.json({
+            message: 'Profile updated successfully',
+            user: userWithRoles.rows[0]
+        });
+
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({
+            error: 'Failed to update profile',
+            code: 'PROFILE_UPDATE_ERROR'
+        });
+    }
+});
+
 // Change password
 router.post('/change-password', 
     require('../middleware/auth').authenticateToken,
