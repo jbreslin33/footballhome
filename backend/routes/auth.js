@@ -20,7 +20,7 @@ const registerSchema = Joi.object({
     email: Joi.string().email().required().max(255),
     password: Joi.string().min(8).max(100).required(),
     name: Joi.string().min(1).max(100).required(),
-    phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).optional()
+    phone: Joi.string().pattern(/^[\+]?[\d\s\-\(\)\.]{0,20}$/).optional()
 });
 
 const loginSchema = Joi.object({
@@ -335,18 +335,21 @@ router.get('/profile', require('../middleware/auth').authenticateToken, async (r
 // Update user profile
 const updateProfileSchema = Joi.object({
     name: Joi.string().min(1).max(100).required(),
-    phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).allow('').optional(),
+    phone: Joi.string().pattern(/^[\+]?[\d\s\-\(\)\.]{0,20}$/).allow('').optional(),
     emergency_contact: Joi.string().max(100).allow('').optional(),
-    emergency_phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).allow('').optional(),
+    emergency_phone: Joi.string().pattern(/^[\+]?[\d\s\-\(\)\.]{0,20}$/).allow('').optional(),
     date_of_birth: Joi.date().iso().allow('').optional(),
     address: Joi.string().max(500).allow('').optional()
 });
 
 router.put('/profile', require('../middleware/auth').authenticateToken, async (req, res) => {
     try {
+        console.log('🔧 Profile update request received:', JSON.stringify(req.body, null, 2));
+        
         // Validate input
         const { error, value } = updateProfileSchema.validate(req.body);
         if (error) {
+            console.log('❌ Profile validation error:', error.details);
             return res.status(400).json({
                 error: 'Validation failed',
                 details: error.details.map(d => d.message),
