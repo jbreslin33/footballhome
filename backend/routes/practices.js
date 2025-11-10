@@ -35,6 +35,88 @@ const createPracticeSchema = Joi.object({
     notes: Joi.string().max(2000).optional().allow('')
 });
 
+// Get all practices for current user (across all their teams)
+router.get('/', 
+    authenticateToken,
+    async (req, res) => {
+        try {
+            const { 
+                start_date, 
+                end_date, 
+                limit = 50, 
+                offset = 0 
+            } = req.query;
+
+            let query = `
+                SELECT e.*, et.name as event_type_name, et.display_name as event_type_display,
+                       v.name as venue_name, v.address as venue_address,
+                       t.name as team_name,
+                       p.focus_areas, p.drill_plan, p.equipment_needed, p.fitness_focus,
+                       p.skill_level, p.weather_dependent, p.indoor_alternative_location,
+                       p.notes as practice_notes,
+                       COUNT(r.id) as rsvp_count,
+                       COUNT(CASE WHEN r.rsvp_status_id = '550e8400-e29b-41d4-a716-446655440301' THEN 1 END) as attending_count,
+                       MAX(CASE WHEN r.user_id = $1 THEN 
+                           CASE 
+                               WHEN r.rsvp_status_id = '550e8400-e29b-41d4-a716-446655440301' THEN 'attending'
+                               WHEN r.rsvp_status_id = '550e8400-e29b-41d4-a716-446655440303' THEN 'not_attending'
+                               WHEN r.rsvp_status_id = '550e8400-e29b-41d4-a716-446655440302' THEN 'maybe'
+                           END
+                       END) as my_rsvp_status
+                FROM events e
+                JOIN practices p ON e.id = p.id
+                JOIN event_types et ON e.event_type_id = et.id
+                JOIN teams t ON e.team_id = t.id
+                -- Only events for teams the user belongs to
+                JOIN team_members tm_user ON e.team_id = tm_user.team_id AND tm_user.user_id = $1 AND tm_user.is_active = true
+                LEFT JOIN venues v ON e.venue_id = v.id
+                LEFT JOIN rsvps r ON e.id = r.event_id
+                WHERE e.cancelled = false
+            `;
+
+            const queryParams = [req.user.id];
+            let paramCount = 1;
+
+            if (start_date) {
+                query += ` AND e.event_date >= $${++paramCount}`;
+                queryParams.push(start_date);
+            }
+
+            if (end_date) {
+                query += ` AND e.event_date <= $${++paramCount}`;
+                queryParams.push(end_date);
+            }
+
+            query += `
+                GROUP BY e.id, et.name, et.display_name, v.name, v.address, t.name,
+                         p.focus_areas, p.drill_plan, p.equipment_needed, p.fitness_focus,
+                         p.skill_level, p.weather_dependent, p.indoor_alternative_location, p.notes
+                ORDER BY e.event_date ASC
+                LIMIT $${++paramCount} OFFSET $${++paramCount}
+            `;
+            queryParams.push(parseInt(limit), parseInt(offset));
+
+            const result = await dbPool.query(query, queryParams);
+
+            res.json({
+                practices: result.rows,
+                pagination: {
+                    limit: parseInt(limit),
+                    offset: parseInt(offset),
+                    total: result.rows.length
+                }
+            });
+
+        } catch (error) {
+            console.error('Get user practices error:', error);
+            res.status(500).json({
+                error: 'Failed to get practices',
+                code: 'GET_PRACTICES_ERROR'
+            });
+        }
+    }
+);
+
 // Get practices for a team
 router.get('/team/:teamId', 
     authenticateToken,
