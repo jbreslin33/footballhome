@@ -71,6 +71,7 @@ setLeagueGamesDbPool(pool);
 console.log('🔧 Mounting API routes...');
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/events-simple', eventsRoutes); // Add alias for frontend compatibility
 app.use('/api/rsvps', rsvpsRoutes);
 app.use('/api/practices', practicesRoutes);
 app.use('/api/teams', teamsRoutes);
