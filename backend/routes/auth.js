@@ -374,14 +374,14 @@ const updateProfileSchema = Joi.object({
     phone: Joi.alternatives().try(
         Joi.string().allow(''),
         Joi.string().pattern(/^[\+\d\s\-\(\)\.x]+$/).min(7).max(20)
-    ).optional(), // Allow empty or valid phone format
-    emergency_contact: Joi.string().max(100).allow('').optional(),
+    ).allow(null).optional(), // Allow empty, null, or valid phone format
+    emergency_contact: Joi.string().max(100).allow('', null).optional(),
     emergency_phone: Joi.alternatives().try(
         Joi.string().allow(''),
         Joi.string().pattern(/^[\+\d\s\-\(\)\.x]+$/).min(7).max(20)
-    ).optional(), // Allow empty or valid phone format
-    date_of_birth: Joi.date().iso().allow('').optional(),
-    address: Joi.string().max(500).allow('').optional()
+    ).allow(null).optional(), // Allow empty, null, or valid phone format
+    date_of_birth: Joi.date().iso().allow('', null).optional(),
+    address: Joi.string().max(500).allow('', null).optional()
 });
 
 router.put('/profile', require('../middleware/auth').authenticateToken, async (req, res) => {
