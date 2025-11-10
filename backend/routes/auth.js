@@ -15,12 +15,42 @@ const setDbPool = (pool) => {
     dbPool = pool;
 };
 
+// Phone number formatting helper
+const formatPhoneNumber = (phone) => {
+    if (!phone) return null;
+    
+    // Remove all non-digit characters
+    const digits = phone.replace(/\D/g, '');
+    
+    // Handle different digit lengths
+    if (digits.length === 10) {
+        // Format as (XXX) XXX-XXXX
+        return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+    } else if (digits.length === 11 && digits.startsWith('1')) {
+        // Format as +1 (XXX) XXX-XXXX
+        return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+    } else if (digits.length >= 7) {
+        // For other lengths, format as best as possible
+        if (digits.length === 7) {
+            return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+        } else {
+            // For international or other formats, just add formatting
+            return digits.length > 10 ? 
+                `+${digits.slice(0, digits.length - 10)} (${digits.slice(-10, -7)}) ${digits.slice(-7, -4)}-${digits.slice(-4)}` :
+                digits;
+        }
+    } else {
+        // Too few digits, return as-is
+        return digits;
+    }
+};
+
 // Validation schemas
 const registerSchema = Joi.object({
     email: Joi.string().email().required().max(255),
     password: Joi.string().min(8).max(100).required(),
     name: Joi.string().min(1).max(100).required(),
-    phone: Joi.string().max(50).optional() // Accept any phone format up to 50 chars
+    phone: Joi.string().pattern(/^[\+\d\s\-\(\)\.x]+$/).min(7).max(20).optional() // Must contain at least 7 characters and only phone-like characters
 });
 
 const loginSchema = Joi.object({
@@ -71,6 +101,9 @@ router.post('/register', authLimiter, async (req, res) => {
 
         const { email, password, name, phone } = value;
 
+        // Format phone number to standard format
+        const formattedPhone = formatPhoneNumber(phone);
+
         // Check if user already exists
         const existingUser = await dbPool.query(
             'SELECT id FROM users WHERE email = $1',
@@ -93,7 +126,7 @@ router.post('/register', authLimiter, async (req, res) => {
             INSERT INTO users (email, password_hash, name, phone, is_active)
             VALUES ($1, $2, $3, $4, true)
             RETURNING id, email, name, created_at
-        `, [email.toLowerCase(), hashedPassword, name, phone]);
+        `, [email.toLowerCase(), hashedPassword, name, formattedPhone]);
 
         const user = result.rows[0];
 
@@ -335,9 +368,9 @@ router.get('/profile', require('../middleware/auth').authenticateToken, async (r
 // Update user profile
 const updateProfileSchema = Joi.object({
     name: Joi.string().min(1).max(100).required(),
-    phone: Joi.string().max(50).allow('').optional(), // Accept any phone format up to 50 chars
+    phone: Joi.string().pattern(/^[\+\d\s\-\(\)\.x]+$/).min(7).max(20).allow('').optional(), // Must be phone-like format with at least 7 chars
     emergency_contact: Joi.string().max(100).allow('').optional(),
-    emergency_phone: Joi.string().max(50).allow('').optional(), // Accept any phone format up to 50 chars
+    emergency_phone: Joi.string().pattern(/^[\+\d\s\-\(\)\.x]+$/).min(7).max(20).allow('').optional(), // Must be phone-like format
     date_of_birth: Joi.date().iso().allow('').optional(),
     address: Joi.string().max(500).allow('').optional()
 });
@@ -359,6 +392,17 @@ router.put('/profile', require('../middleware/auth').authenticateToken, async (r
 
         const { name, phone, emergency_contact, emergency_phone, date_of_birth, address } = value;
 
+        // Format phone numbers to standard format
+        const formattedPhone = formatPhoneNumber(phone);
+        const formattedEmergencyPhone = formatPhoneNumber(emergency_phone);
+
+        console.log('📞 Phone formatting:', { 
+            original: phone, 
+            formatted: formattedPhone,
+            originalEmergency: emergency_phone,
+            formattedEmergency: formattedEmergencyPhone 
+        });
+
         // Update user profile
         const result = await dbPool.query(`
             UPDATE users 
@@ -371,7 +415,7 @@ router.put('/profile', require('../middleware/auth').authenticateToken, async (r
                 updated_at = CURRENT_TIMESTAMP 
             WHERE id = $7
             RETURNING id, email, name, phone, emergency_contact, emergency_phone, date_of_birth, address, created_at
-        `, [name, phone || null, emergency_contact || null, emergency_phone || null, date_of_birth || null, address || null, req.user.id]);
+        `, [name, formattedPhone, emergency_contact || null, formattedEmergencyPhone, date_of_birth || null, address || null, req.user.id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({
