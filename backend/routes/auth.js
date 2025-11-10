@@ -50,7 +50,10 @@ const registerSchema = Joi.object({
     email: Joi.string().email().required().max(255),
     password: Joi.string().min(8).max(100).required(),
     name: Joi.string().min(1).max(100).required(),
-    phone: Joi.string().pattern(/^[\+\d\s\-\(\)\.x]+$/).min(7).max(20).optional() // Must contain at least 7 characters and only phone-like characters
+    phone: Joi.alternatives().try(
+        Joi.string().allow(''),
+        Joi.string().pattern(/^[\+\d\s\-\(\)\.x]+$/).min(7).max(20)
+    ).optional() // Allow empty or valid phone format
 });
 
 const loginSchema = Joi.object({
@@ -368,9 +371,15 @@ router.get('/profile', require('../middleware/auth').authenticateToken, async (r
 // Update user profile
 const updateProfileSchema = Joi.object({
     name: Joi.string().min(1).max(100).required(),
-    phone: Joi.string().pattern(/^[\+\d\s\-\(\)\.x]+$/).min(7).max(20).allow('').optional(), // Must be phone-like format with at least 7 chars
+    phone: Joi.alternatives().try(
+        Joi.string().allow(''),
+        Joi.string().pattern(/^[\+\d\s\-\(\)\.x]+$/).min(7).max(20)
+    ).optional(), // Allow empty or valid phone format
     emergency_contact: Joi.string().max(100).allow('').optional(),
-    emergency_phone: Joi.string().pattern(/^[\+\d\s\-\(\)\.x]+$/).min(7).max(20).allow('').optional(), // Must be phone-like format
+    emergency_phone: Joi.alternatives().try(
+        Joi.string().allow(''),
+        Joi.string().pattern(/^[\+\d\s\-\(\)\.x]+$/).min(7).max(20)
+    ).optional(), // Allow empty or valid phone format
     date_of_birth: Joi.date().iso().allow('').optional(),
     address: Joi.string().max(500).allow('').optional()
 });
