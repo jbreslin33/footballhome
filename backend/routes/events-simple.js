@@ -16,6 +16,41 @@ router.get('/test', (req, res) => {
     res.json({ message: 'Events router is working!', timestamp: new Date().toISOString() });
 });
 
+// Get event types (optionally filtered by category)
+router.get('/types', authenticateToken, async (req, res) => {
+    console.log('🚀 Event types endpoint called with query:', req.query);
+    
+    try {
+        const { category } = req.query;
+        
+        let query = 'SELECT * FROM event_types WHERE 1=1';
+        const params = [];
+        
+        if (category) {
+            query += ' AND category = $1';
+            params.push(category);
+        }
+        
+        query += ' ORDER BY category, name';
+        
+        console.log('📝 Executing event types query:', query, 'params:', params);
+        const result = await dbPool.query(query, params);
+        console.log('✅ Event types query successful, rows:', result.rowCount);
+        
+        res.json({
+            event_types: result.rows
+        });
+        
+    } catch (error) {
+        console.error('❌ Get event types error:', error);
+        res.status(500).json({
+            error: 'Failed to get event types',
+            code: 'GET_EVENT_TYPES_ERROR',
+            message: error.message
+        });
+    }
+});
+
 // Get events for current user (across all their teams)
 router.get('/', authenticateToken, async (req, res) => {
     console.log('🚀 EVENTS ROUTE ACCESSED - All user events');
