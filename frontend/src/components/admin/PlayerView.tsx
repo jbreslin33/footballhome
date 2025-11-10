@@ -212,8 +212,16 @@ const PlayerView: React.FC = () => {
         </div>
 
         <div className="admin-card">
+          <h3>My Events</h3>
+          <p>View and manage your upcoming events, practices, and games</p>
+          <div className="admin-actions">
+            <button className="primary-btn" onClick={handleViewEvents}>View Events</button>
+          </div>
+        </div>
+
+        <div className="admin-card">
           <h3>My Schedule</h3>
-          <p>Upcoming training sessions and matches</p>
+          <p>Complete calendar view with monthly and timeline options</p>
           <div className="schedule-list">
             <div className="schedule-item">
               <span className="event-type">Training</span>
