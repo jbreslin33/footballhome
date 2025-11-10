@@ -21,6 +21,14 @@ const TrainingManager: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [editingPractice, setEditingPractice] = useState<Practice | null>(null);
   const [showConfirmCancel, setShowConfirmCancel] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    event_date: '',
+    event_time: '',
+    venue: ''
+  });
+  const [saving, setSaving] = useState(false);
   const { token } = useAuth();
   console.log('TrainingManager token:', token ? 'exists' : 'null');
 
@@ -114,6 +122,15 @@ const TrainingManager: React.FC = () => {
   const handleEditPractice = (practice: Practice) => {
     console.log('Edit practice:', practice.id, practice.title);
     setEditingPractice(practice);
+    
+    // Populate the form with current practice data
+    setEditForm({
+      title: practice.title || '',
+      description: practice.description || '',
+      event_date: practice.event_date || '',
+      event_time: practice.event_time || '',
+      venue: practice.venue || ''
+    });
   };
 
   const handleCancelPractice = async (practiceId: number) => {
@@ -147,6 +164,64 @@ const TrainingManager: React.FC = () => {
 
   const closeEditModal = () => {
     setEditingPractice(null);
+    setEditForm({
+      title: '',
+      description: '',
+      event_date: '',
+      event_time: '',
+      venue: ''
+    });
+    setSaving(false);
+  };
+
+  const handleFormChange = (field: string, value: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSavePractice = async () => {
+    if (!editingPractice) return;
+    
+    setSaving(true);
+    
+    try {
+      const response = await fetch(`/api/practices/${editingPractice.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: editForm.title,
+          description: editForm.description,
+          event_date: editForm.event_date,
+          event_time: editForm.event_time,
+          venue: editForm.venue
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update practice');
+      }
+
+      // Update the practice in the local state
+      setPractices(practices.map(p => 
+        p.id === editingPractice.id 
+          ? { ...p, ...editForm }
+          : p
+      ));
+      
+      console.log('Practice updated successfully');
+      closeEditModal();
+      
+    } catch (err) {
+      console.error('Error updating practice:', err);
+      // You could show an error message here
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -183,28 +258,85 @@ const TrainingManager: React.FC = () => {
     return (
       <div className="training-manager">
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content edit-modal">
             <div className="modal-header">
               <h3>Edit Practice Session</h3>
               <button className="close-btn" onClick={closeEditModal}>×</button>
             </div>
             <div className="modal-body">
-              <p><strong>Practice:</strong> {editingPractice.title}</p>
-              <p><strong>Date:</strong> {formatDate(editingPractice.event_date)}</p>
-              <p><strong>Time:</strong> {formatTime(editingPractice.event_time)}</p>
-              <p><strong>Venue:</strong> {editingPractice.venue || 'TBD'}</p>
-              <p><strong>Team:</strong> {editingPractice.team_name || 'TBD'}</p>
-              <br />
-              <p style={{color: '#666', fontStyle: 'italic'}}>
-                Full edit functionality will be implemented here. For now, you can close this modal.
-              </p>
+              <form className="edit-form">
+                <div className="form-group">
+                  <label htmlFor="title">Practice Title *</label>
+                  <input
+                    type="text"
+                    id="title"
+                    value={editForm.title}
+                    onChange={(e) => handleFormChange('title', e.target.value)}
+                    placeholder="e.g., Team Training Session"
+                    required
+                  />
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="event_date">Date *</label>
+                    <input
+                      type="date"
+                      id="event_date"
+                      value={editForm.event_date}
+                      onChange={(e) => handleFormChange('event_date', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="event_time">Time *</label>
+                    <input
+                      type="time"
+                      id="event_time"
+                      value={editForm.event_time}
+                      onChange={(e) => handleFormChange('event_time', e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="venue">Venue</label>
+                  <input
+                    type="text"
+                    id="venue"
+                    value={editForm.venue}
+                    onChange={(e) => handleFormChange('venue', e.target.value)}
+                    placeholder="e.g., Lighthouse Field"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="description">Description</label>
+                  <textarea
+                    id="description"
+                    value={editForm.description}
+                    onChange={(e) => handleFormChange('description', e.target.value)}
+                    placeholder="Optional notes about this practice session..."
+                    rows={3}
+                  />
+                </div>
+              </form>
             </div>
             <div className="modal-footer">
-              <button className="secondary-btn" onClick={closeEditModal}>
-                Close
+              <button 
+                className="secondary-btn" 
+                onClick={closeEditModal}
+                disabled={saving}
+              >
+                Cancel
               </button>
-              <button className="primary-btn" onClick={closeEditModal}>
-                Save Changes (Coming Soon)
+              <button 
+                className="primary-btn" 
+                onClick={handleSavePractice}
+                disabled={saving || !editForm.title.trim()}
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
