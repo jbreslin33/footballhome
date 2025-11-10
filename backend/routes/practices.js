@@ -35,10 +35,27 @@ const createPracticeSchema = Joi.object({
     notes: Joi.string().max(2000).optional().allow('')
 });
 
+// Debug endpoint for frontend testing
+router.get('/debug', (req, res) => {
+    console.log('🚀 DEBUG: Practices debug endpoint called');
+    console.log('📝 Headers:', req.headers);
+    console.log('📝 Query:', req.query);
+    res.json({ 
+        message: 'Debug endpoint working',
+        timestamp: new Date().toISOString(),
+        headers: req.headers,
+        query: req.query
+    });
+});
+
 // Get all practices for current user (across all their teams)
 router.get('/', 
     authenticateToken,
     async (req, res) => {
+        console.log('🚀 PRACTICES ENDPOINT CALLED - Get all user practices');
+        console.log('📝 User ID:', req.user.id);
+        console.log('📝 Query params:', req.query);
+        
         try {
             const { 
                 start_date, 

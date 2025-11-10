@@ -1,0 +1,244 @@
+.training-manager {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.training-header {
+  margin-bottom: 2rem;
+}
+
+.training-header h2 {
+  color: #2c3e50;
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.training-header p {
+  color: #7f8c8d;
+  font-size: 1rem;
+}
+
+.loading-state, .error-state, .empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.error-message {
+  color: #e74c3c;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+}
+
+.practices-list {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+}
+
+.practice-card {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.practice-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.practice-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.practice-title {
+  color: #2c3e50;
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+.team-badge {
+  background: #3498db;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  margin-left: 1rem;
+}
+
+.practice-details {
+  margin-bottom: 1.5rem;
+}
+
+.practice-datetime {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.practice-date, .practice-time {
+  color: #495057;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.practice-venue {
+  color: #495057;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.practice-description {
+  color: #6c757d;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  background: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 6px;
+  border-left: 3px solid #3498db;
+}
+
+.practice-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.rsvp-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.rsvp-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.rsvp-attending {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.rsvp-not-attending {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.rsvp-maybe {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.rsvp-pending {
+  background: #e2e3e5;
+  color: #495057;
+  border: 1px solid #ced4da;
+}
+
+.rsvp-count {
+  color: #6c757d;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.practice-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.primary-btn.btn-sm {
+  background: #3498db;
+  color: white;
+}
+
+.primary-btn.btn-sm:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.secondary-btn.btn-sm {
+  background: #f8f9fa;
+  color: #495057;
+  border: 1px solid #ced4da;
+}
+
+.secondary-btn.btn-sm:hover {
+  background: #e9ecef;
+  transform: translateY(-1px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .training-manager {
+    padding: 1rem;
+  }
+  
+  .practices-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .practice-header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .team-badge {
+    align-self: flex-start;
+    margin-left: 0;
+  }
+  
+  .practice-datetime {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .practice-footer {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+}
