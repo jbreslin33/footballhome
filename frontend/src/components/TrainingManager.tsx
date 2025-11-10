@@ -19,6 +19,8 @@ const TrainingManager: React.FC = () => {
   const [practices, setPractices] = useState<Practice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingPractice, setEditingPractice] = useState<Practice | null>(null);
+  const [showConfirmCancel, setShowConfirmCancel] = useState<number | null>(null);
   const { token } = useAuth();
   console.log('TrainingManager token:', token ? 'exists' : 'null');
 
@@ -109,6 +111,44 @@ const TrainingManager: React.FC = () => {
     }
   };
 
+  const handleEditPractice = (practice: Practice) => {
+    console.log('Edit practice:', practice.id, practice.title);
+    setEditingPractice(practice);
+  };
+
+  const handleCancelPractice = async (practiceId: number) => {
+    console.log('Cancel practice:', practiceId);
+    
+    try {
+      const response = await fetch(`/api/practices/${practiceId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel practice');
+      }
+
+      // Remove the practice from the local state
+      setPractices(practices.filter(p => p.id !== practiceId));
+      setShowConfirmCancel(null);
+      
+      // You could also show a success message here
+      console.log('Practice cancelled successfully');
+      
+    } catch (err) {
+      console.error('Error cancelling practice:', err);
+      // You could show an error message here
+    }
+  };
+
+  const closeEditModal = () => {
+    setEditingPractice(null);
+  };
+
   if (loading) {
     return (
       <div className="training-manager">
@@ -137,6 +177,41 @@ const TrainingManager: React.FC = () => {
   }
 
   console.log('TrainingManager rendering with practices:', practices.length, 'loading:', loading, 'error:', error);
+
+  // Edit Modal
+  if (editingPractice) {
+    return (
+      <div className="training-manager">
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Edit Practice Session</h3>
+              <button className="close-btn" onClick={closeEditModal}>×</button>
+            </div>
+            <div className="modal-body">
+              <p><strong>Practice:</strong> {editingPractice.title}</p>
+              <p><strong>Date:</strong> {formatDate(editingPractice.event_date)}</p>
+              <p><strong>Time:</strong> {formatTime(editingPractice.event_time)}</p>
+              <p><strong>Venue:</strong> {editingPractice.venue || 'TBD'}</p>
+              <p><strong>Team:</strong> {editingPractice.team_name || 'TBD'}</p>
+              <br />
+              <p style={{color: '#666', fontStyle: 'italic'}}>
+                Full edit functionality will be implemented here. For now, you can close this modal.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button className="secondary-btn" onClick={closeEditModal}>
+                Close
+              </button>
+              <button className="primary-btn" onClick={closeEditModal}>
+                Save Changes (Coming Soon)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="training-manager">
@@ -192,12 +267,51 @@ const TrainingManager: React.FC = () => {
                 </div>
                 
                 <div className="practice-actions">
-                  <button className="primary-btn btn-sm">Edit</button>
-                  <button className="secondary-btn btn-sm">Cancel</button>
+                  <button 
+                    className="primary-btn btn-sm"
+                    onClick={() => handleEditPractice(practice)}
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    className="secondary-btn btn-sm"
+                    onClick={() => setShowConfirmCancel(practice.id)}
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Cancel Confirmation Dialog */}
+      {showConfirmCancel && (
+        <div className="modal-overlay">
+          <div className="modal-content confirm-dialog">
+            <div className="modal-header">
+              <h3>Cancel Practice Session</h3>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to cancel this practice session?</p>
+              <p><strong>This action cannot be undone.</strong></p>
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="secondary-btn" 
+                onClick={() => setShowConfirmCancel(null)}
+              >
+                Keep Practice
+              </button>
+              <button 
+                className="danger-btn" 
+                onClick={() => handleCancelPractice(showConfirmCancel)}
+              >
+                Cancel Practice
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
