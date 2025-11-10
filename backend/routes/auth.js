@@ -20,7 +20,7 @@ const registerSchema = Joi.object({
     email: Joi.string().email().required().max(255),
     password: Joi.string().min(8).max(100).required(),
     name: Joi.string().min(1).max(100).required(),
-    phone: Joi.string().pattern(/^[\+]?[\d\s\-\(\)\.]{0,20}$/).optional()
+    phone: Joi.string().max(50).optional() // Accept any phone format up to 50 chars
 });
 
 const loginSchema = Joi.object({
@@ -335,9 +335,9 @@ router.get('/profile', require('../middleware/auth').authenticateToken, async (r
 // Update user profile
 const updateProfileSchema = Joi.object({
     name: Joi.string().min(1).max(100).required(),
-    phone: Joi.string().pattern(/^[\+]?[\d\s\-\(\)\.]{0,20}$/).allow('').optional(),
+    phone: Joi.string().max(50).allow('').optional(), // Accept any phone format up to 50 chars
     emergency_contact: Joi.string().max(100).allow('').optional(),
-    emergency_phone: Joi.string().pattern(/^[\+]?[\d\s\-\(\)\.]{0,20}$/).allow('').optional(),
+    emergency_phone: Joi.string().max(50).allow('').optional(), // Accept any phone format up to 50 chars
     date_of_birth: Joi.date().iso().allow('').optional(),
     address: Joi.string().max(500).allow('').optional()
 });
