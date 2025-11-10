@@ -119,16 +119,30 @@ const TrainingManager: React.FC = () => {
     }
   };
 
+  const formatDateForInput = (dateStr: string) => {
+    if (!dateStr) return '';
+    // Convert from database format to HTML date input format (YYYY-MM-DD)
+    const date = new Date(dateStr);
+    return date.toISOString().split('T')[0];
+  };
+
+  const formatTimeForInput = (timeStr: string) => {
+    if (!timeStr) return '';
+    // Ensure time is in HH:MM format for HTML time input
+    // If it's already in HH:MM:SS format, extract just HH:MM
+    return timeStr.substring(0, 5);
+  };
+
   const handleEditPractice = (practice: Practice) => {
     console.log('Edit practice:', practice.id, practice.title);
     setEditingPractice(practice);
     
-    // Populate the form with current practice data
+    // Populate the form with current practice data, properly formatted for inputs
     setEditForm({
       title: practice.title || '',
       description: practice.description || '',
-      event_date: practice.event_date || '',
-      event_time: practice.event_time || '',
+      event_date: formatDateForInput(practice.event_date),
+      event_time: formatTimeForInput(practice.event_time),
       venue: practice.venue || ''
     });
   };
