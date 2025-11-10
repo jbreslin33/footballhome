@@ -177,6 +177,7 @@ const TrainingManager: React.FC = () => {
   };
 
   const closeEditModal = () => {
+    console.log('Closing edit modal...');
     setEditingPractice(null);
     setEditForm({
       title: '',
@@ -228,13 +229,14 @@ const TrainingManager: React.FC = () => {
       ));
       
       console.log('Practice updated successfully');
+      
+      // Close modal after successful update
       closeEditModal();
       
     } catch (err) {
       console.error('Error updating practice:', err);
       // You could show an error message here
-    } finally {
-      setSaving(false);
+      setSaving(false); // Only set saving to false on error, closeEditModal handles success case
     }
   };
 
