@@ -10,6 +10,7 @@
 
 -- Create database extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- Create migrations tracking table for future changes
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -791,3 +792,30 @@ COMMENT ON COLUMN venues.user_ratings_total IS 'Number of Google reviews';
 COMMENT ON COLUMN venues.data_source IS 'Source of venue data (google_places, user_added, imported)';
 COMMENT ON VIEW venues_with_google_data IS 'Enhanced venue view with Google Places data and calculated fields';
 COMMENT ON VIEW venues_google_mapping IS 'Venue data with Google Places standard field names for API consistency';
+
+-- ========================================
+-- INITIAL USER SETUP
+-- ========================================
+-- Create admin user with bcrypt password hash (password: 1893Soccer!)
+-- Hash generated using: SELECT crypt('1893Soccer!', gen_salt('bf'));
+INSERT INTO users (id, email, name, password_hash, is_active)
+VALUES (
+    '77d77471-1250-47e0-81ab-d4626595d63c',
+    'jbreslin@footballhome.org',
+    'James Breslin',
+    crypt('1893Soccer!', gen_salt('bf')),
+    true
+)
+ON CONFLICT (email) DO UPDATE SET
+    password_hash = EXCLUDED.password_hash,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- Assign admin role to user
+INSERT INTO user_roles (user_id, role_id, assigned_at)
+SELECT 
+    '77d77471-1250-47e0-81ab-d4626595d63c',
+    r.id,
+    CURRENT_TIMESTAMP
+FROM roles r
+WHERE r.name = 'admin'
+ON CONFLICT (user_id, role_id) DO NOTHING;

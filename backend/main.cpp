@@ -69,40 +69,12 @@ public:
         userData.valid = false;
         
         std::cout << "🔍 authenticateUser called for: " << email << std::endl;
-        std::cout << "🔍 Password received: [" << password << "]" << std::endl;
-        std::cout << "🔍 Password length: " << password.length() << std::endl;
         
         // Lock mutex to protect database access
         std::lock_guard<std::mutex> lock(db_mutex);
         
         try {
-            std::cout << "🔍 Starting database transaction" << std::endl;
             pqxx::work txn(*db_conn);
-            std::cout << "🔍 Transaction started successfully" << std::endl;
-            
-            // Demo authentication - hardcoded accounts
-            std::cout << "🔍 Checking test@test.com: " << (email == "test@test.com" ? "email match" : "email no match") << std::endl;
-            if (email == "test@test.com" && password == "password") {
-                userData.valid = true;
-                userData.id = "test-user-123";
-                userData.email = email;
-                userData.name = "Test User";
-                userData.role = "player";
-                txn.commit();
-                return userData;
-            }
-            
-            std::cout << "🔍 Checking jbreslin@footballhome.org: " << (email == "jbreslin@footballhome.org" ? "email match" : "email no match") << std::endl;
-            std::cout << "🔍 Password comparison: [" << password << "] vs [1893Soccer!]" << std::endl;
-            if (email == "jbreslin@footballhome.org" && password == "1893Soccer!") {
-                userData.valid = true;
-                userData.id = "77d77471-1250-47e0-81ab-d4626595d63c";
-                userData.email = email;
-                userData.name = "James Breslin";
-                userData.role = "admin";
-                txn.commit();
-                return userData;
-            }
             
             // Query database for user by email (get the password hash)
             std::cout << "🔍 Querying DB for user: " << email << std::endl;

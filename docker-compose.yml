@@ -12,17 +12,10 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      # Mount database initialization files in order
+      # Mount database initialization file
       - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./database/leagues_data.sql:/docker-entrypoint-initdb.d/02-leagues.sql:ro
-      - ./database/venues_data.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
-      - ./database/lighthouse_1893_data.sql:/docker-entrypoint-initdb.d/04-lighthouse.sql:ro
-      - ./database/05-division_relationships.sql:/docker-entrypoint-initdb.d/05-division_relationships.sql:ro
-      - ./scripts/create-admin-user.sql:/docker-entrypoint-initdb.d/06-admin-user.sql:ro
       # Persistent data storage
       - db_data:/var/lib/postgresql/data
-      # Optional: custom postgresql.conf for performance tuning
-      # - ./database/postgresql.conf:/etc/postgresql/postgresql.conf
     networks:
       - footballhome_network
     healthcheck:
