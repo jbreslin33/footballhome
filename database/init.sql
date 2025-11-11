@@ -1193,3 +1193,19 @@ SELECT
 FROM permissions
 WHERE is_system_permission = true
 ON CONFLICT (admin_id, permission_id) DO NOTHING;
+
+-- ========================================
+-- GOOGLE PLACES VENUES DATA
+-- ========================================
+-- Venues fetched from Google Places API and saved as static SQL inserts
+-- This avoids API costs on every rebuild and ensures consistent venue data
+-- 
+-- Files:
+--   - venues-google-philadelphia.sql: Philadelphia area venues (50km radius)
+--
+-- To add new areas:
+--   1. Run: node ~/fetch-google-venues.js --location "Lancaster, PA" --radius 25000 > database/venues-google-lancaster.sql
+--   2. Add: \i database/venues-google-lancaster.sql
+--
+-- Note: These files are imported when running database initialization
+-- Using Docker: docker exec -i footballhome-database-1 psql -U postgres -d footballhome < database/venues-google-philadelphia.sql
