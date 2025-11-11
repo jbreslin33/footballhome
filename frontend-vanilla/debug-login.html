@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Debug Test</title>
+</head>
+<body>
+    <h1>Login API Test</h1>
+    <button onclick="testLogin()">Test Login API</button>
+    <div id="result"></div>
+
+    <script>
+        // Show current environment info
+        document.addEventListener('DOMContentLoaded', () => {
+            const infoDiv = document.createElement('div');
+            infoDiv.innerHTML = `
+                <p><strong>Current URL:</strong> ${window.location.href}</p>
+                <p><strong>Hostname:</strong> ${window.location.hostname}</p>
+                <p><strong>Protocol:</strong> ${window.location.protocol}</p>
+                <p><strong>API URL will be:</strong> ${window.location.origin}/api/auth/login</p>
+            `;
+            document.body.insertBefore(infoDiv, document.getElementById('result'));
+        });
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                console.log('Testing login API...');
+                console.log('Current hostname:', window.location.hostname);
+                
+                const apiUrl = '/api/auth/login';
+                console.log('Making request to:', apiUrl);
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        email: 'test@test.com', 
+                        password: 'password' 
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response OK:', response.ok);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                const responseText = await response.text();
+                console.log('Raw response text:', responseText);
+                
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    throw new Error(`JSON Parse Error: ${parseError.message}. Raw response: ${responseText}`);
+                }
+                
+                console.log('Parsed response data:', data);
+                
+                resultDiv.innerHTML = `
+                    <h3>API Test Results:</h3>
+                    <p><strong>Status:</strong> ${response.status} ${response.ok ? '✅' : '❌'}</p>
+                    <p><strong>API URL:</strong> ${window.location.origin}${apiUrl}</p>
+                    <h4>Response:</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    <h4>Analysis:</h4>
+                    <p><strong>Success:</strong> ${data.success ? '✅' : '❌'}</p>
+                    <p><strong>User object:</strong> ${data.user ? '✅ EXISTS' : '❌ UNDEFINED'}</p>
+                    <p><strong>First Name:</strong> ${data.user?.firstName || '❌ MISSING'}</p>
+                    <p><strong>User keys:</strong> ${data.user ? Object.keys(data.user).join(', ') : 'N/A'}</p>
+                `;
+                
+            } catch (error) {
+                console.error('Login test error:', error);
+                resultDiv.innerHTML = `
+                    <h3>❌ Error occurred:</h3>
+                    <p style="color: red;"><strong>Error:</strong> ${error.message}</p>
+                    <p><strong>API URL:</strong> ${window.location.origin}/api/auth/login</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

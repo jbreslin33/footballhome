@@ -172,6 +172,8 @@ class LoginForm extends Component {
     async submitLogin(formData) {
         try {
             const result = await this.authService.login(formData.email, formData.password);
+            console.log('AuthService result:', result);
+            console.log('User in result:', result?.user);
             
             if (result.success) {
                 this.loginFSM.send('LOGIN_SUCCESS', result);

@@ -35,31 +35,84 @@ public:
         }
     }
 
-    bool authenticateUser(const std::string& email, const std::string& password) {
+    struct UserData {
+        std::string id;
+        std::string email;
+        std::string name;
+        std::string role;
+        bool valid;
+    };
+
+    UserData authenticateUser(const std::string& email, const std::string& password) {
+        UserData userData;
+        userData.valid = false;
+        
         try {
             pqxx::work txn(*db_conn);
             
-            // Simple query to check user credentials
-            std::string query = "SELECT id FROM users WHERE email = $1 AND password_hash = $2";
+            // Demo authentication - for test@test.com, return hardcoded data
+            if (email == "test@test.com" && password == "password") {
+                userData.valid = true;
+                userData.id = "test-user-123";
+                userData.email = email;
+                userData.name = "Test User";
+                userData.role = "player";
+                txn.commit();
+                return userData;
+            }
+            
+            // For real database query (when we have actual data)
+            std::string query = "SELECT u.id, u.email, u.name, r.name as role_name "
+                              "FROM users u "
+                              "LEFT JOIN user_roles ur ON u.id = ur.user_id "
+                              "LEFT JOIN roles r ON ur.role_id = r.id "
+                              "WHERE u.email = $1 AND u.password_hash = $2 "
+                              "LIMIT 1";
             auto result = txn.exec_params(query, email, password);
             
+            if (!result.empty()) {
+                auto row = result[0];
+                userData.valid = true;
+                userData.id = row["id"].as<std::string>();
+                userData.email = row["email"].as<std::string>();
+                userData.name = row["name"].as<std::string>();
+                userData.role = row["role_name"].is_null() ? "player" : row["role_name"].as<std::string>();
+            }
+            
             txn.commit();
-            return !result.empty();
         } catch (const std::exception& e) {
             std::cerr << "❌ Auth query failed: " << e.what() << std::endl;
-            return false;
         }
+        
+        return userData;
     }
 
-    std::string createJSONResponse(bool success, const std::string& message, const std::string& email = "") {
+    std::string createJSONResponse(bool success, const std::string& message, const UserData& userData = {}) {
         std::ostringstream json;
         json << "{";
         json << "\"success\":" << (success ? "true" : "false") << ",";
         json << "\"message\":\"" << message << "\"";
         
-        if (success && !email.empty()) {
-            json << ",\"user\":{\"email\":\"" << email << "\",\"role\":\"player\"}";
-            json << ",\"token\":\"simple_jwt_token_123\"";
+        if (success && userData.valid) {
+            // Split name into firstName and lastName for frontend compatibility
+            std::string firstName = userData.name;
+            std::string lastName = "";
+            
+            size_t spacePos = userData.name.find(' ');
+            if (spacePos != std::string::npos) {
+                firstName = userData.name.substr(0, spacePos);
+                lastName = userData.name.substr(spacePos + 1);
+            }
+            
+            json << ",\"user\":{";
+            json << "\"id\":\"" << userData.id << "\",";
+            json << "\"email\":\"" << userData.email << "\",";
+            json << "\"name\":\"" << userData.name << "\",";
+            json << "\"firstName\":\"" << firstName << "\",";
+            json << "\"lastName\":\"" << lastName << "\",";
+            json << "\"role\":\"" << userData.role << "\"";
+            json << "}";
+            json << ",\"token\":\"jwt_" << userData.id << "_" << std::hash<std::string>{}(userData.email) << "\"";
         }
         
         json << "}";
@@ -86,10 +139,14 @@ public:
 
         std::cout << "🔐 Login attempt: " << email << std::endl;
 
-        // Demo authentication (matches your test account)
-        if (email == "test@test.com" && password == "password") {
-            return createJSONResponse(true, "Login successful", email);
+        // Authenticate user
+        UserData userData = authenticateUser(email, password);
+        
+        if (userData.valid) {
+            std::cout << "✅ Authentication successful: " << email << " (" << userData.name << ")" << std::endl;
+            return createJSONResponse(true, "Login successful", userData);
         } else {
+            std::cout << "❌ Authentication failed: " << email << std::endl;
             return createJSONResponse(false, "Invalid credentials");
         }
     }

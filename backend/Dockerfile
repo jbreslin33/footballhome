@@ -1,18 +1,15 @@
-# Simple C++ HTTP Server
-FROM ubuntu:22.04
+# Use a pre-built image with development tools
+FROM gcc:12
 
-# Install minimal dependencies
+# Install PostgreSQL client library
 RUN apt-get update && apt-get install -y \
-    g++ \
     libpqxx-dev \
-    libpq-dev \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy source code
 WORKDIR /app
 COPY main.cpp .
-COPY README.md .
 
 # Compile the server
 RUN g++ -std=c++17 -pthread main.cpp -lpqxx -lpq -o server

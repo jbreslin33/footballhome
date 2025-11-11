@@ -6,13 +6,21 @@ class AuthService {
     constructor(baseUrl = null) {
         // Auto-detect API URL based on current hostname  
         if (!baseUrl) {
-            // Always use relative URLs - host nginx handles the proxying
-            this.baseUrl = '';
+            const hostname = window.location.hostname;
+            const protocol = window.location.protocol;
+            
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                // Local development - direct to backend
+                this.baseUrl = 'http://localhost:3001';
+            } else {
+                // Production/remote - use relative URLs (nginx proxy handles routing)
+                this.baseUrl = '';
+            }
         } else {
             this.baseUrl = baseUrl;
         }
         
-        console.log(`AuthService initialized with API URL: ${this.baseUrl}`);
+        console.log(`AuthService initialized with API URL: ${this.baseUrl} (host: ${window.location.hostname})`);
         this.token = localStorage.getItem('auth_token');
     }
     
@@ -33,8 +41,10 @@ class AuthService {
             });
             
             const data = await response.json();
+            console.log('Raw backend response:', data);
             
-            if (!response.ok) {
+            // Check both HTTP status and JSON success field
+            if (!response.ok || !data.success) {
                 throw new Error(data.message || 'Login failed');
             }
             

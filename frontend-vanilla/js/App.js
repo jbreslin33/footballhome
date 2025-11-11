@@ -46,7 +46,14 @@ class App {
         // Listen for successful login
         this.currentComponent.on('loginSuccess', (event) => {
             console.log('App received login success:', event.detail);
-            this.showDashboard(event.detail.user);
+            console.log('User object:', event.detail?.user);
+            console.log('Full result keys:', Object.keys(event.detail || {}));
+            
+            if (event.detail && event.detail.user) {
+                this.showDashboard(event.detail.user);
+            } else {
+                console.error('No user data received in login success event');
+            }
         });
     }
     
