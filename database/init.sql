@@ -5,8 +5,9 @@
 -- 1. Fully normalized database (4NF compliant)
 -- 2. Google Places integration with all fields
 -- 3. Migration tracking system for future changes
--- 4. Complete sample data for development
+-- 4. Essential lookup tables and system data only
 -- 5. Optimized indexes and constraints
+-- 6. Google Places venues (335 venues) loaded via separate SQL files
 
 -- Create database extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
