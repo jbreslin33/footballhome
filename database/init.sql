@@ -370,10 +370,19 @@ CREATE TABLE spectators (
 CREATE TABLE admins (
     id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     admin_level VARCHAR(50),                 -- 'system', 'league', 'club', 'team'
-    permissions TEXT[],                      -- System-level permissions
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Admin permissions junction table (many-to-many, normalized like role_permissions)
+CREATE TABLE admin_permissions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    granted_by UUID REFERENCES users(id),     -- Who granted this permission
+    UNIQUE(admin_id, permission_id)
 );
 
 -- ========================================
@@ -803,6 +812,10 @@ CREATE INDEX idx_medical_staff_role ON medical_staff(role_type);
 CREATE INDEX idx_managers_type ON managers(manager_type);
 CREATE INDEX idx_admins_level ON admins(admin_level);
 
+-- Admin permissions indexes
+CREATE INDEX idx_admin_permissions_admin ON admin_permissions(admin_id);
+CREATE INDEX idx_admin_permissions_permission ON admin_permissions(permission_id);
+
 -- Team relationship indexes
 CREATE INDEX idx_team_players_team ON team_players(team_id);
 CREATE INDEX idx_team_players_player ON team_players(player_id);
@@ -902,7 +915,14 @@ INSERT INTO permissions (id, name, display_name, description, category, is_syste
 ('550e8400-e29b-41d4-a716-446655440607', 'manage_roster', 'Manage Roster', 'Add/remove players from team roster', 'team_management', true),
 ('550e8400-e29b-41d4-a716-446655440608', 'view_events', 'View Events', 'View team events and schedules', 'event_access', true),
 ('550e8400-e29b-41d4-a716-446655440609', 'rsvp_events', 'RSVP to Events', 'Respond to event invitations', 'event_access', true),
-('550e8400-e29b-41d4-a716-446655440610', 'view_profile', 'View Profile', 'View own profile and basic information', 'user_access', true);
+('550e8400-e29b-41d4-a716-446655440610', 'view_profile', 'View Profile', 'View own profile and basic information', 'user_access', true),
+-- System-level admin permissions
+('550e8400-e29b-41d4-a716-446655440611', 'system_admin', 'System Administrator', 'Full system access - all permissions', 'system_admin', true),
+('550e8400-e29b-41d4-a716-446655440612', 'manage_leagues', 'Manage Leagues', 'Create, edit, delete leagues and conferences', 'league_management', true),
+('550e8400-e29b-41d4-a716-446655440613', 'manage_clubs', 'Manage Clubs', 'Create, edit, delete clubs and divisions', 'club_management', true),
+('550e8400-e29b-41d4-a716-446655440614', 'manage_venues', 'Manage Venues', 'Create, edit, delete venues', 'venue_management', true),
+('550e8400-e29b-41d4-a716-446655440615', 'manage_permissions', 'Manage Permissions', 'Grant and revoke admin permissions', 'system_admin', true),
+('550e8400-e29b-41d4-a716-446655440616', 'view_system_logs', 'View System Logs', 'Access system logs and audit trails', 'system_admin', true);
 
 -- Roles (without permissions array)
 INSERT INTO roles (id, name, display_name, description, is_system_role) VALUES 
@@ -1200,10 +1220,19 @@ ON CONFLICT (email) DO UPDATE SET
     updated_at = CURRENT_TIMESTAMP;
 
 -- Create admin entity for this user
-INSERT INTO admins (id, admin_level, permissions)
+INSERT INTO admins (id, admin_level, notes)
 VALUES (
     '77d77471-1250-47e0-81ab-d4626595d63c',
     'system',
-    ARRAY['all']
+    'System administrator with full access'
 )
 ON CONFLICT (id) DO NOTHING;
+
+-- Grant all permissions to system admin via junction table
+INSERT INTO admin_permissions (admin_id, permission_id)
+SELECT 
+    '77d77471-1250-47e0-81ab-d4626595d63c',
+    id
+FROM permissions
+WHERE is_system_permission = true
+ON CONFLICT (admin_id, permission_id) DO NOTHING;
