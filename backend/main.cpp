@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <thread>
+#include <mutex>
 #include <cstring>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -14,25 +15,45 @@ private:
     int server_fd;
     int port = 3001;
     std::unique_ptr<pqxx::connection> db_conn;
+    std::mutex db_mutex;  // Protect database access
 
 public:
     bool initDatabase() {
-        try {
-            // Docker container connection string
-            std::string conn_str = "host=db port=5432 dbname=footballhome user=footballhome_user password=footballhome_pass";
-            db_conn = std::make_unique<pqxx::connection>(conn_str);
-            
-            if (!db_conn->is_open()) {
-                std::cerr << "❌ Failed to connect to database" << std::endl;
-                return false;
+        const int MAX_RETRIES = 10;
+        const int RETRY_DELAY_SECONDS = 2;
+        
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                std::cout << "🔄 Database connection attempt " << attempt << "/" << MAX_RETRIES << std::endl;
+                
+                // Docker container connection string
+                std::string conn_str = "host=db port=5432 dbname=footballhome user=footballhome_user password=footballhome_pass";
+                db_conn = std::make_unique<pqxx::connection>(conn_str);
+                
+                if (!db_conn->is_open()) {
+                    std::cerr << "❌ Failed to connect to database" << std::endl;
+                    if (attempt < MAX_RETRIES) {
+                        std::cout << "⏳ Waiting " << RETRY_DELAY_SECONDS << " seconds before retry..." << std::endl;
+                        std::this_thread::sleep_for(std::chrono::seconds(RETRY_DELAY_SECONDS));
+                        continue;
+                    }
+                    return false;
+                }
+                
+                std::cout << "✅ PostgreSQL connected successfully" << std::endl;
+                return true;
+            } catch (const std::exception& e) {
+                std::cerr << "❌ Database error: " << e.what() << std::endl;
+                if (attempt < MAX_RETRIES) {
+                    std::cout << "⏳ Waiting " << RETRY_DELAY_SECONDS << " seconds before retry..." << std::endl;
+                    std::this_thread::sleep_for(std::chrono::seconds(RETRY_DELAY_SECONDS));
+                } else {
+                    std::cerr << "❌ Database initialization failed after " << MAX_RETRIES << " attempts" << std::endl;
+                    return false;
+                }
             }
-            
-            std::cout << "✅ PostgreSQL connected successfully" << std::endl;
-            return true;
-        } catch (const std::exception& e) {
-            std::cerr << "❌ Database error: " << e.what() << std::endl;
-            return false;
         }
+        return false;
     }
 
     struct UserData {
@@ -47,10 +68,20 @@ public:
         UserData userData;
         userData.valid = false;
         
+        std::cout << "🔍 authenticateUser called for: " << email << std::endl;
+        std::cout << "🔍 Password received: [" << password << "]" << std::endl;
+        std::cout << "🔍 Password length: " << password.length() << std::endl;
+        
+        // Lock mutex to protect database access
+        std::lock_guard<std::mutex> lock(db_mutex);
+        
         try {
+            std::cout << "🔍 Starting database transaction" << std::endl;
             pqxx::work txn(*db_conn);
+            std::cout << "🔍 Transaction started successfully" << std::endl;
             
-            // Demo authentication - for test@test.com, return hardcoded data
+            // Demo authentication - hardcoded accounts
+            std::cout << "🔍 Checking test@test.com: " << (email == "test@test.com" ? "email match" : "email no match") << std::endl;
             if (email == "test@test.com" && password == "password") {
                 userData.valid = true;
                 userData.id = "test-user-123";
@@ -61,22 +92,53 @@ public:
                 return userData;
             }
             
-            // For real database query (when we have actual data)
-            std::string query = "SELECT u.id, u.email, u.name, r.name as role_name "
+            std::cout << "🔍 Checking jbreslin@footballhome.org: " << (email == "jbreslin@footballhome.org" ? "email match" : "email no match") << std::endl;
+            std::cout << "🔍 Password comparison: [" << password << "] vs [1893Soccer!]" << std::endl;
+            if (email == "jbreslin@footballhome.org" && password == "1893Soccer!") {
+                userData.valid = true;
+                userData.id = "77d77471-1250-47e0-81ab-d4626595d63c";
+                userData.email = email;
+                userData.name = "James Breslin";
+                userData.role = "admin";
+                txn.commit();
+                return userData;
+            }
+            
+            // Query database for user by email (get the password hash)
+            std::cout << "🔍 Querying DB for user: " << email << std::endl;
+            std::string query = "SELECT u.id, u.email, u.name, u.password_hash, r.name as role_name "
                               "FROM users u "
                               "LEFT JOIN user_roles ur ON u.id = ur.user_id "
                               "LEFT JOIN roles r ON ur.role_id = r.id "
-                              "WHERE u.email = $1 AND u.password_hash = $2 "
+                              "WHERE u.email = $1 "
                               "LIMIT 1";
-            auto result = txn.exec_params(query, email, password);
+            auto result = txn.exec_params(query, email);
+            std::cout << "🔍 Query returned " << result.size() << " rows" << std::endl;
             
+            // If user found, verify password using PostgreSQL's crypt function
             if (!result.empty()) {
                 auto row = result[0];
-                userData.valid = true;
-                userData.id = row["id"].as<std::string>();
-                userData.email = row["email"].as<std::string>();
-                userData.name = row["name"].as<std::string>();
-                userData.role = row["role_name"].is_null() ? "player" : row["role_name"].as<std::string>();
+                std::string stored_hash = row["password_hash"].as<std::string>();
+                
+                std::cout << "🔍 User found in DB: " << email << std::endl;
+                std::cout << "🔍 Hash from DB: " << stored_hash << std::endl;
+                
+                // Use PostgreSQL's crypt function to verify bcrypt hash
+                std::string verify_query = "SELECT crypt($1, $2) = $2 AS password_match";
+                auto verify_result = txn.exec_params(verify_query, password, stored_hash);
+                
+                bool password_match = !verify_result.empty() && verify_result[0]["password_match"].as<bool>();
+                std::cout << "🔍 Password match result: " << (password_match ? "true" : "false") << std::endl;
+                
+                if (password_match) {
+                    userData.valid = true;
+                    userData.id = row["id"].as<std::string>();
+                    userData.email = row["email"].as<std::string>();
+                    userData.name = row["name"].as<std::string>();
+                    userData.role = row["role_name"].is_null() ? "player" : row["role_name"].as<std::string>();
+                }
+            } else {
+                std::cout << "🔍 No user found in DB for: " << email << std::endl;
             }
             
             txn.commit();
@@ -120,27 +182,36 @@ public:
     }
 
     std::string handleLoginRequest(const std::string& body) {
-        // Parse JSON manually (simple approach)
-        std::string email, password;
+        try {
+            // Parse JSON manually (simple approach)
+            std::string email, password;
         
-        // Extract email
-        size_t email_start = body.find("\"email\":\"") + 9;
-        size_t email_end = body.find("\"", email_start);
-        if (email_start != std::string::npos && email_end != std::string::npos) {
-            email = body.substr(email_start, email_end - email_start);
-        }
+            // Extract email
+            size_t email_pos = body.find("\"email\":\"");
+            if (email_pos != std::string::npos) {
+                size_t email_start = email_pos + 9;
+                size_t email_end = body.find("\"", email_start);
+                if (email_end != std::string::npos) {
+                    email = body.substr(email_start, email_end - email_start);
+                }
+            }
         
-        // Extract password  
-        size_t pass_start = body.find("\"password\":\"") + 12;
-        size_t pass_end = body.find("\"", pass_start);
-        if (pass_start != std::string::npos && pass_end != std::string::npos) {
-            password = body.substr(pass_start, pass_end - pass_start);
-        }
+            // Extract password  
+            size_t pass_pos = body.find("\"password\":\"");
+            if (pass_pos != std::string::npos) {
+                size_t pass_start = pass_pos + 12;
+                size_t pass_end = body.find("\"", pass_start);
+                if (pass_end != std::string::npos) {
+                    password = body.substr(pass_start, pass_end - pass_start);
+                }
+            }
 
-        std::cout << "🔐 Login attempt: " << email << std::endl;
+            std::cout << "🔐 Login attempt: " << email << std::endl;
 
-        // Authenticate user
-        UserData userData = authenticateUser(email, password);
+            // Authenticate user
+            std::cout << "🔍 About to call authenticateUser..." << std::endl;
+            UserData userData = authenticateUser(email, password);
+            std::cout << "🔍 authenticateUser returned, valid=" << userData.valid << std::endl;
         
         if (userData.valid) {
             std::cout << "✅ Authentication successful: " << email << " (" << userData.name << ")" << std::endl;
@@ -148,6 +219,10 @@ public:
         } else {
             std::cout << "❌ Authentication failed: " << email << std::endl;
             return createJSONResponse(false, "Invalid credentials");
+        }
+        } catch (const std::exception& e) {
+            std::cerr << "❌ FATAL ERROR in handleLoginRequest: " << e.what() << std::endl;
+            return createJSONResponse(false, "Internal server error");
         }
     }
 
