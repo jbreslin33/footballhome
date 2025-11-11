@@ -30,36 +30,25 @@ CREATE TABLE sports (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Permission categories lookup table
+CREATE TABLE permission_categories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(50) UNIQUE NOT NULL,          -- 'team_management', 'user_management'
+    display_name VARCHAR(100) NOT NULL,        -- 'Team Management', 'User Management'
+    description TEXT,                          -- Category description
+    sort_order INTEGER DEFAULT 0,             -- Display ordering
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Permissions lookup table (4NF compliant)
 CREATE TABLE permissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(50) UNIQUE NOT NULL,          -- 'manage_teams', 'manage_users'
     display_name VARCHAR(100) NOT NULL,        -- 'Manage Teams', 'Manage Users'
     description TEXT,                          -- 'Create, edit, delete teams and rosters'
-    category VARCHAR(50),                      -- 'team_management', 'user_management'
+    permission_category_id UUID REFERENCES permission_categories(id), -- Normalized category
     is_system_permission BOOLEAN DEFAULT true, -- Cannot be deleted
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Roles lookup table (renamed from user_roles for clarity)
-CREATE TABLE roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(20) UNIQUE NOT NULL,          -- 'coach', 'player', 'admin'
-    display_name VARCHAR(50) NOT NULL,         -- 'Coach', 'Player', 'Administrator'
-    description TEXT,                          -- Role description
-    is_system_role BOOLEAN DEFAULT false,      -- Cannot be deleted
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Role permissions junction table (many-to-many, 4NF compliant)
--- Note: granted_by reference to users will be added after users table is created
-CREATE TABLE role_permissions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
-    granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    granted_by UUID,                           -- Will add FK constraint after users table
-    UNIQUE(role_id, permission_id)
 );
 
 -- Event types lookup table
@@ -253,10 +242,6 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
--- Add foreign key constraint for role_permissions.granted_by now that users table exists
-ALTER TABLE role_permissions ADD CONSTRAINT fk_role_permissions_granted_by 
-    FOREIGN KEY (granted_by) REFERENCES users(id);
 
 -- ========================================
 -- USER ENTITY TABLES (Normalized)
@@ -860,8 +845,8 @@ CREATE INDEX idx_sport_division_admins_admin ON sport_division_admins(admin_id);
 CREATE INDEX idx_team_admins_team ON team_admins(team_id);
 CREATE INDEX idx_team_admins_admin ON team_admins(admin_id);
 
-CREATE INDEX idx_role_permissions_role ON role_permissions(role_id);
-CREATE INDEX idx_role_permissions_permission ON role_permissions(permission_id);
+CREATE INDEX idx_permission_categories_name ON permission_categories(name);
+CREATE INDEX idx_permissions_category ON permissions(permission_category_id);
 CREATE INDEX idx_teams_division ON teams(division_id);
 CREATE INDEX idx_teams_league_division ON teams(league_division_id);
 CREATE INDEX idx_league_conferences_league ON league_conferences(league_id);
@@ -883,7 +868,6 @@ CREATE INDEX idx_leagues_sport ON leagues(sport_id);
 CREATE INDEX idx_positions_sport ON positions(sport_id);
 CREATE INDEX idx_event_types_sport ON event_types(sport_id);
 CREATE INDEX idx_event_types_category ON event_types(category);
-CREATE INDEX idx_permissions_category ON permissions(category);
 CREATE INDEX idx_magic_tokens_token ON magic_tokens(token);
 CREATE INDEX idx_magic_tokens_expires ON magic_tokens(expires_at);
 
@@ -904,66 +888,39 @@ INSERT INTO sports (id, name, display_name, default_event_duration, typical_team
 ('550e8400-e29b-41d4-a716-446655440104', 'baseball', 'Baseball', 180, 9),
 ('550e8400-e29b-41d4-a716-446655440105', 'volleyball', 'Volleyball', 90, 6);
 
+-- Permission Categories
+INSERT INTO permission_categories (id, name, display_name, description, sort_order) VALUES
+('550e8400-e29b-41d4-a716-446655440701', 'team_management', 'Team Management', 'Permissions for managing teams and rosters', 1),
+('550e8400-e29b-41d4-a716-446655440702', 'user_management', 'User Management', 'Permissions for managing users and roles', 2),
+('550e8400-e29b-41d4-a716-446655440703', 'event_management', 'Event Management', 'Permissions for managing events and practices', 3),
+('550e8400-e29b-41d4-a716-446655440704', 'communication', 'Communication', 'Permissions for notifications and messaging', 4),
+('550e8400-e29b-41d4-a716-446655440705', 'team_access', 'Team Access', 'Permissions for viewing team information', 5),
+('550e8400-e29b-41d4-a716-446655440706', 'event_access', 'Event Access', 'Permissions for viewing and responding to events', 6),
+('550e8400-e29b-41d4-a716-446655440707', 'user_access', 'User Access', 'Permissions for user profile access', 7),
+('550e8400-e29b-41d4-a716-446655440708', 'system_admin', 'System Administration', 'System-level administrative permissions', 8),
+('550e8400-e29b-41d4-a716-446655440709', 'league_management', 'League Management', 'Permissions for managing leagues and conferences', 9),
+('550e8400-e29b-41d4-a716-446655440710', 'club_management', 'Club Management', 'Permissions for managing clubs and divisions', 10),
+('550e8400-e29b-41d4-a716-446655440711', 'venue_management', 'Venue Management', 'Permissions for managing venues', 11);
+
 -- Permissions (4NF compliant)
-INSERT INTO permissions (id, name, display_name, description, category, is_system_permission) VALUES 
-('550e8400-e29b-41d4-a716-446655440601', 'manage_teams', 'Manage Teams', 'Create, edit, delete teams and rosters', 'team_management', true),
-('550e8400-e29b-41d4-a716-446655440602', 'manage_users', 'Manage Users', 'Create, edit, delete user accounts', 'user_management', true),
-('550e8400-e29b-41d4-a716-446655440603', 'manage_events', 'Manage Events', 'Create, edit, delete events and practices', 'event_management', true),
-('550e8400-e29b-41d4-a716-446655440604', 'send_notifications', 'Send Notifications', 'Send email/SMS notifications to team members', 'communication', true),
-('550e8400-e29b-41d4-a716-446655440605', 'manage_roles', 'Manage Roles', 'Assign and revoke user roles and permissions', 'user_management', true),
-('550e8400-e29b-41d4-a716-446655440606', 'view_team', 'View Team', 'View team roster and member details', 'team_access', true),
-('550e8400-e29b-41d4-a716-446655440607', 'manage_roster', 'Manage Roster', 'Add/remove players from team roster', 'team_management', true),
-('550e8400-e29b-41d4-a716-446655440608', 'view_events', 'View Events', 'View team events and schedules', 'event_access', true),
-('550e8400-e29b-41d4-a716-446655440609', 'rsvp_events', 'RSVP to Events', 'Respond to event invitations', 'event_access', true),
-('550e8400-e29b-41d4-a716-446655440610', 'view_profile', 'View Profile', 'View own profile and basic information', 'user_access', true),
+INSERT INTO permissions (id, name, display_name, description, permission_category_id, is_system_permission) VALUES 
+('550e8400-e29b-41d4-a716-446655440601', 'manage_teams', 'Manage Teams', 'Create, edit, delete teams and rosters', '550e8400-e29b-41d4-a716-446655440701', true),
+('550e8400-e29b-41d4-a716-446655440602', 'manage_users', 'Manage Users', 'Create, edit, delete user accounts', '550e8400-e29b-41d4-a716-446655440702', true),
+('550e8400-e29b-41d4-a716-446655440603', 'manage_events', 'Manage Events', 'Create, edit, delete events and practices', '550e8400-e29b-41d4-a716-446655440703', true),
+('550e8400-e29b-41d4-a716-446655440604', 'send_notifications', 'Send Notifications', 'Send email/SMS notifications to team members', '550e8400-e29b-41d4-a716-446655440704', true),
+('550e8400-e29b-41d4-a716-446655440605', 'manage_roles', 'Manage Roles', 'Assign and revoke user roles and permissions', '550e8400-e29b-41d4-a716-446655440702', true),
+('550e8400-e29b-41d4-a716-446655440606', 'view_team', 'View Team', 'View team roster and member details', '550e8400-e29b-41d4-a716-446655440705', true),
+('550e8400-e29b-41d4-a716-446655440607', 'manage_roster', 'Manage Roster', 'Add/remove players from team roster', '550e8400-e29b-41d4-a716-446655440701', true),
+('550e8400-e29b-41d4-a716-446655440608', 'view_events', 'View Events', 'View team events and schedules', '550e8400-e29b-41d4-a716-446655440706', true),
+('550e8400-e29b-41d4-a716-446655440609', 'rsvp_events', 'RSVP to Events', 'Respond to event invitations', '550e8400-e29b-41d4-a716-446655440706', true),
+('550e8400-e29b-41d4-a716-446655440610', 'view_profile', 'View Profile', 'View own profile and basic information', '550e8400-e29b-41d4-a716-446655440707', true),
 -- System-level admin permissions
-('550e8400-e29b-41d4-a716-446655440611', 'system_admin', 'System Administrator', 'Full system access - all permissions', 'system_admin', true),
-('550e8400-e29b-41d4-a716-446655440612', 'manage_leagues', 'Manage Leagues', 'Create, edit, delete leagues and conferences', 'league_management', true),
-('550e8400-e29b-41d4-a716-446655440613', 'manage_clubs', 'Manage Clubs', 'Create, edit, delete clubs and divisions', 'club_management', true),
-('550e8400-e29b-41d4-a716-446655440614', 'manage_venues', 'Manage Venues', 'Create, edit, delete venues', 'venue_management', true),
-('550e8400-e29b-41d4-a716-446655440615', 'manage_permissions', 'Manage Permissions', 'Grant and revoke admin permissions', 'system_admin', true),
-('550e8400-e29b-41d4-a716-446655440616', 'view_system_logs', 'View System Logs', 'Access system logs and audit trails', 'system_admin', true);
-
--- Roles (without permissions array)
-INSERT INTO roles (id, name, display_name, description, is_system_role) VALUES 
-('550e8400-e29b-41d4-a716-446655440201', 'admin', 'Administrator', 'System administrator with full access', true),
-('550e8400-e29b-41d4-a716-446655440202', 'coach', 'Coach', 'Team coach with management capabilities', true),
-('550e8400-e29b-41d4-a716-446655440203', 'player', 'Player', 'Team player with basic access', true),
-('550e8400-e29b-41d4-a716-446655440204', 'assistant_coach', 'Assistant Coach', 'Assistant coach with limited management', false),
-('550e8400-e29b-41d4-a716-446655440205', 'parent', 'Parent/Guardian', 'Parent or guardian of a player', false);
-
--- Role permissions assignments (many-to-many junction)
-INSERT INTO role_permissions (role_id, permission_id) VALUES
--- Admin gets all permissions
-('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440601'), -- manage_teams
-('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440602'), -- manage_users
-('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440603'), -- manage_events
-('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440604'), -- send_notifications
-('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440605'), -- manage_roles
-('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440606'), -- view_team
-('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440607'), -- manage_roster
-('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440608'), -- view_events
-('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440609'), -- rsvp_events
-('550e8400-e29b-41d4-a716-446655440201', '550e8400-e29b-41d4-a716-446655440610'), -- view_profile
--- Coach permissions
-('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440603'), -- manage_events
-('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440604'), -- send_notifications
-('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440606'), -- view_team
-('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440607'), -- manage_roster
-('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440608'), -- view_events
-('550e8400-e29b-41d4-a716-446655440202', '550e8400-e29b-41d4-a716-446655440610'), -- view_profile
--- Player permissions
-('550e8400-e29b-41d4-a716-446655440203', '550e8400-e29b-41d4-a716-446655440608'), -- view_events
-('550e8400-e29b-41d4-a716-446655440203', '550e8400-e29b-41d4-a716-446655440609'), -- rsvp_events
-('550e8400-e29b-41d4-a716-446655440203', '550e8400-e29b-41d4-a716-446655440610'), -- view_profile
--- Assistant coach permissions
-('550e8400-e29b-41d4-a716-446655440204', '550e8400-e29b-41d4-a716-446655440606'), -- view_team
-('550e8400-e29b-41d4-a716-446655440204', '550e8400-e29b-41d4-a716-446655440604'), -- send_notifications
-('550e8400-e29b-41d4-a716-446655440204', '550e8400-e29b-41d4-a716-446655440608'), -- view_events
-('550e8400-e29b-41d4-a716-446655440204', '550e8400-e29b-41d4-a716-446655440610'), -- view_profile
--- Parent permissions
-('550e8400-e29b-41d4-a716-446655440205', '550e8400-e29b-41d4-a716-446655440608'), -- view_events
-('550e8400-e29b-41d4-a716-446655440205', '550e8400-e29b-41d4-a716-446655440610'); -- view_profile
+('550e8400-e29b-41d4-a716-446655440611', 'system_admin', 'System Administrator', 'Full system access - all permissions', '550e8400-e29b-41d4-a716-446655440708', true),
+('550e8400-e29b-41d4-a716-446655440612', 'manage_leagues', 'Manage Leagues', 'Create, edit, delete leagues and conferences', '550e8400-e29b-41d4-a716-446655440709', true),
+('550e8400-e29b-41d4-a716-446655440613', 'manage_clubs', 'Manage Clubs', 'Create, edit, delete clubs and divisions', '550e8400-e29b-41d4-a716-446655440710', true),
+('550e8400-e29b-41d4-a716-446655440614', 'manage_venues', 'Manage Venues', 'Create, edit, delete venues', '550e8400-e29b-41d4-a716-446655440711', true),
+('550e8400-e29b-41d4-a716-446655440615', 'manage_permissions', 'Manage Permissions', 'Grant and revoke admin permissions', '550e8400-e29b-41d4-a716-446655440708', true),
+('550e8400-e29b-41d4-a716-446655440616', 'view_system_logs', 'View System Logs', 'Access system logs and audit trails', '550e8400-e29b-41d4-a716-446655440708', true);
 
 -- RSVP statuses
 INSERT INTO rsvp_statuses (id, name, display_name, sort_order, color) VALUES 
