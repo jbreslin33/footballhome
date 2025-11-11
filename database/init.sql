@@ -367,7 +367,6 @@ CREATE TABLE venues (
 -- Base events table (common fields for all event types)
 CREATE TABLE events (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     created_by UUID NOT NULL REFERENCES users(id),
     event_type_id UUID NOT NULL REFERENCES event_types(id),
     title VARCHAR(200) NOT NULL,
@@ -375,7 +374,6 @@ CREATE TABLE events (
     event_date TIMESTAMP NOT NULL,
     venue_id UUID REFERENCES venues(id),
     duration_minutes INTEGER,                   -- Will default from event_type if null
-    max_players INTEGER,
     cancelled BOOLEAN DEFAULT false,
     cancellation_reason TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -385,6 +383,8 @@ CREATE TABLE events (
 -- Practices table (extends events for training/practice sessions)
 CREATE TABLE practices (
     id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    max_players INTEGER,                       -- Optional attendance limit
     focus_areas TEXT[],                        -- ['passing', 'shooting', 'defense']
     drill_plan TEXT,                           -- Detailed practice plan
     equipment_needed TEXT[],                   -- ['cones', 'balls', 'bibs']
@@ -398,7 +398,8 @@ CREATE TABLE practices (
 -- Matches table (extends events for competitive games)
 CREATE TABLE matches (
     id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
-    opponent_team_id UUID NOT NULL REFERENCES teams(id),
+    home_team_id UUID NOT NULL REFERENCES teams(id),
+    away_team_id UUID NOT NULL REFERENCES teams(id),
     home_away_status_id UUID NOT NULL REFERENCES home_away_statuses(id),
     competition_name VARCHAR(100),             -- 'Premier League', 'Cup Final'
     competition_round VARCHAR(50),             -- 'Quarter Final', 'Group Stage'
@@ -414,7 +415,30 @@ CREATE TABLE matches (
     yellow_cards INTEGER DEFAULT 0,
     red_cards INTEGER DEFAULT 0,
     kick_off_time TIME,                       -- Actual kick-off time
-    full_time_time TIME                       -- When match ended
+    full_time_time TIME,                      -- When match ended
+    CONSTRAINT different_teams CHECK (home_team_id != away_team_id)
+);
+
+-- Meetings table (extends events for team meetings, parent meetings, etc.)
+CREATE TABLE meetings (
+    id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
+    meeting_type VARCHAR(50),                  -- 'team', 'parent', 'board', 'social'
+    agenda TEXT,                               -- Meeting agenda
+    minutes TEXT,                              -- Meeting minutes/notes
+    organizer_id UUID REFERENCES users(id),   -- Person organizing the meeting
+    attendee_limit INTEGER,                    -- Optional maximum attendees
+    required_attendance BOOLEAN DEFAULT false, -- Is attendance mandatory?
+    online_meeting_url VARCHAR(500),           -- Zoom/Teams/etc link
+    online_meeting_password VARCHAR(100),      -- Meeting password if needed
+    recording_url VARCHAR(500)                 -- Link to recording if available
+);
+
+-- Meeting attendees (many-to-many for meetings that involve multiple teams or individuals)
+CREATE TABLE meeting_teams (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    meeting_id UUID NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    UNIQUE(meeting_id, team_id)
 );
 
 -- RSVPs (now references rsvp_status)
@@ -443,10 +467,12 @@ CREATE TABLE magic_tokens (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_events_team_date ON events(team_id, event_date);
+CREATE INDEX idx_events_date ON events(event_date);
 CREATE INDEX idx_events_type ON events(event_type_id);
+CREATE INDEX idx_practices_team ON practices(team_id);
 CREATE INDEX idx_practices_focus ON practices(focus_areas);
-CREATE INDEX idx_matches_opponent ON matches(opponent_team_id);
+CREATE INDEX idx_matches_home_team ON matches(home_team_id);
+CREATE INDEX idx_matches_away_team ON matches(away_team_id);
 CREATE INDEX idx_matches_competition ON matches(competition_name);
 CREATE INDEX idx_matches_status ON matches(match_status);
 CREATE INDEX idx_matches_home_away ON matches(home_away_status_id);
