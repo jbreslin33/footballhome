@@ -34,7 +34,11 @@ const pool = new Pool({
 // Middleware (set up before routes)
 app.use(helmet()); // Security headers
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: [
+        process.env.FRONTEND_URL || 'http://localhost:3000',
+        'https://footballhome.org',
+        'http://footballhome.org'
+    ],
     credentials: true
 })); // Enable CORS with credentials
 app.use(morgan('combined')); // Logging

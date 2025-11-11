@@ -1,0 +1,180 @@
+/**
+ * Authentication Service
+ * Handles login, logout, and token management
+ */
+class AuthService {
+    constructor(baseUrl = null) {
+        // Auto-detect API URL based on current hostname  
+        if (!baseUrl) {
+            // Always use relative URLs - host nginx handles the proxying
+            this.baseUrl = '';
+        } else {
+            this.baseUrl = baseUrl;
+        }
+        
+        console.log(`AuthService initialized with API URL: ${this.baseUrl}`);
+        this.token = localStorage.getItem('auth_token');
+    }
+    
+    /**
+     * Login with email and password
+     */
+    async login(email, password) {
+        const loginUrl = `${this.baseUrl}/api/auth/login`;
+        console.log(`Attempting login to: ${loginUrl}`);
+        
+        try {
+            const response = await fetch(loginUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'Login failed');
+            }
+            
+            // Store token
+            if (data.token) {
+                this.token = data.token;
+                localStorage.setItem('auth_token', this.token);
+            }
+            
+            return {
+                success: true,
+                user: data.user,
+                token: data.token
+            };
+            
+        } catch (error) {
+            console.error('Login error details:', {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+                apiUrl: this.baseUrl
+            });
+            return {
+                success: false,
+                error: `Network Error: ${error.message} (API: ${this.baseUrl})`
+            };
+        }
+    }
+    
+    /**
+     * Logout user
+     */
+    logout() {
+        this.token = null;
+        localStorage.removeItem('auth_token');
+        
+        // Could call logout endpoint if needed
+        // await fetch(`${this.baseUrl}/auth/logout`, { ... });
+        
+        return { success: true };
+    }
+    
+    /**
+     * Check if user is authenticated
+     */
+    isAuthenticated() {
+        return !!this.token;
+    }
+    
+    /**
+     * Get current auth token
+     */
+    getToken() {
+        return this.token;
+    }
+    
+    /**
+     * Get authenticated user info
+     */
+    async getCurrentUser() {
+        if (!this.token) {
+            return { success: false, error: 'No auth token' };
+        }
+        
+        try {
+            const response = await fetch(`${this.baseUrl}/api/auth/me`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to get user');
+            }
+            
+            return {
+                success: true,
+                user: data.user
+            };
+            
+        } catch (error) {
+            console.error('Get user error:', error);
+            
+            // If token is invalid, clear it
+            if (error.message.includes('token') || error.message.includes('auth')) {
+                this.logout();
+            }
+            
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+    
+    /**
+     * Validate email format
+     */
+    validateEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+    
+    /**
+     * Validate password requirements
+     */
+    validatePassword(password) {
+        if (!password || password.length < 6) {
+            return { valid: false, message: 'Password must be at least 6 characters' };
+        }
+        
+        return { valid: true };
+    }
+    
+    /**
+     * Validate login form
+     */
+    validateLoginForm(email, password) {
+        const errors = {};
+        
+        if (!email) {
+            errors.email = 'Email is required';
+        } else if (!this.validateEmail(email)) {
+            errors.email = 'Please enter a valid email';
+        }
+        
+        if (!password) {
+            errors.password = 'Password is required';
+        } else {
+            const passwordValidation = this.validatePassword(password);
+            if (!passwordValidation.valid) {
+                errors.password = passwordValidation.message;
+            }
+        }
+        
+        return {
+            isValid: Object.keys(errors).length === 0,
+            errors
+        };
+    }
+}
