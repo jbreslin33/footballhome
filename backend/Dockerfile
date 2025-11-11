@@ -1,29 +1,24 @@
-FROM node:18-alpine
+# Simple C++ HTTP Server
+FROM ubuntu:22.04
 
-WORKDIR /usr/src/app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
+# Install minimal dependencies
+RUN apt-get update && apt-get install -y \
+    g++ \
+    libpqxx-dev \
+    libpq-dev \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy source code
-COPY . .
+WORKDIR /app
+COPY main.cpp .
+COPY README.md .
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodeuser -u 1001
-
-# Change ownership
-RUN chown -R nodeuser:nodejs /usr/src/app
-USER nodeuser
+# Compile the server
+RUN g++ -std=c++17 -pthread main.cpp -lpqxx -lpq -o server
 
 # Expose port
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD node -e "const http=require('http'); const req=http.request({hostname:'localhost',port:3001,path:'/health',method:'GET'},(res)=>{process.exit(res.statusCode===200?0:1);}); req.on('error',()=>process.exit(1)); req.end();"
-
-CMD ["npm", "start"]
+# Run the server
+CMD ["./server"]

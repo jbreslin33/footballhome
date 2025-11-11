@@ -1,75 +1,146 @@
-# Football Home ⚽
+# Football Home ⚽# Football Home ⚽
 
-A comprehensive team management system for football/soccer teams, built with React, Node.js, and PostgreSQL.
 
-## 🚀 Complete Setup from Scratch
 
-Football Home is designed to be completely rebuildable from scratch. Follow these steps:
+A minimal football/soccer team RSVP system built with:A comprehensive team management system for football/soccer teams, built with React, Node.js, and PostgreSQL.
+
+- 🔥 **C++ Backend** - Ultra-fast HTTP server with PostgreSQL
+
+- ⚡ **Vanilla JS Frontend** - Pure JavaScript with Finite State Machine architecture  ## 🚀 Complete Setup from Scratch
+
+- 🗄️ **PostgreSQL Database** - Reliable data storage
+
+- 🐳 **Docker** - Containerized deploymentFootball Home is designed to be completely rebuildable from scratch. Follow these steps:
+
+- 🔒 **nginx + SSL** - Secure reverse proxy
 
 ### Prerequisites
-```bash
+
+## 🚀 Quick Start```bash
+
 # Install Docker and Docker Compose (Ubuntu/Debian)
-sudo apt update
-sudo apt install docker.io docker-compose-plugin
 
-# Add your user to docker group
-sudo usermod -aG docker $USER
-# Log out and back in for group changes to take effect
-```
+```bashsudo apt update
 
-### One-Command Setup
-```bash
-# Clone and setup everything
+# Clone repositorysudo apt install docker.io docker-compose-plugin
+
 git clone https://github.com/jbreslin33/footballhome.git
-cd footballhome
-./setup-complete.sh
-```
 
-### Manual Setup
+cd footballhome# Add your user to docker group
+
+sudo usermod -aG docker $USER
+
+# Start all services# Log out and back in for group changes to take effect
+
+docker compose up -d```
+
+
+
+# Access the application### One-Command Setup
+
+open http://localhost:3000```bash
+
+```# Clone and setup everything
+
+git clone https://github.com/jbreslin33/footballhome.git
+
+## 🏗️ Architecturecd footballhome
+
+./setup-complete.sh
+
+``````
+
+Internet → nginx (SSL) → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
+
+```### Manual Setup
+
 If you prefer manual control:
 
-```bash
-# 1. Create environment file
-cp .env.example .env
-# Edit .env with your settings
+**Components:**
 
-# 2. Build and start services
+- **Frontend**: Pure JavaScript FSM-based UI on port 3000```bash
+
+- **Backend**: C++ HTTP server with authentication on port 3001  # 1. Create environment file
+
+- **Database**: PostgreSQL with football data on port 5432cp .env.example .env
+
+- **Admin**: pgAdmin interface on port 5050# Edit .env with your settings
+
+
+
+## 🔐 Demo Login# 2. Build and start services
+
 docker compose down --volumes  # Clean slate
-docker compose up -d --build   # Build and start
+
+- **Email**: `test@test.com`docker compose up -d --build   # Build and start
+
+- **Password**: `password`
 
 # 3. Add to your hosts file (optional)
-echo '127.0.0.1 footballhome.org' | sudo tee -a /etc/hosts
+
+## 📁 Project Structureecho '127.0.0.1 footballhome.org' | sudo tee -a /etc/hosts
+
 ```
 
-## 🏈 Features
+```
 
-### Core System
-- **Multi-League Management**: APSL, CASA, TCWL with promotion/relegation
-- **User Authentication**: JWT-based login/register with role management
-- **Event Management**: Create and manage practices, games, meetings
+├── frontend-vanilla/     # Vanilla JS frontend with FSM## 🏈 Features
+
+├── backend/              # C++ HTTP server
+
+├── database/             # PostgreSQL schema and data### Core System
+
+├── docker-compose.yml    # Container orchestration- **Multi-League Management**: APSL, CASA, TCWL with promotion/relegation
+
+└── nginx-footballhome.conf  # Production SSL config- **User Authentication**: JWT-based login/register with role management
+
+```- **Event Management**: Create and manage practices, games, meetings
+
 - **RSVP System**: Players can respond to events, capacity management
-- **League Games Integration**: Import official match data from external leagues with comprehensive statistics tracking
+
+## 🛠️ Development- **League Games Integration**: Import official match data from external leagues with comprehensive statistics tracking
+
 - **Team Organization**: Role-based permissions (players, coaches, admins)
 
-### League Structure
-- **6 APSL Conferences**: Delaware River, Metropolitan NY/NJ, Southeast, Mid-Atlantic, Northeast, South Atlantic
+```bash
+
+# View logs### League Structure
+
+docker compose logs -f- **6 APSL Conferences**: Delaware River, Metropolitan NY/NJ, Southeast, Mid-Atlantic, Northeast, South Atlantic
+
 - **CASA Divisions**: Liga 1, Liga 2, Over 30 with tier-based hierarchy
-- **TCWL Structure**: Division 1, 2, 3 for women's leagues
-- **Inter-league Promotion**: Geographic routing and complex relationships
 
-## 🌐 Access Points
+# Rebuild backend- **TCWL Structure**: Division 1, 2, 3 for women's leagues
 
-After running setup:
+docker compose build backend- **Inter-league Promotion**: Geographic routing and complex relationships
 
-| Service | URL | Purpose |
+
+
+# Database admin## 🌐 Access Points
+
+open http://localhost:5050
+
+```After running setup:
+
+
+
+## 📊 Performance| Service | URL | Purpose |
+
 |---------|-----|---------|
-| **Frontend** | http://footballhome.org:3000 | Main application |
-| **Backend API** | http://footballhome.org:3001/api | REST API |
-| **pgAdmin** | http://footballhome.org:5050 | Database admin |
-| **Database** | localhost:5432 | Direct DB access |
 
-### Default Credentials
-- **pgAdmin**: admin@footballhome.org / admin123
+- **C++ Backend**: ~10x faster than Node.js| **Frontend** | http://footballhome.org:3000 | Main application |
+
+- **Vanilla JS**: No framework overhead| **Backend API** | http://footballhome.org:3001/api | REST API |
+
+- **PostgreSQL**: Production-ready database| **pgAdmin** | http://footballhome.org:5050 | Database admin |
+
+- **Docker**: Efficient containerization| **Database** | localhost:5432 | Direct DB access |
+
+
+
+---### Default Credentials
+
+*Built for speed, simplicity, and scalability* ⚡- **pgAdmin**: admin@footballhome.org / admin123
 - **Database**: footballhome_user / footballhome_pass
 
 ## 🏗️ Architecture
