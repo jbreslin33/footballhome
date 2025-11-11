@@ -258,32 +258,334 @@ CREATE TABLE users (
 ALTER TABLE role_permissions ADD CONSTRAINT fk_role_permissions_granted_by 
     FOREIGN KEY (granted_by) REFERENCES users(id);
 
--- User roles junction table (many-to-many: users can have multiple roles)
-CREATE TABLE user_roles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    assigned_by UUID REFERENCES users(id),      -- Who granted this role
-    is_active BOOLEAN DEFAULT true,             -- Role can be suspended
-    expires_at TIMESTAMP,                       -- Optional role expiration
-    notes TEXT,                                 -- Assignment notes
-    UNIQUE(user_id, role_id)                   -- Prevent duplicate role assignments
+-- ========================================
+-- USER ENTITY TABLES (Normalized)
+-- ========================================
+-- Each user type extends the base users table with specific fields
+-- Following the same pattern as events -> practices/matches/meetings
+
+-- Players (athletes on teams)
+CREATE TABLE players (
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    preferred_position_id UUID REFERENCES positions(id),
+    height_cm INTEGER,
+    weight_kg INTEGER,
+    dominant_foot VARCHAR(10),               -- 'left', 'right', 'both'
+    player_rating INTEGER,                   -- Skill rating 1-100
+    notes TEXT,                              -- Coach notes about player
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Team memberships (many-to-many: users can be on multiple teams)
-CREATE TABLE team_members (
+-- Coaches (team instructors/trainers)
+CREATE TABLE coaches (
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    coaching_license VARCHAR(100),           -- 'UEFA A', 'USSF B', etc.
+    license_expiry DATE,
+    years_experience INTEGER,
+    certifications TEXT[],                   -- ['First Aid', 'SafeSport', 'Concussion Protocol']
+    specializations TEXT[],                  -- ['Youth Development', 'Goalkeeper', 'Fitness']
+    bio TEXT,                                -- Coach biography
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Parents (guardians of players)
+CREATE TABLE parents (
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    occupation VARCHAR(100),
+    volunteer_interests TEXT[],              -- ['Team Parent', 'Fundraising', 'Transportation']
+    background_check_completed BOOLEAN DEFAULT false,
+    background_check_date DATE,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Referees (match officials)
+CREATE TABLE referees (
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    referee_grade VARCHAR(50),               -- 'Grade 7', 'Grade 5', 'National'
+    certification_level VARCHAR(100),        -- 'Regional', 'State', 'National'
+    certification_expiry DATE,
+    years_experience INTEGER,
+    specializations TEXT[],                  -- ['Center Referee', 'Assistant Referee']
+    availability TEXT,                       -- General availability notes
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Medical Staff (trainers, physiotherapists, doctors)
+CREATE TABLE medical_staff (
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    role_type VARCHAR(50),                   -- 'trainer', 'physiotherapist', 'doctor', 'paramedic'
+    license_number VARCHAR(100),
+    license_expiry DATE,
+    certifications TEXT[],                   -- ['CPR', 'AED', 'Sports Medicine']
+    specializations TEXT[],                  -- ['Sports Injuries', 'Rehabilitation']
+    insurance_provider VARCHAR(100),
+    insurance_policy_number VARCHAR(100),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Managers (non-coach team management roles)
+CREATE TABLE managers (
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    manager_type VARCHAR(50),                -- 'team_manager', 'equipment_manager', 'operations'
+    years_experience INTEGER,
+    areas_of_responsibility TEXT[],          -- ['Logistics', 'Equipment', 'Travel']
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Volunteers (general volunteers for teams/clubs)
+CREATE TABLE volunteers (
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    volunteer_roles TEXT[],                  -- ['Fundraising', 'Event Coordinator', 'Photographer']
+    skills TEXT[],                           -- ['Photography', 'Social Media', 'Web Design']
+    availability TEXT,                       -- General availability
+    background_check_completed BOOLEAN DEFAULT false,
+    background_check_date DATE,
+    hours_contributed INTEGER DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Spectators (fans following teams)
+CREATE TABLE spectators (
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    favorite_sport_id UUID REFERENCES sports(id),
+    fan_since DATE,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Admins (administrative users at various organizational levels)
+CREATE TABLE admins (
+    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    admin_level VARCHAR(50),                 -- 'system', 'league', 'club', 'team'
+    permissions TEXT[],                      -- System-level permissions
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ========================================
+-- TEAM RELATIONSHIP TABLES
+-- ========================================
+-- Link entity tables to teams with role-specific fields
+
+-- Team Players (players on teams)
+CREATE TABLE team_players (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    position_id UUID REFERENCES positions(id),  -- Player position (nullable for coaches)
-    jersey_number INTEGER,
+    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    position_id UUID REFERENCES positions(id),  -- Position on THIS team
+    jersey_number INTEGER,                      -- Jersey number on THIS team
     is_captain BOOLEAN DEFAULT false,
+    is_vice_captain BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     left_at TIMESTAMP,
-    UNIQUE(team_id, user_id),
+    notes TEXT,
+    UNIQUE(team_id, player_id),
     UNIQUE(team_id, jersey_number)              -- Jersey numbers unique per team
+);
+
+-- Team Coaches (coaches for teams)
+CREATE TABLE team_coaches (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    coach_id UUID NOT NULL REFERENCES coaches(id) ON DELETE CASCADE,
+    coach_role VARCHAR(50) NOT NULL,            -- 'head_coach', 'assistant_coach', 'goalkeeper_coach', 'fitness_coach'
+    is_primary BOOLEAN DEFAULT false,           -- Is this the head/primary coach?
+    is_active BOOLEAN DEFAULT true,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    left_at TIMESTAMP,
+    notes TEXT,
+    UNIQUE(team_id, coach_id)
+);
+
+-- Team Medical Staff (medical staff assigned to teams)
+CREATE TABLE team_medical_staff (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    medical_staff_id UUID NOT NULL REFERENCES medical_staff(id) ON DELETE CASCADE,
+    role VARCHAR(50),                           -- 'primary_trainer', 'backup_trainer', 'team_doctor'
+    is_primary BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    left_at TIMESTAMP,
+    notes TEXT,
+    UNIQUE(team_id, medical_staff_id)
+);
+
+-- Team Managers (managers for teams)
+CREATE TABLE team_managers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    manager_id UUID NOT NULL REFERENCES managers(id) ON DELETE CASCADE,
+    manager_role VARCHAR(50),                   -- 'team_manager', 'equipment_manager'
+    is_active BOOLEAN DEFAULT true,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    left_at TIMESTAMP,
+    notes TEXT,
+    UNIQUE(team_id, manager_id)
+);
+
+-- Team Volunteers (volunteers helping teams)
+CREATE TABLE team_volunteers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    volunteer_id UUID NOT NULL REFERENCES volunteers(id) ON DELETE CASCADE,
+    volunteer_role VARCHAR(50),                 -- 'team_parent', 'photographer', 'social_media'
+    is_active BOOLEAN DEFAULT true,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    left_at TIMESTAMP,
+    notes TEXT,
+    UNIQUE(team_id, volunteer_id)
+);
+
+-- ========================================
+-- PARENT/GUARDIAN RELATIONSHIPS
+-- ========================================
+
+-- Player Guardians (parents/guardians of players)
+CREATE TABLE player_guardians (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    parent_id UUID NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
+    relationship VARCHAR(50) NOT NULL,          -- 'mother', 'father', 'guardian', 'grandparent'
+    is_primary_contact BOOLEAN DEFAULT false,
+    is_emergency_contact BOOLEAN DEFAULT false,
+    can_pickup BOOLEAN DEFAULT true,            -- Authorized to pick up player
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(player_id, parent_id)
+);
+
+-- Team Parents (parents who volunteer with teams)
+CREATE TABLE team_parents (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    parent_id UUID NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
+    role VARCHAR(50),                           -- 'team_parent', 'snack_coordinator', 'fundraiser'
+    is_active BOOLEAN DEFAULT true,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    left_at TIMESTAMP,
+    notes TEXT,
+    UNIQUE(team_id, parent_id)
+);
+
+-- ========================================
+-- SPECTATOR FOLLOWERS
+-- ========================================
+
+-- Team Followers (spectators following teams)
+CREATE TABLE team_followers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    spectator_id UUID NOT NULL REFERENCES spectators(id) ON DELETE CASCADE,
+    following_since TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notifications_enabled BOOLEAN DEFAULT true,
+    favorite_team BOOLEAN DEFAULT false,
+    notes TEXT,
+    UNIQUE(team_id, spectator_id)
+);
+
+-- ========================================
+-- ADMIN HIERARCHY TABLES
+-- ========================================
+-- Admins at different organizational levels
+
+-- League Admins (manage entire leagues)
+CREATE TABLE league_admins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    admin_role VARCHAR(50) NOT NULL,            -- 'commissioner', 'director', 'secretary', 'treasurer'
+    is_primary BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    term_ends_at TIMESTAMP,
+    notes TEXT,
+    UNIQUE(league_id, admin_id)
+);
+
+-- League Conference Admins (manage conferences within leagues)
+CREATE TABLE league_conference_admins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    conference_id UUID NOT NULL REFERENCES league_conferences(id) ON DELETE CASCADE,
+    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    admin_role VARCHAR(50) NOT NULL,            -- 'conference_director', 'coordinator'
+    is_primary BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    term_ends_at TIMESTAMP,
+    notes TEXT,
+    UNIQUE(conference_id, admin_id)
+);
+
+-- League Division Admins (manage divisions within conferences)
+CREATE TABLE league_division_admins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    division_id UUID NOT NULL REFERENCES league_divisions(id) ON DELETE CASCADE,
+    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    admin_role VARCHAR(50) NOT NULL,            -- 'division_director', 'scheduler'
+    is_primary BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    term_ends_at TIMESTAMP,
+    notes TEXT,
+    UNIQUE(division_id, admin_id)
+);
+
+-- Club Admins (manage clubs/organizations)
+CREATE TABLE club_admins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    club_id UUID NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    admin_role VARCHAR(50) NOT NULL,            -- 'president', 'vice_president', 'director', 'treasurer', 'secretary'
+    is_primary BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    term_ends_at TIMESTAMP,
+    notes TEXT,
+    UNIQUE(club_id, admin_id)
+);
+
+-- Sport Division Admins (manage sport divisions within clubs)
+CREATE TABLE sport_division_admins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    division_id UUID NOT NULL REFERENCES sport_divisions(id) ON DELETE CASCADE,
+    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    admin_role VARCHAR(50) NOT NULL,            -- 'division_director', 'coordinator', 'registrar'
+    is_primary BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    term_ends_at TIMESTAMP,
+    notes TEXT,
+    UNIQUE(division_id, admin_id)
+);
+
+-- Team Admins (manage individual teams)
+CREATE TABLE team_admins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    admin_role VARCHAR(50) NOT NULL,            -- 'team_administrator', 'registrar'
+    is_primary BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    term_ends_at TIMESTAMP,
+    notes TEXT,
+    UNIQUE(team_id, admin_id)
 );
 
 -- Venues table (with complete Google Places integration)
@@ -419,6 +721,20 @@ CREATE TABLE matches (
     CONSTRAINT different_teams CHECK (home_team_id != away_team_id)
 );
 
+-- Match Officials (referees assigned to matches)
+CREATE TABLE match_officials (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    referee_id UUID NOT NULL REFERENCES referees(id) ON DELETE CASCADE,
+    official_role VARCHAR(50) NOT NULL,         -- 'center_referee', 'assistant_referee_1', 'assistant_referee_2', 'fourth_official'
+    assignment_confirmed BOOLEAN DEFAULT false,
+    payment_amount DECIMAL(10,2),
+    payment_status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'paid', 'waived'
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(match_id, referee_id, official_role)
+);
+
 -- Meetings table (extends events for team meetings, parent meetings, etc.)
 CREATE TABLE meetings (
     id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
@@ -478,12 +794,59 @@ CREATE INDEX idx_matches_status ON matches(match_status);
 CREATE INDEX idx_matches_home_away ON matches(home_away_status_id);
 CREATE INDEX idx_rsvps_event ON rsvps(event_id);
 CREATE INDEX idx_rsvps_status ON rsvps(rsvp_status_id);
-CREATE INDEX idx_team_members_team ON team_members(team_id);
-CREATE INDEX idx_team_members_user ON team_members(user_id);
-CREATE INDEX idx_team_members_position ON team_members(position_id);
-CREATE INDEX idx_user_roles_user ON user_roles(user_id);
-CREATE INDEX idx_user_roles_role ON user_roles(role_id);
-CREATE INDEX idx_user_roles_active ON user_roles(user_id, is_active);
+
+-- User entity indexes
+CREATE INDEX idx_players_position ON players(preferred_position_id);
+CREATE INDEX idx_coaches_license ON coaches(coaching_license);
+CREATE INDEX idx_referees_grade ON referees(referee_grade);
+CREATE INDEX idx_medical_staff_role ON medical_staff(role_type);
+CREATE INDEX idx_managers_type ON managers(manager_type);
+CREATE INDEX idx_admins_level ON admins(admin_level);
+
+-- Team relationship indexes
+CREATE INDEX idx_team_players_team ON team_players(team_id);
+CREATE INDEX idx_team_players_player ON team_players(player_id);
+CREATE INDEX idx_team_players_position ON team_players(position_id);
+CREATE INDEX idx_team_players_active ON team_players(team_id, is_active);
+CREATE INDEX idx_team_coaches_team ON team_coaches(team_id);
+CREATE INDEX idx_team_coaches_coach ON team_coaches(coach_id);
+CREATE INDEX idx_team_coaches_active ON team_coaches(team_id, is_active);
+CREATE INDEX idx_team_medical_staff_team ON team_medical_staff(team_id);
+CREATE INDEX idx_team_medical_staff_staff ON team_medical_staff(medical_staff_id);
+CREATE INDEX idx_team_managers_team ON team_managers(team_id);
+CREATE INDEX idx_team_managers_manager ON team_managers(manager_id);
+CREATE INDEX idx_team_volunteers_team ON team_volunteers(team_id);
+CREATE INDEX idx_team_volunteers_volunteer ON team_volunteers(volunteer_id);
+
+-- Parent/guardian indexes
+CREATE INDEX idx_player_guardians_player ON player_guardians(player_id);
+CREATE INDEX idx_player_guardians_parent ON player_guardians(parent_id);
+CREATE INDEX idx_team_parents_team ON team_parents(team_id);
+CREATE INDEX idx_team_parents_parent ON team_parents(parent_id);
+
+-- Match officials indexes
+CREATE INDEX idx_match_officials_match ON match_officials(match_id);
+CREATE INDEX idx_match_officials_referee ON match_officials(referee_id);
+CREATE INDEX idx_match_officials_role ON match_officials(official_role);
+
+-- Team followers indexes
+CREATE INDEX idx_team_followers_team ON team_followers(team_id);
+CREATE INDEX idx_team_followers_spectator ON team_followers(spectator_id);
+
+-- Admin hierarchy indexes
+CREATE INDEX idx_league_admins_league ON league_admins(league_id);
+CREATE INDEX idx_league_admins_admin ON league_admins(admin_id);
+CREATE INDEX idx_league_conference_admins_conference ON league_conference_admins(conference_id);
+CREATE INDEX idx_league_conference_admins_admin ON league_conference_admins(admin_id);
+CREATE INDEX idx_league_division_admins_division ON league_division_admins(division_id);
+CREATE INDEX idx_league_division_admins_admin ON league_division_admins(admin_id);
+CREATE INDEX idx_club_admins_club ON club_admins(club_id);
+CREATE INDEX idx_club_admins_admin ON club_admins(admin_id);
+CREATE INDEX idx_sport_division_admins_division ON sport_division_admins(division_id);
+CREATE INDEX idx_sport_division_admins_admin ON sport_division_admins(admin_id);
+CREATE INDEX idx_team_admins_team ON team_admins(team_id);
+CREATE INDEX idx_team_admins_admin ON team_admins(admin_id);
+
 CREATE INDEX idx_role_permissions_role ON role_permissions(role_id);
 CREATE INDEX idx_role_permissions_permission ON role_permissions(permission_id);
 CREATE INDEX idx_teams_division ON teams(division_id);
@@ -836,12 +1199,11 @@ ON CONFLICT (email) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
     updated_at = CURRENT_TIMESTAMP;
 
--- Assign admin role to user
-INSERT INTO user_roles (user_id, role_id, assigned_at)
-SELECT 
+-- Create admin entity for this user
+INSERT INTO admins (id, admin_level, permissions)
+VALUES (
     '77d77471-1250-47e0-81ab-d4626595d63c',
-    r.id,
-    CURRENT_TIMESTAMP
-FROM roles r
-WHERE r.name = 'admin'
-ON CONFLICT (user_id, role_id) DO NOTHING;
+    'system',
+    ARRAY['all']
+)
+ON CONFLICT (id) DO NOTHING;

@@ -78,10 +78,9 @@ public:
             
             // Query database for user by email (get the password hash)
             std::cout << "🔍 Querying DB for user: " << email << std::endl;
-            std::string query = "SELECT u.id, u.email, u.name, u.password_hash, r.name as role_name "
+            std::string query = "SELECT u.id, u.email, u.name, u.password_hash, a.admin_level "
                               "FROM users u "
-                              "LEFT JOIN user_roles ur ON u.id = ur.user_id "
-                              "LEFT JOIN roles r ON ur.role_id = r.id "
+                              "LEFT JOIN admins a ON u.id = a.id "
                               "WHERE u.email = $1 "
                               "LIMIT 1";
             auto result = txn.exec_params(query, email);
@@ -107,7 +106,8 @@ public:
                     userData.id = row["id"].as<std::string>();
                     userData.email = row["email"].as<std::string>();
                     userData.name = row["name"].as<std::string>();
-                    userData.role = row["role_name"].is_null() ? "player" : row["role_name"].as<std::string>();
+                    // Check if user is an admin, otherwise default to "user"
+                    userData.role = row["admin_level"].is_null() ? "user" : row["admin_level"].as<std::string>();
                 }
             } else {
                 std::cout << "🔍 No user found in DB for: " << email << std::endl;
