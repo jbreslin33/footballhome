@@ -192,13 +192,13 @@ Check file is mounted in `docker-compose.yml`:
 
 ```yaml
 volumes:
-  - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-  - ./database/apsl-data.sql:/docker-entrypoint-initdb.d/02-apsl-data.sql:ro
+  - ./database/schema/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+  - ./database/apsl/apsl-data.sql:/docker-entrypoint-initdb.d/02-apsl-data.sql:ro
 ```
 
 ### Database has no players after rebuild
 
-1. Check if scraper ran: `ls -lh database/apsl-data.sql`
+1. Check if scraper ran: `ls -lh database/apsl/apsl-data.sql`
 2. Force scrape: `APSL_SCRAPE=true ./start.sh`
 3. Check logs: `docker logs footballhome_db`
 

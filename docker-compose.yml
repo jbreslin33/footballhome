@@ -13,8 +13,8 @@ services:
       - "5432:5432"
     volumes:
       # Mount database initialization files (loaded in alphabetical order)
-      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./database/apsl-data.sql:/docker-entrypoint-initdb.d/02-apsl-data.sql:ro
+      - ./database/schema/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./database/apsl/apsl-data.sql:/docker-entrypoint-initdb.d/02-apsl-data.sql:ro
       # Persistent data storage
       - db_data:/var/lib/postgresql/data
     networks:

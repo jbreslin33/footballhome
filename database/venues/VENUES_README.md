@@ -212,7 +212,7 @@ INSERT INTO venues (
 
 ## Integration with init.sql
 
-The `database/init.sql` file includes documentation about loading venues:
+The `database/schema/init.sql` file includes documentation about loading venues:
 
 ```sql
 -- ========================================

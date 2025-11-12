@@ -9,10 +9,10 @@
  * - All player rosters for each team
  * 
  * Generates SQL INSERT statements with ON CONFLICT DO UPDATE for idempotency.
- * Output: database/apsl-data.sql (auto-loaded by init.sql on rebuild)
+ * Output: database/apsl/apsl-data.sql (auto-loaded by schema/init.sql on rebuild)
  * 
  * Usage:
- *   node database/scrape-apsl.js > database/apsl-data.sql
+ *   node database/apsl/scrape-apsl.js > database/apsl/apsl-data.sql
  */
 
 const https = require('https');

@@ -1,76 +1,54 @@
-# Database Scripts
+# Database Directory
 
-## run-sql.sh
+This directory contains all database-related files for the Football Home application.
+
+## Directory Structure
+
+### `/schema/`
+Core database schema and table definitions:
+- `init.sql` - Main database initialization script with table structures
+
+### `/apsl/` 
+APSL (American Premier Soccer League) data and scraping tools:
+- `apsl-data.sql` - Complete APSL player and team data (1,572 players)
+- `scrape-apsl.js` - Node.js scraping script for APSL data
+- `scrape-apsl.sh` - Shell script wrapper for scraping
+- `test-scrape.js` - Testing utilities for scraping
+- `APSL_SCRAPING.md` - Documentation for APSL scraping process
+
+### `/venues/`
+Google Places venue data for football fields:
+- `venues-google-*.sql` - Venue data organized by city/region
+- `VENUES_README.md` - Documentation for venue data structure
+
+### `/scripts/`
+Database utility scripts and tools:
+- `run-sql.sh` - Helper script for running SQL commands against the database
+
+## Usage
+
+The database is automatically initialized via Docker Compose using files from:
+1. `schema/init.sql` - Creates tables and basic structure
+2. `apsl/apsl-data.sql` - Loads player and team data
+
+## Database Scripts
+
+### run-sql.sh
 
 Execute SQL commands directly against the footballhome database.
 
-### Usage
-
+**Usage:**
 ```bash
-./run-sql.sh "SQL_QUERY" [-f]
+./scripts/run-sql.sh "SQL_QUERY" [-f]
 ```
 
-### Parameters
-
-- `SQL_QUERY`: The SQL statement to execute (required, must be quoted)
-- `-f`: Optional flag for formatted output (expanded display mode)
-
-### Examples
-
-**Simple SELECT query:**
+**Examples:**
 ```bash
-./run-sql.sh "SELECT * FROM users;"
+# Simple query
+./scripts/run-sql.sh "SELECT COUNT(*) FROM teams;"
+
+# With formatted output
+./scripts/run-sql.sh "SELECT name, email FROM users;" -f
 ```
 
-**COUNT query:**
-```bash
-./run-sql.sh "SELECT COUNT(*) FROM teams;"
-```
-
-**With formatted output:**
-```bash
-./run-sql.sh "SELECT name, email FROM users;" -f
-```
-
-**INSERT statement:**
-```bash
-./run-sql.sh "INSERT INTO clubs (name, display_name, slug) VALUES ('Test Club', 'Test Club', 'test-club');"
-```
-
-**JOIN query:**
-```bash
-./run-sql.sh "SELECT p.name, pc.display_name FROM permissions p JOIN permission_categories pc ON p.permission_category_id = pc.id LIMIT 5;"
-```
-
-**UPDATE statement:**
-```bash
-./run-sql.sh "UPDATE users SET phone = '555-1234' WHERE email = 'jbreslin@footballhome.org';"
-```
-
-### Prerequisites
-
-- Docker and docker-compose must be installed
-- Database container must be running (`docker compose up -d db`)
-
-### Notes
-
-- The script automatically checks if the database container is running
-- It uses the `footballhome_user` credentials configured in docker-compose.yml
-- Color-coded output: green for success, red for errors, yellow for info
-- All SQL statements should end with a semicolon
-- For multi-line queries, use standard bash quoting
-
-### Multi-line Query Example
-
-```bash
-./run-sql.sh "
-SELECT 
-    t.name as team_name,
-    sd.name as division_name,
-    c.name as club_name
-FROM teams t
-JOIN sport_divisions sd ON t.division_id = sd.id
-JOIN clubs c ON sd.club_id = c.id
-LIMIT 10;
-"
-```
+See `/scripts/` directory for detailed documentation.
