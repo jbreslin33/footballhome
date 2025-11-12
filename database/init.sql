@@ -389,8 +389,8 @@ CREATE TABLE team_players (
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     left_at TIMESTAMP,
     notes TEXT,
-    UNIQUE(team_id, player_id),
-    UNIQUE(team_id, jersey_number)              -- Jersey numbers unique per team
+    UNIQUE(team_id, player_id)
+    -- Note: Jersey numbers not enforced as unique due to unreliable APSL data
 );
 
 -- Team Coaches (coaches for teams)
