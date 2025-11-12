@@ -10,12 +10,15 @@
 #   ./start.sh apsl               - Scrape APSL data only
 #   ./start.sh google             - Scrape Google Places data only  
 #   ./start.sh apsl google        - Scrape both APSL and Google data
+#   ./start.sh volumes            - Preserve existing Docker volumes
+#   ./start.sh apsl volumes       - Scrape APSL data and preserve volumes
 #   ./start.sh --help             - Show this help message
 #
 # Parameters:
-#   apsl    - Enable APSL league/team data scraping
-#   google  - Enable Google Places venue data scraping
-#   --help  - Show usage information
+#   apsl     - Enable APSL league/team data scraping
+#   google   - Enable Google Places venue data scraping
+#   volumes  - Preserve existing Docker volumes (default: delete volumes)
+#   --help   - Show usage information
 
 set -e
 
@@ -29,6 +32,7 @@ NC='\033[0m'
 # Parse command line arguments
 SCRAPE_APSL=false
 SCRAPE_GOOGLE=false
+PRESERVE_VOLUMES=false
 SHOW_HELP=false
 
 for arg in "$@"; do
@@ -38,6 +42,9 @@ for arg in "$@"; do
             ;;
         google)
             SCRAPE_GOOGLE=true
+            ;;
+        volumes)
+            PRESERVE_VOLUMES=true
             ;;
         --help|-h)
             SHOW_HELP=true
@@ -58,11 +65,14 @@ if [ "$SHOW_HELP" = true ]; then
     echo -e "  ./start.sh apsl               - Scrape APSL data only"
     echo -e "  ./start.sh google             - Scrape Google Places data only"
     echo -e "  ./start.sh apsl google        - Scrape both APSL and Google data"
+    echo -e "  ./start.sh volumes            - Preserve existing Docker volumes"
+    echo -e "  ./start.sh apsl volumes       - Scrape APSL data and preserve volumes"
     echo -e "  ./start.sh --help             - Show this help message"
     echo ""
     echo -e "${BLUE}Parameters:${NC}"
     echo -e "  apsl      Enable APSL league/team data scraping"
     echo -e "  google    Enable Google Places venue data scraping"
+    echo -e "  volumes   Preserve existing Docker volumes (default: delete volumes)"
     echo -e "  --help    Show usage information"
     echo ""
     exit 0
@@ -75,6 +85,7 @@ echo ""
 echo -e "${BLUE}Configuration:${NC}"
 echo -e "  APSL Scraping:    ${GREEN}$SCRAPE_APSL${NC}"
 echo -e "  Google Scraping:  ${GREEN}$SCRAPE_GOOGLE${NC}"
+echo -e "  Preserve Volumes: ${GREEN}$PRESERVE_VOLUMES${NC}"
 echo ""
 
 # Get script directory
@@ -116,7 +127,21 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}Step 3: Starting Docker containers...${NC}"
+echo -e "${BLUE}Step 3: Docker Container Management${NC}"
+
+# Handle volume management based on PRESERVE_VOLUMES flag
+if [ "$PRESERVE_VOLUMES" = true ]; then
+    echo -e "${GREEN}📦 Preserving existing Docker volumes${NC}"
+    # Stop containers but keep volumes
+    docker compose down
+else
+    echo -e "${YELLOW}🗑️  Removing Docker volumes for fresh start${NC}"
+    # Stop containers and remove volumes
+    docker compose down -v
+    echo -e "${GREEN}✓ Volumes removed - will initialize fresh database${NC}"
+fi
+
+echo -e "${BLUE}🐳 Starting Docker containers...${NC}"
 
 # Check if this is a fresh start (volumes deleted)
 if ! docker volume ls | grep -q footballhome_db_data; then
@@ -136,9 +161,12 @@ echo -e "  Frontend:    ${GREEN}localhost:3000${NC}"
 echo -e "  pgAdmin:     ${GREEN}localhost:5050${NC}"
 echo ""
 echo -e "${BLUE}Usage Examples:${NC}"
-echo -e "  View logs:       ${GREEN}docker compose logs -f${NC}"
-echo -e "  Stop services:   ${GREEN}docker compose down${NC}"
-echo -e "  Full rebuild:    ${GREEN}docker compose down -v && ./start.sh${NC}"
-echo -e "  Rebuild + APSL:  ${GREEN}docker compose down -v && ./start.sh apsl${NC}"
-echo -e "  Rebuild + Both:  ${GREEN}docker compose down -v && ./start.sh apsl google${NC}"
+echo -e "  View logs:           ${GREEN}docker compose logs -f${NC}"
+echo -e "  Stop services:       ${GREEN}docker compose down${NC}"
+echo -e "  Fresh start:         ${GREEN}./start.sh${NC}"
+echo -e "  Preserve data:       ${GREEN}./start.sh volumes${NC}"
+echo -e "  Fresh + APSL:        ${GREEN}./start.sh apsl${NC}"
+echo -e "  Preserve + APSL:     ${GREEN}./start.sh apsl volumes${NC}"
+echo -e "  Fresh + Both APIs:   ${GREEN}./start.sh apsl google${NC}"
+echo -e "  Preserve + Both:     ${GREEN}./start.sh apsl google volumes${NC}"
 echo ""
