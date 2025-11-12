@@ -63,12 +63,12 @@ services:
       db:
         condition: service_healthy
 
-  # Frontend Vanilla JS App (DEFAULT)
-  frontend-vanilla:
+  # Frontend (Vanilla JS)
+  frontend:
     build:
-      context: ./frontend-vanilla
+      context: ./frontend
       dockerfile: Dockerfile
-    container_name: footballhome_frontend_vanilla
+    container_name: footballhome_frontend
     restart: unless-stopped
     ports:
       - "3000:80"

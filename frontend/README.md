@@ -47,7 +47,7 @@ idle → validating → submitting → success
 ## 📂 **File Structure**
 
 ```
-frontend-vanilla/
+frontend/
 ├── index.html              # Entry point
 ├── css/
 │   └── main.css           # Pure CSS design system

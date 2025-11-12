@@ -84,7 +84,9 @@ docker compose down --volumes  # Clean slate
 
 ```
 
-├── frontend-vanilla/     # Vanilla JS frontend with FSM## 🏈 Features
+├── frontend/             # Vanilla JS frontend with FSM
+
+## 🏈 Features
 
 ├── backend/              # C++ HTTP server
 
