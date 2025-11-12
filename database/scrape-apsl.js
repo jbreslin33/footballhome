@@ -282,8 +282,9 @@ async function scrapeTeamRoster(teamId, teamUrl) {
       const playerId = userId;
       const teamPlayerId = generateUUID('0007', teamId + userId);
 
-      // Generate email from name
-      const email = slugify(playerName).replace(/-/g, '.') + '@apsl.player';
+      // Generate email from name + team (to handle duplicate names across teams)
+      const teamSlug = teams.get(teamId)?.slug || teamId.substring(0, 8);
+      const email = slugify(playerName).replace(/-/g, '.') + '.' + teamSlug + '@apsl.player';
       const password = generatePassword();
 
       // Store user
