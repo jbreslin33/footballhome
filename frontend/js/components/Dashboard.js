@@ -4,9 +4,20 @@
  */
 class Dashboard extends Component {
     constructor(container, user = {}) {
-        super(container, { user });
-        this.user = user;
-        this.cardComponents = [];
+        console.log('Dashboard: Constructor called with user:', user);
+        console.log('Dashboard: Container:', container);
+        console.log('Dashboard: user type:', typeof user);
+        
+        try {
+            super(container, { user });
+            this.user = user || {};
+            this.cardComponents = [];
+            console.log('Dashboard: this.user after assignment:', this.user);
+            console.log('Dashboard: Constructor completed successfully');
+        } catch (error) {
+            console.error('Dashboard: Constructor error:', error);
+            throw error;
+        }
     }
 
     render() {
@@ -18,7 +29,7 @@ class Dashboard extends Component {
                         <span class="brand-text">Football Home</span>
                     </div>
                     <div class="navbar-menu">
-                        <span class="navbar-user">Welcome, ${this.user.name || 'User'}</span>
+                        <span class="navbar-user">Welcome, ${this.user && this.user.name ? this.user.name : 'User'}</span>
                         <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
                     </div>
                 </nav>
@@ -65,42 +76,88 @@ class Dashboard extends Component {
     }
 
     onMounted() {
-        // Initialize card components after the dashboard is mounted
-        this.initializeCardComponents();
-        this.setupCardEventListeners();
+        console.log('Dashboard: onMounted called');
+        
+        try {
+            // Initialize card components after the dashboard is mounted
+            console.log('Dashboard: Initializing card components...');
+            this.initializeCardComponents();
+            
+            console.log('Dashboard: Setting up card event listeners...');
+            this.setupCardEventListeners();
+            
+            console.log('Dashboard: onMounted completed successfully');
+        } catch (error) {
+            console.error('Dashboard: onMounted error:', error);
+            console.error('Dashboard: onMounted error stack:', error.stack);
+        }
     }
 
     initializeCardComponents() {
-        // Sample data - in a real app, this would come from services
-        const sampleData = this.generateSampleData();
+        console.log('Dashboard: initializeCardComponents called');
+        
+        try {
+            // Sample data - in a real app, this would come from services
+            console.log('Dashboard: Generating sample data...');
+            const sampleData = this.generateSampleData();
+            console.log('Dashboard: Sample data generated:', sampleData);
 
-        // Create and mount card components
-        const teamSection = this.querySelector('.team-section');
-        const teamCard = new TeamCard(teamSection, sampleData.teams);
-        teamCard.mount();
-        this.cardComponents.push(teamCard);
+            // Create and mount all card components
+            console.log('Dashboard: Finding team section...');
+            const teamSection = this.querySelector('.team-section');
+            if (teamSection) {
+                console.log('Dashboard: Creating TeamCard...');
+                const teamCard = new TeamCard(teamSection, sampleData.teams);
+                teamCard.mount();
+                this.cardComponents.push(teamCard);
+                console.log('Dashboard: TeamCard created and mounted successfully');
+            }
 
-        const eventsSection = this.querySelector('.events-section');
-        const eventCard = new EventCard(eventsSection, sampleData.events);
-        eventCard.mount();
-        this.cardComponents.push(eventCard);
+            console.log('Dashboard: Finding events section...');
+            const eventsSection = this.querySelector('.events-section');
+            if (eventsSection) {
+                console.log('Dashboard: Creating EventCard...');
+                const eventCard = new EventCard(eventsSection, sampleData.events);
+                eventCard.mount();
+                this.cardComponents.push(eventCard);
+                console.log('Dashboard: EventCard created and mounted successfully');
+            }
 
-        const statsSection = this.querySelector('.stats-section');
-        const statsCard = new StatsCard(statsSection, sampleData.stats);
-        statsCard.mount();
-        this.cardComponents.push(statsCard);
+            console.log('Dashboard: Finding stats section...');
+            const statsSection = this.querySelector('.stats-section');
+            if (statsSection) {
+                console.log('Dashboard: Creating StatsCard...');
+                const statsCard = new StatsCard(statsSection, sampleData.stats);
+                statsCard.mount();
+                this.cardComponents.push(statsCard);
+                console.log('Dashboard: StatsCard created and mounted successfully');
+            }
 
-        const leagueSection = this.querySelector('.league-section');
-        const leagueCard = new LeagueGamesCard(leagueSection, sampleData.leagues);
-        leagueCard.mount();
-        this.cardComponents.push(leagueCard);
+            console.log('Dashboard: Finding league section...');
+            const leagueSection = this.querySelector('.league-section');
+            if (leagueSection) {
+                console.log('Dashboard: Creating LeagueGamesCard...');
+                const leagueCard = new LeagueGamesCard(leagueSection, sampleData.leagues);
+                leagueCard.mount();
+                this.cardComponents.push(leagueCard);
+                console.log('Dashboard: LeagueGamesCard created and mounted successfully');
+            }
 
-        console.log('Dashboard: All card components initialized');
+            console.log('Dashboard: All card components initialized, total:', this.cardComponents.length);
+        } catch (error) {
+            console.error('Dashboard: Error in initializeCardComponents:', error);
+            console.error('Dashboard: Error stack:', error.stack);
+            throw error;
+        }
     }
 
     setupCardEventListeners() {
+        console.log('Dashboard: setupCardEventListeners called with', this.cardComponents.length, 'components');
+        
         // Listen to events from card components by listening on their DOM elements
-        this.cardComponents.forEach(card => {
+        this.cardComponents.forEach((card, index) => {
+            console.log('Dashboard: Setting up listeners for card', index, card);
+            
             if (card.element) {
                 // Team events
                 this.addEventListener(card.element, 'team:create', () => this.handleTeamCreate());
@@ -120,70 +177,75 @@ class Dashboard extends Component {
                 this.addEventListener(card.element, 'league:viewStandings', () => this.handleLeagueViewStandings());
                 this.addEventListener(card.element, 'league:sync', () => this.handleLeagueSync());
                 this.addEventListener(card.element, 'league:select', (e) => this.handleLeagueSelect(e.detail));
+            } else {
+                console.warn('Dashboard: Card has no element:', card);
             }
         });
+        
+        console.log('Dashboard: Event listeners setup complete');
     }
 
     // Team event handlers
     handleTeamCreate() {
         console.log('Dashboard: Creating new team...');
         // TODO: Open team creation form
-        alert('Team creation form would open here');
+        alert('🏗️ Team Creation\n\nThis would open a form to create a new team with:\n• Team name\n• League selection\n• Member invitations');
     }
 
     handleTeamViewAll() {
         console.log('Dashboard: Viewing all teams...');
         // TODO: Navigate to teams page
-        alert('Teams page would open here');
+        alert('👥 All Teams View\n\nThis would show a full list of your teams with:\n• Team roster management\n• Performance stats\n• Schedule overview');
     }
 
     handleTeamSelect(data) {
         console.log('Dashboard: Team selected:', data.teamName);
         // TODO: Navigate to team details
-        alert(`Team details for "${data.teamName}" would open here`);
+        alert(`⚽ Team: ${data.teamName}\n\nThis would open detailed team management with:\n• Player roster\n• Upcoming games\n• Team statistics\n• Practice schedule`);
     }
 
     // Event event handlers
     handleEventCreate() {
         console.log('Dashboard: Creating new event...');
-        alert('Event creation form would open here');
+        alert('📅 Schedule Event\n\nThis would open an event creation form with:\n• Event type (match, practice, meeting)\n• Date and time selection\n• Venue selection\n• Team/player invitations');
     }
 
     handleEventViewCalendar() {
         console.log('Dashboard: Viewing calendar...');
-        alert('Calendar view would open here');
+        alert('🗓️ Calendar View\n\nThis would show a full calendar with:\n• Monthly/weekly views\n• All team events\n• Personal schedule\n• RSVP management');
     }
 
     handleEventSelect(data) {
         console.log('Dashboard: Event selected:', data.eventTitle);
-        alert(`Event details for "${data.eventTitle}" would open here`);
+        alert(`🎯 Event: ${data.eventTitle}\n\nThis would show event details with:\n• Event information\n• Attendee list\n• Location details\n• RSVP options`);
     }
 
     // Stats event handlers
     handleStatsViewDetails(data) {
         console.log('Dashboard: Viewing detailed stats:', data);
-        alert('Detailed stats view would open here');
+        alert('📊 Detailed Statistics\n\nThis would show comprehensive stats with:\n• Performance trends\n• Comparison charts\n• Season summaries\n• Goal/assist breakdowns');
     }
 
     handleStatsExport(data) {
         console.log('Dashboard: Exporting stats:', data);
-        alert('Stats export would start here');
+        alert('📁 Export Statistics\n\nThis would allow you to:\n• Download as CSV/PDF\n• Email to coach\n• Share with team\n• Print reports');
     }
 
     // League event handlers
     handleLeagueViewStandings() {
         console.log('Dashboard: Viewing league standings...');
-        alert('League standings would open here');
+        alert('🏆 League Standings\n\nThis would show:\n• Current league table\n• Team rankings\n• Points and goal difference\n• Promotion/relegation zones');
     }
 
     handleLeagueSync() {
         console.log('Dashboard: Syncing league data...');
+        alert('🔄 Syncing League Data\n\nThis would:\n• Update standings from APSL\n• Refresh game schedules\n• Update player statistics\n• Sync venue information');
         // This could trigger actual API calls in a real implementation
     }
 
     handleLeagueSelect(data) {
         console.log('Dashboard: League selected:', data.leagueName);
-        alert(`League details for "${data.leagueName}" would open here`);
+        alert(`🏆 League: ${data.leagueName}\n\nThis would show:\n• League information\n• Your team's position\n• Upcoming fixtures\n• League news and updates`);
     }
 
     // Logout handler

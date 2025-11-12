@@ -58,20 +58,48 @@ class App {
     }
     
     showDashboard(user) {
+        console.log('App: showDashboard called with user:', user);
+        console.log('App: user type:', typeof user);
+        console.log('App: user keys:', user ? Object.keys(user) : 'user is falsy');
+        
         const appContainer = document.getElementById('app');
+        console.log('App: appContainer found:', appContainer);
         
-        // Create and mount the Dashboard component
-        this.dashboard = new Dashboard(appContainer, user);
-        this.dashboard.mount();
-        
-        // Listen for logout events from the dashboard element
-        if (this.dashboard.element) {
-            this.dashboard.element.addEventListener('user:logout', () => {
-                this.logout();
-            });
+        try {
+            // Create and mount the Dashboard component
+            console.log('App: Creating Dashboard component...');
+            this.dashboard = new Dashboard(appContainer, user);
+            console.log('App: Dashboard created, now mounting...');
+            
+            this.dashboard.mount();
+            console.log('App: Dashboard mounted successfully');
+            
+            // Listen for logout events from the dashboard element
+            if (this.dashboard.element) {
+                this.dashboard.element.addEventListener('user:logout', () => {
+                    console.log('App: Logout event received');
+                    this.logout();
+                });
+                console.log('App: Logout event listener added');
+            } else {
+                console.error('App: Dashboard element not found!');
+            }
+            
+            console.log('App: Dashboard component setup complete');
+        } catch (error) {
+            console.error('App: Error setting up dashboard:', error);
+            console.error('App: Error stack:', error.stack);
+            
+            // Fallback: show a simple message
+            appContainer.innerHTML = `
+                <div style="padding: 2rem; text-align: center;">
+                    <h2>Dashboard Loading Error</h2>
+                    <p>There was an error loading the dashboard. Check the console for details.</p>
+                    <p>Error: ${error.message}</p>
+                    <button onclick="location.reload()">Reload Page</button>
+                </div>
+            `;
         }
-        
-        console.log('App: Dashboard component mounted with user:', user);
     }
     
     logout() {
