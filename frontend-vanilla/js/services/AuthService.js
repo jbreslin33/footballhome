@@ -45,7 +45,12 @@ class AuthService {
             
             // Check both HTTP status and JSON success field
             if (!response.ok || !data.success) {
-                throw new Error(data.message || 'Login failed');
+                // Authentication specific error (401) vs other errors
+                if (response.status === 401) {
+                    throw new Error(data.message || 'Invalid email or password');
+                } else {
+                    throw new Error(data.message || `Server error (${response.status})`);
+                }
             }
             
             // Store token
@@ -67,10 +72,24 @@ class AuthService {
                 stack: error.stack,
                 apiUrl: this.baseUrl
             });
-            return {
-                success: false,
-                error: `Network Error: ${error.message} (API: ${this.baseUrl})`
-            };
+            
+            // Distinguish between network errors and authentication errors
+            if (error.message.includes('Invalid email or password')) {
+                return {
+                    success: false,
+                    error: error.message
+                };
+            } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                return {
+                    success: false,
+                    error: `Connection failed: Unable to reach server at ${this.baseUrl}`
+                };
+            } else {
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
         }
     }
     

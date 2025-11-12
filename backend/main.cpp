@@ -153,7 +153,12 @@ public:
         return json.str();
     }
 
-    std::string handleLoginRequest(const std::string& body) {
+    struct LoginResponse {
+        int status_code;
+        std::string json_body;
+    };
+
+    LoginResponse handleLoginRequest(const std::string& body) {
         try {
             // Parse JSON manually (simple approach)
             std::string email, password;
@@ -187,20 +192,32 @@ public:
         
         if (userData.valid) {
             std::cout << "✅ Authentication successful: " << email << " (" << userData.name << ")" << std::endl;
-            return createJSONResponse(true, "Login successful", userData);
+            return {200, createJSONResponse(true, "Login successful", userData)};
         } else {
             std::cout << "❌ Authentication failed: " << email << std::endl;
-            return createJSONResponse(false, "Invalid credentials");
+            return {401, createJSONResponse(false, "Invalid email or password")};
         }
         } catch (const std::exception& e) {
             std::cerr << "❌ FATAL ERROR in handleLoginRequest: " << e.what() << std::endl;
-            return createJSONResponse(false, "Internal server error");
+            return {500, createJSONResponse(false, "Internal server error")};
+        }
+    }
+
+    std::string getStatusText(int status_code) {
+        switch (status_code) {
+            case 200: return "OK";
+            case 204: return "No Content";
+            case 400: return "Bad Request";
+            case 401: return "Unauthorized";
+            case 404: return "Not Found";
+            case 500: return "Internal Server Error";
+            default: return "Unknown";
         }
     }
 
     std::string createHTTPResponse(int status_code, const std::string& content_type, const std::string& body) {
         std::ostringstream response;
-        response << "HTTP/1.1 " << status_code << " " << (status_code == 200 ? "OK" : "Bad Request") << "\r\n";
+        response << "HTTP/1.1 " << status_code << " " << getStatusText(status_code) << "\r\n";
         response << "Content-Type: " << content_type << "\r\n";
         response << "Content-Length: " << body.length() << "\r\n";
         response << "Access-Control-Allow-Origin: *\r\n";
@@ -234,8 +251,8 @@ public:
             size_t body_start = request.find("\r\n\r\n");
             if (body_start != std::string::npos) {
                 std::string body = request.substr(body_start + 4);
-                std::string json_response = handleLoginRequest(body);
-                response = createHTTPResponse(200, "application/json", json_response);
+                LoginResponse login_result = handleLoginRequest(body);
+                response = createHTTPResponse(login_result.status_code, "application/json", login_result.json_body);
             } else {
                 std::string error = createJSONResponse(false, "No request body");
                 response = createHTTPResponse(400, "application/json", error);
