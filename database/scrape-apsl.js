@@ -37,7 +37,16 @@ const teamPlayers = new Map();
 // Helper: Fetch HTML from URL
 function fetchHTML(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    };
+    
+    https.get(options, (res) => {
       let data = '';
       res.on('data', (chunk) => { data += chunk; });
       res.on('end', () => resolve(data));
@@ -46,10 +55,13 @@ function fetchHTML(url) {
 }
 
 // Helper: Generate deterministic UUID from string
-function generateUUID(prefix, str) {
-  const hash = str.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const pad = hash.padEnd(32, '0').substring(0, 32);
-  return `00000000-0000-0000-${prefix}-${pad.substring(0, 12)}`;
+// Helper: Generate deterministic UUID
+function generateUUID(prefix, seed) {
+  const crypto = require('crypto');
+  const hash = crypto.createHash('md5').update(seed).digest('hex');
+  // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+  // Use prefix for first part, hash for the rest
+  return `${hash.substring(0,8)}-${hash.substring(8,12)}-${prefix}-${hash.substring(12,16)}-${hash.substring(16,28)}`;
 }
 
 // Helper: Create slug from string
@@ -97,12 +109,41 @@ async function scrapeAPSL() {
 
     // Step 1: Scrape conferences and divisions
     console.error('Scraping conferences and divisions...');
-    const conferenceElements = doc.querySelectorAll('.conference-standings');
     
-    for (const confElement of conferenceElements) {
-      const confName = confElement.querySelector('h2, h3')?.textContent.trim();
-      if (!confName) continue;
-
+    // Find all divs that contain conference names
+    const allDivs = doc.querySelectorAll('div');
+    const conferenceData = [];
+    
+    for (const div of allDivs) {
+      const text = div.textContent.trim();
+      // Look for "2025/2026 - Conference Name" pattern
+      const confMatch = text.match(/^(\d{4}\/\d{4})\s*-\s*(.+?)\s+Conference\s*$/);
+      if (confMatch) {
+        const season = confMatch[1];
+        const confName = confMatch[2].trim() + ' Conference';
+        
+        // Find the next sibling that contains the standings table
+        let currentElement = div.parentElement;
+        let table = null;
+        
+        // Look for the table in the next few siblings
+        while (currentElement && !table) {
+          currentElement = currentElement.nextElementSibling;
+          if (currentElement) {
+            table = currentElement.querySelector('table');
+          }
+        }
+        
+        if (table) {
+          conferenceData.push({ name: confName, season, table });
+        }
+      }
+    }
+    
+    console.error(`Found ${conferenceData.length} conferences`);
+    
+    for (const confData of conferenceData) {
+      const confName = confData.name;
       const confId = generateUUID('0002', confName);
       const confSlug = slugify(confName);
       
@@ -114,31 +155,27 @@ async function scrapeAPSL() {
         league_id: APSL_LEAGUE_ID
       });
 
-      // Parse divisions within conference
-      const divisionTables = confElement.querySelectorAll('table');
-      let divIndex = 1;
+      // For now, treat each conference as a single division
+      // APSL doesn't have multiple divisions per conference on the standings page
+      const divId = generateUUID('0003', confName);
+      const divSlug = slugify(confName);
       
-      for (const table of divisionTables) {
-        const divHeader = table.previousElementSibling?.textContent.trim() || `Division ${divIndex}`;
-        const divId = generateUUID('0002', confName + divHeader);
-        const divSlug = slugify(divHeader);
-        
-        divisions.set(divId, {
-          id: divId,
-          conference_id: confId,
-          name: divHeader,
-          display_name: divHeader,
-          slug: divSlug,
-          tier: divIndex
-        });
+      divisions.set(divId, {
+        id: divId,
+        conference_id: confId,
+        name: confName,
+        display_name: confName,
+        slug: divSlug,
+        tier: 1
+      });
 
-        // Step 2: Scrape teams from standings table
-        console.error(`Scraping teams from ${confName} - ${divHeader}...`);
-        const teamRows = table.querySelectorAll('tbody tr');
-        
-        for (const row of teamRows) {
-          const teamLink = row.querySelector('td:first-child a');
-          if (!teamLink) continue;
+      // Step 2: Scrape teams from standings table
+      console.error(`Scraping teams from ${confName}...`);
+      const teamRows = confData.table.querySelectorAll('tbody tr, tr');
+      
+      for (const row of teamRows) {
+        const teamLink = row.querySelector('td a, a');
+        if (!teamLink) continue;
 
           const teamName = teamLink.textContent.trim();
           const teamUrl = teamLink.getAttribute('href');
@@ -183,10 +220,7 @@ async function scrapeAPSL() {
           console.error(`  Scraping roster for ${teamName}...`);
           await scrapeTeamRoster(teamId, fullTeamUrl);
         }
-
-        divIndex++;
       }
-    }
 
     // Generate SQL output
     generateSQL();
@@ -204,23 +238,42 @@ async function scrapeTeamRoster(teamId, teamUrl) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
-    // Find roster section
-    const rosterSection = doc.querySelector('.roster, .team-roster, #roster');
-    if (!rosterSection) {
+    // Find all tables on the page
+    const tables = doc.querySelectorAll('table');
+    let playerRows = [];
+    
+    // Look for the table containing "added:" text (roster table)
+    for (const table of tables) {
+      const tableText = table.textContent.toLowerCase();
+      if (tableText.includes('added:')) {
+        playerRows = Array.from(table.querySelectorAll('tr'));
+        break;
+      }
+    }
+
+    if (playerRows.length === 0) {
       console.error(`    No roster found for ${teamUrl}`);
       return;
     }
-
-    const playerRows = rosterSection.querySelectorAll('tr');
     
     for (const row of playerRows) {
       const cells = row.querySelectorAll('td');
       if (cells.length < 2) continue;
 
-      // Extract player data (format varies, adapt as needed)
-      const jerseyNum = cells[0]?.textContent.trim() || null;
-      const playerName = cells[1]?.textContent.trim();
-      const position = cells[2]?.textContent.trim() || null;
+      // APSL roster structure:
+      // Cell 0: Photo
+      // Cell 1: Player name in a div + "added:" date
+      // Cell 2: Jersey number
+      // Cell 3: (empty or other info)
+      
+      // Look for player name in a div with style="font-size:12px;line-height:1;"
+      const nameDiv = cells[1]?.querySelector('div[style*="font-size:12px"]');
+      const playerName = nameDiv?.textContent.trim();
+      
+      // Get jersey number from cell 2
+      const jerseyNum = cells[2]?.textContent.trim() || null;
+      
+      const position = null; // APSL doesn't provide positions in roster
       
       if (!playerName || playerName.toLowerCase() === 'player') continue;
 

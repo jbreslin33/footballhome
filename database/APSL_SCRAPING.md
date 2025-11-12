@@ -54,10 +54,12 @@ APSL_SCRAPE=false ./scrape-apsl.sh
 
 The scraper (`scrape-apsl.js`):
 - Fetches standings from `https://apslsoccer.com/standings/`
-- Parses conferences and divisions
-- Extracts team names and URLs
-- Visits each team page to scrape player rosters
-- Generates SQL INSERT statements with ON CONFLICT clauses
+- **Requires User-Agent header**: Website returns empty response without browser User-Agent
+- Parses conferences and divisions from actual HTML structure (searches for "YYYY/YYYY - Name Conference" pattern)
+- Extracts team names and URLs from standings tables
+- **Team rosters accessed via links**: Team pages are reached by following links from the standings page
+- Visits each team page to scrape player rosters (e.g., `https://apslsoccer.com/APSL/Team/[ID]`)
+- Generates SQL INSERT statements with ON CONFLICT clauses for idempotent loading
 
 ### 2. Data Structure
 
