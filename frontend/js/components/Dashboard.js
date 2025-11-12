@@ -99,26 +99,28 @@ class Dashboard extends Component {
     }
 
     setupCardEventListeners() {
-        // Listen to events from card components
+        // Listen to events from card components by listening on their DOM elements
         this.cardComponents.forEach(card => {
-            // Team events
-            card.on('team:create', () => this.handleTeamCreate());
-            card.on('team:viewAll', () => this.handleTeamViewAll());
-            card.on('team:select', (data) => this.handleTeamSelect(data));
+            if (card.element) {
+                // Team events
+                this.addEventListener(card.element, 'team:create', () => this.handleTeamCreate());
+                this.addEventListener(card.element, 'team:viewAll', () => this.handleTeamViewAll());
+                this.addEventListener(card.element, 'team:select', (e) => this.handleTeamSelect(e.detail));
 
-            // Event events
-            card.on('event:create', () => this.handleEventCreate());
-            card.on('event:viewCalendar', () => this.handleEventViewCalendar());
-            card.on('event:select', (data) => this.handleEventSelect(data));
+                // Event events
+                this.addEventListener(card.element, 'event:create', () => this.handleEventCreate());
+                this.addEventListener(card.element, 'event:viewCalendar', () => this.handleEventViewCalendar());
+                this.addEventListener(card.element, 'event:select', (e) => this.handleEventSelect(e.detail));
 
-            // Stats events
-            card.on('stats:viewDetails', (data) => this.handleStatsViewDetails(data));
-            card.on('stats:export', (data) => this.handleStatsExport(data));
+                // Stats events
+                this.addEventListener(card.element, 'stats:viewDetails', (e) => this.handleStatsViewDetails(e.detail));
+                this.addEventListener(card.element, 'stats:export', (e) => this.handleStatsExport(e.detail));
 
-            // League events
-            card.on('league:viewStandings', () => this.handleLeagueViewStandings());
-            card.on('league:sync', () => this.handleLeagueSync());
-            card.on('league:select', (data) => this.handleLeagueSelect(data));
+                // League events
+                this.addEventListener(card.element, 'league:viewStandings', () => this.handleLeagueViewStandings());
+                this.addEventListener(card.element, 'league:sync', () => this.handleLeagueSync());
+                this.addEventListener(card.element, 'league:select', (e) => this.handleLeagueSelect(e.detail));
+            }
         });
     }
 

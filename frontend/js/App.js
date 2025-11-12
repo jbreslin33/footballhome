@@ -64,10 +64,12 @@ class App {
         this.dashboard = new Dashboard(appContainer, user);
         this.dashboard.mount();
         
-        // Listen for logout events from the dashboard
-        this.dashboard.on('user:logout', () => {
-            this.logout();
-        });
+        // Listen for logout events from the dashboard element
+        if (this.dashboard.element) {
+            this.dashboard.element.addEventListener('user:logout', () => {
+                this.logout();
+            });
+        }
         
         console.log('App: Dashboard component mounted with user:', user);
     }
