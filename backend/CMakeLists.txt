@@ -23,7 +23,9 @@ set(SOURCES
     src/database/Database.cpp
     src/database/Model.cpp
     src/models/User.cpp
+    src/models/Team.cpp
     src/controllers/AuthController.cpp
+    src/controllers/TeamController.cpp
 )
 
 # Create executable

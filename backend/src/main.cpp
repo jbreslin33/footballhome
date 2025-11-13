@@ -11,6 +11,7 @@
 #include "core/Response.h"
 #include "database/Database.h"
 #include "controllers/AuthController.h"
+#include "controllers/TeamController.h"
 
 class HttpServer {
 private:
@@ -21,11 +22,13 @@ private:
     
     // Controllers
     std::shared_ptr<AuthController> auth_controller_;
+    std::shared_ptr<TeamController> team_controller_;
 
 public:
     HttpServer(int port = 3001) : port_(port) {
         db_ = Database::getInstance();
         auth_controller_ = std::make_shared<AuthController>();
+        team_controller_ = std::make_shared<TeamController>();
     }
     
     bool initialize() {
@@ -72,6 +75,7 @@ private:
     void setupRoutes() {
         // Register controllers
         router_.useController("/api/auth", auth_controller_);
+        router_.useController("/api/teams", team_controller_);
         
         // Add basic health check endpoint
         router_.get("/health", [](const Request& request) {

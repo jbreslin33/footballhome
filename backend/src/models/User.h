@@ -43,6 +43,7 @@ public:
     // Utility methods
     UserData toUserData() const;
     bool loadByEmail(const std::string& email);
+    std::string getUserRoles(const std::string& user_id);
     
 private:
     void populateFromMap(const std::unordered_map<std::string, std::string>& data);

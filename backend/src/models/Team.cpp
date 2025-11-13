@@ -1,0 +1,183 @@
+#include "Team.h"
+#include <iostream>
+#include <sstream>
+
+Team::Team() : Model("teams", "id") {
+}
+
+bool Team::save() {
+    // For now, implement basic save functionality
+    try {
+        std::unordered_map<std::string, std::string> data;
+        data["name"] = name_;
+        data["division_id"] = division_id_;
+        
+        std::string sql = buildInsertQuery(data);
+        std::vector<std::string> params;
+        for (const auto& pair : data) {
+            params.push_back(pair.second);
+        }
+        
+        pqxx::result result = executeQuery(sql, params);
+        if (!result.empty()) {
+            id_ = result[0][0].as<std::string>();
+            return true;
+        }
+        return false;
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Team save error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool Team::load(int id) {
+    // This method expects an integer ID, but we're using UUIDs
+    // For UUID support, use loadByUuid instead
+    return false;
+}
+
+bool Team::loadByUuid(const std::string& uuid) {
+    try {
+        std::string sql = "SELECT id, name, division_id, league_division_id FROM teams WHERE id = $1";
+        pqxx::result result = executeQuery(sql, {uuid});
+        
+        if (!result.empty()) {
+            auto row = result[0];
+            id_ = row["id"].as<std::string>();
+            name_ = row["name"].as<std::string>();
+            division_id_ = row["division_id"].as<std::string>();
+            league_division_id_ = row["league_division_id"].is_null() ? "" : row["league_division_id"].as<std::string>();
+            return true;
+        }
+        return false;
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Team loadByUuid error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool Team::remove() {
+    if (id_.empty()) {
+        return false;
+    }
+    
+    try {
+        std::string sql = "DELETE FROM teams WHERE id = $1";
+        executeQuery(sql, {id_});
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Team remove error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+std::string Team::getTeamRoster(const std::string& team_id) {
+    std::ostringstream json;
+    json << "[";
+    
+    try {
+        // Get all players for the team
+        std::string sql = 
+            "SELECT "
+            "  u.id as user_id, "
+            "  u.name, "
+            "  u.email, "
+            "  tp.jersey_number, "
+            "  p.display_name as position, "
+            "  tp.is_captain, "
+            "  tp.is_vice_captain, "
+            "  tp.is_active, "
+            "  DATE(tp.joined_at) as joined_date "
+            "FROM team_players tp "
+            "JOIN players pl ON tp.player_id = pl.id "
+            "JOIN users u ON pl.id = u.id "
+            "LEFT JOIN positions p ON tp.position_id = p.id "
+            "WHERE tp.team_id = $1 AND tp.is_active = true "
+            "ORDER BY "
+            "  CASE WHEN u.email = 'jbreslin@footballhome.org' THEN 0 ELSE 1 END, "
+            "  tp.jersey_number NULLS LAST, "
+            "  u.name";
+        
+        pqxx::result result = executeQuery(sql, {team_id});
+        
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) json << ",";
+            
+            json << "{";
+            json << "\"id\":\"" << row["user_id"].as<std::string>() << "\",";
+            json << "\"name\":\"" << row["name"].as<std::string>() << "\",";
+            json << "\"email\":\"" << row["email"].as<std::string>() << "\",";
+            json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].as<std::string>()) << ",";
+            json << "\"position\":\"" << (row["position"].is_null() ? "No Position" : row["position"].as<std::string>()) << "\",";
+            json << "\"isCaptain\":" << (row["is_captain"].as<bool>() ? "true" : "false") << ",";
+            json << "\"isViceCaptain\":" << (row["is_vice_captain"].as<bool>() ? "true" : "false") << ",";
+            json << "\"isActive\":" << (row["is_active"].as<bool>() ? "true" : "false") << ",";
+            json << "\"joinedDate\":\"" << row["joined_date"].as<std::string>() << "\",";
+            json << "\"roleType\":\"" << (row["email"].as<std::string>() == "jbreslin@footballhome.org" ? "COACH & PLAYER" : "PLAYER") << "\"";
+            json << "}";
+            
+            first = false;
+        }
+        
+        // Also get coaches for the team
+        std::string coach_sql = 
+            "SELECT "
+            "  u.id as user_id, "
+            "  u.name, "
+            "  u.email, "
+            "  tc.coach_role, "
+            "  tc.is_primary "
+            "FROM team_coaches tc "
+            "JOIN coaches c ON tc.coach_id = c.id "
+            "JOIN users u ON c.id = u.id "
+            "WHERE tc.team_id = $1 AND tc.is_active = true "
+            "ORDER BY tc.is_primary DESC, u.name";
+        
+        pqxx::result coach_result = executeQuery(coach_sql, {team_id});
+        
+        for (const auto& row : coach_result) {
+            // Don't duplicate jbreslin@footballhome.org who's already listed as player
+            if (row["email"].as<std::string>() == "jbreslin@footballhome.org") {
+                continue;
+            }
+            
+            if (!first) json << ",";
+            
+            json << "{";
+            json << "\"id\":\"" << row["user_id"].as<std::string>() << "\",";
+            json << "\"name\":\"" << row["name"].as<std::string>() << "\",";
+            json << "\"email\":\"" << row["email"].as<std::string>() << "\",";
+            json << "\"jerseyNumber\":null,";
+            json << "\"position\":\"" << row["coach_role"].as<std::string>() << "\",";
+            json << "\"isCaptain\":false,";
+            json << "\"isViceCaptain\":false,";
+            json << "\"isActive\":true,";
+            json << "\"joinedDate\":\"\",";
+            json << "\"roleType\":\"COACH\"";
+            json << "}";
+            
+            first = false;
+        }
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ getTeamRoster error: " << e.what() << std::endl;
+    }
+    
+    json << "]";
+    return json.str();
+}
+
+void Team::populateFromMap(const std::unordered_map<std::string, std::string>& data) {
+    auto it = data.find("id");
+    if (it != data.end()) id_ = it->second;
+    
+    it = data.find("name");
+    if (it != data.end()) name_ = it->second;
+    
+    it = data.find("division_id");
+    if (it != data.end()) division_id_ = it->second;
+    
+    it = data.find("league_division_id");
+    if (it != data.end()) league_division_id_ = it->second;
+}

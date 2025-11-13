@@ -22,6 +22,10 @@ void AuthController::registerRoutes(Router& router, const std::string& prefix) {
     router.get(prefix + "/me", [this](const Request& request) {
         return this->handleCurrentUser(request);
     });
+    
+    router.get(prefix + "/me/roles", [this](const Request& request) {
+        return this->handleUserRoles(request);
+    });
 }
 
 Response AuthController::handleLogin(const Request& request) {
@@ -68,6 +72,28 @@ Response AuthController::handleCurrentUser(const Request& request) {
     // For now, return not implemented (would need JWT validation)
     std::string json = createJSONResponse(false, "Current user endpoint not yet implemented");
     return Response(HttpStatus::NOT_FOUND, json);
+}
+
+Response AuthController::handleUserRoles(const Request& request) {
+    // Extract user ID from token/auth (for now, hardcode jbreslin for testing)
+    std::string user_id = "77d77471-1250-47e0-81ab-d4626595d63c"; // James Breslin's ID
+    
+    try {
+        // Get user roles and teams from database
+        std::string roles_json = user_model_->getUserRoles(user_id);
+        
+        std::ostringstream json;
+        json << "{";
+        json << "\"success\":true,";
+        json << "\"message\":\"User roles retrieved successfully\",";
+        json << "\"data\":" << roles_json;
+        json << "}";
+        
+        return Response(HttpStatus::OK, json.str());
+    } catch (const std::exception& e) {
+        std::string json = createJSONResponse(false, "Failed to retrieve user roles");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
 }
 
 std::string AuthController::createJSONResponse(bool success, const std::string& message, const UserData& userData) {

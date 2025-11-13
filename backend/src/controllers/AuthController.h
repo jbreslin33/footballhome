@@ -19,6 +19,7 @@ private:
     Response handleRegister(const Request& request);
     Response handleLogout(const Request& request);
     Response handleCurrentUser(const Request& request);
+    Response handleUserRoles(const Request& request);
     
     // Utility methods
     std::string createJSONResponse(bool success, const std::string& message, const UserData& userData = {});
