@@ -70,11 +70,28 @@ Response AuthController::handleLogout(const Request& request) {
 
 Response AuthController::handleCurrentUser(const Request& request) {
     try {
-        // Extract user ID from JWT token
-        std::string user_id = extractUserIdFromToken(request);
+        // Extract Authorization header directly
+        std::string auth_header = request.getHeader("Authorization");
+        
+        if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ") {
+            std::string json = createJSONResponse(false, "Invalid or missing authentication token");
+            return Response(HttpStatus::UNAUTHORIZED, json);
+        }
+        
+        // Extract token (remove "Bearer " prefix)
+        std::string token = auth_header.substr(7);
+        
+        // Extract user ID from JWT format: jwt_{user_id}_{hash}
+        std::string user_id;
+        if (!token.empty() && token.substr(0, 4) == "jwt_") {
+            size_t last_underscore = token.rfind('_');
+            if (last_underscore != std::string::npos && last_underscore > 4) {
+                user_id = token.substr(4, last_underscore - 4);
+            }
+        }
         
         if (user_id.empty()) {
-            std::string json = createJSONResponse(false, "Invalid or missing authentication token");
+            std::string json = createJSONResponse(false, "Invalid authentication token format");
             return Response(HttpStatus::UNAUTHORIZED, json);
         }
         
@@ -97,11 +114,26 @@ Response AuthController::handleCurrentUser(const Request& request) {
 
 Response AuthController::handleUserRoles(const Request& request) {
     try {
-        // Extract user ID from JWT token
-        std::string user_id = extractUserIdFromToken(request);
+        // Extract Authorization header directly
+        std::string auth_header = request.getHeader("Authorization");
+        
+        if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ") {
+            std::string json = createJSONResponse(false, "Invalid or missing authentication token");
+            return Response(HttpStatus::UNAUTHORIZED, json);
+        }
+        
+        // Extract token and user ID
+        std::string token = auth_header.substr(7);
+        std::string user_id;
+        if (!token.empty() && token.substr(0, 4) == "jwt_") {
+            size_t last_underscore = token.rfind('_');
+            if (last_underscore != std::string::npos && last_underscore > 4) {
+                user_id = token.substr(4, last_underscore - 4);
+            }
+        }
         
         if (user_id.empty()) {
-            std::string json = createJSONResponse(false, "Invalid or missing authentication token");
+            std::string json = createJSONResponse(false, "Invalid authentication token format");
             return Response(HttpStatus::UNAUTHORIZED, json);
         }
         
