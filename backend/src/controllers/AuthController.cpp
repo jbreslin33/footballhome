@@ -69,16 +69,42 @@ Response AuthController::handleLogout(const Request& request) {
 }
 
 Response AuthController::handleCurrentUser(const Request& request) {
-    // For now, return not implemented (would need JWT validation)
-    std::string json = createJSONResponse(false, "Current user endpoint not yet implemented");
-    return Response(HttpStatus::NOT_FOUND, json);
+    try {
+        // Extract user ID from JWT token
+        std::string user_id = extractUserIdFromToken(request);
+        
+        if (user_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid or missing authentication token");
+            return Response(HttpStatus::UNAUTHORIZED, json);
+        }
+        
+        // Get user data from database
+        UserData userData = user_model_->getUserById(user_id);
+        
+        if (!userData.valid) {
+            std::string json = createJSONResponse(false, "User not found");
+            return Response(HttpStatus::NOT_FOUND, json);
+        }
+        
+        std::string json = createJSONResponse(true, "Current user retrieved successfully", userData);
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::string json = createJSONResponse(false, "Error retrieving current user");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
 }
 
 Response AuthController::handleUserRoles(const Request& request) {
-    // Extract user ID from token/auth (for now, hardcode jbreslin for testing)
-    std::string user_id = "77d77471-1250-47e0-81ab-d4626595d63c"; // James Breslin's ID
-    
     try {
+        // Extract user ID from JWT token
+        std::string user_id = extractUserIdFromToken(request);
+        
+        if (user_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid or missing authentication token");
+            return Response(HttpStatus::UNAUTHORIZED, json);
+        }
+        
         // Get user roles and teams from database
         std::string roles_json = user_model_->getUserRoles(user_id);
         
@@ -144,5 +170,35 @@ std::string AuthController::extractField(const std::string& json, const std::str
         return match[1].str();
     }
     
+    return "";
+}
+
+std::string AuthController::extractUserIdFromToken(const Request& request) {
+    // Extract Authorization header
+    std::string auth_header = request.getHeader("Authorization");
+    std::cout << "🔍 Auth header: '" << auth_header << "'" << std::endl;
+    
+    if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ") {
+        std::cout << "❌ No Bearer token found" << std::endl;
+        return "";
+    }
+    
+    // Extract token (remove "Bearer " prefix)
+    std::string token = auth_header.substr(7);
+    std::cout << "🔍 Token: '" << token << "'" << std::endl;
+    
+    if (!token.empty() && token.substr(0, 4) == "jwt_") {
+        // Extract user ID from our JWT format: jwt_{user_id}_{hash}
+        // Find the last underscore (since UUID contains hyphens, not underscores)
+        size_t last_underscore = token.rfind('_');
+        std::cout << "🔍 Last underscore at position: " << last_underscore << std::endl;
+        if (last_underscore != std::string::npos && last_underscore > 4) {
+            std::string user_id = token.substr(4, last_underscore - 4);
+            std::cout << "🔍 Extracted user ID: '" << user_id << "'" << std::endl;
+            return user_id;
+        }
+    }
+    
+    std::cout << "❌ Token parsing failed" << std::endl;
     return "";
 }

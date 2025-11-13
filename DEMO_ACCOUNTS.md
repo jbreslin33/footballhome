@@ -2,22 +2,24 @@
 
 ## Available Test Accounts
 
-The following demo accounts are available for testing the Football Home application:
+The following demo accounts are available for testing the Football Home application using **real APSL data**:
 
-### **Admin Account**
+### **APSL Player Accounts**
+- **Email**: `mario.amado.2a1d62b2@apsl.player`
+- **Name**: Mario Amado
+- **Role**: Player
+- **Password**: Contact admin for password
+
+- **Email**: `brenner.cardoso.2a1d62b2@apsl.player`  
+- **Name**: Brenner Cardoso
+- **Role**: Player
+- **Password**: Contact admin for password
+
+### **Admin Account** (if needed)
 - **Email**: `jbreslin@footballhome.org`
 - **Name**: James Breslin
-- **Role**: Administrator (admin, coach, player roles)
-- **Password**: `1893Soccer!`
-
-### **Test Accounts**  
-- **Email**: `test@test.com`
-- **Name**: Test User
-- **Password**: `password` (likely)
-
-- **Email**: `testuser@example.com`  
-- **Name**: Test User
-- **Password**: `password` (likely)
+- **Role**: Administrator (system admin)
+- **Password**: Contact admin for password
 
 ## **Access URLs**
 

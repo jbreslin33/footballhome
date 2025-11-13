@@ -25,4 +25,5 @@ private:
     std::string createJSONResponse(bool success, const std::string& message, const UserData& userData = {});
     std::string generateJWT(const UserData& userData);
     std::string extractField(const std::string& json, const std::string& field);
+    std::string extractUserIdFromToken(const Request& request);
 };

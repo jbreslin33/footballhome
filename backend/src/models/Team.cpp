@@ -94,7 +94,6 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "LEFT JOIN positions p ON tp.position_id = p.id "
             "WHERE tp.team_id = $1 AND tp.is_active = true "
             "ORDER BY "
-            "  CASE WHEN u.email = 'jbreslin@footballhome.org' THEN 0 ELSE 1 END, "
             "  tp.jersey_number NULLS LAST, "
             "  u.name";
         
@@ -114,7 +113,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             json << "\"isViceCaptain\":" << (row["is_vice_captain"].as<bool>() ? "true" : "false") << ",";
             json << "\"isActive\":" << (row["is_active"].as<bool>() ? "true" : "false") << ",";
             json << "\"joinedDate\":\"" << row["joined_date"].as<std::string>() << "\",";
-            json << "\"roleType\":\"" << (row["email"].as<std::string>() == "jbreslin@footballhome.org" ? "COACH & PLAYER" : "PLAYER") << "\"";
+            json << "\"roleType\":\"PLAYER\"";
             json << "}";
             
             first = false;
@@ -137,11 +136,6 @@ std::string Team::getTeamRoster(const std::string& team_id) {
         pqxx::result coach_result = executeQuery(coach_sql, {team_id});
         
         for (const auto& row : coach_result) {
-            // Don't duplicate jbreslin@footballhome.org who's already listed as player
-            if (row["email"].as<std::string>() == "jbreslin@footballhome.org") {
-                continue;
-            }
-            
             if (!first) json << ",";
             
             json << "{";

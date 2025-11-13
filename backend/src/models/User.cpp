@@ -139,6 +139,26 @@ bool User::loadByEmail(const std::string& email) {
     return true;
 }
 
+UserData User::getUserById(const std::string& user_id) {
+    UserData userData;
+    userData.valid = false;
+    
+    try {
+        auto data = findBy("users", "id", user_id);
+        if (!data.empty()) {
+            userData.id = data[0]["id"];
+            userData.email = data[0]["email"];
+            userData.name = data[0]["name"];
+            userData.role = "user"; // Default role
+            userData.valid = true;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error getting user by ID: " << e.what() << std::endl;
+    }
+    
+    return userData;
+}
+
 std::string User::getUserRoles(const std::string& user_id) {
     std::ostringstream json;
     json << "{\"roles\":[";

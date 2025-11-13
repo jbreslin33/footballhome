@@ -43,6 +43,7 @@ public:
     // Utility methods
     UserData toUserData() const;
     bool loadByEmail(const std::string& email);
+    UserData getUserById(const std::string& user_id);
     std::string getUserRoles(const std::string& user_id);
     
 private:
