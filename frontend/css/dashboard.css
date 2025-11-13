@@ -355,3 +355,77 @@
         font-size: 1.25rem;
     }
 }
+
+/* Admin Dashboard Styles */
+.admin-dashboard {
+    min-height: 100vh;
+    background-color: var(--gray-50, #f9fafb);
+}
+
+.admin-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.admin-header {
+    margin-bottom: 2rem;
+}
+
+.admin-header h2 {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--gray-900, #111827);
+    margin: 0 0 0.5rem 0;
+}
+
+.admin-header p {
+    color: var(--gray-600, #6b7280);
+    font-size: 1.125rem;
+    margin: 0;
+}
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.admin-card {
+    background: white;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--gray-200, #e5e7eb);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.admin-card-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.admin-card h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gray-900, #111827);
+    margin: 0 0 0.5rem 0;
+}
+
+.admin-card p {
+    color: var(--gray-600, #6b7280);
+    margin: 0 0 1.5rem 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.admin-card .btn {
+    width: 100%;
+}

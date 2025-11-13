@@ -33,6 +33,7 @@ NC='\033[0m'
 SCRAPE_APSL=false
 SCRAPE_GOOGLE=false
 PRESERVE_VOLUMES=false
+LOAD_APSL_SQL=false
 SHOW_HELP=false
 
 for arg in "$@"; do
@@ -45,6 +46,9 @@ for arg in "$@"; do
             ;;
         volumes)
             PRESERVE_VOLUMES=true
+            ;;
+        apslsql)
+            LOAD_APSL_SQL=true
             ;;
         --help|-h)
             SHOW_HELP=true
@@ -61,17 +65,20 @@ if [ "$SHOW_HELP" = true ]; then
     echo -e "${BLUE}Football Home - Database Start Script${NC}"
     echo ""
     echo -e "${BLUE}Usage:${NC}"
-    echo -e "  ./start.sh                    - Use existing data only (no external API calls)"
+    echo -e "  ./start.sh                    - Use Lighthouse team data only (minimal dataset)"
     echo -e "  ./start.sh apsl               - Scrape APSL data only"
     echo -e "  ./start.sh google             - Scrape Google Places data only"
     echo -e "  ./start.sh apsl google        - Scrape both APSL and Google data"
+    echo -e "  ./start.sh apslsql            - Load complete APSL dataset from SQL files"
     echo -e "  ./start.sh volumes            - Preserve existing Docker volumes"
     echo -e "  ./start.sh apsl volumes       - Scrape APSL data and preserve volumes"
+    echo -e "  ./start.sh apslsql volumes    - Load APSL SQL data and preserve volumes"
     echo -e "  ./start.sh --help             - Show this help message"
     echo ""
     echo -e "${BLUE}Parameters:${NC}"
     echo -e "  apsl      Enable APSL league/team data scraping"
     echo -e "  google    Enable Google Places venue data scraping"
+    echo -e "  apslsql   Load complete APSL dataset from database/apsl/ SQL files"
     echo -e "  volumes   Preserve existing Docker volumes (default: delete volumes)"
     echo -e "  --help    Show usage information"
     echo ""
@@ -85,6 +92,7 @@ echo ""
 echo -e "${BLUE}Configuration:${NC}"
 echo -e "  APSL Scraping:    ${GREEN}$SCRAPE_APSL${NC}"
 echo -e "  Google Scraping:  ${GREEN}$SCRAPE_GOOGLE${NC}"
+echo -e "  Load APSL SQL:    ${GREEN}$LOAD_APSL_SQL${NC}"
 echo -e "  Preserve Volumes: ${GREEN}$PRESERVE_VOLUMES${NC}"
 echo ""
 
@@ -127,7 +135,45 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}Step 3: Docker Container Management${NC}"
+echo -e "${BLUE}Step 3: Database Configuration${NC}"
+
+# Configure which SQL files to load
+if [ "$LOAD_APSL_SQL" = true ]; then
+    echo -e "${YELLOW}📊 Configuring for full APSL dataset (all teams and players)${NC}"
+    # Ensure APSL data file is available for Docker mount
+    if [ ! -f "./database/apsl/apsl-data.sql" ]; then
+        echo -e "${RED}❌ Error: APSL data file not found at ./database/apsl/apsl-data.sql${NC}"
+        exit 1
+    fi
+    # Create docker-compose override for APSL data
+    cat > docker-compose.override.yml << EOF
+services:
+  db:
+    volumes:
+      - ./database/schema/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./database/apsl/apsl-data.sql:/docker-entrypoint-initdb.d/02-apsl-data.sql:ro
+EOF
+    echo -e "${GREEN}✓ Will load complete APSL dataset with all teams${NC}"
+else
+    echo -e "${GREEN}📦 Configuring for Lighthouse-only dataset (minimal)${NC}"
+    # Ensure lighthouse data file exists
+    if [ ! -f "./lighthouse.sql" ]; then
+        echo -e "${RED}❌ Error: Lighthouse data file not found at ./lighthouse.sql${NC}"
+        exit 1
+    fi
+    # Create docker-compose override for lighthouse data only
+    cat > docker-compose.override.yml << EOF
+services:
+  db:
+    volumes:
+      - ./database/schema/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./lighthouse.sql:/docker-entrypoint-initdb.d/02-lighthouse.sql:ro
+EOF
+    echo -e "${GREEN}✓ Will load Lighthouse 1893 SC data only${NC}"
+fi
+
+echo ""
+echo -e "${BLUE}Step 4: Docker Container Management${NC}"
 
 # Handle volume management based on PRESERVE_VOLUMES flag
 if [ "$PRESERVE_VOLUMES" = true ]; then
@@ -163,9 +209,10 @@ echo ""
 echo -e "${BLUE}Usage Examples:${NC}"
 echo -e "  View logs:           ${GREEN}docker compose logs -f${NC}"
 echo -e "  Stop services:       ${GREEN}docker compose down${NC}"
-echo -e "  Fresh start:         ${GREEN}./start.sh${NC}"
+echo -e "  Fresh start (minimal): ${GREEN}./start.sh${NC}"
+echo -e "  Fresh start (full):  ${GREEN}./start.sh apslsql${NC}"
 echo -e "  Preserve data:       ${GREEN}./start.sh volumes${NC}"
-echo -e "  Fresh + APSL:        ${GREEN}./start.sh apsl${NC}"
+echo -e "  Fresh + APSL scraping: ${GREEN}./start.sh apsl${NC}"
 echo -e "  Preserve + APSL:     ${GREEN}./start.sh apsl volumes${NC}"
 echo -e "  Fresh + Both APIs:   ${GREEN}./start.sh apsl google${NC}"
 echo -e "  Preserve + Both:     ${GREEN}./start.sh apsl google volumes${NC}"

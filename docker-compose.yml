@@ -14,7 +14,7 @@ services:
     volumes:
       # Mount database initialization files (loaded in alphabetical order)
       - ./database/schema/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./database/apsl/apsl-data.sql:/docker-entrypoint-initdb.d/02-apsl-data.sql:ro
+      # Data files mounted via docker-compose.override.yml based on start.sh parameters
       # Persistent data storage
       - db_data:/var/lib/postgresql/data
     networks:

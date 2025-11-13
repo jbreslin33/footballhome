@@ -64,11 +64,10 @@ class App {
         appContainer.innerHTML = ''; // Clear container
         
         try {
-            // Create and mount the RoleSwitchboard component
+            // Create the RoleSwitchboard component (auto-mounts via base class)
             console.log('App: Creating RoleSwitchboard component...');
             this.currentComponent = new RoleSwitchboard(appContainer, user);
-            this.currentComponent.mount();
-            console.log('App: RoleSwitchboard mounted successfully');
+            console.log('App: RoleSwitchboard created and mounted successfully');
             
             // Listen for role selection events
             if (this.currentComponent.element) {
@@ -119,11 +118,120 @@ class App {
         // For now, do nothing - stay on the RoleSwitchboard
     }
     
-    // TODO: Implement proper role-specific dashboard components
     showRoleDashboard(roleSelection) {
-        console.log('App: Role dashboard requested but not implemented yet:', roleSelection);
-        console.log('App: Staying on RoleSwitchboard for now...');
-        // For now, do nothing - stay on the RoleSwitchboard
+        console.log('App: Showing role dashboard for:', roleSelection);
+        
+        const appContainer = document.getElementById('app');
+        appContainer.innerHTML = ''; // Clear container
+        
+        // Create a basic dashboard based on role type
+        if (roleSelection.roleType === 'admin') {
+            this.showAdminDashboard(roleSelection);
+        } else {
+            // Fallback for other roles
+            appContainer.innerHTML = `
+                <div class="dashboard">
+                    <nav class="navbar">
+                        <div class="navbar-brand">
+                            <span class="brand-text">Football Home - ${roleSelection.roleType}</span>
+                        </div>
+                        <div class="navbar-menu">
+                            <button id="backBtn" class="btn btn-secondary btn-sm">Back to Roles</button>
+                            <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
+                        </div>
+                    </nav>
+                    <main class="dashboard-main">
+                        <h2>${roleSelection.roleType.charAt(0).toUpperCase() + roleSelection.roleType.slice(1)} Dashboard</h2>
+                        <p>Dashboard for ${roleSelection.roleData?.teamName || 'your team'}</p>
+                        <p>This dashboard is under development.</p>
+                    </main>
+                </div>
+            `;
+            
+            // Setup navigation
+            this.setupDashboardNavigation();
+        }
+    }
+    
+    showAdminDashboard(roleSelection) {
+        console.log('App: Showing admin dashboard');
+        
+        const appContainer = document.getElementById('app');
+        appContainer.innerHTML = `
+            <div class="admin-dashboard">
+                <nav class="navbar">
+                    <div class="navbar-brand">
+                        <span class="brand-text">Football Home - Administrator</span>
+                    </div>
+                    <div class="navbar-menu">
+                        <button id="backBtn" class="btn btn-secondary btn-sm">Back to Roles</button>
+                        <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
+                    </div>
+                </nav>
+                <main class="admin-main">
+                    <div class="admin-header">
+                        <h2>System Administration</h2>
+                        <p>Manage the Football Home system</p>
+                    </div>
+                    
+                    <div class="admin-grid">
+                        <div class="admin-card">
+                            <div class="admin-card-icon">👥</div>
+                            <h3>User Management</h3>
+                            <p>Manage users, roles, and permissions</p>
+                            <button class="btn btn-primary" disabled>Coming Soon</button>
+                        </div>
+                        
+                        <div class="admin-card">
+                            <div class="admin-card-icon">🏈</div>
+                            <h3>Team Management</h3>
+                            <p>Manage teams, players, and coaches</p>
+                            <button class="btn btn-primary" disabled>Coming Soon</button>
+                        </div>
+                        
+                        <div class="admin-card">
+                            <div class="admin-card-icon">🏆</div>
+                            <h3>League Management</h3>
+                            <p>Manage leagues, divisions, and seasons</p>
+                            <button class="btn btn-primary" disabled>Coming Soon</button>
+                        </div>
+                        
+                        <div class="admin-card">
+                            <div class="admin-card-icon">📊</div>
+                            <h3>System Stats</h3>
+                            <p>View system statistics and reports</p>
+                            <button class="btn btn-primary" disabled>Coming Soon</button>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        `;
+        
+        // Setup navigation
+        this.setupDashboardNavigation();
+    }
+    
+    setupDashboardNavigation() {
+        const backBtn = document.getElementById('backBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        
+        if (backBtn) {
+            backBtn.addEventListener('click', async () => {
+                // Go back to role switchboard
+                const userResult = await this.authService.getCurrentUser();
+                if (userResult.success) {
+                    this.showRoleSwitchboard(userResult.user);
+                } else {
+                    this.showLogin();
+                }
+            });
+        }
+        
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                this.logout();
+            });
+        }
     }
     
     logout() {
