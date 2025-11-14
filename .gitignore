@@ -19,5 +19,12 @@ Thumbs.db
 *.log
 logs/
 
+# Dynamic Docker compose files
+docker-compose.override.yml
+
+# Temporary working files
+lighthouse_*.txt
+*_extraction.txt
+
 # Docker data
 /docker/data/

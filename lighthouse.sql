@@ -101,6 +101,50 @@ ON CONFLICT (user_id, admin_level) DO UPDATE SET
     is_active = EXCLUDED.is_active,
     updated_at = CURRENT_TIMESTAMP;
 
+-- Add jbreslin as a coach
+INSERT INTO coaches (id, coaching_license, license_expiry, years_experience, certifications, specializations, bio, created_at, updated_at)
+VALUES (
+    '77d77471-1250-47e0-81ab-d4626595d63c',
+    'USSF B License',
+    '2026-12-31',
+    15,
+    ARRAY['USSF B License', 'Youth Safety Certification', 'First Aid/CPR'],
+    ARRAY['Youth Development', 'Technical Skills', 'Team Strategy'],
+    'Experienced coach with 15 years in youth soccer development. Focuses on technical skills and positive team culture.',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT (id) DO UPDATE SET
+    coaching_license = EXCLUDED.coaching_license,
+    license_expiry = EXCLUDED.license_expiry,
+    years_experience = EXCLUDED.years_experience,
+    certifications = EXCLUDED.certifications,
+    specializations = EXCLUDED.specializations,
+    bio = EXCLUDED.bio,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- Add jbreslin as a player
+INSERT INTO players (id, preferred_position_id, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+    '77d77471-1250-47e0-81ab-d4626595d63c',
+    (SELECT id FROM positions WHERE name = 'midfielder' LIMIT 1),
+    180,
+    75,
+    'right',
+    85,
+    'Veteran player who also coaches. Strong tactical awareness and leadership on the field.',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT (id) DO UPDATE SET
+    preferred_position_id = EXCLUDED.preferred_position_id,
+    height_cm = EXCLUDED.height_cm,
+    weight_kg = EXCLUDED.weight_kg,
+    dominant_foot = EXCLUDED.dominant_foot,
+    player_rating = EXCLUDED.player_rating,
+    notes = EXCLUDED.notes,
+    updated_at = CURRENT_TIMESTAMP;
+
 -- ================================================================
 -- LIGHTHOUSE PLAYERS FROM APSL DATA
 -- ================================================================
@@ -499,4 +543,38 @@ ON CONFLICT (team_id, coach_id) DO UPDATE SET
     coach_role = EXCLUDED.coach_role,
     is_primary = EXCLUDED.is_primary,
     is_active = EXCLUDED.is_active,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- Assign jbreslin as head coach of Lighthouse team
+INSERT INTO team_coaches (id, team_id, coach_id, coach_role, is_primary, is_active)
+VALUES (
+    '77d77471-1250-47e0-81ab-d4626595d69c',
+    'd37eb44b-8e47-0005-9060-f0cbe96fe089',
+    '77d77471-1250-47e0-81ab-d4626595d63c',
+    'head_coach',
+    true,
+    true
+)
+ON CONFLICT (team_id, coach_id) DO UPDATE SET
+    coach_role = EXCLUDED.coach_role,
+    is_primary = EXCLUDED.is_primary,
+    is_active = EXCLUDED.is_active,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- Assign jbreslin as player on Lighthouse team
+INSERT INTO team_players (id, team_id, player_id, jersey_number, is_captain, is_active, position_id)
+VALUES (
+    '77d77471-1250-47e0-81ab-d4626595d70c',
+    'd37eb44b-8e47-0005-9060-f0cbe96fe089',
+    '77d77471-1250-47e0-81ab-d4626595d63c',
+    10,
+    true,
+    true,
+    (SELECT id FROM positions WHERE name = 'midfielder' LIMIT 1)
+)
+ON CONFLICT (team_id, player_id) DO UPDATE SET
+    jersey_number = EXCLUDED.jersey_number,
+    is_captain = EXCLUDED.is_captain,
+    is_active = EXCLUDED.is_active,
+    position_id = EXCLUDED.position_id,
     updated_at = CURRENT_TIMESTAMP;
