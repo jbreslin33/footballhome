@@ -6,17 +6,20 @@
 # It can optionally scrape external data sources.
 #
 # Usage:
-#   ./start.sh                    - Use existing data only (no external API calls)
+#   ./start.sh                    - Use Lighthouse team data only (minimal dataset)
 #   ./start.sh apsl               - Scrape APSL data only
 #   ./start.sh google             - Scrape Google Places data only  
 #   ./start.sh apsl google        - Scrape both APSL and Google data
+#   ./start.sh apslsql            - Load complete APSL dataset from SQL files
 #   ./start.sh volumes            - Preserve existing Docker volumes
 #   ./start.sh apsl volumes       - Scrape APSL data and preserve volumes
+#   ./start.sh apslsql volumes    - Load APSL SQL data and preserve volumes
 #   ./start.sh --help             - Show this help message
 #
 # Parameters:
 #   apsl     - Enable APSL league/team data scraping
 #   google   - Enable Google Places venue data scraping
+#   apslsql  - Load complete APSL dataset from database/apsl/ SQL files
 #   volumes  - Preserve existing Docker volumes (default: delete volumes)
 #   --help   - Show usage information
 
