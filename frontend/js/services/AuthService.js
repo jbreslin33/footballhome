@@ -164,6 +164,47 @@ class AuthService {
     }
     
     /**
+     * Get user roles
+     */
+    async getUserRoles() {
+        if (!this.token) {
+            return { success: false, error: 'No auth token' };
+        }
+        
+        try {
+            const response = await fetch(`${this.baseUrl}/api/auth/me/roles`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to get user roles');
+            }
+            
+            return {
+                success: true,
+                data: data.data || data
+            };
+            
+        } catch (error) {
+            console.error('Get user roles error:', error);
+            
+            // If token is invalid, clear it
+            if (error.message.includes('token') || error.message.includes('auth')) {
+                this.logout();
+            }
+            
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+    
+    /**
      * Validate email format
      */
     validateEmail(email) {

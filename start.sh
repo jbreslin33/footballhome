@@ -37,6 +37,7 @@ SCRAPE_APSL=false
 SCRAPE_GOOGLE=false
 PRESERVE_VOLUMES=false
 LOAD_APSL_SQL=false
+NO_CACHE=true  # Default to no cache for development
 SHOW_HELP=false
 
 for arg in "$@"; do
@@ -53,6 +54,12 @@ for arg in "$@"; do
         apslsql)
             LOAD_APSL_SQL=true
             ;;
+        nocache)
+            NO_CACHE=true
+            ;;
+        cache)
+            NO_CACHE=false
+            ;;
         --help|-h)
             SHOW_HELP=true
             ;;
@@ -68,14 +75,15 @@ if [ "$SHOW_HELP" = true ]; then
     echo -e "${BLUE}Football Home - Database Start Script${NC}"
     echo ""
     echo -e "${BLUE}Usage:${NC}"
-    echo -e "  ./start.sh                    - Use Lighthouse team data only (minimal dataset)"
-    echo -e "  ./start.sh apsl               - Scrape APSL data only"
-    echo -e "  ./start.sh google             - Scrape Google Places data only"
-    echo -e "  ./start.sh apsl google        - Scrape both APSL and Google data"
-    echo -e "  ./start.sh apslsql            - Load complete APSL dataset from SQL files"
-    echo -e "  ./start.sh volumes            - Preserve existing Docker volumes"
-    echo -e "  ./start.sh apsl volumes       - Scrape APSL data and preserve volumes"
-    echo -e "  ./start.sh apslsql volumes    - Load APSL SQL data and preserve volumes"
+    echo -e "  ./start.sh                    - Use Lighthouse data with fresh builds (default: no cache)"
+    echo -e "  ./start.sh apsl               - Scrape APSL data with fresh builds"
+    echo -e "  ./start.sh google             - Scrape Google Places data with fresh builds"
+    echo -e "  ./start.sh apsl google        - Scrape both APSL and Google data with fresh builds"
+    echo -e "  ./start.sh apslsql            - Load complete APSL dataset with fresh builds"
+    echo -e "  ./start.sh volumes            - Preserve existing Docker volumes with fresh builds"
+    echo -e "  ./start.sh cache              - Use Docker build cache (faster, may have stale files)"
+    echo -e "  ./start.sh apsl cache         - Scrape APSL data using cached Docker builds"
+    echo -e "  ./start.sh volumes cache      - Preserve volumes and use cached builds"
     echo -e "  ./start.sh --help             - Show this help message"
     echo ""
     echo -e "${BLUE}Parameters:${NC}"
@@ -83,6 +91,8 @@ if [ "$SHOW_HELP" = true ]; then
     echo -e "  google    Enable Google Places venue data scraping"
     echo -e "  apslsql   Load complete APSL dataset from database/apsl/ SQL files"
     echo -e "  volumes   Preserve existing Docker volumes (default: delete volumes)"
+    echo -e "  cache     Use Docker build cache (default: no cache for fresh builds)"
+    echo -e "  nocache   Force no cache builds (redundant, this is now default)"
     echo -e "  --help    Show usage information"
     echo ""
     exit 0
@@ -97,6 +107,7 @@ echo -e "  APSL Scraping:    ${GREEN}$SCRAPE_APSL${NC}"
 echo -e "  Google Scraping:  ${GREEN}$SCRAPE_GOOGLE${NC}"
 echo -e "  Load APSL SQL:    ${GREEN}$LOAD_APSL_SQL${NC}"
 echo -e "  Preserve Volumes: ${GREEN}$PRESERVE_VOLUMES${NC}"
+echo -e "  Fresh Builds:     ${GREEN}$NO_CACHE${NC}"
 echo ""
 
 # Get script directory
@@ -197,6 +208,17 @@ if ! docker volume ls | grep -q footballhome_db_data; then
     echo -e "${YELLOW}⚠ Fresh database detected - will initialize from SQL files${NC}"
 fi
 
+# Build containers based on NO_CACHE flag
+if [ "$NO_CACHE" = true ]; then
+    echo -e "${YELLOW}🔄 Building Docker images without cache (default for development)...${NC}"
+    docker compose build --no-cache
+    echo -e "${GREEN}✓ Fresh Docker images built${NC}"
+else
+    echo -e "${BLUE}🏗️ Building Docker images with cache (faster but may use stale files)...${NC}"
+    docker compose build
+    echo -e "${GREEN}✓ Docker images built from cache${NC}"
+fi
+
 # Start containers
 docker compose up -d
 
@@ -210,13 +232,14 @@ echo -e "  Frontend:    ${GREEN}localhost:3000${NC}"
 echo -e "  pgAdmin:     ${GREEN}localhost:5050${NC}"
 echo ""
 echo -e "${BLUE}Usage Examples:${NC}"
-echo -e "  View logs:           ${GREEN}docker compose logs -f${NC}"
-echo -e "  Stop services:       ${GREEN}docker compose down${NC}"
-echo -e "  Fresh start (minimal): ${GREEN}./start.sh${NC}"
-echo -e "  Fresh start (full):  ${GREEN}./start.sh apslsql${NC}"
-echo -e "  Preserve data:       ${GREEN}./start.sh volumes${NC}"
-echo -e "  Fresh + APSL scraping: ${GREEN}./start.sh apsl${NC}"
-echo -e "  Preserve + APSL:     ${GREEN}./start.sh apsl volumes${NC}"
-echo -e "  Fresh + Both APIs:   ${GREEN}./start.sh apsl google${NC}"
-echo -e "  Preserve + Both:     ${GREEN}./start.sh apsl google volumes${NC}"
+echo -e "  View logs:               ${GREEN}docker compose logs -f${NC}"
+echo -e "  Stop services:           ${GREEN}docker compose down${NC}"
+echo -e "  Fresh start (minimal):   ${GREEN}./start.sh${NC}"
+echo -e "  Fresh start (full data): ${GREEN}./start.sh apslsql${NC}"
+echo -e "  Fast start (cached):     ${GREEN}./start.sh cache${NC}"
+echo -e "  Preserve data:           ${GREEN}./start.sh volumes${NC}"
+echo -e "  Fresh + APSL scraping:   ${GREEN}./start.sh apsl${NC}"
+echo -e "  Preserve + APSL:         ${GREEN}./start.sh apsl volumes${NC}"
+echo -e "  Fast cached start:       ${GREEN}./start.sh cache${NC}"
+echo -e "  Preserve + fast start:   ${GREEN}./start.sh volumes cache${NC}"
 echo ""

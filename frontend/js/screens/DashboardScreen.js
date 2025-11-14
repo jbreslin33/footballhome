@@ -1,0 +1,531 @@
+/**
+ * DashboardScreen - Role-specific dashboard interface
+ * 
+ * This screen manages role-specific dashboards with its own state machine:
+ * loading -> ready -> action -> ready
+ * Also handles different role types (admin, coach, player) with sub-states
+ */
+class DashboardScreen extends Screen {
+    constructor(container, props = {}) {
+        super(container, props, {
+            screenName: 'dashboard'
+        });
+        
+        this.roleSelection = null;
+        this.roleType = null;
+        this.dashboardComponents = {};
+        this.actionFeedback = null;
+        
+        // Create state machine after this is fully initialized
+        this.stateMachine = new StateMachine({
+            initial: 'loading',
+            states: {
+                loading: {
+                    on: { 
+                        ROLE_LOADED: 'ready',
+                        ERROR: 'error'
+                    },
+                    onEntry: () => this.showLoading(),
+                    onExit: () => this.hideLoading()
+                },
+                ready: {
+                    on: { 
+                        ACTION_START: 'action',
+                        BACK_TO_ROLES: 'navigating',
+                        LOGOUT: 'logout'
+                    },
+                    onEntry: () => this.showDashboard(),
+                    onExit: () => this.hideDashboard()
+                },
+                action: {
+                    on: { 
+                        ACTION_COMPLETE: 'ready',
+                        ACTION_ERROR: 'ready'
+                    },
+                    onEntry: (actionData) => this.handleAction(actionData),
+                    onExit: () => this.cleanupAction()
+                },
+                navigating: {
+                    on: { 
+                        COMPLETE: 'ready'
+                    },
+                    onEntry: (navigationData) => this.navigate(navigationData)
+                },
+                error: {
+                    on: { 
+                        RETRY: 'loading',
+                        BACK_TO_ROLES: 'navigating',
+                        LOGOUT: 'logout'
+                    },
+                    onEntry: (error) => this.showError(error),
+                    onExit: () => this.hideError()
+                },
+                logout: {
+                    onEntry: () => this.handleLogout()
+                }
+            }
+        });
+        
+        // Listen for state changes for debugging
+        this.stateMachine.onStateChange((prevState, newState, event, payload) => {
+            console.log(`📱 DashboardScreen: ${prevState} --[${event}]--> ${newState}`);
+        });
+    }
+    
+    render() {
+        return `
+            <div class="dashboard-screen">
+                <!-- Loading State -->
+                <div id="loadingContainer" class="loading-container" style="display: none;">
+                    <div class="min-h-screen flex items-center justify-center">
+                        <div class="text-center">
+                            <div class="loading-spinner"></div>
+                            <p class="mt-4">Loading dashboard...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dashboard Content -->
+                <div id="dashboardContainer" class="dashboard-container" style="display: none;">
+                    <!-- Dynamic dashboard content will be inserted here -->
+                </div>
+                
+                <!-- Error State -->
+                <div id="errorContainer" class="error-container" style="display: none;">
+                    <div class="min-h-screen flex items-center justify-center">
+                        <div class="text-center">
+                            <h2>Dashboard Error</h2>
+                            <p id="errorText" class="mt-4">Unable to load dashboard.</p>
+                            <div class="mt-6">
+                                <button id="retryBtn" class="btn btn-primary mr-4">Try Again</button>
+                                <button id="backBtn" class="btn btn-secondary mr-4">Back to Roles</button>
+                                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    async onEnter(data = null) {
+        await super.onEnter(data);
+        
+        this.roleSelection = data?.roleSelection;
+        
+        if (!this.roleSelection) {
+            console.error('📱 DashboardScreen: No role selection provided');
+            this.send('ERROR', { message: 'No role selection data available' });
+            return;
+        }
+        
+        this.roleType = this.roleSelection.roleType;
+        console.log('📱 DashboardScreen: Loading dashboard for role:', this.roleType);
+        
+        // Simulate loading time for better UX
+        setTimeout(() => {
+            this.send('ROLE_LOADED');
+        }, 300);
+    }
+    
+    showLoading() {
+        this.showContainer('loadingContainer');
+    }
+    
+    hideLoading() {
+        this.hideContainer('loadingContainer');
+    }
+    
+    showDashboard() {
+        this.showContainer('dashboardContainer');
+        this.renderDashboardContent();
+        this.setupDashboardEvents();
+    }
+    
+    hideDashboard() {
+        this.hideContainer('dashboardContainer');
+        this.cleanupDashboardComponents();
+    }
+    
+    renderDashboardContent() {
+        const container = this.element.querySelector('#dashboardContainer');
+        if (!container) return;
+        
+        let dashboardHTML = '';
+        
+        switch (this.roleType) {
+            case 'admin':
+                dashboardHTML = this.renderAdminDashboard();
+                break;
+            case 'coach':
+                dashboardHTML = this.renderCoachDashboard();
+                break;
+            case 'player':
+                dashboardHTML = this.renderPlayerDashboard();
+                break;
+            default:
+                dashboardHTML = this.renderGenericDashboard();
+        }
+        
+        container.innerHTML = dashboardHTML;
+    }
+    
+    renderAdminDashboard() {
+        return `
+            <div class="admin-dashboard">
+                <nav class="navbar">
+                    <div class="navbar-brand">
+                        <span class="brand-text">Football Home - Administrator</span>
+                    </div>
+                    <div class="navbar-menu">
+                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back to Roles</button>
+                        <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
+                    </div>
+                </nav>
+                
+                <main class="admin-main">
+                    <div class="admin-header">
+                        <h2>System Administration</h2>
+                        <p>Manage the Football Home system</p>
+                    </div>
+                    
+                    <div class="admin-grid">
+                        <div class="admin-card" data-action="user-management">
+                            <div class="admin-card-icon">👥</div>
+                            <h3>User Management</h3>
+                            <p>Manage users, roles, and permissions</p>
+                            <button class="btn btn-primary">Manage Users</button>
+                        </div>
+                        
+                        <div class="admin-card" data-action="team-management">
+                            <div class="admin-card-icon">🏈</div>
+                            <h3>Team Management</h3>
+                            <p>Manage teams, players, and coaches</p>
+                            <button class="btn btn-primary">Manage Teams</button>
+                        </div>
+                        
+                        <div class="admin-card" data-action="league-management">
+                            <div class="admin-card-icon">🏆</div>
+                            <h3>League Management</h3>
+                            <p>Manage leagues, divisions, and seasons</p>
+                            <button class="btn btn-primary">Manage Leagues</button>
+                        </div>
+                        
+                        <div class="admin-card" data-action="system-stats">
+                            <div class="admin-card-icon">📊</div>
+                            <h3>System Stats</h3>
+                            <p>View system statistics and reports</p>
+                            <button class="btn btn-primary">View Stats</button>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        `;
+    }
+    
+    renderCoachDashboard() {
+        const teamName = this.roleSelection.roleData?.teamName || 'Your Team';
+        
+        return `
+            <div class="coach-dashboard">
+                <nav class="navbar">
+                    <div class="navbar-brand">
+                        <span class="brand-text">Football Home - Coach</span>
+                    </div>
+                    <div class="navbar-menu">
+                        <span class="navbar-team">${teamName}</span>
+                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back to Roles</button>
+                        <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
+                    </div>
+                </nav>
+                
+                <main class="coach-main">
+                    <div class="coach-header">
+                        <h2>Coach Dashboard</h2>
+                        <p>Manage your team: ${teamName}</p>
+                    </div>
+                    
+                    <div class="coach-grid">
+                        <div class="coach-card" data-action="team-roster">
+                            <div class="coach-card-icon">👥</div>
+                            <h3>Team Roster</h3>
+                            <p>View and manage team players</p>
+                            <button class="btn btn-primary">View Roster</button>
+                        </div>
+                        
+                        <div class="coach-card" data-action="practice-schedule">
+                            <div class="coach-card-icon">📅</div>
+                            <h3>Practice Schedule</h3>
+                            <p>Schedule and manage team practices</p>
+                            <button class="btn btn-primary">Manage Schedule</button>
+                        </div>
+                        
+                        <div class="coach-card" data-action="game-planning">
+                            <div class="coach-card-icon">🎯</div>
+                            <h3>Game Planning</h3>
+                            <p>Create game plans and strategies</p>
+                            <button class="btn btn-primary">Plan Games</button>
+                        </div>
+                        
+                        <div class="coach-card" data-action="player-stats">
+                            <div class="coach-card-icon">📊</div>
+                            <h3>Player Statistics</h3>
+                            <p>View player performance stats</p>
+                            <button class="btn btn-primary">View Stats</button>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        `;
+    }
+    
+    renderPlayerDashboard() {
+        const teamName = this.roleSelection.roleData?.teamName || 'Your Team';
+        const jerseyNumber = this.roleSelection.roleData?.jerseyNumber || '';
+        
+        return `
+            <div class="player-dashboard">
+                <nav class="navbar">
+                    <div class="navbar-brand">
+                        <span class="brand-text">Football Home - Player</span>
+                    </div>
+                    <div class="navbar-menu">
+                        <span class="navbar-team">${teamName} ${jerseyNumber ? `#${jerseyNumber}` : ''}</span>
+                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back to Roles</button>
+                        <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
+                    </div>
+                </nav>
+                
+                <main class="player-main">
+                    <div class="player-header">
+                        <h2>Player Dashboard</h2>
+                        <p>Your team: ${teamName} ${jerseyNumber ? `(Jersey #${jerseyNumber})` : ''}</p>
+                    </div>
+                    
+                    <div class="player-grid">
+                        <div class="player-card" data-action="my-stats">
+                            <div class="player-card-icon">📊</div>
+                            <h3>My Statistics</h3>
+                            <p>View your performance stats</p>
+                            <button class="btn btn-primary">View Stats</button>
+                        </div>
+                        
+                        <div class="player-card" data-action="schedule">
+                            <div class="player-card-icon">📅</div>
+                            <h3>Schedule</h3>
+                            <p>View upcoming games and practices</p>
+                            <button class="btn btn-primary">View Schedule</button>
+                        </div>
+                        
+                        <div class="player-card" data-action="team-info">
+                            <div class="player-card-icon">🏈</div>
+                            <h3>Team Information</h3>
+                            <p>View team roster and information</p>
+                            <button class="btn btn-primary">Team Info</button>
+                        </div>
+                        
+                        <div class="player-card" data-action="achievements">
+                            <div class="player-card-icon">🏆</div>
+                            <h3>Achievements</h3>
+                            <p>View your awards and milestones</p>
+                            <button class="btn btn-primary">View Achievements</button>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        `;
+    }
+    
+    renderGenericDashboard() {
+        return `
+            <div class="generic-dashboard">
+                <nav class="navbar">
+                    <div class="navbar-brand">
+                        <span class="brand-text">Football Home - ${this.roleType}</span>
+                    </div>
+                    <div class="navbar-menu">
+                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back to Roles</button>
+                        <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
+                    </div>
+                </nav>
+                
+                <main class="dashboard-main">
+                    <h2>${this.roleType.charAt(0).toUpperCase() + this.roleType.slice(1)} Dashboard</h2>
+                    <p>Dashboard for ${this.roleSelection.roleData?.teamName || 'your role'}</p>
+                    <p>This dashboard is under development.</p>
+                </main>
+            </div>
+        `;
+    }
+    
+    setupDashboardEvents() {
+        // Navigation buttons
+        const backBtn = this.element.querySelector('#backToRolesBtn');
+        const logoutBtn = this.element.querySelector('#logoutBtn');
+        
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                console.log('📱 DashboardScreen: Back to roles clicked');
+                this.send('BACK_TO_ROLES');
+            });
+        }
+        
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => {
+                console.log('📱 DashboardScreen: Logout clicked');
+                this.send('LOGOUT');
+            });
+        }
+        
+        // Action cards
+        const actionCards = this.element.querySelectorAll('[data-action]');
+        actionCards.forEach(card => {
+            const button = card.querySelector('button');
+            if (button) {
+                button.addEventListener('click', () => {
+                    const action = card.getAttribute('data-action');
+                    console.log('📱 DashboardScreen: Action clicked:', action);
+                    this.send('ACTION_START', { action, roleType: this.roleType });
+                });
+            }
+        });
+    }
+    
+    handleAction(actionData) {
+        console.log('📱 DashboardScreen: Handling action:', actionData);
+        
+        // For now, just show a placeholder message
+        const message = `Action "${actionData.action}" for ${actionData.roleType} - Coming Soon!`;
+        
+        // Show temporary feedback
+        this.showActionFeedback(message);
+        
+        // Complete the action after a short delay
+        setTimeout(() => {
+            this.send('ACTION_COMPLETE');
+        }, 2000);
+    }
+    
+    showActionFeedback(message) {
+        // Create temporary feedback overlay
+        const feedback = document.createElement('div');
+        feedback.className = 'action-feedback';
+        feedback.innerHTML = `
+            <div class="feedback-content">
+                <p>${message}</p>
+                <div class="loading-spinner"></div>
+            </div>
+        `;
+        feedback.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        `;
+        
+        document.body.appendChild(feedback);
+        
+        // Store reference for cleanup
+        this.actionFeedback = feedback;
+    }
+    
+    cleanupAction() {
+        if (this.actionFeedback) {
+            document.body.removeChild(this.actionFeedback);
+            this.actionFeedback = null;
+        }
+    }
+    
+    navigate(navigationData) {
+        console.log('📱 DashboardScreen: Navigating back to roles');
+        
+        setTimeout(() => {
+            this.navigateTo('roleSwitchboard', { user: this.roleSelection.user });
+            this.send('COMPLETE');
+        }, 100);
+    }
+    
+    showError(error) {
+        this.showContainer('errorContainer');
+        
+        const errorText = this.element.querySelector('#errorText');
+        if (errorText) {
+            errorText.textContent = error.message || 'An error occurred';
+        }
+        
+        // Setup error buttons
+        const retryBtn = this.element.querySelector('#retryBtn');
+        const backBtn = this.element.querySelector('#backBtn');
+        const logoutBtn = this.element.querySelector('#logoutBtn');
+        
+        if (retryBtn) {
+            retryBtn.onclick = () => this.send('RETRY');
+        }
+        
+        if (backBtn) {
+            backBtn.onclick = () => this.send('BACK_TO_ROLES');
+        }
+        
+        if (logoutBtn) {
+            logoutBtn.onclick = () => this.send('LOGOUT');
+        }
+    }
+    
+    hideError() {
+        this.hideContainer('errorContainer');
+    }
+    
+    handleLogout() {
+        console.log('📱 DashboardScreen: Handling logout');
+        
+        setTimeout(() => {
+            this.navigateTo('login');
+        }, 100);
+    }
+    
+    showContainer(containerId) {
+        // Hide all containers
+        ['loadingContainer', 'dashboardContainer', 'errorContainer'].forEach(id => {
+            const container = this.element.querySelector(`#${id}`);
+            if (container) container.style.display = 'none';
+        });
+        
+        // Show target container
+        const targetContainer = this.element.querySelector(`#${containerId}`);
+        if (targetContainer) targetContainer.style.display = 'block';
+    }
+    
+    hideContainer(containerId) {
+        const container = this.element.querySelector(`#${containerId}`);
+        if (container) container.style.display = 'none';
+    }
+    
+    cleanupDashboardComponents() {
+        // Clean up any dashboard-specific components
+        Object.values(this.dashboardComponents).forEach(component => {
+            if (component.cleanup) {
+                component.cleanup();
+            }
+        });
+        this.dashboardComponents = {};
+        
+        // Clean up action feedback
+        this.cleanupAction();
+    }
+    
+    async onExit() {
+        console.log('📱 DashboardScreen: Exiting');
+        
+        this.cleanupDashboardComponents();
+        this.roleSelection = null;
+        this.roleType = null;
+        
+        await super.onExit();
+    }
+}
