@@ -38,13 +38,10 @@ class StateMachine {
             throw new Error(`Initial state "${this.currentState}" not defined in states`);
         }
         
-        console.log(`FSM initialized with state: ${this.currentState}`);
-        
         // Execute enter action for initial state (new pattern)
         const initialStateConfig = this.states[this.currentState];
         if (initialStateConfig) {
             if (initialStateConfig.enter) {
-                console.log(`FSM: Entering initial state "${this.currentState}"`);
                 initialStateConfig.enter();
             }
             // Also support legacy onEntry for backward compatibility
@@ -67,10 +64,8 @@ class StateMachine {
     execute(payload = null) {
         const currentStateConfig = this.states[this.currentState];
         if (currentStateConfig && currentStateConfig.execute) {
-            console.log(`FSM: Executing state "${this.currentState}"`);
             return currentStateConfig.execute(payload);
         }
-        console.warn(`FSM: No execute function defined for state "${this.currentState}"`);
         return null;
     }
     
@@ -96,13 +91,10 @@ class StateMachine {
         const previousState = this.currentState;
         this.currentState = nextState;
         
-        console.log(`FSM: ${previousState} --[${event}]--> ${nextState}`);
-        
         // Execute exit action for previous state (new pattern)
         const prevStateConfig = this.states[previousState];
         if (prevStateConfig) {
             if (prevStateConfig.exit) {
-                console.log(`FSM: Exiting state "${previousState}"`);
                 prevStateConfig.exit(payload);
             }
             // Also support legacy onExit for backward compatibility
@@ -115,7 +107,6 @@ class StateMachine {
         const newStateConfig = this.states[nextState];
         if (newStateConfig) {
             if (newStateConfig.enter) {
-                console.log(`FSM: Entering state "${nextState}"`);
                 newStateConfig.enter(payload);
             }
             // Also support legacy onEntry for backward compatibility

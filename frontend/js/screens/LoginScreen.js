@@ -53,9 +53,9 @@ class LoginScreen extends Screen {
             }
         });
         
-        // Listen for state changes for debugging
+        // Listen for state changes
         this.stateMachine.onStateChange((prevState, newState, event, payload) => {
-            console.log(`📱 LoginScreen: ${prevState} --[${event}]--> ${newState}`);
+            // State changes for debugging if needed
         });
     }
     
@@ -90,7 +90,6 @@ class LoginScreen extends Screen {
         
         // Check if user is already authenticated
         if (this.authService.isAuthenticated()) {
-            console.log('📱 LoginScreen: User already authenticated, checking...');
             this.send('AUTO_LOGIN');
             
             const userResult = await this.authService.getCurrentUser();
@@ -151,13 +150,9 @@ class LoginScreen extends Screen {
     }
     
     handleSuccess(userData) {
-        console.log('📱 LoginScreen: Handling successful login:', userData);
-        
         // Navigate to role switchboard
         setTimeout(() => {
-            console.log('📱 LoginScreen: Navigating to roleSwitchboard with user:', userData);
             this.navigateTo('roleSwitchboard', { user: userData });
-            console.log('📱 LoginScreen: navigateTo called');
         }, 500); // Small delay for UX
     }
     
@@ -193,8 +188,6 @@ class LoginScreen extends Screen {
     }
     
     async onExit() {
-        console.log('📱 LoginScreen: Exiting');
-        
         // Clean up login form
         this.hideForm();
         

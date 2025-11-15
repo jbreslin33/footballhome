@@ -46,14 +46,11 @@ class Screen extends Component {
                 states: screenConfig.states
             });
             
-            // Listen for state changes for debugging
+            // Listen for state changes
             this.stateMachine.onStateChange((prevState, newState, event, payload) => {
-                console.log(`📱 Screen[${this.screenName}]: ${prevState} --[${event}]--> ${newState}`);
                 this.onStateChange(prevState, newState, event, payload);
             });
         }
-        
-        console.log(`📱 Screen[${this.screenName}] initialized`);
     }
     
     /**
@@ -61,7 +58,6 @@ class Screen extends Component {
      * Override this method to handle screen entry
      */
     async onEnter(data = null) {
-        console.log(`📱 Screen[${this.screenName}] entering with data:`, data);
         this.isActive = true;
         this.entryData = data;
         
@@ -86,7 +82,6 @@ class Screen extends Component {
      * Override this method to handle screen exit
      */
     async onExit() {
-        console.log(`📱 Screen[${this.screenName}] exiting`);
         this.isActive = false;
         this.entryData = null;
         
@@ -137,8 +132,6 @@ class Screen extends Component {
      * Emit an event to parent (usually the ScreenManager)
      */
     emitToParent(eventName, data = null) {
-        console.log(`📱 Screen[${this.screenName}]: emitToParent called with event "${eventName}" and data:`, data);
-        
         const customEvent = new CustomEvent(eventName, { 
             detail: { 
                 screen: this.screenName, 
@@ -151,19 +144,13 @@ class Screen extends Component {
         const targetElement = this.container || this.element;
         
         if (targetElement) {
-            console.log(`📱 Screen[${this.screenName}]: dispatching ${eventName} event on container element`);
-            console.log(`📱 Screen[${this.screenName}]: target element ID:`, targetElement.id, 'Class:', targetElement.className);
-            console.log(`📱 Screen[${this.screenName}]: event detail:`, customEvent.detail);
-            
             // Use setTimeout to ensure event is dispatched after current execution cycle
             // This allows event listeners to be fully set up
             setTimeout(() => {
-                console.log(`📱 Screen[${this.screenName}]: About to dispatch on container element:`, targetElement);
-                const result = targetElement.dispatchEvent(customEvent);
-                console.log(`📱 Screen[${this.screenName}]: dispatchEvent returned:`, result);
+                targetElement.dispatchEvent(customEvent);
             }, 10);
         } else {
-            console.warn(`📱 Screen[${this.screenName}] cannot emit event - no container or element found`);
+            console.warn(`Screen[${this.screenName}] cannot emit event - no container or element found`);
         }
     }
     
@@ -171,24 +158,20 @@ class Screen extends Component {
      * Navigate to another screen
      */
     navigateTo(screenName, data = null) {
-        console.log(`📱 Screen[${this.screenName}]: navigateTo called for screen "${screenName}" with data:`, data);
         this.emitToParent('screen:navigate', { 
             targetScreen: screenName, 
             data 
         });
-        console.log(`📱 Screen[${this.screenName}]: screen:navigate event emitted`);
     }
     
     /**
      * Enhanced cleanup that also handles screen-specific cleanup
      */
     cleanup() {
-        console.log(`📱 Screen[${this.screenName}] cleaning up`);
-        
         // Call parent cleanup
         super.cleanup();
         
-        // Additional screen-specific cleanup can be added here
+        // Screen-specific cleanup
         this.isActive = false;
         this.entryData = null;
     }

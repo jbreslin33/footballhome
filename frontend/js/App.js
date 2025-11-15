@@ -57,41 +57,31 @@ class App {
         
         // Listen for app state changes
         this.appStateMachine.onStateChange((prevState, newState, event, payload) => {
-            console.log(`🚀 App: ${prevState} --[${event || 'INIT'}]--> ${newState}`);
+            // App state changes logged in development only
         });
-        
-        console.log('🚀 Football Home OOP App with ScreenManager initialized');
         
         // The state machine will start automatically and call performAsyncInitialization()
         // Don't send READY here - let the initializing state handle it after async init completes
     }
     
     async performAsyncInitialization() {
-        console.log('🚀 App: Starting async initialization...');
         try {
             await this.initializeApp();
-            console.log('🚀 App: Async initialization completed, sending READY');
             this.appStateMachine.send('READY');
         } catch (error) {
-            console.error('🚀 App: Async initialization failed:', error);
-            console.error('🚀 App: Error stack:', error.stack);
+            console.error('App: Initialization failed:', error);
             this.appStateMachine.send('ERROR', error);
         }
     }
     
     async initializeApp() {
         try {
-            console.log('🚀 App: Initializing application...');
-            
-            console.log('🚀 App: Setting up error handlers...');
             // Setup global error handlers
             this.setupErrorHandlers();
             
-            console.log('🚀 App: Setting up navigation protection...');
             // Setup navigation protection
             this.setupNavigationProtection();
             
-            console.log('🚀 App: Checking authentication...');
             // Check if user is already authenticated
             let initialScreen = 'login';
             let initialData = null;
@@ -100,58 +90,39 @@ class App {
                 const userResult = await this.authService.getCurrentUser();
                 
                 if (userResult.success) {
-                    console.log('🚀 App: User already authenticated:', userResult.user);
                     this.currentUser = userResult.user;
                     initialScreen = 'roleSwitchboard';
                     initialData = { user: userResult.user };
                 }
             }
             
-            // Check if screen classes are available
-            console.log('🚀 App: Checking screen classes...');
-            console.log('🚀 App: LoginScreen defined:', typeof LoginScreen);
-            console.log('🚀 App: RoleSwitchboardScreen defined:', typeof RoleSwitchboardScreen);
-            console.log('🚀 App: DashboardScreen defined:', typeof DashboardScreen);
-            console.log('🚀 App: ScreenManager defined:', typeof ScreenManager);
-            
             // Initialize ScreenManager with available screens
-            console.log('🚀 App: Creating ScreenManager...');
             this.screenManager = new ScreenManager(this.container, {
                 screens: {
                     login: LoginScreen,
                     roleSwitchboard: RoleSwitchboardScreen,
                     dashboard: DashboardScreen
                 },
-                initial: initialScreen
+                initial: initialScreen,
+                authService: this.authService
             });
-            console.log('🚀 App: ScreenManager created successfully');
             
             // Setup screen manager event listeners
-            console.log('🚀 App: Setting up ScreenManager event listeners...');
             this.setupScreenManagerEvents();
             
             // Initialize the first screen with data
             if (initialData) {
-                console.log('🚀 App: Navigating to initial screen with data:', initialScreen, initialData);
                 await this.screenManager.navigateTo(initialScreen, initialData);
-            } else {
-                console.log('🚀 App: No initial data, ScreenManager should auto-initialize:', initialScreen);
             }
             
-            console.log('🚀 App: Application initialized successfully');
-            
         } catch (error) {
-            console.error('🚀 App: Initialization failed:', error);
-            console.error('🚀 App: Error stack:', error.stack);
+            console.error('App: Initialization failed:', error);
             throw error; // Re-throw to be caught by state machine
         }
     }
     
     startApplication() {
-        console.log('🚀 App: Application is running');
-        
         // Application is now fully running with ScreenManager handling all navigation
-        // The ScreenManager will handle all screen transitions from here
     }
     
     setupScreenManagerEvents() {
