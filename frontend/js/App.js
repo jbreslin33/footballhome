@@ -101,6 +101,7 @@ class App {
                 screens: {
                     login: LoginScreen,
                     roleSwitchboard: RoleSwitchboardScreen,
+                    teamSelection: TeamSelectionScreen,
                     dashboard: DashboardScreen
                 },
                 initial: initialScreen,

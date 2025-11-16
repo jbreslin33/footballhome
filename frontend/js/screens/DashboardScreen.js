@@ -151,14 +151,18 @@ class DashboardScreen extends Screen {
         const container = this.element.querySelector('#dashboardContainer');
         if (!container) return;
         
+        // For coach role, use the CoachDashboard component
+        if (this.roleType === 'coach') {
+            this.renderCoachDashboardComponent(container);
+            return;
+        }
+        
+        // For other roles, use inline HTML rendering (for now)
         let dashboardHTML = '';
         
         switch (this.roleType) {
             case 'admin':
                 dashboardHTML = this.renderAdminDashboard();
-                break;
-            case 'coach':
-                dashboardHTML = this.renderCoachDashboard();
                 break;
             case 'player':
                 dashboardHTML = this.renderPlayerDashboard();
@@ -168,6 +172,48 @@ class DashboardScreen extends Screen {
         }
         
         container.innerHTML = dashboardHTML;
+    }
+    
+    renderCoachDashboardComponent(container) {
+        // Clean up existing coach dashboard if any
+        if (this.dashboardComponents.coachDashboard) {
+            this.dashboardComponents.coachDashboard.unmount();
+        }
+        
+        // Extract team context from role selection
+        const teamContext = this.roleSelection.roleData ? {
+            id: this.roleSelection.roleData.teamId,
+            name: this.roleSelection.roleData.teamName,
+            club: this.roleSelection.roleData.clubName
+        } : null;
+        
+        // Create CoachDashboard component
+        const coachDashboard = new CoachDashboard(container, {
+            user: this.roleSelection.user,
+            roleType: 'coach',
+            roleData: this.roleSelection.roleData,
+            teamContext: teamContext
+        });
+        
+        // Listen for navigation events from dashboard
+        container.addEventListener('navigate', (event) => {
+            console.log('📱 DashboardScreen: Navigation event from CoachDashboard:', event.detail);
+            if (event.detail.screen) {
+                this.navigateTo(event.detail.screen, event.detail.data);
+            }
+        });
+        
+        // Listen for logout events
+        container.addEventListener('logout', () => {
+            console.log('📱 DashboardScreen: Logout event from CoachDashboard');
+            this.send('LOGOUT');
+        });
+        
+        // Mount the dashboard
+        coachDashboard.mount();
+        
+        // Store reference
+        this.dashboardComponents.coachDashboard = coachDashboard;
     }
     
     renderAdminDashboard() {

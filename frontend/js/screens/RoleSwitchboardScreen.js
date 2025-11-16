@@ -195,9 +195,16 @@ class RoleSwitchboardScreen extends Screen {
                 data: { roleSelection }
             });
         } else if (roleSelection.navigateTo === 'teamSelection') {
-            // Future: handle team selection screen
-            console.log('📱 RoleSwitchboardScreen: Team selection not implemented yet');
-            this.send('CANCEL');
+            // Navigate to team selection screen for users with multiple teams
+            console.log('📱 RoleSwitchboardScreen: Navigating to team selection');
+            this.send('NAVIGATE', {
+                screen: 'teamSelection',
+                data: { 
+                    user: this.user,
+                    roleType: roleSelection.roleType,
+                    teams: roleSelection.roles
+                }
+            });
         }
     }
     
