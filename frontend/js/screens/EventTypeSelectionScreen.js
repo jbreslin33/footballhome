@@ -61,35 +61,35 @@ class EventTypeSelectionScreen extends Screen {
                 <!-- Main Content -->
                 <main class="event-type-main">
                     <div class="event-type-header">
-                        <h2>What type of event?</h2>
-                        <p>Choose the type of event you want to create</p>
+                        <h2>Events</h2>
+                        <p>Choose the type of event you want to manage</p>
                     </div>
                     
                     <div class="event-type-grid">
                         <!-- Practice Card -->
                         <div class="event-type-card" data-event-type="practice">
                             <div class="event-card-icon">📋</div>
-                            <h3>Practice</h3>
-                            <p>Schedule a team practice session</p>
+                            <h3>Practices</h3>
+                            <p>View, add, edit, or delete team practices</p>
                             <ul class="event-features">
-                                <li>Set date and time</li>
-                                <li>Choose location</li>
-                                <li>Add practice plan</li>
-                                <li>Notify players</li>
+                                <li>View upcoming practices</li>
+                                <li>Schedule new practices</li>
+                                <li>Edit existing practices</li>
+                                <li>Manage practice details</li>
                             </ul>
-                            <button class="btn btn-primary btn-lg">Create Practice</button>
+                            <button class="btn btn-primary btn-lg">Manage Practices</button>
                         </div>
                         
                         <!-- Game Card -->
                         <div class="event-type-card" data-event-type="game">
                             <div class="event-card-icon">⚽</div>
-                            <h3>Game</h3>
-                            <p>Schedule a competitive match</p>
+                            <h3>Games</h3>
+                            <p>View, add, edit, or delete games</p>
                             <ul class="event-features">
-                                <li>Set date and time</li>
-                                <li>Select opponent</li>
-                                <li>Choose venue</li>
-                                <li>Game details</li>
+                                <li>View game schedule</li>
+                                <li>Schedule new games</li>
+                                <li>Edit game details</li>
+                                <li>Manage opponents</li>
                             </ul>
                             <button class="btn btn-primary btn-lg" disabled>Coming Soon</button>
                         </div>
@@ -97,13 +97,13 @@ class EventTypeSelectionScreen extends Screen {
                         <!-- Meeting Card -->
                         <div class="event-type-card" data-event-type="meeting">
                             <div class="event-card-icon">💬</div>
-                            <h3>Meeting</h3>
-                            <p>Schedule a team meeting</p>
+                            <h3>Meetings</h3>
+                            <p>View, add, edit, or delete team meetings</p>
                             <ul class="event-features">
-                                <li>Set date and time</li>
-                                <li>Choose location</li>
-                                <li>Add agenda</li>
-                                <li>Invite attendees</li>
+                                <li>View meeting schedule</li>
+                                <li>Schedule new meetings</li>
+                                <li>Edit meeting details</li>
+                                <li>Manage attendees</li>
                             </ul>
                             <button class="btn btn-primary btn-lg" disabled>Coming Soon</button>
                         </div>
