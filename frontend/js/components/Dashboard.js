@@ -14,7 +14,11 @@
  */
 class Dashboard extends Component {
     constructor(container, props = {}) {
-        super(container, props);
+        // Don't pass container to super() to prevent auto-mount before we set properties
+        super(null, props);
+        
+        // Store container for manual mounting
+        this.container = container;
         
         this.user = props.user || null;
         this.roleType = props.roleType || 'unknown';
