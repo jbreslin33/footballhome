@@ -108,35 +108,10 @@ class CoachDashboard extends Dashboard {
                 <div class="practices-section">
                     <div class="section-header">
                         <h3>Upcoming Practices</h3>
-                        <button id="viewAllPracticesBtn" class="btn btn-secondary btn-sm">View All</button>
                     </div>
                     
                     <div class="practices-list">
                         ${this.renderPracticesList(practices)}
-                    </div>
-                </div>
-                
-                <!-- Management Cards -->
-                <div class="management-cards">
-                    <div class="management-card" data-action="roster">
-                        <div class="card-icon">👥</div>
-                        <h4>Team Roster</h4>
-                        <p>Manage players and positions</p>
-                        <button class="btn btn-primary">Manage Roster</button>
-                    </div>
-                    
-                    <div class="management-card" data-action="schedule">
-                        <div class="card-icon">📅</div>
-                        <h4>Full Schedule</h4>
-                        <p>View all practices and games</p>
-                        <button class="btn btn-primary">View Schedule</button>
-                    </div>
-                    
-                    <div class="management-card" data-action="stats">
-                        <div class="card-icon">📊</div>
-                        <h4>Player Stats</h4>
-                        <p>View team and player statistics</p>
-                        <button class="btn btn-primary">View Stats</button>
                     </div>
                 </div>
             </div>
@@ -217,28 +192,6 @@ class CoachDashboard extends Dashboard {
             });
         }
         
-        // View All Practices button
-        const viewAllBtn = this.element.querySelector('#viewAllPracticesBtn');
-        if (viewAllBtn) {
-            viewAllBtn.addEventListener('click', () => {
-                console.log('📊 CoachDashboard: View All Practices clicked');
-                this.handleViewAllPractices();
-            });
-        }
-        
-        // Management cards
-        const managementCards = this.element.querySelectorAll('.management-card button');
-        managementCards.forEach(button => {
-            button.addEventListener('click', (e) => {
-                const card = e.target.closest('.management-card');
-                const action = card?.getAttribute('data-action');
-                if (action) {
-                    console.log(`📊 CoachDashboard: Management action clicked: ${action}`);
-                    this.handleManagementAction(action);
-                }
-            });
-        });
-        
         // Practice card actions
         const practiceActions = this.element.querySelectorAll('.practice-card button');
         practiceActions.forEach(button => {
@@ -267,31 +220,6 @@ class CoachDashboard extends Dashboard {
                 teamContext: this.teamContext,
                 roleType: this.roleType
             }
-        });
-    }
-    
-    /**
-     * Handle View All Practices
-     */
-    handleViewAllPractices() {
-        // Navigate to practices list screen
-        this.emit('navigate', {
-            screen: 'practicesList',
-            data: {
-                user: this.user,
-                teamContext: this.teamContext
-            }
-        });
-    }
-    
-    /**
-     * Handle management card actions
-     */
-    handleManagementAction(action) {
-        // Emit event for parent screen to handle
-        this.emit('action', {
-            type: action,
-            teamContext: this.teamContext
         });
     }
     

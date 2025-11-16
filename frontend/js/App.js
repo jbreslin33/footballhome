@@ -102,6 +102,7 @@ class App {
                     login: LoginScreen,
                     roleSwitchboard: RoleSwitchboardScreen,
                     teamSelection: TeamSelectionScreen,
+                    eventTypeSelection: EventTypeSelectionScreen,
                     dashboard: DashboardScreen
                 },
                 initial: initialScreen,

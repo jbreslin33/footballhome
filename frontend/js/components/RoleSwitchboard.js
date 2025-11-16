@@ -237,8 +237,12 @@ class RoleSwitchboard extends Component {
     handleRoleCardClick(roleType, roles) {
         console.log('RoleSwitchboard: Role card clicked:', roleType, roles);
         
-        if (roles.length === 1) {
-            // Single team - go directly to role dashboard
+        // For coaches, always show team selection screen (even with 1 team)
+        // This allows us to see the full flow and test the team selection logic
+        if (roleType === 'coach') {
+            this.navigateToTeamSelection(roleType, roles);
+        } else if (roles.length === 1) {
+            // For other roles with single team - go directly to dashboard
             const role = roles[0];
             this.navigateToRoleDashboard(roleType, role);
         } else {
