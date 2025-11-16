@@ -9,12 +9,12 @@ class AuthService {
             const hostname = window.location.hostname;
             const protocol = window.location.protocol;
             
-            if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === 'footballhome.org') {
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
                 // Local development - direct to backend
                 this.baseUrl = 'http://localhost:3001';
                 console.log(`DEBUG: Using local backend for hostname: ${hostname}`);
             } else {
-                // Production/remote - use relative URLs (nginx proxy handles routing)
+                // Production/remote (including footballhome.org) - use relative URLs (nginx proxy handles routing)
                 this.baseUrl = '';
                 console.log(`DEBUG: Using relative URLs for hostname: ${hostname}`);
             }
