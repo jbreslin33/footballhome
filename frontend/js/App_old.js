@@ -267,6 +267,9 @@ class App {
                 screens: {
                     login: LoginScreen,
                     roleSwitchboard: RoleSwitchboardScreen,
+                    teamSelection: TeamSelectionScreen,
+                    eventTypeSelection: EventTypeSelectionScreen,
+                    addPractice: AddPracticeScreen,
                     dashboard: DashboardScreen
                 },
                 initial: initialScreen
@@ -431,7 +434,10 @@ class App {
             timestamp: new Date().toISOString()
         };
     }
-        
+
+    showLogin() {
+        // Clear container
+        this.container.innerHTML = '';
         // Clear container
         this.container.innerHTML = '';
         
