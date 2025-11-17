@@ -68,76 +68,81 @@ class AddPracticeScreen extends Screen {
         console.log('📱 AddPracticeScreen: Rendering');
         
         return `
-            <div class="screen add-practice-screen">
-                <header class="screen-header">
-                    <button id="backBtn" class="back-button">
+            <div class="screen add-practice-screen" style="background: white; min-height: 100vh;">
+                <header class="screen-header" style="background: #f3f4f6; padding: 1rem; border-bottom: 2px solid #ccc;">
+                    <button id="backBtn" class="back-button" style="padding: 0.5rem 1rem; cursor: pointer;">
                         <span class="icon">←</span> Back
                     </button>
-                    <h1>Add Practice</h1>
+                    <h1 style="display: inline-block; margin-left: 1rem;">Add Practice</h1>
                 </header>
                 
-                <div class="screen-content">
-                    <form id="practiceForm" class="practice-form">
-                        <div class="form-section">
-                            <h2>Practice Details</h2>
+                <div class="screen-content" style="max-width: 800px; margin: 2rem auto; padding: 2rem;">
+                    <form id="practiceForm" class="practice-form" style="background: white; border: 1px solid #ccc; border-radius: 8px; padding: 2rem;">
+                        <div class="form-section" style="margin-bottom: 2rem;">
+                            <h2 style="font-size: 1.25rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e5e7eb;">Practice Details</h2>
                             
-                            <div class="form-group">
-                                <label for="practiceDate">Date *</label>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label for="practiceDate" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Date *</label>
                                 <input 
                                     type="date" 
                                     id="practiceDate" 
                                     name="practiceDate" 
                                     required
                                     min="${new Date().toISOString().split('T')[0]}"
+                                    style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;"
                                 />
                             </div>
                             
-                            <div class="form-group">
-                                <label for="startTime">Start Time *</label>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label for="startTime" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Start Time *</label>
                                 <input 
                                     type="time" 
                                     id="startTime" 
                                     name="startTime" 
                                     required
+                                    style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;"
                                 />
                             </div>
                             
-                            <div class="form-group">
-                                <label for="endTime">End Time *</label>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label for="endTime" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">End Time *</label>
                                 <input 
                                     type="time" 
                                     id="endTime" 
                                     name="endTime" 
                                     required
+                                    style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;"
                                 />
                             </div>
                             
-                            <div class="form-group">
-                                <label for="location">Location</label>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label for="location" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Location</label>
                                 <input 
                                     type="text" 
                                     id="location" 
                                     name="location" 
                                     placeholder="Enter practice location"
+                                    style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;"
                                 />
                             </div>
                             
-                            <div class="form-group">
-                                <label for="notes">Notes</label>
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label for="notes" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Notes</label>
                                 <textarea 
                                     id="notes" 
                                     name="notes" 
                                     rows="4"
                                     placeholder="Add any notes or special instructions..."
+                                    style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; resize: vertical;"
                                 ></textarea>
                             </div>
                         </div>
                         
-                        <div class="form-actions">
-                            <button type="button" id="cancelBtn" class="btn btn-secondary">
+                        <div class="form-actions" style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;">
+                            <button type="button" id="cancelBtn" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; background: white; color: #374151; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 500;">
                                 Cancel
                             </button>
-                            <button type="submit" id="saveBtn" class="btn btn-primary">
+                            <button type="submit" id="saveBtn" class="btn btn-primary" style="padding: 0.75rem 1.5rem; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 500;">
                                 Save Practice
                             </button>
                         </div>
