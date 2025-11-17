@@ -141,10 +141,11 @@ class AddPracticeScreen extends Screen {
                 const now = new Date();
                 this.practices = response.data.filter(event => {
                     const eventDate = new Date(event.date);
-                    return event.event_type === 'practice' && eventDate >= now;
+                    // API returns type as "training" for practices
+                    return event.type === 'training' && eventDate >= now;
                 }).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort by date ascending
                 
-                console.log('📱 AddPracticeScreen: Loaded', this.practices.length, 'future practices');
+                console.log('📱 AddPracticeScreen: Loaded', this.practices.length, 'future practices from', response.data.length, 'total events');
                 
                 // Update the practices list in the UI
                 this.updatePracticesList();
@@ -169,8 +170,11 @@ class AddPracticeScreen extends Screen {
         }
         
         const practicesHtml = this.practices.map(practice => {
-            const date = new Date(practice.date);
-            const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+            // Parse the datetime from API (format: "2025-11-19 18:00:00")
+            const datetime = new Date(practice.date);
+            const dateStr = datetime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+            const timeStr = datetime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            const duration = practice.duration ? `${practice.duration} min` : '';
             
             return `
                 <div class="practice-item" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
@@ -180,11 +184,11 @@ class AddPracticeScreen extends Screen {
                                 ${dateStr}
                             </div>
                             <div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 0.5rem;">
-                                ${practice.start_time} - ${practice.end_time}
+                                ${timeStr}${duration ? ` (${duration})` : ''}
                             </div>
-                            ${practice.location ? `
-                                <div style="color: #374151; font-size: 0.875rem;">
-                                    📍 ${practice.location}
+                            ${practice.title ? `
+                                <div style="color: #374151; font-size: 0.875rem; font-weight: 500;">
+                                    ${practice.title}
                                 </div>
                             ` : ''}
                             ${practice.notes ? `
