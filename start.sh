@@ -201,6 +201,21 @@ else
     # Stop containers and remove volumes
     docker compose down -v
     echo -e "${GREEN}✓ Volumes removed - will initialize fresh database${NC}"
+    
+    # Remove all project images to ensure truly fresh builds
+    echo -e "${YELLOW}🗑️  Removing all project Docker images${NC}"
+    docker rmi footballhome-frontend footballhome-backend 2>/dev/null || true
+    echo -e "${GREEN}✓ Project images removed${NC}"
+    
+    # Clear Docker build cache
+    echo -e "${YELLOW}🗑️  Clearing Docker build cache${NC}"
+    docker builder prune -f 2>/dev/null || true
+    echo -e "${GREEN}✓ Build cache cleared${NC}"
+    
+    # Remove dangling images
+    echo -e "${YELLOW}🗑️  Removing dangling Docker images${NC}"
+    docker image prune -f 2>/dev/null || true
+    echo -e "${GREEN}✓ Dangling images removed${NC}"
 fi
 
 echo -e "${BLUE}🐳 Starting Docker containers...${NC}"
@@ -223,6 +238,27 @@ fi
 
 # Start containers
 docker compose up -d
+
+# Restart system nginx to clear its cache (if it exists)
+echo ""
+echo -e "${BLUE}Step 5: Reverse Proxy Cache Management${NC}"
+if systemctl is-active --quiet nginx 2>/dev/null; then
+    echo -e "${YELLOW}�️  Clearing system nginx cache...${NC}"
+    # Clear nginx cache directories
+    sudo rm -rf /var/cache/nginx/* 2>/dev/null || true
+    sudo rm -rf /var/lib/nginx/proxy/* 2>/dev/null || true
+    echo -e "${GREEN}✓ Nginx cache cleared${NC}"
+    
+    echo -e "${YELLOW}🔄 Restarting system nginx...${NC}"
+    sudo systemctl restart nginx
+    echo -e "${GREEN}✓ System nginx restarted${NC}"
+elif systemctl is-active --quiet caddy 2>/dev/null; then
+    echo -e "${YELLOW}🔄 Restarting Caddy to clear cache...${NC}"
+    sudo systemctl restart caddy
+    echo -e "${GREEN}✓ Caddy restarted${NC}"
+else
+    echo -e "${GREEN}✓ No system reverse proxy detected${NC}"
+fi
 
 echo ""
 echo -e "${GREEN}✓ Startup complete!${NC}"

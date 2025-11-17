@@ -77,7 +77,7 @@ class TeamSelectionScreen extends Screen {
                         <!-- Team cards will be inserted here -->
                     </div>
                     <div class="team-selection-footer">
-                        <button id="backBtn" class="btn btn-secondary">Back to Roles</button>
+                        <button id="backBtn" class="btn btn-secondary">Back</button>
                     </div>
                 </div>
                 
@@ -89,7 +89,7 @@ class TeamSelectionScreen extends Screen {
                             <p id="errorText" class="mt-4">Unable to load teams.</p>
                             <div class="mt-6">
                                 <button id="retryBtn" class="btn btn-primary mr-4">Try Again</button>
-                                <button id="backToRolesBtn" class="btn btn-secondary">Back to Roles</button>
+                                <button id="backToRolesBtn" class="btn btn-secondary">Back</button>
                             </div>
                         </div>
                     </div>

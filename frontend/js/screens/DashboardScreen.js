@@ -98,7 +98,7 @@ class DashboardScreen extends Screen {
                             <p id="errorText" class="mt-4">Unable to load dashboard.</p>
                             <div class="mt-6">
                                 <button id="retryBtn" class="btn btn-primary mr-4">Try Again</button>
-                                <button id="backBtn" class="btn btn-secondary mr-4">Back to Roles</button>
+                                <button id="backBtn" class="btn btn-secondary mr-4">Back</button>
                                 <button id="logoutBtn" class="btn btn-secondary">Logout</button>
                             </div>
                         </div>
@@ -224,7 +224,7 @@ class DashboardScreen extends Screen {
                         <span class="brand-text">Football Home - Administrator</span>
                     </div>
                     <div class="navbar-menu">
-                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back to Roles</button>
+                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back</button>
                         <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
                     </div>
                 </nav>
@@ -280,7 +280,7 @@ class DashboardScreen extends Screen {
                     </div>
                     <div class="navbar-menu">
                         <span class="navbar-team">${teamName}</span>
-                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back to Roles</button>
+                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back</button>
                         <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
                     </div>
                 </nav>
@@ -337,7 +337,7 @@ class DashboardScreen extends Screen {
                     </div>
                     <div class="navbar-menu">
                         <span class="navbar-team">${teamName} ${jerseyNumber ? `#${jerseyNumber}` : ''}</span>
-                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back to Roles</button>
+                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back</button>
                         <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
                     </div>
                 </nav>
@@ -390,7 +390,7 @@ class DashboardScreen extends Screen {
                         <span class="brand-text">Football Home - ${this.roleType}</span>
                     </div>
                     <div class="navbar-menu">
-                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back to Roles</button>
+                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back</button>
                         <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
                     </div>
                 </nav>

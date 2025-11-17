@@ -47,7 +47,7 @@ class Dashboard extends Component {
                     </div>
                     <div class="navbar-menu">
                         ${contextInfo ? `<span class="navbar-context">${contextInfo}</span>` : ''}
-                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back to Roles</button>
+                        <button id="backToRolesBtn" class="btn btn-secondary btn-sm">Back</button>
                         <button id="logoutBtn" class="btn btn-secondary btn-sm">Logout</button>
                     </div>
                 </nav>

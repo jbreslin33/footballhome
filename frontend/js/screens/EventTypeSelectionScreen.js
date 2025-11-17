@@ -54,7 +54,7 @@ class EventTypeSelectionScreen extends Screen {
                     </div>
                     <div class="navbar-menu">
                         ${this.teamContext ? `<span class="navbar-context">${this.teamContext.name}</span>` : ''}
-                        <button id="backBtn" class="btn btn-secondary btn-sm">Back to Dashboard</button>
+                        <button id="backBtn" class="btn btn-secondary btn-sm">Back</button>
                     </div>
                 </nav>
                 
