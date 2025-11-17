@@ -14,6 +14,7 @@ class AddPracticeScreen extends Screen {
         this.teamContext = null;
         this.roleType = null;
         this.venues = []; // Store venues list
+        this.practices = []; // Store future practices
         
         // Create state machine after initialization
         this.stateMachine = new StateMachine({
@@ -24,7 +25,10 @@ class AddPracticeScreen extends Screen {
                         READY: 'editing',
                         ERROR: 'error'
                     },
-                    onEntry: () => this.loadVenues(),
+                    onEntry: async () => {
+                        await this.loadVenues();
+                        await this.loadPractices();
+                    },
                     onExit: () => console.log('📱 AddPracticeScreen: Ready')
                 },
                 editing: {
@@ -37,7 +41,7 @@ class AddPracticeScreen extends Screen {
                 },
                 saving: {
                     on: {
-                        SUCCESS: 'navigating',
+                        SUCCESS: 'editing',
                         ERROR: 'editing'
                     },
                     onEntry: () => this.savePractice(),
@@ -124,6 +128,79 @@ class AddPracticeScreen extends Screen {
         }
     }
     
+    async loadPractices() {
+        console.log('📱 AddPracticeScreen: Loading practices...');
+        
+        try {
+            const response = await this.authService.request(`/api/events/${this.teamContext.id}`, {
+                method: 'GET'
+            });
+            
+            if (response.success && response.data) {
+                // Filter for future practices only
+                const now = new Date();
+                this.practices = response.data.filter(event => {
+                    const eventDate = new Date(event.date);
+                    return event.event_type === 'practice' && eventDate >= now;
+                }).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort by date ascending
+                
+                console.log('📱 AddPracticeScreen: Loaded', this.practices.length, 'future practices');
+                
+                // Update the practices list in the UI
+                this.updatePracticesList();
+            } else {
+                console.error('📱 AddPracticeScreen: Failed to load practices:', response.message);
+            }
+            
+        } catch (error) {
+            console.error('📱 AddPracticeScreen: Error loading practices:', error);
+            // Don't fail - practices list is optional
+            this.practices = [];
+        }
+    }
+    
+    updatePracticesList() {
+        const practicesListContainer = this.element.querySelector('#practicesList');
+        if (!practicesListContainer) return;
+        
+        if (this.practices.length === 0) {
+            practicesListContainer.innerHTML = '<p style="color: #6b7280; text-align: center; padding: 2rem;">No upcoming practices scheduled</p>';
+            return;
+        }
+        
+        const practicesHtml = this.practices.map(practice => {
+            const date = new Date(practice.date);
+            const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+            
+            return `
+                <div class="practice-item" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 1rem; color: #111827; margin-bottom: 0.25rem;">
+                                ${dateStr}
+                            </div>
+                            <div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                ${practice.start_time} - ${practice.end_time}
+                            </div>
+                            ${practice.location ? `
+                                <div style="color: #374151; font-size: 0.875rem;">
+                                    📍 ${practice.location}
+                                </div>
+                            ` : ''}
+                            ${practice.notes ? `
+                                <div style="color: #6b7280; font-size: 0.875rem; margin-top: 0.5rem;">
+                                    ${practice.notes}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        practicesListContainer.innerHTML = practicesHtml;
+    }
+    
     render() {
         console.log('📱 AddPracticeScreen: Rendering');
         
@@ -136,8 +213,12 @@ class AddPracticeScreen extends Screen {
                     <h1 style="display: inline-block; margin-left: 1rem;">Add Practice</h1>
                 </header>
                 
-                <div class="screen-content" style="max-width: 800px; margin: 2rem auto; padding: 2rem;">
-                    <form id="practiceForm" class="practice-form" style="background: white; border: 1px solid #ccc; border-radius: 8px; padding: 2rem;">
+                <div class="screen-content" style="max-width: 1200px; margin: 2rem auto; padding: 0 2rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <!-- Add Practice Form -->
+                        <div>
+                            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">New Practice</h2>
+                            <form id="practiceForm" class="practice-form" style="background: white; border: 1px solid #ccc; border-radius: 8px; padding: 2rem;">
                         <div class="form-section" style="margin-bottom: 2rem;">
                             <h2 style="font-size: 1.25rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #e5e7eb;">Practice Details</h2>
                             
@@ -225,7 +306,17 @@ class AddPracticeScreen extends Screen {
                         </div>
                     </form>
                 </div>
+                
+                <!-- Upcoming Practices List -->
+                <div>
+                    <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Upcoming Practices</h2>
+                    <div id="practicesList" style="background: white; border: 1px solid #ccc; border-radius: 8px; padding: 1.5rem; max-height: 600px; overflow-y: auto;">
+                        <p style="color: #6b7280; text-align: center; padding: 2rem;">Loading practices...</p>
+                    </div>
+                </div>
             </div>
+        </div>
+    </div>
         `;
         
         console.log('📱 AddPracticeScreen: HTML length:', html.length);
@@ -319,8 +410,25 @@ class AddPracticeScreen extends Screen {
             if (result.success) {
                 console.log('📱 AddPracticeScreen: Practice saved successfully');
                 
-                // Show success message
-                alert('Practice created successfully!');
+                // Clear the form
+                const form = this.element.querySelector('#practiceForm');
+                if (form) {
+                    form.reset();
+                }
+                
+                // Reload practices list to show the new practice
+                await this.loadPractices();
+                
+                // Show success message (brief alert)
+                const successMsg = document.createElement('div');
+                successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: 500;';
+                successMsg.textContent = '✓ Practice created successfully!';
+                document.body.appendChild(successMsg);
+                
+                // Remove message after 3 seconds
+                setTimeout(() => {
+                    successMsg.remove();
+                }, 3000);
                 
                 this.send('SUCCESS');
             } else {
