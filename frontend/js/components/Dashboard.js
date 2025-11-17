@@ -124,16 +124,21 @@ class Dashboard extends Component {
      * Mount the dashboard
      */
     async mount() {
+        console.log('📊 Dashboard: mount() called');
         await super.mount();
+        console.log('📊 Dashboard: super.mount() complete');
         
         // Setup common event handlers
         this.setupCommonEvents();
+        console.log('📊 Dashboard: setupCommonEvents() complete');
         
         // Load data
         await this.loadData();
+        console.log('📊 Dashboard: loadData() complete');
         
         // Setup role-specific actions
         this.setupActions();
+        console.log('📊 Dashboard: setupActions() complete');
     }
     
     /**
