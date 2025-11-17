@@ -344,7 +344,7 @@ class AddPracticeScreen extends Screen {
                     <button id="backBtn" class="back-button" style="padding: 0.5rem 1rem; cursor: pointer;">
                         <span class="icon">←</span> Back
                     </button>
-                    <h1 style="display: inline-block; margin-left: 1rem;">Add Practice</h1>
+                    <h1 style="display: inline-block; margin-left: 1rem;">Manage Practices</h1>
                 </header>
                 
                 <div class="screen-content" style="max-width: 1200px; margin: 2rem auto; padding: 0 2rem;">
