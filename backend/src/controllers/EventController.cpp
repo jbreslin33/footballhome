@@ -19,6 +19,16 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
         return this->handleGetEvents(request);
     });
     
+    // PUT /api/events/:eventId - Update event
+    router.put(prefix + "/:eventId", [this](const Request& request) {
+        return this->handleUpdateEvent(request);
+    });
+    
+    // DELETE /api/events/:eventId - Delete event
+    router.del(prefix + "/:eventId", [this](const Request& request) {
+        return this->handleDeleteEvent(request);
+    });
+    
     // GET /api/venues - Get list of venues
     router.get("/api/venues", [this](const Request& request) {
         return this->handleGetVenues(request);
@@ -233,7 +243,119 @@ Response EventController::handleGetVenues(const Request& request) {
     }
 }
 
+Response EventController::handleUpdateEvent(const Request& request) {
+    try {
+        std::string event_id = extractEventIdFromPath(request.getPath());
+        
+        if (event_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid event ID in path");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        std::string body = request.getBody();
+        std::cout << "✏️ Updating event " << event_id << " with body: " << body << std::endl;
+        
+        // Parse request body
+        std::string date = parseJSON(body, "date");
+        std::string start_time = parseJSON(body, "start_time");
+        std::string end_time = parseJSON(body, "end_time");
+        std::string notes = parseJSON(body, "notes");
+        
+        if (date.empty() || start_time.empty() || end_time.empty()) {
+            std::string json = createJSONResponse(false, "Missing required fields");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        // Combine date and time
+        std::string event_datetime = date + " " + start_time;
+        
+        // Calculate duration in minutes
+        int start_hour = std::stoi(start_time.substr(0, 2));
+        int start_min = std::stoi(start_time.substr(3, 2));
+        int end_hour = std::stoi(end_time.substr(0, 2));
+        int end_min = std::stoi(end_time.substr(3, 2));
+        int duration = (end_hour * 60 + end_min) - (start_hour * 60 + start_min);
+        
+        // Update events table
+        std::ostringstream query;
+        query << "UPDATE events SET ";
+        query << "event_date = '" << event_datetime << "', ";
+        query << "duration_minutes = " << duration << ", ";
+        query << "updated_at = CURRENT_TIMESTAMP ";
+        query << "WHERE id = '" << event_id << "'";
+        
+        std::cout << "📊 Update query: " << query.str() << std::endl;
+        
+        pqxx::result result = db_->query(query.str());
+        
+        // Update practices table notes
+        std::ostringstream practice_query;
+        practice_query << "UPDATE practices SET ";
+        practice_query << "notes = " << (notes.empty() ? "NULL" : "'" + notes + "'") << " ";
+        practice_query << "WHERE id = '" << event_id << "'";
+        
+        db_->query(practice_query.str());
+        
+        std::cout << "✅ Event updated successfully: " << event_id << std::endl;
+        
+        std::string json = createJSONResponse(true, "Practice updated successfully");
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ EventController::handleUpdateEvent error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to update event");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response EventController::handleDeleteEvent(const Request& request) {
+    try {
+        std::string event_id = extractEventIdFromPath(request.getPath());
+        
+        if (event_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid event ID in path");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        std::cout << "🗑️ Deleting event: " << event_id << std::endl;
+        
+        // Delete from practices table first (foreign key)
+        std::ostringstream practice_query;
+        practice_query << "DELETE FROM practices WHERE id = '" << event_id << "'";
+        
+        db_->query(practice_query.str());
+        
+        // Delete from events table
+        std::ostringstream event_query;
+        event_query << "DELETE FROM events WHERE id = '" << event_id << "'";
+        
+        db_->query(event_query.str());
+        
+        std::cout << "✅ Event deleted successfully: " << event_id << std::endl;
+        
+        std::string json = createJSONResponse(true, "Practice deleted successfully");
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ EventController::handleDeleteEvent error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to delete event");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
 std::string EventController::extractTeamIdFromPath(const std::string& path) {
+    std::regex uuid_regex(R"(/api/events/([a-f0-9-]{36}))");
+    std::smatch match;
+    
+    if (std::regex_search(path, match, uuid_regex)) {
+        return match[1].str();
+    }
+    
+    return "";
+}
+
+std::string EventController::extractEventIdFromPath(const std::string& path) {
+    // Extract event ID from paths like /api/events/:eventId
     std::regex uuid_regex(R"(/api/events/([a-f0-9-]{36}))");
     std::smatch match;
     

@@ -15,6 +15,7 @@ class AddPracticeScreen extends Screen {
         this.roleType = null;
         this.venues = []; // Store venues list
         this.practices = []; // Store future practices
+        this.editingPracticeId = null; // Track which practice is being edited
         
         // Create state machine after initialization
         this.stateMachine = new StateMachine({
@@ -177,9 +178,9 @@ class AddPracticeScreen extends Screen {
             const duration = practice.duration ? `${practice.duration} min` : '';
             
             return `
-                <div class="practice-item" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                <div class="practice-item" style="background: ${this.editingPracticeId === practice.id ? '#eff6ff' : '#f9fafb'}; border: 2px solid ${this.editingPracticeId === practice.id ? '#3b82f6' : '#e5e7eb'}; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
                     <div style="display: flex; justify-content: space-between; align-items: start;">
-                        <div>
+                        <div style="flex: 1;">
                             <div style="font-weight: 600; font-size: 1rem; color: #111827; margin-bottom: 0.25rem;">
                                 ${dateStr}
                             </div>
@@ -197,12 +198,141 @@ class AddPracticeScreen extends Screen {
                                 </div>
                             ` : ''}
                         </div>
+                        <div style="display: flex; gap: 0.5rem; margin-left: 1rem;">
+                            <button 
+                                class="edit-practice-btn" 
+                                data-practice-id="${practice.id}"
+                                style="padding: 0.4rem 0.75rem; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem; font-weight: 500;"
+                                title="Edit practice"
+                            >
+                                ✏️ Edit
+                            </button>
+                            <button 
+                                class="delete-practice-btn" 
+                                data-practice-id="${practice.id}"
+                                style="padding: 0.4rem 0.75rem; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem; font-weight: 500;"
+                                title="Delete practice"
+                            >
+                                🗑️ Delete
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
         }).join('');
         
         practicesListContainer.innerHTML = practicesHtml;
+        
+        // Add event listeners for Edit and Delete buttons
+        this.setupPracticeActions();
+    }
+    
+    setupPracticeActions() {
+        // Edit buttons
+        const editButtons = this.element.querySelectorAll('.edit-practice-btn');
+        editButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const practiceId = e.currentTarget.dataset.practiceId;
+                this.editPractice(practiceId);
+            });
+        });
+        
+        // Delete buttons
+        const deleteButtons = this.element.querySelectorAll('.delete-practice-btn');
+        deleteButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const practiceId = e.currentTarget.dataset.practiceId;
+                this.deletePractice(practiceId);
+            });
+        });
+    }
+    
+    editPractice(practiceId) {
+        console.log('📱 AddPracticeScreen: Editing practice:', practiceId);
+        
+        // Find the practice in the list
+        const practice = this.practices.find(p => p.id === practiceId);
+        if (!practice) {
+            console.error('Practice not found:', practiceId);
+            return;
+        }
+        
+        // Set editing mode
+        this.editingPracticeId = practiceId;
+        
+        // Parse datetime
+        const datetime = new Date(practice.date);
+        const dateStr = datetime.toISOString().split('T')[0]; // YYYY-MM-DD
+        const hours = datetime.getHours().toString().padStart(2, '0');
+        const minutes = datetime.getMinutes().toString().padStart(2, '0');
+        const timeStr = `${hours}:${minutes}`; // HH:MM
+        
+        // Calculate end time from duration
+        const endDateTime = new Date(datetime.getTime() + (practice.duration * 60000));
+        const endHours = endDateTime.getHours().toString().padStart(2, '0');
+        const endMinutes = endDateTime.getMinutes().toString().padStart(2, '0');
+        const endTimeStr = `${endHours}:${endMinutes}`;
+        
+        // Populate form
+        const form = this.element.querySelector('#practiceForm');
+        if (form) {
+            form.querySelector('#practiceDate').value = dateStr;
+            form.querySelector('#startTime').value = timeStr;
+            form.querySelector('#endTime').value = endTimeStr;
+            form.querySelector('#notes').value = practice.notes || '';
+            
+            // Update button text
+            const saveBtn = form.querySelector('#saveBtn');
+            if (saveBtn) {
+                saveBtn.textContent = 'Update Practice';
+                saveBtn.style.background = '#f59e0b'; // Orange for update
+            }
+        }
+        
+        // Highlight the practice being edited
+        this.updatePracticesList();
+        
+        // Scroll form into view
+        form?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    async deletePractice(practiceId) {
+        console.log('📱 AddPracticeScreen: Deleting practice:', practiceId);
+        
+        // Confirm deletion
+        if (!confirm('Are you sure you want to delete this practice?')) {
+            return;
+        }
+        
+        try {
+            const result = await this.authService.request(`/api/events/${practiceId}`, {
+                method: 'DELETE'
+            });
+            
+            if (result.success) {
+                console.log('📱 AddPracticeScreen: Practice deleted successfully');
+                
+                // Remove from local list
+                this.practices = this.practices.filter(p => p.id !== practiceId);
+                
+                // Update UI
+                this.updatePracticesList();
+                
+                // Show success message
+                const successMsg = document.createElement('div');
+                successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: 500;';
+                successMsg.textContent = '✓ Practice deleted successfully!';
+                document.body.appendChild(successMsg);
+                
+                setTimeout(() => successMsg.remove(), 3000);
+            } else {
+                alert('Error deleting practice: ' + result.message);
+            }
+            
+        } catch (error) {
+            console.error('📱 AddPracticeScreen: Error deleting practice:', error);
+            alert('Error deleting practice: ' + error.message);
+        }
     }
     
     render() {
@@ -405,34 +535,45 @@ class AddPracticeScreen extends Screen {
             
             console.log('📱 AddPracticeScreen: Practice data:', practiceData);
             
+            // Determine if we're creating or updating
+            const isUpdate = this.editingPracticeId !== null;
+            const url = isUpdate ? `/api/events/${this.editingPracticeId}` : '/api/events';
+            const method = isUpdate ? 'PUT' : 'POST';
+            
             // Call API to save practice
-            const result = await this.authService.request('/api/events', {
-                method: 'POST',
+            const result = await this.authService.request(url, {
+                method: method,
                 body: JSON.stringify(practiceData)
             });
             
             if (result.success) {
                 console.log('📱 AddPracticeScreen: Practice saved successfully');
                 
+                // Clear editing state
+                this.editingPracticeId = null;
+                
                 // Clear the form
-                const form = this.element.querySelector('#practiceForm');
                 if (form) {
                     form.reset();
+                    
+                    // Reset button text and color
+                    const saveBtn = form.querySelector('#saveBtn');
+                    if (saveBtn) {
+                        saveBtn.textContent = 'Save Practice';
+                        saveBtn.style.background = '#2563eb';
+                    }
                 }
                 
-                // Reload practices list to show the new practice
+                // Reload practices list to show the updated practice
                 await this.loadPractices();
                 
-                // Show success message (brief alert)
+                // Show success message
                 const successMsg = document.createElement('div');
                 successMsg.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: 500;';
-                successMsg.textContent = '✓ Practice created successfully!';
+                successMsg.textContent = isUpdate ? '✓ Practice updated successfully!' : '✓ Practice created successfully!';
                 document.body.appendChild(successMsg);
                 
-                // Remove message after 3 seconds
-                setTimeout(() => {
-                    successMsg.remove();
-                }, 3000);
+                setTimeout(() => successMsg.remove(), 3000);
                 
                 this.send('SUCCESS');
             } else {
