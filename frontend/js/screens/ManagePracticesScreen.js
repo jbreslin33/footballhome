@@ -16,6 +16,7 @@ class ManagePracticesScreen extends Screen {
         this.venues = []; // Store venues list
         this.practices = []; // Store future practices
         this.editingPracticeId = null; // Track which practice is being edited
+        this.formSetup = false; // Track if form listeners are already set up
         
         // Create state machine after initialization
         this.stateMachine = new StateMachine({
@@ -55,9 +56,6 @@ class ManagePracticesScreen extends Screen {
                     onEntry: () => console.log('📱 ManagePracticesScreen: Error loading venues')
                 },
                 navigating: {
-                    on: {
-                        COMPLETE: 'loading'
-                    },
                     onEntry: () => {
                         console.log('📱 ManagePracticesScreen: Navigating back');
                         this.navigateBack();
@@ -462,6 +460,12 @@ class ManagePracticesScreen extends Screen {
     setupForm() {
         console.log('📱 ManagePracticesScreen: Setting up form');
         
+        // Only set up event listeners once
+        if (this.formSetup) {
+            console.log('📱 ManagePracticesScreen: Form already set up, skipping');
+            return;
+        }
+        
         const form = this.element.querySelector('#practiceForm');
         const cancelBtn = this.element.querySelector('#cancelBtn');
         const backBtn = this.element.querySelector('#backBtn');
@@ -499,10 +503,17 @@ class ManagePracticesScreen extends Screen {
         // Back button
         if (backBtn) {
             backBtn.addEventListener('click', () => {
-                console.log('📱 ManagePracticesScreen: Back clicked');
-                this.send('CANCEL');
+                console.log('📱 ManagePracticesScreen: Back clicked, current state:', this.stateMachine?.currentState);
+                // Only allow navigation if we're not already navigating
+                if (this.stateMachine?.currentState !== 'navigating') {
+                    this.send('CANCEL');
+                }
             });
         }
+        
+        // Mark form as set up to prevent duplicate listeners
+        this.formSetup = true;
+        console.log('📱 ManagePracticesScreen: Form setup complete');
     }
     
     async savePractice() {
@@ -590,18 +601,17 @@ class ManagePracticesScreen extends Screen {
     }
     
     navigateBack() {
-        console.log('📱 ManagePracticesScreen: Navigating back to dashboard');
+        console.log('📱 ManagePracticesScreen: Navigating back to event type selection');
         
-        this.emit('navigate', {
-            screen: 'dashboard',
-            data: {
+        setTimeout(() => {
+            console.log('📱 ManagePracticesScreen: Calling navigateTo');
+            this.navigateTo('eventTypeSelection', {
                 user: this.user,
                 teamContext: this.teamContext,
                 roleType: this.roleType
-            }
-        });
-        
-        this.send('COMPLETE');
+            });
+            console.log('📱 ManagePracticesScreen: navigateTo called');
+        }, 100);
     }
     
     onExit() {
