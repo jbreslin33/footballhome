@@ -41,7 +41,11 @@
         });
     </script>
     
-    <link rel="stylesheet" href="css/main.css">
+    <!-- Dynamic CSS loading with cache buster -->
+    <script>
+        var cacheBuster = '?nocache=' + Date.now() + Math.random().toString(36).substring(7);
+        document.write('<link rel="stylesheet" href="css/main.css' + cacheBuster + '">');
+    </script>
 </head>
 <body>
     <div id="app">
