@@ -56,6 +56,14 @@ class AddPracticeScreen extends Screen {
     
     async onEnter(data) {
         console.log('📱 AddPracticeScreen: Entering with data:', data);
+        console.log('📱 AddPracticeScreen: Container:', this.container);
+        console.log('📱 AddPracticeScreen: Container display before:', this.container ? this.container.style.display : 'no container');
+        
+        // Call parent onEnter
+        await super.onEnter(data);
+        
+        console.log('📱 AddPracticeScreen: Container display after super:', this.container ? this.container.style.display : 'no container');
+        console.log('📱 AddPracticeScreen: Element:', this.element);
         
         // Store context from navigation
         this.user = data.user;
