@@ -3,7 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- DEVELOPMENT: MAXIMUM ANTI-CACHE MODE -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0, pre-check=0, post-check=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="-1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Football Home - Vanilla JS</title>
+    
+    <!-- Kill any service workers and prevent all caching -->
+    <script>
+        // NUCLEAR OPTION: Add random param to current URL to bypass ALL caches
+        if (!window.location.search.includes('nocache=')) {
+            window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now() + Math.random();
+        }
+        
+        // Unregister ALL service workers
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+        
+        // Clear all caches
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) caches.delete(name);
+            });
+        }
+        
+        // Disable back-forward cache
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+    </script>
+    
     <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
@@ -12,32 +49,33 @@
     </div>
 
     <!-- Core JavaScript -->
-    <script src="js/core/StateMachine.js"></script>
-    <script src="js/core/Component.js"></script>
-    <script src="js/core/Screen.js"></script>
-    <script src="js/core/ScreenManager.js"></script>
-    
-    <!-- Components -->
-    <script src="js/components/LoginForm.js"></script>
-    <script src="js/components/RoleSwitchboard.js"></script>
-    <script src="js/components/Dashboard.js"></script>
-    <script src="js/components/CoachDashboard.js"></script>
-    <script src="js/components/TeamCard.js"></script>
-    <script src="js/components/EventCard.js"></script>
-    <script src="js/components/StatsCard.js"></script>
-    <script src="js/components/LeagueGamesCard.js"></script>
-    
-    <!-- Screens -->
-    <script src="js/screens/LoginScreen.js"></script>
-    <script src="js/screens/RoleSwitchboardScreen.js"></script>
-    <script src="js/screens/TeamSelectionScreen.js"></script>
-    <script src="js/screens/EventTypeSelectionScreen.js"></script>
-    <script src="js/screens/DashboardScreen.js"></script>
-    
-    <!-- Services -->
-    <script src="js/services/AuthService.js"></script>
-    
-    <!-- Main App -->
-    <script src="js/App.js"></script>
+    <script>
+        // MAXIMUM CACHE BUSTER - Random number + timestamp to ensure ZERO caching
+        var cacheBuster = '?nocache=' + Date.now() + Math.random().toString(36).substring(7);
+        var scripts = [
+            'js/core/StateMachine.js',
+            'js/core/Component.js',
+            'js/core/Screen.js',
+            'js/core/ScreenManager.js',
+            'js/components/LoginForm.js',
+            'js/components/RoleSwitchboard.js',
+            'js/components/Dashboard.js',
+            'js/components/CoachDashboard.js',
+            'js/components/TeamCard.js',
+            'js/components/EventCard.js',
+            'js/components/StatsCard.js',
+            'js/components/LeagueGamesCard.js',
+            'js/screens/LoginScreen.js',
+            'js/screens/RoleSwitchboardScreen.js',
+            'js/screens/TeamSelectionScreen.js',
+            'js/screens/EventTypeSelectionScreen.js',
+            'js/screens/DashboardScreen.js',
+            'js/services/AuthService.js',
+            'js/App.js'
+        ];
+        scripts.forEach(function(src) {
+            document.write('<script src="' + src + cacheBuster + '"></' + 'script>');
+        });
+    </script>
 </body>
 </html>

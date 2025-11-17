@@ -89,28 +89,47 @@ class CoachDashboard extends Dashboard {
      * Setup coach-specific action handlers
      */
     setupActions() {
-        // Events button
-        const eventsBtn = this.element.querySelector('#eventsBtn');
-        if (eventsBtn) {
-            eventsBtn.addEventListener('click', () => {
-                console.log('📊 CoachDashboard: Events button clicked');
-                this.handleEventsClick();
-            });
-        }
-    }
-    
-    /**
-     * Handle Events button click
-     */
-    handleEventsClick() {
-        // Navigate to EventTypeSelection screen
-        this.emit('navigate', {
-            screen: 'eventTypeSelection',
-            data: {
-                user: this.user,
-                teamContext: this.teamContext,
-                roleType: this.roleType
+        console.log('📊 CoachDashboard: setupActions START');
+        
+        try {
+            console.log('📊 CoachDashboard: Inside try block');
+            
+            // Use querySelector on container if element is not available
+            const searchRoot = this.element || this.container;
+            console.log('📊 CoachDashboard: searchRoot:', searchRoot);
+            
+            if (!searchRoot) {
+                console.error('📊 CoachDashboard: No search root available!');
+                return;
             }
-        });
+            
+            // Events button
+            const eventsBtn = searchRoot.querySelector('#eventsBtn');
+            console.log('📊 CoachDashboard: eventsBtn found:', !!eventsBtn);
+            
+            if (eventsBtn) {
+                const self = this;
+                eventsBtn.addEventListener('click', function(e) {
+                    console.log('📊 CoachDashboard: Events button CLICKED!');
+                    e.preventDefault();
+                    
+                    // Navigate to EventTypeSelection screen
+                    self.emit('navigate', {
+                        screen: 'eventTypeSelection',
+                        data: {
+                            user: self.user,
+                            teamContext: self.teamContext,
+                            roleType: self.roleType
+                        }
+                    });
+                });
+                console.log('📊 CoachDashboard: Event listener added successfully');
+            }
+            
+            console.log('📊 CoachDashboard: setupActions END');
+        } catch (error) {
+            console.error('📊 CoachDashboard: ERROR in setupActions:', error);
+            console.error('📊 CoachDashboard: Error stack:', error.stack);
+        }
     }
 }
