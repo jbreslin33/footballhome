@@ -249,4 +249,38 @@ class AuthService {
             errors
         };
     }
+    
+    /**
+     * Generic authenticated request method
+     */
+    async request(endpoint, options = {}) {
+        const url = `${this.baseUrl}${endpoint}`;
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(options.headers || {})
+        };
+        
+        // Add auth token if available
+        if (this.token) {
+            headers['Authorization'] = `Bearer ${this.token}`;
+        }
+        
+        try {
+            const response = await fetch(url, {
+                ...options,
+                headers
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || `Request failed (${response.status})`);
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('Request error:', error);
+            throw error;
+        }
+    }
 }

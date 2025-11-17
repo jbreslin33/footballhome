@@ -124,8 +124,13 @@ class ScreenManager {
             screenContainer.style.display = 'none';
             this.container.appendChild(screenContainer);
             
-            // Instantiate the screen
-            this.screens[screenName] = new ScreenClass(screenContainer, { screenManager: this });
+            // Instantiate the screen with authService
+            console.log('🔧 ScreenManager: Creating screen with authService:', !!this.authService);
+            this.screens[screenName] = new ScreenClass(screenContainer, { 
+                screenManager: this,
+                authService: this.authService
+            });
+            console.log('🔧 ScreenManager: Screen created:', screenName);
             
             // Listen for navigation events from screens
             const eventHandler = (event) => {

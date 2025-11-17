@@ -166,8 +166,9 @@ services:
     volumes:
       - ./database/schema/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./database/apsl/apsl-data.sql:/docker-entrypoint-initdb.d/02-apsl-data.sql:ro
+      - ./database/schema/venues.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
 EOF
-    echo -e "${GREEN}✓ Will load complete APSL dataset with all teams${NC}"
+    echo -e "${GREEN}✓ Will load complete APSL dataset with all teams and venues${NC}"
 else
     echo -e "${GREEN}📦 Configuring for Lighthouse-only dataset (minimal)${NC}"
     # Ensure lighthouse data file exists
@@ -182,8 +183,9 @@ services:
     volumes:
       - ./database/schema/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./lighthouse.sql:/docker-entrypoint-initdb.d/02-lighthouse.sql:ro
+      - ./database/schema/venues.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
 EOF
-    echo -e "${GREEN}✓ Will load Lighthouse 1893 SC data only${NC}"
+    echo -e "${GREEN}✓ Will load Lighthouse 1893 SC data and venues${NC}"
 fi
 
 echo ""

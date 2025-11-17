@@ -13,6 +13,7 @@ class AddPracticeScreen extends Screen {
         this.user = null;
         this.teamContext = null;
         this.roleType = null;
+        this.venues = []; // Store venues list
         
         // Create state machine after initialization
         this.stateMachine = new StateMachine({
@@ -20,9 +21,10 @@ class AddPracticeScreen extends Screen {
             states: {
                 loading: {
                     on: {
-                        READY: 'editing'
+                        READY: 'editing',
+                        ERROR: 'error'
                     },
-                    onEntry: () => console.log('📱 AddPracticeScreen: Loading...'),
+                    onEntry: () => this.loadVenues(),
                     onExit: () => console.log('📱 AddPracticeScreen: Ready')
                 },
                 editing: {
@@ -40,6 +42,12 @@ class AddPracticeScreen extends Screen {
                     },
                     onEntry: () => this.savePractice(),
                     onExit: () => console.log('📱 AddPracticeScreen: Save complete')
+                },
+                error: {
+                    on: {
+                        RETRY: 'loading'
+                    },
+                    onEntry: () => console.log('📱 AddPracticeScreen: Error loading venues')
                 },
                 navigating: {
                     on: {
@@ -70,8 +78,50 @@ class AddPracticeScreen extends Screen {
         this.teamContext = data.teamContext;
         this.roleType = data.roleType;
         
-        // Start loading
-        this.send('READY');
+        // Start loading (will load venues)
+        // Don't send READY yet - will be sent after venues load
+    }
+    
+    async loadVenues() {
+        console.log('📱 AddPracticeScreen: Loading venues...');
+        
+        try {
+            const response = await this.authService.request('/api/venues', {
+                method: 'GET'
+            });
+            
+            if (response.success) {
+                this.venues = response.data || [];
+                console.log('📱 AddPracticeScreen: Loaded', this.venues.length, 'venues');
+                
+                // Re-render to update the dropdown with venues
+                const venueSelect = this.element.querySelector('#venueId');
+                if (venueSelect && this.venues.length > 0) {
+                    // Add venue options
+                    const optionsHTML = this.venues.map(venue => `
+                        <option value="${venue.id}">
+                            ${venue.name}${venue.city ? ` - ${venue.city}, ${venue.state}` : ''}
+                        </option>
+                    `).join('');
+                    
+                    // Insert before the "Add custom location" option
+                    const customOption = venueSelect.querySelector('option[value="__custom__"]');
+                    if (customOption) {
+                        customOption.insertAdjacentHTML('beforebegin', optionsHTML);
+                    }
+                }
+                
+                this.send('READY');
+            } else {
+                console.error('📱 AddPracticeScreen: Failed to load venues:', response.message);
+                this.venues = [];
+                this.send('READY'); // Continue anyway with empty venues
+            }
+        } catch (error) {
+            console.error('📱 AddPracticeScreen: Error loading venues:', error);
+            this.venues = [];
+            this.send('READY'); // Continue anyway with empty venues
+        }
     }
     
     render() {
@@ -126,12 +176,29 @@ class AddPracticeScreen extends Screen {
                             </div>
                             
                             <div class="form-group" style="margin-bottom: 1.5rem;">
-                                <label for="location" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Location</label>
+                                <label for="venueId" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Venue</label>
+                                <select 
+                                    id="venueId" 
+                                    name="venueId" 
+                                    style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;"
+                                >
+                                    <option value="">Select a venue...</option>
+                                    ${(this.venues || []).map(venue => `
+                                        <option value="${venue.id}">
+                                            ${venue.name}${venue.city ? ` - ${venue.city}, ${venue.state}` : ''}
+                                        </option>
+                                    `).join('')}
+                                    <option value="__custom__">➕ Add custom location</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" id="customLocationGroup" style="margin-bottom: 1.5rem; display: none;">
+                                <label for="customLocation" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Custom Location</label>
                                 <input 
                                     type="text" 
-                                    id="location" 
-                                    name="location" 
-                                    placeholder="Enter practice location"
+                                    id="customLocation" 
+                                    name="customLocation" 
+                                    placeholder="Enter custom location"
                                     style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;"
                                 />
                             </div>
@@ -173,6 +240,19 @@ class AddPracticeScreen extends Screen {
         const form = this.element.querySelector('#practiceForm');
         const cancelBtn = this.element.querySelector('#cancelBtn');
         const backBtn = this.element.querySelector('#backBtn');
+        const venueSelect = this.element.querySelector('#venueId');
+        const customLocationGroup = this.element.querySelector('#customLocationGroup');
+        
+        // Handle venue selection change
+        if (venueSelect && customLocationGroup) {
+            venueSelect.addEventListener('change', (e) => {
+                if (e.target.value === '__custom__') {
+                    customLocationGroup.style.display = 'block';
+                } else {
+                    customLocationGroup.style.display = 'none';
+                }
+            });
+        }
         
         // Form submission
         if (form) {
@@ -207,29 +287,47 @@ class AddPracticeScreen extends Screen {
             const form = this.element.querySelector('#practiceForm');
             const formData = new FormData(form);
             
+            // Get venue - either from dropdown or custom location
+            const venueId = formData.get('venueId');
+            let location = null;
+            
+            if (venueId === '__custom__') {
+                location = formData.get('customLocation');
+            } else if (venueId) {
+                const venue = this.venues.find(v => v.id === venueId);
+                location = venue ? venue.name : null;
+            }
+            
             const practiceData = {
                 team_id: this.teamContext.id,
                 event_type: 'practice',
                 date: formData.get('practiceDate'),
                 start_time: formData.get('startTime'),
                 end_time: formData.get('endTime'),
-                location: formData.get('location') || null,
+                location: location,
                 notes: formData.get('notes') || null
             };
             
             console.log('📱 AddPracticeScreen: Practice data:', practiceData);
             
-            // TODO: Call API to save practice
-            // const result = await this.authService.request('/api/events', {
-            //     method: 'POST',
-            //     body: JSON.stringify(practiceData)
-            // });
+            // Call API to save practice
+            const result = await this.authService.request('/api/events', {
+                method: 'POST',
+                body: JSON.stringify(practiceData)
+            });
             
-            // For now, simulate success
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            console.log('📱 AddPracticeScreen: Practice saved successfully');
-            this.send('SUCCESS');
+            if (result.success) {
+                console.log('📱 AddPracticeScreen: Practice saved successfully');
+                
+                // Show success message
+                alert('Practice created successfully!');
+                
+                this.send('SUCCESS');
+            } else {
+                console.error('📱 AddPracticeScreen: Failed to save practice:', result.message);
+                alert('Error saving practice: ' + result.message);
+                this.send('ERROR');
+            }
             
         } catch (error) {
             console.error('📱 AddPracticeScreen: Error saving practice:', error);

@@ -26,6 +26,7 @@ set(SOURCES
     src/models/Team.cpp
     src/controllers/AuthController.cpp
     src/controllers/TeamController.cpp
+    src/controllers/EventController.cpp
 )
 
 # Create executable
