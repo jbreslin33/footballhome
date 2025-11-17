@@ -4,52 +4,54 @@
  */
 
 class AddPracticeScreen extends Screen {
-    constructor(screenManager, authService) {
-        super(
-            screenManager,
-            authService,
-            {
-                initial: 'loading',
-                states: {
-                    loading: {
-                        on: {
-                            READY: 'editing'
-                        },
-                        onEntry: () => console.log('📱 AddPracticeScreen: Loading...'),
-                        onExit: () => console.log('📱 AddPracticeScreen: Ready')
-                    },
-                    editing: {
-                        on: {
-                            SAVE: 'saving',
-                            CANCEL: 'navigating'
-                        },
-                        onEntry: () => this.setupForm(),
-                        onExit: () => console.log('📱 AddPracticeScreen: Exiting edit mode')
-                    },
-                    saving: {
-                        on: {
-                            SUCCESS: 'navigating',
-                            ERROR: 'editing'
-                        },
-                        onEntry: () => this.savePractice(),
-                        onExit: () => console.log('📱 AddPracticeScreen: Save complete')
-                    },
-                    navigating: {
-                        on: {
-                            COMPLETE: 'loading'
-                        },
-                        onEntry: () => {
-                            console.log('📱 AddPracticeScreen: Navigating back');
-                            this.navigateBack();
-                        }
-                    }
-                }
-            }
-        );
+    constructor(container, props = {}) {
+        super(container, props, {
+            screenName: 'addPractice'
+        });
         
+        this.authService = props.authService || new AuthService();
         this.user = null;
         this.teamContext = null;
         this.roleType = null;
+        
+        // Create state machine after initialization
+        this.stateMachine = new StateMachine({
+            initial: 'loading',
+            states: {
+                loading: {
+                    on: {
+                        READY: 'editing'
+                    },
+                    onEntry: () => console.log('📱 AddPracticeScreen: Loading...'),
+                    onExit: () => console.log('📱 AddPracticeScreen: Ready')
+                },
+                editing: {
+                    on: {
+                        SAVE: 'saving',
+                        CANCEL: 'navigating'
+                    },
+                    onEntry: () => this.setupForm(),
+                    onExit: () => console.log('📱 AddPracticeScreen: Exiting edit mode')
+                },
+                saving: {
+                    on: {
+                        SUCCESS: 'navigating',
+                        ERROR: 'editing'
+                    },
+                    onEntry: () => this.savePractice(),
+                    onExit: () => console.log('📱 AddPracticeScreen: Save complete')
+                },
+                navigating: {
+                    on: {
+                        COMPLETE: 'loading'
+                    },
+                    onEntry: () => {
+                        console.log('📱 AddPracticeScreen: Navigating back');
+                        this.navigateBack();
+                    }
+                }
+            }
+        });
     }
     
     async onEnter(data) {
@@ -67,7 +69,7 @@ class AddPracticeScreen extends Screen {
     render() {
         console.log('📱 AddPracticeScreen: Rendering');
         
-        return `
+        const html = `
             <div class="screen add-practice-screen" style="background: white; min-height: 100vh;">
                 <header class="screen-header" style="background: #f3f4f6; padding: 1rem; border-bottom: 2px solid #ccc;">
                     <button id="backBtn" class="back-button" style="padding: 0.5rem 1rem; cursor: pointer;">
@@ -150,6 +152,11 @@ class AddPracticeScreen extends Screen {
                 </div>
             </div>
         `;
+        
+        console.log('📱 AddPracticeScreen: HTML length:', html.length);
+        console.log('📱 AddPracticeScreen: HTML preview:', html.substring(0, 200));
+        
+        return html;
     }
     
     setupForm() {
