@@ -33,6 +33,16 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
     router.get("/api/venues", [this](const Request& request) {
         return this->handleGetVenues(request);
     });
+    
+    // POST /api/events/:eventId/rsvp - Create or update RSVP
+    router.post(prefix + "/:eventId/rsvp", [this](const Request& request) {
+        return this->handleCreateRSVP(request);
+    });
+    
+    // GET /api/events/:eventId/rsvps - Get all RSVPs for an event
+    router.get(prefix + "/:eventId/rsvps", [this](const Request& request) {
+        return this->handleGetEventRSVPs(request);
+    });
 }
 
 Response EventController::handleCreateEvent(const Request& request) {
@@ -438,4 +448,104 @@ std::string EventController::getCurrentTimestamp() {
     std::ostringstream oss;
     oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
     return oss.str();
+}
+
+Response EventController::handleCreateRSVP(const Request& request) {
+    try {
+        std::string body = request.getBody();
+        std::cout << "📝 Creating/Updating RSVP with body: " << body << std::endl;
+        
+        // Extract event_id from path
+        std::string event_id = extractEventIdFromPath(request.getPath());
+        
+        // Parse JSON body
+        std::string player_id = parseJSON(body, "player_id");
+        std::string status = parseJSON(body, "status");
+        std::string notes = parseJSON(body, "notes");
+        
+        if (event_id.empty() || player_id.empty() || status.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing required fields: event_id, player_id, status"));
+        }
+        
+        // Validate status
+        if (status != "attending" && status != "not_attending" && status != "maybe") {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid status. Must be: attending, not_attending, or maybe"));
+        }
+        
+        // Check if RSVP already exists
+        std::string check_query = "SELECT id FROM event_rsvps WHERE event_id = $1 AND player_id = $2";
+        pqxx::result existing = db_->query(check_query, {event_id, player_id});
+        
+        if (existing.empty()) {
+            // Insert new RSVP
+            std::string rsvp_id = generateUUID();
+            std::string insert_query = "INSERT INTO event_rsvps (id, event_id, player_id, status, notes, response_date) "
+                                       "VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)";
+            db_->query(insert_query, {rsvp_id, event_id, player_id, status, notes});
+            std::cout << "✅ RSVP created successfully" << std::endl;
+        } else {
+            // Update existing RSVP
+            std::string update_query = "UPDATE event_rsvps SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP "
+                                       "WHERE event_id = $3 AND player_id = $4";
+            db_->query(update_query, {status, notes, event_id, player_id});
+            std::cout << "✅ RSVP updated successfully" << std::endl;
+        }
+        
+        std::string data = "{\"event_id\": \"" + event_id + "\", \"player_id\": \"" + player_id + "\", \"status\": \"" + status + "\"}";
+        return Response(HttpStatus::OK, createJSONResponse(true, "RSVP saved successfully", data));
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error creating/updating RSVP: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to save RSVP: ") + e.what()));
+    }
+}
+
+Response EventController::handleGetEventRSVPs(const Request& request) {
+    try {
+        std::string event_id = extractEventIdFromPath(request.getPath());
+        
+        if (event_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing event_id"));
+        }
+        
+        std::cout << "📋 Getting RSVPs for event: " << event_id << std::endl;
+        
+        // Get RSVPs with player names
+        std::string query = "SELECT er.id, er.event_id, er.player_id, er.status, er.notes, er.response_date, "
+                           "u.first_name, u.last_name, u.email "
+                           "FROM event_rsvps er "
+                           "JOIN users u ON er.player_id = u.id "
+                           "WHERE er.event_id = $1 "
+                           "ORDER BY er.response_date DESC";
+        
+        pqxx::result result = db_->query(query, {event_id});
+        
+        std::ostringstream json_array;
+        json_array << "[";
+        
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json_array << ",";
+            
+            json_array << "{"
+                      << "\"id\": \"" << result[i]["id"].c_str() << "\", "
+                      << "\"event_id\": \"" << result[i]["event_id"].c_str() << "\", "
+                      << "\"player_id\": \"" << result[i]["player_id"].c_str() << "\", "
+                      << "\"status\": \"" << result[i]["status"].c_str() << "\", "
+                      << "\"notes\": \"" << (result[i]["notes"].is_null() ? "" : result[i]["notes"].c_str()) << "\", "
+                      << "\"response_date\": \"" << result[i]["response_date"].c_str() << "\", "
+                      << "\"player_name\": \"" << result[i]["first_name"].c_str() << " " << result[i]["last_name"].c_str() << "\", "
+                      << "\"player_email\": \"" << result[i]["email"].c_str() << "\""
+                      << "}";
+        }
+        
+        json_array << "]";
+        
+        std::cout << "✅ Found " << result.size() << " RSVPs for event" << std::endl;
+        
+        return Response(HttpStatus::OK, createJSONResponse(true, "RSVPs retrieved successfully", json_array.str()));
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error getting RSVPs: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get RSVPs: ") + e.what()));
+    }
 }

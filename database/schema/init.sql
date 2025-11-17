@@ -716,6 +716,24 @@ CREATE TABLE matches (
     CONSTRAINT different_teams CHECK (home_team_id != away_team_id)
 );
 
+-- Event RSVPs (player responses to practices/events)
+CREATE TABLE event_rsvps (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    player_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('attending', 'not_attending', 'maybe')),
+    response_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,                                -- Player's optional comment
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(event_id, player_id)               -- One RSVP per player per event
+);
+
+-- Index for quick RSVP lookups
+CREATE INDEX idx_event_rsvps_event ON event_rsvps(event_id);
+CREATE INDEX idx_event_rsvps_player ON event_rsvps(player_id);
+CREATE INDEX idx_event_rsvps_status ON event_rsvps(status);
+
 -- Match Officials (referees assigned to matches)
 CREATE TABLE match_officials (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

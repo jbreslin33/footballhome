@@ -17,6 +17,8 @@ private:
     Response handleGetVenues(const Request& request);
     Response handleUpdateEvent(const Request& request);
     Response handleDeleteEvent(const Request& request);
+    Response handleCreateRSVP(const Request& request);
+    Response handleGetEventRSVPs(const Request& request);
     
     // Helper methods
     std::string extractTeamIdFromPath(const std::string& path);

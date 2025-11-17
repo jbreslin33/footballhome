@@ -161,9 +161,108 @@ Screen Action → Screen StateMachine → Screen.navigateTo()
 - **Event timing**: Uses setTimeout(0) for proper event listener setup
 
 ---
-**Last Updated**: November 15, 2025
-**Current Commit**: Ready for commit with back button improvements
-**Status**: Ready for comprehensive back button testing and StateMachine pattern demo
-4. **Final validation** of both data loading modes
+**Last Updated**: November 17, 2025
+**Current Session**: Implementing Player RSVP Feature
+**Status**: Player RSVP system nearly complete - debugging navigation routing
 
-**CORE IMPLEMENTATION: 95% COMPLETE** - Just minor cleanup needed!
+## 🎯 Current Session Progress (Nov 17, 2025)
+
+### Player RSVP Feature Implementation
+
+#### ✅ Completed
+1. **Database Schema**: Created `event_rsvps` table with proper constraints
+   - Columns: id, event_id, player_id, status (attending/not_attending/maybe), notes, timestamps
+   - Unique constraint on (event_id, player_id)
+   - Indexes for performance
+
+2. **Backend API Endpoints**: 
+   - `POST /api/events/:eventId/rsvp` - Create/update RSVP (upsert logic)
+   - `GET /api/events/:eventId/rsvps` - Get RSVPs with player names (JOIN with users)
+   - Fixed compilation errors (HttpStatus enum, Database API usage)
+
+3. **Frontend Screens Created**:
+   - `PracticeRSVPScreen.js` - Player view with RSVP buttons (Attending/Maybe/Can't Attend)
+   - `PracticeOptionsScreen.js` - Coach choice between Manage vs RSVP
+   - Updated `EventTypeSelectionScreen.js` - Role-based text and routing
+
+4. **Navigation Flow Redesigned**:
+   - **Players**: Dashboard → Events → Practices → RSVP Screen (direct)
+   - **Coaches**: Dashboard → Events → Practices → Options (Manage or RSVP) → Selected Screen
+   - Added Events button to player dashboard (previously coach-only)
+
+5. **Test Data Setup**:
+   - James Breslin configured as both admin and player on Lighthouse 1893 SC
+   - Practices table cleared for clean testing
+   - Coach can create practices, player can RSVP to them
+
+#### 🔧 Current Work - Debugging Navigation
+**Issue**: Players being routed to coach ManagePracticesScreen instead of PracticeRSVPScreen
+
+**Debugging Added**:
+- Enhanced logging in `EventTypeSelectionScreen.onEnter()` - logs roleType on entry
+- Enhanced logging in `EventTypeSelectionScreen.handleEventTypeSelection()` - logs routing decision
+- Added visual console markers:
+  - `✅✅✅ PLAYER RSVP SCREEN ENTERED ✅✅✅` in PracticeRSVPScreen.onEnter()
+  - `🏈🏈🏈 COACH MANAGE SCREEN ENTERED 🏈🏈🏈` in ManagePracticesScreen.onEnter()
+- Enhanced DashboardScreen.onEnter() to clear previous state and log role setting
+
+**Root Cause Investigation**:
+- Checking if roleType is preserved through navigation chain
+- Verifying DashboardScreen → EventTypeSelectionScreen data passing
+- Ensuring screen registration in App.js is correct
+
+#### 📝 Files Modified This Session
+**Backend**:
+- `/database/schema/init.sql` - Added event_rsvps table
+- `/backend/src/controllers/EventController.h` - Added RSVP method declarations
+- `/backend/src/controllers/EventController.cpp` - Implemented RSVP endpoints with proper API usage
+
+**Frontend Screens**:
+- `/frontend/js/screens/PracticeRSVPScreen.js` - NEW: Player RSVP interface
+- `/frontend/js/screens/PracticeOptionsScreen.js` - NEW: Coach choose Manage vs RSVP
+- `/frontend/js/screens/EventTypeSelectionScreen.js` - Updated with role-based content and routing
+- `/frontend/js/screens/DashboardScreen.js` - Added player Events button, enhanced onEnter debugging
+- `/frontend/js/screens/ManagePracticesScreen.js` - Added console marker for debugging
+
+**Frontend Core**:
+- `/frontend/js/App.js` - Registered practiceOptions and practiceRSVP screens
+- `/frontend/index.html` - Added script tags for new screens
+
+#### 🎯 Next Steps
+1. **Debug roleType propagation**: Use console logs to trace where roleType gets lost/changed
+2. **Test complete flow**:
+   - Coach: Login → Coach → Lighthouse → Events → Practices → Options → Manage → Create practice
+   - Coach: Back → RSVP → See practice and RSVP as coach
+   - Player: Login → Player → Lighthouse → Events → Practices → See RSVP screen directly
+   - Player: RSVP to practice → Verify toast notification and button state change
+3. **Verify backend**: Confirm RSVP data saves to database correctly
+4. **Clean up debug logging**: Remove excessive console.log statements once working
+
+#### 🗂️ New File Structure
+```
+frontend/js/screens/
+├── LoginScreen.js
+├── RoleSwitchboardScreen.js
+├── TeamSelectionScreen.js
+├── DashboardScreen.js
+├── EventTypeSelectionScreen.js
+├── PracticeOptionsScreen.js ← NEW (coach choice screen)
+├── ManagePracticesScreen.js (coach CRUD)
+└── PracticeRSVPScreen.js ← NEW (player/coach RSVP)
+```
+
+#### 💡 Architecture Notes
+- **Role-based routing**: EventTypeSelectionScreen checks roleType and routes accordingly
+- **Screen reuse**: Both coaches and players can use PracticeRSVPScreen for attendance
+- **Separation of concerns**: Manage (CRUD) separate from RSVP (attendance)
+- **State preservation**: Critical that roleType flows through entire navigation chain
+
+#### 🧪 Test Accounts
+- **Admin/Player**: jbreslin@footballhome.org / password
+- **Team**: Lighthouse 1893 SC (id: d37eb44b-8e47-0005-9060-f0cbe96fe089)
+- **Database**: PostgreSQL, accessible via pgAdmin on localhost:5050
+
+---
+
+## 🏁 Previous Session Summary (Nov 15, 2025)
+[Previous content remains unchanged...]

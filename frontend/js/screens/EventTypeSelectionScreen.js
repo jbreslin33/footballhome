@@ -50,7 +50,7 @@ class EventTypeSelectionScreen extends Screen {
                 <!-- Navigation Bar -->
                 <nav class="navbar">
                     <div class="navbar-brand">
-                        <span class="brand-text">Football Home - Add Event</span>
+                        <span class="brand-text">Football Home - Events</span>
                     </div>
                     <div class="navbar-menu">
                         ${this.teamContext ? `<span class="navbar-context">${this.teamContext.name}</span>` : ''}
@@ -62,7 +62,7 @@ class EventTypeSelectionScreen extends Screen {
                 <main class="event-type-main">
                     <div class="event-type-header">
                         <h2>Events</h2>
-                        <p>Choose the type of event you want to manage</p>
+                        <p>Choose the type of event</p>
                     </div>
                     
                     <div class="event-type-grid">
@@ -70,26 +70,26 @@ class EventTypeSelectionScreen extends Screen {
                         <div class="event-type-card" data-event-type="practice">
                             <div class="event-card-icon">📋</div>
                             <h3>Practices</h3>
-                            <p>View, add, edit, or delete team practices</p>
+                            <p>${this.roleType === 'player' ? 'View and RSVP to team practices' : 'View, add, edit, or delete team practices'}</p>
                             <ul class="event-features">
-                                <li>View upcoming practices</li>
-                                <li>Schedule new practices</li>
-                                <li>Edit existing practices</li>
-                                <li>Manage practice details</li>
+                                ${this.roleType === 'player' 
+                                    ? '<li>View upcoming practices</li><li>RSVP to practices</li><li>See practice details</li><li>Track your attendance</li>'
+                                    : '<li>View upcoming practices</li><li>Schedule new practices</li><li>Edit existing practices</li><li>Manage practice details</li>'
+                                }
                             </ul>
-                            <button class="btn btn-primary btn-lg">Manage Practices</button>
+                            <button class="btn btn-primary btn-lg">${this.roleType === 'player' ? 'View Practices' : 'Manage Practices'}</button>
                         </div>
                         
                         <!-- Game Card -->
                         <div class="event-type-card" data-event-type="game">
                             <div class="event-card-icon">⚽</div>
                             <h3>Games</h3>
-                            <p>View, add, edit, or delete games</p>
+                            <p>${this.roleType === 'player' ? 'View game schedule and RSVP' : 'View, add, edit, or delete games'}</p>
                             <ul class="event-features">
-                                <li>View game schedule</li>
-                                <li>Schedule new games</li>
-                                <li>Edit game details</li>
-                                <li>Manage opponents</li>
+                                ${this.roleType === 'player'
+                                    ? '<li>View game schedule</li><li>RSVP to games</li><li>See opponent info</li><li>Track game results</li>'
+                                    : '<li>View game schedule</li><li>Schedule new games</li><li>Edit game details</li><li>Manage opponents</li>'
+                                }
                             </ul>
                             <button class="btn btn-primary btn-lg" disabled>Coming Soon</button>
                         </div>
@@ -98,12 +98,12 @@ class EventTypeSelectionScreen extends Screen {
                         <div class="event-type-card" data-event-type="meeting">
                             <div class="event-card-icon">💬</div>
                             <h3>Meetings</h3>
-                            <p>View, add, edit, or delete team meetings</p>
+                            <p>${this.roleType === 'player' ? 'View and RSVP to team meetings' : 'View, add, edit, or delete team meetings'}</p>
                             <ul class="event-features">
-                                <li>View meeting schedule</li>
-                                <li>Schedule new meetings</li>
-                                <li>Edit meeting details</li>
-                                <li>Manage attendees</li>
+                                ${this.roleType === 'player'
+                                    ? '<li>View meeting schedule</li><li>RSVP to meetings</li><li>See meeting agenda</li><li>Track attendance</li>'
+                                    : '<li>View meeting schedule</li><li>Schedule new meetings</li><li>Edit meeting details</li><li>Manage attendees</li>'
+                                }
                             </ul>
                             <button class="btn btn-primary btn-lg" disabled>Coming Soon</button>
                         </div>
@@ -119,6 +119,9 @@ class EventTypeSelectionScreen extends Screen {
         this.user = data?.user || this.user;
         this.teamContext = data?.teamContext || this.teamContext;
         this.roleType = data?.roleType || 'coach';
+        
+        console.log('📱 EventTypeSelectionScreen: onEnter - roleType set to:', this.roleType);
+        console.log('📱 EventTypeSelectionScreen: onEnter - full data:', data);
         
         if (!this.user) {
             console.error('📱 EventTypeSelectionScreen: No user data provided');
@@ -165,13 +168,22 @@ class EventTypeSelectionScreen extends Screen {
     
     handleEventTypeSelection(eventType) {
         console.log('📱 EventTypeSelectionScreen: Handling selection:', eventType);
+        console.log('📱 EventTypeSelectionScreen: Current roleType:', this.roleType);
         
-        // Route to appropriate screen based on event type
+        // Route to appropriate screen based on event type and role
         let targetScreen = null;
         
         switch (eventType) {
             case 'practice':
-                targetScreen = 'managePractices';
+                // Players go directly to RSVP
+                // Coaches need to choose between Manage and RSVP
+                if (this.roleType === 'player') {
+                    targetScreen = 'practiceRSVP';
+                } else {
+                    // Show coach practice options (Manage vs RSVP)
+                    targetScreen = 'practiceOptions';
+                }
+                console.log('📱 EventTypeSelectionScreen: Practice routing ->', targetScreen, '(roleType:', this.roleType, ')');
                 break;
             case 'game':
                 targetScreen = 'addGame';
@@ -186,6 +198,7 @@ class EventTypeSelectionScreen extends Screen {
         }
         
         // Navigate to the appropriate screen
+        console.log('📱 EventTypeSelectionScreen: Navigating to:', targetScreen, 'with roleType:', this.roleType);
         this.send('NAVIGATE', {
             screen: targetScreen,
             data: {

@@ -109,7 +109,13 @@ class DashboardScreen extends Screen {
     }
     
     async onEnter(data = null) {
+        console.log('📱 DashboardScreen: onEnter called with data:', data);
         await super.onEnter(data);
+        
+        // Clear any previous state
+        this.cleanupDashboardComponents();
+        this.roleSelection = null;
+        this.roleType = null;
         
         this.roleSelection = data?.roleSelection;
         
@@ -120,7 +126,7 @@ class DashboardScreen extends Screen {
         }
         
         this.roleType = this.roleSelection.roleType;
-        console.log('📱 DashboardScreen: Loading dashboard for role:', this.roleType);
+        console.log('📱 DashboardScreen: ✅ ROLE SET TO:', this.roleType, '| roleSelection:', this.roleSelection);
         
         // Simulate loading time for better UX
         setTimeout(() => {
@@ -348,19 +354,21 @@ class DashboardScreen extends Screen {
                         <p>Your team: ${teamName} ${jerseyNumber ? `(Jersey #${jerseyNumber})` : ''}</p>
                     </div>
                     
+                    <!-- Main Action -->
+                    <div class="main-action-container">
+                        <button id="eventsBtn" class="btn btn-primary btn-xl">
+                            <span class="icon">📅</span>
+                            <span class="btn-text">Events</span>
+                        </button>
+                        <p class="action-description">View and RSVP to practices, games, and meetings</p>
+                    </div>
+                    
                     <div class="player-grid">
                         <div class="player-card" data-action="my-stats">
-                            <div class="player-card-icon">📊</div>
+                            <div class="player-card-icon">�</div>
                             <h3>My Statistics</h3>
                             <p>View your performance stats</p>
                             <button class="btn btn-primary">View Stats</button>
-                        </div>
-                        
-                        <div class="player-card" data-action="schedule">
-                            <div class="player-card-icon">📅</div>
-                            <h3>Schedule</h3>
-                            <p>View upcoming games and practices</p>
-                            <button class="btn btn-primary">View Schedule</button>
                         </div>
                         
                         <div class="player-card" data-action="team-info">
@@ -420,6 +428,28 @@ class DashboardScreen extends Screen {
             logoutBtn.addEventListener('click', () => {
                 console.log('📱 DashboardScreen: Logout clicked');
                 this.send('LOGOUT');
+            });
+        }
+        
+        // Events button (for both coach and player)
+        const eventsBtn = this.element.querySelector('#eventsBtn');
+        if (eventsBtn) {
+            eventsBtn.addEventListener('click', () => {
+                console.log('📱 DashboardScreen: Events button clicked for', this.roleType);
+                
+                // Extract team context from role selection
+                const teamContext = this.roleSelection.roleData ? {
+                    id: this.roleSelection.roleData.teamId,
+                    name: this.roleSelection.roleData.teamName,
+                    club: this.roleSelection.roleData.clubName
+                } : null;
+                
+                // Navigate to EventTypeSelection screen
+                this.navigateTo('eventTypeSelection', {
+                    user: this.roleSelection.user,
+                    teamContext: teamContext,
+                    roleType: this.roleType
+                });
             });
         }
         

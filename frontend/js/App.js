@@ -103,7 +103,9 @@ class App {
                     roleSwitchboard: RoleSwitchboardScreen,
                     teamSelection: TeamSelectionScreen,
                     eventTypeSelection: EventTypeSelectionScreen,
+                    practiceOptions: PracticeOptionsScreen,
                     managePractices: ManagePracticesScreen,
+                    practiceRSVP: PracticeRSVPScreen,
                     dashboard: DashboardScreen
                 },
                 initial: initialScreen,

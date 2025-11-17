@@ -66,6 +66,7 @@ class ManagePracticesScreen extends Screen {
     }
     
     async onEnter(data) {
+        console.log('📱 ManagePracticesScreen: 🏈🏈🏈 COACH MANAGE SCREEN ENTERED 🏈🏈🏈');
         console.log('📱 ManagePracticesScreen: Entering with data:', data);
         console.log('📱 ManagePracticesScreen: Container:', this.container);
         console.log('📱 ManagePracticesScreen: Container display before:', this.container ? this.container.style.display : 'no container');
