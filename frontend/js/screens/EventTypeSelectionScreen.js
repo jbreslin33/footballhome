@@ -171,7 +171,7 @@ class EventTypeSelectionScreen extends Screen {
         
         switch (eventType) {
             case 'practice':
-                targetScreen = 'addPractice';
+                targetScreen = 'managePractices';
                 break;
             case 'game':
                 targetScreen = 'addGame';

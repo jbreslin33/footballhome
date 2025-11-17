@@ -1,12 +1,12 @@
 /**
- * Add Practice Screen
- * Handles creating new practice events
+ * Manage Practices Screen
+ * Handles creating, editing, and deleting practice events
  */
 
-class AddPracticeScreen extends Screen {
+class ManagePracticesScreen extends Screen {
     constructor(container, props = {}) {
         super(container, props, {
-            screenName: 'addPractice'
+            screenName: 'managePractices'
         });
         
         this.authService = props.authService || new AuthService();
@@ -30,7 +30,7 @@ class AddPracticeScreen extends Screen {
                         await this.loadVenues();
                         await this.loadPractices();
                     },
-                    onExit: () => console.log('📱 AddPracticeScreen: Ready')
+                    onExit: () => console.log('📱 ManagePracticesScreen: Ready')
                 },
                 editing: {
                     on: {
@@ -38,7 +38,7 @@ class AddPracticeScreen extends Screen {
                         CANCEL: 'navigating'
                     },
                     onEntry: () => this.setupForm(),
-                    onExit: () => console.log('📱 AddPracticeScreen: Exiting edit mode')
+                    onExit: () => console.log('📱 ManagePracticesScreen: Exiting edit mode')
                 },
                 saving: {
                     on: {
@@ -46,20 +46,20 @@ class AddPracticeScreen extends Screen {
                         ERROR: 'editing'
                     },
                     onEntry: () => this.savePractice(),
-                    onExit: () => console.log('📱 AddPracticeScreen: Save complete')
+                    onExit: () => console.log('📱 ManagePracticesScreen: Save complete')
                 },
                 error: {
                     on: {
                         RETRY: 'loading'
                     },
-                    onEntry: () => console.log('📱 AddPracticeScreen: Error loading venues')
+                    onEntry: () => console.log('📱 ManagePracticesScreen: Error loading venues')
                 },
                 navigating: {
                     on: {
                         COMPLETE: 'loading'
                     },
                     onEntry: () => {
-                        console.log('📱 AddPracticeScreen: Navigating back');
+                        console.log('📱 ManagePracticesScreen: Navigating back');
                         this.navigateBack();
                     }
                 }
@@ -68,15 +68,15 @@ class AddPracticeScreen extends Screen {
     }
     
     async onEnter(data) {
-        console.log('📱 AddPracticeScreen: Entering with data:', data);
-        console.log('📱 AddPracticeScreen: Container:', this.container);
-        console.log('📱 AddPracticeScreen: Container display before:', this.container ? this.container.style.display : 'no container');
+        console.log('📱 ManagePracticesScreen: Entering with data:', data);
+        console.log('📱 ManagePracticesScreen: Container:', this.container);
+        console.log('📱 ManagePracticesScreen: Container display before:', this.container ? this.container.style.display : 'no container');
         
         // Call parent onEnter
         await super.onEnter(data);
         
-        console.log('📱 AddPracticeScreen: Container display after super:', this.container ? this.container.style.display : 'no container');
-        console.log('📱 AddPracticeScreen: Element:', this.element);
+        console.log('📱 ManagePracticesScreen: Container display after super:', this.container ? this.container.style.display : 'no container');
+        console.log('📱 ManagePracticesScreen: Element:', this.element);
         
         // Store context from navigation
         this.user = data.user;
@@ -88,7 +88,7 @@ class AddPracticeScreen extends Screen {
     }
     
     async loadVenues() {
-        console.log('📱 AddPracticeScreen: Loading venues...');
+        console.log('📱 ManagePracticesScreen: Loading venues...');
         
         try {
             const response = await this.authService.request('/api/venues', {
@@ -97,7 +97,7 @@ class AddPracticeScreen extends Screen {
             
             if (response.success) {
                 this.venues = response.data || [];
-                console.log('📱 AddPracticeScreen: Loaded', this.venues.length, 'venues');
+                console.log('📱 ManagePracticesScreen: Loaded', this.venues.length, 'venues');
                 
                 // Re-render to update the dropdown with venues
                 const venueSelect = this.element.querySelector('#venueId');
@@ -118,19 +118,19 @@ class AddPracticeScreen extends Screen {
                 
                 this.send('READY');
             } else {
-                console.error('📱 AddPracticeScreen: Failed to load venues:', response.message);
+                console.error('📱 ManagePracticesScreen: Failed to load venues:', response.message);
                 this.venues = [];
                 this.send('READY'); // Continue anyway with empty venues
             }
         } catch (error) {
-            console.error('📱 AddPracticeScreen: Error loading venues:', error);
+            console.error('📱 ManagePracticesScreen: Error loading venues:', error);
             this.venues = [];
             this.send('READY'); // Continue anyway with empty venues
         }
     }
     
     async loadPractices() {
-        console.log('📱 AddPracticeScreen: Loading practices...');
+        console.log('📱 ManagePracticesScreen: Loading practices...');
         
         try {
             const response = await this.authService.request(`/api/events/${this.teamContext.id}`, {
@@ -146,16 +146,16 @@ class AddPracticeScreen extends Screen {
                     return event.type === 'training' && eventDate >= now;
                 }).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort by date ascending
                 
-                console.log('📱 AddPracticeScreen: Loaded', this.practices.length, 'future practices from', response.data.length, 'total events');
+                console.log('📱 ManagePracticesScreen: Loaded', this.practices.length, 'future practices from', response.data.length, 'total events');
                 
                 // Update the practices list in the UI
                 this.updatePracticesList();
             } else {
-                console.error('📱 AddPracticeScreen: Failed to load practices:', response.message);
+                console.error('📱 ManagePracticesScreen: Failed to load practices:', response.message);
             }
             
         } catch (error) {
-            console.error('📱 AddPracticeScreen: Error loading practices:', error);
+            console.error('📱 ManagePracticesScreen: Error loading practices:', error);
             // Don't fail - practices list is optional
             this.practices = [];
         }
@@ -248,7 +248,7 @@ class AddPracticeScreen extends Screen {
     }
     
     editPractice(practiceId) {
-        console.log('📱 AddPracticeScreen: Editing practice:', practiceId);
+        console.log('📱 ManagePracticesScreen: Editing practice:', practiceId);
         
         // Find the practice in the list
         const practice = this.practices.find(p => p.id === practiceId);
@@ -297,7 +297,7 @@ class AddPracticeScreen extends Screen {
     }
     
     async deletePractice(practiceId) {
-        console.log('📱 AddPracticeScreen: Deleting practice:', practiceId);
+        console.log('📱 ManagePracticesScreen: Deleting practice:', practiceId);
         
         // Confirm deletion
         if (!confirm('Are you sure you want to delete this practice?')) {
@@ -310,7 +310,7 @@ class AddPracticeScreen extends Screen {
             });
             
             if (result.success) {
-                console.log('📱 AddPracticeScreen: Practice deleted successfully');
+                console.log('📱 ManagePracticesScreen: Practice deleted successfully');
                 
                 // Remove from local list
                 this.practices = this.practices.filter(p => p.id !== practiceId);
@@ -330,13 +330,13 @@ class AddPracticeScreen extends Screen {
             }
             
         } catch (error) {
-            console.error('📱 AddPracticeScreen: Error deleting practice:', error);
+            console.error('📱 ManagePracticesScreen: Error deleting practice:', error);
             alert('Error deleting practice: ' + error.message);
         }
     }
     
     render() {
-        console.log('📱 AddPracticeScreen: Rendering');
+        console.log('📱 ManagePracticesScreen: Rendering');
         
         const html = `
             <div class="screen add-practice-screen" style="background: white; min-height: 100vh;">
@@ -453,14 +453,14 @@ class AddPracticeScreen extends Screen {
     </div>
         `;
         
-        console.log('📱 AddPracticeScreen: HTML length:', html.length);
-        console.log('📱 AddPracticeScreen: HTML preview:', html.substring(0, 200));
+        console.log('📱 ManagePracticesScreen: HTML length:', html.length);
+        console.log('📱 ManagePracticesScreen: HTML preview:', html.substring(0, 200));
         
         return html;
     }
     
     setupForm() {
-        console.log('📱 AddPracticeScreen: Setting up form');
+        console.log('📱 ManagePracticesScreen: Setting up form');
         
         const form = this.element.querySelector('#practiceForm');
         const cancelBtn = this.element.querySelector('#cancelBtn');
@@ -483,7 +483,7 @@ class AddPracticeScreen extends Screen {
         if (form) {
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
-                console.log('📱 AddPracticeScreen: Form submitted');
+                console.log('📱 ManagePracticesScreen: Form submitted');
                 this.send('SAVE');
             });
         }
@@ -491,7 +491,7 @@ class AddPracticeScreen extends Screen {
         // Cancel button
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
-                console.log('📱 AddPracticeScreen: Cancel clicked');
+                console.log('📱 ManagePracticesScreen: Cancel clicked');
                 this.send('CANCEL');
             });
         }
@@ -499,14 +499,14 @@ class AddPracticeScreen extends Screen {
         // Back button
         if (backBtn) {
             backBtn.addEventListener('click', () => {
-                console.log('📱 AddPracticeScreen: Back clicked');
+                console.log('📱 ManagePracticesScreen: Back clicked');
                 this.send('CANCEL');
             });
         }
     }
     
     async savePractice() {
-        console.log('📱 AddPracticeScreen: Saving practice...');
+        console.log('📱 ManagePracticesScreen: Saving practice...');
         
         try {
             const form = this.element.querySelector('#practiceForm');
@@ -533,7 +533,7 @@ class AddPracticeScreen extends Screen {
                 notes: formData.get('notes') || null
             };
             
-            console.log('📱 AddPracticeScreen: Practice data:', practiceData);
+            console.log('📱 ManagePracticesScreen: Practice data:', practiceData);
             
             // Determine if we're creating or updating
             const isUpdate = this.editingPracticeId !== null;
@@ -547,7 +547,7 @@ class AddPracticeScreen extends Screen {
             });
             
             if (result.success) {
-                console.log('📱 AddPracticeScreen: Practice saved successfully');
+                console.log('📱 ManagePracticesScreen: Practice saved successfully');
                 
                 // Clear editing state
                 this.editingPracticeId = null;
@@ -577,20 +577,20 @@ class AddPracticeScreen extends Screen {
                 
                 this.send('SUCCESS');
             } else {
-                console.error('📱 AddPracticeScreen: Failed to save practice:', result.message);
+                console.error('📱 ManagePracticesScreen: Failed to save practice:', result.message);
                 alert('Error saving practice: ' + result.message);
                 this.send('ERROR');
             }
             
         } catch (error) {
-            console.error('📱 AddPracticeScreen: Error saving practice:', error);
+            console.error('📱 ManagePracticesScreen: Error saving practice:', error);
             alert('Error saving practice: ' + error.message);
             this.send('ERROR');
         }
     }
     
     navigateBack() {
-        console.log('📱 AddPracticeScreen: Navigating back to dashboard');
+        console.log('📱 ManagePracticesScreen: Navigating back to dashboard');
         
         this.emit('navigate', {
             screen: 'dashboard',
@@ -605,6 +605,6 @@ class AddPracticeScreen extends Screen {
     }
     
     onExit() {
-        console.log('📱 AddPracticeScreen: Exiting');
+        console.log('📱 ManagePracticesScreen: Exiting');
     }
 }
