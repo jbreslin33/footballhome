@@ -1,7 +1,7 @@
 # Football Home - Object-Oriented Architecture Progress
 
-## 🎯 Current Status (Nov 17, 2025)
-Working on **Player RSVP Feature** - practices now create and display for coaches, need to verify RSVP screen works for both players and coaches.
+## 🎯 Current Status (Nov 18, 2025)
+**Player RSVP Feature - Debug Phase**: Practices create and display correctly in ManagePracticesScreen (coach view). PracticeRSVPScreen (player view) shows "No upcoming practices" - debugging filtering logic to identify data contract or date parsing issue.
 
 ## ✅ Major Accomplishments
 
@@ -161,9 +161,88 @@ Screen Action → Screen StateMachine → Screen.navigateTo()
 - **Event timing**: Uses setTimeout(0) for proper event listener setup
 
 ---
-**Last Updated**: November 17, 2025 (Evening Session)
-**Current Work**: Player RSVP Feature - Practice creation/display working, RSVP screen needs debugging
-**Status**: Practices create and display for coaches, need to verify RSVP screen shows practices
+**Last Updated**: November 18, 2025
+**Current Work**: Player RSVP Feature - Debugging PracticeRSVPScreen filtering logic
+**Status**: ManagePracticesScreen works ✅, PracticeRSVPScreen needs fix 🔴
+**Next Action**: Check debug logs in PracticeRSVPScreen to see why filtering fails
+
+## 🎯 Session Handoff (Nov 18, 2025)
+
+### What's Working ✅
+1. **Practice Creation**: Coaches can create practices via ManagePracticesScreen
+2. **Practice Display (Coach)**: Practices show correctly in ManagePracticesScreen sidebar
+3. **Screen Visibility**: Only one screen visible at a time (fixed bug)
+4. **Data Contract**: Backend returns `event_date`, `duration_minutes`, `type` consistently
+5. **Database**: 2 test practices exist and are queryable
+6. **Navigation**: Player routing goes to PracticeRSVP (not ManagePractices) ✅
+
+### What's Broken 🔴
+1. **PracticeRSVPScreen**: Shows "No upcoming practices" for both player and coach
+   - Same API endpoint as ManagePracticesScreen (which works)
+   - Debug logging added but not yet tested
+   - Likely issue: Date parsing or filtering logic in loadPractices()
+
+### Immediate Next Steps 🚀
+1. **Rebuild and Test**:
+   ```bash
+   ./start.sh  # Rebuild frontend with new debug logs
+   # Hard refresh browser (Ctrl+Shift+R)
+   # Login as player → Events → Practices
+   # Check console for debug output
+   ```
+
+2. **Compare Working vs Broken**:
+   - ManagePracticesScreen.loadPractices() (lines 132-180) ← WORKS
+   - PracticeRSVPScreen.loadPractices() (lines 75-105) ← BROKEN
+   - Look for differences in:
+     - Date parsing: `new Date(event.event_date)`
+     - Type filtering: `event.type === 'training'`
+     - Time comparison: `eventDateTime > now`
+
+3. **Fix and Verify**:
+   - Once practices display in PracticeRSVPScreen
+   - Test RSVP button clicks
+   - Verify POST /api/events/:eventId/rsvp endpoint
+   - Check RSVP saves to event_rsvps table
+
+### Debug Checklist 📋
+- [x] Coach can create practice
+- [x] Practice appears in ManagePracticesScreen (coach)
+- [x] Player routing goes to PracticeRSVP screen
+- [x] Screen visibility bug fixed
+- [ ] PracticeRSVPScreen shows practices ← **CURRENT BLOCKER**
+- [ ] RSVP buttons functional
+- [ ] RSVP saves correctly
+- [ ] RSVP status displays
+
+### Key File Locations 📍
+**Problem Area**:
+- `frontend/js/screens/PracticeRSVPScreen.js:75-105` - loadPractices() method with debug logs
+- `frontend/js/screens/ManagePracticesScreen.js:132-180` - Working reference implementation
+
+**Backend**:
+- `backend/src/controllers/EventController.cpp:157-210` - GET /api/events/:teamId endpoint
+- Returns: `{id, title, event_date, duration_minutes, location, type}`
+
+**Database**:
+- Table: `events` (has 2 test practices)
+- Query to verify data:
+  ```sql
+  SELECT id, title, event_date, duration_minutes, event_type_id 
+  FROM events 
+  WHERE event_type_id = (SELECT id FROM event_types WHERE name = 'training')
+  ORDER BY event_date;
+  ```
+
+### Environment Info 💻
+- **Docker**: Use `./start.sh` to rebuild (includes --no-cache)
+- **Database**: PostgreSQL via docker-compose, pgAdmin on localhost:5050
+- **Frontend**: Nginx serving on localhost:80
+- **Backend**: C++ service on localhost:8080
+- **Test Account**: jbreslin@footballhome.org / password (admin + player roles)
+- **Test Team**: Lighthouse 1893 SC
+
+---
 
 ## 🎯 Evening Session Progress (Nov 17, 2025)
 

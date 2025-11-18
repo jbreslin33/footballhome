@@ -53,9 +53,16 @@ class BaseRoleStateMachine extends StateMachine {
                 selectingEventType: {
                     enter: () => {
                         console.log(`🎭 ${roleType}StateMachine: Selecting event type`);
+                        // Trigger navigation to event type selection screen
+                        this.navigateToScreen('eventTypeSelection', {
+                            roleType: this.roleType,
+                            user: this.user,
+                            teamContext: this.teamContext
+                        });
                     },
                     on: {
                         EVENT_TYPE_SELECTED: 'handleEventType',
+                        NAVIGATE_TO_EVENTS: 'selectingEventType',  // Allow re-navigation
                         BACK: 'dashboard'
                     }
                 },
