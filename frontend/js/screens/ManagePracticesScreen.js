@@ -20,8 +20,16 @@ class ManagePracticesScreen extends Screen {
         
         // Create state machine after initialization
         this.stateMachine = new StateMachine({
-            initial: 'loading',
+            initial: 'initializing',
             states: {
+                initializing: {
+                    on: {
+                        LOAD: 'loading',
+                        ERROR: 'error'
+                    },
+                    onEntry: () => console.log('📱 ManagePracticesScreen: Waiting for context'),
+                    onExit: () => console.log('📱 ManagePracticesScreen: Context received')
+                },
                 loading: {
                     on: {
                         READY: 'editing',
@@ -82,8 +90,8 @@ class ManagePracticesScreen extends Screen {
         this.teamContext = data.teamContext;
         this.roleType = data.roleType;
         
-        // Start loading (will load venues)
-        // Don't send READY yet - will be sent after venues load
+        // Now that we have context, start loading
+        this.send('LOAD');
     }
     
     async loadVenues() {

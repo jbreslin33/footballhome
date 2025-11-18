@@ -17,8 +17,16 @@ class PracticeRSVPScreen extends Screen {
         
         // Create state machine
         this.stateMachine = new StateMachine({
-            initial: 'loading',
+            initial: 'initializing',
             states: {
+                initializing: {
+                    on: {
+                        LOAD: 'loading',
+                        ERROR: 'error'
+                    },
+                    onEntry: () => console.log('📱 PracticeRSVPScreen: Waiting for context'),
+                    onExit: () => console.log('📱 PracticeRSVPScreen: Context received, loading practices')
+                },
                 loading: {
                     on: {
                         READY: 'viewing',
@@ -70,6 +78,9 @@ class PracticeRSVPScreen extends Screen {
         this.user = data.user;
         this.teamContext = data.teamContext;
         this.roleType = data.roleType;
+        
+        // Now that we have context, trigger loading
+        this.send('LOAD');
     }
     
     async loadPractices() {
@@ -208,7 +219,7 @@ class PracticeRSVPScreen extends Screen {
     
     async saveRSVP(data) {
         const { practiceId, status } = data;
-        console.log('📱 PracticeRSVPScreen: Saving RSVP:', practiceId, status);
+        console.log('📱 PracticeRSVPScreen: Saving RSVP:', practiceId, status, 'roleType:', this.roleType);
         
         try {
             const response = await this.authService.request(`/api/events/${practiceId}/rsvp`, {
@@ -217,7 +228,8 @@ class PracticeRSVPScreen extends Screen {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    player_id: this.user.id,
+                    user_id: this.user.id,
+                    role_type: this.roleType,
                     status: status,
                     notes: ''
                 })

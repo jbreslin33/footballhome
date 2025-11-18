@@ -460,12 +460,18 @@ Response EventController::handleCreateRSVP(const Request& request) {
         std::string event_id = extractEventIdFromPath(request.getPath());
         
         // Parse JSON body
-        std::string player_id = parseJSON(body, "player_id");
+        std::string user_id = parseJSON(body, "user_id");
+        std::string role_type = parseJSON(body, "role_type");
         std::string status = parseJSON(body, "status");
         std::string notes = parseJSON(body, "notes");
         
-        if (event_id.empty() || player_id.empty() || status.empty()) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing required fields: event_id, player_id, status"));
+        if (event_id.empty() || user_id.empty() || role_type.empty() || status.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing required fields: event_id, user_id, role_type, status"));
+        }
+        
+        // Validate role_type
+        if (role_type != "player" && role_type != "coach" && role_type != "parent") {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid role_type. Must be: player, coach, or parent"));
         }
         
         // Validate status
@@ -473,26 +479,30 @@ Response EventController::handleCreateRSVP(const Request& request) {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid status. Must be: attending, not_attending, or maybe"));
         }
         
+        // Determine the correct table based on role_type
+        std::string table_name = role_type + "_rsvps";
+        std::string id_column = role_type + "_id";
+        
         // Check if RSVP already exists
-        std::string check_query = "SELECT id FROM event_rsvps WHERE event_id = $1 AND player_id = $2";
-        pqxx::result existing = db_->query(check_query, {event_id, player_id});
+        std::string check_query = "SELECT id FROM " + table_name + " WHERE event_id = $1 AND " + id_column + " = $2";
+        pqxx::result existing = db_->query(check_query, {event_id, user_id});
         
         if (existing.empty()) {
             // Insert new RSVP
             std::string rsvp_id = generateUUID();
-            std::string insert_query = "INSERT INTO event_rsvps (id, event_id, player_id, status, notes, response_date) "
+            std::string insert_query = "INSERT INTO " + table_name + " (id, event_id, " + id_column + ", status, notes, response_date) "
                                        "VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)";
-            db_->query(insert_query, {rsvp_id, event_id, player_id, status, notes});
-            std::cout << "✅ RSVP created successfully" << std::endl;
+            db_->query(insert_query, {rsvp_id, event_id, user_id, status, notes});
+            std::cout << "✅ " << role_type << " RSVP created successfully" << std::endl;
         } else {
             // Update existing RSVP
-            std::string update_query = "UPDATE event_rsvps SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP "
-                                       "WHERE event_id = $3 AND player_id = $4";
-            db_->query(update_query, {status, notes, event_id, player_id});
-            std::cout << "✅ RSVP updated successfully" << std::endl;
+            std::string update_query = "UPDATE " + table_name + " SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP "
+                                       "WHERE event_id = $3 AND " + id_column + " = $4";
+            db_->query(update_query, {status, notes, event_id, user_id});
+            std::cout << "✅ " << role_type << " RSVP updated successfully" << std::endl;
         }
         
-        std::string data = "{\"event_id\": \"" + event_id + "\", \"player_id\": \"" + player_id + "\", \"status\": \"" + status + "\"}";
+        std::string data = "{\"event_id\": \"" + event_id + "\", \"user_id\": \"" + user_id + "\", \"role_type\": \"" + role_type + "\", \"status\": \"" + status + "\"}";
         return Response(HttpStatus::OK, createJSONResponse(true, "RSVP saved successfully", data));
         
     } catch (const std::exception& e) {
@@ -509,39 +519,70 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing event_id"));
         }
         
-        std::cout << "📋 Getting RSVPs for event: " << event_id << std::endl;
+        // Check for role_type query parameter (optional)
+        std::string role_type = "";
+        size_t query_pos = request.getPath().find("?role_type=");
+        if (query_pos != std::string::npos) {
+            role_type = request.getPath().substr(query_pos + 11);
+            // Remove any trailing parameters
+            size_t ampersand = role_type.find("&");
+            if (ampersand != std::string::npos) {
+                role_type = role_type.substr(0, ampersand);
+            }
+        }
         
-        // Get RSVPs with player names
-        std::string query = "SELECT er.id, er.event_id, er.player_id, er.status, er.notes, er.response_date, "
-                           "u.first_name, u.last_name, u.email "
-                           "FROM event_rsvps er "
-                           "JOIN users u ON er.player_id = u.id "
-                           "WHERE er.event_id = $1 "
-                           "ORDER BY er.response_date DESC";
-        
-        pqxx::result result = db_->query(query, {event_id});
+        std::cout << "📋 Getting RSVPs for event: " << event_id;
+        if (!role_type.empty()) {
+            std::cout << " (role: " << role_type << ")";
+        }
+        std::cout << std::endl;
         
         std::ostringstream json_array;
         json_array << "[";
+        bool first = true;
         
-        for (size_t i = 0; i < result.size(); ++i) {
-            if (i > 0) json_array << ",";
+        // If role_type specified, query only that table, otherwise query all tables
+        std::vector<std::string> roles_to_query;
+        if (!role_type.empty() && (role_type == "player" || role_type == "coach" || role_type == "parent")) {
+            roles_to_query.push_back(role_type);
+        } else {
+            roles_to_query = {"player", "coach", "parent"};
+        }
+        
+        for (const auto& role : roles_to_query) {
+            std::string table_name = role + "_rsvps";
+            std::string id_column = role + "_id";
             
-            json_array << "{"
-                      << "\"id\": \"" << result[i]["id"].c_str() << "\", "
-                      << "\"event_id\": \"" << result[i]["event_id"].c_str() << "\", "
-                      << "\"player_id\": \"" << result[i]["player_id"].c_str() << "\", "
-                      << "\"status\": \"" << result[i]["status"].c_str() << "\", "
-                      << "\"notes\": \"" << (result[i]["notes"].is_null() ? "" : result[i]["notes"].c_str()) << "\", "
-                      << "\"response_date\": \"" << result[i]["response_date"].c_str() << "\", "
-                      << "\"player_name\": \"" << result[i]["first_name"].c_str() << " " << result[i]["last_name"].c_str() << "\", "
-                      << "\"player_email\": \"" << result[i]["email"].c_str() << "\""
-                      << "}";
+            std::string query = "SELECT r.id, r.event_id, r." + id_column + " as user_id, r.status, r.notes, r.response_date, "
+                               "u.first_name, u.last_name, u.email "
+                               "FROM " + table_name + " r "
+                               "JOIN users u ON r." + id_column + " = u.id "
+                               "WHERE r.event_id = $1 "
+                               "ORDER BY r.response_date DESC";
+            
+            pqxx::result result = db_->query(query, {event_id});
+            
+            for (size_t i = 0; i < result.size(); ++i) {
+                if (!first) json_array << ",";
+                first = false;
+                
+                json_array << "{"
+                          << "\"id\": \"" << result[i]["id"].c_str() << "\", "
+                          << "\"event_id\": \"" << result[i]["event_id"].c_str() << "\", "
+                          << "\"user_id\": \"" << result[i]["user_id"].c_str() << "\", "
+                          << "\"role_type\": \"" << role << "\", "
+                          << "\"status\": \"" << result[i]["status"].c_str() << "\", "
+                          << "\"notes\": \"" << (result[i]["notes"].is_null() ? "" : result[i]["notes"].c_str()) << "\", "
+                          << "\"response_date\": \"" << result[i]["response_date"].c_str() << "\", "
+                          << "\"user_name\": \"" << result[i]["first_name"].c_str() << " " << result[i]["last_name"].c_str() << "\", "
+                          << "\"user_email\": \"" << result[i]["email"].c_str() << "\""
+                          << "}";
+            }
         }
         
         json_array << "]";
         
-        std::cout << "✅ Found " << result.size() << " RSVPs for event" << std::endl;
+        std::cout << "✅ RSVPs retrieved successfully" << std::endl;
         
         return Response(HttpStatus::OK, createJSONResponse(true, "RSVPs retrieved successfully", json_array.str()));
         

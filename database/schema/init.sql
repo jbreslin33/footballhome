@@ -717,22 +717,56 @@ CREATE TABLE matches (
 );
 
 -- Event RSVPs (player responses to practices/events)
-CREATE TABLE event_rsvps (
+-- Player RSVPs (for players attending events)
+CREATE TABLE player_rsvps (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     player_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL CHECK (status IN ('attending', 'not_attending', 'maybe')),
     response_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,                                -- Player's optional comment
+    notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(event_id, player_id)               -- One RSVP per player per event
+    UNIQUE(event_id, player_id)
 );
 
--- Index for quick RSVP lookups
-CREATE INDEX idx_event_rsvps_event ON event_rsvps(event_id);
-CREATE INDEX idx_event_rsvps_player ON event_rsvps(player_id);
-CREATE INDEX idx_event_rsvps_status ON event_rsvps(status);
+CREATE INDEX idx_player_rsvps_event ON player_rsvps(event_id);
+CREATE INDEX idx_player_rsvps_player ON player_rsvps(player_id);
+CREATE INDEX idx_player_rsvps_status ON player_rsvps(status);
+
+-- Coach RSVPs (for coaches attending events)
+CREATE TABLE coach_rsvps (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    coach_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('attending', 'not_attending', 'maybe')),
+    response_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(event_id, coach_id)
+);
+
+CREATE INDEX idx_coach_rsvps_event ON coach_rsvps(event_id);
+CREATE INDEX idx_coach_rsvps_coach ON coach_rsvps(coach_id);
+CREATE INDEX idx_coach_rsvps_status ON coach_rsvps(status);
+
+-- Parent RSVPs (for parents attending events)
+CREATE TABLE parent_rsvps (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    parent_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('attending', 'not_attending', 'maybe')),
+    response_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(event_id, parent_id)
+);
+
+CREATE INDEX idx_parent_rsvps_event ON parent_rsvps(event_id);
+CREATE INDEX idx_parent_rsvps_parent ON parent_rsvps(parent_id);
+CREATE INDEX idx_parent_rsvps_status ON parent_rsvps(status);
 
 -- Match Officials (referees assigned to matches)
 CREATE TABLE match_officials (
