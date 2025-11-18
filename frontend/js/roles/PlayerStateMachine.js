@@ -25,10 +25,11 @@ class PlayerStateMachine extends BaseRoleStateMachine {
      * Add player-specific states to the state machine
      */
     addPlayerStates() {
-        // Add state for when player selects RSVP option
-        this.states.selectingPracticeOption = {
+        // Add state for practice options screen (player only sees RSVP)
+        this.states.practiceOptions = {
             enter: () => {
                 console.log('⚽ PlayerStateMachine: At practice options screen');
+                this.navigateToScreen('practiceOptions');
             },
             on: {
                 RSVP_SELECTED: 'viewingPractices',
@@ -46,7 +47,7 @@ class PlayerStateMachine extends BaseRoleStateMachine {
             on: {
                 SUBMIT_RSVP: 'submittingRSVP',
                 VIEW_DETAILS: 'viewingPracticeDetails',
-                BACK: 'selectingPracticeOption'
+                BACK: 'practiceOptions'
             }
         };
         
@@ -94,18 +95,13 @@ class PlayerStateMachine extends BaseRoleStateMachine {
         this.states.handleEventType = {
             enter: (eventType) => {
                 console.log('⚽ PlayerStateMachine: Handling event type:', eventType);
-                // Player goes to PracticeOptions (shows RSVP button only)
+                // Player goes to practiceOptions state
                 if (eventType === 'practice') {
-                    this.send('NAVIGATE', {
-                        targetScreen: 'practiceOptions',
-                        eventType,
-                        callback: (navData) => {
-                            this.navigateToScreen('practiceOptions', { eventType });
-                        }
-                    });
+                    this.send('NAVIGATE_TO_OPTIONS');
                 }
             },
             on: {
+                NAVIGATE_TO_OPTIONS: 'practiceOptions',
                 NAVIGATE: 'navigating',
                 BACK: 'selectingEventType'
             }
