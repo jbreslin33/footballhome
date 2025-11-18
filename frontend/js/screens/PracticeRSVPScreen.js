@@ -79,6 +79,18 @@ class PracticeRSVPScreen extends Screen {
         this.teamContext = data.teamContext;
         this.roleType = data.roleType;
         
+        // Check if we have required context
+        if (!this.teamContext) {
+            console.error('📱 PracticeRSVPScreen: ❌ No team context provided!');
+            console.error('📱 PracticeRSVPScreen: Data received:', data);
+            this.showError('No team selected. Please go back and select a team.');
+            this.send('ERROR');
+            return;
+        }
+        
+        // Set up event listeners for back button
+        this.setupForm();
+        
         // Now that we have context, trigger loading
         this.send('LOAD');
     }
@@ -274,6 +286,28 @@ class PracticeRSVPScreen extends Screen {
         toast.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #ef4444; color: white; padding: 1rem 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-weight: 500;';
         document.body.appendChild(toast);
         setTimeout(() => document.body.removeChild(toast), 3000);
+    }
+    
+    showError(message) {
+        const practicesList = this.element.querySelector('#practicesList');
+        if (practicesList) {
+            practicesList.innerHTML = `
+                <div style="text-align: center; padding: 3rem; background: #fee2e2; border: 2px solid #ef4444; border-radius: 8px; color: #991b1b;">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                    <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Error</h3>
+                    <p>${message}</p>
+                    <button id="errorBackBtn" class="btn btn-primary" style="margin-top: 1rem; padding: 0.75rem 2rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">Go Back</button>
+                </div>
+            `;
+            
+            // Set up back button
+            const backBtn = this.element.querySelector('#errorBackBtn');
+            if (backBtn) {
+                backBtn.addEventListener('click', () => {
+                    this.navigateBack();
+                });
+            }
+        }
     }
     
     render() {

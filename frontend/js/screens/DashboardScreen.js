@@ -116,6 +116,7 @@ class DashboardScreen extends Screen {
         this.cleanupDashboardComponents();
         this.roleSelection = null;
         this.roleType = null;
+        this.teamContext = null;
         
         this.roleSelection = data?.roleSelection;
         
@@ -126,7 +127,26 @@ class DashboardScreen extends Screen {
         }
         
         this.roleType = this.roleSelection.roleType;
+        
+        // Extract team context - check both direct teamContext and from roleData
+        if (data?.teamContext) {
+            this.teamContext = data.teamContext;
+        } else if (this.roleSelection.roleData) {
+            this.teamContext = {
+                id: this.roleSelection.roleData.teamId,
+                name: this.roleSelection.roleData.teamName,
+                club: this.roleSelection.roleData.clubName
+            };
+        }
+        
         console.log('📱 DashboardScreen: ✅ ROLE SET TO:', this.roleType, '| roleSelection:', this.roleSelection);
+        console.log('📱 DashboardScreen: ✅ TEAM CONTEXT:', this.teamContext);
+        
+        // Update role state machine with team context immediately
+        if (window.roleStateMachine && this.teamContext) {
+            window.roleStateMachine.updateTeamContext(this.teamContext);
+            console.log('📱 DashboardScreen: ✅ Updated role state machine with team context:', this.teamContext);
+        }
         
         // Simulate loading time for better UX
         setTimeout(() => {
@@ -186,20 +206,18 @@ class DashboardScreen extends Screen {
             this.dashboardComponents.coachDashboard.unmount();
         }
         
-        // Extract team context from role selection
-        const teamContext = this.roleSelection.roleData ? {
-            id: this.roleSelection.roleData.teamId,
-            name: this.roleSelection.roleData.teamName,
-            club: this.roleSelection.roleData.clubName
-        } : null;
+        // Use stored team context
+        const teamContext = this.teamContext;
         
-        // Store team context for role state machine
-        this.teamContext = teamContext;
+        if (!teamContext) {
+            console.error('📱 DashboardScreen: No team context available for coach dashboard');
+            return;
+        }
         
-        // Update role state machine with team context
+        // Store team context for role state machine (redundant but safe)
         if (window.roleStateMachine && teamContext) {
             window.roleStateMachine.updateTeamContext(teamContext);
-            console.log('📱 DashboardScreen: Updated role state machine with team context:', teamContext);
+            console.log('📱 DashboardScreen: Confirmed role state machine has team context:', teamContext);
         }
         
         // Create CoachDashboard component

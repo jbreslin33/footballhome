@@ -1,6 +1,8 @@
 /**
  * PracticeOptionsScreen - Choose between managing or RSVPing to practices
- * Only for coaches - players go directly to RSVP
+ * Shows different options based on role:
+ * - Coaches: Can see both Manage and RSVP options
+ * - Players: Only see RSVP option (but still get to click through)
  */
 class PracticeOptionsScreen extends Screen {
     constructor(container, props = {}) {
@@ -38,6 +40,8 @@ class PracticeOptionsScreen extends Screen {
     }
     
     render() {
+        const canManage = this.roleType === 'coach' || this.roleType === 'admin';
+        
         return `
             <div class="practice-options-screen">
                 <!-- Navigation Bar -->
@@ -55,11 +59,12 @@ class PracticeOptionsScreen extends Screen {
                 <main class="practice-options-main">
                     <div class="practice-options-header">
                         <h2>Practices</h2>
-                        <p>What would you like to do?</p>
+                        <p>${canManage ? 'What would you like to do?' : 'View and RSVP to practices'}</p>
                     </div>
                     
-                    <div class="practice-options-grid">
-                        <!-- Manage Practices Card -->
+                    <div class="practice-options-grid ${!canManage ? 'single-option' : ''}">
+                        ${canManage ? `
+                        <!-- Manage Practices Card (Coach/Admin only) -->
                         <div class="practice-option-card" data-option="manage">
                             <div class="practice-option-icon">⚙️</div>
                             <h3>Manage Practices</h3>
@@ -72,8 +77,9 @@ class PracticeOptionsScreen extends Screen {
                             </ul>
                             <button class="btn btn-primary btn-lg">Manage Practices</button>
                         </div>
+                        ` : ''}
                         
-                        <!-- RSVP to Practices Card -->
+                        <!-- RSVP to Practices Card (All roles) -->
                         <div class="practice-option-card" data-option="rsvp">
                             <div class="practice-option-icon">✓</div>
                             <h3>RSVP to Practices</h3>

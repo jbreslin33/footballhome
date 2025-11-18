@@ -25,15 +25,28 @@ class PlayerStateMachine extends BaseRoleStateMachine {
      * Add player-specific states to the state machine
      */
     addPlayerStates() {
+        // Add state for when player selects RSVP option
+        this.states.selectingPracticeOption = {
+            enter: () => {
+                console.log('⚽ PlayerStateMachine: At practice options screen');
+            },
+            on: {
+                RSVP_SELECTED: 'viewingPractices',
+                BACK: 'selectingEventType'
+            }
+        };
+        
         // Add player-specific states for viewing and RSVPing to events
         this.states.viewingPractices = {
             enter: () => {
                 console.log('⚽ PlayerStateMachine: Viewing practices for RSVP');
+                // Navigate to RSVP screen
+                this.navigateToScreen('practiceRSVP');
             },
             on: {
                 SUBMIT_RSVP: 'submittingRSVP',
                 VIEW_DETAILS: 'viewingPracticeDetails',
-                BACK: 'selectingEventType'
+                BACK: 'selectingPracticeOption'
             }
         };
         
@@ -81,13 +94,13 @@ class PlayerStateMachine extends BaseRoleStateMachine {
         this.states.handleEventType = {
             enter: (eventType) => {
                 console.log('⚽ PlayerStateMachine: Handling event type:', eventType);
-                // Player goes directly to RSVP screen for practices
+                // Player goes to PracticeOptions (shows RSVP button only)
                 if (eventType === 'practice') {
                     this.send('NAVIGATE', {
-                        targetScreen: 'practiceRSVP',
+                        targetScreen: 'practiceOptions',
                         eventType,
                         callback: (navData) => {
-                            this.navigateToScreen('practiceRSVP', { eventType });
+                            this.navigateToScreen('practiceOptions', { eventType });
                         }
                     });
                 }
@@ -121,6 +134,7 @@ class PlayerStateMachine extends BaseRoleStateMachine {
      */
     canAccessScreen(screenName) {
         const playerScreens = [
+            'practiceOptions',     // Player sees options (RSVP only)
             'practiceRSVP',
             'mySchedule',
             'eventDetails',
@@ -135,9 +149,9 @@ class PlayerStateMachine extends BaseRoleStateMachine {
      */
     getScreenForEventType(eventType) {
         const screenMap = {
-            'practice': 'practiceRSVP',   // Player goes directly to RSVP
-            'match': 'matchRSVP',          // Future: RSVP to matches
-            'meeting': 'meetingRSVP'       // Future: RSVP to meetings
+            'practice': 'practiceOptions',  // Player sees options screen (RSVP only)
+            'match': 'matchRSVP',           // Future: RSVP to matches
+            'meeting': 'meetingRSVP'        // Future: RSVP to meetings
         };
         
         return screenMap[eventType] || null;

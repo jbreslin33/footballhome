@@ -235,4 +235,32 @@ class BaseRoleStateMachine extends StateMachine {
             hasScreenManager: !!this.screenManager
         };
     }
+    
+    /**
+     * Navigate back based on current state
+     */
+    goBack() {
+        const currentState = this.getState();
+        console.log(`🎭 ${this.roleType}StateMachine: Going back from state:`, currentState);
+        
+        // Handle back navigation based on current state
+        switch (currentState) {
+            case 'selectingEventType':
+            case 'handleEventType':
+            case 'navigating':
+                // Go back to dashboard
+                this.send('BACK');
+                this.navigateToScreen('dashboard');
+                break;
+            case 'viewingPractices':
+                // Go back to event type selection
+                this.send('BACK');
+                this.navigateToScreen('eventTypeSelection');
+                break;
+            default:
+                // Default: go to dashboard
+                console.log(`🎭 ${this.roleType}StateMachine: Unknown state, going to dashboard`);
+                this.navigateToScreen('dashboard');
+        }
+    }
 }
