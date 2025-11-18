@@ -170,7 +170,14 @@ class EventTypeSelectionScreen extends Screen {
         console.log('📱 EventTypeSelectionScreen: Handling selection:', eventType);
         console.log('📱 EventTypeSelectionScreen: Current roleType:', this.roleType);
         
-        // Route to appropriate screen based on event type and role
+        // Use role state machine if available
+        if (window.roleStateMachine) {
+            console.log('📱 EventTypeSelectionScreen: Using role state machine for event type:', eventType);
+            window.roleStateMachine.send('EVENT_TYPE_SELECTED', eventType);
+            return; // Let role state machine handle navigation
+        }
+        
+        // Fallback: Route to appropriate screen based on event type and role
         let targetScreen = null;
         
         switch (eventType) {
@@ -212,9 +219,17 @@ class EventTypeSelectionScreen extends Screen {
     
     navigate(navData) {
         if (navData.screen) {
-            setTimeout(() => {
-                this.navigateTo(navData.screen, navData.data);
-            }, 100);
+            // Use role state machine if available
+            if (window.roleStateMachine) {
+                console.log('📱 EventTypeSelectionScreen: Using role state machine for navigation');
+                // Don't navigate directly - role state machine will handle it
+                // The state machine's enter() callback will call navigateToScreen()
+            } else {
+                // Fallback
+                setTimeout(() => {
+                    this.navigateTo(navData.screen, navData.data);
+                }, 100);
+            }
         } else if (navData.target === 'dashboard') {
             setTimeout(() => {
                 this.navigateTo('dashboard', {

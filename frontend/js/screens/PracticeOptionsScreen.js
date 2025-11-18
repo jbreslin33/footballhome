@@ -175,17 +175,34 @@ class PracticeOptionsScreen extends Screen {
     
     navigate(navData) {
         if (navData.screen) {
-            setTimeout(() => {
-                this.navigateTo(navData.screen, navData.data);
-            }, 100);
+            // Use role state machine if available
+            if (window.roleStateMachine && navData.screen === 'managePractices') {
+                console.log('📱 PracticeOptionsScreen: Using role state machine - MANAGE_SELECTED');
+                window.roleStateMachine.send('MANAGE_SELECTED');
+            } else if (window.roleStateMachine && navData.screen === 'practiceRSVP') {
+                console.log('📱 PracticeOptionsScreen: Using role state machine - RSVP_SELECTED');
+                window.roleStateMachine.send('RSVP_SELECTED');
+            } else {
+                // Fallback
+                setTimeout(() => {
+                    this.navigateTo(navData.screen, navData.data);
+                }, 100);
+            }
         } else if (navData.target === 'eventTypeSelection') {
-            setTimeout(() => {
-                this.navigateTo('eventTypeSelection', {
-                    user: this.user,
-                    teamContext: this.teamContext,
-                    roleType: this.roleType
-                });
-            }, 100);
+            // Use role state machine for back navigation
+            if (window.roleStateMachine) {
+                console.log('📱 PracticeOptionsScreen: Using role state machine for back navigation');
+                window.roleStateMachine.goBack();
+            } else {
+                // Fallback
+                setTimeout(() => {
+                    this.navigateTo('eventTypeSelection', {
+                        user: this.user,
+                        teamContext: this.teamContext,
+                        roleType: this.roleType
+                    });
+                }, 100);
+            }
         }
     }
     

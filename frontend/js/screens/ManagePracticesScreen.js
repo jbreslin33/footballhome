@@ -619,15 +619,22 @@ class ManagePracticesScreen extends Screen {
     navigateBack() {
         console.log('📱 ManagePracticesScreen: Navigating back to event type selection');
         
-        setTimeout(() => {
-            console.log('📱 ManagePracticesScreen: Calling navigateTo');
-            this.navigateTo('eventTypeSelection', {
-                user: this.user,
-                teamContext: this.teamContext,
-                roleType: this.roleType
-            });
-            console.log('📱 ManagePracticesScreen: navigateTo called');
-        }, 100);
+        // Use role state machine for navigation if available
+        if (window.roleStateMachine) {
+            console.log('📱 ManagePracticesScreen: Using role state machine for back navigation');
+            window.roleStateMachine.goBack();
+        } else {
+            // Fallback to direct navigation
+            setTimeout(() => {
+                console.log('📱 ManagePracticesScreen: Calling navigateTo');
+                this.navigateTo('eventTypeSelection', {
+                    user: this.user,
+                    teamContext: this.teamContext,
+                    roleType: this.roleType
+                });
+                console.log('📱 ManagePracticesScreen: navigateTo called');
+            }, 100);
+        }
     }
     
     onExit() {

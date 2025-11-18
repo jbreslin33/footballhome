@@ -142,6 +142,10 @@ class App {
                 this.roleStateMachine.setScreenManager(this.screenManager);
                 console.log('🚀 App: Role state machine connected to screen manager');
             }
+            
+            // Make role state machine available globally for screens to access
+            window.roleStateMachine = this.roleStateMachine;
+            console.log('🚀 App: Role state machine available globally');
         });
         
         // Listen for global app events that might come from screens

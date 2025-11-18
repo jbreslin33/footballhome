@@ -193,6 +193,15 @@ class DashboardScreen extends Screen {
             club: this.roleSelection.roleData.clubName
         } : null;
         
+        // Store team context for role state machine
+        this.teamContext = teamContext;
+        
+        // Update role state machine with team context
+        if (window.roleStateMachine && teamContext) {
+            window.roleStateMachine.updateTeamContext(teamContext);
+            console.log('📱 DashboardScreen: Updated role state machine with team context:', teamContext);
+        }
+        
         // Create CoachDashboard component
         const coachDashboard = new CoachDashboard(container, {
             user: this.roleSelection.user,
@@ -204,7 +213,13 @@ class DashboardScreen extends Screen {
         // Listen for navigation events from dashboard
         container.addEventListener('navigate', (event) => {
             console.log('📱 DashboardScreen: Navigation event from CoachDashboard:', event.detail);
-            if (event.detail.screen) {
+            
+            // Use role state machine if available
+            if (window.roleStateMachine && event.detail.screen === 'eventTypeSelection') {
+                console.log('📱 DashboardScreen: Using role state machine for navigation to events');
+                window.roleStateMachine.send('NAVIGATE_TO_EVENTS');
+            } else if (event.detail.screen) {
+                // Fallback for other navigation
                 this.navigateTo(event.detail.screen, event.detail.data);
             }
         });
@@ -444,12 +459,18 @@ class DashboardScreen extends Screen {
                     club: this.roleSelection.roleData.clubName
                 } : null;
                 
-                // Navigate to EventTypeSelection screen
-                this.navigateTo('eventTypeSelection', {
-                    user: this.roleSelection.user,
-                    teamContext: teamContext,
-                    roleType: this.roleType
-                });
+                // Use role state machine for navigation if available
+                if (window.roleStateMachine) {
+                    console.log('📱 DashboardScreen: Using role state machine to navigate to events');
+                    window.roleStateMachine.send('NAVIGATE_TO_EVENTS');
+                } else {
+                    // Fallback: Navigate to EventTypeSelection screen directly
+                    this.navigateTo('eventTypeSelection', {
+                        user: this.roleSelection.user,
+                        teamContext: teamContext,
+                        roleType: this.roleType
+                    });
+                }
             });
         }
         

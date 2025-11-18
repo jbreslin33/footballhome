@@ -313,15 +313,22 @@ class PracticeRSVPScreen extends Screen {
     }
     
     navigateBack() {
-        console.log('📱 PracticeRSVPScreen: Navigating back to event type selection');
+        console.log('📱 PracticeRSVPScreen: Navigating back');
         
-        setTimeout(() => {
-            this.navigateTo('eventTypeSelection', {
-                user: this.user,
-                teamContext: this.teamContext,
-                roleType: this.roleType
-            });
-        }, 100);
+        // Use role state machine for back navigation if available
+        if (window.roleStateMachine) {
+            console.log('📱 PracticeRSVPScreen: Using role state machine for back navigation');
+            window.roleStateMachine.goBack();
+        } else {
+            // Fallback to direct navigation
+            setTimeout(() => {
+                this.navigateTo('eventTypeSelection', {
+                    user: this.user,
+                    teamContext: this.teamContext,
+                    roleType: this.roleType
+                });
+            }, 100);
+        }
     }
     
     onExit() {

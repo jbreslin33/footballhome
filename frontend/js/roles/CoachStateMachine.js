@@ -29,6 +29,7 @@ class CoachStateMachine extends BaseRoleStateMachine {
         this.states.practiceOptions = {
             enter: () => {
                 console.log('🏈 CoachStateMachine: Showing practice options');
+                this.navigateToScreen('practiceOptions');
             },
             on: {
                 MANAGE_SELECTED: 'managingPractices',
@@ -40,6 +41,7 @@ class CoachStateMachine extends BaseRoleStateMachine {
         this.states.managingPractices = {
             enter: () => {
                 console.log('🏈 CoachStateMachine: Managing practices');
+                this.navigateToScreen('managePractices');
             },
             on: {
                 CREATE: 'creatingPractice',
@@ -102,6 +104,7 @@ class CoachStateMachine extends BaseRoleStateMachine {
         this.states.rsvpingToPractices = {
             enter: () => {
                 console.log('🏈 CoachStateMachine: RSVPing to practices (as coach)');
+                this.navigateToScreen('practiceRSVP');
             },
             on: {
                 SUBMIT_RSVP: 'submittingRSVP',
@@ -119,23 +122,29 @@ class CoachStateMachine extends BaseRoleStateMachine {
             }
         };
         
+        // Override selectingEventType to navigate to screen
+        this.states.selectingEventType = {
+            enter: () => {
+                console.log('🏈 CoachStateMachine: Selecting event type');
+                this.navigateToScreen('eventTypeSelection');
+            },
+            on: {
+                EVENT_TYPE_SELECTED: 'handleEventType',
+                BACK: 'dashboard'
+            }
+        };
+        
         // Update handleEventType state for coach-specific routing
         this.states.handleEventType = {
             enter: (eventType) => {
                 console.log('🏈 CoachStateMachine: Handling event type:', eventType);
                 // Coach goes to options screen for practices
                 if (eventType === 'practice') {
-                    this.send('NAVIGATE', {
-                        targetScreen: 'practiceOptions',
-                        eventType,
-                        callback: (navData) => {
-                            this.navigateToScreen('practiceOptions', { eventType });
-                        }
-                    });
+                    this.send('NAVIGATE_TO_OPTIONS');
                 }
             },
             on: {
-                NAVIGATE: 'navigating',
+                NAVIGATE_TO_OPTIONS: 'practiceOptions',
                 BACK: 'selectingEventType'
             }
         };
@@ -230,5 +239,27 @@ class CoachStateMachine extends BaseRoleStateMachine {
      */
     submitRSVP(practiceId, status) {
         this.send('SUBMIT_RSVP', { practiceId, status });
+    }
+    
+    /**
+     * Handle back navigation from current screen
+     * This is the key method screens should call instead of navigateTo
+     */
+    goBack() {
+        console.log('🏈 CoachStateMachine: Going back from state:', this.getState());
+        this.send('BACK');
+    }
+    
+    /**
+     * Navigate to event type selection
+     */
+    goToEventTypeSelection() {
+        // Transition through proper states
+        if (this.getState() === 'managingPractices' || this.getState() === 'rsvpingToPractices') {
+            this.send('BACK'); // Goes to practiceOptions
+        }
+        if (this.getState() === 'practiceOptions') {
+            this.send('BACK'); // Goes to selectingEventType
+        }
     }
 }
