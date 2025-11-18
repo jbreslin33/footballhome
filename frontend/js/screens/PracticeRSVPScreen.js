@@ -80,14 +80,21 @@ class PracticeRSVPScreen extends Screen {
                 method: 'GET'
             });
             
+            console.log('📱 PracticeRSVPScreen: API response:', response);
+            
             if (response.success) {
+                console.log('📱 PracticeRSVPScreen: Raw events:', response.data);
+                
                 // Filter for future practices only
                 const now = new Date();
+                console.log('📱 PracticeRSVPScreen: Current time:', now);
+                
                 this.practices = (response.data || []).filter(event => {
+                    const eventDateTime = new Date(event.event_date);
+                    console.log('📱 PracticeRSVPScreen: Event:', event.title, 'date:', event.event_date, 'parsed:', eventDateTime, 'type:', event.type, 'future?', eventDateTime > now);
                     if (event.type !== 'training') return false;
                     
                     // Parse the combined datetime field
-                    const eventDateTime = new Date(event.event_date);
                     return eventDateTime > now;
                 }).sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
                 

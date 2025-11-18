@@ -1,7 +1,7 @@
 # Football Home - Object-Oriented Architecture Progress
 
-## 🎯 Project Overview
-Complete rewrite of football home application using object-oriented architecture with screen-based navigation and multiple state machines.
+## 🎯 Current Status (Nov 17, 2025)
+Working on **Player RSVP Feature** - practices now create and display for coaches, need to verify RSVP screen works for both players and coaches.
 
 ## ✅ Major Accomplishments
 
@@ -161,11 +161,143 @@ Screen Action → Screen StateMachine → Screen.navigateTo()
 - **Event timing**: Uses setTimeout(0) for proper event listener setup
 
 ---
-**Last Updated**: November 17, 2025
-**Current Session**: Implementing Player RSVP Feature
-**Status**: Player RSVP system nearly complete - debugging navigation routing
+**Last Updated**: November 17, 2025 (Evening Session)
+**Current Work**: Player RSVP Feature - Practice creation/display working, RSVP screen needs debugging
+**Status**: Practices create and display for coaches, need to verify RSVP screen shows practices
 
-## 🎯 Current Session Progress (Nov 17, 2025)
+## 🎯 Evening Session Progress (Nov 17, 2025)
+
+### Fixed Major Issues ✅
+
+1. **Screen Visibility Bug**:
+   - **Problem**: Multiple screens visible simultaneously (managePractices AND practiceRSVP both had display:block)
+   - **Root Cause**: ScreenManager.enterScreen() wasn't hiding previous screens
+   - **Fix**: Added loop to hide all other screens before showing new one
+   - **File**: `frontend/js/core/ScreenManager.js:147-166`
+
+2. **Backend/Frontend Data Contract Mismatch**:
+   - **Problem**: Backend returned `date`/`duration` but frontend expected `event_date`/`duration_minutes`
+   - **Fix**: Updated EventController.cpp to return correct field names
+   - **Impact**: Practices now load and display correctly
+   - **Files**: 
+     - `backend/src/controllers/EventController.cpp` (lines 189, 192, 198)
+     - `frontend/js/screens/ManagePracticesScreen.js` (lines 144, 147, 175)
+
+3. **Practice Creation Failing**:
+   - **Problem**: Database error - `location` column doesn't exist in practices table
+   - **Root Cause**: practices table schema has no location column (events table has venue_id instead)
+   - **Fix**: Removed location column from INSERT queries
+   - **File**: `backend/src/controllers/EventController.cpp:123-134`
+
+4. **Practices Display in ManagePracticesScreen**:
+   - **Status**: ✅ Working! Practices now show in right sidebar
+   - **Verified**: Coach can create practice and see it in "Upcoming Practices" list
+
+### Current Status 🔴
+
+**RSVP Screen Issue**:
+- PracticeRSVPScreen shows "No upcoming practices" for both player and coach
+- ManagePracticesScreen successfully shows practices (same API call)
+- Added debug logging to PracticeRSVPScreen.loadPractices() but not yet deployed/tested
+- **Next Step**: Rebuild frontend and check console logs to see filtering logic
+
+### Files Modified Tonight
+
+**Backend**:
+- `backend/src/controllers/EventController.cpp`:
+  - Fixed field names: event_date, duration_minutes (not date/duration)
+  - Removed location column from practices INSERT
+  - Added debug logging for JSON responses
+
+**Frontend**:
+- `frontend/js/core/ScreenManager.js`:
+  - Fixed enterScreen() to hide all other screens first
+- `frontend/js/screens/ManagePracticesScreen.js`:
+  - Updated to use event_date and duration_minutes
+  - Added debug logging for practice filtering
+- `frontend/js/screens/PracticeRSVPScreen.js`:
+  - Added debug logging (not yet tested)
+
+### Database State 📊
+```sql
+SELECT e.id, e.title, e.event_date, et.name as event_type 
+FROM events e 
+JOIN event_types et ON e.event_type_id = et.id 
+ORDER BY e.created_at DESC LIMIT 5;
+
+-- Results: 2 practices exist
+-- Practice Session | 2025-11-18 08:00:00 | training
+-- Practice Session | 2025-11-21 08:08:00 | training
+```
+
+### Next Session Action Plan 🚀
+
+1. **Debug PracticeRSVPScreen** (PRIORITY):
+   ```bash
+   # Rebuild if needed: ./start.sh
+   # Hard refresh browser (Ctrl+Shift+R)
+   # Login as PLAYER → Events → Practices
+   # Check console for new debug logs:
+   #   - Raw API response
+   #   - Each event's filtering decision
+   #   - Date comparisons (eventDateTime > now?)
+   #   - Type matching (type === 'training'?)
+   ```
+
+2. **Verify Data Contract Consistency**:
+   - Check if PracticeRSVPScreen and ManagePracticesScreen use same field names
+   - Confirm both use `event_date`, `duration_minutes`, `type`
+   - Ensure date parsing logic identical
+
+3. **Implement RSVP Functionality**:
+   - Once practices display, wire up RSVP buttons
+   - Test POST /api/events/:eventId/rsvp endpoint
+   - Add toast notifications for success/error
+   - Update button states based on current RSVP status
+
+4. **Location Field Decision**:
+   - Frontend sends location string but backend doesn't store it
+   - Options:
+     a) Map location string to venue_id (requires venue lookup/creation)
+     b) Add location TEXT column to practices table
+     c) Ignore location for now (current approach)
+   - **Recommendation**: Add location column to practices table for simplicity
+
+### Testing Checklist 📋
+- [x] Coach can create practice
+- [x] Practice saves to database
+- [x] Practice appears in ManagePracticesScreen upcoming list (coach)
+- [x] Player routing goes to PracticeRSVP screen (not ManagePractices)
+- [x] Screen visibility bug fixed (only one screen visible at a time)
+- [ ] PracticeRSVPScreen shows practices for player ← **NEXT**
+- [ ] PracticeRSVPScreen shows practices for coach (via RSVP option)
+- [ ] RSVP buttons functional
+- [ ] RSVP saves to database
+- [ ] RSVP status displays correctly
+
+### Code Locations 📍
+
+**Screen Management**:
+- `frontend/js/core/ScreenManager.js:147-166` - Screen visibility fix
+- `frontend/js/core/Screen.js` - Base screen class
+
+**Practice Screens**:
+- `frontend/js/screens/ManagePracticesScreen.js:132-180` - Practice loading/display (coach)
+- `frontend/js/screens/PracticeRSVPScreen.js:75-105` - Practice loading/display (player/coach RSVP)
+- `frontend/js/screens/PracticeOptionsScreen.js` - Coach choice: Manage vs RSVP
+
+**Backend**:
+- `backend/src/controllers/EventController.cpp:40-155` - POST /api/events (create practice)
+- `backend/src/controllers/EventController.cpp:157-210` - GET /api/events/:teamId (list practices)
+
+**Database**:
+- `database/schema/init.sql:665-680` - events table (has venue_id)
+- `database/schema/init.sql:681-693` - practices table (no location column)
+- `database/schema/init.sql:957-965` - event_types table (training = practices)
+
+---
+
+## 🏁 Previous Session Summary (Nov 17, 2025 - Afternoon)
 
 ### Player RSVP Feature Implementation
 
