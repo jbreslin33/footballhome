@@ -1,7 +1,61 @@
 # Football Home - Object-Oriented Architecture Progress
 
-## 🎯 Current Status (Nov 18, 2025)
-**Player RSVP Feature - Debug Phase**: Practices create and display correctly in ManagePracticesScreen (coach view). PracticeRSVPScreen (player view) shows "No upcoming practices" - debugging filtering logic to identify data contract or date parsing issue.
+## 🎯 Current Status (Nov 18, 2025 - Evening Session)
+**Player RSVP Feature - Navigation Flow Implementation**: Implemented full decision tree for all roles. Players now go through PracticeOptions screen before reaching RSVP screen. State machine transitions fixed but RSVP screen may still need debugging.
+
+**CURRENT ISSUE**: Player flow through to RSVP screen - need to verify practices load correctly and buttons work.
+
+## 🎯 Today's Session Progress (Nov 18, 2025)
+
+### Morning/Afternoon Session ✅
+
+1. **Fixed Player Events Button Navigation**:
+   - Problem: State machine changed state but didn't trigger navigation
+   - Solution: Added `navigateToScreen()` call in BaseRoleStateMachine.selectingEventType.enter()
+   - Added self-transition for NAVIGATE_TO_EVENTS to allow re-clicking
+   - **Commit**: 78590a5
+
+2. **Fixed Button Event Listeners**:
+   - Problem: PracticeRSVPScreen buttons not working (setupForm never called)
+   - Solution: Added `this.setupForm()` call in onEnter()
+   - Added `goBack()` method to BaseRoleStateMachine
+   - **Commit**: 78590a5
+
+3. **Fixed Team Context Propagation**:
+   - Problem: teamContext was null when navigating to screens
+   - Solution: DashboardScreen now extracts teamContext from data.teamContext OR data.roleSelection.roleData
+   - Updates role state machine immediately in onEnter()
+   - **Commits**: 92db4a8
+
+### Evening Session ✅
+
+4. **Implemented Full Decision Tree for All Roles**:
+   - Changed architecture: ALL roles see decision screens (not just coaches)
+   - Players now see PracticeOptions screen with RSVP button only
+   - Coaches see PracticeOptions with both Manage and RSVP buttons
+   - Makes entire flow visible and testable during development
+   - **Commit**: 92db4a8
+
+5. **Updated Player Navigation Flow**:
+   - **Before**: Dashboard → Events → Practices → ~~skip~~ → PracticeRSVP
+   - **After**: Dashboard → Events → Practices → **PracticeOptions** → PracticeRSVP
+   - PlayerStateMachine now routes to practiceOptions (not direct to RSVP)
+   - PracticeOptionsScreen dynamically shows cards based on roleType
+   - **Commit**: 92db4a8
+
+6. **Fixed State Machine Transitions**:
+   - Problem: PlayerStateMachine didn't have practiceOptions state
+   - Solution: Added practiceOptions state with RSVP_SELECTED transition
+   - Matches CoachStateMachine pattern for consistency
+   - Fixed "No transition for event RSVP_SELECTED in state navigating" error
+   - **Commit**: eb15f6e
+
+### Files Modified Today 📝
+- `frontend/js/core/BaseRoleStateMachine.js` - Navigation, goBack(), teamContext updates
+- `frontend/js/roles/PlayerStateMachine.js` - practiceOptions state, routing changes
+- `frontend/js/screens/DashboardScreen.js` - Team context extraction and propagation
+- `frontend/js/screens/PracticeOptionsScreen.js` - Dynamic rendering for all roles
+- `frontend/js/screens/PracticeRSVPScreen.js` - setupForm() call, error handling
 
 ## ✅ Major Accomplishments
 
@@ -161,10 +215,119 @@ Screen Action → Screen StateMachine → Screen.navigateTo()
 - **Event timing**: Uses setTimeout(0) for proper event listener setup
 
 ---
-**Last Updated**: November 18, 2025
-**Current Work**: Player RSVP Feature - Debugging PracticeRSVPScreen filtering logic
-**Status**: ManagePracticesScreen works ✅, PracticeRSVPScreen needs fix 🔴
-**Next Action**: Check debug logs in PracticeRSVPScreen to see why filtering fails
+**Last Updated**: November 18, 2025 (Evening)
+**Current Work**: Player RSVP Feature - Navigation flow complete, need to verify RSVP screen loads practices
+**Status**: Full decision tree implemented ✅, State transitions fixed ✅, Need to test end-to-end 🔴
+**Next Action**: Test player flow all the way through and verify PracticeRSVP screen works
+
+## 🎯 Session Handoff (Nov 18, 2025 - Evening)
+
+### What's Working ✅
+1. **Player Events Button**: Navigates to EventTypeSelection ✅
+2. **EventTypeSelection → PracticeOptions**: Players see options screen ✅  
+3. **PracticeOptions Rendering**: Dynamically shows RSVP only for players, both options for coaches ✅
+4. **State Machine Transitions**: practiceOptions state with RSVP_SELECTED handling ✅
+5. **Team Context**: Properly captured and propagated through navigation ✅
+6. **Back Buttons**: Event listeners attached via setupForm() ✅
+
+### What Needs Testing 🔴
+1. **PracticeRSVP Screen**: Does it load practices correctly?
+   - teamContext should now be passed properly
+   - API call: GET /api/events/:teamId
+   - Filtering logic for future practices
+   - RSVP button functionality
+2. **End-to-End Player Flow**: Complete journey from login to RSVP
+3. **Error Handling**: What happens if no practices exist?
+
+### Current Architecture 🏗️
+
+**Player Flow**:
+```
+Login → Role Selection → Team Selection → Dashboard
+  ↓
+Events Button (roleStateMachine.send('NAVIGATE_TO_EVENTS'))
+  ↓
+EventTypeSelection Screen (shows Practices card)
+  ↓
+Click Practices (roleStateMachine.send('EVENT_TYPE_SELECTED', 'practice'))
+  ↓
+PlayerStateMachine.handleEventType → send('NAVIGATE_TO_OPTIONS')
+  ↓
+PlayerStateMachine.practiceOptions state → navigateToScreen('practiceOptions')
+  ↓
+PracticeOptions Screen (renders RSVP card only for players)
+  ↓
+Click "View & RSVP" → send('OPTION_SELECTED', 'rsvp')
+  ↓
+PracticeOptionsScreen.navigate() → roleStateMachine.send('RSVP_SELECTED')
+  ↓
+PlayerStateMachine.viewingPractices state → navigateToScreen('practiceRSVP')
+  ↓
+PracticeRSVP Screen (should load practices and show RSVP buttons)
+```
+
+**Coach Flow** (for comparison):
+```
+Same as player until PracticeOptions screen
+  ↓
+PracticeOptions Screen (renders both Manage and RSVP cards)
+  ↓
+Click "Manage" → CoachStateMachine.managingPractices → ManagePractices Screen
+  OR
+Click "View & RSVP" → CoachStateMachine.rsvpingToPractices → PracticeRSVP Screen
+```
+
+### Debug Steps for Next Session 🔍
+
+1. **Open browser console** and hard refresh (Ctrl+Shift+R)
+2. **Login as player** (jbreslin@footballhome.org / password)
+3. **Follow the flow**:
+   - Select Player role
+   - Select Lighthouse 1893 SC team
+   - Click Events button on dashboard
+   - Click Practices card on EventTypeSelection
+   - Click "View & RSVP" button on PracticeOptions
+4. **Check console for**:
+   - TeamContext values at each step
+   - API call to /api/events/:teamId
+   - Practice filtering logic output
+   - Any errors or null values
+5. **Verify PracticeRSVP screen**:
+   - Does it show "Loading practices..." initially?
+   - Does it call the API with correct teamId?
+   - Does it show practices or "No upcoming practices"?
+   - Do RSVP buttons work?
+
+### Known Issues / Technical Debt 📋
+- PracticeRSVP filtering may need adjustment (date parsing, type matching)
+- Error messages need to be more user-friendly
+- Back button navigation through all screens needs comprehensive testing
+- Consider adding loading spinners for better UX
+
+### Key Code Locations 📍
+
+**Player State Machine**:
+- `frontend/js/roles/PlayerStateMachine.js:26-48` - practiceOptions and viewingPractices states
+- `frontend/js/roles/PlayerStateMachine.js:93-105` - handleEventType with NAVIGATE_TO_OPTIONS
+
+**Navigation & Context**:
+- `frontend/js/screens/DashboardScreen.js:111-150` - Team context extraction and role state machine update
+- `frontend/js/core/BaseRoleStateMachine.js:130-139` - buildContext() method
+- `frontend/js/core/BaseRoleStateMachine.js:176-194` - navigateToScreen() method
+
+**Practice Screens**:
+- `frontend/js/screens/PracticeOptionsScreen.js:38-97` - Dynamic rendering based on roleType
+- `frontend/js/screens/PracticeRSVPScreen.js:73-94` - onEnter with teamContext validation
+- `frontend/js/screens/PracticeRSVPScreen.js:96-123` - loadPractices() method
+
+### Environment Info 💻
+- **Docker**: `./start.sh` or `docker compose restart frontend`
+- **Database**: PostgreSQL, 2 test practices should exist
+- **Test Account**: jbreslin@footballhome.org / password (admin + player roles)
+- **Test Team**: Lighthouse 1893 SC (id: d37eb44b-8e47-0005-9060-f0cbe96fe089)
+- **Backend**: GET /api/events/:teamId returns {id, title, event_date, duration_minutes, location, type}
+
+---
 
 ## 🎯 Session Handoff (Nov 18, 2025)
 
