@@ -7,6 +7,7 @@ class App {
         this.container = document.getElementById('app');
         this.authService = new AuthService();
         this.currentUser = null;
+        this.roleStateMachine = null; // Will be set when user selects a role
         
         // Initialize application state machine for high-level app states
         this.appStateMachine = new StateMachine({
@@ -131,6 +132,18 @@ class App {
     }
     
     setupScreenManagerEvents() {
+        // Listen for role state machine being set from RoleSwitchboardScreen
+        window.addEventListener('app:setRoleStateMachine', (event) => {
+            console.log('🚀 App: Setting role state machine:', event.detail);
+            this.roleStateMachine = event.detail.roleStateMachine;
+            
+            // Connect the role state machine to the screen manager
+            if (this.roleStateMachine && this.screenManager) {
+                this.roleStateMachine.setScreenManager(this.screenManager);
+                console.log('🚀 App: Role state machine connected to screen manager');
+            }
+        });
+        
         // Listen for global app events that might come from screens
         window.addEventListener('app:logout', () => {
             console.log('🚀 App: Global logout event received');

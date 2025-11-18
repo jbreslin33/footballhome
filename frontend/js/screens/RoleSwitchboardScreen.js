@@ -189,10 +189,50 @@ class RoleSwitchboardScreen extends Screen {
     handleRoleSelection(roleSelection) {
         console.log('📱 RoleSwitchboardScreen: Handling role selection:', roleSelection);
         
+        // Create the appropriate role state machine based on selected role
+        const roleType = roleSelection.roleType;
+        let roleStateMachine = null;
+        
+        console.log('📱 RoleSwitchboardScreen: Creating state machine for role:', roleType);
+        
+        // Instantiate role-specific state machine
+        switch (roleType) {
+            case 'coach':
+            case 'head_coach':
+            case 'assistant_coach':
+                roleStateMachine = new CoachStateMachine(this.user, null);
+                break;
+            case 'player':
+                roleStateMachine = new PlayerStateMachine(this.user, null);
+                break;
+            // Future: Add more roles
+            // case 'parent':
+            //     roleStateMachine = new ParentStateMachine(this.user, null);
+            //     break;
+            // case 'admin':
+            //     roleStateMachine = new AdminStateMachine(this.user, null);
+            //     break;
+            default:
+                console.warn('📱 RoleSwitchboardScreen: Unknown role type:', roleType);
+                // Fallback to player for now
+                roleStateMachine = new PlayerStateMachine(this.user, null);
+        }
+        
+        console.log('📱 RoleSwitchboardScreen: Role state machine created:', roleStateMachine.getDebugInfo());
+        
+        // Emit event to App to set the role state machine globally
+        const roleStateMachineEvent = new CustomEvent('app:setRoleStateMachine', {
+            detail: { roleStateMachine }
+        });
+        window.dispatchEvent(roleStateMachineEvent);
+        
         if (roleSelection.navigateTo === 'dashboard') {
             this.send('NAVIGATE', {
                 screen: 'dashboard',
-                data: { roleSelection }
+                data: { 
+                    roleSelection,
+                    roleStateMachine  // Pass the role state machine along
+                }
             });
         } else if (roleSelection.navigateTo === 'teamSelection') {
             // Navigate to team selection screen for users with multiple teams
@@ -202,7 +242,8 @@ class RoleSwitchboardScreen extends Screen {
                 data: { 
                     user: this.user,
                     roleType: roleSelection.roleType,
-                    teams: roleSelection.roles
+                    teams: roleSelection.roles,
+                    roleStateMachine  // Pass the role state machine along
                 }
             });
         }
