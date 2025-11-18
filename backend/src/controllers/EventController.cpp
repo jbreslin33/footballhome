@@ -145,6 +145,7 @@ Response EventController::handleCreateEvent(const Request& request) {
         data << "}";
         
         std::string json = createJSONResponse(true, "Practice created successfully", data.str());
+        std::cout << "📤 Response JSON: " << json << std::endl;
         return Response(HttpStatus::CREATED, json);
         
     } catch (const std::exception& e) {
@@ -185,8 +186,8 @@ Response EventController::handleGetEvents(const Request& request) {
             events_json << "{";
             events_json << "\"id\":\"" << result[i][0].c_str() << "\",";
             events_json << "\"title\":\"" << result[i][1].c_str() << "\",";
-            events_json << "\"date\":\"" << result[i][2].c_str() << "\",";
-            events_json << "\"duration\":\"" << result[i][3].c_str() << "\",";
+            events_json << "\"event_date\":\"" << result[i][2].c_str() << "\",";
+            events_json << "\"duration_minutes\":" << result[i][3].c_str() << ",";
             events_json << "\"type\":\"" << result[i][4].c_str() << "\"";
             if (!result[i][5].is_null()) {
                 events_json << ",\"notes\":\"" << result[i][5].c_str() << "\"";

@@ -146,6 +146,14 @@ class ScreenManager {
      * Enter a screen (called by state machine onEntry)
      */
     async enterScreen(screenName, data = null) {
+        // IMPORTANT: Hide ALL other screens before showing the new one
+        // This prevents multiple screens from being visible simultaneously
+        Object.keys(this.screens).forEach(name => {
+            if (name !== screenName && this.screens[name]?.container) {
+                this.screens[name].container.style.display = 'none';
+            }
+        });
+        
         // Initialize screen if not already done
         this.initializeScreen(screenName);
         

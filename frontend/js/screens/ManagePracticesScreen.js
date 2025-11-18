@@ -136,14 +136,21 @@ class ManagePracticesScreen extends Screen {
                 method: 'GET'
             });
             
+            console.log('📱 ManagePracticesScreen: API response:', response);
+            
             if (response.success && response.data) {
+                console.log('📱 ManagePracticesScreen: Raw events:', response.data);
+                
                 // Filter for future practices only
                 const now = new Date();
+                console.log('📱 ManagePracticesScreen: Current time:', now);
+                
                 this.practices = response.data.filter(event => {
-                    const eventDate = new Date(event.date);
+                    const eventDate = new Date(event.event_date);
+                    console.log('📱 ManagePracticesScreen: Event:', event.title, 'date:', event.event_date, 'parsed:', eventDate, 'type:', event.type, 'future?', eventDate >= now);
                     // API returns type as "training" for practices
                     return event.type === 'training' && eventDate >= now;
-                }).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort by date ascending
+                }).sort((a, b) => new Date(a.event_date) - new Date(b.event_date)); // Sort by date ascending
                 
                 console.log('📱 ManagePracticesScreen: Loaded', this.practices.length, 'future practices from', response.data.length, 'total events');
                 
@@ -171,10 +178,10 @@ class ManagePracticesScreen extends Screen {
         
         const practicesHtml = this.practices.map(practice => {
             // Parse the datetime from API (format: "2025-11-19 18:00:00")
-            const datetime = new Date(practice.date);
+            const datetime = new Date(practice.event_date);
             const dateStr = datetime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
             const timeStr = datetime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-            const duration = practice.duration ? `${practice.duration} min` : '';
+            const duration = practice.duration_minutes ? `${practice.duration_minutes} min` : '';
             
             return `
                 <div class="practice-item" style="background: ${this.editingPracticeId === practice.id ? '#eff6ff' : '#f9fafb'}; border: 2px solid ${this.editingPracticeId === practice.id ? '#3b82f6' : '#e5e7eb'}; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; position: relative;">
