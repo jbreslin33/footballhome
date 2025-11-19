@@ -3,89 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- DEVELOPMENT: MAXIMUM ANTI-CACHE MODE -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0, pre-check=0, post-check=0">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="-1">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Football Home - Vanilla JS</title>
+    <title>Football Home - Coach</title>
     
-    <!-- Kill any service workers and prevent all caching -->
-    <script>
-        // NUCLEAR OPTION: Add random param to current URL to bypass ALL caches
-        if (!window.location.search.includes('nocache=')) {
-            window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now() + Math.random();
-        }
-        
-        // Unregister ALL service workers
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister();
-                }
-            });
-        }
-        
-        // Clear all caches
-        if ('caches' in window) {
-            caches.keys().then(function(names) {
-                for (let name of names) caches.delete(name);
-            });
-        }
-        
-        // Disable back-forward cache
-        window.addEventListener('pageshow', function(event) {
-            if (event.persisted) {
-                window.location.reload();
-            }
-        });
-    </script>
-    
-    <!-- Dynamic CSS loading with cache buster -->
-    <script>
-        var cacheBuster = '?nocache=' + Date.now() + Math.random().toString(36).substring(7);
-        document.write('<link rel="stylesheet" href="css/main.css' + cacheBuster + '">');
-    </script>
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
     <div id="app">
         <!-- App will be rendered here by JavaScript -->
     </div>
 
-    <!-- Core JavaScript -->
-    <script>
-        // MAXIMUM CACHE BUSTER - Random number + timestamp to ensure ZERO caching
-        var cacheBuster = '?nocache=' + Date.now() + Math.random().toString(36).substring(7);
-        var scripts = [
-            'js/core/StateMachine.js',
-            'js/core/Component.js',
-            'js/core/Screen.js',
-            'js/core/ScreenManager.js',
-            'js/core/BaseRoleStateMachine.js',
-            'js/roles/CoachStateMachine.js',
-            'js/roles/PlayerStateMachine.js',
-            'js/components/LoginForm.js',
-            'js/components/RoleSwitchboard.js',
-            'js/components/Dashboard.js',
-            'js/components/CoachDashboard.js',
-            'js/components/TeamCard.js',
-            'js/components/EventCard.js',
-            'js/components/StatsCard.js',
-            'js/components/LeagueGamesCard.js',
-            'js/screens/LoginScreen.js',
-            'js/screens/RoleSwitchboardScreen.js',
-            'js/screens/TeamSelectionScreen.js',
-            'js/screens/EventTypeSelectionScreen.js',
-            'js/screens/PracticeOptionsScreen.js',
-            'js/screens/ManagePracticesScreen.js',
-            'js/screens/PracticeRSVPScreen.js',
-            'js/screens/DashboardScreen.js',
-            'js/services/AuthService.js',
-            'js/App.js'
-        ];
-        scripts.forEach(function(src) {
-            document.write('<script src="' + src + cacheBuster + '"></' + 'script>');
-        });
-    </script>
+    <!-- Core Infrastructure -->
+    <script src="js/auth.js"></script>
+    <script src="js/screen-base.js"></script>
+    <script src="js/screen-manager.js"></script>
+    <script src="js/navigation.js"></script>
+    
+  <!-- Screens -->
+  <script src="js/screens/login.js"></script>
+  <script src="js/screens/role-selection.js"></script>
+  <script src="js/screens/team-selection.js"></script>
+  <script src="js/screens/practice-options.js"></script>
+  <script src="js/screens/practice-management.js"></script>
+  <script src="js/screens/practice-form.js"></script>
+  <script src="js/screens/practice-list.js"></script>    <!-- App Bootstrap -->
+    <script src="js/app.js"></script>
 </body>
 </html>

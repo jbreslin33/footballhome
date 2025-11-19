@@ -48,9 +48,15 @@ Response AuthController::handleLogin(const Request& request) {
     UserData userData = user_model_->authenticate(email, password);
     
     if (userData.valid) {
+        // Log successful login
+        logLoginAttempt(userData.id, true, request);
+        
         std::string json = createJSONResponse(true, "Login successful", userData);
         return Response(HttpStatus::OK, json);
     } else {
+        // For failed logins, we don't have a user_id, so skip logging or log with empty id
+        // In production, you might want to log failed attempts with the email instead
+        
         std::string json = createJSONResponse(false, "Invalid email or password");
         return Response(HttpStatus::UNAUTHORIZED, json);
     }
@@ -233,4 +239,34 @@ std::string AuthController::extractUserIdFromToken(const Request& request) {
     
     std::cout << "❌ Token parsing failed" << std::endl;
     return "";
+}
+
+void AuthController::logLoginAttempt(const std::string& user_id, bool success, const Request& request) {
+    try {
+        // Extract IP address and user agent from request headers
+        std::string ip_address = request.getHeader("X-Forwarded-For");
+        if (ip_address.empty()) {
+            ip_address = request.getHeader("X-Real-IP");
+        }
+        if (ip_address.empty()) {
+            ip_address = "unknown";
+        }
+        
+        std::string user_agent = request.getHeader("User-Agent");
+        if (user_agent.empty()) {
+            user_agent = "unknown";
+        }
+        
+        // Insert into login_history table
+        std::string query = "INSERT INTO login_history (user_id, ip_address, user_agent, success) "
+                          "VALUES ($1, $2, $3, $4)";
+        
+        auto db = Database::getInstance();
+        db->executeQuery(query, {user_id, ip_address, user_agent, success ? "true" : "false"});
+        
+        std::cout << "✅ Logged login attempt for user: " << user_id << " (success: " << success << ")" << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Failed to log login attempt: " << e.what() << std::endl;
+        // Don't throw - logging failure shouldn't break login
+    }
 }

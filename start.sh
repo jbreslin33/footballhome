@@ -204,7 +204,7 @@ else
     
     # Remove all project images to ensure truly fresh builds
     echo -e "${YELLOW}🗑️  Removing all project Docker images${NC}"
-    docker rmi footballhome-frontend footballhome-backend 2>/dev/null || true
+    docker rmi footballhome-frontend footballhome_frontend-frontend footballhome-backend footballhome_backend-backend 2>/dev/null || true
     echo -e "${GREEN}✓ Project images removed${NC}"
     
     # Clear Docker build cache

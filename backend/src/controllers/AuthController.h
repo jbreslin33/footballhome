@@ -26,4 +26,5 @@ private:
     std::string generateJWT(const UserData& userData);
     std::string extractField(const std::string& json, const std::string& field);
     std::string extractUserIdFromToken(const Request& request);
+    void logLoginAttempt(const std::string& user_id, bool success, const Request& request);
 };
