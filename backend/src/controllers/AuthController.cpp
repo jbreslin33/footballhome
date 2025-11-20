@@ -262,7 +262,7 @@ void AuthController::logLoginAttempt(const std::string& user_id, bool success, c
                           "VALUES ($1, $2, $3, $4)";
         
         auto db = Database::getInstance();
-        db->executeQuery(query, {user_id, ip_address, user_agent, success ? "true" : "false"});
+        db->query(query, {user_id, ip_address, user_agent, success ? "true" : "false"});
         
         std::cout << "✅ Logged login attempt for user: " << user_id << " (success: " << success << ")" << std::endl;
     } catch (const std::exception& e) {
