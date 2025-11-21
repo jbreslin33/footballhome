@@ -105,7 +105,9 @@ class PracticeFormScreen extends Screen {
   }
   
   loadVenues() {
-    this.safeFetch('/api/venues', venues => {
+    this.safeFetch('/api/venues', response => {
+      // Extract venues from standardized response format
+      const venues = response.data || [];
       const select = this.find('#venue_id');
       
       // Clear existing options except the first one
