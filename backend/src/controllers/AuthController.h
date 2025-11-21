@@ -20,9 +20,11 @@ private:
     Response handleLogout(const Request& request);
     Response handleCurrentUser(const Request& request);
     Response handleUserRoles(const Request& request);
+    Response handleUserTeams(const Request& request);
     
     // Utility methods
     std::string createJSONResponse(bool success, const std::string& message, const UserData& userData = {});
+    std::string createJSONResponse(bool success, const std::string& message, const std::string& data);
     std::string generateJWT(const UserData& userData);
     std::string extractField(const std::string& json, const std::string& field);
     std::string extractUserIdFromToken(const Request& request);

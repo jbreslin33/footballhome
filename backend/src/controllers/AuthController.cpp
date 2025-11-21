@@ -26,6 +26,10 @@ void AuthController::registerRoutes(Router& router, const std::string& prefix) {
     router.get(prefix + "/me/roles", [this](const Request& request) {
         return this->handleUserRoles(request);
     });
+    
+    router.get(prefix + "/user/teams", [this](const Request& request) {
+        return this->handleUserTeams(request);
+    });
 }
 
 Response AuthController::handleLogin(const Request& request) {
@@ -177,15 +181,18 @@ std::string AuthController::createJSONResponse(bool success, const std::string& 
             lastName = userData.name.substr(spacePos + 1);
         }
         
-        json << ",\"user\":{";
+        // Standardize: always use "data" wrapper for consistency
+        json << ",\"data\":{";
+        json << "\"user\":{";
         json << "\"id\":\"" << userData.id << "\",";
         json << "\"email\":\"" << userData.email << "\",";
         json << "\"name\":\"" << userData.name << "\",";
         json << "\"firstName\":\"" << firstName << "\",";
         json << "\"lastName\":\"" << lastName << "\",";
         json << "\"role\":\"" << userData.role << "\"";
+        json << "},";
+        json << "\"token\":\"" << generateJWT(userData) << "\"";
         json << "}";
-        json << ",\"token\":\"" << generateJWT(userData) << "\"";
     }
     
     json << "}";
@@ -269,4 +276,76 @@ void AuthController::logLoginAttempt(const std::string& user_id, bool success, c
         std::cerr << "❌ Failed to log login attempt: " << e.what() << std::endl;
         // Don't throw - logging failure shouldn't break login
     }
+}
+
+Response AuthController::handleUserTeams(const Request& request) {
+    try {
+        std::cout << "🔍 Getting teams for user" << std::endl;
+        
+        // Extract user ID from token
+        std::string user_id = extractUserIdFromToken(request);
+        if (user_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid or missing authentication token");
+            return Response(HttpStatus::UNAUTHORIZED, json);
+        }
+        
+        std::cout << "🔍 User ID from token: " << user_id << std::endl;
+        
+        auto db = Database::getInstance();
+        
+        // Query to get all teams for this user (both as player and coach)
+        // Note: players.id and coaches.id ARE the user_id (FK to users table)
+        std::ostringstream query;
+        query << "SELECT DISTINCT t.id, t.name, "
+              << "CASE WHEN tp.player_id IS NOT NULL THEN 'player' "
+              << "     WHEN tc.coach_id IS NOT NULL THEN 'coach' "
+              << "     ELSE 'unknown' END as role "
+              << "FROM teams t "
+              << "LEFT JOIN team_players tp ON t.id = tp.team_id AND tp.is_active = true "
+              << "LEFT JOIN players p ON tp.player_id = p.id "
+              << "LEFT JOIN team_coaches tc ON t.id = tc.team_id AND tc.is_active = true "
+              << "LEFT JOIN coaches c ON tc.coach_id = c.id "
+              << "WHERE (p.id = '" << user_id << "' OR c.id = '" << user_id << "')";
+        
+        std::cout << "🔍 Query: " << query.str() << std::endl;
+        
+        pqxx::result result = db->query(query.str());
+        
+        std::cout << "🔍 Found " << result.size() << " teams" << std::endl;
+        
+        // Build JSON array of teams
+        std::ostringstream teams_json;
+        teams_json << "[";
+        
+        for (size_t i = 0; i < result.size(); i++) {
+            if (i > 0) teams_json << ",";
+            teams_json << "{";
+            teams_json << "\"id\":\"" << result[i][0].c_str() << "\",";
+            teams_json << "\"name\":\"" << result[i][1].c_str() << "\",";
+            teams_json << "\"role\":\"" << result[i][2].c_str() << "\"";
+            teams_json << "}";
+        }
+        
+        teams_json << "]";
+        
+        std::string json = createJSONResponse(true, "Teams retrieved successfully", teams_json.str());
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ AuthController::handleUserTeams error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve teams");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+std::string AuthController::createJSONResponse(bool success, const std::string& message, const std::string& data) {
+    std::ostringstream json;
+    json << "{";
+    json << "\"success\":" << (success ? "true" : "false") << ",";
+    json << "\"message\":\"" << message << "\"";
+    if (!data.empty()) {
+        json << ",\"data\":" << data;
+    }
+    json << "}";
+    return json.str();
 }

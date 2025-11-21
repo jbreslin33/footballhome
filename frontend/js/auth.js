@@ -38,12 +38,17 @@ class Auth {
       if (!r.ok) throw new Error('Login failed');
       return r.json();
     })
-    .then(data => {
-      this.token = data.token;
-      this.user = data.user;
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      return data;
+    .then(response => {
+      // Backend returns {success, message, data: {user, token}}
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Login failed');
+      }
+      
+      this.token = response.data.token;
+      this.user = response.data.user;
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      return response.data;
     });
   }
   

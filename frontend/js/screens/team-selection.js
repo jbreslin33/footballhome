@@ -19,7 +19,10 @@ class TeamSelectionScreen extends Screen {
     listContainer.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading teams...</p></div>';
     
     // Fetch teams for current user
-    this.safeFetch('/api/user/teams', teams => {
+    this.safeFetch('/api/auth/user/teams', response => {
+      // Backend returns {success, message, data: [...teams...]}
+      const teams = response.data || [];
+      
       this.renderList('#team-list', teams,
         t => `
           <button class="team-btn" data-id="${t.id}" data-name="${t.name}">
