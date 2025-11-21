@@ -5,6 +5,7 @@ class TeamSelectionScreen extends Screen {
     div.className = 'screen screen-team-selection';
     div.innerHTML = `
       <div class="card">
+        <button class="btn btn-text back-btn">← Back</button>
         <h2>Select Team</h2>
         <p class="text-gray-600">Choose the team you want to work with</p>
         <div id="team-list" style="margin-top: 20px;"></div>
@@ -27,7 +28,6 @@ class TeamSelectionScreen extends Screen {
         t => `
           <button class="team-btn" data-id="${t.id}" data-name="${t.name}">
             <span class="team-name">${t.name}</span>
-            ${t.role ? `<span class="team-role">${t.role}</span>` : ''}
           </button>
         `,
         'No teams found. Please contact an administrator to be added to a team.'
@@ -36,6 +36,12 @@ class TeamSelectionScreen extends Screen {
     
     // Handle team selection
     this.element.addEventListener('click', (e) => {
+      // Handle back button
+      if (e.target.closest('.back-btn')) {
+        this.navigation.goBack();
+        return;
+      }
+      
       const btn = e.target.closest('.team-btn');
       if (btn) {
         const team = {
@@ -44,8 +50,7 @@ class TeamSelectionScreen extends Screen {
         };
         
         console.log('Selected team:', team);
-        this.navigation.context.team = team;
-        this.navigation.goTo('practice-options');
+        this.navigation.goTo('practice-options', { team: team });
       }
     });
   }

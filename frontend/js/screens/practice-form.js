@@ -31,9 +31,10 @@ class PracticeFormScreen extends Screen {
           </div>
           
           <div class="form-group">
-            <label for="location">Location</label>
-            <input type="text" id="location" name="location" class="form-input" 
-                   placeholder="e.g., Main Field">
+            <label for="venue_id">Venue *</label>
+            <select id="venue_id" name="venue_id" class="form-input" required>
+              <option value="">Select a venue...</option>
+            </select>
           </div>
           
           <div class="form-group">
@@ -57,6 +58,9 @@ class PracticeFormScreen extends Screen {
     this.mode = params.mode || 'create';
     this.practiceId = params.practiceId || null;
     
+    // Load venues into dropdown
+    this.loadVenues();
+    
     // Update UI based on mode
     if (this.mode === 'edit') {
       this.find('#form-title').textContent = 'Edit Practice';
@@ -75,12 +79,14 @@ class PracticeFormScreen extends Screen {
       
       const formData = new FormData(e.target);
       const practice = {
+        team_id: this.navigation.context.team.id,
+        event_type: 'training',
         title: formData.get('title'),
         date: formData.get('date'),
-        time: formData.get('time'),
-        location: formData.get('location'),
-        notes: formData.get('notes'),
-        teamId: this.navigation.context.team.id
+        start_time: formData.get('time'),
+        end_time: '', // Can add later if needed
+        venue_id: formData.get('venue_id'),
+        notes: formData.get('notes')
       };
       
       if (this.mode === 'create') {
@@ -98,12 +104,29 @@ class PracticeFormScreen extends Screen {
     });
   }
   
+  loadVenues() {
+    this.safeFetch('/api/venues', venues => {
+      const select = this.find('#venue_id');
+      
+      // Clear existing options except the first one
+      select.innerHTML = '<option value="">Select a venue...</option>';
+      
+      // Add venue options
+      venues.forEach(venue => {
+        const option = document.createElement('option');
+        option.value = venue.id;
+        option.textContent = `${venue.name}${venue.city ? ' - ' + venue.city : ''}`;
+        select.appendChild(option);
+      });
+    });
+  }
+  
   loadPractice(practiceId) {
     this.safeFetch(`/api/practices/${practiceId}`, practice => {
       this.find('#title').value = practice.title || '';
       this.find('#date').value = practice.date || '';
       this.find('#time').value = practice.time || '';
-      this.find('#location').value = practice.location || '';
+      this.find('#venue_id').value = practice.venue_id || '';
       this.find('#notes').value = practice.notes || '';
     });
   }

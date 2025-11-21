@@ -52,12 +52,10 @@ class RoleSelectionScreen extends Screen {
   }
   
   handleRoleSelection(role) {
-    // Store selected role in navigation context
-    this.navigation.context.role = role;
-    
+    // Store selected role in navigation context and navigate
     if (role === 'coach') {
       // Go to team selection for coach
-      this.navigation.goTo('team-selection');
+      this.navigation.goTo('team-selection', { role: role });
     } else if (role === 'player') {
       // Future: player flow
       this.handleError(new Error('Player role not yet implemented'), 'role-selection');
@@ -66,7 +64,8 @@ class RoleSelectionScreen extends Screen {
   
   handleLogout() {
     this.auth.logout();
-    this.navigation.context = {}; // Clear context
+    this.navigation.context = { user: null, role: null, team: null }; // Clear context
+    this.navigation.updateContextHeader();
     this.navigation.goTo('login');
   }
   

@@ -56,7 +56,7 @@ Response EventController::handleCreateEvent(const Request& request) {
         std::string date = parseJSON(body, "date");
         std::string start_time = parseJSON(body, "start_time");
         std::string end_time = parseJSON(body, "end_time");
-        std::string location = parseJSON(body, "location");
+        std::string venue_id = parseJSON(body, "venue_id");
         std::string notes = parseJSON(body, "notes");
         
         // Validate required fields
@@ -96,7 +96,7 @@ Response EventController::handleCreateEvent(const Request& request) {
         
         // Build INSERT query for events table
         std::ostringstream event_query;
-        event_query << "INSERT INTO events (id, created_by, event_type_id, title, description, event_date, duration_minutes, created_at, updated_at) ";
+        event_query << "INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, created_at, updated_at) ";
         event_query << "VALUES (";
         event_query << "'" << event_id << "', ";
         event_query << "'" << created_by << "', ";
@@ -104,6 +104,7 @@ Response EventController::handleCreateEvent(const Request& request) {
         event_query << "'Practice Session', ";
         event_query << (notes.empty() ? "NULL" : "'" + notes + "'") << ", ";
         event_query << "'" << event_datetime << "', ";
+        event_query << (venue_id.empty() ? "NULL" : "'" + venue_id + "'") << ", ";
         event_query << duration << ", ";
         event_query << "CURRENT_TIMESTAMP, ";
         event_query << "CURRENT_TIMESTAMP";

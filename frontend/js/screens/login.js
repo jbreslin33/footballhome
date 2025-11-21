@@ -5,7 +5,7 @@ class LoginScreen extends Screen {
     div.className = 'screen screen-login';
     div.innerHTML = `
       <div class="card">
-        <h2>Football Home - Coach Login</h2>
+        <h2>Football Home Login</h2>
         <form id="login-form">
           <div class="form-group">
             <label for="username">Email</label>

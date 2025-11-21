@@ -51,6 +51,46 @@ body {
     background-color: var(--gray-50);
 }
 
+/* Context Header */
+.context-header {
+    background-color: var(--gray-800);
+    color: white;
+    padding: var(--space-3) var(--space-6);
+    box-shadow: var(--shadow-md);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.context-info {
+    display: flex;
+    gap: var(--space-6);
+    max-width: 1200px;
+    margin: 0 auto;
+    font-size: 0.875rem;
+}
+
+.context-item {
+    font-weight: 500;
+}
+
+.context-item::before {
+    font-weight: 600;
+    margin-right: var(--space-2);
+}
+
+#context-user::before {
+    content: 'User: ';
+}
+
+#context-role::before {
+    content: 'Role: ';
+}
+
+#context-team::before {
+    content: 'Team: ';
+}
+
 /* Layout */
 .container {
     max-width: 1200px;
@@ -156,6 +196,21 @@ body {
 
 .btn-secondary:hover:not(:disabled) {
     background-color: var(--gray-300);
+}
+
+.btn-text {
+    background-color: transparent;
+    color: var(--gray-600);
+    padding: var(--space-2) var(--space-3);
+}
+
+.btn-text:hover:not(:disabled) {
+    background-color: var(--gray-100);
+    color: var(--gray-800);
+}
+
+.back-btn {
+    margin-bottom: var(--space-4);
 }
 
 .btn-lg {
