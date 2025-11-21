@@ -49,7 +49,10 @@ class PracticeListScreen extends Screen {
     const listContainer = this.find('#practice-list');
     listContainer.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading practices...</p></div>';
     
-    this.safeFetch(`/api/teams/${teamId}/practices`, practices => {
+    this.safeFetch(`/api/events/${teamId}`, response => {
+      // Extract practices from standardized response format
+      const practices = response.data || [];
+      
       this.renderList('#practice-list', practices,
         p => {
           // Determine current RSVP status styling
@@ -92,7 +95,7 @@ class PracticeListScreen extends Screen {
   }
   
   handleRSVP(practiceId, status) {
-    this.auth.fetch(`/api/practices/${practiceId}/rsvp`, {
+    this.auth.fetch(`/api/events/${practiceId}/rsvp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: status })

@@ -72,7 +72,9 @@ class PracticeManagementScreen extends Screen {
     const listContainer = this.find('#practice-list');
     listContainer.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading practices...</p></div>';
     
-    this.safeFetch(`/api/teams/${teamId}/practices`, practices => {
+    this.safeFetch(`/api/events/${teamId}`, response => {
+      // Extract practices from standardized response format
+      const practices = response.data || [];
       this.renderList('#practice-list', practices,
         p => `
           <div class="practice-item">
@@ -96,7 +98,7 @@ class PracticeManagementScreen extends Screen {
   }
   
   deletePractice(practiceId) {
-    this.auth.fetch(`/api/practices/${practiceId}`, { 
+    this.auth.fetch(`/api/events/${practiceId}`, { 
       method: 'DELETE' 
     })
     .then(r => {

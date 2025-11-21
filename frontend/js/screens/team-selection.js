@@ -45,7 +45,7 @@ class TeamSelectionScreen extends Screen {
       const btn = e.target.closest('.team-btn');
       if (btn) {
         const team = {
-          id: parseInt(btn.getAttribute('data-id')),
+          id: btn.getAttribute('data-id'),
           name: btn.getAttribute('data-name')
         };
         

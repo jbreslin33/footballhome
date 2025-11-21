@@ -124,7 +124,7 @@ class PracticeFormScreen extends Screen {
   }
   
   loadPractice(practiceId) {
-    this.safeFetch(`/api/practices/${practiceId}`, practice => {
+    this.safeFetch(`/api/events/${practiceId}`, practice => {
       this.find('#title').value = practice.title || '';
       this.find('#date').value = practice.date || '';
       this.find('#time').value = practice.time || '';
@@ -134,7 +134,7 @@ class PracticeFormScreen extends Screen {
   }
   
   createPractice(practice) {
-    this.auth.fetch('/api/practices', {
+    this.auth.fetch('/api/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(practice)
@@ -153,7 +153,7 @@ class PracticeFormScreen extends Screen {
   }
   
   updatePractice(practiceId, practice) {
-    this.auth.fetch(`/api/practices/${practiceId}`, {
+    this.auth.fetch(`/api/events/${practiceId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(practice)
