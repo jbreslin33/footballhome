@@ -53,7 +53,17 @@ class PracticeListScreen extends Screen {
       // Extract practices from standardized response format
       const practices = response.data || [];
       
-      this.renderList('#practice-list', practices,
+      // Transform event_date into separate date and time fields
+      const transformedPractices = practices.map(p => {
+        const eventDate = new Date(p.event_date);
+        return {
+          ...p,
+          date: eventDate.toLocaleDateString(),
+          time: eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+      });
+      
+      this.renderList('#practice-list', transformedPractices,
         p => {
           // Determine current RSVP status styling
           const attendingClass = p.userRsvpStatus === 'attending' ? 'btn-primary' : 'btn-secondary';

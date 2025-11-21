@@ -53,11 +53,17 @@ Response EventController::handleCreateEvent(const Request& request) {
         // Parse JSON body (simple parsing for required fields)
         std::string team_id = parseJSON(body, "team_id");
         std::string event_type = parseJSON(body, "event_type");
+        std::string title = parseJSON(body, "title");
         std::string date = parseJSON(body, "date");
         std::string start_time = parseJSON(body, "start_time");
         std::string end_time = parseJSON(body, "end_time");
         std::string venue_id = parseJSON(body, "venue_id");
         std::string notes = parseJSON(body, "notes");
+        
+        // Use title or default to "Practice Session"
+        if (title.empty()) {
+            title = "Practice Session";
+        }
         
         // Validate required fields
         if (team_id.empty() || event_type.empty() || date.empty() || start_time.empty()) {
@@ -101,7 +107,7 @@ Response EventController::handleCreateEvent(const Request& request) {
         event_query << "'" << event_id << "', ";
         event_query << "'" << created_by << "', ";
         event_query << "'" << event_type_id << "', ";
-        event_query << "'Practice Session', ";
+        event_query << "'" << title << "', ";
         event_query << (notes.empty() ? "NULL" : "'" + notes + "'") << ", ";
         event_query << "'" << event_datetime << "', ";
         event_query << (venue_id.empty() ? "NULL" : "'" + venue_id + "'") << ", ";

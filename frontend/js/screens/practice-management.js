@@ -75,7 +75,18 @@ class PracticeManagementScreen extends Screen {
     this.safeFetch(`/api/events/${teamId}`, response => {
       // Extract practices from standardized response format
       const practices = response.data || [];
-      this.renderList('#practice-list', practices,
+      
+      // Transform event_date into separate date and time fields
+      const transformedPractices = practices.map(p => {
+        const eventDate = new Date(p.event_date);
+        return {
+          ...p,
+          date: eventDate.toLocaleDateString(),
+          time: eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+      });
+      
+      this.renderList('#practice-list', transformedPractices,
         p => `
           <div class="practice-item">
             <div class="practice-header">
