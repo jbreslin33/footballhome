@@ -337,12 +337,14 @@ Response EventController::handleUpdateEvent(const Request& request) {
         std::cout << "✏️ Updating event " << event_id << " with body: " << body << std::endl;
         
         // Parse request body
+        std::string title = parseJSON(body, "title");
         std::string date = parseJSON(body, "date");
         std::string start_time = parseJSON(body, "start_time");
         std::string end_time = parseJSON(body, "end_time");
+        std::string venue_id = parseJSON(body, "venue_id");
         std::string notes = parseJSON(body, "notes");
         
-        if (date.empty() || start_time.empty() || end_time.empty()) {
+        if (date.empty() || start_time.empty()) {
             std::string json = createJSONResponse(false, "Missing required fields");
             return Response(HttpStatus::BAD_REQUEST, json);
         }
@@ -350,18 +352,27 @@ Response EventController::handleUpdateEvent(const Request& request) {
         // Combine date and time
         std::string event_datetime = date + " " + start_time;
         
-        // Calculate duration in minutes
-        int start_hour = std::stoi(start_time.substr(0, 2));
-        int start_min = std::stoi(start_time.substr(3, 2));
-        int end_hour = std::stoi(end_time.substr(0, 2));
-        int end_min = std::stoi(end_time.substr(3, 2));
-        int duration = (end_hour * 60 + end_min) - (start_hour * 60 + start_min);
+        // Calculate duration in minutes (if end_time provided)
+        int duration = 90; // Default to 90 minutes if no end_time
+        if (!end_time.empty()) {
+            int start_hour = std::stoi(start_time.substr(0, 2));
+            int start_min = std::stoi(start_time.substr(3, 2));
+            int end_hour = std::stoi(end_time.substr(0, 2));
+            int end_min = std::stoi(end_time.substr(3, 2));
+            duration = (end_hour * 60 + end_min) - (start_hour * 60 + start_min);
+        }
         
         // Update events table
         std::ostringstream query;
         query << "UPDATE events SET ";
+        if (!title.empty()) {
+            query << "title = '" << title << "', ";
+        }
         query << "event_date = '" << event_datetime << "', ";
         query << "duration_minutes = " << duration << ", ";
+        if (!venue_id.empty()) {
+            query << "venue_id = '" << venue_id << "', ";
+        }
         query << "updated_at = CURRENT_TIMESTAMP ";
         query << "WHERE id = '" << event_id << "'";
         
