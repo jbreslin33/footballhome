@@ -58,15 +58,17 @@ class PracticeFormScreen extends Screen {
     this.mode = params.mode || 'create';
     this.practiceId = params.practiceId || null;
     
-    // Load venues into dropdown
-    this.loadVenues();
-    
     // Update UI based on mode
     if (this.mode === 'edit') {
       this.find('#form-title').textContent = 'Edit Practice';
       this.find('#submit-btn').textContent = 'Save Changes';
-      this.loadPractice(this.practiceId);
+      // Load venues first, then load practice data
+      this.loadVenues(() => {
+        this.loadPractice(this.practiceId);
+      });
     } else {
+      // For create mode, just load venues
+      this.loadVenues();
       // Set today as default date for new practices
       const today = new Date().toISOString().split('T')[0];
       this.find('#date').value = today;
@@ -104,7 +106,7 @@ class PracticeFormScreen extends Screen {
     });
   }
   
-  loadVenues() {
+  loadVenues(callback) {
     this.safeFetch('/api/venues', response => {
       // Extract venues from standardized response format
       const venues = response.data || [];
@@ -120,6 +122,9 @@ class PracticeFormScreen extends Screen {
         option.textContent = `${venue.name}${venue.city ? ' - ' + venue.city : ''}`;
         select.appendChild(option);
       });
+      
+      // Call callback after venues are loaded
+      if (callback) callback();
     });
   }
   
