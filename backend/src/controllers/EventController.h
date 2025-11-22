@@ -14,6 +14,7 @@ public:
 private:
     Response handleCreateEvent(const Request& request);
     Response handleGetEvents(const Request& request);
+    Response handleGetEvent(const Request& request);
     Response handleGetVenues(const Request& request);
     Response handleUpdateEvent(const Request& request);
     Response handleDeleteEvent(const Request& request);

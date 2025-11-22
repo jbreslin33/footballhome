@@ -14,9 +14,14 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
         return this->handleCreateEvent(request);
     });
     
-    // GET /api/events/:teamId - Get events for a team
-    router.get(prefix + "/:teamId", [this](const Request& request) {
+    // GET /api/events/team/:teamId - Get events for a team
+    router.get(prefix + "/team/:teamId", [this](const Request& request) {
         return this->handleGetEvents(request);
+    });
+    
+    // GET /api/events/:eventId - Get single event by ID
+    router.get(prefix + "/:eventId", [this](const Request& request) {
+        return this->handleGetEvent(request);
     });
     
     // PUT /api/events/:eventId - Update event
@@ -214,6 +219,64 @@ Response EventController::handleGetEvents(const Request& request) {
     }
 }
 
+Response EventController::handleGetEvent(const Request& request) {
+    try {
+        // Extract event ID from path
+        std::string event_id = extractEventIdFromPath(request.getPath());
+        if (event_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid event ID in path");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        std::cout << "🔍 Getting event: " << event_id << std::endl;
+        
+        // Query single event with venue info
+        std::ostringstream query;
+        query << "SELECT e.id, e.title, e.event_date, e.duration_minutes, e.venue_id, ";
+        query << "et.name as event_type, p.notes ";
+        query << "FROM events e ";
+        query << "JOIN event_types et ON e.event_type_id = et.id ";
+        query << "LEFT JOIN practices p ON e.id = p.id ";
+        query << "WHERE e.id = '" << event_id << "'";
+        
+        pqxx::result result = db_->query(query.str());
+        
+        if (result.empty()) {
+            std::string json = createJSONResponse(false, "Event not found");
+            return Response(HttpStatus::NOT_FOUND, json);
+        }
+        
+        // Parse event_date to extract date and time separately
+        std::string event_date_str = result[0][2].c_str();
+        std::string date_part = event_date_str.substr(0, 10); // YYYY-MM-DD
+        std::string time_part = event_date_str.substr(11, 5); // HH:MM
+        
+        // Build JSON for single event
+        std::ostringstream event_json;
+        event_json << "{";
+        event_json << "\"id\":\"" << result[0][0].c_str() << "\",";
+        event_json << "\"title\":\"" << result[0][1].c_str() << "\",";
+        event_json << "\"date\":\"" << date_part << "\",";
+        event_json << "\"time\":\"" << time_part << "\",";
+        event_json << "\"event_date\":\"" << event_date_str << "\",";
+        event_json << "\"duration_minutes\":" << result[0][3].c_str() << ",";
+        event_json << "\"venue_id\":\"" << (result[0][4].is_null() ? "" : result[0][4].c_str()) << "\",";
+        event_json << "\"type\":\"" << result[0][5].c_str() << "\"";
+        if (!result[0][6].is_null()) {
+            event_json << ",\"notes\":\"" << result[0][6].c_str() << "\"";
+        }
+        event_json << "}";
+        
+        std::string json = createJSONResponse(true, "Event retrieved successfully", event_json.str());
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ EventController::handleGetEvent error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve event");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
 Response EventController::handleGetVenues(const Request& request) {
     try {
         std::cout << "🔍 Getting venues list" << std::endl;
@@ -362,7 +425,7 @@ Response EventController::handleDeleteEvent(const Request& request) {
 }
 
 std::string EventController::extractTeamIdFromPath(const std::string& path) {
-    std::regex uuid_regex(R"(/api/events/([a-f0-9-]{36}))");
+    std::regex uuid_regex(R"(/api/events/team/([a-f0-9-]{36}))");
     std::smatch match;
     
     if (std::regex_search(path, match, uuid_regex)) {

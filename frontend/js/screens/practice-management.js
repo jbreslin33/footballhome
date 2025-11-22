@@ -72,7 +72,7 @@ class PracticeManagementScreen extends Screen {
     const listContainer = this.find('#practice-list');
     listContainer.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading practices...</p></div>';
     
-    this.safeFetch(`/api/events/${teamId}`, response => {
+    this.safeFetch(`/api/events/team/${teamId}`, response => {
       // Extract practices from standardized response format
       const practices = response.data || [];
       
