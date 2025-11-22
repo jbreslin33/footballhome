@@ -62,6 +62,8 @@ class PracticeListScreen extends Screen {
     const userId = this.auth.getUser()?.id;
     const roleType = this.navigation.context.role; // 'coach', 'player', or 'parent'
     
+    console.log('Loading practices with RSVP for:', { userId, roleType });
+    
     if (!userId || !roleType) {
       console.error('Missing user ID or role type');
       this.renderPractices(practices);
@@ -75,11 +77,15 @@ class PracticeListScreen extends Screen {
           const response = await this.auth.fetch(`/api/events/${practice.id}/rsvps?role_type=${roleType}`);
           const data = await response.json();
           
+          console.log(`RSVPs for practice ${practice.id}:`, data);
+          
           if (data.success && data.data) {
             // Find current user's RSVP
             const userRsvp = data.data.find(rsvp => rsvp.user_id === userId);
             practice.userRsvpStatus = userRsvp ? userRsvp.status : null;
             practice.rsvpCount = data.data.length;
+            
+            console.log(`Practice ${practice.id} - User RSVP status:`, practice.userRsvpStatus);
           }
         } catch (err) {
           console.error(`Failed to load RSVP for practice ${practice.id}:`, err);
@@ -152,6 +158,8 @@ class PracticeListScreen extends Screen {
       return;
     }
     
+    console.log('Submitting RSVP:', { practiceId, userId, roleType, status });
+    
     this.auth.fetch(`/api/events/${practiceId}/rsvp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -166,21 +174,15 @@ class PracticeListScreen extends Screen {
       if (!r.ok) throw new Error('RSVP failed');
       return r.json();
     })
-    .then(() => {
+    .then((response) => {
+      console.log('RSVP response:', response);
       console.log(`RSVP recorded: ${status}`);
-      
-      // Show feedback
-      const message = status === 'attending' 
-        ? '✓ Marked as Attending' 
-        : '✗ Marked as Not Attending';
-      
-      // Simple alert for now (can enhance with toast notification later)
-      alert(message);
       
       // Refresh list to show updated status
       this.loadPractices();
     })
     .catch(err => {
+      console.error('RSVP error:', err);
       this.handleError(err, 'rsvp');
     });
   }
