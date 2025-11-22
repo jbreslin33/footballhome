@@ -12,6 +12,13 @@ class NavigationStateMachine {
       role: null,   // Set on role selection
       team: null    // Set on team selection
     };
+    
+    // Listen for browser back/forward buttons
+    window.addEventListener('popstate', (event) => {
+      if (event.state && event.state.screen) {
+        this.handleBrowserNavigation(event.state);
+      }
+    });
   }
   
   // Update the context header display
@@ -54,6 +61,14 @@ class NavigationStateMachine {
     // Update current state
     this.currentState = state;
     
+    // Push state to browser history
+    const historyState = {
+      screen: state,
+      context: { ...this.context },
+      params: params
+    };
+    window.history.pushState(historyState, '', `#${state}`);
+    
     // Tell screen manager to show the screen
     this.screenManager.show(state, params);
     
@@ -79,8 +94,30 @@ class NavigationStateMachine {
     // Update context header
     this.updateContextHeader();
     
+    // Update browser history (go back without triggering popstate)
+    window.history.back();
+    
     // Show previous screen with current context
     this.screenManager.show(previousState, this.context);
+  }
+  
+  // Handle browser back/forward button navigation
+  handleBrowserNavigation(state) {
+    console.log('Browser navigation detected:', state);
+    
+    // Restore context from history state
+    if (state.context) {
+      this.context = state.context;
+    }
+    
+    // Update internal state
+    this.currentState = state.screen;
+    
+    // Update context header
+    this.updateContextHeader();
+    
+    // Show the screen
+    this.screenManager.show(state.screen, state.params || {});
   }
   
   // Clear context set by specific screens when navigating back
