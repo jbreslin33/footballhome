@@ -524,6 +524,29 @@ std::string EventController::generateUUID() {
     return uuid.str();
 }
 
+std::string EventController::escapeJSON(const std::string& str) {
+    std::ostringstream escaped;
+    for (char c : str) {
+        switch (c) {
+            case '"':  escaped << "\\\""; break;
+            case '\\': escaped << "\\\\"; break;
+            case '\b': escaped << "\\b"; break;
+            case '\f': escaped << "\\f"; break;
+            case '\n': escaped << "\\n"; break;
+            case '\r': escaped << "\\r"; break;
+            case '\t': escaped << "\\t"; break;
+            default:
+                if (c < 0x20) {
+                    // Escape other control characters
+                    escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
+                } else {
+                    escaped << c;
+                }
+        }
+    }
+    return escaped.str();
+}
+
 std::string EventController::getCurrentTimestamp() {
     auto now = std::time(nullptr);
     auto tm = *std::localtime(&now);
@@ -647,16 +670,21 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
                 if (!first) json_array << ",";
                 first = false;
                 
+                std::string notes_value = result[i]["notes"].is_null() ? "" : escapeJSON(result[i]["notes"].c_str());
+                std::string first_name = escapeJSON(result[i]["first_name"].c_str());
+                std::string last_name = escapeJSON(result[i]["last_name"].c_str());
+                std::string email = escapeJSON(result[i]["email"].c_str());
+                
                 json_array << "{"
                           << "\"id\": \"" << result[i]["id"].c_str() << "\", "
                           << "\"event_id\": \"" << result[i]["event_id"].c_str() << "\", "
                           << "\"user_id\": \"" << result[i]["user_id"].c_str() << "\", "
                           << "\"role_type\": \"" << role << "\", "
                           << "\"status\": \"" << result[i]["status"].c_str() << "\", "
-                          << "\"notes\": \"" << (result[i]["notes"].is_null() ? "" : result[i]["notes"].c_str()) << "\", "
+                          << "\"notes\": \"" << notes_value << "\", "
                           << "\"response_date\": \"" << result[i]["response_date"].c_str() << "\", "
-                          << "\"user_name\": \"" << result[i]["first_name"].c_str() << " " << result[i]["last_name"].c_str() << "\", "
-                          << "\"user_email\": \"" << result[i]["email"].c_str() << "\""
+                          << "\"user_name\": \"" << first_name << " " << last_name << "\", "
+                          << "\"user_email\": \"" << email << "\""
                           << "}";
             }
         }

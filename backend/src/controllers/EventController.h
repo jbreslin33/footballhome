@@ -28,4 +28,5 @@ private:
     std::string parseJSON(const std::string& body, const std::string& key);
     std::string getCurrentTimestamp();
     std::string generateUUID();
+    std::string escapeJSON(const std::string& str);
 };
