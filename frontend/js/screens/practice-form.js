@@ -124,7 +124,10 @@ class PracticeFormScreen extends Screen {
   }
   
   loadPractice(practiceId) {
-    this.safeFetch(`/api/events/${practiceId}`, practice => {
+    this.safeFetch(`/api/events/${practiceId}`, response => {
+      // Extract practice from standardized response format
+      const practice = response.data || response;
+      
       this.find('#title').value = practice.title || '';
       this.find('#date').value = practice.date || '';
       this.find('#time').value = practice.time || '';
