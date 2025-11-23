@@ -18,13 +18,10 @@ class RoleSelectionScreen extends Screen {
             <span class="role-label">Coach</span>
           </button>
           
-          <!-- Player role will be added later -->
-          <!-- 
           <button class="btn btn-primary btn-large" data-role="player">
             <span class="role-icon">👟</span>
             <span class="role-label">Player</span>
           </button>
-          -->
         </div>
         
         <button class="btn btn-text logout-btn">Logout</button>
@@ -53,12 +50,12 @@ class RoleSelectionScreen extends Screen {
   
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
-    if (role === 'coach') {
-      // Go to team selection for coach
+    if (role === 'coach' || role === 'player') {
+      // Go to team selection for coach or player
       this.navigation.goTo('team-selection', { role: role });
-    } else if (role === 'player') {
-      // Future: player flow
-      this.handleError(new Error('Player role not yet implemented'), 'role-selection');
+    } else if (role === 'parent') {
+      // Future: parent flow
+      this.handleError(new Error('Parent role not yet implemented'), 'role-selection');
     }
   }
   
