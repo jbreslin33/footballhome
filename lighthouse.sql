@@ -86,17 +86,19 @@ ON CONFLICT (id) DO UPDATE SET
 -- ================================================================
 
 -- Create jbreslin@footballhome.org as admin user
-INSERT INTO users (id, email, password_hash, name, is_active)
+INSERT INTO users (id, email, password_hash, first_name, last_name, is_active)
 VALUES (
     '77d77471-1250-47e0-81ab-d4626595d63c',
     'jbreslin@footballhome.org',
     '$2a$12$kDODGedFzf1BpWdjdCjHo.X3t5VwU4K9/KhlSDlymmHadhGuJslHS',
-    'James Breslin',
+    'James',
+    'Breslin',
     true
 )
 ON CONFLICT (email) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
-    name = EXCLUDED.name,
+    first_name = EXCLUDED.first_name,
+    last_name = EXCLUDED.last_name,
     is_active = EXCLUDED.is_active,
     updated_at = CURRENT_TIMESTAMP;
 

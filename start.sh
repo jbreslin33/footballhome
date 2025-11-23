@@ -118,10 +118,10 @@ cd "$SCRIPT_DIR"
 echo -e "${BLUE}Step 1: APSL Data Management${NC}"
 if [ "$SCRAPE_APSL" = true ]; then
     echo -e "${YELLOW}🔄 Scraping APSL data from external source...${NC}"
-    if [ -f "./database/scrape-apsl.sh" ]; then
-        chmod +x ./database/scrape-apsl.sh
+    if [ -f "./database/apsl/scrape-apsl.sh" ]; then
+        chmod +x ./database/apsl/scrape-apsl.sh
         export APSL_SCRAPE=true
-        ./database/scrape-apsl.sh
+        ./database/apsl/scrape-apsl.sh
         echo -e "${GREEN}✓ APSL data scraped successfully${NC}"
     else
         echo -e "${RED}❌ Error: scrape-apsl.sh not found${NC}"
@@ -167,6 +167,7 @@ services:
       - ./database/schema/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./database/apsl/apsl-data.sql:/docker-entrypoint-initdb.d/02-apsl-data.sql:ro
       - ./database/schema/venues.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
+      - ./database/schema/post-data-setup.sql:/docker-entrypoint-initdb.d/99-post-data-setup.sql:ro
 EOF
     echo -e "${GREEN}✓ Will load complete APSL dataset with all teams and venues${NC}"
 else
@@ -184,6 +185,7 @@ services:
       - ./database/schema/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./lighthouse.sql:/docker-entrypoint-initdb.d/02-lighthouse.sql:ro
       - ./database/schema/venues.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
+      - ./database/schema/post-data-setup.sql:/docker-entrypoint-initdb.d/99-post-data-setup.sql:ro
 EOF
     echo -e "${GREEN}✓ Will load Lighthouse 1893 SC data and venues${NC}"
 fi
