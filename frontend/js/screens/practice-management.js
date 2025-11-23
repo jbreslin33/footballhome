@@ -4,18 +4,18 @@ class PracticeManagementScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-practice-management';
     div.innerHTML = `
-      <div class="card">
-        <h2>Manage Practices</h2>
-        
-        <button id="add-practice-btn" class="btn btn-primary" style="margin-bottom: 20px;">
+      <div class="screen-header">
+        <button id="back-btn" class="btn btn-secondary">← Back</button>
+        <h1>⚽ Manage Practices</h1>
+        <p class="subtitle">Create, edit, and delete practices</p>
+      </div>
+      
+      <div style="padding: var(--space-4);">
+        <button id="add-practice-btn" class="btn btn-lg btn-success" style="width: 100%; max-width: 500px; margin: 0 auto var(--space-4); display: flex; justify-content: center;">
           + Add New Practice
         </button>
         
-        <div id="practice-list"></div>
-        
-        <button id="back-btn" class="btn btn-secondary" style="margin-top: 20px;">
-          ← Back
-        </button>
+        <div id="practice-list" class="practice-cards"></div>
       </div>
     `;
     this.element = div;
@@ -79,31 +79,65 @@ class PracticeManagementScreen extends Screen {
       // Transform event_date into separate date and time fields
       const transformedPractices = practices.map(p => {
         const eventDate = new Date(p.event_date);
+        
+        // Format date as relative or absolute
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        let dateDisplay;
+        if (eventDate.toDateString() === today.toDateString()) {
+          dateDisplay = 'Today';
+        } else if (eventDate.toDateString() === tomorrow.toDateString()) {
+          dateDisplay = 'Tomorrow';
+        } else {
+          dateDisplay = eventDate.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+          });
+        }
+        
         return {
           ...p,
-          date: eventDate.toLocaleDateString(),
+          dateDisplay: dateDisplay,
           time: eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
       });
       
       this.renderList('#practice-list', transformedPractices,
         p => `
-          <div class="practice-item">
-            <div class="practice-header">
+          <div class="card practice-card">
+            <div class="practice-card-header">
               <h3>${p.title}</h3>
-              <div class="practice-actions">
-                <button data-action="edit" data-id="${p.id}" class="btn btn-sm">Edit</button>
-                <button data-action="delete" data-id="${p.id}" data-name="${p.title}" class="btn btn-sm btn-secondary">Delete</button>
-              </div>
             </div>
-            <p class="practice-meta">
-              📅 ${p.date} at ${p.time}
-              ${p.location ? `<br>📍 ${p.location}` : ''}
-            </p>
+            
+            <div class="practice-card-meta">
+              <div class="meta-item">
+                <span class="meta-icon">📅</span>
+                <span>${p.dateDisplay}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon">🕐</span>
+                <span>${p.time}</span>
+              </div>
+              ${p.location ? `
+              <div class="meta-item">
+                <span class="meta-icon">📍</span>
+                <span>${p.location}</span>
+              </div>
+              ` : ''}
+            </div>
+            
             ${p.notes ? `<p class="practice-notes">${p.notes}</p>` : ''}
+            
+            <div style="display: flex; gap: var(--space-3); margin-top: var(--space-4);">
+              <button data-action="edit" data-id="${p.id}" class="btn btn-primary" style="flex: 1;">Edit</button>
+              <button data-action="delete" data-id="${p.id}" data-name="${p.title}" class="btn btn-danger" style="flex: 1;">Delete</button>
+            </div>
           </div>
         `,
-        'No practices scheduled yet. Click "Add New Practice" to create one.'
+        '<div class="empty-state"><p>⚽ No practices scheduled yet</p><p class="text-muted">Click "Add New Practice" to create one</p></div>'
       );
     });
   }

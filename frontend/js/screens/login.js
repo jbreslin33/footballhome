@@ -4,16 +4,21 @@ class LoginScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-login';
     div.innerHTML = `
-      <div class="card">
-        <h2>Football Home Login</h2>
+      <div class="screen-header">
+        <h1>⚽ Football Home</h1>
+        <p class="subtitle">Team practice management made easy</p>
+      </div>
+      
+      <div class="card" style="max-width: 400px; margin: var(--space-4) auto;">
+        <h2 style="margin-bottom: var(--space-4);">Login</h2>
         <form id="login-form">
           <div class="form-group">
-            <label for="username">Email</label>
+            <label for="username" class="form-label">Email</label>
             <input type="email" id="username" name="username" class="form-input" required autocomplete="username">
           </div>
           
           <div class="form-group">
-            <label for="password">Password</label>
+            <label for="password" class="form-label">Password</label>
             <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
           </div>
           

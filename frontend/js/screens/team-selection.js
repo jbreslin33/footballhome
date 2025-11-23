@@ -4,12 +4,13 @@ class TeamSelectionScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-team-selection';
     div.innerHTML = `
-      <div class="card">
-        <button class="btn btn-text back-btn">← Back</button>
-        <h2>Select Team</h2>
-        <p class="text-gray-600">Choose the team you want to work with</p>
-        <div id="team-list" style="margin-top: 20px;"></div>
+      <div class="screen-header">
+        <button class="btn btn-secondary back-btn">← Back</button>
+        <h1>⚽ Select Team</h1>
+        <p class="subtitle">Choose the team you want to work with</p>
       </div>
+      
+      <div id="team-list" style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3);"></div>
     `;
     this.element = div;
     return div;
@@ -26,11 +27,11 @@ class TeamSelectionScreen extends Screen {
       
       this.renderList('#team-list', teams,
         t => `
-          <button class="team-btn" data-id="${t.id}" data-name="${t.name}">
-            <span class="team-name">${t.name}</span>
+          <button class="btn btn-lg btn-primary team-btn" data-id="${t.id}" data-name="${t.name}">
+            ${t.name}
           </button>
         `,
-        'No teams found. Please contact an administrator to be added to a team.'
+        '<div class="empty-state"><p>No teams found</p><p class="text-muted">Contact an administrator to be added to a team</p></div>'
       );
     });
     

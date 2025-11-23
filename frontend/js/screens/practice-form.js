@@ -10,42 +10,45 @@ class PracticeFormScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-practice-form';
     div.innerHTML = `
-      <div class="card">
-        <h2 id="form-title">Create Practice</h2>
-        
+      <div class="screen-header">
+        <h1 id="form-title">⚽ Create Practice</h1>
+        <p class="subtitle">Fill in the details below</p>
+      </div>
+      
+      <div class="card" style="max-width: 600px; margin: var(--space-4) auto;">
         <form id="practice-form">
           <div class="form-group">
-            <label for="title">Practice Title *</label>
+            <label for="title" class="form-label">Practice Title *</label>
             <input type="text" id="title" name="title" class="form-input" required 
                    placeholder="e.g., Tuesday Night Practice">
           </div>
           
           <div class="form-group">
-            <label for="date">Date *</label>
+            <label for="date" class="form-label">Date *</label>
             <input type="date" id="date" name="date" class="form-input" required>
           </div>
           
           <div class="form-group">
-            <label for="time">Time *</label>
+            <label for="time" class="form-label">Time *</label>
             <input type="time" id="time" name="time" class="form-input" required>
           </div>
           
           <div class="form-group">
-            <label for="venue_id">Venue *</label>
+            <label for="venue_id" class="form-label">Venue *</label>
             <select id="venue_id" name="venue_id" class="form-input" required>
               <option value="">Select a venue...</option>
             </select>
           </div>
           
           <div class="form-group">
-            <label for="notes">Notes</label>
+            <label for="notes" class="form-label">Notes</label>
             <textarea id="notes" name="notes" class="form-input" rows="4"
                       placeholder="Any additional details about this practice..."></textarea>
           </div>
           
-          <div class="form-actions">
-            <button type="button" id="cancel-btn" class="btn btn-secondary">Cancel</button>
-            <button type="submit" id="submit-btn" class="btn btn-primary">Create Practice</button>
+          <div style="display: flex; gap: var(--space-3); margin-top: var(--space-6);">
+            <button type="button" id="cancel-btn" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+            <button type="submit" id="submit-btn" class="btn btn-primary" style="flex: 2;">Create Practice</button>
           </div>
         </form>
       </div>

@@ -8,23 +8,23 @@ class RoleSelectionScreen extends Screen {
     const userName = user?.name || user?.email || 'User';
     
     div.innerHTML = `
-      <div class="card">
-        <h2>Welcome, ${this.escapeHtml(userName)}</h2>
-        <p>Select your role:</p>
+      <div class="screen-header">
+        <h1>Welcome, ${this.escapeHtml(userName)}</h1>
+        <p class="subtitle">Choose your role to continue</p>
+      </div>
+      
+      <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
+        <button class="btn btn-lg btn-primary" data-role="coach" style="display: flex; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">🏈</span>
+          <span style="flex: 1; text-align: left;">Coach</span>
+        </button>
         
-        <div class="role-options">
-          <button class="btn btn-primary btn-large" data-role="coach">
-            <span class="role-icon">🏈</span>
-            <span class="role-label">Coach</span>
-          </button>
-          
-          <button class="btn btn-primary btn-large" data-role="player">
-            <span class="role-icon">👟</span>
-            <span class="role-label">Player</span>
-          </button>
-        </div>
+        <button class="btn btn-lg btn-primary" data-role="player" style="display: flex; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">👟</span>
+          <span style="flex: 1; text-align: left;">Player</span>
+        </button>
         
-        <button class="btn btn-text logout-btn">Logout</button>
+        <button class="btn btn-text logout-btn" style="margin-top: var(--space-4);">Logout</button>
       </div>
     `;
     

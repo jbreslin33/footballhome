@@ -4,16 +4,15 @@ class PracticeListScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-practice-list';
     div.innerHTML = `
-      <div class="card">
-        <h2>Practices - RSVP</h2>
-        <p class="text-gray-600">View and respond to upcoming practices</p>
-        
-        <div id="practice-list" style="margin-top: 20px;"></div>
-        
-        <button id="back-btn" class="btn btn-secondary" style="margin-top: 20px;">
+      <div class="screen-header">
+        <button id="back-btn" class="btn btn-secondary">
           ← Back
         </button>
+        <h1>⚽ Practice Schedule</h1>
+        <p class="subtitle">Tap a button to RSVP</p>
       </div>
+      
+      <div id="practice-list" class="practice-cards"></div>
     `;
     this.element = div;
     return div;
@@ -101,9 +100,28 @@ class PracticeListScreen extends Screen {
     // Transform event_date into separate date and time fields
     const transformedPractices = practices.map(p => {
       const eventDate = new Date(p.event_date);
+      
+      // Format date as relative or absolute
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      let dateDisplay;
+      if (eventDate.toDateString() === today.toDateString()) {
+        dateDisplay = 'Today';
+      } else if (eventDate.toDateString() === tomorrow.toDateString()) {
+        dateDisplay = 'Tomorrow';
+      } else {
+        dateDisplay = eventDate.toLocaleDateString('en-US', { 
+          weekday: 'short', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+      }
+      
       return {
         ...p,
-        date: eventDate.toLocaleDateString(),
+        dateDisplay: dateDisplay,
         time: eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
     });
@@ -112,41 +130,56 @@ class PracticeListScreen extends Screen {
       p => {
         // Determine current RSVP status styling
         console.log(`Rendering practice ${p.id} with RSVP status: "${p.userRsvpStatus}"`);
-        const attendingClass = p.userRsvpStatus === 'attending' ? 'btn-primary' : 'btn-secondary';
-        const notAttendingClass = p.userRsvpStatus === 'not_attending' ? 'btn-primary' : 'btn-secondary';
+        const attendingClass = p.userRsvpStatus === 'attending' ? 'btn-success' : 'btn-secondary';
+        const notAttendingClass = p.userRsvpStatus === 'not_attending' ? 'btn-danger' : 'btn-secondary';
         console.log(`Classes: attending=${attendingClass}, notAttending=${notAttendingClass}`);
         
         return `
-          <div class="practice-item">
-            <h3>${p.title}</h3>
-            <p class="practice-meta">
-              📅 ${p.date} at ${p.time}
-              ${p.location ? `<br>📍 ${p.location}` : ''}
-            </p>
+          <div class="card practice-card">
+            <div class="practice-card-header">
+              <h3>${p.title}</h3>
+              ${p.rsvpCount ? `<span class="badge">${p.rsvpCount} responses</span>` : ''}
+            </div>
+            
+            <div class="practice-card-meta">
+              <div class="meta-item">
+                <span class="meta-icon">📅</span>
+                <span>${p.dateDisplay}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-icon">🕐</span>
+                <span>${p.time}</span>
+              </div>
+              ${p.location ? `
+              <div class="meta-item">
+                <span class="meta-icon">📍</span>
+                <span>${p.location}</span>
+              </div>
+              ` : ''}
+            </div>
+            
             ${p.notes ? `<p class="practice-notes">${p.notes}</p>` : ''}
             
-            <div class="rsvp-buttons" style="margin-top: 10px; display: flex; gap: 10px;">
+            <div class="practice-card-actions">
               <button 
                 data-action="rsvp" 
                 data-id="${p.id}" 
                 data-status="attending"
-                class="btn btn-sm ${attendingClass}">
+                class="btn ${attendingClass}">
                 ✓ Attending
               </button>
               <button 
                 data-action="rsvp" 
                 data-id="${p.id}" 
                 data-status="not_attending"
-                class="btn btn-sm ${notAttendingClass}">
-                ✗ Not Attending
+                class="btn ${notAttendingClass}">
+                ✗ Can't Make It
               </button>
             </div>
-            
-            ${p.rsvpCount ? `<p class="rsvp-count" style="margin-top: 10px; color: #666; font-size: 0.9em;">${p.rsvpCount} responses</p>` : ''}
           </div>
         `;
       },
-      'No practices scheduled. Check back later or ask your coach to create one.'
+      '<div class="empty-state"><p>⚽ No practices scheduled yet</p><p class="text-muted">Check back later or ask your coach</p></div>'
     );
   }
   

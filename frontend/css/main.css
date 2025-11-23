@@ -8,7 +8,7 @@
 }
 
 :root {
-    /* Colors */
+    /* Colors - Action States */
     --primary-color: #2563eb;
     --primary-hover: #1d4ed8;
     --success-color: #16a34a;
@@ -20,9 +20,21 @@
     --gray-100: #f3f4f6;
     --gray-200: #e5e7eb;
     --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
     --gray-600: #4b5563;
+    --gray-700: #374151;
     --gray-800: #1f2937;
     --gray-900: #111827;
+    
+    /* Typography - Mobile-First (16px+ prevents iOS zoom) */
+    --text-xs: 0.75rem;    /* 12px */
+    --text-sm: 0.875rem;   /* 14px */
+    --text-base: 1rem;     /* 16px - body text */
+    --text-lg: 1.125rem;   /* 18px */
+    --text-xl: 1.25rem;    /* 20px */
+    --text-2xl: 1.5rem;    /* 24px */
+    --text-3xl: 1.875rem;  /* 30px */
+    --text-4xl: 2.25rem;   /* 36px */
     
     /* Spacing */
     --space-1: 0.25rem;
@@ -31,17 +43,20 @@
     --space-4: 1rem;
     --space-6: 1.5rem;
     --space-8: 2rem;
+    --space-12: 3rem;
     
     /* Border radius */
     --radius-sm: 0.25rem;
-    --radius: 0.375rem;
-    --radius-md: 0.5rem;
+    --radius: 0.5rem;
+    --radius-md: 0.75rem;
     --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
     
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.15);
 }
 
 body {
@@ -49,6 +64,9 @@ body {
     line-height: 1.5;
     color: var(--gray-900);
     background-color: var(--gray-50);
+    font-size: var(--text-base); /* 16px minimum for mobile */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* Context Header */
@@ -155,19 +173,21 @@ body {
     color: var(--error-color);
 }
 
-/* Buttons */
+/* Buttons - Mobile-First Touch Targets */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: var(--space-2) var(--space-4);
-    font-size: 0.875rem;
-    font-weight: 500;
+    padding: 12px 20px;
+    min-height: 44px; /* iOS minimum touch target */
+    font-size: var(--text-base);
+    font-weight: 600;
     border: none;
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: all 0.2s ease-in-out;
     text-decoration: none;
+    line-height: 1.2;
 }
 
 .btn:focus {
@@ -176,7 +196,7 @@ body {
 }
 
 .btn:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
@@ -198,6 +218,24 @@ body {
     background-color: var(--gray-300);
 }
 
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+    background-color: #15803d;
+}
+
+.btn-danger {
+    background-color: var(--error-color);
+    color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background-color: #b91c1c;
+}
+
 .btn-text {
     background-color: transparent;
     color: var(--gray-600);
@@ -209,16 +247,23 @@ body {
     color: var(--gray-800);
 }
 
+.btn-lg {
+    padding: 16px 24px;
+    font-size: var(--text-lg);
+    min-height: 52px;
+}
+
+.btn-sm {
+    padding: 8px 16px;
+    font-size: var(--text-sm);
+    min-height: 36px;
+}
+
 .back-btn {
     margin-bottom: var(--space-4);
 }
 
-.btn-lg {
-    padding: var(--space-3) var(--space-6);
-    font-size: 1rem;
-}
-
-/* Forms */
+/* Forms - Mobile Optimized */
 .form-group {
     margin-bottom: var(--space-4);
 }
@@ -226,21 +271,27 @@ body {
 .form-label {
     display: block;
     margin-bottom: var(--space-2);
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--gray-800);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--gray-700);
 }
 
-.form-input {
+.form-input,
+select.form-input,
+textarea.form-input {
     width: 100%;
-    padding: var(--space-3);
-    font-size: 0.875rem;
-    border: 1px solid var(--gray-300);
-    border-radius: var(--radius);
+    padding: 14px;
+    min-height: 48px;
+    font-size: var(--text-base); /* 16px prevents iOS zoom */
+    border: 2px solid var(--gray-300);
+    border-radius: var(--radius-md);
     transition: all 0.2s ease-in-out;
+    background-color: white;
 }
 
-.form-input:focus {
+.form-input:focus,
+select.form-input:focus,
+textarea.form-input:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
@@ -257,17 +308,177 @@ body {
 
 .form-error {
     margin-top: var(--space-1);
-    font-size: 0.75rem;
+    font-size: var(--text-sm);
     color: var(--error-color);
 }
 
-/* Cards */
+textarea.form-input {
+    min-height: 100px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+/* Cards - Enhanced */
 .card {
     background-color: white;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
     box-shadow: var(--shadow);
-    padding: var(--space-6);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
     border: 1px solid var(--gray-200);
+}
+
+.card-clickable {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card-clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.card-clickable:active {
+    transform: scale(0.98);
+}
+
+/* Screen Header */
+.screen-header {
+    background-color: white;
+    padding: var(--space-6) var(--space-4);
+    margin-bottom: var(--space-4);
+    border-bottom: 2px solid var(--gray-200);
+    box-shadow: var(--shadow-sm);
+}
+
+.screen-header h1 {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--space-2);
+}
+
+.screen-header .subtitle {
+    font-size: var(--text-base);
+    color: var(--gray-600);
+    margin-top: var(--space-2);
+}
+
+/* Practice Cards */
+.practice-cards {
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.practice-card {
+    padding: var(--space-6);
+}
+
+.practice-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-4);
+}
+
+.practice-card-header h3 {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0;
+}
+
+.practice-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    padding: var(--space-3);
+    background-color: var(--gray-50);
+    border-radius: var(--radius-md);
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-base);
+    color: var(--gray-700);
+}
+
+.meta-icon {
+    font-size: var(--text-lg);
+    min-width: 24px;
+}
+
+.practice-notes {
+    margin-bottom: var(--space-4);
+    padding: var(--space-3);
+    background-color: var(--gray-50);
+    border-left: 3px solid var(--primary-color);
+    border-radius: var(--radius);
+    color: var(--gray-700);
+}
+
+.practice-card-actions {
+    display: flex;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+}
+
+.practice-card-actions .btn {
+    flex: 1;
+    justify-content: center;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: var(--space-12) var(--space-4);
+    color: var(--gray-600);
+}
+
+.empty-state p {
+    font-size: var(--text-lg);
+    margin-bottom: var(--space-2);
+}
+
+.empty-state .text-muted {
+    font-size: var(--text-base);
+    color: var(--gray-500);
+}
+
+/* Badge Component */
+.badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-success {
+    background-color: #dcfce7;
+    color: #15803d;
+}
+
+.badge-error {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+.badge-warning {
+    background-color: #fef3c7;
+    color: #a16207;
+}
+
+.badge-info {
+    background-color: #dbeafe;
+    color: #1e40af;
 }
 
 /* Login specific styles */
@@ -818,4 +1029,47 @@ body {
 .event-type-card p {
     color: var(--gray-600);
     font-size: 0.95rem;
+}
+
+/* ===== MOBILE-FIRST RESPONSIVE IMPROVEMENTS ===== */
+
+/* Ensure all interactive elements have proper touch targets */
+a, button, [role="button"], input[type="submit"], input[type="button"] {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+/* Mobile viewport adjustments */
+@media (max-width: 640px) {
+    .card {
+        padding: var(--space-4);
+        margin-bottom: var(--space-3);
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+    }
+}
+
+/* Tablet and up */
+@media (min-width: 641px) {
+    .card {
+        padding: var(--space-6);
+    }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+    .container {
+        padding: 0 var(--space-8);
+    }
 }

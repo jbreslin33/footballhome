@@ -10,30 +10,27 @@ class PracticeOptionsScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-practice-options';
     div.innerHTML = `
-      <div class="card">
-        <h2>Practice Options</h2>
-        <p class="text-gray-600">Team: <strong>${teamName}</strong></p>
-        
-        <div class="options-grid" style="margin-top: 30px; display: grid; gap: 15px;">
-          ${showManageButton ? `
-            <button data-action="manage" class="btn btn-primary btn-lg">
-              📝 Manage Practices
-              <small style="display: block; font-weight: normal; margin-top: 5px;">
-                Create, edit, and delete practices
-              </small>
-            </button>
-          ` : ''}
-          
-          <button data-action="rsvp" class="btn btn-secondary btn-lg">
-            ✓ RSVP to Practices
-            <small style="display: block; font-weight: normal; margin-top: 5px;">
-              View and respond to scheduled practices
+      <div class="screen-header">
+        <button id="back-btn" class="btn btn-secondary">← Back to Teams</button>
+        <h1>⚽ ${teamName}</h1>
+        <p class="subtitle">What would you like to do?</p>
+      </div>
+      
+      <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
+        ${showManageButton ? `
+          <button data-action="manage" class="btn btn-lg btn-primary">
+            📝 Manage Practices
+            <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
+              Create, edit, and delete practices
             </small>
           </button>
-        </div>
+        ` : ''}
         
-        <button id="back-btn" class="btn btn-secondary" style="margin-top: 20px;">
-          ← Back to Teams
+        <button data-action="rsvp" class="btn btn-lg ${showManageButton ? 'btn-secondary' : 'btn-primary'}">
+          ✓ RSVP to Practices
+          <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
+            View and respond to scheduled practices
+          </small>
         </button>
       </div>
     `;
