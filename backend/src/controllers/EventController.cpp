@@ -624,16 +624,7 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
         }
         
         // Check for role_type query parameter (optional)
-        std::string role_type = "";
-        size_t query_pos = request.getPath().find("?role_type=");
-        if (query_pos != std::string::npos) {
-            role_type = request.getPath().substr(query_pos + 11);
-            // Remove any trailing parameters
-            size_t ampersand = role_type.find("&");
-            if (ampersand != std::string::npos) {
-                role_type = role_type.substr(0, ampersand);
-            }
-        }
+        std::string role_type = request.getQueryParam("role_type");
         
         std::cout << "📋 Getting RSVPs for event: " << event_id;
         if (!role_type.empty()) {
