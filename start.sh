@@ -118,10 +118,10 @@ cd "$SCRIPT_DIR"
 echo -e "${BLUE}Step 1: APSL Data Management${NC}"
 if [ "$SCRAPE_APSL" = true ]; then
     echo -e "${YELLOW}🔄 Scraping APSL data from external source...${NC}"
-    if [ -f "./database/apsl/scrape-apsl.sh" ]; then
-        chmod +x ./database/apsl/scrape-apsl.sh
+    if [ -f "./database/leagues/apsl/scrape-apsl.sh" ]; then
+        chmod +x ./database/leagues/apsl/scrape-apsl.sh
         export APSL_SCRAPE=true
-        ./database/apsl/scrape-apsl.sh
+        ./database/leagues/apsl/scrape-apsl.sh
         echo -e "${GREEN}✓ APSL data scraped successfully${NC}"
     else
         echo -e "${RED}❌ Error: scrape-apsl.sh not found${NC}"
@@ -155,8 +155,8 @@ echo -e "${BLUE}Step 3: Database Configuration${NC}"
 if [ "$LOAD_APSL_SQL" = true ]; then
     echo -e "${YELLOW}📊 Configuring for full APSL dataset (all teams and players)${NC}"
     # Ensure APSL data file is available for Docker mount
-    if [ ! -f "./database/apsl/apsl-data.sql" ]; then
-        echo -e "${RED}❌ Error: APSL data file not found at ./database/apsl/apsl-data.sql${NC}"
+    if [ ! -f "./database/leagues/apsl/apsl-data.sql" ]; then
+        echo -e "${RED}❌ Error: APSL data file not found at ./database/leagues/apsl/apsl-data.sql${NC}"
         exit 1
     fi
     # Create docker-compose override for APSL data
@@ -164,28 +164,28 @@ if [ "$LOAD_APSL_SQL" = true ]; then
 services:
   db:
     volumes:
-      - ./database/schema/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./database/apsl/apsl-data.sql:/docker-entrypoint-initdb.d/02-apsl-data.sql:ro
-      - ./database/schema/venues.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
-      - ./database/schema/post-data-setup.sql:/docker-entrypoint-initdb.d/99-post-data-setup.sql:ro
+      - ./database/schema/01-create-tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
+      - ./database/seed-data/01-core-lookups.sql:/docker-entrypoint-initdb.d/02-core-lookups.sql:ro
+      - ./database/seed-data/02-venues.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
+      - ./database/leagues/apsl/apsl-data.sql:/docker-entrypoint-initdb.d/04-apsl-data.sql:ro
+      - ./database/clubs/lighthouse/01-club-setup.sql:/docker-entrypoint-initdb.d/05-lighthouse-club.sql:ro
+      - ./database/clubs/lighthouse/02-additional-teams.sql:/docker-entrypoint-initdb.d/06-lighthouse-teams.sql:ro
+      - ./database/clubs/lighthouse/03-users.sql:/docker-entrypoint-initdb.d/07-lighthouse-users.sql:ro
 EOF
     echo -e "${GREEN}✓ Will load complete APSL dataset with all teams and venues${NC}"
 else
     echo -e "${GREEN}📦 Configuring for Lighthouse-only dataset (minimal)${NC}"
-    # Ensure lighthouse data file exists
-    if [ ! -f "./lighthouse.sql" ]; then
-        echo -e "${RED}❌ Error: Lighthouse data file not found at ./lighthouse.sql${NC}"
-        exit 1
-    fi
-    # Create docker-compose override for lighthouse data only
+    # Create docker-compose override for lighthouse data only (no APSL)
     cat > docker-compose.override.yml << EOF
 services:
   db:
     volumes:
-      - ./database/schema/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./lighthouse.sql:/docker-entrypoint-initdb.d/02-lighthouse.sql:ro
-      - ./database/schema/venues.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
-      - ./database/schema/post-data-setup.sql:/docker-entrypoint-initdb.d/99-post-data-setup.sql:ro
+      - ./database/schema/01-create-tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
+      - ./database/seed-data/01-core-lookups.sql:/docker-entrypoint-initdb.d/02-core-lookups.sql:ro
+      - ./database/seed-data/02-venues.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
+      - ./database/clubs/lighthouse/01-club-setup.sql:/docker-entrypoint-initdb.d/04-lighthouse-club.sql:ro
+      - ./database/clubs/lighthouse/02-additional-teams.sql:/docker-entrypoint-initdb.d/05-lighthouse-teams.sql:ro
+      - ./database/clubs/lighthouse/03-users.sql:/docker-entrypoint-initdb.d/06-lighthouse-users.sql:ro
 EOF
     echo -e "${GREEN}✓ Will load Lighthouse 1893 SC data and venues${NC}"
 fi
