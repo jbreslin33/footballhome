@@ -111,8 +111,10 @@ class PracticeListScreen extends Screen {
     this.renderList('#practice-list', transformedPractices,
       p => {
         // Determine current RSVP status styling
+        console.log(`Rendering practice ${p.id} with RSVP status: "${p.userRsvpStatus}"`);
         const attendingClass = p.userRsvpStatus === 'attending' ? 'btn-primary' : 'btn-secondary';
         const notAttendingClass = p.userRsvpStatus === 'not_attending' ? 'btn-primary' : 'btn-secondary';
+        console.log(`Classes: attending=${attendingClass}, notAttending=${notAttendingClass}`);
         
         return `
           <div class="practice-item">
