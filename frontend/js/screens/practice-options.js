@@ -2,6 +2,10 @@
 class PracticeOptionsScreen extends Screen {
   render() {
     const teamName = this.navigation.context.team?.name || 'Unknown Team';
+    const userRole = this.navigation.context.role; // 'coach', 'player', or 'parent'
+    
+    // Only coaches can manage practices
+    const showManageButton = userRole === 'coach';
     
     const div = document.createElement('div');
     div.className = 'screen screen-practice-options';
@@ -11,12 +15,14 @@ class PracticeOptionsScreen extends Screen {
         <p class="text-gray-600">Team: <strong>${teamName}</strong></p>
         
         <div class="options-grid" style="margin-top: 30px; display: grid; gap: 15px;">
-          <button data-action="manage" class="btn btn-primary btn-lg">
-            📝 Manage Practices
-            <small style="display: block; font-weight: normal; margin-top: 5px;">
-              Create, edit, and delete practices
-            </small>
-          </button>
+          ${showManageButton ? `
+            <button data-action="manage" class="btn btn-primary btn-lg">
+              📝 Manage Practices
+              <small style="display: block; font-weight: normal; margin-top: 5px;">
+                Create, edit, and delete practices
+              </small>
+            </button>
+          ` : ''}
           
           <button data-action="rsvp" class="btn btn-secondary btn-lg">
             ✓ RSVP to Practices
