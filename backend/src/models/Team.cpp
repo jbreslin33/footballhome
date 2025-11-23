@@ -80,7 +80,8 @@ std::string Team::getTeamRoster(const std::string& team_id) {
         std::string sql = 
             "SELECT "
             "  u.id as user_id, "
-            "  u.name, "
+            "  u.first_name, "
+            "  u.last_name, "
             "  u.email, "
             "  tp.jersey_number, "
             "  p.display_name as position, "
@@ -95,7 +96,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "WHERE tp.team_id = $1 AND tp.is_active = true "
             "ORDER BY "
             "  tp.jersey_number NULLS LAST, "
-            "  u.name";
+            "  u.last_name, u.first_name";
         
         pqxx::result result = executeQuery(sql, {team_id});
         
@@ -103,9 +104,11 @@ std::string Team::getTeamRoster(const std::string& team_id) {
         for (const auto& row : result) {
             if (!first) json << ",";
             
+            std::string full_name = row["first_name"].as<std::string>() + " " + row["last_name"].as<std::string>();
+            
             json << "{";
             json << "\"id\":\"" << row["user_id"].as<std::string>() << "\",";
-            json << "\"name\":\"" << row["name"].as<std::string>() << "\",";
+            json << "\"name\":\"" << full_name << "\",";
             json << "\"email\":\"" << row["email"].as<std::string>() << "\",";
             json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].as<std::string>()) << ",";
             json << "\"position\":\"" << (row["position"].is_null() ? "No Position" : row["position"].as<std::string>()) << "\",";
@@ -123,7 +126,8 @@ std::string Team::getTeamRoster(const std::string& team_id) {
         std::string coach_sql = 
             "SELECT "
             "  u.id as user_id, "
-            "  u.name, "
+            "  u.first_name, "
+            "  u.last_name, "
             "  u.email, "
             "  tc.coach_role, "
             "  tc.is_primary "
@@ -131,16 +135,18 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "JOIN coaches c ON tc.coach_id = c.id "
             "JOIN users u ON c.id = u.id "
             "WHERE tc.team_id = $1 AND tc.is_active = true "
-            "ORDER BY tc.is_primary DESC, u.name";
+            "ORDER BY tc.is_primary DESC, u.last_name, u.first_name";
         
         pqxx::result coach_result = executeQuery(coach_sql, {team_id});
         
         for (const auto& row : coach_result) {
             if (!first) json << ",";
             
+            std::string full_name = row["first_name"].as<std::string>() + " " + row["last_name"].as<std::string>();
+            
             json << "{";
             json << "\"id\":\"" << row["user_id"].as<std::string>() << "\",";
-            json << "\"name\":\"" << row["name"].as<std::string>() << "\",";
+            json << "\"name\":\"" << full_name << "\",";
             json << "\"email\":\"" << row["email"].as<std::string>() << "\",";
             json << "\"jerseyNumber\":null,";
             json << "\"position\":\"" << row["coach_role"].as<std::string>() << "\",";

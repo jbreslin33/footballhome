@@ -171,24 +171,17 @@ std::string AuthController::createJSONResponse(bool success, const std::string& 
     json << "\"message\":\"" << message << "\"";
     
     if (success && userData.valid) {
-        // Split name into firstName and lastName for frontend compatibility
-        std::string firstName = userData.name;
-        std::string lastName = "";
-        
-        size_t spacePos = userData.name.find(' ');
-        if (spacePos != std::string::npos) {
-            firstName = userData.name.substr(0, spacePos);
-            lastName = userData.name.substr(spacePos + 1);
-        }
-        
         // Standardize: always use "data" wrapper for consistency
         json << ",\"data\":{";
         json << "\"user\":{";
         json << "\"id\":\"" << userData.id << "\",";
         json << "\"email\":\"" << userData.email << "\",";
-        json << "\"name\":\"" << userData.name << "\",";
-        json << "\"firstName\":\"" << firstName << "\",";
-        json << "\"lastName\":\"" << lastName << "\",";
+        json << "\"first_name\":\"" << userData.first_name << "\",";
+        json << "\"last_name\":\"" << userData.last_name << "\",";
+        json << "\"name\":\"" << userData.name << "\","; // Computed full name
+        if (!userData.preferred_name.empty()) {
+            json << "\"preferred_name\":\"" << userData.preferred_name << "\",";
+        }
         json << "\"role\":\"" << userData.role << "\"";
         json << "},";
         json << "\"token\":\"" << generateJWT(userData) << "\"";

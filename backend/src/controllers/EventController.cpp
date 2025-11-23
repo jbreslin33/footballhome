@@ -658,7 +658,7 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
             std::string id_column = role + "_id";
             
             std::string query = "SELECT r.id, r.event_id, r." + id_column + " as user_id, r.status, r.notes, r.response_date, "
-                               "u.name, u.email "
+                               "u.first_name, u.last_name, COALESCE(u.preferred_name, '') as preferred_name, u.email "
                                "FROM " + table_name + " r "
                                "JOIN users u ON r." + id_column + " = u.id "
                                "WHERE r.event_id = $1 "
@@ -671,7 +671,9 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
                 first = false;
                 
                 std::string notes_value = result[i]["notes"].is_null() ? "" : escapeJSON(result[i]["notes"].c_str());
-                std::string user_name = escapeJSON(result[i]["name"].c_str());
+                std::string first_name = escapeJSON(result[i]["first_name"].c_str());
+                std::string last_name = escapeJSON(result[i]["last_name"].c_str());
+                std::string user_name = first_name + " " + last_name;
                 std::string email = escapeJSON(result[i]["email"].c_str());
                 
                 json_array << "{"

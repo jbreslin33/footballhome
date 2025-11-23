@@ -232,7 +232,9 @@ CREATE TABLE teams (
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE NOT NULL,
-    name VARCHAR(100) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    preferred_name VARCHAR(100),
     phone VARCHAR(20),
     password_hash VARCHAR(255) NOT NULL,
     avatar_url VARCHAR(500),
@@ -243,6 +245,9 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_users_last_first_name ON users(last_name, first_name);
+CREATE INDEX idx_users_first_name ON users(first_name);
 
 -- ========================================
 -- USER ENTITY TABLES (Normalized)
@@ -1217,11 +1222,12 @@ COMMENT ON VIEW venues_google_mapping IS 'Venue data with Google Places standard
 -- ========================================
 -- Create admin user with bcrypt password hash (password: 1893Soccer!)
 -- Hash generated using: SELECT crypt('1893Soccer!', gen_salt('bf'));
-INSERT INTO users (id, email, name, password_hash, is_active)
+INSERT INTO users (id, email, first_name, last_name, password_hash, is_active)
 VALUES (
     '77d77471-1250-47e0-81ab-d4626595d63c',
     'jbreslin@footballhome.org',
-    'James Breslin',
+    'James',
+    'Breslin',
     crypt('1893Soccer!', gen_salt('bf')),
     true
 )

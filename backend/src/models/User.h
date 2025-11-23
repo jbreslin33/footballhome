@@ -5,7 +5,10 @@
 struct UserData {
     std::string id;
     std::string email;
-    std::string name;
+    std::string first_name;
+    std::string last_name;
+    std::string preferred_name;
+    std::string name; // Computed: first_name + " " + last_name (for backward compatibility)
     std::string role;
     bool valid = false;
 };

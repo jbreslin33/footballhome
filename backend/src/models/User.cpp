@@ -65,7 +65,7 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
     
     try {
         // Query database for user by email with admin info
-        std::string sql = "SELECT u.id, u.email, u.name, u.password_hash, a.admin_level "
+        std::string sql = "SELECT u.id, u.email, u.first_name, u.last_name, u.preferred_name, u.password_hash, a.admin_level "
                          "FROM users u "
                          "LEFT JOIN admins a ON u.id = a.id "
                          "WHERE u.email = $1 "
@@ -84,7 +84,10 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
                 userData.valid = true;
                 userData.id = row["id"].as<std::string>();
                 userData.email = row["email"].as<std::string>();
-                userData.name = row["name"].as<std::string>();
+                userData.first_name = row["first_name"].as<std::string>();
+                userData.last_name = row["last_name"].as<std::string>();
+                userData.preferred_name = row["preferred_name"].is_null() ? "" : row["preferred_name"].as<std::string>();
+                userData.name = userData.first_name + " " + userData.last_name; // Computed for compatibility
                 // Check if user is an admin, otherwise default to "user"
                 userData.role = row["admin_level"].is_null() ? "user" : row["admin_level"].as<std::string>();
                 
@@ -148,7 +151,10 @@ UserData User::getUserById(const std::string& user_id) {
         if (!data.empty()) {
             userData.id = data[0]["id"];
             userData.email = data[0]["email"];
-            userData.name = data[0]["name"];
+            userData.first_name = data[0]["first_name"];
+            userData.last_name = data[0]["last_name"];
+            userData.preferred_name = data[0].find("preferred_name") != data[0].end() ? data[0]["preferred_name"] : "";
+            userData.name = userData.first_name + " " + userData.last_name; // Computed
             userData.role = "user"; // Default role
             userData.valid = true;
         }

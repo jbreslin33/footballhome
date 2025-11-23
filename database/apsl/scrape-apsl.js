@@ -277,6 +277,17 @@ async function scrapeTeamRoster(teamId, teamUrl) {
       
       if (!playerName || playerName.toLowerCase() === 'player') continue;
 
+      // Parse name into first_name and last_name
+      // Handle formats: "First Last", "First Middle Last", "First"
+      let firstName = playerName;
+      let lastName = '';
+      
+      const nameParts = playerName.trim().split(/\s+/);
+      if (nameParts.length >= 2) {
+        firstName = nameParts[0];
+        lastName = nameParts.slice(1).join(' '); // Everything after first name
+      }
+
       // Generate IDs
       const userId = generateUUID('0006', playerName + teamId);
       const playerId = userId;
@@ -292,7 +303,8 @@ async function scrapeTeamRoster(teamId, teamUrl) {
         users.set(userId, {
           id: userId,
           email: email,
-          name: playerName,
+          first_name: firstName,
+          last_name: lastName,
           password: password
         });
 
@@ -404,16 +416,18 @@ function generateSQL() {
   console.log('-- Players should reset passwords on first login.\n');
 
   for (const user of users.values()) {
-    console.log(`INSERT INTO users (id, email, name, password_hash, is_active)`);
+    console.log(`INSERT INTO users (id, email, first_name, last_name, password_hash, is_active)`);
     console.log(`VALUES (`);
     console.log(`  ${sqlEscape(user.id)},`);
     console.log(`  ${sqlEscape(user.email)},`);
-    console.log(`  ${sqlEscape(user.name)},`);
+    console.log(`  ${sqlEscape(user.first_name)},`);
+    console.log(`  ${sqlEscape(user.last_name)},`);
     console.log(`  crypt(${sqlEscape(user.password)}, gen_salt('bf')),`);
     console.log(`  true`);
     console.log(`)`);
     console.log(`ON CONFLICT (email) DO UPDATE SET`);
-    console.log(`  name = EXCLUDED.name,`);
+    console.log(`  first_name = EXCLUDED.first_name,`);
+    console.log(`  last_name = EXCLUDED.last_name,`);
     console.log(`  updated_at = CURRENT_TIMESTAMP;\n`);
   }
 
