@@ -231,12 +231,7 @@ ON CONFLICT (id) DO UPDATE SET
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
-INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('d37eb44b-8e47-0003-9060-f0cbe96fe089', 'Lighthouse 1893 SC', 'Lighthouse 1893 SC', 'lighthouse-1893-sc', true)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  display_name = EXCLUDED.display_name,
-  updated_at = CURRENT_TIMESTAMP;
+-- Note: Lighthouse 1893 SC is in teams/01-teams-minimum.sql (not here to avoid duplication)
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
 VALUES ('7288846b-402d-0003-9d60-70d5ffcc5588', 'Jersey Shore Boca', 'Jersey Shore Boca', 'jersey-shore-boca', true)

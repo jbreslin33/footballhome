@@ -231,12 +231,7 @@ ON CONFLICT (id) DO UPDATE SET
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
-INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('d37eb44b-8e47-0004-9060-f0cbe96fe089', 'd37eb44b-8e47-0003-9060-f0cbe96fe089', '550e8400-e29b-41d4-a716-446655440101', 'Lighthouse 1893 SC Soccer', 'Lighthouse 1893 SC Soccer', 'lighthouse-1893-sc-soccer', true)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  display_name = EXCLUDED.display_name,
-  updated_at = CURRENT_TIMESTAMP;
+-- Note: Lighthouse 1893 SC sport division is in teams/01-teams-minimum.sql (not here to avoid duplication)
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
 VALUES ('7288846b-402d-0004-9d60-70d5ffcc5588', '7288846b-402d-0003-9d60-70d5ffcc5588', '550e8400-e29b-41d4-a716-446655440101', 'Jersey Shore Boca Soccer', 'Jersey Shore Boca Soccer', 'jersey-shore-boca-soccer', true)
