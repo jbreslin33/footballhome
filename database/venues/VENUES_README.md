@@ -4,48 +4,48 @@
 
 This system fetches soccer venues from Google Places API once and saves them as SQL INSERT statements. This avoids API costs on every database rebuild and ensures consistent venue data.
 
-## What We Have
+## Venue Files
 
-### Files Created
+The venue system now supports two loading modes:
 
-1. **`~/fetch-google-venues.js`** - Node script to fetch venues from Google API
-2. **`database/venues-google-philadelphia.sql`** - 68 Philadelphia-area venues (50km radius)
-3. **`~/load-venues.sh`** - Helper script to load venues into database
+### 1. **01-venues.sql** (Full Dataset - ~11,585 lines)
+Complete venue data for all regional cities:
+- Philadelphia, PA
+- Allentown, PA
+- Atlantic City, NJ
+- Harrisburg, PA
+- Lancaster, PA
+- Reading, PA
+- Scranton, PA
+- Trenton, NJ
+- Wilmington, DE
 
-### Current Data
+### 2. **01-venues-minimum.sql** (Development Dataset - ~1,507 lines)
+Philadelphia venues only for faster development and testing.
 
-- **68 venues** loaded from Philadelphia area
-- Average rating: **4.4/5.0**
-- Coverage: 50km radius from Philadelphia
-- Includes: fields, stadiums, indoor facilities
-- Data includes: ratings, photos, hours, phone numbers, addresses
+## Usage
 
-## How It Works
-
-### 1. Fetch Venues (One-Time)
+### Loading with start.sh
 
 ```bash
-# Fetch venues for a location and save as SQL
-node ~/fetch-google-venues.js --location "Philadelphia, PA" --radius 50000 > database/venues-google-philadelphia.sql 2>/dev/null
+# Load all regional venues
+./start.sh --venues
+
+# Load only Philadelphia venues (minimum dataset)
+./start.sh --venues --minimum
+
+# Load everything with minimum venues
+./start.sh --all --minimum
 ```
 
-**What this does:**
-- Geocodes the location
-- Searches Google Places for soccer-related keywords
-- Fetches detailed information for each venue
-- Generates SQL INSERT statements
-- Outputs to file for reuse
-
-**API Key:** Currently hardcoded in script as `AIzaSyCKQ6PxUFR9XPUUhyzCjdh2FIRj0CMgjys`
-
-### 2. Load Venues Into Database
+### Manual Loading
 
 ```bash
-# Load venues using helper script
-~/load-venues.sh
+# Load all venues
+docker compose exec -T db psql -U footballhome_user -d footballhome < database/venues/01-venues.sql
 
-# Or manually:
-docker exec -i footballhome_db psql -U footballhome_user -d footballhome < database/venues-google-philadelphia.sql
+# Load minimum venues
+docker compose exec -T db psql -U footballhome_user -d footballhome < database/venues/01-venues-minimum.sql
 ```
 
 ### 3. Rebuild Database (Includes Venues)
