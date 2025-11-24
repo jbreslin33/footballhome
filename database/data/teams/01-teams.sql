@@ -1,70 +1,7 @@
 -- ========================================
--- LIGHTHOUSE 1893 SC TEAM
--- ========================================
--- Core Lighthouse team (always loaded first)
-
--- Insert Lighthouse 1893 SC club
-INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES (
-    'b89d4e7e-6c5a-4b3d-9e2f-1a8c7d6e5f4b',
-    'Lighthouse 1893 SC',
-    'Lighthouse 1893 Soccer Club',
-    'lighthouse-1893-sc',
-    true
-)
-ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    display_name = EXCLUDED.display_name,
-    updated_at = CURRENT_TIMESTAMP;
-
--- Insert sport division for Lighthouse (Men's Soccer)
-INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES (
-    'b89d4e7f-6c5a-4b3d-9e2f-1a8c7d6e5f4b',
-    'b89d4e7e-6c5a-4b3d-9e2f-1a8c7d6e5f4b',
-    '550e8400-e29b-41d4-a716-446655440101',  -- Soccer sport_id
-    'Men''s Soccer',
-    'Lighthouse 1893 SC Men''s Soccer',
-    'mens-soccer',
-    true
-)
-ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    display_name = EXCLUDED.display_name,
-    updated_at = CURRENT_TIMESTAMP;
-
--- Insert Lighthouse 1893 SC team
-INSERT INTO teams (id, name, division_id, season, is_active)
-VALUES (
-    'b89d4e7f-6c5a-4b3d-9e2f-1a8c7d6e5f4a',
-    'Lighthouse 1893 SC',
-    'b89d4e7f-6c5a-4b3d-9e2f-1a8c7d6e5f4b',
-    '2024-2025',
-    true
-)
-ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    updated_at = CURRENT_TIMESTAMP;
-
--- Assign jbreslin as coach to Lighthouse 1893 SC
-INSERT INTO team_coaches (id, team_id, coach_id, coach_role, is_primary, is_active)
-VALUES (
-    '00000001-0000-0000-0000-000000000001',
-    'b89d4e7f-6c5a-4b3d-9e2f-1a8c7d6e5f4a',  -- Lighthouse team
-    '77d77471-1250-47e0-81ab-d4626595d63c',  -- jbreslin
-    'Head Coach',
-    true,
-    true
-)
-ON CONFLICT (team_id, coach_id) DO UPDATE SET
-    coach_role = EXCLUDED.coach_role,
-    is_primary = EXCLUDED.is_primary,
-    is_active = EXCLUDED.is_active;
-
--- ========================================
 -- APSL TEAMS
 -- ========================================
--- Generated: 2025-11-24T02:53:22.005Z
+-- Generated: 2025-11-24T18:38:23.422Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/leagues/apsl/scrape-apsl.js
@@ -260,14 +197,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
-VALUES ('3dd92f09-4a7d-0005-c554-60df95cfb846', 'Vidas United FC', '3dd92f09-4a7d-0004-c554-60df95cfb846', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
+VALUES ('5d95682c-0ec8-0005-0728-deae7986a2e0', 'Real Central NJ Soccer', '5d95682c-0ec8-0004-0728-deae7986a2e0', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
-VALUES ('5d95682c-0ec8-0005-0728-deae7986a2e0', 'Real Central NJ Soccer', '5d95682c-0ec8-0004-0728-deae7986a2e0', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
+VALUES ('3dd92f09-4a7d-0005-c554-60df95cfb846', 'Vidas United FC', '3dd92f09-4a7d-0004-c554-60df95cfb846', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -414,14 +351,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
-VALUES ('6778fbca-ca21-0005-a2e2-d5b9dfc49df6', 'Alliance SC', '6778fbca-ca21-0004-a2e2-d5b9dfc49df6', '222b808e-5cee-0003-80b6-a4f6fa9f2917', '2024-2025', true)
+VALUES ('3ae0fc91-9acf-0005-06a7-2af9ccf19b51', 'Buckhead SC', '3ae0fc91-9acf-0004-06a7-2af9ccf19b51', '222b808e-5cee-0003-80b6-a4f6fa9f2917', '2024-2025', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
-VALUES ('3ae0fc91-9acf-0005-06a7-2af9ccf19b51', 'Buckhead SC', '3ae0fc91-9acf-0004-06a7-2af9ccf19b51', '222b808e-5cee-0003-80b6-a4f6fa9f2917', '2024-2025', true)
+VALUES ('6778fbca-ca21-0005-a2e2-d5b9dfc49df6', 'Alliance SC', '6778fbca-ca21-0004-a2e2-d5b9dfc49df6', '222b808e-5cee-0003-80b6-a4f6fa9f2917', '2024-2025', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,

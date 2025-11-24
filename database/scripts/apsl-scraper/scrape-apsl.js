@@ -398,7 +398,7 @@ ON CONFLICT (id) DO UPDATE SET
   website = EXCLUDED.website,
   updated_at = CURRENT_TIMESTAMP;
 `;
-  writeFile('leagues/01-leagues.sql', 'LEAGUES', leaguesSQL);
+  writeFile('data/leagues/01-leagues.sql', 'LEAGUES', leaguesSQL);
   
   // 2. CONFERENCES
   let conferencesSQL = '';
@@ -412,7 +412,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('leagues/02-conferences.sql', 'LEAGUE CONFERENCES', conferencesSQL);
+  writeFile('data/conferences/01-conferences.sql', 'LEAGUE CONFERENCES', conferencesSQL);
   
   // 3. DIVISIONS
   let divisionsSQL = '';
@@ -427,7 +427,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('leagues/03-divisions.sql', 'LEAGUE DIVISIONS', divisionsSQL);
+  writeFile('data/league-divisions/01-league-divisions.sql', 'LEAGUE DIVISIONS', divisionsSQL);
   
   // 4. CLUBS
   let clubsSQL = '';
@@ -441,7 +441,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('clubs/01-clubs.sql', 'CLUBS', clubsSQL);
+  writeFile('data/clubs/01-clubs.sql', 'CLUBS', clubsSQL);
   
   // 5. SPORT DIVISIONS
   let sportDivisionsSQL = '';
@@ -455,7 +455,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('clubs/02-divisions.sql', 'SPORT DIVISIONS', sportDivisionsSQL);
+  writeFile('data/sport-divisions/01-sport-divisions.sql', 'SPORT DIVISIONS', sportDivisionsSQL);
   
   // 6. TEAMS
   let teamsSQL = '';
@@ -469,16 +469,39 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('teams/02-apsl-teams.sql', 'APSL TEAMS', teamsSQL);
+  writeFile('data/teams/01-teams.sql', 'APSL TEAMS', teamsSQL);
   
-  // 7. USERS (write to separate APSL file)
+  // 7. USERS (write to separate APSL file, grouped by team)
   let usersSQL = `
 -- Note: Passwords are bcrypt-hashed. Default pattern: Player[random]!
 -- Players should reset passwords on first login.
 
 `;
-  for (const user of users.values()) {
-    usersSQL += `INSERT INTO users (id, email, first_name, last_name, password_hash, is_active)
+  
+  // Group users by team
+  const usersByTeam = new Map();
+  for (const tp of teamPlayers.values()) {
+    const teamId = tp.team_id;
+    const playerId = tp.player_id;
+    const user = users.get(playerId);
+    if (user) {
+      if (!usersByTeam.has(teamId)) {
+        usersByTeam.set(teamId, []);
+      }
+      usersByTeam.get(teamId).push(user);
+    }
+  }
+  
+  // Write users grouped by team
+  for (const [teamId, teamUsers] of usersByTeam.entries()) {
+    const team = teams.get(teamId);
+    if (team) {
+      usersSQL += `-- ========================================
+-- ${team.name} USERS
+-- ========================================
+`;
+      for (const user of teamUsers) {
+        usersSQL += `INSERT INTO users (id, email, first_name, last_name, password_hash, is_active)
 VALUES (
   ${sqlEscape(user.id)},
   ${sqlEscape(user.email)},
@@ -493,35 +516,86 @@ ON CONFLICT (email) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 `;
+      }
+      usersSQL += '\n';
+    }
   }
-  writeFile('users/02-apsl-users.sql', 'APSL PLAYER USERS', usersSQL);
+  writeFile('data/users/01-users.sql', 'APSL PLAYER USERS', usersSQL);
   
-  // 8. PLAYERS (write to separate file)
+  // 8. PLAYERS (write to separate file, grouped by team)
   let playersSQL = `
 
 `;
-  for (const player of players.values()) {
-    playersSQL += `INSERT INTO players (id, notes)
+  
+  // Group players by team
+  const playersByTeam = new Map();
+  for (const tp of teamPlayers.values()) {
+    const teamId = tp.team_id;
+    const playerId = tp.player_id;
+    const player = players.get(playerId);
+    if (player) {
+      if (!playersByTeam.has(teamId)) {
+        playersByTeam.set(teamId, []);
+      }
+      playersByTeam.get(teamId).push(player);
+    }
+  }
+  
+  // Write players grouped by team
+  for (const [teamId, teamPlayersArr] of playersByTeam.entries()) {
+    const team = teams.get(teamId);
+    if (team) {
+      playersSQL += `-- ========================================
+-- ${team.name} PLAYERS
+-- ========================================
+`;
+      for (const player of teamPlayersArr) {
+        playersSQL += `INSERT INTO players (id, notes)
 VALUES (${sqlEscape(player.id)}, 'APSL player - position: ${player.position || 'not specified'}')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 `;
+      }
+      playersSQL += '\n';
+    }
   }
-  writeFile('players/02-apsl-players.sql', 'APSL PLAYERS', playersSQL);
+  writeFile('data/players/01-players.sql', 'APSL PLAYERS', playersSQL);
   
-  // 9. ROSTERS
+  // 9. ROSTERS (grouped by team)
   let rostersSQL = '';
+  
+  // Group rosters by team
+  const rostersByTeam = new Map();
   for (const tp of teamPlayers.values()) {
-    rostersSQL += `INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
+    const teamId = tp.team_id;
+    if (!rostersByTeam.has(teamId)) {
+      rostersByTeam.set(teamId, []);
+    }
+    rostersByTeam.get(teamId).push(tp);
+  }
+  
+  // Write rosters grouped by team
+  for (const [teamId, roster] of rostersByTeam.entries()) {
+    const team = teams.get(teamId);
+    if (team) {
+      rostersSQL += `-- ========================================
+-- ${team.name} ROSTER
+-- ========================================
+`;
+      for (const tp of roster) {
+        rostersSQL += `INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
 VALUES (${sqlEscape(tp.id)}, ${sqlEscape(tp.team_id)}, ${sqlEscape(tp.player_id)}, ${tp.jersey_number || 'NULL'}, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   is_active = EXCLUDED.is_active;
 
 `;
+      }
+      rostersSQL += '\n';
+    }
   }
-  writeFile('rosters/01-rosters.sql', 'APSL ROSTERS', rostersSQL);
+  writeFile('data/rosters/01-rosters.sql', 'APSL ROSTERS', rostersSQL);
   
   // Summary
   console.error('\n========================================');

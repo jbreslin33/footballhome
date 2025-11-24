@@ -1,7 +1,7 @@
 -- ========================================
 -- SPORT DIVISIONS
 -- ========================================
--- Generated: 2025-11-24T02:53:22.005Z
+-- Generated: 2025-11-24T18:38:23.422Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/leagues/apsl/scrape-apsl.js
@@ -197,14 +197,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('3dd92f09-4a7d-0004-c554-60df95cfb846', '3dd92f09-4a7d-0003-c554-60df95cfb846', '550e8400-e29b-41d4-a716-446655440101', 'Vidas United FC Soccer', 'Vidas United FC Soccer', 'vidas-united-fc-soccer', true)
+VALUES ('5d95682c-0ec8-0004-0728-deae7986a2e0', '5d95682c-0ec8-0003-0728-deae7986a2e0', '550e8400-e29b-41d4-a716-446655440101', 'Real Central NJ Soccer Soccer', 'Real Central NJ Soccer Soccer', 'real-central-nj-soccer-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('5d95682c-0ec8-0004-0728-deae7986a2e0', '5d95682c-0ec8-0003-0728-deae7986a2e0', '550e8400-e29b-41d4-a716-446655440101', 'Real Central NJ Soccer Soccer', 'Real Central NJ Soccer Soccer', 'real-central-nj-soccer-soccer', true)
+VALUES ('3dd92f09-4a7d-0004-c554-60df95cfb846', '3dd92f09-4a7d-0003-c554-60df95cfb846', '550e8400-e29b-41d4-a716-446655440101', 'Vidas United FC Soccer', 'Vidas United FC Soccer', 'vidas-united-fc-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
@@ -231,7 +231,12 @@ ON CONFLICT (id) DO UPDATE SET
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
--- Note: Lighthouse 1893 SC sport division is in teams/01-teams-minimum.sql (not here to avoid duplication)
+INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
+VALUES ('d37eb44b-8e47-0004-9060-f0cbe96fe089', 'd37eb44b-8e47-0003-9060-f0cbe96fe089', '550e8400-e29b-41d4-a716-446655440101', 'Lighthouse 1893 SC Soccer', 'Lighthouse 1893 SC Soccer', 'lighthouse-1893-sc-soccer', true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
 VALUES ('7288846b-402d-0004-9d60-70d5ffcc5588', '7288846b-402d-0003-9d60-70d5ffcc5588', '550e8400-e29b-41d4-a716-446655440101', 'Jersey Shore Boca Soccer', 'Jersey Shore Boca Soccer', 'jersey-shore-boca-soccer', true)
@@ -346,14 +351,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('6778fbca-ca21-0004-a2e2-d5b9dfc49df6', '6778fbca-ca21-0003-a2e2-d5b9dfc49df6', '550e8400-e29b-41d4-a716-446655440101', 'Alliance SC Soccer', 'Alliance SC Soccer', 'alliance-sc-soccer', true)
+VALUES ('3ae0fc91-9acf-0004-06a7-2af9ccf19b51', '3ae0fc91-9acf-0003-06a7-2af9ccf19b51', '550e8400-e29b-41d4-a716-446655440101', 'Buckhead SC Soccer', 'Buckhead SC Soccer', 'buckhead-sc-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('3ae0fc91-9acf-0004-06a7-2af9ccf19b51', '3ae0fc91-9acf-0003-06a7-2af9ccf19b51', '550e8400-e29b-41d4-a716-446655440101', 'Buckhead SC Soccer', 'Buckhead SC Soccer', 'buckhead-sc-soccer', true)
+VALUES ('6778fbca-ca21-0004-a2e2-d5b9dfc49df6', '6778fbca-ca21-0003-a2e2-d5b9dfc49df6', '550e8400-e29b-41d4-a716-446655440101', 'Alliance SC Soccer', 'Alliance SC Soccer', 'alliance-sc-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

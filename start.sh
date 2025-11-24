@@ -5,19 +5,19 @@
 # This script prepares and starts the Football Home application with granular control over data loading.
 #
 # Usage:
-#   ./start.sh                              - Load core schema + Lighthouse team only (minimal)
-#   ./start.sh --leagues                    - Include APSL league structure
 #   ./start.sh                              - Fast development (minimum datasets)
 #   ./start.sh --full                       - Load all data (full datasets)
+#   ./start.sh --google-venues              - Scrape venues from Google (requires API key)
 #   ./start.sh --volumes                    - Preserve existing Docker volumes
 #   ./start.sh --cache                      - Use Docker build cache
 #   ./start.sh --full --volumes --cache     - Full data, keep volumes, use cache
 #
 # Flags:
-#   --full      Load full datasets from all database folders
-#   --volumes   Preserve existing Docker volumes (default: delete and rebuild)
-#   --cache     Use Docker build cache (default: no cache for fresh builds)
-#   --help      Show this help message
+#   --full           Load full datasets from all database folders
+#   --google-venues  Scrape venues from Google Places API (off by default)
+#   --volumes        Preserve existing Docker volumes (default: delete and rebuild)
+#   --cache          Use Docker build cache (default: no cache for fresh builds)
+#   --help           Show this help message
 
 set -e
 
@@ -32,12 +32,16 @@ NC='\033[0m'
 PRESERVE_VOLUMES=false
 NO_CACHE=true  # Default to no cache for development
 LOAD_FULL=false  # Default to minimum datasets for fast development
+SCRAPE_GOOGLE_VENUES=false  # Default to off - use existing venue SQL files
 SHOW_HELP=false
 
 for arg in "$@"; do
     case $arg in
         --full)
             LOAD_FULL=true
+            ;;
+        --google-venues)
+            SCRAPE_GOOGLE_VENUES=true
             ;;
         --volumes)
             PRESERVE_VOLUMES=true
@@ -62,19 +66,22 @@ if [ "$SHOW_HELP" = true ]; then
     echo -e "Usage:"
     echo -e "  ${GREEN}./start.sh${NC}                    - Fast development mode (minimum datasets only)"
     echo -e "  ${GREEN}./start.sh --full${NC}             - Load complete datasets from all folders"
+    echo -e "  ${GREEN}./start.sh --google-venues${NC}    - Scrape venues from Google Places API"
     echo -e "  ${GREEN}./start.sh --volumes${NC}          - Preserve existing volumes"
     echo -e "  ${GREEN}./start.sh --cache${NC}            - Use Docker build cache"
     echo -e "  ${GREEN}./start.sh --full --volumes${NC}   - Full data, keep volumes"
     echo ""
     echo -e "Flags:"
-    echo -e "  ${YELLOW}--full${NC}      Load ALL SQL files from all database folders"
-    echo -e "  ${YELLOW}--volumes${NC}   Preserve existing Docker volumes (default: delete)"
-    echo -e "  ${YELLOW}--cache${NC}     Use Docker build cache (default: no cache)"
-    echo -e "  ${YELLOW}--help${NC}      Show this message"
+    echo -e "  ${YELLOW}--full${NC}           Load ALL SQL files from all database folders"
+    echo -e "  ${YELLOW}--google-venues${NC}  Scrape venues from Google (requires API key, off by default)"
+    echo -e "  ${YELLOW}--volumes${NC}        Preserve existing Docker volumes (default: delete)"
+    echo -e "  ${YELLOW}--cache${NC}          Use Docker build cache (default: no cache)"
+    echo -e "  ${YELLOW}--help${NC}           Show this message"
     echo ""
     echo -e "How it works:"
     echo -e "  ${BLUE}Without --full:${NC}  Loads only *-minimum.sql files (or all files if no minimum exists)"
     echo -e "  ${BLUE}With --full:${NC}     Loads ALL *.sql files from all database folders"
+    echo -e "  ${BLUE}--google-venues:${NC} Scrapes Google Places API for venues (otherwise uses static SQL)"
     echo ""
     exit 0
 fi
@@ -85,6 +92,7 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 echo -e "${BLUE}Configuration:${NC}"
 echo -e "  Load Full Data:   ${GREEN}$LOAD_FULL${NC}"
+echo -e "  Google Venues:    ${GREEN}$SCRAPE_GOOGLE_VENUES${NC}"
 echo -e "  Preserve Volumes: ${GREEN}$PRESERVE_VOLUMES${NC}"
 echo -e "  Fresh Builds:     ${GREEN}$NO_CACHE${NC}"
 echo ""
@@ -174,6 +182,27 @@ fi
 
 echo -e "${GREEN}✓ docker-compose.override.yml configured${NC}"
 echo ""
+
+# Step 1.5: Google Venue Scraping (if enabled)
+if [ "$SCRAPE_GOOGLE_VENUES" = true ]; then
+    echo -e "${BLUE}Step 1.5: Scraping Google Places for Venues${NC}"
+    
+    if [ -f "scripts/import-google-venues.js" ]; then
+        echo -e "${YELLOW}Running Google Places venue scraper...${NC}"
+        node scripts/import-google-venues.js
+        
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ Venue scraping complete${NC}"
+        else
+            echo -e "${RED}✗ Venue scraping failed${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${RED}✗ Venue scraper not found at scripts/import-google-venues.js${NC}"
+        exit 1
+    fi
+    echo ""
+fi
 
 echo -e "${BLUE}Step 2: Docker Container Management${NC}"
 
