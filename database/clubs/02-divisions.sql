@@ -1,7 +1,7 @@
 -- ========================================
 -- SPORT DIVISIONS
 -- ========================================
--- Generated: 2025-11-24T01:25:48.231Z
+-- Generated: 2025-11-24T02:53:22.005Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/leagues/apsl/scrape-apsl.js
@@ -120,6 +120,13 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
+VALUES ('77717fe0-fb4f-0004-cef3-260a0c447980', '77717fe0-fb4f-0003-cef3-260a0c447980', '550e8400-e29b-41d4-a716-446655440101', 'Leros SC Soccer', 'Leros SC Soccer', 'leros-sc-soccer', true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
 VALUES ('68b50f22-dddc-0004-06ca-622f3a3a0ea4', '68b50f22-dddc-0003-06ca-622f3a3a0ea4', '550e8400-e29b-41d4-a716-446655440101', 'Doxa FCW Soccer', 'Doxa FCW Soccer', 'doxa-fcw-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -128,13 +135,6 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
 VALUES ('c99ade72-80a1-0004-bb2a-e36057334cac', 'c99ade72-80a1-0003-bb2a-e36057334cac', '550e8400-e29b-41d4-a716-446655440101', 'NY International FC Soccer', 'NY International FC Soccer', 'ny-international-fc-soccer', true)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  display_name = EXCLUDED.display_name,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('77717fe0-fb4f-0004-cef3-260a0c447980', '77717fe0-fb4f-0003-cef3-260a0c447980', '550e8400-e29b-41d4-a716-446655440101', 'Leros SC Soccer', 'Leros SC Soccer', 'leros-sc-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
@@ -239,14 +239,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('50720c09-2e57-0004-da39-afc85228aaa9', '50720c09-2e57-0003-da39-afc85228aaa9', '550e8400-e29b-41d4-a716-446655440101', 'Sewell Old Boys FC Soccer', 'Sewell Old Boys FC Soccer', 'sewell-old-boys-fc-soccer', true)
+VALUES ('7288846b-402d-0004-9d60-70d5ffcc5588', '7288846b-402d-0003-9d60-70d5ffcc5588', '550e8400-e29b-41d4-a716-446655440101', 'Jersey Shore Boca Soccer', 'Jersey Shore Boca Soccer', 'jersey-shore-boca-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('7288846b-402d-0004-9d60-70d5ffcc5588', '7288846b-402d-0003-9d60-70d5ffcc5588', '550e8400-e29b-41d4-a716-446655440101', 'Jersey Shore Boca Soccer', 'Jersey Shore Boca Soccer', 'jersey-shore-boca-soccer', true)
+VALUES ('50720c09-2e57-0004-da39-afc85228aaa9', '50720c09-2e57-0003-da39-afc85228aaa9', '550e8400-e29b-41d4-a716-446655440101', 'Sewell Old Boys FC Soccer', 'Sewell Old Boys FC Soccer', 'sewell-old-boys-fc-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

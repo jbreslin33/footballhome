@@ -37,6 +37,7 @@ NC='\033[0m'
 # Parse command line arguments
 LOAD_LEAGUES=false
 LOAD_TEAMS=false
+LOAD_USERS=false
 LOAD_PLAYERS=false
 LOAD_VENUES=false
 PRESERVE_VOLUMES=false
@@ -51,6 +52,9 @@ for arg in "$@"; do
         --teams)
             LOAD_TEAMS=true
             ;;
+        --users)
+            LOAD_USERS=true
+            ;;
         --players)
             LOAD_PLAYERS=true
             ;;
@@ -60,6 +64,7 @@ for arg in "$@"; do
         --all)
             LOAD_LEAGUES=true
             LOAD_TEAMS=true
+            LOAD_USERS=true
             LOAD_PLAYERS=true
             LOAD_VENUES=true
             ;;
@@ -84,10 +89,11 @@ if [ "$SHOW_HELP" = true ]; then
     echo -e "${BLUE}Football Home - Database Start Script${NC}"
     echo ""
     echo -e "${BLUE}Usage:${NC}"
-    echo -e "  ./start.sh                              - Load core + Lighthouse team (minimal)"
-    echo -e "  ./start.sh --leagues                    - Add APSL league structure"
-    echo -e "  ./start.sh --leagues --teams            - Add leagues + all teams"
-    echo -e "  ./start.sh --leagues --teams --players  - Add leagues + teams + all players"
+    echo -e "  ./start.sh                                  - Load core + Lighthouse team (minimal)"
+    echo -e "  ./start.sh --leagues                        - Add APSL league structure"
+    echo -e "  ./start.sh --leagues --teams                - Add leagues + all teams"
+    echo -e "  ./start.sh --leagues --teams --users        - Add leagues + teams + APSL user accounts"
+    echo -e "  ./start.sh --leagues --teams --users --players - Add leagues + teams + users + player roles"
     echo -e "  ./start.sh --all                        - Load everything"
     echo -e "  ./start.sh --volumes                    - Preserve existing volumes"
     echo -e "  ./start.sh --cache                      - Use Docker build cache"
@@ -96,9 +102,10 @@ if [ "$SHOW_HELP" = true ]; then
     echo -e "${BLUE}Flags:${NC}"
     echo -e "  --leagues   Load APSL league structure (leagues, conferences, divisions)"
     echo -e "  --teams     Load all APSL teams (~53 teams, requires --leagues)"
-    echo -e "  --players   Load all APSL players (~1600 accounts, requires --teams)"
+    echo -e "  --users     Load all APSL user accounts (~1600 accounts, requires --teams)"
+    echo -e "  --players   Load all APSL player roles (requires --users)"
     echo -e "  --venues    Load Google Places venue data"
-    echo -e "  --all       Load all data (leagues + teams + players + venues)"
+    echo -e "  --all       Load all data (leagues + teams + users + players + venues)"
     echo -e "  --volumes   Preserve existing Docker volumes (default: delete)"
     echo -e "  --cache     Use Docker build cache (default: no cache)"
     echo -e "  --help      Show this message"
@@ -107,6 +114,9 @@ if [ "$SHOW_HELP" = true ]; then
     echo -e "  Always:     Schema, Core lookups, Lighthouse team, jbreslin user"
     echo -e "  --venues:   Add Google Places venues"
     echo -e "  --leagues:  Add APSL league structure"
+    echo -e "  --teams:    Add APSL teams (requires leagues)"
+    echo -e "  --users:    Add APSL user accounts (requires teams)"
+    echo -e "  --players:  Add APSL player roles (requires users)"
     echo -e "  --teams:    Add APSL teams (requires leagues)"
     echo -e "  --players:  Add APSL player accounts (requires teams)"
     echo ""
@@ -119,8 +129,13 @@ if [ "$LOAD_TEAMS" = true ] && [ "$LOAD_LEAGUES" = false ]; then
     exit 1
 fi
 
-if [ "$LOAD_PLAYERS" = true ] && [ "$LOAD_TEAMS" = false ]; then
-    echo -e "${RED}Error: --players requires --teams (and --leagues)${NC}"
+if [ "$LOAD_USERS" = true ] && [ "$LOAD_TEAMS" = false ]; then
+    echo -e "${RED}Error: --users requires --teams (and --leagues)${NC}"
+    exit 1
+fi
+
+if [ "$LOAD_PLAYERS" = true ] && [ "$LOAD_USERS" = false ]; then
+    echo -e "${RED}Error: --players requires --users (and --teams and --leagues)${NC}"
     exit 1
 fi
 
@@ -131,6 +146,7 @@ echo ""
 echo -e "${BLUE}Configuration:${NC}"
 echo -e "  Load Leagues:     ${GREEN}$LOAD_LEAGUES${NC}"
 echo -e "  Load Teams:       ${GREEN}$LOAD_TEAMS${NC}"
+echo -e "  Load Users:       ${GREEN}$LOAD_USERS${NC}"
 echo -e "  Load Players:     ${GREEN}$LOAD_PLAYERS${NC}"
 echo -e "  Load Venues:      ${GREEN}$LOAD_VENUES${NC}"
 echo -e "  Preserve Volumes: ${GREEN}$PRESERVE_VOLUMES${NC}"
@@ -188,15 +204,21 @@ fi
 # Always add core users (jbreslin) and coaches
 cat >> docker-compose.override.yml << 'EOF_CORE_USERS'
       
-      # Core users and roles (40-42)
-      - ./database/users/01-users.sql:/docker-entrypoint-initdb.d/40-users.sql:ro
+      # Core users and roles (40, 42)
+      - ./database/users/01-core-users.sql:/docker-entrypoint-initdb.d/40-core-users.sql:ro
       - ./database/coaches/01-coaches.sql:/docker-entrypoint-initdb.d/42-coaches.sql:ro
 EOF_CORE_USERS
 
-# Conditionally add players
+# Conditionally add APSL users
+if [ "$LOAD_USERS" = true ]; then
+    echo "      - ./database/users/02-apsl-users.sql:/docker-entrypoint-initdb.d/43-apsl-users.sql:ro" >> docker-compose.override.yml
+    echo -e "${GREEN}✓ Including all APSL user accounts (~1600 accounts)${NC}"
+fi
+
+# Conditionally add APSL players
 if [ "$LOAD_PLAYERS" = true ]; then
-    echo "      - ./database/players/01-players.sql:/docker-entrypoint-initdb.d/41-players.sql:ro" >> docker-compose.override.yml
-    echo -e "${GREEN}✓ Including all APSL players (~1600 accounts)${NC}"
+    echo "      - ./database/players/02-apsl-players.sql:/docker-entrypoint-initdb.d/44-apsl-players.sql:ro" >> docker-compose.override.yml
+    echo -e "${GREEN}✓ Including all APSL player roles${NC}"
 fi
 
 # Conditionally add rosters

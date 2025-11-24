@@ -1,7 +1,7 @@
 -- ========================================
 -- CLUBS
 -- ========================================
--- Generated: 2025-11-24T01:25:48.231Z
+-- Generated: 2025-11-24T02:53:22.004Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/leagues/apsl/scrape-apsl.js
@@ -120,6 +120,13 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
+VALUES ('77717fe0-fb4f-0003-cef3-260a0c447980', 'Leros SC', 'Leros SC', 'leros-sc', true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO clubs (id, name, display_name, slug, is_active)
 VALUES ('68b50f22-dddc-0003-06ca-622f3a3a0ea4', 'Doxa FCW', 'Doxa FCW', 'doxa-fcw', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -128,13 +135,6 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
 VALUES ('c99ade72-80a1-0003-bb2a-e36057334cac', 'NY International FC', 'NY International FC', 'ny-international-fc', true)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  display_name = EXCLUDED.display_name,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('77717fe0-fb4f-0003-cef3-260a0c447980', 'Leros SC', 'Leros SC', 'leros-sc', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
@@ -239,14 +239,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('50720c09-2e57-0003-da39-afc85228aaa9', 'Sewell Old Boys FC', 'Sewell Old Boys FC', 'sewell-old-boys-fc', true)
+VALUES ('7288846b-402d-0003-9d60-70d5ffcc5588', 'Jersey Shore Boca', 'Jersey Shore Boca', 'jersey-shore-boca', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('7288846b-402d-0003-9d60-70d5ffcc5588', 'Jersey Shore Boca', 'Jersey Shore Boca', 'jersey-shore-boca', true)
+VALUES ('50720c09-2e57-0003-da39-afc85228aaa9', 'Sewell Old Boys FC', 'Sewell Old Boys FC', 'sewell-old-boys-fc', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

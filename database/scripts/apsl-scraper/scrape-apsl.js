@@ -16,8 +16,8 @@
  *   - clubs/01-clubs.sql
  *   - clubs/02-divisions.sql
  *   - teams/01-teams.sql
- *   - users/01-users.sql (appends to existing)
- *   - players/01-players.sql (appends to existing)
+ *   - users/02-apsl-users.sql
+ *   - players/02-apsl-players.sql
  *   - rosters/01-rosters.sql
  * 
  * Usage:
@@ -471,12 +471,8 @@ ON CONFLICT (id) DO UPDATE SET
   }
   writeFile('teams/01-teams.sql', 'APSL TEAMS', teamsSQL);
   
-  // 7. USERS (append to existing file)
+  // 7. USERS (write to separate APSL file)
   let usersSQL = `
--- ========================================
--- APSL PLAYERS
--- ========================================
--- Generated: ${new Date().toISOString()}
 -- Note: Passwords are bcrypt-hashed. Default pattern: Player[random]!
 -- Players should reset passwords on first login.
 
@@ -498,14 +494,10 @@ ON CONFLICT (email) DO UPDATE SET
 
 `;
   }
-  appendToFile('users/01-users.sql', usersSQL);
+  writeFile('users/02-apsl-users.sql', 'APSL PLAYER USERS', usersSQL);
   
-  // 8. PLAYERS (append to existing file)
+  // 8. PLAYERS (write to separate file)
   let playersSQL = `
--- ========================================
--- APSL PLAYERS
--- ========================================
--- Generated: ${new Date().toISOString()}
 
 `;
   for (const player of players.values()) {
@@ -516,7 +508,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  appendToFile('players/01-players.sql', playersSQL);
+  writeFile('players/02-apsl-players.sql', 'APSL PLAYERS', playersSQL);
   
   // 9. ROSTERS
   let rostersSQL = '';
