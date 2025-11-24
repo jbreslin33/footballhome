@@ -1,5 +1,0 @@
--- ========================================
--- CASA SELECT LEAGUE STRUCTURE
--- ========================================
--- TODO: Add CASA Select league structure when ready
--- This file is intentionally blank for now - only APSL data is being used

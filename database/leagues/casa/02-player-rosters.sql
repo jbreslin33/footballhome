@@ -1,5 +1,0 @@
--- ========================================
--- CASA SELECT PLAYER ROSTERS
--- ========================================
--- TODO: Add CASA Select player rosters when ready
--- This file is intentionally blank for now - only APSL data is being used
