@@ -391,8 +391,8 @@ ${content}`;
   
   // 1. LEAGUES
   let leaguesSQL = `-- APSL (American Premier Soccer League)
-INSERT INTO leagues (id, name, display_name, slug, sport_id, season, website, is_active)
-VALUES (${sqlEscape(APSL_LEAGUE_ID)}, 'APSL', 'American Premier Soccer League', 'apsl', ${sqlEscape(SOCCER_SPORT_ID)}, '2024-2025', 'https://apslsoccer.com', true)
+INSERT INTO leagues (id, name, display_name, sport_id, season, website, is_active)
+VALUES (${sqlEscape(APSL_LEAGUE_ID)}, 'APSL', 'American Premier Soccer League', ${sqlEscape(SOCCER_SPORT_ID)}, '2024-2025', 'https://apslsoccer.com', true)
 ON CONFLICT (id) DO UPDATE SET
   display_name = EXCLUDED.display_name,
   website = EXCLUDED.website,

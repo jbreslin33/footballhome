@@ -1,7 +1,7 @@
 -- ========================================
 -- APSL TEAMS
 -- ========================================
--- Generated: 2025-11-24T00:23:51.541Z
+-- Generated: 2025-11-24T01:25:48.232Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/leagues/apsl/scrape-apsl.js
@@ -204,20 +204,6 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
-VALUES ('c2402f6c-0036-0005-d453-d68637ee8277', 'Oaklyn United FC', 'c2402f6c-0036-0004-d453-d68637ee8277', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  league_division_id = EXCLUDED.league_division_id,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
-VALUES ('f11cc01a-e8d3-0005-74f0-b00c38923236', 'GAK', 'f11cc01a-e8d3-0004-74f0-b00c38923236', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  league_division_id = EXCLUDED.league_division_id,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
 VALUES ('5d95682c-0ec8-0005-0728-deae7986a2e0', 'Real Central NJ Soccer', '5d95682c-0ec8-0004-0728-deae7986a2e0', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -232,6 +218,20 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
+VALUES ('c2402f6c-0036-0005-d453-d68637ee8277', 'Oaklyn United FC', 'c2402f6c-0036-0004-d453-d68637ee8277', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  league_division_id = EXCLUDED.league_division_id,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
+VALUES ('f11cc01a-e8d3-0005-74f0-b00c38923236', 'GAK', 'f11cc01a-e8d3-0004-74f0-b00c38923236', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  league_division_id = EXCLUDED.league_division_id,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
 VALUES ('d37eb44b-8e47-0005-9060-f0cbe96fe089', 'Lighthouse 1893 SC', 'd37eb44b-8e47-0004-9060-f0cbe96fe089', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -239,14 +239,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
-VALUES ('7288846b-402d-0005-9d60-70d5ffcc5588', 'Jersey Shore Boca', '7288846b-402d-0004-9d60-70d5ffcc5588', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
+VALUES ('50720c09-2e57-0005-da39-afc85228aaa9', 'Sewell Old Boys FC', '50720c09-2e57-0004-da39-afc85228aaa9', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
-VALUES ('50720c09-2e57-0005-da39-afc85228aaa9', 'Sewell Old Boys FC', '50720c09-2e57-0004-da39-afc85228aaa9', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
+VALUES ('7288846b-402d-0005-9d60-70d5ffcc5588', 'Jersey Shore Boca', '7288846b-402d-0004-9d60-70d5ffcc5588', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,

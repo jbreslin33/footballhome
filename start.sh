@@ -2,26 +2,28 @@
 
 # Football Home - Database Start Script
 # 
-# This script prepares and starts the Football Home application.
-# It can optionally scrape external data sources.
+# This script prepares and starts the Football Home application with granular control over data loading.
 #
 # Usage:
-#   ./start.sh                    - Use Lighthouse team data only (minimal dataset)
-#   ./start.sh apsl               - Scrape APSL data only
-#   ./start.sh google             - Scrape Google Places data only  
-#   ./start.sh apsl google        - Scrape both APSL and Google data
-#   ./start.sh apslsql            - Load complete APSL dataset from SQL files
-#   ./start.sh volumes            - Preserve existing Docker volumes
-#   ./start.sh apsl volumes       - Scrape APSL data and preserve volumes
-#   ./start.sh apslsql volumes    - Load APSL SQL data and preserve volumes
-#   ./start.sh --help             - Show this help message
+#   ./start.sh                              - Load core schema + Lighthouse team only (minimal)
+#   ./start.sh --leagues                    - Include APSL league structure
+#   ./start.sh --teams                      - Include all APSL teams
+#   ./start.sh --players                    - Include all APSL players
+#   ./start.sh --venues                     - Include Google Places venues
+#   ./start.sh --all                        - Load everything
+#   ./start.sh --volumes                    - Preserve existing Docker volumes
+#   ./start.sh --cache                      - Use Docker build cache
+#   ./start.sh --leagues --teams --volumes  - Custom combination
 #
-# Parameters:
-#   apsl     - Enable APSL league/team data scraping
-#   google   - Enable Google Places venue data scraping
-#   apslsql  - Load complete APSL dataset from database/apsl/ SQL files
-#   volumes  - Preserve existing Docker volumes (default: delete volumes)
-#   --help   - Show usage information
+# Flags:
+#   --leagues   Load APSL league structure (leagues, conferences, divisions)
+#   --teams     Load all APSL teams (requires --leagues)
+#   --players   Load all APSL player accounts (requires --teams, adds ~1600 users)
+#   --venues    Load Google Places venue data
+#   --all       Load all data (leagues + teams + players + venues)
+#   --volumes   Preserve existing Docker volumes (default: delete and rebuild)
+#   --cache     Use Docker build cache (default: no cache for fresh builds)
+#   --help      Show this help message
 
 set -e
 
@@ -33,31 +35,38 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Parse command line arguments
-SCRAPE_APSL=false
-SCRAPE_GOOGLE=false
+LOAD_LEAGUES=false
+LOAD_TEAMS=false
+LOAD_PLAYERS=false
+LOAD_VENUES=false
 PRESERVE_VOLUMES=false
-LOAD_APSL_SQL=false
 NO_CACHE=true  # Default to no cache for development
 SHOW_HELP=false
 
 for arg in "$@"; do
     case $arg in
-        apsl)
-            SCRAPE_APSL=true
+        --leagues)
+            LOAD_LEAGUES=true
             ;;
-        google)
-            SCRAPE_GOOGLE=true
+        --teams)
+            LOAD_TEAMS=true
             ;;
-        volumes)
+        --players)
+            LOAD_PLAYERS=true
+            ;;
+        --venues)
+            LOAD_VENUES=true
+            ;;
+        --all)
+            LOAD_LEAGUES=true
+            LOAD_TEAMS=true
+            LOAD_PLAYERS=true
+            LOAD_VENUES=true
+            ;;
+        --volumes)
             PRESERVE_VOLUMES=true
             ;;
-        apslsql)
-            LOAD_APSL_SQL=true
-            ;;
-        nocache)
-            NO_CACHE=true
-            ;;
-        cache)
+        --cache)
             NO_CACHE=false
             ;;
         --help|-h)
@@ -75,27 +84,44 @@ if [ "$SHOW_HELP" = true ]; then
     echo -e "${BLUE}Football Home - Database Start Script${NC}"
     echo ""
     echo -e "${BLUE}Usage:${NC}"
-    echo -e "  ./start.sh                    - Use Lighthouse data with fresh builds (default: no cache)"
-    echo -e "  ./start.sh apsl               - Scrape APSL data with fresh builds"
-    echo -e "  ./start.sh google             - Scrape Google Places data with fresh builds"
-    echo -e "  ./start.sh apsl google        - Scrape both APSL and Google data with fresh builds"
-    echo -e "  ./start.sh apslsql            - Load complete APSL dataset with fresh builds"
-    echo -e "  ./start.sh volumes            - Preserve existing Docker volumes with fresh builds"
-    echo -e "  ./start.sh cache              - Use Docker build cache (faster, may have stale files)"
-    echo -e "  ./start.sh apsl cache         - Scrape APSL data using cached Docker builds"
-    echo -e "  ./start.sh volumes cache      - Preserve volumes and use cached builds"
-    echo -e "  ./start.sh --help             - Show this help message"
+    echo -e "  ./start.sh                              - Load core + Lighthouse team (minimal)"
+    echo -e "  ./start.sh --leagues                    - Add APSL league structure"
+    echo -e "  ./start.sh --leagues --teams            - Add leagues + all teams"
+    echo -e "  ./start.sh --leagues --teams --players  - Add leagues + teams + all players"
+    echo -e "  ./start.sh --all                        - Load everything"
+    echo -e "  ./start.sh --volumes                    - Preserve existing volumes"
+    echo -e "  ./start.sh --cache                      - Use Docker build cache"
+    echo -e "  ./start.sh --all --volumes --cache      - Full data, keep volumes, use cache"
     echo ""
-    echo -e "${BLUE}Parameters:${NC}"
-    echo -e "  apsl      Enable APSL league/team data scraping"
-    echo -e "  google    Enable Google Places venue data scraping"
-    echo -e "  apslsql   Load complete APSL dataset from database/apsl/ SQL files"
-    echo -e "  volumes   Preserve existing Docker volumes (default: delete volumes)"
-    echo -e "  cache     Use Docker build cache (default: no cache for fresh builds)"
-    echo -e "  nocache   Force no cache builds (redundant, this is now default)"
-    echo -e "  --help    Show usage information"
+    echo -e "${BLUE}Flags:${NC}"
+    echo -e "  --leagues   Load APSL league structure (leagues, conferences, divisions)"
+    echo -e "  --teams     Load all APSL teams (~53 teams, requires --leagues)"
+    echo -e "  --players   Load all APSL players (~1600 accounts, requires --teams)"
+    echo -e "  --venues    Load Google Places venue data"
+    echo -e "  --all       Load all data (leagues + teams + players + venues)"
+    echo -e "  --volumes   Preserve existing Docker volumes (default: delete)"
+    echo -e "  --cache     Use Docker build cache (default: no cache)"
+    echo -e "  --help      Show this message"
+    echo ""
+    echo -e "${BLUE}Data Loading Order:${NC}"
+    echo -e "  Always:     Schema, Core lookups, Lighthouse team, jbreslin user"
+    echo -e "  --venues:   Add Google Places venues"
+    echo -e "  --leagues:  Add APSL league structure"
+    echo -e "  --teams:    Add APSL teams (requires leagues)"
+    echo -e "  --players:  Add APSL player accounts (requires teams)"
     echo ""
     exit 0
+fi
+
+# Validate dependencies
+if [ "$LOAD_TEAMS" = true ] && [ "$LOAD_LEAGUES" = false ]; then
+    echo -e "${RED}Error: --teams requires --leagues${NC}"
+    exit 1
+fi
+
+if [ "$LOAD_PLAYERS" = true ] && [ "$LOAD_TEAMS" = false ]; then
+    echo -e "${RED}Error: --players requires --teams (and --leagues)${NC}"
+    exit 1
 fi
 
 echo -e "${BLUE}========================================${NC}"
@@ -103,9 +129,10 @@ echo -e "${BLUE}Football Home - Startup${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 echo -e "${BLUE}Configuration:${NC}"
-echo -e "  APSL Scraping:    ${GREEN}$SCRAPE_APSL${NC}"
-echo -e "  Google Scraping:  ${GREEN}$SCRAPE_GOOGLE${NC}"
-echo -e "  Load APSL SQL:    ${GREEN}$LOAD_APSL_SQL${NC}"
+echo -e "  Load Leagues:     ${GREEN}$LOAD_LEAGUES${NC}"
+echo -e "  Load Teams:       ${GREEN}$LOAD_TEAMS${NC}"
+echo -e "  Load Players:     ${GREEN}$LOAD_PLAYERS${NC}"
+echo -e "  Load Venues:      ${GREEN}$LOAD_VENUES${NC}"
 echo -e "  Preserve Volumes: ${GREEN}$PRESERVE_VOLUMES${NC}"
 echo -e "  Fresh Builds:     ${GREEN}$NO_CACHE${NC}"
 echo ""
@@ -114,84 +141,136 @@ echo ""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Step 1: Handle APSL data scraping
-echo -e "${BLUE}Step 1: APSL Data Management${NC}"
-if [ "$SCRAPE_APSL" = true ]; then
-    echo -e "${YELLOW}🔄 Scraping APSL data from external source...${NC}"
-    if [ -f "./database/leagues/apsl/scrape-apsl.sh" ]; then
-        chmod +x ./database/leagues/apsl/scrape-apsl.sh
-        export APSL_SCRAPE=true
-        ./database/leagues/apsl/scrape-apsl.sh
-        echo -e "${GREEN}✓ APSL data scraped successfully${NC}"
-    else
-        echo -e "${RED}❌ Error: scrape-apsl.sh not found${NC}"
-        exit 1
-    fi
-else
-    echo -e "${GREEN}📁 Using existing APSL data from SQL inserts (no external API calls)${NC}"
-fi
+echo -e "${BLUE}Step 1: Configure Docker Compose Override${NC}"
 
-# Step 2: Handle Google Places data scraping
-echo -e "${BLUE}Step 2: Google Places Data Management${NC}"
-if [ "$SCRAPE_GOOGLE" = true ]; then
-    echo -e "${YELLOW}🔄 Scraping Google Places data...${NC}"
-    if [ -f "./scripts/scrape-google-venues.sh" ]; then
-        chmod +x ./scripts/scrape-google-venues.sh
-        export GOOGLE_SCRAPE=true
-        ./scripts/scrape-google-venues.sh
-        echo -e "${GREEN}✓ Google Places data scraped successfully${NC}"
-    else
-        echo -e "${RED}⚠ Warning: Google Places scraper not found${NC}"
-        echo -e "${YELLOW}  Will use existing venue data from SQL inserts${NC}"
-    fi
-else
-    echo -e "${GREEN}📁 Using existing Google Places data from SQL inserts (no API costs)${NC}"
-fi
-
-echo ""
-echo -e "${BLUE}Step 3: Database Configuration${NC}"
-
-# Configure which SQL files to load
-if [ "$LOAD_APSL_SQL" = true ]; then
-    echo -e "${YELLOW}📊 Configuring for full APSL dataset (all teams and players)${NC}"
-    # Ensure APSL data file is available for Docker mount
-    if [ ! -f "./database/leagues/apsl/apsl-data.sql" ]; then
-        echo -e "${RED}❌ Error: APSL data file not found at ./database/leagues/apsl/apsl-data.sql${NC}"
-        exit 1
-    fi
-    # Create docker-compose override for APSL data
-    cat > docker-compose.override.yml << EOF
+# Build docker-compose.override.yml based on flags
+cat > docker-compose.override.yml << 'EOF_HEADER'
 services:
   db:
     volumes:
+      # Schema and seed data (always loaded)
       - ./database/schema/01-create-tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
       - ./database/seed-data/01-core-lookups.sql:/docker-entrypoint-initdb.d/02-core-lookups.sql:ro
-      - ./database/seed-data/02-venues.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
-      - ./database/leagues/apsl/apsl-data.sql:/docker-entrypoint-initdb.d/04-apsl-data.sql:ro
-      - ./database/clubs/lighthouse/01-club-setup.sql:/docker-entrypoint-initdb.d/05-lighthouse-club.sql:ro
-      - ./database/clubs/lighthouse/02-additional-teams.sql:/docker-entrypoint-initdb.d/06-lighthouse-teams.sql:ro
-      - ./database/clubs/lighthouse/03-users.sql:/docker-entrypoint-initdb.d/07-lighthouse-users.sql:ro
-EOF
-    echo -e "${GREEN}✓ Will load complete APSL dataset with all teams and venues${NC}"
+EOF_HEADER
+
+# Conditionally add venues
+if [ "$LOAD_VENUES" = true ]; then
+    echo "      - ./database/seed-data/02-venues.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro" >> docker-compose.override.yml
+    echo -e "${GREEN}✓ Including Google Places venues${NC}"
+fi
+
+# Conditionally add leagues
+if [ "$LOAD_LEAGUES" = true ]; then
+    cat >> docker-compose.override.yml << 'EOF_LEAGUES'
+      
+      # League structure (10-12)
+      - ./database/leagues/01-leagues.sql:/docker-entrypoint-initdb.d/10-leagues.sql:ro
+      - ./database/leagues/02-conferences.sql:/docker-entrypoint-initdb.d/11-conferences.sql:ro
+      - ./database/leagues/03-divisions.sql:/docker-entrypoint-initdb.d/12-divisions.sql:ro
+      
+      # Clubs (20-21)
+      - ./database/clubs/01-clubs.sql:/docker-entrypoint-initdb.d/20-clubs.sql:ro
+      - ./database/clubs/02-divisions.sql:/docker-entrypoint-initdb.d/21-divisions.sql:ro
+EOF_LEAGUES
+    echo -e "${GREEN}✓ Including APSL league structure${NC}"
+fi
+
+# Conditionally add teams
+if [ "$LOAD_TEAMS" = true ]; then
+    cat >> docker-compose.override.yml << 'EOF_TEAMS'
+      
+      # Teams (30)
+      - ./database/teams/01-teams.sql:/docker-entrypoint-initdb.d/30-teams.sql:ro
+EOF_TEAMS
+    echo -e "${GREEN}✓ Including all APSL teams (~53 teams)${NC}"
+fi
+
+# Always add core users (jbreslin) and coaches
+cat >> docker-compose.override.yml << 'EOF_CORE_USERS'
+      
+      # Core users and roles (40-42)
+      - ./database/users/01-users.sql:/docker-entrypoint-initdb.d/40-users.sql:ro
+      - ./database/coaches/01-coaches.sql:/docker-entrypoint-initdb.d/42-coaches.sql:ro
+EOF_CORE_USERS
+
+# Conditionally add players
+if [ "$LOAD_PLAYERS" = true ]; then
+    echo "      - ./database/players/01-players.sql:/docker-entrypoint-initdb.d/41-players.sql:ro" >> docker-compose.override.yml
+    echo -e "${GREEN}✓ Including all APSL players (~1600 accounts)${NC}"
+fi
+
+# Conditionally add rosters
+if [ "$LOAD_TEAMS" = true ]; then
+    cat >> docker-compose.override.yml << 'EOF_ROSTERS'
+      
+      # Rosters (50)
+      - ./database/rosters/01-rosters.sql:/docker-entrypoint-initdb.d/50-rosters.sql:ro
+      - ./database/rosters/02-lighthouse-coaches.sql:/docker-entrypoint-initdb.d/51-lighthouse-coaches.sql:ro
+EOF_ROSTERS
+    echo -e "${GREEN}✓ Including team rosters${NC}"
+fi
+
+echo -e "${GREEN}✓ docker-compose.override.yml configured${NC}"
+echo ""
+
+echo -e "${BLUE}Step 2: Docker Container Management${NC}"
+
+# Handle volume management based on PRESERVE_VOLUMES flag
+if [ "$PRESERVE_VOLUMES" = true ]; then
+    echo -e "${GREEN}📦 Preserving existing Docker volumes${NC}"
+    docker compose down
 else
-    echo -e "${GREEN}📦 Configuring for Lighthouse-only dataset (minimal)${NC}"
-    # Create docker-compose override for lighthouse data only (no APSL)
-    cat > docker-compose.override.yml << EOF
-services:
-  db:
-    volumes:
-      - ./database/schema/01-create-tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
-      - ./database/seed-data/01-core-lookups.sql:/docker-entrypoint-initdb.d/02-core-lookups.sql:ro
-      - ./database/seed-data/02-venues.sql:/docker-entrypoint-initdb.d/03-venues.sql:ro
-      - ./database/clubs/lighthouse/01-club-setup.sql:/docker-entrypoint-initdb.d/04-lighthouse-club.sql:ro
-      - ./database/clubs/lighthouse/02-additional-teams.sql:/docker-entrypoint-initdb.d/05-lighthouse-teams.sql:ro
-      - ./database/clubs/lighthouse/03-users.sql:/docker-entrypoint-initdb.d/06-lighthouse-users.sql:ro
-EOF
-    echo -e "${GREEN}✓ Will load Lighthouse 1893 SC data and venues${NC}"
+    echo -e "${YELLOW}🗑️  Removing Docker volumes for fresh start${NC}"
+    docker compose down -v
+    echo -e "${GREEN}✓ Volumes removed${NC}"
+    
+    echo -e "${YELLOW}🗑️  Removing project Docker images${NC}"
+    docker rmi footballhome-frontend footballhome-backend 2>/dev/null || true
+    echo -e "${GREEN}✓ Images removed${NC}"
+    
+    echo -e "${YELLOW}🗑️  Clearing Docker build cache${NC}"
+    docker builder prune -f 2>/dev/null || true
+    echo -e "${GREEN}✓ Cache cleared${NC}"
+    
+    echo -e "${YELLOW}🗑️  Removing dangling images${NC}"
+    docker image prune -f 2>/dev/null || true
+    echo -e "${GREEN}✓ Dangling images removed${NC}"
+fi
+
+# Build and start
+if [ "$NO_CACHE" = true ]; then
+    echo -e "${YELLOW}🔄 Building without cache...${NC}"
+    docker compose build --no-cache
+else
+    echo -e "${BLUE}🏗️ Building with cache...${NC}"
+    docker compose build
+fi
+
+docker compose up -d
+
+# Clear reverse proxy cache
+echo ""
+echo -e "${BLUE}Step 3: Reverse Proxy Cache${NC}"
+if systemctl is-active --quiet nginx 2>/dev/null; then
+    sudo rm -rf /var/cache/nginx/* 2>/dev/null || true
+    sudo systemctl restart nginx
+    echo -e "${GREEN}✓ Nginx cache cleared${NC}"
+elif systemctl is-active --quiet caddy 2>/dev/null; then
+    sudo systemctl restart caddy
+    echo -e "${GREEN}✓ Caddy restarted${NC}"
+else
+    echo -e "${GREEN}✓ No reverse proxy detected${NC}"
 fi
 
 echo ""
-echo -e "${BLUE}Step 4: Docker Container Management${NC}"
+echo -e "${GREEN}✓ Startup complete!${NC}"
+echo ""
+echo -e "${BLUE}Services:${NC}"
+echo -e "  Database:  localhost:5432"
+echo -e "  Backend:   localhost:3001"
+echo -e "  Frontend:  localhost:3000"
+echo -e "  pgAdmin:   localhost:5050"
+echo ""
 
 # Handle volume management based on PRESERVE_VOLUMES flag
 if [ "$PRESERVE_VOLUMES" = true ]; then
