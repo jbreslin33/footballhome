@@ -267,7 +267,31 @@ else
     docker compose build
 fi
 
-docker compose up -d
+echo ""
+echo -e "${BLUE}Starting containers in order...${NC}"
+echo -e "${YELLOW}🔵 Starting database...${NC}"
+docker compose up -d db pgadmin
+
+echo -e "${YELLOW}⏳ Waiting for database to be healthy...${NC}"
+timeout=60
+counter=0
+while [ $counter -lt $timeout ]; do
+    if docker compose ps db | grep -q "healthy"; then
+        echo -e "${GREEN}✓ Database is ready${NC}"
+        break
+    fi
+    sleep 1
+    ((counter++))
+done
+
+if [ $counter -eq $timeout ]; then
+    echo -e "${RED}✗ Database failed to become healthy${NC}"
+    exit 1
+fi
+
+echo -e "${YELLOW}🚀 Starting backend and frontend...${NC}"
+docker compose up -d backend frontend
+echo -e "${GREEN}✓ All services started${NC}"
 
 # Clear reverse proxy cache
 echo ""
