@@ -13,12 +13,12 @@
  *   - leagues/01-leagues.sql
  *   - leagues/02-conferences.sql
  *   - leagues/03-divisions.sql
- *   - clubs/01-all-clubs.sql
- *   - clubs/02-sport-divisions.sql
- *   - teams/01-apsl-teams.sql
- *   - users/01-all-users.sql (appends to existing)
- *   - players/01-all-players.sql (appends to existing)
- *   - rosters/01-apsl-rosters.sql
+ *   - clubs/01-clubs.sql
+ *   - clubs/02-divisions.sql
+ *   - teams/01-teams.sql
+ *   - users/01-users.sql (appends to existing)
+ *   - players/01-players.sql (appends to existing)
+ *   - rosters/01-rosters.sql
  * 
  * Usage:
  *   node database/scripts/apsl-scraper/scrape-apsl.js
@@ -441,7 +441,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('clubs/01-all-clubs.sql', 'CLUBS', clubsSQL);
+  writeFile('clubs/01-clubs.sql', 'CLUBS', clubsSQL);
   
   // 5. SPORT DIVISIONS
   let sportDivisionsSQL = '';
@@ -455,7 +455,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('clubs/02-sport-divisions.sql', 'SPORT DIVISIONS', sportDivisionsSQL);
+  writeFile('clubs/02-divisions.sql', 'SPORT DIVISIONS', sportDivisionsSQL);
   
   // 6. TEAMS
   let teamsSQL = '';
@@ -469,7 +469,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('teams/01-apsl-teams.sql', 'APSL TEAMS', teamsSQL);
+  writeFile('teams/01-teams.sql', 'APSL TEAMS', teamsSQL);
   
   // 7. USERS (append to existing file)
   let usersSQL = `
@@ -498,7 +498,7 @@ ON CONFLICT (email) DO UPDATE SET
 
 `;
   }
-  appendToFile('users/01-all-users.sql', usersSQL);
+  appendToFile('users/01-users.sql', usersSQL);
   
   // 8. PLAYERS (append to existing file)
   let playersSQL = `
@@ -516,7 +516,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  appendToFile('players/01-all-players.sql', playersSQL);
+  appendToFile('players/01-players.sql', playersSQL);
   
   // 9. ROSTERS
   let rostersSQL = '';
@@ -529,7 +529,7 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
 
 `;
   }
-  writeFile('rosters/01-apsl-rosters.sql', 'APSL ROSTERS', rostersSQL);
+  writeFile('rosters/01-rosters.sql', 'APSL ROSTERS', rostersSQL);
   
   // Summary
   console.error('\n========================================');
