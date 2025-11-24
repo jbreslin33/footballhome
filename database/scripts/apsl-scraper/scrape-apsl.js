@@ -21,7 +21,7 @@
  *   - rosters/01-apsl-rosters.sql
  * 
  * Usage:
- *   node database/leagues/apsl/scrape-apsl.js
+ *   node database/scripts/apsl-scraper/scrape-apsl.js
  */
 
 const https = require('https');
