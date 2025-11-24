@@ -1,10 +1,10 @@
 -- ========================================
 -- LEAGUE CONFERENCES
 -- ========================================
--- Generated: 2025-11-24T18:38:23.420Z
+-- Generated: 2025-11-24T21:50:58.428Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
--- Run scraper to regenerate: node database/leagues/apsl/scrape-apsl.js
+-- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
 -- ========================================
 
 INSERT INTO league_conferences (id, league_id, name, display_name, slug, is_active)

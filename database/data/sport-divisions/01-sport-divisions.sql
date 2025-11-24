@@ -1,10 +1,10 @@
 -- ========================================
 -- SPORT DIVISIONS
 -- ========================================
--- Generated: 2025-11-24T18:38:23.422Z
+-- Generated: 2025-11-24T21:50:58.429Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
--- Run scraper to regenerate: node database/leagues/apsl/scrape-apsl.js
+-- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
 -- ========================================
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
