@@ -15,7 +15,7 @@
  *   - leagues/03-divisions.sql
  *   - clubs/01-clubs.sql
  *   - clubs/02-divisions.sql
- *   - teams/01-teams.sql
+ *   - teams/02-apsl-teams.sql
  *   - users/02-apsl-users.sql
  *   - players/02-apsl-players.sql
  *   - rosters/01-rosters.sql
@@ -469,7 +469,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('teams/01-teams.sql', 'APSL TEAMS', teamsSQL);
+  writeFile('teams/02-apsl-teams.sql', 'APSL TEAMS', teamsSQL);
   
   // 7. USERS (write to separate APSL file)
   let usersSQL = `

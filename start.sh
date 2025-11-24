@@ -195,18 +195,21 @@ fi
 if [ "$LOAD_TEAMS" = true ]; then
     cat >> docker-compose.override.yml << 'EOF_TEAMS'
       
-      # Teams (30)
-      - ./database/teams/01-teams.sql:/docker-entrypoint-initdb.d/30-teams.sql:ro
+      # APSL Teams (35)
+      - ./database/teams/02-apsl-teams.sql:/docker-entrypoint-initdb.d/35-apsl-teams.sql:ro
 EOF_TEAMS
     echo -e "${GREEN}✓ Including all APSL teams (~53 teams)${NC}"
 fi
 
-# Always add core users (jbreslin) and coaches
+# Always add core users (jbreslin) and coaches and Lighthouse team
 cat >> docker-compose.override.yml << 'EOF_CORE_USERS'
       
-      # Core users and roles (40, 42)
-      - ./database/users/01-core-users.sql:/docker-entrypoint-initdb.d/40-core-users.sql:ro
-      - ./database/coaches/01-coaches.sql:/docker-entrypoint-initdb.d/42-coaches.sql:ro
+      # Core users and roles (30, 32)
+      - ./database/users/01-core-users.sql:/docker-entrypoint-initdb.d/30-core-users.sql:ro
+      - ./database/coaches/01-coaches.sql:/docker-entrypoint-initdb.d/32-coaches.sql:ro
+      
+      # Core team (Lighthouse 1893 SC - loaded after coaches exist)
+      - ./database/teams/01-lighthouse-team.sql:/docker-entrypoint-initdb.d/35-lighthouse-team.sql:ro
 EOF_CORE_USERS
 
 # Conditionally add APSL users
@@ -225,11 +228,10 @@ fi
 if [ "$LOAD_TEAMS" = true ]; then
     cat >> docker-compose.override.yml << 'EOF_ROSTERS'
       
-      # Rosters (50)
-      - ./database/rosters/01-rosters.sql:/docker-entrypoint-initdb.d/50-rosters.sql:ro
-      - ./database/rosters/02-lighthouse-coaches.sql:/docker-entrypoint-initdb.d/51-lighthouse-coaches.sql:ro
+      # APSL Rosters (50)
+      - ./database/rosters/01-rosters.sql:/docker-entrypoint-initdb.d/50-apsl-rosters.sql:ro
 EOF_ROSTERS
-    echo -e "${GREEN}✓ Including team rosters${NC}"
+    echo -e "${GREEN}✓ Including APSL team rosters${NC}"
 fi
 
 echo -e "${GREEN}✓ docker-compose.override.yml configured${NC}"
