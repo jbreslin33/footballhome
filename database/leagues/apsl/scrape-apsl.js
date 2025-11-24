@@ -9,14 +9,25 @@
  * - All player rosters for each team
  * 
  * Generates SQL INSERT statements with ON CONFLICT DO UPDATE for idempotency.
- * Output: database/apsl/apsl-data.sql (auto-loaded by schema/init.sql on rebuild)
+ * Outputs to multiple files in standardized database structure:
+ *   - leagues/01-leagues.sql
+ *   - leagues/02-conferences.sql
+ *   - leagues/03-divisions.sql
+ *   - clubs/01-all-clubs.sql
+ *   - clubs/02-sport-divisions.sql
+ *   - teams/01-apsl-teams.sql
+ *   - users/01-all-users.sql (appends to existing)
+ *   - players/01-all-players.sql (appends to existing)
+ *   - rosters/01-apsl-rosters.sql
  * 
  * Usage:
- *   node database/apsl/scrape-apsl.js > database/apsl/apsl-data.sql
+ *   node database/leagues/apsl/scrape-apsl.js
  */
 
 const https = require('https');
 const { JSDOM } = require('jsdom');
+const fs = require('fs');
+const path = require('path');
 
 // Configuration
 const BASE_URL = 'https://apslsoccer.com';
@@ -335,132 +346,202 @@ async function scrapeTeamRoster(teamId, teamUrl) {
   }
 }
 
-// Generate SQL output
+// Generate SQL output to multiple files
 function generateSQL() {
-  console.log('\n-- ========================================');
-  console.log('-- LEAGUE STRUCTURE');
-  console.log('-- ========================================\n');
+  const baseDir = path.join(__dirname, '../..');
+  
+  console.error('\n📝 Writing SQL files...');
+  
+  // Helper to write file with header
+  function writeFile(relativePath, header, content) {
+    const fullPath = path.join(baseDir, relativePath);
+    const dir = path.dirname(fullPath);
+    
+    // Ensure directory exists
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    const output = `-- ========================================
+-- ${header}
+-- ========================================
+-- Generated: ${new Date().toISOString()}
+-- Source: ${LEAGUE_URL}
+-- AUTO-GENERATED - DO NOT EDIT MANUALLY
+-- Run scraper to regenerate: node database/leagues/apsl/scrape-apsl.js
+-- ========================================
 
-  // Insert league
-  console.log('-- APSL League');
-  console.log(`INSERT INTO leagues (id, name, display_name, sport_id, season, website, is_active)`);
-  console.log(`VALUES (${sqlEscape(APSL_LEAGUE_ID)}, 'APSL', 'American Premier Soccer League', ${sqlEscape(SOCCER_SPORT_ID)}, '2024-2025', 'https://apslsoccer.com', true)`);
-  console.log(`ON CONFLICT (id) DO UPDATE SET`);
-  console.log(`  display_name = EXCLUDED.display_name,`);
-  console.log(`  website = EXCLUDED.website,`);
-  console.log(`  updated_at = CURRENT_TIMESTAMP;\n`);
-
-  // Insert conferences
-  console.log('-- Conferences');
+${content}`;
+    
+    fs.writeFileSync(fullPath, output);
+    console.error(`  ✓ ${relativePath}`);
+  }
+  
+  // Helper to append to existing file
+  function appendToFile(relativePath, content) {
+    const fullPath = path.join(baseDir, relativePath);
+    const existing = fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf8') : '';
+    
+    // Remove old APSL section if exists
+    const withoutOld = existing.replace(/-- APSL [\s\S]*?(?=\n-- |$)/g, '');
+    
+    fs.writeFileSync(fullPath, withoutOld + '\n' + content);
+    console.error(`  ✓ ${relativePath} (appended)`);
+  }
+  
+  // 1. LEAGUES
+  let leaguesSQL = `-- APSL (American Premier Soccer League)
+INSERT INTO leagues (id, name, display_name, slug, sport_id, season, website, is_active)
+VALUES (${sqlEscape(APSL_LEAGUE_ID)}, 'APSL', 'American Premier Soccer League', 'apsl', ${sqlEscape(SOCCER_SPORT_ID)}, '2024-2025', 'https://apslsoccer.com', true)
+ON CONFLICT (id) DO UPDATE SET
+  display_name = EXCLUDED.display_name,
+  website = EXCLUDED.website,
+  updated_at = CURRENT_TIMESTAMP;
+`;
+  writeFile('leagues/01-leagues.sql', 'LEAGUES', leaguesSQL);
+  
+  // 2. CONFERENCES
+  let conferencesSQL = '';
   for (const conf of conferences.values()) {
-    console.log(`INSERT INTO league_conferences (id, league_id, name, display_name, slug, is_active)`);
-    console.log(`VALUES (${sqlEscape(conf.id)}, ${sqlEscape(conf.league_id)}, ${sqlEscape(conf.name)}, ${sqlEscape(conf.display_name)}, ${sqlEscape(conf.slug)}, true)`);
-    console.log(`ON CONFLICT (id) DO UPDATE SET`);
-    console.log(`  name = EXCLUDED.name,`);
-    console.log(`  display_name = EXCLUDED.display_name,`);
-    console.log(`  updated_at = CURRENT_TIMESTAMP;\n`);
-  }
+    conferencesSQL += `INSERT INTO league_conferences (id, league_id, name, display_name, slug, is_active)
+VALUES (${sqlEscape(conf.id)}, ${sqlEscape(conf.league_id)}, ${sqlEscape(conf.name)}, ${sqlEscape(conf.display_name)}, ${sqlEscape(conf.slug)}, true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  updated_at = CURRENT_TIMESTAMP;
 
-  // Insert divisions
-  console.log('-- League Divisions');
+`;
+  }
+  writeFile('leagues/02-conferences.sql', 'LEAGUE CONFERENCES', conferencesSQL);
+  
+  // 3. DIVISIONS
+  let divisionsSQL = '';
   for (const div of divisions.values()) {
-    console.log(`INSERT INTO league_divisions (id, conference_id, name, display_name, slug, tier, is_active)`);
-    console.log(`VALUES (${sqlEscape(div.id)}, ${sqlEscape(div.conference_id)}, ${sqlEscape(div.name)}, ${sqlEscape(div.display_name)}, ${sqlEscape(div.slug)}, ${div.tier}, true)`);
-    console.log(`ON CONFLICT (id) DO UPDATE SET`);
-    console.log(`  name = EXCLUDED.name,`);
-    console.log(`  display_name = EXCLUDED.display_name,`);
-    console.log(`  tier = EXCLUDED.tier,`);
-    console.log(`  updated_at = CURRENT_TIMESTAMP;\n`);
-  }
+    divisionsSQL += `INSERT INTO league_divisions (id, conference_id, name, display_name, slug, tier, is_active)
+VALUES (${sqlEscape(div.id)}, ${sqlEscape(div.conference_id)}, ${sqlEscape(div.name)}, ${sqlEscape(div.display_name)}, ${sqlEscape(div.slug)}, ${div.tier}, true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  tier = EXCLUDED.tier,
+  updated_at = CURRENT_TIMESTAMP;
 
-  // Insert clubs
-  console.log('\n-- ========================================');
-  console.log('-- CLUBS');
-  console.log('-- ========================================\n');
+`;
+  }
+  writeFile('leagues/03-divisions.sql', 'LEAGUE DIVISIONS', divisionsSQL);
+  
+  // 4. CLUBS
+  let clubsSQL = '';
   for (const club of clubs.values()) {
-    console.log(`INSERT INTO clubs (id, name, display_name, slug, is_active)`);
-    console.log(`VALUES (${sqlEscape(club.id)}, ${sqlEscape(club.name)}, ${sqlEscape(club.display_name)}, ${sqlEscape(club.slug)}, true)`);
-    console.log(`ON CONFLICT (id) DO UPDATE SET`);
-    console.log(`  name = EXCLUDED.name,`);
-    console.log(`  display_name = EXCLUDED.display_name,`);
-    console.log(`  updated_at = CURRENT_TIMESTAMP;\n`);
-  }
+    clubsSQL += `INSERT INTO clubs (id, name, display_name, slug, is_active)
+VALUES (${sqlEscape(club.id)}, ${sqlEscape(club.name)}, ${sqlEscape(club.display_name)}, ${sqlEscape(club.slug)}, true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  updated_at = CURRENT_TIMESTAMP;
 
-  // Insert sport divisions
-  console.log('-- Sport Divisions');
+`;
+  }
+  writeFile('clubs/01-all-clubs.sql', 'CLUBS', clubsSQL);
+  
+  // 5. SPORT DIVISIONS
+  let sportDivisionsSQL = '';
   for (const sd of sportDivisions.values()) {
-    console.log(`INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)`);
-    console.log(`VALUES (${sqlEscape(sd.id)}, ${sqlEscape(sd.club_id)}, ${sqlEscape(sd.sport_id)}, ${sqlEscape(sd.name)}, ${sqlEscape(sd.display_name)}, ${sqlEscape(sd.slug)}, true)`);
-    console.log(`ON CONFLICT (id) DO UPDATE SET`);
-    console.log(`  name = EXCLUDED.name,`);
-    console.log(`  display_name = EXCLUDED.display_name,`);
-    console.log(`  updated_at = CURRENT_TIMESTAMP;\n`);
-  }
+    sportDivisionsSQL += `INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
+VALUES (${sqlEscape(sd.id)}, ${sqlEscape(sd.club_id)}, ${sqlEscape(sd.sport_id)}, ${sqlEscape(sd.name)}, ${sqlEscape(sd.display_name)}, ${sqlEscape(sd.slug)}, true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  updated_at = CURRENT_TIMESTAMP;
 
-  // Insert teams
-  console.log('-- Teams');
+`;
+  }
+  writeFile('clubs/02-sport-divisions.sql', 'SPORT DIVISIONS', sportDivisionsSQL);
+  
+  // 6. TEAMS
+  let teamsSQL = '';
   for (const team of teams.values()) {
-    console.log(`INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)`);
-    console.log(`VALUES (${sqlEscape(team.id)}, ${sqlEscape(team.name)}, ${sqlEscape(team.division_id)}, ${sqlEscape(team.league_division_id)}, '2024-2025', true)`);
-    console.log(`ON CONFLICT (id) DO UPDATE SET`);
-    console.log(`  name = EXCLUDED.name,`);
-    console.log(`  league_division_id = EXCLUDED.league_division_id,`);
-    console.log(`  updated_at = CURRENT_TIMESTAMP;\n`);
+    teamsSQL += `INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
+VALUES (${sqlEscape(team.id)}, ${sqlEscape(team.name)}, ${sqlEscape(team.division_id)}, ${sqlEscape(team.league_division_id)}, '2024-2025', true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  league_division_id = EXCLUDED.league_division_id,
+  updated_at = CURRENT_TIMESTAMP;
+
+`;
   }
+  writeFile('teams/01-apsl-teams.sql', 'APSL TEAMS', teamsSQL);
+  
+  // 7. USERS (append to existing file)
+  let usersSQL = `
+-- ========================================
+-- APSL PLAYERS
+-- ========================================
+-- Generated: ${new Date().toISOString()}
+-- Note: Passwords are bcrypt-hashed. Default pattern: Player[random]!
+-- Players should reset passwords on first login.
 
-  // Insert users
-  console.log('\n-- ========================================');
-  console.log('-- USERS (PLAYERS)');
-  console.log('-- ========================================\n');
-  console.log('-- Note: Passwords are bcrypt-hashed. Default pattern: Player[random]!');
-  console.log('-- Players should reset passwords on first login.\n');
-
+`;
   for (const user of users.values()) {
-    console.log(`INSERT INTO users (id, email, first_name, last_name, password_hash, is_active)`);
-    console.log(`VALUES (`);
-    console.log(`  ${sqlEscape(user.id)},`);
-    console.log(`  ${sqlEscape(user.email)},`);
-    console.log(`  ${sqlEscape(user.first_name)},`);
-    console.log(`  ${sqlEscape(user.last_name)},`);
-    console.log(`  crypt(${sqlEscape(user.password)}, gen_salt('bf')),`);
-    console.log(`  true`);
-    console.log(`)`);
-    console.log(`ON CONFLICT (email) DO UPDATE SET`);
-    console.log(`  first_name = EXCLUDED.first_name,`);
-    console.log(`  last_name = EXCLUDED.last_name,`);
-    console.log(`  updated_at = CURRENT_TIMESTAMP;\n`);
-  }
+    usersSQL += `INSERT INTO users (id, email, first_name, last_name, password_hash, is_active)
+VALUES (
+  ${sqlEscape(user.id)},
+  ${sqlEscape(user.email)},
+  ${sqlEscape(user.first_name)},
+  ${sqlEscape(user.last_name)},
+  crypt(${sqlEscape(user.password)}, gen_salt('bf')),
+  true
+)
+ON CONFLICT (email) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
 
-  // Insert players
-  console.log('-- Player Entities');
+`;
+  }
+  appendToFile('users/01-all-users.sql', usersSQL);
+  
+  // 8. PLAYERS (append to existing file)
+  let playersSQL = `
+-- ========================================
+-- APSL PLAYERS
+-- ========================================
+-- Generated: ${new Date().toISOString()}
+
+`;
   for (const player of players.values()) {
-    console.log(`INSERT INTO players (id, notes)`);
-    console.log(`VALUES (${sqlEscape(player.id)}, 'APSL player - position: ${player.position || 'not specified'}')`);
-    console.log(`ON CONFLICT (id) DO UPDATE SET`);
-    console.log(`  notes = EXCLUDED.notes;\n`);
-  }
+    playersSQL += `INSERT INTO players (id, notes)
+VALUES (${sqlEscape(player.id)}, 'APSL player - position: ${player.position || 'not specified'}')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
 
-  // Insert team_players
-  console.log('-- Team Rosters');
+`;
+  }
+  appendToFile('players/01-all-players.sql', playersSQL);
+  
+  // 9. ROSTERS
+  let rostersSQL = '';
   for (const tp of teamPlayers.values()) {
-    console.log(`INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)`);
-    console.log(`VALUES (${sqlEscape(tp.id)}, ${sqlEscape(tp.team_id)}, ${sqlEscape(tp.player_id)}, ${tp.jersey_number || 'NULL'}, true)`);
-    console.log(`ON CONFLICT (team_id, player_id) DO UPDATE SET`);
-    console.log(`  jersey_number = EXCLUDED.jersey_number,`);
-    console.log(`  is_active = EXCLUDED.is_active;\n`);
-  }
+    rostersSQL += `INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
+VALUES (${sqlEscape(tp.id)}, ${sqlEscape(tp.team_id)}, ${sqlEscape(tp.player_id)}, ${tp.jersey_number || 'NULL'}, true)
+ON CONFLICT (team_id, player_id) DO UPDATE SET
+  jersey_number = EXCLUDED.jersey_number,
+  is_active = EXCLUDED.is_active;
 
+`;
+  }
+  writeFile('rosters/01-apsl-rosters.sql', 'APSL ROSTERS', rostersSQL);
+  
   // Summary
-  console.log('\n-- ========================================');
-  console.log('-- SCRAPE SUMMARY');
-  console.log('-- ========================================');
-  console.log(`-- Conferences: ${conferences.size}`);
-  console.log(`-- Divisions: ${divisions.size}`);
-  console.log(`-- Clubs: ${clubs.size}`);
-  console.log(`-- Teams: ${teams.size}`);
-  console.log(`-- Players: ${players.size}`);
-  console.log(`-- Total User Accounts Created: ${users.size}`);
-  console.log('-- ========================================\n');
+  console.error('\n========================================');
+  console.error('SCRAPE SUMMARY');
+  console.error('========================================');
+  console.error(`Conferences: ${conferences.size}`);
+  console.error(`Divisions: ${divisions.size}`);
+  console.error(`Clubs: ${clubs.size}`);
+  console.error(`Teams: ${teams.size}`);
+  console.error(`Players: ${players.size}`);
+  console.error(`Total User Accounts: ${users.size}`);
+  console.error('========================================\n');
 }
 
 // Run scraper

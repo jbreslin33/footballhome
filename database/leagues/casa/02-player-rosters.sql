@@ -1,10 +1,5 @@
 -- ========================================
 -- CASA SELECT PLAYER ROSTERS
 -- ========================================
--- Player assignments for CASA Select League teams
-
--- Lighthouse Boys Club Players
--- (Add player data here as teams are formed)
-
--- Lighthouse Old Timers Club Players
--- (Add player data here as teams are formed)
+-- TODO: Add CASA Select player rosters when ready
+-- This file is intentionally blank for now - only APSL data is being used
