@@ -7,6 +7,7 @@
 # Usage:
 #   ./start.sh                              - Fast development (minimum datasets)
 #   ./start.sh --full                       - Load all data (full datasets)
+#   ./start.sh --scrape-apsl                - Scrape APSL data before starting
 #   ./start.sh --google-venues              - Scrape venues from Google (requires API key)
 #   ./start.sh --volumes                    - Preserve existing Docker volumes
 #   ./start.sh --cache                      - Use Docker build cache
@@ -14,6 +15,7 @@
 #
 # Flags:
 #   --full           Load full datasets from all database folders
+#   --scrape-apsl    Run APSL scraper before starting (regenerates APSL data)
 #   --google-venues  Scrape venues from Google Places API (off by default)
 #   --volumes        Preserve existing Docker volumes (default: delete and rebuild)
 #   --cache          Use Docker build cache (default: no cache for fresh builds)
@@ -32,6 +34,7 @@ NC='\033[0m'
 PRESERVE_VOLUMES=false
 NO_CACHE=true  # Default to no cache for development
 LOAD_FULL=false  # Default to minimum datasets for fast development
+SCRAPE_APSL=false  # Default to off - use existing APSL SQL files
 SCRAPE_GOOGLE_VENUES=false  # Default to off - use existing venue SQL files
 SHOW_HELP=false
 
@@ -39,6 +42,9 @@ for arg in "$@"; do
     case $arg in
         --full)
             LOAD_FULL=true
+            ;;
+        --scrape-apsl)
+            SCRAPE_APSL=true
             ;;
         --google-venues)
             SCRAPE_GOOGLE_VENUES=true
@@ -73,6 +79,7 @@ if [ "$SHOW_HELP" = true ]; then
     echo ""
     echo -e "Flags:"
     echo -e "  ${YELLOW}--full${NC}           Load ALL SQL files from all database folders"
+    echo -e "  ${YELLOW}--scrape-apsl${NC}    Run APSL scraper to regenerate league data (run once or when updating)"
     echo -e "  ${YELLOW}--google-venues${NC}  Scrape venues from Google (requires API key, off by default)"
     echo -e "  ${YELLOW}--volumes${NC}        Preserve existing Docker volumes (default: delete)"
     echo -e "  ${YELLOW}--cache${NC}          Use Docker build cache (default: no cache)"
@@ -81,6 +88,7 @@ if [ "$SHOW_HELP" = true ]; then
     echo -e "How it works:"
     echo -e "  ${BLUE}Without --full:${NC}  Loads only *-minimum.sql files (or all files if no minimum exists)"
     echo -e "  ${BLUE}With --full:${NC}     Loads ALL *.sql files from all database folders"
+    echo -e "  ${BLUE}--scrape-apsl:${NC}   Scrapes APSL website and generates SQL files before starting"
     echo -e "  ${BLUE}--google-venues:${NC} Scrapes Google Places API for venues (otherwise uses static SQL)"
     echo ""
     exit 0
@@ -91,6 +99,7 @@ echo -e "${BLUE}Football Home - Startup${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 echo -e "${BLUE}Configuration:${NC}"
+echo -e "  Scrape APSL:      ${GREEN}$SCRAPE_APSL${NC}"
 echo -e "  Load Full Data:   ${GREEN}$LOAD_FULL${NC}"
 echo -e "  Google Venues:    ${GREEN}$SCRAPE_GOOGLE_VENUES${NC}"
 echo -e "  Preserve Volumes: ${GREEN}$PRESERVE_VOLUMES${NC}"
@@ -100,6 +109,27 @@ echo ""
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
+
+# Step 0: APSL Scraping (if enabled)
+if [ "$SCRAPE_APSL" = true ]; then
+    echo -e "${BLUE}Step 0: Scraping APSL League Data${NC}"
+    
+    if [ -f "database/scripts/apsl-scraper/scrape-apsl.js" ]; then
+        echo -e "${YELLOW}Running APSL scraper...${NC}"
+        node database/scripts/apsl-scraper/scrape-apsl.js
+        
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ APSL scraping complete${NC}"
+        else
+            echo -e "${RED}✗ APSL scraping failed${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${RED}✗ APSL scraper not found at database/scripts/apsl-scraper/scrape-apsl.js${NC}"
+        exit 1
+    fi
+    echo ""
+fi
 
 echo -e "${BLUE}Step 1: Configure Docker Compose Override${NC}"
 
