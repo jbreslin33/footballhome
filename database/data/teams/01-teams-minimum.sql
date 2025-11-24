@@ -1,1 +1,0 @@
--- No minimum teams file - all teams load by default (teams.sql)
