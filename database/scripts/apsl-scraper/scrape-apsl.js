@@ -368,7 +368,7 @@ function generateSQL() {
 -- Generated: ${new Date().toISOString()}
 -- Source: ${LEAGUE_URL}
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
--- Run scraper to regenerate: node database/leagues/apsl/scrape-apsl.js
+-- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
 -- ========================================
 
 ${content}`;
@@ -377,16 +377,45 @@ ${content}`;
     console.error(`  ✓ ${relativePath}`);
   }
   
-  // Helper to append to existing file
-  function appendToFile(relativePath, content) {
+  // Helper to update APSL section in existing file (preserves manual sections)
+  function updateAPSLSection(relativePath, header, content) {
     const fullPath = path.join(baseDir, relativePath);
-    const existing = fs.existsSync(fullPath) ? fs.readFileSync(fullPath, 'utf8') : '';
+    const dir = path.dirname(fullPath);
     
-    // Remove old APSL section if exists
-    const withoutOld = existing.replace(/-- APSL [\s\S]*?(?=\n-- |$)/g, '');
+    // Ensure directory exists
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
     
-    fs.writeFileSync(fullPath, withoutOld + '\n' + content);
-    console.error(`  ✓ ${relativePath} (appended)`);
+    let existingContent = '';
+    let manualSection = '';
+    
+    if (fs.existsSync(fullPath)) {
+      existingContent = fs.readFileSync(fullPath, 'utf8');
+      
+      // Extract everything before the APSL section
+      const apslSectionStart = existingContent.indexOf('-- ========================================\n-- APSL');
+      if (apslSectionStart > 0) {
+        manualSection = existingContent.substring(0, apslSectionStart);
+      }
+    }
+    
+    // Build new content: manual section + APSL section
+    const apslSection = `-- ========================================
+-- ${header}
+-- ========================================
+-- Generated: ${new Date().toISOString()}
+-- Source: ${LEAGUE_URL}
+-- AUTO-GENERATED - DO NOT EDIT MANUALLY
+-- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
+-- ========================================
+
+${content}`;
+    
+    const finalContent = manualSection ? manualSection + apslSection : apslSection;
+    
+    fs.writeFileSync(fullPath, finalContent);
+    console.error(`  ✓ ${relativePath} (preserved manual sections)`);
   }
   
   // 1. LEAGUES
@@ -441,7 +470,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/clubs/01-clubs.sql', 'CLUBS', clubsSQL);
+  writeFile('data/clubs/02-clubs-apsl.sql', 'APSL CLUBS', clubsSQL);
   
   // 5. SPORT DIVISIONS
   let sportDivisionsSQL = '';
@@ -455,11 +484,14 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/sport-divisions/01-sport-divisions.sql', 'SPORT DIVISIONS', sportDivisionsSQL);
+  writeFile('data/sport-divisions/02-sport-divisions-apsl.sql', 'APSL SPORT DIVISIONS', sportDivisionsSQL);
   
-  // 6. TEAMS
+  // 6. TEAMS (preserve manual Lighthouse section)
   let teamsSQL = '';
   for (const team of teams.values()) {
+    // Skip Lighthouse if it exists - manual section handles it
+    if (team.name === 'Lighthouse 1893 SC') continue;
+    
     teamsSQL += `INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
 VALUES (${sqlEscape(team.id)}, ${sqlEscape(team.name)}, ${sqlEscape(team.division_id)}, ${sqlEscape(team.league_division_id)}, '2024-2025', true)
 ON CONFLICT (id) DO UPDATE SET
@@ -469,7 +501,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/teams/01-teams.sql', 'APSL TEAMS', teamsSQL);
+  writeFile('data/teams/02-teams-apsl.sql', 'APSL TEAMS', teamsSQL);
   
   // 7. USERS (write to separate APSL file, grouped by team)
   let usersSQL = `
@@ -520,7 +552,7 @@ ON CONFLICT (email) DO UPDATE SET
       usersSQL += '\n';
     }
   }
-  writeFile('data/users/01-users.sql', 'APSL PLAYER USERS', usersSQL);
+  writeFile('data/users/02-users-apsl.sql', 'APSL PLAYER USERS', usersSQL);
   
   // 8. PLAYERS (write to separate file, grouped by team)
   let playersSQL = `
@@ -560,7 +592,7 @@ ON CONFLICT (id) DO UPDATE SET
       playersSQL += '\n';
     }
   }
-  writeFile('data/players/01-players.sql', 'APSL PLAYERS', playersSQL);
+  writeFile('data/players/02-players-apsl.sql', 'APSL PLAYERS', playersSQL);
   
   // 9. ROSTERS (grouped by team)
   let rostersSQL = '';
@@ -595,7 +627,7 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
       rostersSQL += '\n';
     }
   }
-  writeFile('data/rosters/01-rosters.sql', 'APSL ROSTERS', rostersSQL);
+  writeFile('data/rosters/02-rosters-apsl.sql', 'APSL ROSTERS', rostersSQL);
   
   // Summary
   console.error('\n========================================');

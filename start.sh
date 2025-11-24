@@ -143,7 +143,7 @@ if [ "$LOAD_FULL" = true ]; then
     echo -e "${YELLOW}Loading FULL datasets from all folders...${NC}"
     
     # Load ALL SQL files from each folder (alphabetically)
-    for folder in seed-data venues leagues conferences league-divisions clubs sport-divisions users coaches teams players rosters; do
+    for folder in seed-data venues leagues conferences league-divisions clubs sport-divisions users admins coaches teams team-coaches players rosters; do
         if [ -d "database/data/$folder" ]; then
             folder_name=$(echo $folder | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
             add_sql_files "$folder" "*.sql" "Including all $folder_name data"
@@ -156,7 +156,7 @@ else
     add_sql_files "seed-data" "*.sql" "Including core lookups"
     
     # Load only -minimum.sql files from each folder
-    for folder in venues leagues conferences league-divisions clubs sport-divisions users coaches teams players rosters; do
+    for folder in venues leagues conferences league-divisions clubs sport-divisions users admins coaches teams team-coaches players rosters; do
         if [ -d "database/data/$folder" ]; then
             # Check for minimum files first
             has_minimum=false

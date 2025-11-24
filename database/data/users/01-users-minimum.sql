@@ -1,8 +1,8 @@
 -- ========================================
--- ALL USERS
+-- MANUAL USERS
 -- ========================================
--- All users in the system (admin, coaches, players)
--- This file is idempotent - can be run multiple times safely
+-- Manually managed users (admins, coaches, non-APSL players)
+-- Note: Admin role assignment is in admins/ folder
 
 -- System Admin (jbreslin@footballhome.org)
 INSERT INTO users (id, email, password_hash, first_name, last_name, is_active)
@@ -20,16 +20,3 @@ ON CONFLICT (email) DO UPDATE SET
     last_name = EXCLUDED.last_name,
     is_active = EXCLUDED.is_active,
     updated_at = CURRENT_TIMESTAMP;
-
--- Assign system admin role
-INSERT INTO admins (id, admin_level, notes)
-VALUES (
-    '77d77471-1250-47e0-81ab-d4626595d63c',
-    'system',
-    'System administrator with full access'
-)
-ON CONFLICT (id) DO UPDATE SET
-    admin_level = EXCLUDED.admin_level,
-    notes = EXCLUDED.notes,
-    updated_at = CURRENT_TIMESTAMP;
-

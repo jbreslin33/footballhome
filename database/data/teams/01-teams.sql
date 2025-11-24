@@ -1,4 +1,24 @@
 -- ========================================
+-- MANUAL TEAMS
+-- ========================================
+-- Manually managed teams (Lighthouse)
+-- Note: Lighthouse club and sport_division are in clubs/ and sport-divisions/ folders
+-- Note: jbreslin coach assignment is in team-coaches/ folder
+
+-- Insert Lighthouse 1893 SC team
+INSERT INTO teams (id, name, division_id, season, is_active)
+VALUES (
+    'b89d4e7f-6c5a-4b3d-9e2f-1a8c7d6e5f4a',
+    'Lighthouse 1893 SC',
+    'b89d4e7f-6c5a-4b3d-9e2f-1a8c7d6e5f4b',
+    '2024-2025',
+    true
+)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- ========================================
 -- APSL TEAMS
 -- ========================================
 -- Generated: 2025-11-24T18:38:23.422Z
@@ -226,13 +246,6 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
 VALUES ('f11cc01a-e8d3-0005-74f0-b00c38923236', 'GAK', 'f11cc01a-e8d3-0004-74f0-b00c38923236', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  league_division_id = EXCLUDED.league_division_id,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
-VALUES ('d37eb44b-8e47-0005-9060-f0cbe96fe089', 'Lighthouse 1893 SC', 'd37eb44b-8e47-0004-9060-f0cbe96fe089', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
