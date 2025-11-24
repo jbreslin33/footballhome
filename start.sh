@@ -113,9 +113,9 @@ add_sql_files() {
     local pattern=$2
     local description=$3
     
-    if [ -d "database/$folder" ]; then
+    if [ -d "database/data/$folder" ]; then
         local files_found=false
-        for file in database/$folder/$pattern; do
+        for file in database/data/$folder/$pattern; do
             if [ -f "$file" ]; then
                 files_found=true
                 local filename=$(basename "$file")
@@ -136,7 +136,7 @@ if [ "$LOAD_FULL" = true ]; then
     
     # Load ALL SQL files from each folder (alphabetically)
     for folder in seed-data venues leagues conferences league-divisions clubs sport-divisions users coaches teams players rosters; do
-        if [ -d "database/$folder" ]; then
+        if [ -d "database/data/$folder" ]; then
             folder_name=$(echo $folder | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
             add_sql_files "$folder" "*.sql" "Including all $folder_name data"
         fi
@@ -149,10 +149,10 @@ else
     
     # Load only -minimum.sql files from each folder
     for folder in venues leagues conferences league-divisions clubs sport-divisions users coaches teams players rosters; do
-        if [ -d "database/$folder" ]; then
+        if [ -d "database/data/$folder" ]; then
             # Check for minimum files first
             has_minimum=false
-            for file in database/$folder/*-minimum.sql; do
+            for file in database/data/$folder/*-minimum.sql; do
                 if [ -f "$file" ]; then
                     has_minimum=true
                     break
