@@ -489,9 +489,6 @@ ON CONFLICT (id) DO UPDATE SET
   // 6. TEAMS (preserve manual Lighthouse section)
   let teamsSQL = '';
   for (const team of teams.values()) {
-    // Skip Lighthouse if it exists - manual section handles it
-    if (team.name === 'Lighthouse 1893 SC') continue;
-    
     teamsSQL += `INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
 VALUES (${sqlEscape(team.id)}, ${sqlEscape(team.name)}, ${sqlEscape(team.division_id)}, ${sqlEscape(team.league_division_id)}, '2024-2025', true)
 ON CONFLICT (id) DO UPDATE SET
@@ -552,7 +549,7 @@ ON CONFLICT (email) DO UPDATE SET
       usersSQL += '\n';
     }
   }
-  writeFile('data/users/02-users.sql', 'PLAYER USERS', usersSQL);
+  writeFile('data/users/01-users.sql', 'PLAYER USERS', usersSQL);
   
   // 8. PLAYERS (write to separate file, grouped by team)
   let playersSQL = `
@@ -592,7 +589,7 @@ ON CONFLICT (id) DO UPDATE SET
       playersSQL += '\n';
     }
   }
-  writeFile('data/players/02-players.sql', 'PLAYERS', playersSQL);
+  writeFile('data/players/01-players.sql', 'PLAYERS', playersSQL);
   
   // 9. ROSTERS (grouped by team)
   let rostersSQL = '';
@@ -627,7 +624,7 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
       rostersSQL += '\n';
     }
   }
-  writeFile('data/rosters/02-rosters.sql', 'ROSTERS', rostersSQL);
+  writeFile('data/rosters/01-rosters.sql', 'ROSTERS', rostersSQL);
   
   // Summary
   console.error('\n========================================');
