@@ -298,9 +298,9 @@ Response EventController::handleGetVenues(const Request& request) {
             if (i > 0) venues_json << ",";
             venues_json << "{";
             venues_json << "\"id\":\"" << result[i][0].c_str() << "\",";
-            venues_json << "\"name\":\"" << result[i][1].c_str() << "\",";
-            venues_json << "\"address\":\"" << (result[i][2].is_null() ? "" : result[i][2].c_str()) << "\",";
-            venues_json << "\"city\":\"" << (result[i][3].is_null() ? "" : result[i][3].c_str()) << "\",";
+            venues_json << "\"name\":\"" << escapeJSON(result[i][1].c_str()) << "\",";
+            venues_json << "\"address\":\"" << (result[i][2].is_null() ? "" : escapeJSON(result[i][2].c_str())) << "\",";
+            venues_json << "\"city\":\"" << (result[i][3].is_null() ? "" : escapeJSON(result[i][3].c_str())) << "\",";
             venues_json << "\"state\":\"" << (result[i][4].is_null() ? "" : result[i][4].c_str()) << "\",";
             venues_json << "\"type\":\"" << (result[i][5].is_null() ? "" : result[i][5].c_str()) << "\",";
             venues_json << "\"surface\":\"" << (result[i][6].is_null() ? "" : result[i][6].c_str()) << "\"";
