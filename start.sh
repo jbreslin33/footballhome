@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Football Home - Start Script
-# Usage: ./start.sh [--full]
+# Usage: ./start.sh [--quick]
 
 set -e
 
@@ -11,12 +11,12 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-FULL_REBUILD=false
+QUICK_MODE=false
 
 for arg in "$@"; do
     case $arg in
-        --full)
-            FULL_REBUILD=true
+        --quick)
+            QUICK_MODE=true
             ;;
     esac
 done
@@ -25,13 +25,14 @@ echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Football Home - Startup${NC}"
 echo -e "${BLUE}========================================${NC}"
 
-if [ "$FULL_REBUILD" = true ]; then
+if [ "$QUICK_MODE" = true ]; then
+    echo -e "${YELLOW}Quick restart: stopping and starting containers...${NC}"
+    docker compose down
+    docker compose build --no-cache
+else
     echo -e "${YELLOW}Full rebuild: removing volumes and cache...${NC}"
     docker compose down -v
     docker compose build --no-cache
-else
-    echo -e "${YELLOW}Restarting containers...${NC}"
-    docker compose down
 fi
 
 echo -e "${YELLOW}Starting services...${NC}"

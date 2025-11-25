@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYER USERS
 -- ========================================
--- Generated: 2025-11-25T18:26:48.868Z
+-- Generated: 2025-11-25T18:30:40.997Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
