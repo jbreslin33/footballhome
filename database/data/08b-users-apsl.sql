@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYER USERS
 -- ========================================
--- Generated: 2025-11-25T16:20:46.568Z
+-- Generated: 2025-11-25T17:54:57.591Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -20,7 +20,7 @@ VALUES (
   'sahil.banerjee.093a47d2@apsl.player',
   'Sahil',
   'Banerjee',
-  crypt('Player09edtqns!', gen_salt('bf')),
+  crypt('Playerw1wjjtac!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -34,7 +34,7 @@ VALUES (
   'massimiliano.bruno.093a47d2@apsl.player',
   'Massimiliano',
   'Bruno',
-  crypt('Playerbwdlcr5f!', gen_salt('bf')),
+  crypt('Playero7tbumml!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -48,7 +48,7 @@ VALUES (
   'kevin.alves.cruz.093a47d2@apsl.player',
   'Kevin',
   'Alves Cruz',
-  crypt('Player52qblb3o!', gen_salt('bf')),
+  crypt('Playeracasem51!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -62,7 +62,7 @@ VALUES (
   'ryan.cura.093a47d2@apsl.player',
   'Ryan',
   'Cura',
-  crypt('Player413nzf9e!', gen_salt('bf')),
+  crypt('Player5i16f72o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -76,7 +76,7 @@ VALUES (
   'emilano.de.la.macorra.cardoso.093a47d2@apsl.player',
   'Emilano',
   'De La Macorra Cardoso',
-  crypt('Player6w7xmzd0!', gen_salt('bf')),
+  crypt('Playertr30zcae!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -90,7 +90,7 @@ VALUES (
   'jeffery.dietrich.093a47d2@apsl.player',
   'Jeffery',
   'Dietrich',
-  crypt('Player1avzrmk6!', gen_salt('bf')),
+  crypt('Playerkt55xaxf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -104,7 +104,7 @@ VALUES (
   'claudio.dragonetti.093a47d2@apsl.player',
   'Claudio',
   'Dragonetti',
-  crypt('Player9sxjdzln!', gen_salt('bf')),
+  crypt('Player5q5w8jk8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -118,7 +118,7 @@ VALUES (
   'miguel.enriquez.093a47d2@apsl.player',
   'Miguel',
   'Enriquez',
-  crypt('Playeraimpuzev!', gen_salt('bf')),
+  crypt('Player4xk49fam!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -132,7 +132,7 @@ VALUES (
   'charles.esber.tavares.093a47d2@apsl.player',
   'Charles',
   'Esber Tavares',
-  crypt('Playerpdmmmfbg!', gen_salt('bf')),
+  crypt('Player4akq5ww2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -146,7 +146,7 @@ VALUES (
   'kaven.fitch.093a47d2@apsl.player',
   'Kaven',
   'Fitch',
-  crypt('Player7irxk5t4!', gen_salt('bf')),
+  crypt('Playerp2gpvbtj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -160,7 +160,7 @@ VALUES (
   'vincenzo.fuentes.093a47d2@apsl.player',
   'Vincenzo',
   'Fuentes',
-  crypt('Playern989twzt!', gen_salt('bf')),
+  crypt('Playerbx6a4ow4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -174,7 +174,7 @@ VALUES (
   'payson.goyette.093a47d2@apsl.player',
   'Payson',
   'Goyette',
-  crypt('Playeryc0glcxq!', gen_salt('bf')),
+  crypt('Player69sken36!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -188,7 +188,7 @@ VALUES (
   'pano.haseotes.093a47d2@apsl.player',
   'Pano',
   'Haseotes',
-  crypt('Player66loh9xg!', gen_salt('bf')),
+  crypt('Playerf2qw5wg7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -202,7 +202,7 @@ VALUES (
   'aidan.hayes.093a47d2@apsl.player',
   'Aidan',
   'Hayes',
-  crypt('Playernnxqe6lj!', gen_salt('bf')),
+  crypt('Playervbvkdas2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -216,7 +216,7 @@ VALUES (
   'samuel.hong.093a47d2@apsl.player',
   'Samuel',
   'Hong',
-  crypt('Player850onr3b!', gen_salt('bf')),
+  crypt('Playerkiiija2b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -230,7 +230,7 @@ VALUES (
   'santiago.kadadihi.093a47d2@apsl.player',
   'Santiago',
   'Kadadihi',
-  crypt('Playergo34y0pl!', gen_salt('bf')),
+  crypt('Playerrpvoqk70!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -244,7 +244,7 @@ VALUES (
   'george.karafilidis.093a47d2@apsl.player',
   'George',
   'Karafilidis',
-  crypt('Playerzrkyfm8g!', gen_salt('bf')),
+  crypt('Playertqjici9y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -258,7 +258,7 @@ VALUES (
   'jeremy.kim.093a47d2@apsl.player',
   'Jeremy',
   'Kim',
-  crypt('Player853brcwd!', gen_salt('bf')),
+  crypt('Playerrs6okco5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -272,7 +272,7 @@ VALUES (
   'eduardo.marquez.093a47d2@apsl.player',
   'Eduardo',
   'Marquez',
-  crypt('Player70twrg2k!', gen_salt('bf')),
+  crypt('Playerhlj64x3i!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -286,7 +286,7 @@ VALUES (
   'nicolas.martignoni.093a47d2@apsl.player',
   'Nicolas',
   'Martignoni',
-  crypt('Playerfx0b2sji!', gen_salt('bf')),
+  crypt('Playervg37or5o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -300,7 +300,7 @@ VALUES (
   'evan.mendonca.093a47d2@apsl.player',
   'Evan',
   'Mendonca',
-  crypt('Player01bgkshs!', gen_salt('bf')),
+  crypt('Player1273yolr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -314,7 +314,7 @@ VALUES (
   'pablo.montilla.093a47d2@apsl.player',
   'Pablo',
   'Montilla',
-  crypt('Playert54a9xff!', gen_salt('bf')),
+  crypt('Player3kd3s8jp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -328,7 +328,7 @@ VALUES (
   'lucas.ortega.morales.093a47d2@apsl.player',
   'Lucas',
   'Ortega Morales',
-  crypt('Playergrs942vw!', gen_salt('bf')),
+  crypt('Playerklprhvff!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -342,7 +342,7 @@ VALUES (
   'nicholas.stephen.pierangeli.093a47d2@apsl.player',
   'Nicholas',
   'Stephen Pierangeli',
-  crypt('Player80omh8hh!', gen_salt('bf')),
+  crypt('Player8hoj6068!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -356,7 +356,7 @@ VALUES (
   'mario.ruiz.perez.093a47d2@apsl.player',
   'Mario',
   'Ruiz Perez',
-  crypt('Player42gg57ns!', gen_salt('bf')),
+  crypt('Playerx358l301!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -370,7 +370,7 @@ VALUES (
   'edwin.saravia.093a47d2@apsl.player',
   'Edwin',
   'Saravia',
-  crypt('Player8sjjbju8!', gen_salt('bf')),
+  crypt('Playeruyniq8uj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -384,7 +384,7 @@ VALUES (
   'caio.soares.093a47d2@apsl.player',
   'Caio',
   'Soares',
-  crypt('Playertsxxxtyj!', gen_salt('bf')),
+  crypt('Playerqv2opg90!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -398,7 +398,7 @@ VALUES (
   'johner.soe.093a47d2@apsl.player',
   'Johner',
   'Soe',
-  crypt('Playerwf41t6ve!', gen_salt('bf')),
+  crypt('Playerfube9h35!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -412,7 +412,7 @@ VALUES (
   'luka.szymanski.093a47d2@apsl.player',
   'Luka',
   'Szymanski',
-  crypt('Playervt03916i!', gen_salt('bf')),
+  crypt('Playeryeh9kepj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -426,7 +426,7 @@ VALUES (
   'ross.lamont.watson.093a47d2@apsl.player',
   'Ross',
   'Lamont Watson',
-  crypt('Playeriwhqsq6o!', gen_salt('bf')),
+  crypt('Playerga0hzirf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -444,7 +444,7 @@ VALUES (
   'mario.amado.2a1d62b2@apsl.player',
   'Mario',
   'Amado',
-  crypt('Playerixd7jtko!', gen_salt('bf')),
+  crypt('Playeratpi08tg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -458,7 +458,7 @@ VALUES (
   'brenner.cardoso.2a1d62b2@apsl.player',
   'Brenner',
   'Cardoso',
-  crypt('Playerufd4ht77!', gen_salt('bf')),
+  crypt('Playermobmrkwx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -472,7 +472,7 @@ VALUES (
   'wendy.celestin.2a1d62b2@apsl.player',
   'Wendy',
   'Celestin',
-  crypt('Playerqcobooka!', gen_salt('bf')),
+  crypt('Playern085pbuu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -486,7 +486,7 @@ VALUES (
   'denilson.barros.centeio.2a1d62b2@apsl.player',
   'Denilson',
   'Barros Centeio',
-  crypt('Playersvqlyaej!', gen_salt('bf')),
+  crypt('Playeryooi80mh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -500,7 +500,7 @@ VALUES (
   'jacinto.correia.2a1d62b2@apsl.player',
   'Jacinto',
   'Correia',
-  crypt('Playerj24bb55d!', gen_salt('bf')),
+  crypt('Player24c21uk4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -514,7 +514,7 @@ VALUES (
   'edson.andarade.da.silva.2a1d62b2@apsl.player',
   'Edson',
   'Andarade Da Silva',
-  crypt('Playerb1u4bz3s!', gen_salt('bf')),
+  crypt('Playerdh2zsfmi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -528,7 +528,7 @@ VALUES (
   'fabio.pires.da.silva.2a1d62b2@apsl.player',
   'Fabio',
   'Pires Da Silva',
-  crypt('Playersdbhahm5!', gen_salt('bf')),
+  crypt('Playerrffdnyxz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -542,7 +542,7 @@ VALUES (
   'rivaldo.baessa.da.silva.2a1d62b2@apsl.player',
   'Rivaldo',
   'Baessa Da Silva',
-  crypt('Playernlccj8q5!', gen_salt('bf')),
+  crypt('Playerww9rrw2e!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -556,7 +556,7 @@ VALUES (
   'heracles.de.pina.fernandes.2a1d62b2@apsl.player',
   'Heracles',
   'De Pina Fernandes',
-  crypt('Playershx0xw1g!', gen_salt('bf')),
+  crypt('Playerfd0k7qbe!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -570,7 +570,7 @@ VALUES (
   'paulo.de.pina.goncalves.2a1d62b2@apsl.player',
   'Paulo',
   'De Pina Goncalves',
-  crypt('Playerxp0ot1o4!', gen_salt('bf')),
+  crypt('Playergpl4jn5t!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -584,7 +584,7 @@ VALUES (
   'valdir.depina.2a1d62b2@apsl.player',
   'Valdir',
   'Depina',
-  crypt('Playeredhfvgua!', gen_salt('bf')),
+  crypt('Playercuchvjxu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -598,7 +598,7 @@ VALUES (
   'isandro.fernandes.lopes.2a1d62b2@apsl.player',
   'Isandro',
   'Fernandes Lopes',
-  crypt('Playerieasb76r!', gen_salt('bf')),
+  crypt('Playerr10m2lqm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -612,7 +612,7 @@ VALUES (
   'mario.figueroa.garcia.2a1d62b2@apsl.player',
   'Mario',
   'Figueroa Garcia',
-  crypt('Player0d4rdj1a!', gen_salt('bf')),
+  crypt('Playerbfc57yyb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -626,7 +626,7 @@ VALUES (
   'adilson.gomes.2a1d62b2@apsl.player',
   'Adilson',
   'Gomes',
-  crypt('Playernuyw0fz3!', gen_salt('bf')),
+  crypt('Playerbj3r4bo3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -640,7 +640,7 @@ VALUES (
   'clayton.gomes.2a1d62b2@apsl.player',
   'Clayton',
   'Gomes',
-  crypt('Player9ga7s7po!', gen_salt('bf')),
+  crypt('Playerswt654ci!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -654,7 +654,7 @@ VALUES (
   'estevao.gomes.2a1d62b2@apsl.player',
   'Estevao',
   'Gomes',
-  crypt('Playerilnnccog!', gen_salt('bf')),
+  crypt('Player6nssnudg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -668,7 +668,7 @@ VALUES (
   'jair.gomes.de.pina.2a1d62b2@apsl.player',
   'Jair',
   'Gomes De Pina',
-  crypt('Playernuwdkb64!', gen_salt('bf')),
+  crypt('Playerri4gpv3y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -682,7 +682,7 @@ VALUES (
   'jose.gomes.rodrigues.2a1d62b2@apsl.player',
   'Jose',
   'Gomes Rodrigues',
-  crypt('Player4fc2jllv!', gen_salt('bf')),
+  crypt('Playerr83pvosg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -696,7 +696,7 @@ VALUES (
   'papa.ndiaye.2a1d62b2@apsl.player',
   'Papa',
   'Ndiaye',
-  crypt('Playerthgm1rr8!', gen_salt('bf')),
+  crypt('Playerh0o8uwg9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -710,7 +710,7 @@ VALUES (
   'lucas.nogueira.monteiro.2a1d62b2@apsl.player',
   'Lucas',
   'Nogueira Monteiro',
-  crypt('Player79dy2ppr!', gen_salt('bf')),
+  crypt('Playerxjnqqjqh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -724,7 +724,7 @@ VALUES (
   'nima.norouzi.behjat.2a1d62b2@apsl.player',
   'Nima',
   'Norouzi Behjat',
-  crypt('Player77yecivb!', gen_salt('bf')),
+  crypt('Players5hsbsww!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -738,7 +738,7 @@ VALUES (
   'imauro.pina.2a1d62b2@apsl.player',
   'Imauro',
   'Pina',
-  crypt('Playerqwm9en3w!', gen_salt('bf')),
+  crypt('Playerplb2tegk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -752,7 +752,7 @@ VALUES (
   'mauro.pires.amado.2a1d62b2@apsl.player',
   'Mauro',
   'Pires Amado',
-  crypt('Playerznanbgri!', gen_salt('bf')),
+  crypt('Playerlgqqiou2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -766,7 +766,7 @@ VALUES (
   'anthony.ramos.2a1d62b2@apsl.player',
   'Anthony',
   'Ramos',
-  crypt('Playerdh8m40ev!', gen_salt('bf')),
+  crypt('Playercpvbz3v7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -780,7 +780,7 @@ VALUES (
   'jose.rodrigues.teixeira.2a1d62b2@apsl.player',
   'Jose',
   'Rodrigues Teixeira',
-  crypt('Player802bzqyo!', gen_salt('bf')),
+  crypt('Player607y1cma!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -794,7 +794,7 @@ VALUES (
   'djeison.rodrigues.vieira.2a1d62b2@apsl.player',
   'Djeison',
   'Rodrigues Vieira',
-  crypt('Playerpeqi276j!', gen_salt('bf')),
+  crypt('Playerni0ptior!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -808,7 +808,7 @@ VALUES (
   'tahir.akil.scott.2a1d62b2@apsl.player',
   'Tahir',
   'Akil Scott',
-  crypt('Player6nt2gl40!', gen_salt('bf')),
+  crypt('Player34bu4609!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -822,7 +822,7 @@ VALUES (
   'ronilson.semedo.2a1d62b2@apsl.player',
   'Ronilson',
   'Semedo',
-  crypt('Player5ldwpw10!', gen_salt('bf')),
+  crypt('Playertflhx2fu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -836,7 +836,7 @@ VALUES (
   'francisco.m.silveira.2a1d62b2@apsl.player',
   'Francisco',
   'M Silveira',
-  crypt('Playerho50ydka!', gen_salt('bf')),
+  crypt('Player9e9g5hcu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -850,7 +850,7 @@ VALUES (
   'yassine.smissame.2a1d62b2@apsl.player',
   'Yassine',
   'Smissame',
-  crypt('Playerrgmhf4mb!', gen_salt('bf')),
+  crypt('Playerhgdl3r1l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -864,7 +864,7 @@ VALUES (
   'kevin.sos.santos.barbisa.2a1d62b2@apsl.player',
   'Kevin',
   'Sos Santos Barbisa',
-  crypt('Playerv8k7h8jn!', gen_salt('bf')),
+  crypt('Playernwiiyg08!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -878,7 +878,7 @@ VALUES (
   'domingos.tavares.2a1d62b2@apsl.player',
   'Domingos',
   'Tavares',
-  crypt('Player5oi1keeu!', gen_salt('bf')),
+  crypt('Playerxiedvi73!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -892,7 +892,7 @@ VALUES (
   'edson.irlandino.tavares.dossantos.2a1d62b2@apsl.player',
   'Edson',
   'Irlandino Tavares Dossantos',
-  crypt('Playerzwr69hku!', gen_salt('bf')),
+  crypt('Playertkhgwlij!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -906,7 +906,7 @@ VALUES (
   'elton.j.teixeira.2a1d62b2@apsl.player',
   'Elton',
   'J Teixeira',
-  crypt('Player1fjtix7h!', gen_salt('bf')),
+  crypt('Playereh82cxcn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -924,7 +924,7 @@ VALUES (
   'moises.de.pina.alves.cd2f494d@apsl.player',
   'Moises',
   'De pina Alves',
-  crypt('Playerg02rihfe!', gen_salt('bf')),
+  crypt('Playermtmra3g7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -938,7 +938,7 @@ VALUES (
   'jack.aronson.cd2f494d@apsl.player',
   'Jack',
   'Aronson',
-  crypt('Playerjjok7lc2!', gen_salt('bf')),
+  crypt('Playerhied32lp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -952,7 +952,7 @@ VALUES (
   'joao.p.carvalho.cd2f494d@apsl.player',
   'Joao',
   'P Carvalho',
-  crypt('Player4yyqd7ml!', gen_salt('bf')),
+  crypt('Playerral6hzsr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -966,7 +966,7 @@ VALUES (
   'mana.chavali.cd2f494d@apsl.player',
   'Mana',
   'Chavali',
-  crypt('Playerkw6m4wga!', gen_salt('bf')),
+  crypt('Player7jgzxdnr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -980,7 +980,7 @@ VALUES (
   'suri.chavali.cd2f494d@apsl.player',
   'Suri',
   'Chavali',
-  crypt('Playerjrspi16k!', gen_salt('bf')),
+  crypt('Playersch4pgcb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -994,7 +994,7 @@ VALUES (
   'brendan.claflin.cd2f494d@apsl.player',
   'Brendan',
   'Claflin',
-  crypt('Player2nu8i0i4!', gen_salt('bf')),
+  crypt('Playerrt5y9yxy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1008,7 +1008,7 @@ VALUES (
   'matthew.daniel.cosentino.cd2f494d@apsl.player',
   'Matthew',
   'Daniel Cosentino',
-  crypt('Playerev8v6f20!', gen_salt('bf')),
+  crypt('Playercg2zubir!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1022,7 +1022,7 @@ VALUES (
   'patrick.davison.cd2f494d@apsl.player',
   'Patrick',
   'Davison',
-  crypt('Player4j99b4ki!', gen_salt('bf')),
+  crypt('Playerwn77prae!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1036,7 +1036,7 @@ VALUES (
   'joao.paulo.de.mattos.almeida.cd2f494d@apsl.player',
   'Joao',
   'Paulo De Mattos Almeida',
-  crypt('Playerzfg83o34!', gen_salt('bf')),
+  crypt('Player4tivrdkc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1050,7 +1050,7 @@ VALUES (
   'manuel.ant.nio.depina.cd2f494d@apsl.player',
   'Manuel',
   'António Depina',
-  crypt('Playeremdfd0b4!', gen_salt('bf')),
+  crypt('Playerj5xq5gyq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1064,7 +1064,7 @@ VALUES (
   'michael.eve.cd2f494d@apsl.player',
   'Michael',
   'Eve',
-  crypt('Playerc5jepz2a!', gen_salt('bf')),
+  crypt('Playerayaax507!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1078,7 +1078,7 @@ VALUES (
   'nicholas.falcone.cd2f494d@apsl.player',
   'Nicholas',
   'Falcone',
-  crypt('Playerso9mw28p!', gen_salt('bf')),
+  crypt('Playerp5cgnw0k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1092,7 +1092,7 @@ VALUES (
   'jackson.faulx.cd2f494d@apsl.player',
   'Jackson',
   'Faulx',
-  crypt('Playerownli237!', gen_salt('bf')),
+  crypt('Player6p4q14j8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1106,7 +1106,7 @@ VALUES (
   'luke.hanchar.cd2f494d@apsl.player',
   'Luke',
   'Hanchar',
-  crypt('Playertitqp31p!', gen_salt('bf')),
+  crypt('Playerfxze6wr9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1120,7 +1120,7 @@ VALUES (
   'oswaldo.hernandez.cd2f494d@apsl.player',
   'Oswaldo',
   'Hernandez',
-  crypt('Playerzcmfcmf7!', gen_salt('bf')),
+  crypt('Player0vtt6ycy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1134,7 +1134,7 @@ VALUES (
   'martin.konstantinov.cd2f494d@apsl.player',
   'Martin',
   'Konstantinov',
-  crypt('Playerbldqsk1v!', gen_salt('bf')),
+  crypt('Playerzfa6mkti!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1148,7 +1148,7 @@ VALUES (
   'kyle.lasewicz.cd2f494d@apsl.player',
   'Kyle',
   'Lasewicz',
-  crypt('Playerbxiz1t03!', gen_salt('bf')),
+  crypt('Playerqjd8qlyv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1162,7 +1162,7 @@ VALUES (
   'surya.mani.cd2f494d@apsl.player',
   'Surya',
   'Mani',
-  crypt('Playerpm4atqol!', gen_salt('bf')),
+  crypt('Player1alze5sw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1176,7 +1176,7 @@ VALUES (
   'christian.martins.cd2f494d@apsl.player',
   'Christian',
   'Martins',
-  crypt('Playeroadm5xcx!', gen_salt('bf')),
+  crypt('Playervduqtmor!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1190,7 +1190,7 @@ VALUES (
   'gilson.martins.cd2f494d@apsl.player',
   'Gilson',
   'Martins',
-  crypt('Player3p6yajjb!', gen_salt('bf')),
+  crypt('Playervcm3qfex!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1204,7 +1204,7 @@ VALUES (
   'stephen.denis.silva.mendes.cd2f494d@apsl.player',
   'Stephen',
   'Denis Silva Mendes',
-  crypt('Playerkipxfsst!', gen_salt('bf')),
+  crypt('Playerie2n9v4k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1218,7 +1218,7 @@ VALUES (
   'chad.meyers.cd2f494d@apsl.player',
   'Chad',
   'Meyers',
-  crypt('Playerhix6tv0t!', gen_salt('bf')),
+  crypt('Player6jsrkaoj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1232,7 +1232,7 @@ VALUES (
   'charles.miller.cd2f494d@apsl.player',
   'Charles',
   'Miller',
-  crypt('Playerlh8yklcj!', gen_salt('bf')),
+  crypt('Playerp89bnhgl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1246,7 +1246,7 @@ VALUES (
   'jonathan.ernesto.rodriguez.cd2f494d@apsl.player',
   'Jonathan',
   'Ernesto Rodriguez',
-  crypt('Player6iw5wpk7!', gen_salt('bf')),
+  crypt('Playersddpg3d6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1260,7 +1260,7 @@ VALUES (
   'carlos.rojas.cd2f494d@apsl.player',
   'Carlos',
   'Rojas',
-  crypt('Player5znyke8z!', gen_salt('bf')),
+  crypt('Playergllqcdyt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1274,7 +1274,7 @@ VALUES (
   'jaderson.rutsatz.cd2f494d@apsl.player',
   'Jaderson',
   'Rutsatz',
-  crypt('Playerkayvslaq!', gen_salt('bf')),
+  crypt('Playerintigq2l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1288,7 +1288,7 @@ VALUES (
   'alexander.shanley.cd2f494d@apsl.player',
   'Alexander',
   'Shanley',
-  crypt('Playerftvk5vb8!', gen_salt('bf')),
+  crypt('Playerg2lmgh9l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1302,7 +1302,7 @@ VALUES (
   'griffin.sisk.cd2f494d@apsl.player',
   'Griffin',
   'Sisk',
-  crypt('Playergax88j4n!', gen_salt('bf')),
+  crypt('Player1ykwd5yb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1316,7 +1316,7 @@ VALUES (
   'daniel.soto.cd2f494d@apsl.player',
   'Daniel',
   'Soto',
-  crypt('Playerafuf1gfj!', gen_salt('bf')),
+  crypt('Playerj3qo319q!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1330,7 +1330,7 @@ VALUES (
   'elisandro.tavares.cd2f494d@apsl.player',
   'Elisandro',
   'Tavares',
-  crypt('Player9advvlpi!', gen_salt('bf')),
+  crypt('Playerchrbznyo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1344,7 +1344,7 @@ VALUES (
   'nick.winn.cd2f494d@apsl.player',
   'Nick',
   'Winn',
-  crypt('Playerg5dh3v4q!', gen_salt('bf')),
+  crypt('Playerj6ih0e6d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1358,7 +1358,7 @@ VALUES (
   'jackson.yager.cd2f494d@apsl.player',
   'Jackson',
   'Yager',
-  crypt('Playeryaapykvw!', gen_salt('bf')),
+  crypt('Playerc4192i4z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1376,7 +1376,7 @@ VALUES (
   'lucas.almeida.a9f395bc@apsl.player',
   'Lucas',
   'Almeida',
-  crypt('Player8c8h7i02!', gen_salt('bf')),
+  crypt('Playerb7j9z1d6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1390,7 +1390,7 @@ VALUES (
   'leandro.alves.a9f395bc@apsl.player',
   'Leandro',
   'Alves',
-  crypt('Playeru125fs77!', gen_salt('bf')),
+  crypt('Playerh7flx6fp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1404,7 +1404,7 @@ VALUES (
   'alvaro.barbosa.a9f395bc@apsl.player',
   'Alvaro',
   'Barbosa',
-  crypt('Player28z2c61e!', gen_salt('bf')),
+  crypt('Playerj69h4ipz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1418,7 +1418,7 @@ VALUES (
   'gustavo.candido.a9f395bc@apsl.player',
   'Gustavo',
   'Candido',
-  crypt('Playerukn4n51s!', gen_salt('bf')),
+  crypt('Playeryu8sywcs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1432,7 +1432,7 @@ VALUES (
   'gabriel.cassemiro.a9f395bc@apsl.player',
   'Gabriel',
   'Cassemiro',
-  crypt('Playerudjtvvvf!', gen_salt('bf')),
+  crypt('Player7g92yya4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1446,7 +1446,7 @@ VALUES (
   'eduardo.chirico.a9f395bc@apsl.player',
   'Eduardo',
   'Chirico',
-  crypt('Player9nfeas3m!', gen_salt('bf')),
+  crypt('Playerijl02qvf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1460,7 +1460,7 @@ VALUES (
   'antonio.correa.a9f395bc@apsl.player',
   'Antonio',
   'Correa',
-  crypt('Playerfv8ikscc!', gen_salt('bf')),
+  crypt('Playertfmgynsb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1474,7 +1474,7 @@ VALUES (
   'gabriell.de.godoi.a9f395bc@apsl.player',
   'Gabriell',
   'De Godoi',
-  crypt('Player8ktnf929!', gen_salt('bf')),
+  crypt('Player2vr9x5ip!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1488,7 +1488,7 @@ VALUES (
   'wengleiman.peres.de.souza.a9f395bc@apsl.player',
   'Wengleiman',
   'Peres De Souza',
-  crypt('Player6qj3l9cd!', gen_salt('bf')),
+  crypt('Playerojx9xw2r!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1502,7 +1502,7 @@ VALUES (
   'ronaldinho.diniz.a9f395bc@apsl.player',
   'Ronaldinho',
   'Diniz',
-  crypt('Playerjs7ql6oh!', gen_salt('bf')),
+  crypt('Playermtcvf5rf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1516,7 +1516,7 @@ VALUES (
   'gabriel.vitalino.ganzer.a9f395bc@apsl.player',
   'Gabriel',
   'Vitalino Ganzer',
-  crypt('Playercoez5fsd!', gen_salt('bf')),
+  crypt('Player36ebu7s5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1530,7 +1530,7 @@ VALUES (
   'kellvy.garcia.a9f395bc@apsl.player',
   'Kellvy',
   'Garcia',
-  crypt('Playerz8wctiku!', gen_salt('bf')),
+  crypt('Playertplcqhnv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1544,7 +1544,7 @@ VALUES (
   'christian.godinho.a9f395bc@apsl.player',
   'Christian',
   'Godinho',
-  crypt('Player1t1jeqpc!', gen_salt('bf')),
+  crypt('Playerkxwmvbk8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1558,7 +1558,7 @@ VALUES (
   'maldini.goncalves.a9f395bc@apsl.player',
   'Maldini',
   'Goncalves',
-  crypt('Playersrcog6xv!', gen_salt('bf')),
+  crypt('Playerutwl3ohe!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1572,7 +1572,7 @@ VALUES (
   'jonatas.paulino.da.silva.in.cio.a9f395bc@apsl.player',
   'Jonatas',
   'Paulino da Silva Inácio',
-  crypt('Player8w0mdlq6!', gen_salt('bf')),
+  crypt('Playerkj48rh1c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1586,7 +1586,7 @@ VALUES (
   'lucas.silva.juni.a9f395bc@apsl.player',
   'Lucas',
   'Silva Juni',
-  crypt('Playersn0p43xa!', gen_salt('bf')),
+  crypt('Player8vgj967w!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1600,7 +1600,7 @@ VALUES (
   'ryan.lima.a9f395bc@apsl.player',
   'Ryan',
   'Lima',
-  crypt('Playertof0d6qu!', gen_salt('bf')),
+  crypt('Playermjtp2uev!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1614,7 +1614,7 @@ VALUES (
   'euclides.medonca.a9f395bc@apsl.player',
   'Euclides',
   'Medonca',
-  crypt('Player41gntw4u!', gen_salt('bf')),
+  crypt('Playerkmh8pomj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1628,7 +1628,7 @@ VALUES (
   'yago.miller.a9f395bc@apsl.player',
   'Yago',
   'Miller',
-  crypt('Playerxxs7yr5k!', gen_salt('bf')),
+  crypt('Playerjmqlszsz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1642,7 +1642,7 @@ VALUES (
   'jo.o.miranda.a9f395bc@apsl.player',
   'João',
   'Miranda',
-  crypt('Playerbdkxuex7!', gen_salt('bf')),
+  crypt('Playervjfch9rz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1656,7 +1656,7 @@ VALUES (
   'steven.monsalve.a9f395bc@apsl.player',
   'Steven',
   'Monsalve',
-  crypt('Playertd93wlby!', gen_salt('bf')),
+  crypt('Player3e2fbihr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1670,7 +1670,7 @@ VALUES (
   'alisson.monteiro.a9f395bc@apsl.player',
   'Alisson',
   'Monteiro',
-  crypt('Playerot7r2qe1!', gen_salt('bf')),
+  crypt('Playeri599dnsg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1684,7 +1684,7 @@ VALUES (
   'wenderson.pereira.a9f395bc@apsl.player',
   'Wenderson',
   'Pereira',
-  crypt('Playerqtr1n15w!', gen_salt('bf')),
+  crypt('Playerjcrvwp5z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1698,7 +1698,7 @@ VALUES (
   'mario.prata.a9f395bc@apsl.player',
   'Mario',
   'Prata',
-  crypt('Player335ght7r!', gen_salt('bf')),
+  crypt('Playermbglk4nz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1712,7 +1712,7 @@ VALUES (
   'andy.ramirez.a9f395bc@apsl.player',
   'Andy',
   'Ramirez',
-  crypt('Playerwal61rvh!', gen_salt('bf')),
+  crypt('Playerknt4r28y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1726,7 +1726,7 @@ VALUES (
   'dennis.ramirez.a9f395bc@apsl.player',
   'Dennis',
   'Ramirez',
-  crypt('Playerr2pw7o3l!', gen_salt('bf')),
+  crypt('Player1rwsf5ft!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1740,7 +1740,7 @@ VALUES (
   'marcos.santos.a9f395bc@apsl.player',
   'Marcos',
   'Santos',
-  crypt('Playerbmr4738i!', gen_salt('bf')),
+  crypt('Player8e74nsln!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1754,7 +1754,7 @@ VALUES (
   'kaio.silva.a9f395bc@apsl.player',
   'Kaio',
   'Silva',
-  crypt('Playera0izcxsb!', gen_salt('bf')),
+  crypt('Playerui9myfmk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1768,7 +1768,7 @@ VALUES (
   'lu.s.felipe.silva.a9f395bc@apsl.player',
   'Luís',
   'Felipe Silva',
-  crypt('Playerp9m4jez7!', gen_salt('bf')),
+  crypt('Playerf0zwwd7d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1782,7 +1782,7 @@ VALUES (
   'meny.silva.a9f395bc@apsl.player',
   'Meny',
   'Silva',
-  crypt('Playerxlrzl4dk!', gen_salt('bf')),
+  crypt('Player23rywv1v!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1796,7 +1796,7 @@ VALUES (
   'jose.tavares.a9f395bc@apsl.player',
   'Jose',
   'Tavares',
-  crypt('Playertsr5dx6z!', gen_salt('bf')),
+  crypt('Playerkouoyqw3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1810,7 +1810,7 @@ VALUES (
   'waverton.teodoro.a9f395bc@apsl.player',
   'Waverton',
   'Teodoro',
-  crypt('Playerqkqxt2qy!', gen_salt('bf')),
+  crypt('Player7r9ly20l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1824,7 +1824,7 @@ VALUES (
   'patrick.vilela.a9f395bc@apsl.player',
   'Patrick',
   'Vilela',
-  crypt('Playeroy5f14q4!', gen_salt('bf')),
+  crypt('Playerl56ebxi7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1838,7 +1838,7 @@ VALUES (
   'michael.willis.a9f395bc@apsl.player',
   'Michael',
   'Willis',
-  crypt('Playerwmt6y18c!', gen_salt('bf')),
+  crypt('Playerxgj7qvb9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1852,7 +1852,7 @@ VALUES (
   'william.zanetti.a9f395bc@apsl.player',
   'William',
   'Zanetti',
-  crypt('Playerdzyni35t!', gen_salt('bf')),
+  crypt('Playerrgdc2n00!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1870,7 +1870,7 @@ VALUES (
   'daniel.andrade.3b1d4171@apsl.player',
   'Daniel',
   'Andrade',
-  crypt('Playertb1k9ba0!', gen_salt('bf')),
+  crypt('Player5jhe74ci!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1884,7 +1884,7 @@ VALUES (
   'edmilson.andrade.3b1d4171@apsl.player',
   'Edmilson',
   'Andrade',
-  crypt('Player3ok7p96t!', gen_salt('bf')),
+  crypt('Playerxzf04bqp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1898,7 +1898,7 @@ VALUES (
   'damian.anerdson.3b1d4171@apsl.player',
   'Damian',
   'Anerdson',
-  crypt('Player2j5ytttc!', gen_salt('bf')),
+  crypt('Playerdzt6z5eb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1912,7 +1912,7 @@ VALUES (
   'ronis.ayala.3b1d4171@apsl.player',
   'Ronis',
   'Ayala',
-  crypt('Player8qgcosyv!', gen_salt('bf')),
+  crypt('Playergdw41ik9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1926,7 +1926,7 @@ VALUES (
   'dominique.baessa.3b1d4171@apsl.player',
   'Dominique',
   'Baessa',
-  crypt('Player1glniot9!', gen_salt('bf')),
+  crypt('Playerlzql7rj1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1940,7 +1940,7 @@ VALUES (
   'gio.barros.3b1d4171@apsl.player',
   'Gio',
   'Barros',
-  crypt('Player74nhk7nz!', gen_salt('bf')),
+  crypt('Player22aul6id!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1954,7 +1954,7 @@ VALUES (
   'justin.barros.3b1d4171@apsl.player',
   'Justin',
   'Barros',
-  crypt('Playeramk3aaqo!', gen_salt('bf')),
+  crypt('Playerdqyx3nmj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1968,7 +1968,7 @@ VALUES (
   'dominek.borden.3b1d4171@apsl.player',
   'Dominek',
   'Borden',
-  crypt('Playermsqvoh9d!', gen_salt('bf')),
+  crypt('Playerk6vu2zv6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1982,7 +1982,7 @@ VALUES (
   'edemilson.candida.3b1d4171@apsl.player',
   'Edemilson',
   'Candida',
-  crypt('Playeroo55vo9u!', gen_salt('bf')),
+  crypt('Playerro0lqmg1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -1996,7 +1996,7 @@ VALUES (
   'kevin.correia.3b1d4171@apsl.player',
   'Kevin',
   'Correia',
-  crypt('Playereame4avp!', gen_salt('bf')),
+  crypt('Playerho1ecwtp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2010,7 +2010,7 @@ VALUES (
   'neil.cunha.3b1d4171@apsl.player',
   'Neil',
   'Cunha',
-  crypt('Playerz2xq3zu4!', gen_salt('bf')),
+  crypt('Player8ps2d48l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2024,7 +2024,7 @@ VALUES (
   'mason.dealmeida.3b1d4171@apsl.player',
   'Mason',
   'Dealmeida',
-  crypt('Player2wly0mk7!', gen_salt('bf')),
+  crypt('Player8c4dzqqu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2038,7 +2038,7 @@ VALUES (
   'clayton.demelo.3b1d4171@apsl.player',
   'Clayton',
   'Demelo',
-  crypt('Player0s2n0m58!', gen_salt('bf')),
+  crypt('Players7g4o4pk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2052,7 +2052,7 @@ VALUES (
   'ethan.demelo.3b1d4171@apsl.player',
   'Ethan',
   'Demelo',
-  crypt('Playercrwxqa56!', gen_salt('bf')),
+  crypt('Player0ojanopk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2066,7 +2066,7 @@ VALUES (
   'dawson.dosvais.3b1d4171@apsl.player',
   'Dawson',
   'Dosvais',
-  crypt('Playerj3rn3k7i!', gen_salt('bf')),
+  crypt('Playerv1bets3s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2080,7 +2080,7 @@ VALUES (
   'zajdele.dulcine.3b1d4171@apsl.player',
   'Zajdele',
   'Dulcine',
-  crypt('Playerj3r3z8zv!', gen_salt('bf')),
+  crypt('Playerh9dl0fnk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2094,7 +2094,7 @@ VALUES (
   'augustin.edwin.3b1d4171@apsl.player',
   'Augustin',
   'Edwin',
-  crypt('Playermt3bxvjb!', gen_salt('bf')),
+  crypt('Playeru2wllr7y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2108,7 +2108,7 @@ VALUES (
   'austin.eugenio.3b1d4171@apsl.player',
   'Austin',
   'Eugenio',
-  crypt('Playeraa280j9w!', gen_salt('bf')),
+  crypt('Player6o9p3wtv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2122,7 +2122,7 @@ VALUES (
   'malaquias.tavares.garcia.3b1d4171@apsl.player',
   'Malaquias',
   'Tavares Garcia',
-  crypt('Playermxx54ls1!', gen_salt('bf')),
+  crypt('Playermfgk606w!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2136,7 +2136,7 @@ VALUES (
   'michael.garcia.3b1d4171@apsl.player',
   'Michael',
   'Garcia',
-  crypt('Player4llif098!', gen_salt('bf')),
+  crypt('Player60qciv6v!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2150,7 +2150,7 @@ VALUES (
   'damon.greene.3b1d4171@apsl.player',
   'Damon',
   'Greene',
-  crypt('Players2l9gn0d!', gen_salt('bf')),
+  crypt('Player72lr2gpn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2164,7 +2164,7 @@ VALUES (
   'ricardo.macedo.3b1d4171@apsl.player',
   'Ricardo',
   'Macedo',
-  crypt('Playery6qwu1ft!', gen_salt('bf')),
+  crypt('Player0z668ghv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2178,7 +2178,7 @@ VALUES (
   'sam.matias.3b1d4171@apsl.player',
   'Sam',
   'Matias',
-  crypt('Playerpa6cjb1g!', gen_salt('bf')),
+  crypt('Playern4vcccz0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2192,7 +2192,7 @@ VALUES (
   'dylan.mendes.3b1d4171@apsl.player',
   'Dylan',
   'Mendes',
-  crypt('Player3zimgej3!', gen_salt('bf')),
+  crypt('Player5jqu2sf0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2206,7 +2206,7 @@ VALUES (
   'jose.carlos.ze.mendes.3b1d4171@apsl.player',
   'Jose',
   'Carlos "Ze" Mendes',
-  crypt('Playerebdght3g!', gen_salt('bf')),
+  crypt('Playerwpmr9fwt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2220,7 +2220,7 @@ VALUES (
   'ethan.paiva.3b1d4171@apsl.player',
   'Ethan',
   'Paiva',
-  crypt('Playerqiof18de!', gen_salt('bf')),
+  crypt('Playerluzj0z9o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2234,7 +2234,7 @@ VALUES (
   'joey.paiva.3b1d4171@apsl.player',
   'Joey',
   'Paiva',
-  crypt('Playerrf3xb1qq!', gen_salt('bf')),
+  crypt('Playerkn7eqo9b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2248,7 +2248,7 @@ VALUES (
   'colin.pereira.3b1d4171@apsl.player',
   'Colin',
   'Pereira',
-  crypt('Playery2egdik3!', gen_salt('bf')),
+  crypt('Playerb7zj69y7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2262,7 +2262,7 @@ VALUES (
   'jacob.ramos.3b1d4171@apsl.player',
   'Jacob',
   'Ramos',
-  crypt('Playerh8j23q06!', gen_salt('bf')),
+  crypt('Playerecjqssdg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2276,7 +2276,7 @@ VALUES (
   'rafael.raposo.3b1d4171@apsl.player',
   'Rafael',
   'Raposo',
-  crypt('Playerttb0ydez!', gen_salt('bf')),
+  crypt('Player1f8obtn6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2290,7 +2290,7 @@ VALUES (
   'dylan.senra.3b1d4171@apsl.player',
   'Dylan',
   'Senra',
-  crypt('Playerunvt2hg9!', gen_salt('bf')),
+  crypt('Playerhdtqt124!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2304,7 +2304,7 @@ VALUES (
   'flavio.joel.soares.carvalho.3b1d4171@apsl.player',
   'Flavio',
   'Joel Soares Carvalho',
-  crypt('Playertkkghcd8!', gen_salt('bf')),
+  crypt('Playerbmuvherm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2318,7 +2318,7 @@ VALUES (
   'christian.sousa.3b1d4171@apsl.player',
   'Christian',
   'Sousa',
-  crypt('Playercplxkboq!', gen_salt('bf')),
+  crypt('Player7o5poz5a!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2336,7 +2336,7 @@ VALUES (
   'wilson.omar.amaya.lara.d6dd2763@apsl.player',
   'Wilson',
   'Omar Amaya Lara',
-  crypt('Playerggtcbyuf!', gen_salt('bf')),
+  crypt('Playerksi43o7j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2350,7 +2350,7 @@ VALUES (
   'jessiel.alexander.amparo.d6dd2763@apsl.player',
   'Jessiel',
   'Alexander Amparo',
-  crypt('Playery8q8hjjc!', gen_salt('bf')),
+  crypt('Playerz2hwp7qv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2364,7 +2364,7 @@ VALUES (
   'minor.ojanny.angel.merida.d6dd2763@apsl.player',
   'Minor',
   'Ojanny Angel Merida',
-  crypt('Playermokz1wtb!', gen_salt('bf')),
+  crypt('Playera4qsdtm9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2378,7 +2378,7 @@ VALUES (
   'yaw.bediako.d6dd2763@apsl.player',
   'Yaw',
   'Bediako',
-  crypt('Playerxwiw04on!', gen_salt('bf')),
+  crypt('Playerxm1ntz1q!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2392,7 +2392,7 @@ VALUES (
   'elvino.tavares.da.silva.d6dd2763@apsl.player',
   'Elvino',
   'Tavares Da Silva',
-  crypt('Playercgjp9eev!', gen_salt('bf')),
+  crypt('Playerhm2k0d1a!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2406,7 +2406,7 @@ VALUES (
   'delvino.tavares.dasilva.d6dd2763@apsl.player',
   'Delvino',
   'Tavares Dasilva',
-  crypt('Player9gw39vae!', gen_salt('bf')),
+  crypt('Playerxv07qdvl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2420,7 +2420,7 @@ VALUES (
   'jamel.anch.david.d6dd2763@apsl.player',
   'Jamel',
   'Anch David',
-  crypt('Playerff69t158!', gen_salt('bf')),
+  crypt('Playerilpxcu6k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2434,7 +2434,7 @@ VALUES (
   'henry.edeko.d6dd2763@apsl.player',
   'Henry',
   'Edeko',
-  crypt('Player36uuc00r!', gen_salt('bf')),
+  crypt('Playerw8vuetrx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2448,7 +2448,7 @@ VALUES (
   'ayoub.essaoui.d6dd2763@apsl.player',
   'Ayoub',
   'Essaoui',
-  crypt('Player6bvejyy0!', gen_salt('bf')),
+  crypt('Player5u612bis!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2462,7 +2462,7 @@ VALUES (
   'jackson.fernandes.d6dd2763@apsl.player',
   'Jackson',
   'Fernandes',
-  crypt('Playertgrdiyj5!', gen_salt('bf')),
+  crypt('Player3mkf0q34!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2476,7 +2476,7 @@ VALUES (
   'carlos.augusto.gomez.hernandez.d6dd2763@apsl.player',
   'Carlos',
   'Augusto Gomez Hernandez',
-  crypt('Player4rz3jxla!', gen_salt('bf')),
+  crypt('Player6c6xs186!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2490,7 +2490,7 @@ VALUES (
   'braulio.gonzalez.oliveria.d6dd2763@apsl.player',
   'Braulio',
   'Gonzalez Oliveria',
-  crypt('Playernx6s3dy9!', gen_salt('bf')),
+  crypt('Player4uz0kvla!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2504,7 +2504,7 @@ VALUES (
   'alejandro.alfonso.guerrero.vargas.d6dd2763@apsl.player',
   'Alejandro',
   'Alfonso Guerrero Vargas',
-  crypt('Playeru0kgyzf6!', gen_salt('bf')),
+  crypt('Playerhkvvso3l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2518,7 +2518,7 @@ VALUES (
   'kenneth.jared.ibarra.suarez.d6dd2763@apsl.player',
   'Kenneth',
   'Jared Ibarra Suarez',
-  crypt('Playervs3r3d7t!', gen_salt('bf')),
+  crypt('Playerfccu18xk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2532,7 +2532,7 @@ VALUES (
   'aeshan.kapil.d6dd2763@apsl.player',
   'Aeshan',
   'Kapil',
-  crypt('Playercah928zt!', gen_salt('bf')),
+  crypt('Playerpe7s2b6s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2546,7 +2546,7 @@ VALUES (
   'jesus.gilberto.martinez.d6dd2763@apsl.player',
   'Jesus',
   'Gilberto Martinez',
-  crypt('Playerormyc538!', gen_salt('bf')),
+  crypt('Playergzfovneg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2560,7 +2560,7 @@ VALUES (
   'ricosta.mede.d6dd2763@apsl.player',
   'Ricosta',
   'Mede',
-  crypt('Playersp4wzylj!', gen_salt('bf')),
+  crypt('Playerl2295gvp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2574,7 +2574,7 @@ VALUES (
   'sheventz.multy.d6dd2763@apsl.player',
   'Sheventz',
   'Multy',
-  crypt('Playerhhauv9fw!', gen_salt('bf')),
+  crypt('Playerdad36dzy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2588,7 +2588,7 @@ VALUES (
   'samuel.armando.perez.d6dd2763@apsl.player',
   'Samuel',
   'Armando Perez',
-  crypt('Playerml6xh9vd!', gen_salt('bf')),
+  crypt('Playern3z07dgm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2602,7 +2602,7 @@ VALUES (
   'aiden.thor.perry.d6dd2763@apsl.player',
   'Aiden',
   'Thor Perry',
-  crypt('Player5vargbjl!', gen_salt('bf')),
+  crypt('Playervrpw88da!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2616,7 +2616,7 @@ VALUES (
   'alex.andrade.pina.d6dd2763@apsl.player',
   'Alex',
   'Andrade Pina',
-  crypt('Player4xnhm1tk!', gen_salt('bf')),
+  crypt('Playerh0ei0ipd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2630,7 +2630,7 @@ VALUES (
   'connor.poliquin.d6dd2763@apsl.player',
   'Connor',
   'Poliquin',
-  crypt('Playerfse3qamk!', gen_salt('bf')),
+  crypt('Playerzeedi3ja!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2644,7 +2644,7 @@ VALUES (
   'timothy.singleton.d6dd2763@apsl.player',
   'Timothy',
   'Singleton',
-  crypt('Playergrotux2d!', gen_salt('bf')),
+  crypt('Playerxf9xqz7f!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2658,7 +2658,7 @@ VALUES (
   'francisco.aron.villacorta.d6dd2763@apsl.player',
   'Francisco',
   'Aron Villacorta',
-  crypt('Playeriazvktc3!', gen_salt('bf')),
+  crypt('Player1o0xyr16!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2672,7 +2672,7 @@ VALUES (
   'benjamin.watts.d6dd2763@apsl.player',
   'Benjamin',
   'Watts',
-  crypt('Playerh46v7ok3!', gen_salt('bf')),
+  crypt('Players4mqtuc0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2690,7 +2690,7 @@ VALUES (
   'mo.amine.faleh.aa0aab49@apsl.player',
   'Mo',
   'Amine Faleh',
-  crypt('Playerz0h5odhv!', gen_salt('bf')),
+  crypt('Playerivppetl6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2704,7 +2704,7 @@ VALUES (
   'ludwin.daniel.carranza.aa0aab49@apsl.player',
   'Ludwin',
   'Daniel Carranza',
-  crypt('Playernj368qe5!', gen_salt('bf')),
+  crypt('Player26f9328z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2718,7 +2718,7 @@ VALUES (
   'albert.daniels.aa0aab49@apsl.player',
   'Albert',
   'Daniels',
-  crypt('Playerxbm920je!', gen_salt('bf')),
+  crypt('Playert00sj5lz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2732,7 +2732,7 @@ VALUES (
   'yassine.elbasli.aa0aab49@apsl.player',
   'Yassine',
   'ElBasli',
-  crypt('Playerejt4iw3q!', gen_salt('bf')),
+  crypt('Playert4jo2z5y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2746,7 +2746,7 @@ VALUES (
   'eduardo.engst.mansilla.aa0aab49@apsl.player',
   'Eduardo',
   'Engst-Mansilla',
-  crypt('Playerpqsksswq!', gen_salt('bf')),
+  crypt('Playeroj4o7eq3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2760,7 +2760,7 @@ VALUES (
   'kerllon.silva.felipe.aa0aab49@apsl.player',
   'Kerllon',
   'Silva Felipe',
-  crypt('Player6p7ckovw!', gen_salt('bf')),
+  crypt('Playeremzcif8n!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2774,7 +2774,7 @@ VALUES (
   'cole.fergusson.aa0aab49@apsl.player',
   'Cole',
   'Fergusson',
-  crypt('Playerdwjhnfyk!', gen_salt('bf')),
+  crypt('Playergvnvdxr4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2788,7 +2788,7 @@ VALUES (
   'joao.victor.ferreira.aa0aab49@apsl.player',
   'Joao',
   'Victor Ferreira',
-  crypt('Playerf3lg7w5m!', gen_salt('bf')),
+  crypt('Playersa1xhjpv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2802,7 +2802,7 @@ VALUES (
   'carl.foming.aa0aab49@apsl.player',
   'Carl',
   'Foming',
-  crypt('Player6v3p1i88!', gen_salt('bf')),
+  crypt('Playeri11eyh1i!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2816,7 +2816,7 @@ VALUES (
   'jackson.c.gilstrap.aa0aab49@apsl.player',
   'Jackson',
   'C Gilstrap',
-  crypt('Playerlm9j5vpw!', gen_salt('bf')),
+  crypt('Playerqv5wx99k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2830,7 +2830,7 @@ VALUES (
   'bernadin.herard.aa0aab49@apsl.player',
   'Bernadin',
   'Herard',
-  crypt('Playeriz935zxl!', gen_salt('bf')),
+  crypt('Playeru4rnma48!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2844,7 +2844,7 @@ VALUES (
   'juan.camilo.hern.ndez.aa0aab49@apsl.player',
   'Juan',
   'camilo Hernández',
-  crypt('Playerbz9s9dj1!', gen_salt('bf')),
+  crypt('Player115j7095!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2858,7 +2858,7 @@ VALUES (
   'delices.keyri.aa0aab49@apsl.player',
   'Delices',
   'Keyri',
-  crypt('Player5oa2lj6t!', gen_salt('bf')),
+  crypt('Playerqu66kg49!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2872,7 +2872,7 @@ VALUES (
   'hindolo.brima.mansaray.aa0aab49@apsl.player',
   'Hindolo',
   'Brima Mansaray',
-  crypt('Playerrk6yv6uz!', gen_salt('bf')),
+  crypt('Playerafwjnri9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2886,7 +2886,7 @@ VALUES (
   'john.massaquoi.aa0aab49@apsl.player',
   'John',
   'Massaquoi',
-  crypt('Player60btriov!', gen_salt('bf')),
+  crypt('Playerh1a15o86!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2900,7 +2900,7 @@ VALUES (
   'vincent.miller.aa0aab49@apsl.player',
   'Vincent',
   'Miller',
-  crypt('Playera9tlwl5t!', gen_salt('bf')),
+  crypt('Playerb75n03va!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2914,7 +2914,7 @@ VALUES (
   'hassan.mutaasa.aa0aab49@apsl.player',
   'Hassan',
   'Mutaasa',
-  crypt('Player7d855nuk!', gen_salt('bf')),
+  crypt('Playera2sescu6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2928,7 +2928,7 @@ VALUES (
   'amadou.moustapha.ndiaye.aa0aab49@apsl.player',
   'Amadou',
   'Moustapha Ndiaye',
-  crypt('Playert8rie7q4!', gen_salt('bf')),
+  crypt('Playerr6hwnkhl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2942,7 +2942,7 @@ VALUES (
   'carl.olivier.aa0aab49@apsl.player',
   'Carl',
   'Olivier',
-  crypt('Playeraj2qn7vg!', gen_salt('bf')),
+  crypt('Playerjkeenho9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2956,7 +2956,7 @@ VALUES (
   'roodchyl.samuel.pauleon.aa0aab49@apsl.player',
   'Roodchyl',
   'Samuel Pauleon',
-  crypt('Playertw7e6m0a!', gen_salt('bf')),
+  crypt('Playerssq3prje!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2970,7 +2970,7 @@ VALUES (
   'jaydon.perez.aa0aab49@apsl.player',
   'Jaydon',
   'Perez',
-  crypt('Playerqudisy6b!', gen_salt('bf')),
+  crypt('Playeroqkzddh8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2984,7 +2984,7 @@ VALUES (
   'joseph.saidu.aa0aab49@apsl.player',
   'Joseph',
   'Saidu',
-  crypt('Playerg84xo3hw!', gen_salt('bf')),
+  crypt('Player22u8hbyi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -2998,7 +2998,7 @@ VALUES (
   'destin.sleeter.aa0aab49@apsl.player',
   'Destin',
   'Sleeter',
-  crypt('Playerow7p49jz!', gen_salt('bf')),
+  crypt('Playerzqsstqzr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3012,7 +3012,7 @@ VALUES (
   'pierre.st.simon.aa0aab49@apsl.player',
   'Pierre',
   'St Simon',
-  crypt('Player7uewsz08!', gen_salt('bf')),
+  crypt('Playerwg7xu6mz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3026,7 +3026,7 @@ VALUES (
   'isaiah.stessman.aa0aab49@apsl.player',
   'Isaiah',
   'Stessman',
-  crypt('Playerx4uux2nt!', gen_salt('bf')),
+  crypt('Player729yilts!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3040,7 +3040,7 @@ VALUES (
   'carlos.teixeira.aa0aab49@apsl.player',
   'Carlos',
   'Teixeira',
-  crypt('Playerhu7fux2e!', gen_salt('bf')),
+  crypt('Playerhkqzn0sj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3054,7 +3054,7 @@ VALUES (
   'hamza.tribia.aa0aab49@apsl.player',
   'Hamza',
   'Tribia',
-  crypt('Playerdw4lfztn!', gen_salt('bf')),
+  crypt('Playerkbb45csf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3068,7 +3068,7 @@ VALUES (
   'luiz.gustavo.zanellato.aa0aab49@apsl.player',
   'Luiz',
   'Gustavo Zanellato',
-  crypt('Player63zdzybu!', gen_salt('bf')),
+  crypt('Playerounn7tlb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3082,7 +3082,7 @@ VALUES (
   'abraham.zepeda.aa0aab49@apsl.player',
   'Abraham',
   'Zepeda',
-  crypt('Player6fk1r1v7!', gen_salt('bf')),
+  crypt('Player7hk4u855!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3100,7 +3100,7 @@ VALUES (
   'mustapha.ait.zbair.b8ec25f4@apsl.player',
   'Mustapha',
   'Ait Zbair',
-  crypt('Playerwwsomwcl!', gen_salt('bf')),
+  crypt('Playerdsqc2fid!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3114,7 +3114,7 @@ VALUES (
   'joshua.atemkeng.b8ec25f4@apsl.player',
   'Joshua',
   'Atemkeng',
-  crypt('Playerql8fifta!', gen_salt('bf')),
+  crypt('Player7d0wo7o6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3128,7 +3128,7 @@ VALUES (
   'ousmane.balde.b8ec25f4@apsl.player',
   'Ousmane',
   'balde',
-  crypt('Playerlkte20e5!', gen_salt('bf')),
+  crypt('Playerhcqxg3m9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3142,7 +3142,7 @@ VALUES (
   'john.brewer.b8ec25f4@apsl.player',
   'John',
   'Brewer',
-  crypt('Player89z2s4z3!', gen_salt('bf')),
+  crypt('Playervhfhhabh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3156,7 +3156,7 @@ VALUES (
   'oscar.castillo.b8ec25f4@apsl.player',
   'Oscar',
   'Castillo',
-  crypt('Playery2miggde!', gen_salt('bf')),
+  crypt('Playerrt47fq9p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3170,7 +3170,7 @@ VALUES (
   'edmond.charles.b8ec25f4@apsl.player',
   'Edmond',
   'Charles',
-  crypt('Playerupnhdm44!', gen_salt('bf')),
+  crypt('Playery9gpddvz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3184,7 +3184,7 @@ VALUES (
   'dimitri.costa.b8ec25f4@apsl.player',
   'Dimitri',
   'Costa',
-  crypt('Playerxtg3jns6!', gen_salt('bf')),
+  crypt('Playercprb7bdr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3198,7 +3198,7 @@ VALUES (
   'hamza.el.amane.b8ec25f4@apsl.player',
   'Hamza',
   'El Amane',
-  crypt('Playerlagl3snm!', gen_salt('bf')),
+  crypt('Playermt2bdrif!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3212,7 +3212,7 @@ VALUES (
   'mohamed.el.rhoufi.b8ec25f4@apsl.player',
   'Mohamed',
   'El-Rhoufi',
-  crypt('Playereurl3ekg!', gen_salt('bf')),
+  crypt('Playernc10kdvw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3226,7 +3226,7 @@ VALUES (
   'hyacinth.fongang.b8ec25f4@apsl.player',
   'Hyacinth',
   'Fongang',
-  crypt('Playerhwzhp1ax!', gen_salt('bf')),
+  crypt('Playerpiwx54ue!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3240,7 +3240,7 @@ VALUES (
   'metayer.gassamar.b8ec25f4@apsl.player',
   'Metayer',
   'Gassamar',
-  crypt('Player4wc06x9l!', gen_salt('bf')),
+  crypt('Playerg6ev7gkj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3254,7 +3254,7 @@ VALUES (
   'abubakar.sidiq.hamidu.b8ec25f4@apsl.player',
   'Abubakar',
   'Sidiq Hamidu',
-  crypt('Player97jduatk!', gen_salt('bf')),
+  crypt('Player1z0lkal7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3268,7 +3268,7 @@ VALUES (
   'diallo.ibrahima.b8ec25f4@apsl.player',
   'Diallo',
   'Ibrahima',
-  crypt('Playerk7nfeu9e!', gen_salt('bf')),
+  crypt('Playergfwj7kf1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3282,7 +3282,7 @@ VALUES (
   'ralph.jean.baptiste.b8ec25f4@apsl.player',
   'Ralph',
   'Jean Baptiste',
-  crypt('Player0zkejodo!', gen_salt('bf')),
+  crypt('Player4zm60p71!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3296,7 +3296,7 @@ VALUES (
   'root.mael.jean.baptiste.b8ec25f4@apsl.player',
   'Root-mael',
   'Jean Baptiste',
-  crypt('Player7w0qp5vz!', gen_salt('bf')),
+  crypt('Playerm5vbfdd0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3310,7 +3310,7 @@ VALUES (
   'cedrick.labah.b8ec25f4@apsl.player',
   'Cedrick',
   'Labah',
-  crypt('Playerrx8m6jo1!', gen_salt('bf')),
+  crypt('Playere1k6rjxr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3324,7 +3324,7 @@ VALUES (
   'bruno.lana.b8ec25f4@apsl.player',
   'Bruno',
   'Lana',
-  crypt('Playercj1qn2tw!', gen_salt('bf')),
+  crypt('Player4eg4zfhz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3338,7 +3338,7 @@ VALUES (
   'longtse.mofor.landoh.b8ec25f4@apsl.player',
   'Longtse',
   'Mofor Landoh',
-  crypt('Playerwk2y5qbv!', gen_salt('bf')),
+  crypt('Playerc1w8o3u8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3352,7 +3352,7 @@ VALUES (
   'roberto.martinez.b8ec25f4@apsl.player',
   'Roberto',
   'Martinez',
-  crypt('Playerrf5z2d40!', gen_salt('bf')),
+  crypt('Playercuec44bs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3366,7 +3366,7 @@ VALUES (
   'quang.milligan.b8ec25f4@apsl.player',
   'Quang',
   'Milligan',
-  crypt('Playerj03gw1c3!', gen_salt('bf')),
+  crypt('Player8bad4b9l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3380,7 +3380,7 @@ VALUES (
   'bonjoh.ngoasong.b8ec25f4@apsl.player',
   'Bonjoh',
   'Ngoasong',
-  crypt('Playerday441z6!', gen_salt('bf')),
+  crypt('Player0z7hqtii!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3394,7 +3394,7 @@ VALUES (
   'sydiney.nyabiosi.b8ec25f4@apsl.player',
   'Sydiney',
   'Nyabiosi',
-  crypt('Playerbnzymsn2!', gen_salt('bf')),
+  crypt('Playertxel20f9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3408,7 +3408,7 @@ VALUES (
   'pedro.pedrine.b8ec25f4@apsl.player',
   'Pedro',
   'Pedrine',
-  crypt('Playerayemrl4n!', gen_salt('bf')),
+  crypt('Playermv7v7k43!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3422,7 +3422,7 @@ VALUES (
   'marc.hattley.pierre.b8ec25f4@apsl.player',
   'Marc',
   'Hattley Pierre',
-  crypt('Playercofpn1oy!', gen_salt('bf')),
+  crypt('Playerqa63swiq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3436,7 +3436,7 @@ VALUES (
   'luvensky.polycarpe.b8ec25f4@apsl.player',
   'Luvensky',
   'Polycarpe',
-  crypt('Player17gkjux4!', gen_salt('bf')),
+  crypt('Playermzt86l56!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3450,7 +3450,7 @@ VALUES (
   'angelo.ramirez.b8ec25f4@apsl.player',
   'Angelo',
   'Ramirez',
-  crypt('Player6xxsf4t4!', gen_salt('bf')),
+  crypt('Playergtza2bw9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3464,7 +3464,7 @@ VALUES (
   'emerson.roman.b8ec25f4@apsl.player',
   'Emerson',
   'Roman',
-  crypt('Playerqa962ifw!', gen_salt('bf')),
+  crypt('Playerzln58ut6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3478,7 +3478,7 @@ VALUES (
   'yostin.roman.b8ec25f4@apsl.player',
   'Yostin',
   'Roman',
-  crypt('Playery2gb8io7!', gen_salt('bf')),
+  crypt('Playerj568sbby!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3492,7 +3492,7 @@ VALUES (
   'shelton.sidelca.b8ec25f4@apsl.player',
   'Shelton',
   'Sidelca',
-  crypt('Playerccnfl061!', gen_salt('bf')),
+  crypt('Playerz7dyhl7t!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3506,7 +3506,7 @@ VALUES (
   'redwane.tinfle.b8ec25f4@apsl.player',
   'Redwane',
   'Tinfle',
-  crypt('Playerekkoqjgo!', gen_salt('bf')),
+  crypt('Playerd5srswzf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3520,7 +3520,7 @@ VALUES (
   'nelvin.vando.b8ec25f4@apsl.player',
   'Nelvin',
   'Vando',
-  crypt('Player1gh4jtn4!', gen_salt('bf')),
+  crypt('Playerjhvyszco!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3534,7 +3534,7 @@ VALUES (
   'jonathan.vazquez.b8ec25f4@apsl.player',
   'Jonathan',
   'Vazquez',
-  crypt('Playertxx6z285!', gen_salt('bf')),
+  crypt('Playerjbrtwkuw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3548,7 +3548,7 @@ VALUES (
   'ethan.vitello.b8ec25f4@apsl.player',
   'Ethan',
   'Vitello',
-  crypt('Playera05yzg5h!', gen_salt('bf')),
+  crypt('Playerruzv9gkz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3562,7 +3562,7 @@ VALUES (
   'trevor.voisine.b8ec25f4@apsl.player',
   'Trevor',
   'Voisine',
-  crypt('Player3xrjqg0x!', gen_salt('bf')),
+  crypt('Playerner5gjxe!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3576,7 +3576,7 @@ VALUES (
   'zamy.youri.ansley.b8ec25f4@apsl.player',
   'Zamy',
   'Youri Ansley',
-  crypt('Player3uxq4z2t!', gen_salt('bf')),
+  crypt('Player5ya1obsz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3594,7 +3594,7 @@ VALUES (
   'meysar.abdulkadir.a57bd844@apsl.player',
   'Meysar',
   'Abdulkadir',
-  crypt('Player45u91oqg!', gen_salt('bf')),
+  crypt('Playerkoz6z90k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3608,7 +3608,7 @@ VALUES (
   'joel.agebtossou.a57bd844@apsl.player',
   'Joel',
   'Agebtossou',
-  crypt('Playerh5jpl3ho!', gen_salt('bf')),
+  crypt('Playeroog1olxn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3622,7 +3622,7 @@ VALUES (
   'davaughn.anderson.a57bd844@apsl.player',
   'Davaughn',
   'Anderson',
-  crypt('Player6bya27rh!', gen_salt('bf')),
+  crypt('Player9caq2ox5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3636,7 +3636,7 @@ VALUES (
   'deante.anderson.a57bd844@apsl.player',
   'Deante',
   'Anderson',
-  crypt('Playerc1ycuhvz!', gen_salt('bf')),
+  crypt('Player3a3s0yde!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3650,7 +3650,7 @@ VALUES (
   'jimmy.arita.a57bd844@apsl.player',
   'Jimmy',
   'Arita',
-  crypt('Playerqt47nqiy!', gen_salt('bf')),
+  crypt('Playerrhkdqthz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3664,7 +3664,7 @@ VALUES (
   'ben.awashie.a57bd844@apsl.player',
   'Ben',
   'Awashie',
-  crypt('Playerpqs5rxgg!', gen_salt('bf')),
+  crypt('Player9bit5rpz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3678,7 +3678,7 @@ VALUES (
   'alessandro.bacabac.a57bd844@apsl.player',
   'Alessandro',
   'Bacabac',
-  crypt('Playerlg7cnzig!', gen_salt('bf')),
+  crypt('Playerdv17tve3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3692,7 +3692,7 @@ VALUES (
   'dejaun.beckford.a57bd844@apsl.player',
   'Dejaun',
   'Beckford',
-  crypt('Playerc2z7bcg3!', gen_salt('bf')),
+  crypt('Playerf1i6e2t1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3706,7 +3706,7 @@ VALUES (
   'joseph.boakye.a57bd844@apsl.player',
   'Joseph',
   'Boakye',
-  crypt('Playerz6ohdvkp!', gen_salt('bf')),
+  crypt('Playerylxalowl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3720,7 +3720,7 @@ VALUES (
   'alexander.clarke.a57bd844@apsl.player',
   'Alexander',
   'Clarke',
-  crypt('Player35jj42ze!', gen_salt('bf')),
+  crypt('Playerw2s8h4a9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3734,7 +3734,7 @@ VALUES (
   'caleb.ennin.a57bd844@apsl.player',
   'Caleb',
   'Ennin',
-  crypt('Playertk7k18uo!', gen_salt('bf')),
+  crypt('Playerdxe6zns8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3748,7 +3748,7 @@ VALUES (
   'tim.ennin.a57bd844@apsl.player',
   'Tim',
   'Ennin',
-  crypt('Playerw497cull!', gen_salt('bf')),
+  crypt('Playerztnrtte2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3762,7 +3762,7 @@ VALUES (
   'shaquan.facey.a57bd844@apsl.player',
   'Shaquan',
   'Facey',
-  crypt('Playerwh7vfydm!', gen_salt('bf')),
+  crypt('Player2jvutmih!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3776,7 +3776,7 @@ VALUES (
   'jahvanni.grant.a57bd844@apsl.player',
   'Jahvanni',
   'Grant',
-  crypt('Playerbw5g3w57!', gen_salt('bf')),
+  crypt('Player66ju9jkt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3790,7 +3790,7 @@ VALUES (
   'elian.guaman.a57bd844@apsl.player',
   'Elian',
   'Guaman',
-  crypt('Playerywf1ssrx!', gen_salt('bf')),
+  crypt('Playermmjgygja!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3804,7 +3804,7 @@ VALUES (
   'dax.hoffman.a57bd844@apsl.player',
   'Dax',
   'Hoffman',
-  crypt('Player2ovcqyc4!', gen_salt('bf')),
+  crypt('Playertava03yj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3818,7 +3818,7 @@ VALUES (
   'george.jimenez.a57bd844@apsl.player',
   'George',
   'Jimenez',
-  crypt('Playerr7u2335d!', gen_salt('bf')),
+  crypt('Playerc6ftpjda!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3832,7 +3832,7 @@ VALUES (
   'gideon.kadiri.a57bd844@apsl.player',
   'Gideon',
   'Kadiri',
-  crypt('Playerz5volrlf!', gen_salt('bf')),
+  crypt('Playerfeuumtr4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3846,7 +3846,7 @@ VALUES (
   'jaheim.kennedy.a57bd844@apsl.player',
   'Jaheim',
   'Kennedy',
-  crypt('Playerwl2qhnqg!', gen_salt('bf')),
+  crypt('Playerz4a9ldfc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3860,7 +3860,7 @@ VALUES (
   'brenden.landry.a57bd844@apsl.player',
   'Brenden',
   'Landry',
-  crypt('Playerrwi5vud4!', gen_salt('bf')),
+  crypt('Playerbh9xnge1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3874,7 +3874,7 @@ VALUES (
   'shani.miller.a57bd844@apsl.player',
   'Shani',
   'Miller',
-  crypt('Playerr0mgos9p!', gen_salt('bf')),
+  crypt('Playerr3xw1jxj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3888,7 +3888,7 @@ VALUES (
   'kwesi.mills.odoi.a57bd844@apsl.player',
   'Kwesi',
   'Mills-Odoi',
-  crypt('Playergv5661jq!', gen_salt('bf')),
+  crypt('Player1z2zmmr5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3902,7 +3902,7 @@ VALUES (
   'shemar.moore.a57bd844@apsl.player',
   'Shemar',
   'Moore',
-  crypt('Playerptzosma3!', gen_salt('bf')),
+  crypt('Playerjzsrefz1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3916,7 +3916,7 @@ VALUES (
   'andre.morrison.a57bd844@apsl.player',
   'Andre',
   'Morrison',
-  crypt('Playerc05dlngs!', gen_salt('bf')),
+  crypt('Playerf8zpv19n!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3930,7 +3930,7 @@ VALUES (
   'yaw.nimo.agyare.a57bd844@apsl.player',
   'Yaw',
   'Nimo-Agyare',
-  crypt('Playerheus7m9d!', gen_salt('bf')),
+  crypt('Playerbqhkp90v!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3944,7 +3944,7 @@ VALUES (
   'kenny.ofori.a57bd844@apsl.player',
   'Kenny',
   'Ofori',
-  crypt('Player29z4obcc!', gen_salt('bf')),
+  crypt('Playerw7h5lyr8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3958,7 +3958,7 @@ VALUES (
   'diwash.pun.a57bd844@apsl.player',
   'Diwash',
   'Pun',
-  crypt('Playerszwfffy6!', gen_salt('bf')),
+  crypt('Player1msmovn7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3972,7 +3972,7 @@ VALUES (
   'shamar.smith.a57bd844@apsl.player',
   'Shamar',
   'Smith',
-  crypt('Playersib4lncm!', gen_salt('bf')),
+  crypt('Playerpivp83kw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -3986,7 +3986,7 @@ VALUES (
   'sholay.sock.a57bd844@apsl.player',
   'Sholay',
   'Sock',
-  crypt('Player7eke32m6!', gen_salt('bf')),
+  crypt('Player2vtdomsl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4000,7 +4000,7 @@ VALUES (
   'dane.stephens.a57bd844@apsl.player',
   'Dane',
   'Stephens',
-  crypt('Playerwt2zfv23!', gen_salt('bf')),
+  crypt('Playermmutasa1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4014,7 +4014,7 @@ VALUES (
   'romaine.walters.a57bd844@apsl.player',
   'Romaine',
   'Walters',
-  crypt('Playerkiiss0np!', gen_salt('bf')),
+  crypt('Player0t8m2tyw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4032,7 +4032,7 @@ VALUES (
   'colin.branigan.265404b6@apsl.player',
   'Colin',
   'Branigan',
-  crypt('Playerdrq38g3i!', gen_salt('bf')),
+  crypt('Playerw87xdkgq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4046,7 +4046,7 @@ VALUES (
   'colin.brocksieper.265404b6@apsl.player',
   'Colin',
   'Brocksieper',
-  crypt('Player02n9gewh!', gen_salt('bf')),
+  crypt('Player0e6m3xts!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4060,7 +4060,7 @@ VALUES (
   'nick.burkle.265404b6@apsl.player',
   'Nick',
   'Burkle',
-  crypt('Playerepb23zxy!', gen_salt('bf')),
+  crypt('Playerhahf0wdw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4074,7 +4074,7 @@ VALUES (
   'rocco.d.arcangelo.265404b6@apsl.player',
   'Rocco',
   'D’Arcangelo',
-  crypt('Playerb9c8qo8r!', gen_salt('bf')),
+  crypt('Playerc93hstz5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4088,7 +4088,7 @@ VALUES (
   'massimo.eichner.265404b6@apsl.player',
   'Massimo',
   'Eichner',
-  crypt('Player9ppv3ai5!', gen_salt('bf')),
+  crypt('Playernd71pizs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4102,7 +4102,7 @@ VALUES (
   'eddy.enowbi.265404b6@apsl.player',
   'Eddy',
   'Enowbi',
-  crypt('Playert32mpht0!', gen_salt('bf')),
+  crypt('Playerj18pbvep!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4116,7 +4116,7 @@ VALUES (
   'sean.gannon.265404b6@apsl.player',
   'Sean',
   'Gannon',
-  crypt('Player08ku1q50!', gen_salt('bf')),
+  crypt('Playerwkb4cozc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4130,7 +4130,7 @@ VALUES (
   'andrew.hayden.geres.265404b6@apsl.player',
   'Andrew',
   'Hayden Geres',
-  crypt('Playermdsuiwy9!', gen_salt('bf')),
+  crypt('Playeriz8p3d65!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4144,7 +4144,7 @@ VALUES (
   'donovan.harris.265404b6@apsl.player',
   'Donovan',
   'Harris',
-  crypt('Playertmxh0riq!', gen_salt('bf')),
+  crypt('Player1hbk0wlk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4158,7 +4158,7 @@ VALUES (
   'john.hess.265404b6@apsl.player',
   'John',
   'Hess',
-  crypt('Playerk1qzcrdn!', gen_salt('bf')),
+  crypt('Playerwmu1yufj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4172,7 +4172,7 @@ VALUES (
   'jalen.jean.265404b6@apsl.player',
   'Jalen',
   'Jean',
-  crypt('Playerdgxk1ia2!', gen_salt('bf')),
+  crypt('Playere0ux2fch!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4186,7 +4186,7 @@ VALUES (
   'eric.bertin.kalumbwe.265404b6@apsl.player',
   'Eric-Bertin',
   'Kalumbwe',
-  crypt('Player24do0pvp!', gen_salt('bf')),
+  crypt('Playerw6u5sju1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4200,7 +4200,7 @@ VALUES (
   'sevon.komlan.koudaya.265404b6@apsl.player',
   'Sevon',
   'Komlan Koudaya',
-  crypt('Player030pvkp3!', gen_salt('bf')),
+  crypt('Playerak8fyj4q!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4214,7 +4214,7 @@ VALUES (
   'senan.lonergan.265404b6@apsl.player',
   'Senan',
   'Lonergan',
-  crypt('Playerlhmpyg38!', gen_salt('bf')),
+  crypt('Playerqgcfvwf3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4228,7 +4228,7 @@ VALUES (
   'luke.mcnabb.265404b6@apsl.player',
   'Luke',
   'McNabb',
-  crypt('Playerxb310y76!', gen_salt('bf')),
+  crypt('Playerwdx4vern!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4242,7 +4242,7 @@ VALUES (
   'aidan.nolan.265404b6@apsl.player',
   'Aidan',
   'Nolan',
-  crypt('Player9nqw5e41!', gen_salt('bf')),
+  crypt('Playergkkxodso!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4256,7 +4256,7 @@ VALUES (
   'aidan.o.brien.265404b6@apsl.player',
   'Aidan',
   'O''Brien',
-  crypt('Playerg9g9cckf!', gen_salt('bf')),
+  crypt('Playergzavxwsz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4270,7 +4270,7 @@ VALUES (
   'liam.o.brien.265404b6@apsl.player',
   'Liam',
   'O''Brien',
-  crypt('Playerp10jy0z6!', gen_salt('bf')),
+  crypt('Playerxdpncoyp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4284,7 +4284,7 @@ VALUES (
   'ronan.o.brien.265404b6@apsl.player',
   'Ronan',
   'O''Brien',
-  crypt('Playerbqgk8gxe!', gen_salt('bf')),
+  crypt('Player58w3g2hw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4298,7 +4298,7 @@ VALUES (
   'marco.parisi.265404b6@apsl.player',
   'Marco',
   'Parisi',
-  crypt('Playervq8mna2s!', gen_salt('bf')),
+  crypt('Playerca3ey3le!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4312,7 +4312,7 @@ VALUES (
   'christian.rivas.plata.265404b6@apsl.player',
   'Christian',
   'Rivas-Plata',
-  crypt('Playergeikj1cr!', gen_salt('bf')),
+  crypt('Playerp056bh0l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4326,7 +4326,7 @@ VALUES (
   'colm.ryan.265404b6@apsl.player',
   'Colm',
   'Ryan',
-  crypt('Playernuwgq875!', gen_salt('bf')),
+  crypt('Playersfcbvtbk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4340,7 +4340,7 @@ VALUES (
   'ian.slattery.265404b6@apsl.player',
   'Ian',
   'Slattery',
-  crypt('Playervaefw88g!', gen_salt('bf')),
+  crypt('Playergz74lw1s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4354,7 +4354,7 @@ VALUES (
   'marcris.webb.265404b6@apsl.player',
   'Marcris',
   'Webb',
-  crypt('Player6i1nky51!', gen_salt('bf')),
+  crypt('Player7ixjj8a6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4368,7 +4368,7 @@ VALUES (
   'nick.wlodarcyk.265404b6@apsl.player',
   'Nick',
   'Wlodarcyk',
-  crypt('Playerf4j29xov!', gen_salt('bf')),
+  crypt('Playeryfcr57er!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4386,7 +4386,7 @@ VALUES (
   'kaio.ramos.araujo.7f09e1bb@apsl.player',
   'Kaio',
   'Ramos Araujo',
-  crypt('Playerc6y4fqvn!', gen_salt('bf')),
+  crypt('Playertydopqcq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4400,7 +4400,7 @@ VALUES (
   'luciano.artaza.7f09e1bb@apsl.player',
   'Luciano',
   'Artaza',
-  crypt('Playerdkebdld7!', gen_salt('bf')),
+  crypt('Player8fypc3ja!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4414,7 +4414,7 @@ VALUES (
   'luke.bello.7f09e1bb@apsl.player',
   'Luke',
   'Bello',
-  crypt('Playera1o45gyp!', gen_salt('bf')),
+  crypt('Player5g0s3c5j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4428,7 +4428,7 @@ VALUES (
   'marc.calle.7f09e1bb@apsl.player',
   'Marc',
   'Calle',
-  crypt('Playerehfj1j5l!', gen_salt('bf')),
+  crypt('Playerr40p8uwr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4442,7 +4442,7 @@ VALUES (
   'leonardo.da.graca.7f09e1bb@apsl.player',
   'Leonardo',
   'Da Graca',
-  crypt('Playeri4fot5um!', gen_salt('bf')),
+  crypt('Player220lz35s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4456,7 +4456,7 @@ VALUES (
   'ricardo.dias.7f09e1bb@apsl.player',
   'Ricardo',
   'Dias',
-  crypt('Playerw9r7dgm0!', gen_salt('bf')),
+  crypt('Player4pa00we8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4470,7 +4470,7 @@ VALUES (
   'matthew.evora.7f09e1bb@apsl.player',
   'Matthew',
   'Evora',
-  crypt('Playervpn2gzob!', gen_salt('bf')),
+  crypt('Playero6wuqnzu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4484,7 +4484,7 @@ VALUES (
   'anthony.faienza.7f09e1bb@apsl.player',
   'Anthony',
   'Faienza',
-  crypt('Playertw1487gs!', gen_salt('bf')),
+  crypt('Playervh2gwifz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4498,7 +4498,7 @@ VALUES (
   'thomas.fernandez.wolff.7f09e1bb@apsl.player',
   'Thomas',
   'Fernandez-Wolff',
-  crypt('Playercm8wo5zx!', gen_salt('bf')),
+  crypt('Player15pqvfhc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4512,7 +4512,7 @@ VALUES (
   'nicholas.fern.ndez.wolff.7f09e1bb@apsl.player',
   'Nicholas',
   'Fernández-Wolff',
-  crypt('Playerlih235aw!', gen_salt('bf')),
+  crypt('Playertvdnwym5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4526,7 +4526,7 @@ VALUES (
   'abdulmohaymen.gadoush.7f09e1bb@apsl.player',
   'Abdulmohaymen',
   'Gadoush',
-  crypt('Playerpgmkjthk!', gen_salt('bf')),
+  crypt('Playerxg6qu0bk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4540,7 +4540,7 @@ VALUES (
   'eurico.gomes.7f09e1bb@apsl.player',
   'Eurico',
   'Gomes',
-  crypt('Playergjh09t1n!', gen_salt('bf')),
+  crypt('Playerupf0ohy3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4554,7 +4554,7 @@ VALUES (
   'javier.hernandez.7f09e1bb@apsl.player',
   'Javier',
   'Hernandez',
-  crypt('Playerwhy5jobs!', gen_salt('bf')),
+  crypt('Player5xkl6mir!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4568,7 +4568,7 @@ VALUES (
   'joni.kadrioski.7f09e1bb@apsl.player',
   'Joni',
   'Kadrioski',
-  crypt('Playerpk5qnjfj!', gen_salt('bf')),
+  crypt('Playermfsjnt21!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4582,7 +4582,7 @@ VALUES (
   'chavez.mbeki.7f09e1bb@apsl.player',
   'Chavez',
   'Mbeki',
-  crypt('Playerui22db2o!', gen_salt('bf')),
+  crypt('Player7sztn1rx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4596,7 +4596,7 @@ VALUES (
   'kenan.mujic.7f09e1bb@apsl.player',
   'Kenan',
   'Mujic',
-  crypt('Playerrs2udiu6!', gen_salt('bf')),
+  crypt('Playerdk6z5vqj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4610,7 +4610,7 @@ VALUES (
   'ermis.paguada.7f09e1bb@apsl.player',
   'Ermis',
   'Paguada',
-  crypt('Playerv7mk6r0x!', gen_salt('bf')),
+  crypt('Player6sms9n8s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4624,7 +4624,7 @@ VALUES (
   'paulo.paris.7f09e1bb@apsl.player',
   'Paulo',
   'Paris',
-  crypt('Playerxyptv3bt!', gen_salt('bf')),
+  crypt('Playerkb5i3hvs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4638,7 +4638,7 @@ VALUES (
   'juan.saca.7f09e1bb@apsl.player',
   'Juan',
   'Saca',
-  crypt('Playerpy40c06h!', gen_salt('bf')),
+  crypt('Playerwijo2qxd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4652,7 +4652,7 @@ VALUES (
   'bruno.silva.7f09e1bb@apsl.player',
   'Bruno',
   'Silva',
-  crypt('Player61ofny9u!', gen_salt('bf')),
+  crypt('Player5wjvyue4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4666,7 +4666,7 @@ VALUES (
   'matthew.silva.7f09e1bb@apsl.player',
   'Matthew',
   'Silva',
-  crypt('Playersvjjlqfu!', gen_salt('bf')),
+  crypt('Playern02k3m4m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4680,7 +4680,7 @@ VALUES (
   'michel.souza.7f09e1bb@apsl.player',
   'Michel',
   'Souza',
-  crypt('Playeri45p5q9a!', gen_salt('bf')),
+  crypt('Playerttu5byvp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4694,7 +4694,7 @@ VALUES (
   'kadin.talho.7f09e1bb@apsl.player',
   'Kadin',
   'Talho',
-  crypt('Playerqtvh8i1b!', gen_salt('bf')),
+  crypt('Playergzemisb7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4708,7 +4708,7 @@ VALUES (
   'diego.vasquez.7f09e1bb@apsl.player',
   'Diego',
   'Vasquez',
-  crypt('Playerjhc1wh2l!', gen_salt('bf')),
+  crypt('Playerf9oku4w4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4722,7 +4722,7 @@ VALUES (
   'jannik.wille.7f09e1bb@apsl.player',
   'Jannik',
   'Wille',
-  crypt('Playerm9wqb11e!', gen_salt('bf')),
+  crypt('Playerszchnrvt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4736,7 +4736,7 @@ VALUES (
   'caleb.wu.7f09e1bb@apsl.player',
   'Caleb',
   'Wu',
-  crypt('Player1amqdw2y!', gen_salt('bf')),
+  crypt('Playeror0z1xzb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4750,7 +4750,7 @@ VALUES (
   'alan.xavier.7f09e1bb@apsl.player',
   'Alan',
   'Xavier',
-  crypt('Playerfh9y6j5c!', gen_salt('bf')),
+  crypt('Playermm97smj9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4768,7 +4768,7 @@ VALUES (
   'bright.agyemang.5c979af3@apsl.player',
   'Bright',
   'Agyemang',
-  crypt('Player83qficxs!', gen_salt('bf')),
+  crypt('Playerrdwehdbh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4782,7 +4782,7 @@ VALUES (
   'wander.alves.5c979af3@apsl.player',
   'Wander',
   'Alves',
-  crypt('Playernwezak4t!', gen_salt('bf')),
+  crypt('Playerocjkfhz8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4796,7 +4796,7 @@ VALUES (
   'guilherme.andrade.5c979af3@apsl.player',
   'Guilherme',
   'Andrade',
-  crypt('Player5r054lpt!', gen_salt('bf')),
+  crypt('Player0kef3qy7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4810,7 +4810,7 @@ VALUES (
   'hayllan.batista.5c979af3@apsl.player',
   'Hayllan',
   'Batista',
-  crypt('Playeroqydyyol!', gen_salt('bf')),
+  crypt('Playerf44wxjeh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4824,7 +4824,7 @@ VALUES (
   'gabriel.berthoud.5c979af3@apsl.player',
   'Gabriel',
   'Berthoud',
-  crypt('Player8m29rudw!', gen_salt('bf')),
+  crypt('Player5zkvdgae!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4838,7 +4838,7 @@ VALUES (
   'gabriel.carrelo.5c979af3@apsl.player',
   'Gabriel',
   'Carrelo',
-  crypt('Player9zkv6agi!', gen_salt('bf')),
+  crypt('Playerbgqhx5e2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4852,7 +4852,7 @@ VALUES (
   'rodney.delgado.5c979af3@apsl.player',
   'Rodney',
   'Delgado',
-  crypt('Player4u44dkr4!', gen_salt('bf')),
+  crypt('Playervd07ttk6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4866,7 +4866,7 @@ VALUES (
   'gregorio.espinoza.5c979af3@apsl.player',
   'Gregorio',
   'Espinoza',
-  crypt('Player2yxmlh22!', gen_salt('bf')),
+  crypt('Playerine2sru0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4880,7 +4880,7 @@ VALUES (
   'wilmer.flores.5c979af3@apsl.player',
   'Wilmer',
   'Flores',
-  crypt('Player4xal66px!', gen_salt('bf')),
+  crypt('Player5e0xpm9a!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4894,7 +4894,7 @@ VALUES (
   'zouhair.khal.5c979af3@apsl.player',
   'Zouhair',
   'Khal',
-  crypt('Playerezikaprb!', gen_salt('bf')),
+  crypt('Playerl10tsziz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4908,7 +4908,7 @@ VALUES (
   'shamar.j.kingston.5c979af3@apsl.player',
   'Shamar',
   'J Kingston',
-  crypt('Playerwm1o2mvv!', gen_salt('bf')),
+  crypt('Playere7ltspc7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4922,7 +4922,7 @@ VALUES (
   'bruno.luiz.5c979af3@apsl.player',
   'Bruno',
   'Luiz',
-  crypt('Players71b5u6z!', gen_salt('bf')),
+  crypt('Player8skvwy4r!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4936,7 +4936,7 @@ VALUES (
   'colton.lukuc.5c979af3@apsl.player',
   'Colton',
   'Lukuc',
-  crypt('Playere69pc1lz!', gen_salt('bf')),
+  crypt('Playerrzqaclsq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4950,7 +4950,7 @@ VALUES (
   'abdessamad.machi.5c979af3@apsl.player',
   'Abdessamad',
   'Machi',
-  crypt('Player0ut0d29v!', gen_salt('bf')),
+  crypt('Playermcz64yk6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4964,7 +4964,7 @@ VALUES (
   'david.mollenthiel.5c979af3@apsl.player',
   'David',
   'Mollenthiel',
-  crypt('Playeruxy91ke2!', gen_salt('bf')),
+  crypt('Playerze2825x3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4978,7 +4978,7 @@ VALUES (
   'phila.nxumalo.5c979af3@apsl.player',
   'Phila',
   'Nxumalo',
-  crypt('Playersv3iwar0!', gen_salt('bf')),
+  crypt('Playernkoo3l9b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -4992,7 +4992,7 @@ VALUES (
   'johan.pineda.5c979af3@apsl.player',
   'Johan',
   'Pineda',
-  crypt('Player8h91fggd!', gen_salt('bf')),
+  crypt('Player2zq2bjdh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5006,7 +5006,7 @@ VALUES (
   'patrick.pineda.5c979af3@apsl.player',
   'Patrick',
   'Pineda',
-  crypt('Playerj0s826l8!', gen_salt('bf')),
+  crypt('Playerjvq3g0pz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5020,7 +5020,7 @@ VALUES (
   'andrew.ranieri.5c979af3@apsl.player',
   'Andrew',
   'Ranieri',
-  crypt('Playerj8vgfm6i!', gen_salt('bf')),
+  crypt('Player4jldvgx1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5034,7 +5034,7 @@ VALUES (
   'anthony.ranieri.5c979af3@apsl.player',
   'Anthony',
   'Ranieri',
-  crypt('Playerhebl7bh1!', gen_salt('bf')),
+  crypt('Playeryetavns6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5048,7 +5048,7 @@ VALUES (
   'steven.rivera.5c979af3@apsl.player',
   'Steven',
   'Rivera',
-  crypt('Player3mkh8meg!', gen_salt('bf')),
+  crypt('Playerator4wm5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5062,7 +5062,7 @@ VALUES (
   'maynor.robles.5c979af3@apsl.player',
   'Maynor',
   'Robles',
-  crypt('Player3grtvouy!', gen_salt('bf')),
+  crypt('Playeriq60aoqj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5076,7 +5076,7 @@ VALUES (
   'michael.rodriguez.5c979af3@apsl.player',
   'Michael',
   'Rodriguez',
-  crypt('Playersqti6o7w!', gen_salt('bf')),
+  crypt('Playerolxua83x!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5090,7 +5090,7 @@ VALUES (
   'walter.romero.5c979af3@apsl.player',
   'Walter',
   'Romero',
-  crypt('Player1wsyjjze!', gen_salt('bf')),
+  crypt('Playeriylc3lwq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5104,7 +5104,7 @@ VALUES (
   'edwin.rosano.5c979af3@apsl.player',
   'Edwin',
   'Rosano',
-  crypt('Playertk7requo!', gen_salt('bf')),
+  crypt('Playeru5wop9qs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5118,7 +5118,7 @@ VALUES (
   'bairon.tejada.5c979af3@apsl.player',
   'Bairon',
   'Tejada',
-  crypt('Playerjx473die!', gen_salt('bf')),
+  crypt('Playerdua2l79b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5132,7 +5132,7 @@ VALUES (
   'diego.vega.toledo.5c979af3@apsl.player',
   'Diego',
   'Vega Toledo',
-  crypt('Playerofi9sgaz!', gen_salt('bf')),
+  crypt('Playerl0y8vsrr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5146,7 +5146,7 @@ VALUES (
   'oscar.eduardo.velasquez.centeno.5c979af3@apsl.player',
   'Oscar',
   'Eduardo Velasquez Centeno',
-  crypt('Playerlu1diqvl!', gen_salt('bf')),
+  crypt('Playercri5lt4y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5160,7 +5160,7 @@ VALUES (
   'anderson.velez.5c979af3@apsl.player',
   'Anderson',
   'Velez',
-  crypt('Player5b7epex4!', gen_salt('bf')),
+  crypt('Playerge3di4k7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5174,7 +5174,7 @@ VALUES (
   'tristan.vincent.5c979af3@apsl.player',
   'Tristan',
   'Vincent',
-  crypt('Playergpgxjjeg!', gen_salt('bf')),
+  crypt('Playerexoizwup!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5188,7 +5188,7 @@ VALUES (
   'tyler.wrenn.5c979af3@apsl.player',
   'Tyler',
   'Wrenn',
-  crypt('Playerulbjxumi!', gen_salt('bf')),
+  crypt('Playerve68yhk9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5202,7 +5202,7 @@ VALUES (
   'javier.yanez.5c979af3@apsl.player',
   'Javier',
   'Yanez',
-  crypt('Playerks8wzcvr!', gen_salt('bf')),
+  crypt('Player4b2tm75a!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5220,7 +5220,7 @@ VALUES (
   'hermanus.achterkamp.a9e2b1a8@apsl.player',
   'Hermanus',
   'Achterkamp',
-  crypt('Player6cbk0v6h!', gen_salt('bf')),
+  crypt('Playerhv0f99p4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5234,7 +5234,7 @@ VALUES (
   'christopher.diego.anderson.a9e2b1a8@apsl.player',
   'Christopher',
   'Diego Anderson',
-  crypt('Player1b8vls6b!', gen_salt('bf')),
+  crypt('Playerc6qykou6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5248,7 +5248,7 @@ VALUES (
   'daniel.bedoya.a9e2b1a8@apsl.player',
   'Daniel',
   'Bedoya',
-  crypt('Playerso8ln1o7!', gen_salt('bf')),
+  crypt('Playerpsx0jqy6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5262,7 +5262,7 @@ VALUES (
   'etienne.botty.a9e2b1a8@apsl.player',
   'Etienne',
   'Botty',
-  crypt('Player927b4epi!', gen_salt('bf')),
+  crypt('Playermab8gmvu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5276,7 +5276,7 @@ VALUES (
   'francesco.caorsi.a9e2b1a8@apsl.player',
   'Francesco',
   'Caorsi',
-  crypt('Playerxse7qhdk!', gen_salt('bf')),
+  crypt('Playerd8l94zuj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5290,7 +5290,7 @@ VALUES (
   'roc.carles.puig.a9e2b1a8@apsl.player',
   'Roc',
   'Carles Puig',
-  crypt('Player3ym7eg9m!', gen_salt('bf')),
+  crypt('Playerb2onvpg4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5304,7 +5304,7 @@ VALUES (
   'myson.colo.a9e2b1a8@apsl.player',
   'Myson',
   'Colo',
-  crypt('Player1ohn014a!', gen_salt('bf')),
+  crypt('Playerem44j2fg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5318,7 +5318,7 @@ VALUES (
   'rodrigo.descalzo.rocca.a9e2b1a8@apsl.player',
   'Rodrigo',
   'Descalzo Rocca',
-  crypt('Playergpwehnjr!', gen_salt('bf')),
+  crypt('Player0nlrqm3r!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5332,7 +5332,7 @@ VALUES (
   'miguel.mauricio.diaz.cubas.a9e2b1a8@apsl.player',
   'Miguel',
   'Mauricio Diaz Cubas',
-  crypt('Player2zecvajv!', gen_salt('bf')),
+  crypt('Playercabp76u0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5346,7 +5346,7 @@ VALUES (
   'timothy.joseph.gallagher.de.meij.a9e2b1a8@apsl.player',
   'Timothy',
   'Joseph Gallagher-De Meij',
-  crypt('Players25jwdt6!', gen_salt('bf')),
+  crypt('Player0tr5cy74!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5360,7 +5360,7 @@ VALUES (
   'miguel.soto.gonzalez.a9e2b1a8@apsl.player',
   'Miguel',
   'Soto Gonzalez',
-  crypt('Playerme6f9vqe!', gen_salt('bf')),
+  crypt('Playerdvtf18n4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5374,7 +5374,7 @@ VALUES (
   'adam.marcu.a9e2b1a8@apsl.player',
   'Adam',
   'Marcu',
-  crypt('Player42mt6wo2!', gen_salt('bf')),
+  crypt('Playerwqfonxzu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5388,7 +5388,7 @@ VALUES (
   'patrick.mccann.a9e2b1a8@apsl.player',
   'Patrick',
   'McCann',
-  crypt('Playerix8xej7x!', gen_salt('bf')),
+  crypt('Playerc8oeivkr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5402,7 +5402,7 @@ VALUES (
   'paul.mcveigh.a9e2b1a8@apsl.player',
   'Paul',
   'McVeigh',
-  crypt('Playerp131z43m!', gen_salt('bf')),
+  crypt('Player1e2bitq2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5416,7 +5416,7 @@ VALUES (
   'james.nealis.a9e2b1a8@apsl.player',
   'James',
   'Nealis',
-  crypt('Playerqa39frs8!', gen_salt('bf')),
+  crypt('Playereeqwwue0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5430,7 +5430,7 @@ VALUES (
   'jack.o.malley.a9e2b1a8@apsl.player',
   'Jack',
   'O''Malley',
-  crypt('Playerfw6sa2as!', gen_salt('bf')),
+  crypt('Playerigfw7ugb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5444,7 +5444,7 @@ VALUES (
   'george.o.malley.a9e2b1a8@apsl.player',
   'George',
   'O`Malley',
-  crypt('Playerctvkdoib!', gen_salt('bf')),
+  crypt('Playere81rmecz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5458,7 +5458,7 @@ VALUES (
   'nicholas.oberrauch.a9e2b1a8@apsl.player',
   'Nicholas',
   'Oberrauch',
-  crypt('Playergee6t0m4!', gen_salt('bf')),
+  crypt('Player0obf6dx0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5472,7 +5472,7 @@ VALUES (
   'alberto.pangrazzi.a9e2b1a8@apsl.player',
   'Alberto',
   'Pangrazzi',
-  crypt('Player1fvy2os3!', gen_salt('bf')),
+  crypt('Playertmix3zi3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5486,7 +5486,7 @@ VALUES (
   'francesco.perinelli.a9e2b1a8@apsl.player',
   'Francesco',
   'Perinelli',
-  crypt('Playerbyi3wuq2!', gen_salt('bf')),
+  crypt('Playerf5map1bk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5500,7 +5500,7 @@ VALUES (
   'nicholas.petridis.a9e2b1a8@apsl.player',
   'Nicholas',
   'Petridis',
-  crypt('Playermumnux0j!', gen_salt('bf')),
+  crypt('Player3lkzc9h3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5514,7 +5514,7 @@ VALUES (
   'cormac.pike.a9e2b1a8@apsl.player',
   'Cormac',
   'Pike',
-  crypt('Playerybg2af8n!', gen_salt('bf')),
+  crypt('Playerfm3pv5dl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5528,7 +5528,7 @@ VALUES (
   'saeed.robinson.a9e2b1a8@apsl.player',
   'Saeed',
   'Robinson',
-  crypt('Playerlhgs5q1t!', gen_salt('bf')),
+  crypt('Player77ms60sb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5542,7 +5542,7 @@ VALUES (
   'john.sabal.a9e2b1a8@apsl.player',
   'John',
   'Sabal',
-  crypt('Playergqi3ptje!', gen_salt('bf')),
+  crypt('Player2q17cyof!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5556,7 +5556,7 @@ VALUES (
   'brian.sousa.saramago.a9e2b1a8@apsl.player',
   'Brian',
   'Sousa Saramago',
-  crypt('Player8wsuac32!', gen_salt('bf')),
+  crypt('Playerlopo4w3m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5570,7 +5570,7 @@ VALUES (
   'elijah.george.sawyers.a9e2b1a8@apsl.player',
   'Elijah',
   'George Sawyers',
-  crypt('Playerqwvtmzcl!', gen_salt('bf')),
+  crypt('Playerx2amyrh7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5584,7 +5584,7 @@ VALUES (
   'joshua.schaffer.a9e2b1a8@apsl.player',
   'Joshua',
   'Schaffer',
-  crypt('Playere2mhq519!', gen_salt('bf')),
+  crypt('Playerohdfi34n!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5598,7 +5598,7 @@ VALUES (
   'barakatulla.sharifi.a9e2b1a8@apsl.player',
   'Barakatulla',
   'Sharifi',
-  crypt('Player7wmtfnn6!', gen_salt('bf')),
+  crypt('Playerii41twmk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5612,7 +5612,7 @@ VALUES (
   'yacine.sidi.aissa.a9e2b1a8@apsl.player',
   'Yacine',
   'Sidi Aissa',
-  crypt('Playerbi6s1i2t!', gen_salt('bf')),
+  crypt('Playerh0upagep!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5626,7 +5626,7 @@ VALUES (
   'carl.viggo.sjoberg.a9e2b1a8@apsl.player',
   'Carl',
   'Viggo Sjoberg',
-  crypt('Playerb4nshk1f!', gen_salt('bf')),
+  crypt('Playernasys1fe!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5640,7 +5640,7 @@ VALUES (
   'leo.wei.pinto.a9e2b1a8@apsl.player',
   'Leo',
   'Wei Pinto',
-  crypt('Playerjwrkmrdq!', gen_salt('bf')),
+  crypt('Playerzzr52fyb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5654,7 +5654,7 @@ VALUES (
   'joseph.wright.a9e2b1a8@apsl.player',
   'Joseph',
   'Wright',
-  crypt('Playerxxgrhp5m!', gen_salt('bf')),
+  crypt('Playerxmyftxls!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5668,7 +5668,7 @@ VALUES (
   'el.mahdi.youssoufi.a9e2b1a8@apsl.player',
   'El',
   'Mahdi Youssoufi',
-  crypt('Player2fcayefb!', gen_salt('bf')),
+  crypt('Playerm9s7wgky!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5686,7 +5686,7 @@ VALUES (
   'santiago.arroyave.49df0225@apsl.player',
   'Santiago',
   'Arroyave',
-  crypt('Player3zxgs70z!', gen_salt('bf')),
+  crypt('Player8ctekjah!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5700,7 +5700,7 @@ VALUES (
   'tristan.barquin.49df0225@apsl.player',
   'Tristan',
   'Barquin',
-  crypt('Playerlh4ufgu5!', gen_salt('bf')),
+  crypt('Playern3iguhuh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5714,7 +5714,7 @@ VALUES (
   'ethan.bazan.49df0225@apsl.player',
   'Ethan',
   'Bazan',
-  crypt('Playerpgcfhiyy!', gen_salt('bf')),
+  crypt('Playervsrmu57c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5728,7 +5728,7 @@ VALUES (
   'steven.bednarsky.49df0225@apsl.player',
   'Steven',
   'Bednarsky',
-  crypt('Playerlscsgh3r!', gen_salt('bf')),
+  crypt('Playerr3q3clea!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5742,7 +5742,7 @@ VALUES (
   'isimohi.mike.bello.49df0225@apsl.player',
   'Isimohi',
   'Mike Bello',
-  crypt('Playerzpjfo9ri!', gen_salt('bf')),
+  crypt('Playerg8p04mnj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5756,7 +5756,7 @@ VALUES (
   'kouadio.bolaty.49df0225@apsl.player',
   'Kouadio',
   'Bolaty',
-  crypt('Playereylnwecy!', gen_salt('bf')),
+  crypt('Playerw1y8miyn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5770,7 +5770,7 @@ VALUES (
   'andrew.bortey.49df0225@apsl.player',
   'Andrew',
   'Bortey',
-  crypt('Playerjqm7y8ok!', gen_salt('bf')),
+  crypt('Playere8s3jd16!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5784,7 +5784,7 @@ VALUES (
   'kelvin.brito.49df0225@apsl.player',
   'Kelvin',
   'Brito',
-  crypt('Player4kep2pb4!', gen_salt('bf')),
+  crypt('Playerga71nf9w!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5798,7 +5798,7 @@ VALUES (
   'dorgeles.coulibaly.49df0225@apsl.player',
   'Dorgeles',
   'Coulibaly',
-  crypt('Playerh5er93fy!', gen_salt('bf')),
+  crypt('Playerrpegamoy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5812,7 +5812,7 @@ VALUES (
   'tyler.diaz.49df0225@apsl.player',
   'Tyler',
   'Diaz',
-  crypt('Playerg2j5agp6!', gen_salt('bf')),
+  crypt('Player76cic6iq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5826,7 +5826,7 @@ VALUES (
   'samuel.epitime.49df0225@apsl.player',
   'Samuel',
   'Epitime',
-  crypt('Player7dce3zy7!', gen_salt('bf')),
+  crypt('Playerwsd3e8l1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5840,7 +5840,7 @@ VALUES (
   'adam.garner.49df0225@apsl.player',
   'Adam',
   'Garner',
-  crypt('Playeriz8iuv0b!', gen_salt('bf')),
+  crypt('Playero7k3vgtb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5854,7 +5854,7 @@ VALUES (
   'matthew.gotrell.49df0225@apsl.player',
   'Matthew',
   'Gotrell',
-  crypt('Player5sx9iffj!', gen_salt('bf')),
+  crypt('Playerss2myqzp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5868,7 +5868,7 @@ VALUES (
   'ivan.enrique.hurtado.49df0225@apsl.player',
   'Ivan',
   'Enrique Hurtado',
-  crypt('Playerlx7nge11!', gen_salt('bf')),
+  crypt('Player8fndivi1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5882,7 +5882,7 @@ VALUES (
   'stefan.koroman.49df0225@apsl.player',
   'Stefan',
   'Koroman',
-  crypt('Playerxa9ceiz1!', gen_salt('bf')),
+  crypt('Player3dcaqs84!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5896,7 +5896,7 @@ VALUES (
   'keeroy.lionel.49df0225@apsl.player',
   'Keeroy',
   'Lionel',
-  crypt('Player8wem03hy!', gen_salt('bf')),
+  crypt('Playerolnxi4pv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5910,7 +5910,7 @@ VALUES (
   'yamil.macias.49df0225@apsl.player',
   'Yamil',
   'Macias',
-  crypt('Playerckltammp!', gen_salt('bf')),
+  crypt('Playerqtuht8lp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5924,7 +5924,7 @@ VALUES (
   'cameron.mcgregor.49df0225@apsl.player',
   'Cameron',
   'McGregor',
-  crypt('Player9gbnw1pi!', gen_salt('bf')),
+  crypt('Playerbinsru7q!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5938,7 +5938,7 @@ VALUES (
   'coby.mcgregor.49df0225@apsl.player',
   'Coby',
   'Mcgregor',
-  crypt('Playerpgwae2ye!', gen_salt('bf')),
+  crypt('Player57c0dzw3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5952,7 +5952,7 @@ VALUES (
   'joseph.moon.49df0225@apsl.player',
   'Joseph',
   'Moon',
-  crypt('Playerqbxma5kp!', gen_salt('bf')),
+  crypt('Player0tid0vam!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5966,7 +5966,7 @@ VALUES (
   'israel.neto.49df0225@apsl.player',
   'Israel',
   'Neto',
-  crypt('Playerq9ncmf4y!', gen_salt('bf')),
+  crypt('Playerptw8ru40!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5980,7 +5980,7 @@ VALUES (
   'abdoul.ouedraogo.49df0225@apsl.player',
   'Abdoul',
   'Ouedraogo',
-  crypt('Playerlh102r4g!', gen_salt('bf')),
+  crypt('Playerg9tt2mbn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -5994,7 +5994,7 @@ VALUES (
   'brian.paredes.49df0225@apsl.player',
   'Brian',
   'Paredes',
-  crypt('Player68yv951u!', gen_salt('bf')),
+  crypt('Player204qe7cw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6008,7 +6008,7 @@ VALUES (
   'jung.park.49df0225@apsl.player',
   'Jung',
   'Park',
-  crypt('Player526v14mn!', gen_salt('bf')),
+  crypt('Player9x0ybl43!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6022,7 +6022,7 @@ VALUES (
   'ewan.sanchez.49df0225@apsl.player',
   'Ewan',
   'Sanchez',
-  crypt('Playeriuhpofd8!', gen_salt('bf')),
+  crypt('Playerz71yfg4o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6036,7 +6036,7 @@ VALUES (
   'jossimar.sanchez.49df0225@apsl.player',
   'Jossimar',
   'Sanchez',
-  crypt('Playeroq4wcf9s!', gen_salt('bf')),
+  crypt('Player2w0xdzyu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6050,7 +6050,7 @@ VALUES (
   'kevin.santamaria.49df0225@apsl.player',
   'Kevin',
   'Santamaria',
-  crypt('Playersetw2t8o!', gen_salt('bf')),
+  crypt('Playerpev05dhi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6064,7 +6064,7 @@ VALUES (
   'rodrigo.santiago.49df0225@apsl.player',
   'Rodrigo',
   'Santiago',
-  crypt('Playera7pqqgou!', gen_salt('bf')),
+  crypt('Playerzytvrj9o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6078,7 +6078,7 @@ VALUES (
   'luc.smith.49df0225@apsl.player',
   'Luc',
   'Smith',
-  crypt('Playerefwyjxdm!', gen_salt('bf')),
+  crypt('Player3tg2klg4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6092,7 +6092,7 @@ VALUES (
   'ramchwy.st.vil.49df0225@apsl.player',
   'Ramchwy',
   'St Vil',
-  crypt('Playern4kqpi07!', gen_salt('bf')),
+  crypt('Playerwdh9f00d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6106,7 +6106,7 @@ VALUES (
   'mohamed.tall.49df0225@apsl.player',
   'Mohamed',
   'Tall',
-  crypt('Playerjfgsoqit!', gen_salt('bf')),
+  crypt('Playerh9voixev!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6120,7 +6120,7 @@ VALUES (
   'christian.villegas.libreros.49df0225@apsl.player',
   'Christian',
   'Villegas Libreros',
-  crypt('Playersmtp5yno!', gen_salt('bf')),
+  crypt('Playerqiqteifi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6134,7 +6134,7 @@ VALUES (
   'andrew.weiner.49df0225@apsl.player',
   'Andrew',
   'Weiner',
-  crypt('Playerket8npvm!', gen_salt('bf')),
+  crypt('Playeru7lll70j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6152,7 +6152,7 @@ VALUES (
   'pablo.ablanedo.llaneza.cd0f7cdf@apsl.player',
   'Pablo',
   'Ablanedo Llaneza',
-  crypt('Playerjeuywne0!', gen_salt('bf')),
+  crypt('Playerosq0ades!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6166,7 +6166,7 @@ VALUES (
   'jordan.bailon.cd0f7cdf@apsl.player',
   'Jordan',
   'Bailon',
-  crypt('Playerg6lhvoqg!', gen_salt('bf')),
+  crypt('Playeruw23oaxv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6180,7 +6180,7 @@ VALUES (
   'filip.basili.cd0f7cdf@apsl.player',
   'Filip',
   'Basili',
-  crypt('Playerrv7w301v!', gen_salt('bf')),
+  crypt('Playeruk6ii6w2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6194,7 +6194,7 @@ VALUES (
   'christopher.bermudez.cd0f7cdf@apsl.player',
   'Christopher',
   'Bermudez',
-  crypt('Playeruj00bodu!', gen_salt('bf')),
+  crypt('Playerqzy7h3gy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6208,7 +6208,7 @@ VALUES (
   'victor.castel.cd0f7cdf@apsl.player',
   'Victor',
   'Castel',
-  crypt('Playertieoih8c!', gen_salt('bf')),
+  crypt('Playerldldqi6o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6222,7 +6222,7 @@ VALUES (
   'rikard.cederberg.cd0f7cdf@apsl.player',
   'Rikard',
   'Cederberg',
-  crypt('Playerzeuxvz5w!', gen_salt('bf')),
+  crypt('Playerlq7w51l1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6236,7 +6236,7 @@ VALUES (
   'nicolas.cifuentes.diaz.cd0f7cdf@apsl.player',
   'Nicolas',
   'Cifuentes DIaz',
-  crypt('Playerxvderg15!', gen_salt('bf')),
+  crypt('Player0hss0o7c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6250,7 +6250,7 @@ VALUES (
   'davide.clarkson.cd0f7cdf@apsl.player',
   'Davide',
   'Clarkson',
-  crypt('Playeraqbud3da!', gen_salt('bf')),
+  crypt('Playerp27zfqa5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6264,7 +6264,7 @@ VALUES (
   'sergio.diaz.cd0f7cdf@apsl.player',
   'Sergio',
   'Diaz',
-  crypt('Playerdxsi22yj!', gen_salt('bf')),
+  crypt('Playerjpd85f8u!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6278,7 +6278,7 @@ VALUES (
   'eric.frimpong.cd0f7cdf@apsl.player',
   'Eric',
   'Frimpong',
-  crypt('Playerccp7xbkn!', gen_salt('bf')),
+  crypt('Playerswlrve3l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6292,7 +6292,7 @@ VALUES (
   'george.gantalis.cd0f7cdf@apsl.player',
   'George',
   'Gantalis',
-  crypt('Player8xbowcoh!', gen_salt('bf')),
+  crypt('Player2stnuasn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6306,7 +6306,7 @@ VALUES (
   'jose.gil.mejia.cd0f7cdf@apsl.player',
   'Jose',
   'Gil Mejia',
-  crypt('Playerv4ahwjrj!', gen_salt('bf')),
+  crypt('Playero2wdgo0d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6320,7 +6320,7 @@ VALUES (
   'ede.mateo.gramberg.cd0f7cdf@apsl.player',
   'Ede',
   'Mateo Gramberg',
-  crypt('Playercznt54t7!', gen_salt('bf')),
+  crypt('Playerle41bj7s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6334,7 +6334,7 @@ VALUES (
   'thomas.gray.cd0f7cdf@apsl.player',
   'Thomas',
   'Gray',
-  crypt('Playerfermpcw6!', gen_salt('bf')),
+  crypt('Player2716klc1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6348,7 +6348,7 @@ VALUES (
   'antreas.hadjigavriel.cd0f7cdf@apsl.player',
   'Antreas',
   'Hadjigavriel',
-  crypt('Playervgjkr3vg!', gen_salt('bf')),
+  crypt('Playergwhz8kv0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6362,7 +6362,7 @@ VALUES (
   'devin.heanue.cd0f7cdf@apsl.player',
   'Devin',
   'Heanue',
-  crypt('Playert04ls9du!', gen_salt('bf')),
+  crypt('Playerbfj0pfbx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6376,7 +6376,7 @@ VALUES (
   'kevin.hernandez.cd0f7cdf@apsl.player',
   'Kevin',
   'Hernandez',
-  crypt('Playercqg8l82v!', gen_salt('bf')),
+  crypt('Playeri9bir6nk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6390,7 +6390,7 @@ VALUES (
   'jens.mannhart.hoff.cd0f7cdf@apsl.player',
   'Jens',
   'Mannhart Hoff',
-  crypt('Playeryxp5hymh!', gen_salt('bf')),
+  crypt('Player98oh78nu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6404,7 +6404,7 @@ VALUES (
   'joseph.holland.cd0f7cdf@apsl.player',
   'Joseph',
   'Holland',
-  crypt('Playerqdkp1gez!', gen_salt('bf')),
+  crypt('Playercoe5fyh2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6418,7 +6418,7 @@ VALUES (
   'filip.jauk.cd0f7cdf@apsl.player',
   'Filip',
   'Jauk',
-  crypt('Players46m1guo!', gen_salt('bf')),
+  crypt('Playerwu8zbeir!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6432,7 +6432,7 @@ VALUES (
   'soren.jensen.cd0f7cdf@apsl.player',
   'Soren',
   'Jensen',
-  crypt('Player72lh7myl!', gen_salt('bf')),
+  crypt('Player7xrlf7ae!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6446,7 +6446,7 @@ VALUES (
   'konstantinos.karousis.cd0f7cdf@apsl.player',
   'Konstantinos',
   'Karousis',
-  crypt('Playerjztww6es!', gen_salt('bf')),
+  crypt('Playerw1rmxmme!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6460,7 +6460,7 @@ VALUES (
   'connor.kelly.cd0f7cdf@apsl.player',
   'Connor',
   'Kelly',
-  crypt('Playerd0oag8bz!', gen_salt('bf')),
+  crypt('Player9jw776f7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6474,7 +6474,7 @@ VALUES (
   'benny.lafortune.cd0f7cdf@apsl.player',
   'Benny',
   'Lafortune',
-  crypt('Playerpbdyvr06!', gen_salt('bf')),
+  crypt('Playern26iwhrr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6488,7 +6488,7 @@ VALUES (
   'joshua.levine.cd0f7cdf@apsl.player',
   'Joshua',
   'Levine',
-  crypt('Player2cyxzxis!', gen_salt('bf')),
+  crypt('Playermzgmdkhm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6502,7 +6502,7 @@ VALUES (
   'juan.martinez.moreno.cd0f7cdf@apsl.player',
   'Juan',
   'Martinez Moreno',
-  crypt('Playercluk022t!', gen_salt('bf')),
+  crypt('Playertm9fjs7z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6516,7 +6516,7 @@ VALUES (
   'filip.mirkovic.cd0f7cdf@apsl.player',
   'Filip',
   'Mirkovic',
-  crypt('Playerovl63nfi!', gen_salt('bf')),
+  crypt('Playerwkbs53k5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6530,7 +6530,7 @@ VALUES (
   'christoforos.moulinos.cd0f7cdf@apsl.player',
   'Christoforos',
   'Moulinos',
-  crypt('Player2apdhiof!', gen_salt('bf')),
+  crypt('Player2iewl80t!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6544,7 +6544,7 @@ VALUES (
   'stephen.o.connell.cd0f7cdf@apsl.player',
   'Stephen',
   'O’ Connell',
-  crypt('Playeriry02qyq!', gen_salt('bf')),
+  crypt('Playerj8igd40p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6558,7 +6558,7 @@ VALUES (
   'alex.palas.cd0f7cdf@apsl.player',
   'Alex',
   'Palas',
-  crypt('Player1oe7lr8s!', gen_salt('bf')),
+  crypt('Playerrfjzt3az!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6572,7 +6572,7 @@ VALUES (
   'sebastian.ruiz.cd0f7cdf@apsl.player',
   'Sebastian',
   'Ruiz',
-  crypt('Player7zog923a!', gen_salt('bf')),
+  crypt('Playermbtnjdu8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6586,7 +6586,7 @@ VALUES (
   'athanasis.shehadeh.cd0f7cdf@apsl.player',
   'Athanasis',
   'Shehadeh',
-  crypt('Player0ynrpezc!', gen_salt('bf')),
+  crypt('Player9nm8xy6d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6600,7 +6600,7 @@ VALUES (
   'jack.sluys.cd0f7cdf@apsl.player',
   'Jack',
   'Sluys',
-  crypt('Player0o9ewqvr!', gen_salt('bf')),
+  crypt('Playerjxdy3e2l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6614,7 +6614,7 @@ VALUES (
   'james.thristino.cd0f7cdf@apsl.player',
   'James',
   'Thristino',
-  crypt('Player19tll6gm!', gen_salt('bf')),
+  crypt('Playererfs5801!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6628,7 +6628,7 @@ VALUES (
   'sean.towey.cd0f7cdf@apsl.player',
   'Sean',
   'Towey',
-  crypt('Playerl4lvbn6e!', gen_salt('bf')),
+  crypt('Playerftuha0ct!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6646,7 +6646,7 @@ VALUES (
   'john.bernardi.fd2f4fc8@apsl.player',
   'John',
   'Bernardi',
-  crypt('Player0j0apgyi!', gen_salt('bf')),
+  crypt('Playerdmv7t3ws!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6660,7 +6660,7 @@ VALUES (
   'james.peter.boote.fd2f4fc8@apsl.player',
   'James',
   'Peter Boote',
-  crypt('Playerldvxdjrw!', gen_salt('bf')),
+  crypt('Playero4iwp0i4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6674,7 +6674,7 @@ VALUES (
   'aidan.borra.fd2f4fc8@apsl.player',
   'Aidan',
   'Borra',
-  crypt('Playervtd23rev!', gen_salt('bf')),
+  crypt('Player8r3ervsp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6688,7 +6688,7 @@ VALUES (
   'tajee.campbell.fd2f4fc8@apsl.player',
   'Tajee',
   'Campbell',
-  crypt('Playerb1ecbuwr!', gen_salt('bf')),
+  crypt('Playern27966cl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6702,7 +6702,7 @@ VALUES (
   'marco.charnas.fd2f4fc8@apsl.player',
   'Marco',
   'Charnas',
-  crypt('Playerk4iantsi!', gen_salt('bf')),
+  crypt('Players9vf4b9f!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6716,7 +6716,7 @@ VALUES (
   'constantine.christodoulou.fd2f4fc8@apsl.player',
   'Constantine',
   'Christodoulou',
-  crypt('Playerg2jwmkx7!', gen_salt('bf')),
+  crypt('Playerk767phl3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6730,7 +6730,7 @@ VALUES (
   'stefan.copetti.fd2f4fc8@apsl.player',
   'Stefan',
   'Copetti',
-  crypt('Player8jl7d28k!', gen_salt('bf')),
+  crypt('Player87vz7es3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6744,7 +6744,7 @@ VALUES (
   'carlos.cortes.fd2f4fc8@apsl.player',
   'Carlos',
   'Cortes',
-  crypt('Playerjswb0ieb!', gen_salt('bf')),
+  crypt('Playerk2i2y595!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6758,7 +6758,7 @@ VALUES (
   'musa.bala.danso.fd2f4fc8@apsl.player',
   'Musa',
   'Bala Danso',
-  crypt('Playerj5st57g4!', gen_salt('bf')),
+  crypt('Playerhlvox2ks!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6772,7 +6772,7 @@ VALUES (
   'ali.dawha.fd2f4fc8@apsl.player',
   'Ali',
   'Dawha',
-  crypt('Player6sqf6bsu!', gen_salt('bf')),
+  crypt('Player1hxw1itw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6786,7 +6786,7 @@ VALUES (
   'daniel.dimarco.fd2f4fc8@apsl.player',
   'Daniel',
   'Dimarco',
-  crypt('Player91rf636p!', gen_salt('bf')),
+  crypt('Playerkdumgylx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6800,7 +6800,7 @@ VALUES (
   'sean.doran.fd2f4fc8@apsl.player',
   'Sean',
   'Doran',
-  crypt('Player68wdm3qz!', gen_salt('bf')),
+  crypt('Playergfl24fae!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6814,7 +6814,7 @@ VALUES (
   'dino.feratovic.fd2f4fc8@apsl.player',
   'Dino',
   'Feratovic',
-  crypt('Playerl5otdmgg!', gen_salt('bf')),
+  crypt('Playersrutkli1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6828,7 +6828,7 @@ VALUES (
   'ethan.furphy.fd2f4fc8@apsl.player',
   'Ethan',
   'Furphy',
-  crypt('Playermg7d06dh!', gen_salt('bf')),
+  crypt('Playerjs62mzkg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6842,7 +6842,7 @@ VALUES (
   'michael.gallagher.fd2f4fc8@apsl.player',
   'Michael',
   'Gallagher',
-  crypt('Playerpiue8xcz!', gen_salt('bf')),
+  crypt('Playeryttc2w04!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6856,7 +6856,7 @@ VALUES (
   'kyle.galloway.fd2f4fc8@apsl.player',
   'Kyle',
   'Galloway',
-  crypt('Playerswxxyfzx!', gen_salt('bf')),
+  crypt('Playerzn6f5vmf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6870,7 +6870,7 @@ VALUES (
   'cillian.heaney.fd2f4fc8@apsl.player',
   'Cillian',
   'Heaney',
-  crypt('Player339yjik7!', gen_salt('bf')),
+  crypt('Playerj86kvv3f!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6884,7 +6884,7 @@ VALUES (
   'michael.hewes.fd2f4fc8@apsl.player',
   'Michael',
   'Hewes',
-  crypt('Playerj2zl9kar!', gen_salt('bf')),
+  crypt('Playeryyrm33gk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6898,7 +6898,7 @@ VALUES (
   'ethan.homler.fd2f4fc8@apsl.player',
   'Ethan',
   'Homler',
-  crypt('Playertrgj8f80!', gen_salt('bf')),
+  crypt('Player79gzuqxn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6912,7 +6912,7 @@ VALUES (
   'jared.juleau.fd2f4fc8@apsl.player',
   'Jared',
   'Juleau',
-  crypt('Player8prdwysg!', gen_salt('bf')),
+  crypt('Playerwv3nllw3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6926,7 +6926,7 @@ VALUES (
   'andy.kasza.fd2f4fc8@apsl.player',
   'Andy',
   'Kasza',
-  crypt('Playerd9eaynta!', gen_salt('bf')),
+  crypt('Playerhs9s1523!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6940,7 +6940,7 @@ VALUES (
   'daryl.kavanagh.fd2f4fc8@apsl.player',
   'Daryl',
   'Kavanagh',
-  crypt('Playereqb8kxe5!', gen_salt('bf')),
+  crypt('Playerg6bgdb8e!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6954,7 +6954,7 @@ VALUES (
   'seamus.keogh.fd2f4fc8@apsl.player',
   'Seamus',
   'Keogh',
-  crypt('Player4xi5ohds!', gen_salt('bf')),
+  crypt('Player5obq3ilh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6968,7 +6968,7 @@ VALUES (
   'sean.kerrigan.fd2f4fc8@apsl.player',
   'Sean',
   'Kerrigan',
-  crypt('Playerdg2lsqgt!', gen_salt('bf')),
+  crypt('Playerbgv7b2jo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6982,7 +6982,7 @@ VALUES (
   'danu.kinsella.bishop.fd2f4fc8@apsl.player',
   'Danu',
   'Kinsella-Bishop',
-  crypt('Playerohi9hlgw!', gen_salt('bf')),
+  crypt('Playerk3po2c5y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -6996,7 +6996,7 @@ VALUES (
   'nicolas.macri.badessich.fd2f4fc8@apsl.player',
   'Nicolas',
   'Macri Badessich',
-  crypt('Player1zssr2by!', gen_salt('bf')),
+  crypt('Playerl6gb5nh0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7010,7 +7010,7 @@ VALUES (
   'malcolm.moreno.fd2f4fc8@apsl.player',
   'Malcolm',
   'Moreno',
-  crypt('Player931q8b8p!', gen_salt('bf')),
+  crypt('Playerxi5so72u!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7024,7 +7024,7 @@ VALUES (
   'luis.puchol.del.pozo.fd2f4fc8@apsl.player',
   'Luis',
   'Puchol Del Pozo',
-  crypt('Playerxfi9bt4m!', gen_salt('bf')),
+  crypt('Playeri15qaebo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7038,7 +7038,7 @@ VALUES (
   'sebastian.rojek.fd2f4fc8@apsl.player',
   'Sebastian',
   'Rojek',
-  crypt('Playerq0gza8go!', gen_salt('bf')),
+  crypt('Player2vnnew2h!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7052,7 +7052,7 @@ VALUES (
   'liam.salmon.fd2f4fc8@apsl.player',
   'Liam',
   'Salmon',
-  crypt('Playerca0fi3xw!', gen_salt('bf')),
+  crypt('Playertbs7q0s5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7066,7 +7066,7 @@ VALUES (
   'harry.sankey.fd2f4fc8@apsl.player',
   'Harry',
   'Sankey',
-  crypt('Player1875l4vd!', gen_salt('bf')),
+  crypt('Playerv62is4qe!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7080,7 +7080,7 @@ VALUES (
   'edward.speed.fd2f4fc8@apsl.player',
   'Edward',
   'Speed',
-  crypt('Playerfu8t6h4y!', gen_salt('bf')),
+  crypt('Playerhdw6s2n6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7094,7 +7094,7 @@ VALUES (
   'benjamin.stitz.fd2f4fc8@apsl.player',
   'Benjamin',
   'Stitz',
-  crypt('Playerqptanxzw!', gen_salt('bf')),
+  crypt('Player2wnuiztz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7108,7 +7108,7 @@ VALUES (
   'liam.walsh.fd2f4fc8@apsl.player',
   'Liam',
   'Walsh',
-  crypt('Playerwftcgnyw!', gen_salt('bf')),
+  crypt('Playerxzwlcaah!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7122,7 +7122,7 @@ VALUES (
   'oskar.zywiec.fd2f4fc8@apsl.player',
   'Oskar',
   'Zywiec',
-  crypt('Player8vipxh1y!', gen_salt('bf')),
+  crypt('Player1gyrlweb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7140,7 +7140,7 @@ VALUES (
   'keirol.aaron.77717fe0@apsl.player',
   'Keirol',
   'Aaron',
-  crypt('Playerf1pmdhzn!', gen_salt('bf')),
+  crypt('Players1l6zpoz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7154,7 +7154,7 @@ VALUES (
   'matthais.adamek.77717fe0@apsl.player',
   'Matthais',
   'Adamek',
-  crypt('Playerx5pemfyx!', gen_salt('bf')),
+  crypt('Playeriosub68n!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7168,7 +7168,7 @@ VALUES (
   'yohance.alexander.77717fe0@apsl.player',
   'Yohance',
   'Alexander',
-  crypt('Playervyimf6cs!', gen_salt('bf')),
+  crypt('Player5yzbq68i!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7182,7 +7182,7 @@ VALUES (
   'andrea.andreou.77717fe0@apsl.player',
   'Andrea',
   'Andreou',
-  crypt('Playernv721c74!', gen_salt('bf')),
+  crypt('Player6jlf9xw7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7196,7 +7196,7 @@ VALUES (
   'luis.argudo.77717fe0@apsl.player',
   'Luis',
   'Argudo',
-  crypt('Playercy6l1to3!', gen_salt('bf')),
+  crypt('Player2476sj6p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7210,7 +7210,7 @@ VALUES (
   'theodore.bernhard.77717fe0@apsl.player',
   'Theodore',
   'Bernhard',
-  crypt('Playereve6q0vs!', gen_salt('bf')),
+  crypt('Playerzpmqm70m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7224,7 +7224,7 @@ VALUES (
   'antonio.biggs.77717fe0@apsl.player',
   'Antonio',
   'Biggs',
-  crypt('Playeravajuwkt!', gen_salt('bf')),
+  crypt('Playerlctg2ycp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7238,7 +7238,7 @@ VALUES (
   'mason.chetti.77717fe0@apsl.player',
   'Mason',
   'Chetti',
-  crypt('Player4z0x3cbb!', gen_salt('bf')),
+  crypt('Playera8e2iixu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7252,7 +7252,7 @@ VALUES (
   'jarvis.cleal.77717fe0@apsl.player',
   'Jarvis',
   'Cleal',
-  crypt('Playerabl0yaho!', gen_salt('bf')),
+  crypt('Playerml4s8pcf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7266,7 +7266,7 @@ VALUES (
   'joel.cunningham.77717fe0@apsl.player',
   'Joel',
   'Cunningham',
-  crypt('Playernfj09xi7!', gen_salt('bf')),
+  crypt('Playerxhfieb42!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7280,7 +7280,7 @@ VALUES (
   'caleb.danquah.77717fe0@apsl.player',
   'Caleb',
   'Danquah',
-  crypt('Playerfyvy1wpp!', gen_salt('bf')),
+  crypt('Playerq6xuba94!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7294,7 +7294,7 @@ VALUES (
   'eric.danquah.77717fe0@apsl.player',
   'Eric',
   'Danquah',
-  crypt('Player90g3yzvm!', gen_salt('bf')),
+  crypt('Player05gv9d7h!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7308,7 +7308,7 @@ VALUES (
   'sameer.fathazada.77717fe0@apsl.player',
   'Sameer',
   'Fathazada',
-  crypt('Playeru14phx3l!', gen_salt('bf')),
+  crypt('Playervtmpvcx7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7322,7 +7322,7 @@ VALUES (
   'leo.folla.77717fe0@apsl.player',
   'Leo',
   'Folla',
-  crypt('Playerd6fcn03c!', gen_salt('bf')),
+  crypt('Player9tdovjil!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7336,7 +7336,7 @@ VALUES (
   'jakob.friedman.77717fe0@apsl.player',
   'Jakob',
   'Friedman',
-  crypt('Playergxvtvf0f!', gen_salt('bf')),
+  crypt('Player3gohzxyk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7350,7 +7350,7 @@ VALUES (
   'cesar.manuel.garcia.peralta.77717fe0@apsl.player',
   'Cesar',
   'Manuel Garcia Peralta',
-  crypt('Playerqb03l1zc!', gen_salt('bf')),
+  crypt('Playerzw1h519b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7364,7 +7364,7 @@ VALUES (
   'sebastian.goicochea.77717fe0@apsl.player',
   'Sebastian',
   'Goicochea',
-  crypt('Playerhtegpbo4!', gen_salt('bf')),
+  crypt('Playerb2eqhxwn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7378,7 +7378,7 @@ VALUES (
   'juan.antonio.gomez.77717fe0@apsl.player',
   'Juan',
   'Antonio Gomez',
-  crypt('Playeruqhiluxz!', gen_salt('bf')),
+  crypt('Player2j8bhdph!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7392,7 +7392,7 @@ VALUES (
   'alessio.hernandez.77717fe0@apsl.player',
   'Alessio',
   'Hernandez',
-  crypt('Playerc40awxsg!', gen_salt('bf')),
+  crypt('Playeredgitvwy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7406,7 +7406,7 @@ VALUES (
   'benjamin.jones.77717fe0@apsl.player',
   'Benjamin',
   'Jones',
-  crypt('Playertoleo45b!', gen_salt('bf')),
+  crypt('Playerhvm5sskp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7420,7 +7420,7 @@ VALUES (
   'selcuk.kahveci.77717fe0@apsl.player',
   'Selcuk',
   'Kahveci',
-  crypt('Playerhxbh2qu0!', gen_salt('bf')),
+  crypt('Playerlrpcgra2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7434,7 +7434,7 @@ VALUES (
   'chad.mark.77717fe0@apsl.player',
   'Chad',
   'Mark',
-  crypt('Playerd62zyx17!', gen_salt('bf')),
+  crypt('Player41unznl2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7448,7 +7448,7 @@ VALUES (
   'leonardo.martinelli.77717fe0@apsl.player',
   'Leonardo',
   'Martinelli',
-  crypt('Playerc5hedfd2!', gen_salt('bf')),
+  crypt('Playerfqncgvso!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7462,7 +7462,7 @@ VALUES (
   'alexander.mclachlan.77717fe0@apsl.player',
   'Alexander',
   'McLachlan',
-  crypt('Player5sodgflv!', gen_salt('bf')),
+  crypt('Playereqqptm8p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7476,7 +7476,7 @@ VALUES (
   'giovanny.morales.77717fe0@apsl.player',
   'Giovanny',
   'Morales',
-  crypt('Playercbd6b903!', gen_salt('bf')),
+  crypt('Playervjw7clr2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7490,7 +7490,7 @@ VALUES (
   'bradley.nestor.77717fe0@apsl.player',
   'Bradley',
   'Nestor',
-  crypt('Playerpnfnrnco!', gen_salt('bf')),
+  crypt('Player7xm0tp71!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7504,7 +7504,7 @@ VALUES (
   'godwin.partey.77717fe0@apsl.player',
   'Godwin',
   'Partey',
-  crypt('Playerewnjya0j!', gen_salt('bf')),
+  crypt('Playerrhms71r3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7518,7 +7518,7 @@ VALUES (
   'kevin.piedrahita.77717fe0@apsl.player',
   'Kevin',
   'Piedrahita',
-  crypt('Playerc1h7j93l!', gen_salt('bf')),
+  crypt('Playerunti3yts!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7532,7 +7532,7 @@ VALUES (
   'junior.rosero.77717fe0@apsl.player',
   'Junior',
   'Rosero',
-  crypt('Player0yuarus7!', gen_salt('bf')),
+  crypt('Playerg29s5rec!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7546,7 +7546,7 @@ VALUES (
   'karim.russell.77717fe0@apsl.player',
   'Karim',
   'Russell',
-  crypt('Playerusrptrq7!', gen_salt('bf')),
+  crypt('Playerfqur55fa!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7560,7 +7560,7 @@ VALUES (
   'sanoussi.sangary.77717fe0@apsl.player',
   'Sanoussi',
   'Sangary',
-  crypt('Playerb35odi7x!', gen_salt('bf')),
+  crypt('Player10k59enc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7574,7 +7574,7 @@ VALUES (
   'shaquille.saunchez.77717fe0@apsl.player',
   'Shaquille',
   'Saunchez',
-  crypt('Player6ejwqzxo!', gen_salt('bf')),
+  crypt('Playerc0bhkxcy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7588,7 +7588,7 @@ VALUES (
   'kendell.thomas.77717fe0@apsl.player',
   'Kendell',
   'Thomas',
-  crypt('Playerrv64hp1k!', gen_salt('bf')),
+  crypt('Playeru4icrfwh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7602,7 +7602,7 @@ VALUES (
   'dillon.woods.77717fe0@apsl.player',
   'Dillon',
   'Woods',
-  crypt('Playerj2x1rsjq!', gen_salt('bf')),
+  crypt('Player6d5ppc5j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7616,7 +7616,7 @@ VALUES (
   'george.yusuff.77717fe0@apsl.player',
   'George',
   'Yusuff',
-  crypt('Playersjpdc06a!', gen_salt('bf')),
+  crypt('Playerzuyygagj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7634,7 +7634,7 @@ VALUES (
   'adrian.aguilera.68b50f22@apsl.player',
   'Adrian',
   'Aguilera',
-  crypt('Player6nv1hoxo!', gen_salt('bf')),
+  crypt('Playerrrfuq84c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7648,7 +7648,7 @@ VALUES (
   'balint.barabas.68b50f22@apsl.player',
   'Balint',
   'Barabas',
-  crypt('Playerxm5z558l!', gen_salt('bf')),
+  crypt('Playerklkipdye!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7662,7 +7662,7 @@ VALUES (
   'vasilios.brisnovalis.68b50f22@apsl.player',
   'Vasilios',
   'Brisnovalis',
-  crypt('Playerzh0uib44!', gen_salt('bf')),
+  crypt('Playerd247sjfd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7676,7 +7676,7 @@ VALUES (
   'robert.cabrera.68b50f22@apsl.player',
   'Robert',
   'Cabrera',
-  crypt('Playerok6qe107!', gen_salt('bf')),
+  crypt('Playerkyqgaefh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7690,7 +7690,7 @@ VALUES (
   'murat.edgar.calkap.68b50f22@apsl.player',
   'Murat',
   'Edgar Calkap',
-  crypt('Playero3r00coz!', gen_salt('bf')),
+  crypt('Player9fsizqk7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7704,7 +7704,7 @@ VALUES (
   'daniel.curmi.68b50f22@apsl.player',
   'Daniel',
   'Curmi',
-  crypt('Playerqbmfilms!', gen_salt('bf')),
+  crypt('Playerwic3cnqc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7718,7 +7718,7 @@ VALUES (
   'duga.dambelly.68b50f22@apsl.player',
   'Duga',
   'Dambelly',
-  crypt('Playerlzdxi2w9!', gen_salt('bf')),
+  crypt('Playerryuummot!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7732,7 +7732,7 @@ VALUES (
   'khaled.daoud.68b50f22@apsl.player',
   'Khaled',
   'Daoud',
-  crypt('Playerhwrgc4ba!', gen_salt('bf')),
+  crypt('Playerr9r7mvp4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7746,7 +7746,7 @@ VALUES (
   'julio.espinal.68b50f22@apsl.player',
   'Julio',
   'Espinal',
-  crypt('Player50jc8vzi!', gen_salt('bf')),
+  crypt('Playerdedos036!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7760,7 +7760,7 @@ VALUES (
   'jeison.gonzalez.sanchez.68b50f22@apsl.player',
   'Jeison',
   'Gonzalez Sanchez',
-  crypt('Playeru8fwbcod!', gen_salt('bf')),
+  crypt('Playero24wwc5d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7774,7 +7774,7 @@ VALUES (
   'james.greco.68b50f22@apsl.player',
   'James',
   'Greco',
-  crypt('Playertn56i5vq!', gen_salt('bf')),
+  crypt('Player7kegj0uu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7788,7 +7788,7 @@ VALUES (
   'grady.kozak.68b50f22@apsl.player',
   'Grady',
   'Kozak',
-  crypt('Playerbc4lu77k!', gen_salt('bf')),
+  crypt('Player0yw9izz7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7802,7 +7802,7 @@ VALUES (
   'antonio.linge.68b50f22@apsl.player',
   'Antonio',
   'Linge',
-  crypt('Playerggk0y6o6!', gen_salt('bf')),
+  crypt('Player86i6oyxa!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7816,7 +7816,7 @@ VALUES (
   'kevin.lucero.68b50f22@apsl.player',
   'Kevin',
   'Lucero',
-  crypt('Playerc13wz3l8!', gen_salt('bf')),
+  crypt('Playerw1y8c4yd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7830,7 +7830,7 @@ VALUES (
   'tyrone.malango.68b50f22@apsl.player',
   'Tyrone',
   'Malango',
-  crypt('Player6oh9xeom!', gen_salt('bf')),
+  crypt('Player6fm8jwjw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7844,7 +7844,7 @@ VALUES (
   'william.marment.68b50f22@apsl.player',
   'William',
   'Marment',
-  crypt('Playerzzqtj5ey!', gen_salt('bf')),
+  crypt('Playeraf5c9nnu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7858,7 +7858,7 @@ VALUES (
   'augustus.manuel.mcgiff.68b50f22@apsl.player',
   'Augustus',
   'Manuel Mcgiff',
-  crypt('Playerackwqcxl!', gen_salt('bf')),
+  crypt('Player197i63ia!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7872,7 +7872,7 @@ VALUES (
   'christopher.morandi.68b50f22@apsl.player',
   'Christopher',
   'Morandi',
-  crypt('Playeroxhlhnmb!', gen_salt('bf')),
+  crypt('Playerlpxeqha2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7886,7 +7886,7 @@ VALUES (
   'richard.morel.68b50f22@apsl.player',
   'Richard',
   'Morel',
-  crypt('Playerx58n0a8m!', gen_salt('bf')),
+  crypt('Player7wucao0y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7900,7 +7900,7 @@ VALUES (
   'peter.myrianthopoulos.68b50f22@apsl.player',
   'Peter',
   'Myrianthopoulos',
-  crypt('Playerhvovxj5b!', gen_salt('bf')),
+  crypt('Player4lch6z94!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7914,7 +7914,7 @@ VALUES (
   'jorge.alberto.nieto.zambrano.68b50f22@apsl.player',
   'Jorge',
   'Alberto Nieto Zambrano',
-  crypt('Playerceorp2n1!', gen_salt('bf')),
+  crypt('Playertzvig0va!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7928,7 +7928,7 @@ VALUES (
   'stefen.nikolic.68b50f22@apsl.player',
   'Stefen',
   'Nikolic',
-  crypt('Player9ttzvvj3!', gen_salt('bf')),
+  crypt('Player0a1dv420!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7942,7 +7942,7 @@ VALUES (
   'martin.nikprelaj.68b50f22@apsl.player',
   'Martin',
   'Nikprelaj',
-  crypt('Playerrqvqv2nm!', gen_salt('bf')),
+  crypt('Player2p238820!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7956,7 +7956,7 @@ VALUES (
   'sergio.peralta.68b50f22@apsl.player',
   'Sergio',
   'Peralta',
-  crypt('Playeryl4kq97c!', gen_salt('bf')),
+  crypt('Playerrkdmk05x!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7970,7 +7970,7 @@ VALUES (
   'paolo.cerruto.primavera.68b50f22@apsl.player',
   'Paolo',
   'Cerruto Primavera',
-  crypt('Player5o0a0uat!', gen_salt('bf')),
+  crypt('Playerqgibzrin!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7984,7 +7984,7 @@ VALUES (
   'chris.riordan.68b50f22@apsl.player',
   'Chris',
   'Riordan',
-  crypt('Playerlnp961la!', gen_salt('bf')),
+  crypt('Playerz3ta1woa!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -7998,7 +7998,7 @@ VALUES (
   'david.rodriguez.68b50f22@apsl.player',
   'David',
   'Rodriguez',
-  crypt('Playerq49gm972!', gen_salt('bf')),
+  crypt('Player5ekxi470!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8012,7 +8012,7 @@ VALUES (
   'ronaldo.rodriguez.jurado.68b50f22@apsl.player',
   'Ronaldo',
   'Rodriguez Jurado',
-  crypt('Playeroz1q2t5c!', gen_salt('bf')),
+  crypt('Player4sobei6r!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8026,7 +8026,7 @@ VALUES (
   'fredy.rosales.68b50f22@apsl.player',
   'Fredy',
   'Rosales',
-  crypt('Player5t4sx7d8!', gen_salt('bf')),
+  crypt('Player3e1eer9w!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8040,7 +8040,7 @@ VALUES (
   'duvan.sanchez.68b50f22@apsl.player',
   'Duvan',
   'Sanchez',
-  crypt('Playerlvlu9pfz!', gen_salt('bf')),
+  crypt('Playerjyzi3ppj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8054,7 +8054,7 @@ VALUES (
   'giuliano.santucci.68b50f22@apsl.player',
   'Giuliano',
   'Santucci',
-  crypt('Playerfpfmhf6u!', gen_salt('bf')),
+  crypt('Playerkdjog917!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8068,7 +8068,7 @@ VALUES (
   'navruz.shukroev.68b50f22@apsl.player',
   'Navruz',
   'Shukroev',
-  crypt('Playersgmd5zzs!', gen_salt('bf')),
+  crypt('Playergu4m9zbn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8082,7 +8082,7 @@ VALUES (
   'milorad.sobot.68b50f22@apsl.player',
   'Milorad',
   'Sobot',
-  crypt('Playerf78bv08h!', gen_salt('bf')),
+  crypt('Playerkrr4i4yp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8096,7 +8096,7 @@ VALUES (
   'michalis.stylianou.68b50f22@apsl.player',
   'Michalis',
   'Stylianou',
-  crypt('Playerbxa09zkt!', gen_salt('bf')),
+  crypt('Playerfaud3928!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8110,7 +8110,7 @@ VALUES (
   'jorge.bladimir.zambrano.68b50f22@apsl.player',
   'Jorge',
   'Bladimir Zambrano',
-  crypt('Playerbvc2j6uv!', gen_salt('bf')),
+  crypt('Playernd5azygz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8128,7 +8128,7 @@ VALUES (
   'joshua.adejokun.c99ade72@apsl.player',
   'Joshua',
   'Adejokun',
-  crypt('Playerdw7ffxs7!', gen_salt('bf')),
+  crypt('Playerdxs1spq9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8142,7 +8142,7 @@ VALUES (
   'saad.afif.c99ade72@apsl.player',
   'Saad',
   'Afif',
-  crypt('Playertynioc62!', gen_salt('bf')),
+  crypt('Playeryvrm1de6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8156,7 +8156,7 @@ VALUES (
   'youssef.afif.c99ade72@apsl.player',
   'Youssef',
   'Afif',
-  crypt('Player0roh2k24!', gen_salt('bf')),
+  crypt('Playerz406yeap!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8170,7 +8170,7 @@ VALUES (
   'osama.al.sahybi.c99ade72@apsl.player',
   'Osama',
   'Al Sahybi',
-  crypt('Playerg41yc71v!', gen_salt('bf')),
+  crypt('Playerz5yvisnt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8184,7 +8184,7 @@ VALUES (
   'eric.anderson.c99ade72@apsl.player',
   'Eric',
   'Anderson',
-  crypt('Player2poova01!', gen_salt('bf')),
+  crypt('Playereqrw4rpq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8198,7 +8198,7 @@ VALUES (
   'oscar.champigneulle.c99ade72@apsl.player',
   'Oscar',
   'Champigneulle',
-  crypt('Player404kz167!', gen_salt('bf')),
+  crypt('Playerbgug0qzx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8212,7 +8212,7 @@ VALUES (
   'ryan.chuang.c99ade72@apsl.player',
   'Ryan',
   'Chuang',
-  crypt('Playeruqowg6p2!', gen_salt('bf')),
+  crypt('Playersn81cw3j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8226,7 +8226,7 @@ VALUES (
   'michael.dempsey.c99ade72@apsl.player',
   'Michael',
   'Dempsey',
-  crypt('Player76d9gfp8!', gen_salt('bf')),
+  crypt('Playerd9m0ahs8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8240,7 +8240,7 @@ VALUES (
   'byran.dia.c99ade72@apsl.player',
   'Byran',
   'Dia',
-  crypt('Playern6ysr6fy!', gen_salt('bf')),
+  crypt('Playerewmlej9q!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8254,7 +8254,7 @@ VALUES (
   'yohance.douglas.c99ade72@apsl.player',
   'Yohance',
   'Douglas',
-  crypt('Playerechx62d7!', gen_salt('bf')),
+  crypt('Player3y8f4zx5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8268,7 +8268,7 @@ VALUES (
   'jeffrey.gad.c99ade72@apsl.player',
   'Jeffrey',
   'Gad',
-  crypt('Playernjqjn2yw!', gen_salt('bf')),
+  crypt('Playerm7srh17y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8282,7 +8282,7 @@ VALUES (
   'jahdea.gildin.c99ade72@apsl.player',
   'Jahdea',
   'Gildin',
-  crypt('Player4eoqxj8q!', gen_salt('bf')),
+  crypt('Playern13wcvq4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8296,7 +8296,7 @@ VALUES (
   'ross.holden.c99ade72@apsl.player',
   'Ross',
   'Holden',
-  crypt('Playerfau0xp6k!', gen_salt('bf')),
+  crypt('Playerts2tvga5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8310,7 +8310,7 @@ VALUES (
   'hugo.howard.c99ade72@apsl.player',
   'Hugo',
   'Howard',
-  crypt('Player34jszwcv!', gen_salt('bf')),
+  crypt('Playerxpoy7pw1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8324,7 +8324,7 @@ VALUES (
   'ikrom.husanov.c99ade72@apsl.player',
   'Ikrom',
   'Husanov',
-  crypt('Playerwi1g7d04!', gen_salt('bf')),
+  crypt('Playerbx5bdndz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8338,7 +8338,7 @@ VALUES (
   'geireann.lindfield.c99ade72@apsl.player',
   'Geireann',
   'Lindfield',
-  crypt('Playeriny3huyj!', gen_salt('bf')),
+  crypt('Playernx84w45b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8352,7 +8352,7 @@ VALUES (
   'sean.molloy.c99ade72@apsl.player',
   'Sean',
   'Molloy',
-  crypt('Player0n6fymqt!', gen_salt('bf')),
+  crypt('Playeruu8aong4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8366,7 +8366,7 @@ VALUES (
   'shamir.mullings.c99ade72@apsl.player',
   'Shamir',
   'Mullings',
-  crypt('Playerm8t7zqid!', gen_salt('bf')),
+  crypt('Player91r4eg2x!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8380,7 +8380,7 @@ VALUES (
   'ridwan.olawin.c99ade72@apsl.player',
   'Ridwan',
   'Olawin',
-  crypt('Playerr9tvfu14!', gen_salt('bf')),
+  crypt('Player3sffx8x9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8394,7 +8394,7 @@ VALUES (
   'gary.philpott.c99ade72@apsl.player',
   'Gary',
   'Philpott',
-  crypt('Playerzpok1m0n!', gen_salt('bf')),
+  crypt('Playersonmz68b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8408,7 +8408,7 @@ VALUES (
   'sean.reilly.c99ade72@apsl.player',
   'Sean',
   'Reilly',
-  crypt('Playerhkmuzoqm!', gen_salt('bf')),
+  crypt('Playeru697m7mh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8422,7 +8422,7 @@ VALUES (
   'faissal.sanfo.c99ade72@apsl.player',
   'Faissal',
   'Sanfo',
-  crypt('Playeroc8hgb4a!', gen_salt('bf')),
+  crypt('Playera3dktv5c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8436,7 +8436,7 @@ VALUES (
   'ensa.sanneh.c99ade72@apsl.player',
   'Ensa',
   'Sanneh',
-  crypt('Playervu7ah699!', gen_salt('bf')),
+  crypt('Playerropdz96e!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8450,7 +8450,7 @@ VALUES (
   'avinash.singh.c99ade72@apsl.player',
   'Avinash',
   'Singh',
-  crypt('Playeryqbjrvlc!', gen_salt('bf')),
+  crypt('Playerobpv3lh6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8464,7 +8464,7 @@ VALUES (
   'john.stevens.c99ade72@apsl.player',
   'John',
   'Stevens',
-  crypt('Playerdrqi4g19!', gen_salt('bf')),
+  crypt('Player3n8gx3ht!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8478,7 +8478,7 @@ VALUES (
   'alexandru.teodorescu.c99ade72@apsl.player',
   'Alexandru',
   'Teodorescu',
-  crypt('Player1xdsqngt!', gen_salt('bf')),
+  crypt('Playerv7k8fa67!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8492,7 +8492,7 @@ VALUES (
   'maurice.vermeulen.c99ade72@apsl.player',
   'Maurice',
   'Vermeulen',
-  crypt('Players50valnn!', gen_salt('bf')),
+  crypt('Player26kaebdu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8510,7 +8510,7 @@ VALUES (
   'hermes.ademovi.bad8aee7@apsl.player',
   'Hermes',
   'Ademovi',
-  crypt('Player979pxhx4!', gen_salt('bf')),
+  crypt('Player080iohu3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8524,7 +8524,7 @@ VALUES (
   'mamadou.bah.bad8aee7@apsl.player',
   'Mamadou',
   'Bah',
-  crypt('Player0rf9snxe!', gen_salt('bf')),
+  crypt('Playervjeo1kdg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8538,7 +8538,7 @@ VALUES (
   'bljedi.bardic.bad8aee7@apsl.player',
   'Bljedi',
   'Bardic',
-  crypt('Playernactmiei!', gen_salt('bf')),
+  crypt('Playeruj3mmq1j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8552,7 +8552,7 @@ VALUES (
   'giuseppe.barone.bad8aee7@apsl.player',
   'Giuseppe',
   'Barone',
-  crypt('Player2qo0d4gr!', gen_salt('bf')),
+  crypt('Playerkx1lokdo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8566,7 +8566,7 @@ VALUES (
   'salvatore.barone.bad8aee7@apsl.player',
   'Salvatore',
   'Barone',
-  crypt('Player0rpq926t!', gen_salt('bf')),
+  crypt('Playerarfgbf4y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8580,7 +8580,7 @@ VALUES (
   'kemal.brkanovic.bad8aee7@apsl.player',
   'Kemal',
   'Brkanovic',
-  crypt('Playerrhc0i52u!', gen_salt('bf')),
+  crypt('Playeroun3lrsf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8594,7 +8594,7 @@ VALUES (
   'cesare.cali.bad8aee7@apsl.player',
   'Cesare',
   'Cali',
-  crypt('Playerpoztkv23!', gen_salt('bf')),
+  crypt('Playertkhnmrdo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8608,7 +8608,7 @@ VALUES (
   'keithlend.cesar.bad8aee7@apsl.player',
   'Keithlend',
   'Cesar',
-  crypt('Playerzod0hsix!', gen_salt('bf')),
+  crypt('Player52dlfwwf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8622,7 +8622,7 @@ VALUES (
   'kyaire.clarke.bad8aee7@apsl.player',
   'Kyaire',
   'Clarke',
-  crypt('Player925xdfg3!', gen_salt('bf')),
+  crypt('Playerj9q9qs3u!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8636,7 +8636,7 @@ VALUES (
   'luis.cueva.bad8aee7@apsl.player',
   'Luis',
   'Cueva',
-  crypt('Playeree85oeqj!', gen_salt('bf')),
+  crypt('Playerfifj874s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8650,7 +8650,7 @@ VALUES (
   'bradley.espejo.bad8aee7@apsl.player',
   'Bradley',
   'Espejo',
-  crypt('Playerdyxsewca!', gen_salt('bf')),
+  crypt('Playerxmxp9l84!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8664,7 +8664,7 @@ VALUES (
   'roberto.gioffre.bad8aee7@apsl.player',
   'Roberto',
   'Gioffre',
-  crypt('Playervc01038w!', gen_salt('bf')),
+  crypt('Playerq5zze6hl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8678,7 +8678,7 @@ VALUES (
   'pietro.giove.bad8aee7@apsl.player',
   'Pietro',
   'Giove',
-  crypt('Playeriawhsb6u!', gen_salt('bf')),
+  crypt('Playeryrdkweq6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8692,7 +8692,7 @@ VALUES (
   'christopher.gjini.bad8aee7@apsl.player',
   'Christopher',
   'Gjini',
-  crypt('Player2aghshnx!', gen_salt('bf')),
+  crypt('Playerlkgbj2ne!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8706,7 +8706,7 @@ VALUES (
   'peter.gjini.bad8aee7@apsl.player',
   'Peter',
   'Gjini',
-  crypt('Player92r26qbv!', gen_salt('bf')),
+  crypt('Playersov8ar3z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8720,7 +8720,7 @@ VALUES (
   'armando.guarnera.bad8aee7@apsl.player',
   'Armando',
   'Guarnera',
-  crypt('Playernr7waity!', gen_salt('bf')),
+  crypt('Playerhq9vtfyg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8734,7 +8734,7 @@ VALUES (
   'james.haddad.bad8aee7@apsl.player',
   'James',
   'Haddad',
-  crypt('Playerd2vug3gm!', gen_salt('bf')),
+  crypt('Player3t8u5beu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8748,7 +8748,7 @@ VALUES (
   'yassin.hairane.bad8aee7@apsl.player',
   'Yassin',
   'Hairane',
-  crypt('Player8u7gw3lk!', gen_salt('bf')),
+  crypt('Playermr7m7vcf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8762,7 +8762,7 @@ VALUES (
   'amir.islami.bad8aee7@apsl.player',
   'Amir',
   'Islami',
-  crypt('Player88r8g3jg!', gen_salt('bf')),
+  crypt('Playerirn0un9r!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8776,7 +8776,7 @@ VALUES (
   'timothy.francis.kane.bad8aee7@apsl.player',
   'Timothy',
   'Francis Kane',
-  crypt('Player3axenlf1!', gen_salt('bf')),
+  crypt('Playerek0j0pe1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8790,7 +8790,7 @@ VALUES (
   'brian.kerliu.bad8aee7@apsl.player',
   'Brian',
   'Kerliu',
-  crypt('Player99skee8o!', gen_salt('bf')),
+  crypt('Player2cl289m4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8804,7 +8804,7 @@ VALUES (
   'peterson.larose.bad8aee7@apsl.player',
   'Peterson',
   'Larose',
-  crypt('Playerfow25st9!', gen_salt('bf')),
+  crypt('Playerj1en2drg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8818,7 +8818,7 @@ VALUES (
   'dylan.meadows.bad8aee7@apsl.player',
   'Dylan',
   'Meadows',
-  crypt('Playeri21p4mg2!', gen_salt('bf')),
+  crypt('Player5nqryukd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8832,7 +8832,7 @@ VALUES (
   'gerald.mehja.bad8aee7@apsl.player',
   'Gerald',
   'Mehja',
-  crypt('Playero9ccucxc!', gen_salt('bf')),
+  crypt('Playert8ch4bt9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8846,7 +8846,7 @@ VALUES (
   'michael.mollica.bad8aee7@apsl.player',
   'Michael',
   'Mollica',
-  crypt('Playervru14v6b!', gen_salt('bf')),
+  crypt('Playerkls2z0mt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8860,7 +8860,7 @@ VALUES (
   'anthony.oliveira.bad8aee7@apsl.player',
   'Anthony',
   'Oliveira',
-  crypt('Playerqi921m8z!', gen_salt('bf')),
+  crypt('Playerxs6xh88b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8874,7 +8874,7 @@ VALUES (
   'cristiano.oliveira.bad8aee7@apsl.player',
   'Cristiano',
   'Oliveira',
-  crypt('Playersszowvrd!', gen_salt('bf')),
+  crypt('Playerafpzfnlz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8888,7 +8888,7 @@ VALUES (
   'andrea.ruggiero.bad8aee7@apsl.player',
   'Andrea',
   'Ruggiero',
-  crypt('Playerj2n42rzy!', gen_salt('bf')),
+  crypt('Playerxrnq0rfs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8902,7 +8902,7 @@ VALUES (
   'leutrim.saiti.bad8aee7@apsl.player',
   'Leutrim',
   'Saiti',
-  crypt('Playert68r2n05!', gen_salt('bf')),
+  crypt('Player4pl90l79!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8916,7 +8916,7 @@ VALUES (
   'valeriy.saramoutin.bad8aee7@apsl.player',
   'Valeriy',
   'Saramoutin',
-  crypt('Player8uratw8f!', gen_salt('bf')),
+  crypt('Playery86ic973!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8930,7 +8930,7 @@ VALUES (
   'mark.shnadshteyn.bad8aee7@apsl.player',
   'Mark',
   'Shnadshteyn',
-  crypt('Player73nzgt79!', gen_salt('bf')),
+  crypt('Playerjx4mpzu4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8944,7 +8944,7 @@ VALUES (
   'demyan.turiy.bad8aee7@apsl.player',
   'Demyan',
   'Turiy',
-  crypt('Playerhqr3z0sd!', gen_salt('bf')),
+  crypt('Playerb89gk6q0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8958,7 +8958,7 @@ VALUES (
   'dominik.urban.bad8aee7@apsl.player',
   'Dominik',
   'Urban',
-  crypt('Playerc7m87zpr!', gen_salt('bf')),
+  crypt('Player6lu0fl6q!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8972,7 +8972,7 @@ VALUES (
   'bryant.vidals.bad8aee7@apsl.player',
   'Bryant',
   'Vidals',
-  crypt('Playerpjd56nt9!', gen_salt('bf')),
+  crypt('Playerwfp45uv6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -8986,7 +8986,7 @@ VALUES (
   'dani.villa.bad8aee7@apsl.player',
   'Dani',
   'Villa',
-  crypt('Playerm1a62a9z!', gen_salt('bf')),
+  crypt('Player51jrcxii!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9004,7 +9004,7 @@ VALUES (
   'jimmy.barrios.5951a8c4@apsl.player',
   'Jimmy',
   'Barrios',
-  crypt('Playeroc87idun!', gen_salt('bf')),
+  crypt('Playerijlopic5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9018,7 +9018,7 @@ VALUES (
   'richard.bastian.5951a8c4@apsl.player',
   'Richard',
   'Bastian',
-  crypt('Playereinbu4we!', gen_salt('bf')),
+  crypt('Playeri1ni1hed!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9032,7 +9032,7 @@ VALUES (
   'tal.benhamou.5951a8c4@apsl.player',
   'Tal',
   'Benhamou',
-  crypt('Player26rwavc9!', gen_salt('bf')),
+  crypt('Playeravqcgtim!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9046,7 +9046,7 @@ VALUES (
   'nathan.bennett.5951a8c4@apsl.player',
   'Nathan',
   'Bennett',
-  crypt('Playerq6qbkxgk!', gen_salt('bf')),
+  crypt('Playermt8g3wyd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9060,7 +9060,7 @@ VALUES (
   'jason.budhai.5951a8c4@apsl.player',
   'Jason',
   'Budhai',
-  crypt('Playerarjno0fv!', gen_salt('bf')),
+  crypt('Playerrfe2j7vb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9074,7 +9074,7 @@ VALUES (
   'dennis.coke.jr.5951a8c4@apsl.player',
   'Dennis',
   'Coke Jr',
-  crypt('Playerywgegzfy!', gen_salt('bf')),
+  crypt('Player305zetxq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9088,7 +9088,7 @@ VALUES (
   'sully.corneille.5951a8c4@apsl.player',
   'Sully',
   'Corneille',
-  crypt('Playerend48hmk!', gen_salt('bf')),
+  crypt('Playerty7wgs4c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9102,7 +9102,7 @@ VALUES (
   'dario.giovanni.cruz.5951a8c4@apsl.player',
   'Dario',
   'Giovanni Cruz',
-  crypt('Playerxkk5vvnv!', gen_salt('bf')),
+  crypt('Playerux7omwjy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9116,7 +9116,7 @@ VALUES (
   'juan.cruz.5951a8c4@apsl.player',
   'Juan',
   'Cruz',
-  crypt('Playerbqomtehv!', gen_salt('bf')),
+  crypt('Playerw7ok4fq3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9130,7 +9130,7 @@ VALUES (
   'tomas.de.andrade.gomes.5951a8c4@apsl.player',
   'Tomas',
   'de Andrade Gomes',
-  crypt('Player9fm20qn7!', gen_salt('bf')),
+  crypt('Playerwncjeokz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9144,7 +9144,7 @@ VALUES (
   'felix.dyckerhoff.5951a8c4@apsl.player',
   'Felix',
   'Dyckerhoff',
-  crypt('Playerbnhpfo3x!', gen_salt('bf')),
+  crypt('Playerdrjp8nqc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9158,7 +9158,7 @@ VALUES (
   'salim.dziri.5951a8c4@apsl.player',
   'Salim',
   'Dziri',
-  crypt('Playerqkwzoq8h!', gen_salt('bf')),
+  crypt('Playerasqcrvx1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9172,7 +9172,7 @@ VALUES (
   'glenford.gentle.5951a8c4@apsl.player',
   'Glenford',
   'Gentle',
-  crypt('Player23rwqlg7!', gen_salt('bf')),
+  crypt('Playerpj4hfgx6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9186,7 +9186,7 @@ VALUES (
   'boris.grubic.5951a8c4@apsl.player',
   'Boris',
   'Grubic',
-  crypt('Player3uxcsyo6!', gen_salt('bf')),
+  crypt('Player3cp2m0x3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9200,7 +9200,7 @@ VALUES (
   'wisdom.hountondji.5951a8c4@apsl.player',
   'Wisdom',
   'Hountondji',
-  crypt('Playeriagn7m68!', gen_salt('bf')),
+  crypt('Playerqczxsph2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9214,7 +9214,7 @@ VALUES (
   'tom.hultsch.5951a8c4@apsl.player',
   'Tom',
   'Hultsch',
-  crypt('Playerex5prqi3!', gen_salt('bf')),
+  crypt('Playerr830aui4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9228,7 +9228,7 @@ VALUES (
   'raphael.john.5951a8c4@apsl.player',
   'Raphael',
   'John',
-  crypt('Playerplt2azwq!', gen_salt('bf')),
+  crypt('Playergjbdehb8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9242,7 +9242,7 @@ VALUES (
   'ryo.koiso.5951a8c4@apsl.player',
   'Ryo',
   'Koiso',
-  crypt('Player0ir7zolx!', gen_salt('bf')),
+  crypt('Playerfb6qut19!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9256,7 +9256,7 @@ VALUES (
   'michael.laret.5951a8c4@apsl.player',
   'Michael',
   'Laret',
-  crypt('Player8t1p58is!', gen_salt('bf')),
+  crypt('Player6v51vufr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9270,7 +9270,7 @@ VALUES (
   'jason.lee.5951a8c4@apsl.player',
   'Jason',
   'Lee',
-  crypt('Player572g9guf!', gen_salt('bf')),
+  crypt('Playerm9ob6lq3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9284,7 +9284,7 @@ VALUES (
   'cesare.marconi.5951a8c4@apsl.player',
   'Cesare',
   'Marconi',
-  crypt('Playerkxeizdjo!', gen_salt('bf')),
+  crypt('Playercqia7d9y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9298,7 +9298,7 @@ VALUES (
   'denny.morinigo.arce.5951a8c4@apsl.player',
   'Denny',
   'Morinigo-Arce',
-  crypt('Playerb7b7qc31!', gen_salt('bf')),
+  crypt('Playerr0hnpy4s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9312,7 +9312,7 @@ VALUES (
   'mateo.munoz.5951a8c4@apsl.player',
   'Mateo',
   'Munoz',
-  crypt('Playerx7giogi9!', gen_salt('bf')),
+  crypt('Player79iflau2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9326,7 +9326,7 @@ VALUES (
   'deniz.oncu.5951a8c4@apsl.player',
   'Deniz',
   'Oncu',
-  crypt('Player7jo3821s!', gen_salt('bf')),
+  crypt('Playerdx5th4in!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9340,7 +9340,7 @@ VALUES (
   'mubarak.ouro.5951a8c4@apsl.player',
   'Mubarak',
   'Ouro',
-  crypt('Playeroey59vzw!', gen_salt('bf')),
+  crypt('Playergalyahcw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9354,7 +9354,7 @@ VALUES (
   'jean.carlo.perez.5951a8c4@apsl.player',
   'Jean',
   'Carlo Perez',
-  crypt('Playero2eqam25!', gen_salt('bf')),
+  crypt('Player1o20lu9d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9368,7 +9368,7 @@ VALUES (
   'mario.ramirez.5951a8c4@apsl.player',
   'Mario',
   'Ramirez',
-  crypt('Playerbkl379cw!', gen_salt('bf')),
+  crypt('Player3npm7b9h!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9382,7 +9382,7 @@ VALUES (
   'paul.restrepo.5951a8c4@apsl.player',
   'Paul',
   'Restrepo',
-  crypt('Playerya62fe22!', gen_salt('bf')),
+  crypt('Playerrbmk5rs0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9396,7 +9396,7 @@ VALUES (
   'ely.schartz.5951a8c4@apsl.player',
   'Ely',
   'Schartz',
-  crypt('Player2nigcqb5!', gen_salt('bf')),
+  crypt('Playerkwseu097!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9410,7 +9410,7 @@ VALUES (
   'diego.silva.5951a8c4@apsl.player',
   'Diego',
   'Silva',
-  crypt('Playervqig8roj!', gen_salt('bf')),
+  crypt('Player5vm20pfw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9424,7 +9424,7 @@ VALUES (
   'tyler.swaby.5951a8c4@apsl.player',
   'Tyler',
   'Swaby',
-  crypt('Player9o0knca7!', gen_salt('bf')),
+  crypt('Playeruv2nrnad!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9438,7 +9438,7 @@ VALUES (
   'anderson.velazquez.mendoza.5951a8c4@apsl.player',
   'Anderson',
   'Velazquez-Mendoza',
-  crypt('Playerfilao1od!', gen_salt('bf')),
+  crypt('Player0mpl6tzw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9452,7 +9452,7 @@ VALUES (
   'andrade.wright.5951a8c4@apsl.player',
   'Andrade',
   'Wright',
-  crypt('Player3bysemed!', gen_salt('bf')),
+  crypt('Playerhjtmvqxb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9470,7 +9470,7 @@ VALUES (
   'johannes.alvarez.741624af@apsl.player',
   'Johannes',
   'Alvarez',
-  crypt('Playerel0zgyjl!', gen_salt('bf')),
+  crypt('Playerjwducn4c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9484,7 +9484,7 @@ VALUES (
   'jason.alves.741624af@apsl.player',
   'Jason',
   'Alves',
-  crypt('Player8b58q7vg!', gen_salt('bf')),
+  crypt('Player925khket!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9498,7 +9498,7 @@ VALUES (
   'christopher.barnas.741624af@apsl.player',
   'Christopher',
   'Barnas',
-  crypt('Playerumj53tkh!', gen_salt('bf')),
+  crypt('Playere5ojcje5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9512,7 +9512,7 @@ VALUES (
   'roberto.chernez.741624af@apsl.player',
   'Roberto',
   'Chernez',
-  crypt('Playerrk98u92y!', gen_salt('bf')),
+  crypt('Playere8q2iizu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9526,7 +9526,7 @@ VALUES (
   'gabriel.costa.741624af@apsl.player',
   'Gabriel',
   'Costa',
-  crypt('Playernr5nqytt!', gen_salt('bf')),
+  crypt('Playerz5cz7giy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9540,7 +9540,7 @@ VALUES (
   'keijon.davis.741624af@apsl.player',
   'Keijon',
   'Davis',
-  crypt('Playeryy2yov0p!', gen_salt('bf')),
+  crypt('Player3gssiyg3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9554,7 +9554,7 @@ VALUES (
   'shaunavon.desouza.741624af@apsl.player',
   'Shaunavon',
   'DeSouza',
-  crypt('Playergve0gvv7!', gen_salt('bf')),
+  crypt('Playeryle58sst!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9568,7 +9568,7 @@ VALUES (
   'gabriel.dipierro.741624af@apsl.player',
   'Gabriel',
   'DiPierro',
-  crypt('Playeresugnmie!', gen_salt('bf')),
+  crypt('Playerhv75w99j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9582,7 +9582,7 @@ VALUES (
   'emiland.elezaj.741624af@apsl.player',
   'Emiland',
   'Elezaj',
-  crypt('Playerxgx8238r!', gen_salt('bf')),
+  crypt('Players1clnnbv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9596,7 +9596,7 @@ VALUES (
   'andres.gonzalez.rios.741624af@apsl.player',
   'Andres',
   'Gonzalez-Rios',
-  crypt('Player19s58cc4!', gen_salt('bf')),
+  crypt('Player66ottrxz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9610,7 +9610,7 @@ VALUES (
   'jonathan.gutierrez.741624af@apsl.player',
   'Jonathan',
   'Gutierrez',
-  crypt('Playerj7dg35e6!', gen_salt('bf')),
+  crypt('Player1bgn5n2b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9624,7 +9624,7 @@ VALUES (
   'oscar.horwitz.741624af@apsl.player',
   'Oscar',
   'Horwitz',
-  crypt('Playerxb8q92zr!', gen_salt('bf')),
+  crypt('Playern59gpiim!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9638,7 +9638,7 @@ VALUES (
   'jashar.jashar.741624af@apsl.player',
   'Jashar',
   'Jashar',
-  crypt('Playerh1yz2yt4!', gen_salt('bf')),
+  crypt('Player0hpetfiw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9652,7 +9652,7 @@ VALUES (
   'christopher.karcz.741624af@apsl.player',
   'Christopher',
   'Karcz',
-  crypt('Playerzu9zpw8f!', gen_salt('bf')),
+  crypt('Playerd0f3wcr7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9666,7 +9666,7 @@ VALUES (
   'wiktor.kiszkiel.741624af@apsl.player',
   'Wiktor',
   'Kiszkiel',
-  crypt('Playerln0cxajp!', gen_salt('bf')),
+  crypt('Playerj5ck7jj4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9680,7 +9680,7 @@ VALUES (
   'christopher.kondratowicz.741624af@apsl.player',
   'Christopher',
   'Kondratowicz',
-  crypt('Player5tiwj2w6!', gen_salt('bf')),
+  crypt('Playerxm2atxhj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9694,7 +9694,7 @@ VALUES (
   'paul.kondratowicz.741624af@apsl.player',
   'Paul',
   'Kondratowicz',
-  crypt('Player4m32a83y!', gen_salt('bf')),
+  crypt('Playerxg8rsa4k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9708,7 +9708,7 @@ VALUES (
   'nicholas.kozdron.741624af@apsl.player',
   'Nicholas',
   'Kozdron',
-  crypt('Playertb3g8evu!', gen_salt('bf')),
+  crypt('Playerwy74oirq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9722,7 +9722,7 @@ VALUES (
   'sebastian.lapczynski.741624af@apsl.player',
   'Sebastian',
   'Lapczynski',
-  crypt('Player6atj4dyu!', gen_salt('bf')),
+  crypt('Playerbgk9x8gd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9736,7 +9736,7 @@ VALUES (
   'john.mcgeechan.741624af@apsl.player',
   'John',
   'McGeechan',
-  crypt('Playerenbhb9rd!', gen_salt('bf')),
+  crypt('Playerq5hvm4em!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9750,7 +9750,7 @@ VALUES (
   'mark.mikanik.741624af@apsl.player',
   'Mark',
   'Mikanik',
-  crypt('Playeri0atzruh!', gen_salt('bf')),
+  crypt('Playermz8guou2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9764,7 +9764,7 @@ VALUES (
   'aldo.munoz.741624af@apsl.player',
   'Aldo',
   'Munoz',
-  crypt('Playernknrrttj!', gen_salt('bf')),
+  crypt('Playersoqqjwl8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9778,7 +9778,7 @@ VALUES (
   'cyrus.nasseri.741624af@apsl.player',
   'Cyrus',
   'Nasseri',
-  crypt('Playerdhpc271w!', gen_salt('bf')),
+  crypt('Playero5qxad0d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9792,7 +9792,7 @@ VALUES (
   'krystian.nitek.741624af@apsl.player',
   'Krystian',
   'Nitek',
-  crypt('Playern67qguet!', gen_salt('bf')),
+  crypt('Playervrf8obyx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9806,7 +9806,7 @@ VALUES (
   'viktor.pervushkin.741624af@apsl.player',
   'Viktor',
   'Pervushkin',
-  crypt('Player2hhgl3j6!', gen_salt('bf')),
+  crypt('Playerkqg9voi4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9820,7 +9820,7 @@ VALUES (
   'tyler.pinho.741624af@apsl.player',
   'Tyler',
   'Pinho',
-  crypt('Playergx9qqy3n!', gen_salt('bf')),
+  crypt('Playerh71ih7ut!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9834,7 +9834,7 @@ VALUES (
   'alvaro.rodriguez.741624af@apsl.player',
   'Alvaro',
   'Rodriguez',
-  crypt('Playery7acbtqn!', gen_salt('bf')),
+  crypt('Playeryfdz9t41!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9848,7 +9848,7 @@ VALUES (
   'daniel.sawicki.741624af@apsl.player',
   'Daniel',
   'Sawicki',
-  crypt('Playerneq59sqs!', gen_salt('bf')),
+  crypt('Playerjngyxnul!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9862,7 +9862,7 @@ VALUES (
   'gabriel.serafin.741624af@apsl.player',
   'Gabriel',
   'Serafin',
-  crypt('Playere0s3p0v7!', gen_salt('bf')),
+  crypt('Playeril02w920!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9876,7 +9876,7 @@ VALUES (
   'william.tomlinson.741624af@apsl.player',
   'William',
   'Tomlinson',
-  crypt('Player62xj7ds9!', gen_salt('bf')),
+  crypt('Player7lkaiqwp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9890,7 +9890,7 @@ VALUES (
   'igor.trajceski.741624af@apsl.player',
   'Igor',
   'Trajceski',
-  crypt('Playereygz4jrt!', gen_salt('bf')),
+  crypt('Playerq2s593tf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9904,7 +9904,7 @@ VALUES (
   'kevin.valdivia.741624af@apsl.player',
   'Kevin',
   'Valdivia',
-  crypt('Playerwx2psiy4!', gen_salt('bf')),
+  crypt('Playera0dpc2d2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9922,7 +9922,7 @@ VALUES (
   'dominik.brulinski.7fd5026d@apsl.player',
   'Dominik',
   'Brulinski',
-  crypt('Player3rf1ny9a!', gen_salt('bf')),
+  crypt('Players6fm9ot0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9936,7 +9936,7 @@ VALUES (
   'mathew.contino.7fd5026d@apsl.player',
   'Mathew',
   'Contino',
-  crypt('Player7ux1aymm!', gen_salt('bf')),
+  crypt('Playerhrhmqyd8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9950,7 +9950,7 @@ VALUES (
   'joseph.core.7fd5026d@apsl.player',
   'Joseph',
   'Core',
-  crypt('Player8v8hg7fo!', gen_salt('bf')),
+  crypt('Player3qu78dkh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9964,7 +9964,7 @@ VALUES (
   'jacob.denison.7fd5026d@apsl.player',
   'Jacob',
   'Denison',
-  crypt('Player2m8m4dgq!', gen_salt('bf')),
+  crypt('Playerc7rhx2v6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9978,7 +9978,7 @@ VALUES (
   'jack.doran.7fd5026d@apsl.player',
   'Jack',
   'Doran',
-  crypt('Playervfoyq6yg!', gen_salt('bf')),
+  crypt('Playerxochek1w!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -9992,7 +9992,7 @@ VALUES (
   'javiar.edwards.7fd5026d@apsl.player',
   'Javiar',
   'Edwards',
-  crypt('Player0m9hat9a!', gen_salt('bf')),
+  crypt('Playergi5h1rkg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10006,7 +10006,7 @@ VALUES (
   'humbert.ferrer.7fd5026d@apsl.player',
   'Humbert',
   'Ferrer',
-  crypt('Playerzuittmog!', gen_salt('bf')),
+  crypt('Player6u378y48!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10020,7 +10020,7 @@ VALUES (
   'spencer.fleurant.7fd5026d@apsl.player',
   'Spencer',
   'Fleurant',
-  crypt('Playercbdi11pi!', gen_salt('bf')),
+  crypt('Playerpvskfdv5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10034,7 +10034,7 @@ VALUES (
   'jason.gaylord.7fd5026d@apsl.player',
   'Jason',
   'Gaylord',
-  crypt('Player2qf57jqe!', gen_salt('bf')),
+  crypt('Playerr7zcxal4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10048,7 +10048,7 @@ VALUES (
   'daniel.giorgi.7fd5026d@apsl.player',
   'Daniel',
   'Giorgi',
-  crypt('Player8wcnypa3!', gen_salt('bf')),
+  crypt('Playertct43l4c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10062,7 +10062,7 @@ VALUES (
   'kevin.harrington.7fd5026d@apsl.player',
   'Kevin',
   'Harrington',
-  crypt('Playerhuvudxxj!', gen_salt('bf')),
+  crypt('Players33wqfbf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10076,7 +10076,7 @@ VALUES (
   'stephanos.hondrakis.7fd5026d@apsl.player',
   'Stephanos',
   'Hondrakis',
-  crypt('Playerxomzhfj4!', gen_salt('bf')),
+  crypt('Playersuu5vao0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10090,7 +10090,7 @@ VALUES (
   'cris.huacon.7fd5026d@apsl.player',
   'Cris',
   'Huacon',
-  crypt('Player435qteut!', gen_salt('bf')),
+  crypt('Playerusuw7oa7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10104,7 +10104,7 @@ VALUES (
   'samuka.kenneh.7fd5026d@apsl.player',
   'Samuka',
   'Kenneh',
-  crypt('Playerllamvmh7!', gen_salt('bf')),
+  crypt('Player1gderyfh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10118,7 +10118,7 @@ VALUES (
   'evan.kim.7fd5026d@apsl.player',
   'Evan',
   'Kim',
-  crypt('Player1d0hjz18!', gen_salt('bf')),
+  crypt('Playerfeq000wi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10132,7 +10132,7 @@ VALUES (
   'brent.mckeown.7fd5026d@apsl.player',
   'Brent',
   'McKeown',
-  crypt('Playergvgpxg7j!', gen_salt('bf')),
+  crypt('Playerclnqrxde!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10146,7 +10146,7 @@ VALUES (
   'enrique.montana.iii.7fd5026d@apsl.player',
   'Enrique',
   'Montana III',
-  crypt('Playerwmj2yly2!', gen_salt('bf')),
+  crypt('Playeroqyggj3z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10160,7 +10160,7 @@ VALUES (
   'jack.mulhare.7fd5026d@apsl.player',
   'Jack',
   'Mulhare',
-  crypt('Playerxagnx0tn!', gen_salt('bf')),
+  crypt('Playeryy1nj6vz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10174,7 +10174,7 @@ VALUES (
   'curtis.oberg.7fd5026d@apsl.player',
   'Curtis',
   'Oberg',
-  crypt('Playervaan3xhi!', gen_salt('bf')),
+  crypt('Playeri1fz2tpa!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10188,7 +10188,7 @@ VALUES (
   'farouk.osman.7fd5026d@apsl.player',
   'Farouk',
   'Osman',
-  crypt('Player6iz9aqsr!', gen_salt('bf')),
+  crypt('Playertj9w5hjd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10202,7 +10202,7 @@ VALUES (
   'cole.parete.7fd5026d@apsl.player',
   'Cole',
   'Parete',
-  crypt('Playerepg10vh6!', gen_salt('bf')),
+  crypt('Player9pbvn6ao!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10216,7 +10216,7 @@ VALUES (
   'william.pearce.7fd5026d@apsl.player',
   'William',
   'Pearce',
-  crypt('Playerelpnh3fm!', gen_salt('bf')),
+  crypt('Playera7f8uj1k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10230,7 +10230,7 @@ VALUES (
   'akeem.phipps.7fd5026d@apsl.player',
   'Akeem',
   'Phipps',
-  crypt('Playerdg6llvn0!', gen_salt('bf')),
+  crypt('Playerz7kr8vbb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10244,7 +10244,7 @@ VALUES (
   'layton.purchase.7fd5026d@apsl.player',
   'Layton',
   'Purchase',
-  crypt('Player3mwpz9k9!', gen_salt('bf')),
+  crypt('Playerwfesax5a!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10258,7 +10258,7 @@ VALUES (
   'nabeel.qawasmi.7fd5026d@apsl.player',
   'Nabeel',
   'Qawasmi',
-  crypt('Player404y5rkq!', gen_salt('bf')),
+  crypt('Playercrbxh0i2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10272,7 +10272,7 @@ VALUES (
   'yannick.rihs.7fd5026d@apsl.player',
   'Yannick',
   'Rihs',
-  crypt('Playerfzyozrjk!', gen_salt('bf')),
+  crypt('Player19vt0dyg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10286,7 +10286,7 @@ VALUES (
   'antonio.rocha.7fd5026d@apsl.player',
   'Antonio',
   'Rocha',
-  crypt('Playerc2nveiwg!', gen_salt('bf')),
+  crypt('Playerqn2jor21!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10300,7 +10300,7 @@ VALUES (
   'jake.rozhansky.7fd5026d@apsl.player',
   'Jake',
   'Rozhansky',
-  crypt('Playeragx41gna!', gen_salt('bf')),
+  crypt('Playerlwaap3wd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10314,7 +10314,7 @@ VALUES (
   'yahli.saltsberg.7fd5026d@apsl.player',
   'Yahli',
   'Saltsberg',
-  crypt('Player201vxnhx!', gen_salt('bf')),
+  crypt('Playeroincwdw5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10328,7 +10328,7 @@ VALUES (
   'frank.shkreli.7fd5026d@apsl.player',
   'Frank',
   'Shkreli',
-  crypt('Playergk2ax7s3!', gen_salt('bf')),
+  crypt('Player7zu3cjca!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10342,7 +10342,7 @@ VALUES (
   'michael.soboff.7fd5026d@apsl.player',
   'Michael',
   'Soboff',
-  crypt('Playervgejlfkf!', gen_salt('bf')),
+  crypt('Player8o5q0wv2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10356,7 +10356,7 @@ VALUES (
   'tom.wallenstein.7fd5026d@apsl.player',
   'Tom',
   'Wallenstein',
-  crypt('Playeribgmdvhx!', gen_salt('bf')),
+  crypt('Playerfd5snhph!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10370,7 +10370,7 @@ VALUES (
   'michael.wampler.7fd5026d@apsl.player',
   'Michael',
   'Wampler',
-  crypt('Playerpjfec2fp!', gen_salt('bf')),
+  crypt('Playersluy3h5j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10384,7 +10384,7 @@ VALUES (
   'peter.wentzel.7fd5026d@apsl.player',
   'Peter',
   'Wentzel',
-  crypt('Player0ebdd83n!', gen_salt('bf')),
+  crypt('Playerdxsgu3b9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10398,7 +10398,7 @@ VALUES (
   'edwin.zuniga.lopez.7fd5026d@apsl.player',
   'Edwin',
   'Zuniga Lopez',
-  crypt('Playert2089t11!', gen_salt('bf')),
+  crypt('Playerorbwavk0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10416,7 +10416,7 @@ VALUES (
   'abdul.karim.bah.48a40f97@apsl.player',
   'Abdul',
   'Karim Bah',
-  crypt('Playeryzo0qda8!', gen_salt('bf')),
+  crypt('Playerhcxrmd41!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10430,7 +10430,7 @@ VALUES (
   'ibrahima.bah.48a40f97@apsl.player',
   'Ibrahima',
   'Bah',
-  crypt('Player23ftbdk3!', gen_salt('bf')),
+  crypt('Player9f29iwvu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10444,7 +10444,7 @@ VALUES (
   'matthew.baringer.48a40f97@apsl.player',
   'Matthew',
   'Baringer',
-  crypt('Player4khq7l23!', gen_salt('bf')),
+  crypt('Playerw807l3be!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10458,7 +10458,7 @@ VALUES (
   'cesar.buitrago.48a40f97@apsl.player',
   'Cesar',
   'Buitrago',
-  crypt('Playerdnnzcehs!', gen_salt('bf')),
+  crypt('Playerbidupkge!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10472,7 +10472,7 @@ VALUES (
   'vassiriki.diaby.48a40f97@apsl.player',
   'Vassiriki',
   'Diaby',
-  crypt('Playerr8jqzvb5!', gen_salt('bf')),
+  crypt('Playertmjih38l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10486,7 +10486,7 @@ VALUES (
   'elhadj.diallo.48a40f97@apsl.player',
   'Elhadj',
   'Diallo',
-  crypt('Playerpau47l4t!', gen_salt('bf')),
+  crypt('Playernnhnvqw5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10500,7 +10500,7 @@ VALUES (
   'youssouf.diallo.48a40f97@apsl.player',
   'Youssouf',
   'Diallo',
-  crypt('Playerju8h7u8p!', gen_salt('bf')),
+  crypt('Playerxlydcbcg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10514,7 +10514,7 @@ VALUES (
   'ighoghoe.erediauwa.48a40f97@apsl.player',
   'Ighoghoe',
   'Erediauwa',
-  crypt('Playerst1l9kvy!', gen_salt('bf')),
+  crypt('Player67t2mnut!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10528,7 +10528,7 @@ VALUES (
   'luis.granados.48a40f97@apsl.player',
   'Luis',
   'Granados',
-  crypt('Playervcxdpjd1!', gen_salt('bf')),
+  crypt('Playeroc1itlcu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10542,7 +10542,7 @@ VALUES (
   'radouane.guissi.48a40f97@apsl.player',
   'Radouane',
   'Guissi',
-  crypt('Playerr8wyzxly!', gen_salt('bf')),
+  crypt('Playermzlrrd52!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10556,7 +10556,7 @@ VALUES (
   'joseph.kalilwa.48a40f97@apsl.player',
   'Joseph',
   'Kalilwa',
-  crypt('Player1mzkn2ev!', gen_salt('bf')),
+  crypt('Player7d0jmirv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10570,7 +10570,7 @@ VALUES (
   'nicholas.king.48a40f97@apsl.player',
   'Nicholas',
   'King',
-  crypt('Playerganyag9z!', gen_salt('bf')),
+  crypt('Playerfqeo4m8s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10584,7 +10584,7 @@ VALUES (
   'anyolo.makatiani.48a40f97@apsl.player',
   'Anyolo',
   'Makatiani',
-  crypt('Players0u5zv88!', gen_salt('bf')),
+  crypt('Player9yjnpx2o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10598,7 +10598,7 @@ VALUES (
   'matthew.mcdonnell.48a40f97@apsl.player',
   'Matthew',
   'McDonnell',
-  crypt('Playernzswva9c!', gen_salt('bf')),
+  crypt('Player1fmu3p56!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10612,7 +10612,7 @@ VALUES (
   'mohamad.miri.48a40f97@apsl.player',
   'Mohamad',
   'Miri',
-  crypt('Playerl5kf011r!', gen_salt('bf')),
+  crypt('Playerivcslalw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10626,7 +10626,7 @@ VALUES (
   'aymen.mohamed.48a40f97@apsl.player',
   'Aymen',
   'Mohamed',
-  crypt('Playerb4oodtjm!', gen_salt('bf')),
+  crypt('Playerf4w8o4pi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10640,7 +10640,7 @@ VALUES (
   'eoghan.morgan.48a40f97@apsl.player',
   'Eoghan',
   'Morgan',
-  crypt('Playerg3xuul57!', gen_salt('bf')),
+  crypt('Playerusci59dg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10654,7 +10654,7 @@ VALUES (
   'luca.natale.48a40f97@apsl.player',
   'Luca',
   'Natale',
-  crypt('Playerm2xyilo6!', gen_salt('bf')),
+  crypt('Playernoc2i2wg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10668,7 +10668,7 @@ VALUES (
   'ezekiel.omosanya.48a40f97@apsl.player',
   'Ezekiel',
   'Omosanya',
-  crypt('Player41aqkrce!', gen_salt('bf')),
+  crypt('Player2091wqx5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10682,7 +10682,7 @@ VALUES (
   'maynor.palacios.48a40f97@apsl.player',
   'Maynor',
   'Palacios',
-  crypt('Player69a08bbm!', gen_salt('bf')),
+  crypt('Player3sbs0r4d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10696,7 +10696,7 @@ VALUES (
   'justin.peters.48a40f97@apsl.player',
   'Justin',
   'Peters',
-  crypt('Playeri90ibbmm!', gen_salt('bf')),
+  crypt('Playerfctwdsi7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10710,7 +10710,7 @@ VALUES (
   'jaidon.selden.48a40f97@apsl.player',
   'Jaidon',
   'Selden',
-  crypt('Player1olipgqn!', gen_salt('bf')),
+  crypt('Playerya5qpj3a!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10724,7 +10724,7 @@ VALUES (
   'ismaila.tall.48a40f97@apsl.player',
   'Ismaila',
   'Tall',
-  crypt('Playernytu1oa7!', gen_salt('bf')),
+  crypt('Player3tilbdun!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10738,7 +10738,7 @@ VALUES (
   'james.terpak.48a40f97@apsl.player',
   'James',
   'Terpak',
-  crypt('Playerk7cf0ltq!', gen_salt('bf')),
+  crypt('Playerql9m4qlc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10752,7 +10752,7 @@ VALUES (
   'dominic.tomety.48a40f97@apsl.player',
   'Dominic',
   'Tomety',
-  crypt('Player3tpny4ot!', gen_salt('bf')),
+  crypt('Playerixgqqq39!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10766,7 +10766,7 @@ VALUES (
   'samuel.urban.48a40f97@apsl.player',
   'Samuel',
   'Urban',
-  crypt('Playerlgb7ioge!', gen_salt('bf')),
+  crypt('Playerbx0v04ba!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10780,7 +10780,7 @@ VALUES (
   'christopher.valentine.48a40f97@apsl.player',
   'Christopher',
   'Valentine',
-  crypt('Player4u4g8xb3!', gen_salt('bf')),
+  crypt('Playerm4ud13kk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10794,7 +10794,7 @@ VALUES (
   'marcial.viveros.48a40f97@apsl.player',
   'Marcial',
   'Viveros',
-  crypt('Player8nwdm8z6!', gen_salt('bf')),
+  crypt('Playerpwrfc054!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10808,7 +10808,7 @@ VALUES (
   'timothy.williams.48a40f97@apsl.player',
   'Timothy',
   'Williams',
-  crypt('Playerhh7h0ayb!', gen_salt('bf')),
+  crypt('Playerzo73ptg3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10826,7 +10826,7 @@ VALUES (
   'brahim.hadj.abboud.84a1029b@apsl.player',
   'Brahim',
   'Hadj Abboud',
-  crypt('Player6rqodeda!', gen_salt('bf')),
+  crypt('Playerh7552grf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10840,7 +10840,7 @@ VALUES (
   'tomas.ascoli.84a1029b@apsl.player',
   'Tomas',
   'Ascoli',
-  crypt('Player97qjpyar!', gen_salt('bf')),
+  crypt('Playerpy50ph4g!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10854,7 +10854,7 @@ VALUES (
   'august.axtman.84a1029b@apsl.player',
   'August',
   'Axtman',
-  crypt('Playerx3baapyz!', gen_salt('bf')),
+  crypt('Playerbzx22d1m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10868,7 +10868,7 @@ VALUES (
   'edwin.bedolla.84a1029b@apsl.player',
   'Edwin',
   'Bedolla',
-  crypt('Playerxi20svpp!', gen_salt('bf')),
+  crypt('Playerpcttxbu9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10882,7 +10882,7 @@ VALUES (
   'noah.sutton.beltran.84a1029b@apsl.player',
   'Noah',
   'Sutton Beltran',
-  crypt('Player2wzlke89!', gen_salt('bf')),
+  crypt('Playerd0nj5r1g!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10896,7 +10896,7 @@ VALUES (
   'ammit.bhogal.84a1029b@apsl.player',
   'Ammit',
   'Bhogal',
-  crypt('Player0lftqkbe!', gen_salt('bf')),
+  crypt('Playero344xtc4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10910,7 +10910,7 @@ VALUES (
   'john.bonas.84a1029b@apsl.player',
   'John',
   'Bonas',
-  crypt('Playerc81fh1qk!', gen_salt('bf')),
+  crypt('Playeraxyc75rb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10924,7 +10924,7 @@ VALUES (
   'marcus.brenes.84a1029b@apsl.player',
   'Marcus',
   'Brenes',
-  crypt('Player57txnhc4!', gen_salt('bf')),
+  crypt('Playerxpd37qwp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10938,7 +10938,7 @@ VALUES (
   'carter.burris.84a1029b@apsl.player',
   'Carter',
   'Burris',
-  crypt('Playerdvh0i8vq!', gen_salt('bf')),
+  crypt('Player6w43e1l0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10952,7 +10952,7 @@ VALUES (
   'colin.forster.davis.84a1029b@apsl.player',
   'Colin',
   'Forster Davis',
-  crypt('Playerfl3um9c2!', gen_salt('bf')),
+  crypt('Playerj23z6d5p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10966,7 +10966,7 @@ VALUES (
   'alex.demars.84a1029b@apsl.player',
   'Alex',
   'Demars',
-  crypt('Playeruj2oijjp!', gen_salt('bf')),
+  crypt('Playerd6ajvdf3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10980,7 +10980,7 @@ VALUES (
   'oliver.garcia.84a1029b@apsl.player',
   'Oliver',
   'Garcia',
-  crypt('Playerz6tjlwu0!', gen_salt('bf')),
+  crypt('Player2sfe5lml!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -10994,7 +10994,7 @@ VALUES (
   'michael.gonzalez.84a1029b@apsl.player',
   'Michael',
   'Gonzalez',
-  crypt('Player22gr30h5!', gen_salt('bf')),
+  crypt('Playeraqnxstrp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11008,7 +11008,7 @@ VALUES (
   'emmanuel.hewitt.84a1029b@apsl.player',
   'Emmanuel',
   'Hewitt',
-  crypt('Playerm5gcqrqr!', gen_salt('bf')),
+  crypt('Playern9og1zho!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11022,7 +11022,7 @@ VALUES (
   'bobby.dwayne.hickerson.84a1029b@apsl.player',
   'Bobby',
   'Dwayne Hickerson',
-  crypt('Playervws43eop!', gen_salt('bf')),
+  crypt('Playerzb0vpfsm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11036,7 +11036,7 @@ VALUES (
   'luke.hill.84a1029b@apsl.player',
   'Luke',
   'Hill',
-  crypt('Playermoxnidgr!', gen_salt('bf')),
+  crypt('Playerhlmclxgu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11050,7 +11050,7 @@ VALUES (
   'dylan.leonid.lacy.84a1029b@apsl.player',
   'Dylan',
   'Leonid Lacy',
-  crypt('Playerjilnrq7v!', gen_salt('bf')),
+  crypt('Playerwc8c9nwv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11064,7 +11064,7 @@ VALUES (
   'joel.lopez.84a1029b@apsl.player',
   'Joel',
   'Lopez',
-  crypt('Playert9iscxr2!', gen_salt('bf')),
+  crypt('Playerenwkfvsf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11078,7 +11078,7 @@ VALUES (
   'dominick.martinez.84a1029b@apsl.player',
   'Dominick',
   'Martinez',
-  crypt('Playergroy2k15!', gen_salt('bf')),
+  crypt('Player5dxztte7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11092,7 +11092,7 @@ VALUES (
   'brian.mcdaid.84a1029b@apsl.player',
   'Brian',
   'McDaid',
-  crypt('Playeropj59ds7!', gen_salt('bf')),
+  crypt('Playerj50di12v!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11106,7 +11106,7 @@ VALUES (
   'luca.mellor.84a1029b@apsl.player',
   'Luca',
   'Mellor',
-  crypt('Playersrjkwdun!', gen_salt('bf')),
+  crypt('Playernz6yk35c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11120,7 +11120,7 @@ VALUES (
   'mason.miller.84a1029b@apsl.player',
   'Mason',
   'Miller',
-  crypt('Playerzzw6kfff!', gen_salt('bf')),
+  crypt('Playerrk5x91is!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11134,7 +11134,7 @@ VALUES (
   'ayoub.mouhou.84a1029b@apsl.player',
   'Ayoub',
   'Mouhou',
-  crypt('Playernynaobaq!', gen_salt('bf')),
+  crypt('Playerqqds3z9e!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11148,7 +11148,7 @@ VALUES (
   'riley.porter.84a1029b@apsl.player',
   'Riley',
   'Porter',
-  crypt('Playerda8z2vhw!', gen_salt('bf')),
+  crypt('Playerad8ktatc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11162,7 +11162,7 @@ VALUES (
   'luke.pressler.84a1029b@apsl.player',
   'Luke',
   'Pressler',
-  crypt('Playereoih2c6m!', gen_salt('bf')),
+  crypt('Playerezw5as8p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11176,7 +11176,7 @@ VALUES (
   'ridge.robinson.84a1029b@apsl.player',
   'Ridge',
   'Robinson',
-  crypt('Playerzs39zum1!', gen_salt('bf')),
+  crypt('Playeremmt1xss!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11190,7 +11190,7 @@ VALUES (
   'miguel.ross.84a1029b@apsl.player',
   'Miguel',
   'Ross',
-  crypt('Playerufsxtu89!', gen_salt('bf')),
+  crypt('Player6w07yg8a!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11204,7 +11204,7 @@ VALUES (
   'maximos.sacarellos.84a1029b@apsl.player',
   'Maximos',
   'Sacarellos',
-  crypt('Playerfqnq5ql6!', gen_salt('bf')),
+  crypt('Playerhki3rx7q!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11218,7 +11218,7 @@ VALUES (
   'justin.thomas.84a1029b@apsl.player',
   'Justin',
   'Thomas',
-  crypt('Playerlv66nzqs!', gen_salt('bf')),
+  crypt('Playerbfxn5qha!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11232,7 +11232,7 @@ VALUES (
   'luke.thomas.84a1029b@apsl.player',
   'Luke',
   'Thomas',
-  crypt('Playermf3mg2f5!', gen_salt('bf')),
+  crypt('Playeriuh1vmc0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11246,7 +11246,7 @@ VALUES (
   'sama.tima.84a1029b@apsl.player',
   'Sama',
   'Tima',
-  crypt('Playerp0ynaylh!', gen_salt('bf')),
+  crypt('Playero4xtg8jd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11260,7 +11260,7 @@ VALUES (
   'kyle.tucker.84a1029b@apsl.player',
   'Kyle',
   'Tucker',
-  crypt('Playera4zfzkxs!', gen_salt('bf')),
+  crypt('Playeryo9oeg08!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11274,7 +11274,7 @@ VALUES (
   'nikhil.ashish.verma.84a1029b@apsl.player',
   'Nikhil',
   'Ashish Verma',
-  crypt('Playertqq9qyzt!', gen_salt('bf')),
+  crypt('Playernq8016fn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11288,7 +11288,7 @@ VALUES (
   'jacob.weaver.84a1029b@apsl.player',
   'Jacob',
   'Weaver',
-  crypt('Playerfkrsacza!', gen_salt('bf')),
+  crypt('Player261nquf0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11302,7 +11302,7 @@ VALUES (
   'charles.wilson.84a1029b@apsl.player',
   'Charles',
   'Wilson',
-  crypt('Playersa90anw2!', gen_salt('bf')),
+  crypt('Player820i8uh6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11320,7 +11320,7 @@ VALUES (
   'matteo.adiletta.0223b314@apsl.player',
   'Matteo',
   'Adiletta',
-  crypt('Playere5uo7u86!', gen_salt('bf')),
+  crypt('Player65swu7r1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11334,7 +11334,7 @@ VALUES (
   'william.ardiles.0223b314@apsl.player',
   'William',
   'Ardiles',
-  crypt('Playerv4s2d399!', gen_salt('bf')),
+  crypt('Playerb97by6tv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11348,7 +11348,7 @@ VALUES (
   'serge.biket.0223b314@apsl.player',
   'Serge',
   'Biket',
-  crypt('Playerpfc56nim!', gen_salt('bf')),
+  crypt('Playerthxt76nr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11362,7 +11362,7 @@ VALUES (
   'ryan.butler.0223b314@apsl.player',
   'Ryan',
   'Butler',
-  crypt('Player2vw3rc4m!', gen_salt('bf')),
+  crypt('Playerp9ep5axb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11376,7 +11376,7 @@ VALUES (
   'obiazie.chinatu.0223b314@apsl.player',
   'Obiazie',
   'Chinatu',
-  crypt('Player44iffjn2!', gen_salt('bf')),
+  crypt('Playerrz6iychc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11390,7 +11390,7 @@ VALUES (
   'seth.crabbe.0223b314@apsl.player',
   'Seth',
   'Crabbe',
-  crypt('Player1bx992pu!', gen_salt('bf')),
+  crypt('Playerjsm8ncme!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11404,7 +11404,7 @@ VALUES (
   'leo.dunia.0223b314@apsl.player',
   'Leo',
   'Dunia',
-  crypt('Playera0voz2ni!', gen_salt('bf')),
+  crypt('Playeres0maikn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11418,7 +11418,7 @@ VALUES (
   'ivan.fombu.0223b314@apsl.player',
   'Ivan',
   'Fombu',
-  crypt('Playerkl3sgszm!', gen_salt('bf')),
+  crypt('Playeru8ugfq30!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11432,7 +11432,7 @@ VALUES (
   'nikolaos.gousios.0223b314@apsl.player',
   'Nikolaos',
   'Gousios',
-  crypt('Player9i7t595h!', gen_salt('bf')),
+  crypt('Player4pyhr9gx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11446,7 +11446,7 @@ VALUES (
   'isaac.hollinger.0223b314@apsl.player',
   'Isaac',
   'Hollinger',
-  crypt('Playerrwpe0vvt!', gen_salt('bf')),
+  crypt('Playerlrau22yj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11460,7 +11460,7 @@ VALUES (
   'micah.hostetter.0223b314@apsl.player',
   'Micah',
   'Hostetter',
-  crypt('Playerump2pqin!', gen_salt('bf')),
+  crypt('Playerb5umzkey!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11474,7 +11474,7 @@ VALUES (
   'abdoul.issoufou.0223b314@apsl.player',
   'Abdoul',
   'Issoufou',
-  crypt('Playerlbtsgm7j!', gen_salt('bf')),
+  crypt('Player9mxrn4xc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11488,7 +11488,7 @@ VALUES (
   'clovis.kabre.0223b314@apsl.player',
   'Clovis',
   'Kabre',
-  crypt('Playerd6ud3vd6!', gen_salt('bf')),
+  crypt('Playeryovgb8fx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11502,7 +11502,7 @@ VALUES (
   'justin.keefer.0223b314@apsl.player',
   'Justin',
   'Keefer',
-  crypt('Playeru4nsp9jr!', gen_salt('bf')),
+  crypt('Player6n1vcnvd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11516,7 +11516,7 @@ VALUES (
   'mehluko.letsoalo.0223b314@apsl.player',
   'Mehluko',
   'Letsoalo',
-  crypt('Playerdg4kfede!', gen_salt('bf')),
+  crypt('Playerin1fcm1n!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11530,7 +11530,7 @@ VALUES (
   'kel.merckel.0223b314@apsl.player',
   'Kel',
   'Merckel',
-  crypt('Playeri1xwugkm!', gen_salt('bf')),
+  crypt('Playertlmurhz5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11544,7 +11544,7 @@ VALUES (
   'caden.mullen.0223b314@apsl.player',
   'Caden',
   'Mullen',
-  crypt('Playerezkbu6yi!', gen_salt('bf')),
+  crypt('Playeryx0950oy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11558,7 +11558,7 @@ VALUES (
   'babunga.mulumeoderwa.0223b314@apsl.player',
   'Babunga',
   'Mulumeoderwa',
-  crypt('Playerna3l4wfk!', gen_salt('bf')),
+  crypt('Playerdj5n5cph!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11572,7 +11572,7 @@ VALUES (
   'luke.nall.0223b314@apsl.player',
   'Luke',
   'Nall',
-  crypt('Player05oduy71!', gen_salt('bf')),
+  crypt('Playerwyvxlfu7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11586,7 +11586,7 @@ VALUES (
   'sivpheng.phann.0223b314@apsl.player',
   'Sivpheng',
   'Phann',
-  crypt('Playerp08lx6je!', gen_salt('bf')),
+  crypt('Playerb73dyvef!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11600,7 +11600,7 @@ VALUES (
   'derek.ramirez.0223b314@apsl.player',
   'Derek',
   'Ramirez',
-  crypt('Playerrdjbh57e!', gen_salt('bf')),
+  crypt('Player8wc763ck!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11614,7 +11614,7 @@ VALUES (
   'josiah.ramirez.0223b314@apsl.player',
   'Josiah',
   'Ramirez',
-  crypt('Playerinygm1wl!', gen_salt('bf')),
+  crypt('Playerbm18vobk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11628,7 +11628,7 @@ VALUES (
   'chris.richards.0223b314@apsl.player',
   'Chris',
   'Richards',
-  crypt('Playerrdbg65nk!', gen_salt('bf')),
+  crypt('Playerfe5pmof6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11642,7 +11642,7 @@ VALUES (
   'daniel.rowe.0223b314@apsl.player',
   'Daniel',
   'Rowe',
-  crypt('Playerg9d3vvd9!', gen_salt('bf')),
+  crypt('Playerny7i8c6o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11656,7 +11656,7 @@ VALUES (
   'lazaro.salazar.0223b314@apsl.player',
   'Lazaro',
   'Salazar',
-  crypt('Playervsnq1mxa!', gen_salt('bf')),
+  crypt('Player9f6gaj2j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11670,7 +11670,7 @@ VALUES (
   'david.tai.san.0223b314@apsl.player',
   'David',
   'Tai San',
-  crypt('Playerzo8g34bz!', gen_salt('bf')),
+  crypt('Playerytfu0gta!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11684,7 +11684,7 @@ VALUES (
   'dawson.schreck.0223b314@apsl.player',
   'Dawson',
   'Schreck',
-  crypt('Playeriqqn09xs!', gen_salt('bf')),
+  crypt('Player6dqyckbq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11698,7 +11698,7 @@ VALUES (
   'owen.shea.0223b314@apsl.player',
   'Owen',
   'Shea',
-  crypt('Playerqamm2c2h!', gen_salt('bf')),
+  crypt('Playerv81a8lg0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11712,7 +11712,7 @@ VALUES (
   'denis.tarasov.0223b314@apsl.player',
   'Denis',
   'Tarasov',
-  crypt('Playerjv5p3ul5!', gen_salt('bf')),
+  crypt('Playeriu0krn5l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11726,7 +11726,7 @@ VALUES (
   'babo.tereffe.0223b314@apsl.player',
   'Babo',
   'Tereffe',
-  crypt('Playerqktn4h3l!', gen_salt('bf')),
+  crypt('Playerp1jssxzn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11740,7 +11740,7 @@ VALUES (
   'william.vasquez.0223b314@apsl.player',
   'William',
   'Vasquez',
-  crypt('Playerh4oa9nlu!', gen_salt('bf')),
+  crypt('Player0b7lfgk3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11754,7 +11754,7 @@ VALUES (
   'joel.walker.0223b314@apsl.player',
   'Joel',
   'Walker',
-  crypt('Playerpb240hfa!', gen_salt('bf')),
+  crypt('Playertbcjwpax!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11768,7 +11768,7 @@ VALUES (
   'christian.wieand.0223b314@apsl.player',
   'Christian',
   'Wieand',
-  crypt('Player8evwvzza!', gen_salt('bf')),
+  crypt('Player5urb1iyk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11782,7 +11782,7 @@ VALUES (
   'kedric.yoder.0223b314@apsl.player',
   'Kedric',
   'Yoder',
-  crypt('Playerkbmtqqc5!', gen_salt('bf')),
+  crypt('Playervilzrydm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11800,7 +11800,7 @@ VALUES (
   'eric.adamo.294a08ff@apsl.player',
   'Eric',
   'Adamo',
-  crypt('Playerqdw7wgme!', gen_salt('bf')),
+  crypt('Playerp7oq35k5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11814,7 +11814,7 @@ VALUES (
   'salam.ashurmamadov.294a08ff@apsl.player',
   'Salam',
   'Ashurmamadov',
-  crypt('Playere9l26l67!', gen_salt('bf')),
+  crypt('Playerszw6t98j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11828,7 +11828,7 @@ VALUES (
   'matthew.bergmaier.294a08ff@apsl.player',
   'Matthew',
   'Bergmaier',
-  crypt('Playerk7j8x6h5!', gen_salt('bf')),
+  crypt('Playernx3bg8qh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11842,7 +11842,7 @@ VALUES (
   'daniel.bloyou.294a08ff@apsl.player',
   'Daniel',
   'Bloyou',
-  crypt('Playerpyz9jtkr!', gen_salt('bf')),
+  crypt('Playerdottzhu1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11856,7 +11856,7 @@ VALUES (
   'lawrence.buigbo.294a08ff@apsl.player',
   'Lawrence',
   'Buigbo',
-  crypt('Playerbqdyht0v!', gen_salt('bf')),
+  crypt('Playerixoyb767!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11870,7 +11870,7 @@ VALUES (
   'diego.cabrera.294a08ff@apsl.player',
   'Diego',
   'Cabrera',
-  crypt('Player93891y56!', gen_salt('bf')),
+  crypt('Player0lwbzj5o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11884,7 +11884,7 @@ VALUES (
   'emanuel.caire.294a08ff@apsl.player',
   'Emanuel',
   'Caire',
-  crypt('Player9j1coumo!', gen_salt('bf')),
+  crypt('Player39lo0onj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11898,7 +11898,7 @@ VALUES (
   'sebastian.carmona.294a08ff@apsl.player',
   'Sebastian',
   'Carmona',
-  crypt('Playerzf04pbim!', gen_salt('bf')),
+  crypt('Playerubhd05sc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11912,7 +11912,7 @@ VALUES (
   'chad.catalana.294a08ff@apsl.player',
   'Chad',
   'Catalana',
-  crypt('Playerufq2bqsj!', gen_salt('bf')),
+  crypt('Playery7g631i8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11926,7 +11926,7 @@ VALUES (
   'nyles.cayemitte.294a08ff@apsl.player',
   'Nyles',
   'Cayemitte',
-  crypt('Playerfz35vwwa!', gen_salt('bf')),
+  crypt('Player7yixg0oq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11940,7 +11940,7 @@ VALUES (
   'justin.cooper.294a08ff@apsl.player',
   'Justin',
   'Cooper',
-  crypt('Playerch2llyt7!', gen_salt('bf')),
+  crypt('Playerw0auzenc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11954,7 +11954,7 @@ VALUES (
   'kevin.davis.294a08ff@apsl.player',
   'Kevin',
   'Davis',
-  crypt('Playermvsenxs9!', gen_salt('bf')),
+  crypt('Playerzrwslsdl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11968,7 +11968,7 @@ VALUES (
   'alvin.deegon.294a08ff@apsl.player',
   'Alvin',
   'Deegon',
-  crypt('Player5kbhl2j2!', gen_salt('bf')),
+  crypt('Player1vtecbu5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11982,7 +11982,7 @@ VALUES (
   'yousouf.doucoure.294a08ff@apsl.player',
   'Yousouf',
   'Doucoure',
-  crypt('Playerjnttgpvk!', gen_salt('bf')),
+  crypt('Player3ys6waig!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -11996,7 +11996,7 @@ VALUES (
   'nick.dudek.294a08ff@apsl.player',
   'Nick',
   'Dudek',
-  crypt('Playerl4q2f0us!', gen_salt('bf')),
+  crypt('Player4agfzi5c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12010,7 +12010,7 @@ VALUES (
   'andres.freire.294a08ff@apsl.player',
   'Andres',
   'Freire',
-  crypt('Playerzzr5f15e!', gen_salt('bf')),
+  crypt('Playerpuu0kfz2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12024,7 +12024,7 @@ VALUES (
   'luka.gogidze.294a08ff@apsl.player',
   'Luka',
   'Gogidze',
-  crypt('Player16mpzp5y!', gen_salt('bf')),
+  crypt('Player4qf3ew6y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12038,7 +12038,7 @@ VALUES (
   'andres.gomez.294a08ff@apsl.player',
   'Andres',
   'Gomez',
-  crypt('Playerlr0l8qez!', gen_salt('bf')),
+  crypt('Playercrhclinn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12052,7 +12052,7 @@ VALUES (
   'brendan.gorman.294a08ff@apsl.player',
   'Brendan',
   'Gorman',
-  crypt('Playery864kohf!', gen_salt('bf')),
+  crypt('Player0er2ghtq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12066,7 +12066,7 @@ VALUES (
   'ermir.hoti.294a08ff@apsl.player',
   'Ermir',
   'Hoti',
-  crypt('Playerocy8f1oo!', gen_salt('bf')),
+  crypt('Player3up6e5uo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12080,7 +12080,7 @@ VALUES (
   'hamin.kim.294a08ff@apsl.player',
   'Hamin',
   'Kim',
-  crypt('Playerwn9k27oq!', gen_salt('bf')),
+  crypt('Player7sbqlhxn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12094,7 +12094,7 @@ VALUES (
   'kalvin.matischak.294a08ff@apsl.player',
   'Kalvin',
   'Matischak',
-  crypt('Player45ee1u69!', gen_salt('bf')),
+  crypt('Playerqdmnf2as!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12108,7 +12108,7 @@ VALUES (
   'gabriel.matute.294a08ff@apsl.player',
   'Gabriel',
   'Matute',
-  crypt('Playert7sthq2c!', gen_salt('bf')),
+  crypt('Playerpsbvm26g!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12122,7 +12122,7 @@ VALUES (
   'aidan.meissler.294a08ff@apsl.player',
   'Aidan',
   'Meissler',
-  crypt('Playeroj8ijrgg!', gen_salt('bf')),
+  crypt('Playeryizypzci!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12136,7 +12136,7 @@ VALUES (
   'glenn.moyer.294a08ff@apsl.player',
   'Glenn',
   'Moyer',
-  crypt('Playerhqzw2bsi!', gen_salt('bf')),
+  crypt('Playerzv17osw9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12150,7 +12150,7 @@ VALUES (
   'kyle.mtshazo.294a08ff@apsl.player',
   'Kyle',
   'Mtshazo',
-  crypt('Player8u32jgrp!', gen_salt('bf')),
+  crypt('Playerf8iso58x!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12164,7 +12164,7 @@ VALUES (
   'daniel.murtagh.294a08ff@apsl.player',
   'Daniel',
   'Murtagh',
-  crypt('Player7bl7l50b!', gen_salt('bf')),
+  crypt('Playereixmz8gm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12178,7 +12178,7 @@ VALUES (
   'justin.odoemene.294a08ff@apsl.player',
   'Justin',
   'Odoemene',
-  crypt('Player0nj50ahx!', gen_salt('bf')),
+  crypt('Playerjqeibl8n!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12192,7 +12192,7 @@ VALUES (
   'ryan.pereus.294a08ff@apsl.player',
   'Ryan',
   'Pereus',
-  crypt('Player2jvvc6i3!', gen_salt('bf')),
+  crypt('Player59cq57k8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12206,7 +12206,7 @@ VALUES (
   'christopher.rodriguez.294a08ff@apsl.player',
   'Christopher',
   'Rodriguez',
-  crypt('Playerhzuigjng!', gen_salt('bf')),
+  crypt('Playerfb8t4hgr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12220,7 +12220,7 @@ VALUES (
   'eran.shifris.294a08ff@apsl.player',
   'Eran',
   'Shifris',
-  crypt('Playerin9hdxlt!', gen_salt('bf')),
+  crypt('Playertgbhf1kt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12234,7 +12234,7 @@ VALUES (
   'andres.velez.294a08ff@apsl.player',
   'Andres',
   'Velez',
-  crypt('Playerqowhflrc!', gen_salt('bf')),
+  crypt('Playerrlli9j4c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12248,7 +12248,7 @@ VALUES (
   'seth.walker.294a08ff@apsl.player',
   'Seth',
   'Walker',
-  crypt('Playergmajej1t!', gen_salt('bf')),
+  crypt('Player4vhiygzs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12262,7 +12262,7 @@ VALUES (
   'john.steven.warren.294a08ff@apsl.player',
   'John',
   'Steven Warren',
-  crypt('Playerug1fbs8v!', gen_salt('bf')),
+  crypt('Playero0dwra1f!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12280,7 +12280,7 @@ VALUES (
   'djibi.tata.bah.5d95682c@apsl.player',
   'Djibi',
   'Tata Bah',
-  crypt('Playerwv9zooxo!', gen_salt('bf')),
+  crypt('Playergj8hvdee!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12294,7 +12294,7 @@ VALUES (
   'walter.barreto.5d95682c@apsl.player',
   'Walter',
   'Barreto',
-  crypt('Playerbrmeaplt!', gen_salt('bf')),
+  crypt('Playervbqd1fle!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12308,7 +12308,7 @@ VALUES (
   'james.bernstein.5d95682c@apsl.player',
   'James',
   'Bernstein',
-  crypt('Playerogmz2lxq!', gen_salt('bf')),
+  crypt('Playerhy3w011n!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12322,7 +12322,7 @@ VALUES (
   'pierre.bosquet.5d95682c@apsl.player',
   'Pierre',
   'Bosquet',
-  crypt('Player44zqyqg7!', gen_salt('bf')),
+  crypt('Player05ljpir0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12336,7 +12336,7 @@ VALUES (
   'erik.carchipulla.5d95682c@apsl.player',
   'Erik',
   'Carchipulla',
-  crypt('Playerjit2k4su!', gen_salt('bf')),
+  crypt('Playera6entwop!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12350,7 +12350,7 @@ VALUES (
   'filippo.d.anna.5d95682c@apsl.player',
   'Filippo',
   'D''Anna',
-  crypt('Playerldxr92mu!', gen_salt('bf')),
+  crypt('Player8w6wxceo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12364,7 +12364,7 @@ VALUES (
   'jonathan.firmino.5d95682c@apsl.player',
   'Jonathan',
   'Firmino',
-  crypt('Playeririojkmx!', gen_salt('bf')),
+  crypt('Playermdbqqzjq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12378,7 +12378,7 @@ VALUES (
   'jose.tony.flores.5d95682c@apsl.player',
   'Jose',
   '(Tony) Flores',
-  crypt('Playerdoyx32da!', gen_salt('bf')),
+  crypt('Player5gzluldg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12392,7 +12392,7 @@ VALUES (
   'liam.fredericks.5d95682c@apsl.player',
   'Liam',
   'Fredericks',
-  crypt('Playerze5ri0xh!', gen_salt('bf')),
+  crypt('Playerur588197!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12406,7 +12406,7 @@ VALUES (
   'eric.goldberg.5d95682c@apsl.player',
   'Eric',
   'Goldberg',
-  crypt('Playerfhqm1yrm!', gen_salt('bf')),
+  crypt('Playeran0mt7ld!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12420,7 +12420,7 @@ VALUES (
   'lorenzo.jayakanthan.5d95682c@apsl.player',
   'Lorenzo',
   'Jayakanthan',
-  crypt('Player1jegb178!', gen_salt('bf')),
+  crypt('Playernb1b31bz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12434,7 +12434,7 @@ VALUES (
   'taeus.jones.5d95682c@apsl.player',
   'Taeus',
   'Jones',
-  crypt('Playerltkk3akq!', gen_salt('bf')),
+  crypt('Playerc91z1ot4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12448,7 +12448,7 @@ VALUES (
   'brendan.kerins.5d95682c@apsl.player',
   'Brendan',
   'Kerins',
-  crypt('Playervbnssnz8!', gen_salt('bf')),
+  crypt('Playeraxaj8i6g!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12462,7 +12462,7 @@ VALUES (
   'sean.ryan.milelli.5d95682c@apsl.player',
   'Sean',
   'Ryan Milelli',
-  crypt('Playerro9wzgrz!', gen_salt('bf')),
+  crypt('Playertyy7hso5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12476,7 +12476,7 @@ VALUES (
   'conlan.michael.paventi.5d95682c@apsl.player',
   'Conlan',
   'Michael Paventi',
-  crypt('Player9gvhc2vh!', gen_salt('bf')),
+  crypt('Playermvwfd4hn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12490,7 +12490,7 @@ VALUES (
   'kevin.perez.5d95682c@apsl.player',
   'Kevin',
   'Perez',
-  crypt('Playerx53d9h7d!', gen_salt('bf')),
+  crypt('Player3pg4cluh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12504,7 +12504,7 @@ VALUES (
   'giovanni.pierleonardi.5d95682c@apsl.player',
   'Giovanni',
   'Pierleonardi',
-  crypt('Playerozh6esss!', gen_salt('bf')),
+  crypt('Player0y9lu58v!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12518,7 +12518,7 @@ VALUES (
   'giuseppe.pierleonardi.5d95682c@apsl.player',
   'Giuseppe',
   'Pierleonardi',
-  crypt('Playery0c5dsj2!', gen_salt('bf')),
+  crypt('Playerruq12v0v!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12532,7 +12532,7 @@ VALUES (
   'guiliano.pierleonardi.5d95682c@apsl.player',
   'Guiliano',
   'Pierleonardi',
-  crypt('Player0ooebq78!', gen_salt('bf')),
+  crypt('Playerni2dedx5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12546,7 +12546,7 @@ VALUES (
   'vincenzo.pugliese.5d95682c@apsl.player',
   'Vincenzo',
   'Pugliese',
-  crypt('Player24g4cach!', gen_salt('bf')),
+  crypt('Playerenz55xwu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12560,7 +12560,7 @@ VALUES (
   'joel.quist.5d95682c@apsl.player',
   'Joel',
   'Quist',
-  crypt('Playerjpcdz31a!', gen_salt('bf')),
+  crypt('Playere4urca7v!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12574,7 +12574,7 @@ VALUES (
   'dennis.rooney.5d95682c@apsl.player',
   'Dennis',
   'Rooney',
-  crypt('Playereyav170y!', gen_salt('bf')),
+  crypt('Playerafh6atyg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12588,7 +12588,7 @@ VALUES (
   'ilia.sakheishvili.5d95682c@apsl.player',
   'Ilia',
   'Sakheishvili',
-  crypt('Playerd0v43j9a!', gen_salt('bf')),
+  crypt('Playerchavum9o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12602,7 +12602,7 @@ VALUES (
   'cole.sotack.5d95682c@apsl.player',
   'Cole',
   'Sotack',
-  crypt('Playerzfj58ow0!', gen_salt('bf')),
+  crypt('Playerb39ghhgp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12616,7 +12616,7 @@ VALUES (
   'reed.sviben.5d95682c@apsl.player',
   'Reed',
   'Sviben',
-  crypt('Playerpw6y8jv2!', gen_salt('bf')),
+  crypt('Playerekhs5moj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12630,7 +12630,7 @@ VALUES (
   'brandon.d.valeri.5d95682c@apsl.player',
   'Brandon',
   'D Valeri',
-  crypt('Player3t03bvme!', gen_salt('bf')),
+  crypt('Playerli6e6cci!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12644,7 +12644,7 @@ VALUES (
   'ronald.ventura.5d95682c@apsl.player',
   'Ronald',
   'Ventura',
-  crypt('Playerykyuvfqz!', gen_salt('bf')),
+  crypt('Playerufh6pydh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12662,7 +12662,7 @@ VALUES (
   'emani.arroyo.3dd92f09@apsl.player',
   'Emani',
   'Arroyo',
-  crypt('Playerhbogd7da!', gen_salt('bf')),
+  crypt('Playerhcwihha2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12676,7 +12676,7 @@ VALUES (
   'nolan.bair.3dd92f09@apsl.player',
   'Nolan',
   'Bair',
-  crypt('Playerqosr4v7t!', gen_salt('bf')),
+  crypt('Player1yqtxnyg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12690,7 +12690,7 @@ VALUES (
   'almuthenna.hseen.baled.3dd92f09@apsl.player',
   'Almuthenna',
   'Hseen Baled',
-  crypt('Playerzh2y5d0r!', gen_salt('bf')),
+  crypt('Playerzj3g8nof!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12704,7 +12704,7 @@ VALUES (
   'richard.blanchard.3dd92f09@apsl.player',
   'Richard',
   'Blanchard',
-  crypt('Player223s6lm5!', gen_salt('bf')),
+  crypt('Player7doubjor!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12718,7 +12718,7 @@ VALUES (
   'bakuri.buadze.3dd92f09@apsl.player',
   'Bakuri',
   'Buadze',
-  crypt('Player1ro6vbeo!', gen_salt('bf')),
+  crypt('Playeres3di3t7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12732,7 +12732,7 @@ VALUES (
   'maximo.chavez.3dd92f09@apsl.player',
   'Maximo',
   'Chavez',
-  crypt('Playernxhgdz55!', gen_salt('bf')),
+  crypt('Playerl4d0lmtm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12746,7 +12746,7 @@ VALUES (
   'evan.chinwendu.azoro.3dd92f09@apsl.player',
   'Evan',
   'Chinwendu Azoro',
-  crypt('Player5az8v0z3!', gen_salt('bf')),
+  crypt('Playerro7ju1zh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12760,7 +12760,7 @@ VALUES (
   'adan.crispin.morales.3dd92f09@apsl.player',
   'Adan',
   'Crispin-Morales',
-  crypt('Playervipl4jiy!', gen_salt('bf')),
+  crypt('Player5ajpf6mk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12774,7 +12774,7 @@ VALUES (
   'jorge.luis.diaz.lobo.3dd92f09@apsl.player',
   'Jorge',
   'Luis Diaz Lobo',
-  crypt('Player357tuwtt!', gen_salt('bf')),
+  crypt('Playero5jdvy47!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12788,7 +12788,7 @@ VALUES (
   'spencer.dickinson.3dd92f09@apsl.player',
   'Spencer',
   'Dickinson',
-  crypt('Playersaca6rat!', gen_salt('bf')),
+  crypt('Playerq8nph4dp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12802,7 +12802,7 @@ VALUES (
   'isaiah.fox.3dd92f09@apsl.player',
   'Isaiah',
   'Fox',
-  crypt('Playere6k21j0k!', gen_salt('bf')),
+  crypt('Playerewlto06l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12816,7 +12816,7 @@ VALUES (
   'goga.gogoladze.3dd92f09@apsl.player',
   'Goga',
   'Gogoladze',
-  crypt('Playerydj9t6fm!', gen_salt('bf')),
+  crypt('Playerhvd1csod!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12830,7 +12830,7 @@ VALUES (
   'stephen.grazioli.3dd92f09@apsl.player',
   'Stephen',
   'Grazioli',
-  crypt('Playerz6588rzf!', gen_salt('bf')),
+  crypt('Playerzdwmouxf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12844,7 +12844,7 @@ VALUES (
   'mohamed.ibrahim.3dd92f09@apsl.player',
   'Mohamed',
   'Ibrahim',
-  crypt('Playerru7yxn4u!', gen_salt('bf')),
+  crypt('Playerzu2ou1gq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12858,7 +12858,7 @@ VALUES (
   'matthew.jeanpierre.3dd92f09@apsl.player',
   'Matthew',
   'JeanPierre',
-  crypt('Playera2lmin6f!', gen_salt('bf')),
+  crypt('Playerxp56gxj9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12872,7 +12872,7 @@ VALUES (
   'mohammadzain.kazi.3dd92f09@apsl.player',
   'Mohammadzain',
   'Kazi',
-  crypt('Player2vh667ke!', gen_salt('bf')),
+  crypt('Playerzlr2rajc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12886,7 +12886,7 @@ VALUES (
   'guilherme.martins.3dd92f09@apsl.player',
   'Guilherme',
   'Martins',
-  crypt('Playeru6tyra68!', gen_salt('bf')),
+  crypt('Player0zafllql!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12900,7 +12900,7 @@ VALUES (
   'john.miller.3dd92f09@apsl.player',
   'John',
   'Miller',
-  crypt('Playerj7p9ql7y!', gen_salt('bf')),
+  crypt('Playerodjp03yc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12914,7 +12914,7 @@ VALUES (
   'edwin.owusu.siaw.3dd92f09@apsl.player',
   'Edwin',
   'Owusu Siaw',
-  crypt('Playerprmix322!', gen_salt('bf')),
+  crypt('Playernrwswtr2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12928,7 +12928,7 @@ VALUES (
   'juan.polanco.3dd92f09@apsl.player',
   'Juan',
   'Polanco',
-  crypt('Playerrkq4hpes!', gen_salt('bf')),
+  crypt('Playerpstjmg7p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12942,7 +12942,7 @@ VALUES (
   'angel.javier.rodriguez.3dd92f09@apsl.player',
   'Angel',
   'Javier Rodriguez',
-  crypt('Playerqnd0vym2!', gen_salt('bf')),
+  crypt('Player07nblqsi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12956,7 +12956,7 @@ VALUES (
   'ahmed.saedahmed.3dd92f09@apsl.player',
   'Ahmed',
   'Saedahmed',
-  crypt('Player5w15e971!', gen_salt('bf')),
+  crypt('Player80o5o5ti!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12970,7 +12970,7 @@ VALUES (
   'edi.schwartz.3dd92f09@apsl.player',
   'Edi',
   'Schwartz',
-  crypt('Playerypyg6a5d!', gen_salt('bf')),
+  crypt('Playerb9sxgfiq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12984,7 +12984,7 @@ VALUES (
   'maksym.shevchenko.3dd92f09@apsl.player',
   'Maksym',
   'Shevchenko',
-  crypt('Playerqqj215y8!', gen_salt('bf')),
+  crypt('Player5wy9xi5g!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -12998,7 +12998,7 @@ VALUES (
   'alexander.simon.3dd92f09@apsl.player',
   'Alexander',
   'Simon',
-  crypt('Player47aft7jj!', gen_salt('bf')),
+  crypt('Playerhizlqmna!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13012,7 +13012,7 @@ VALUES (
   'daniel.smith.3dd92f09@apsl.player',
   'Daniel',
   'Smith',
-  crypt('Playerxn9czqus!', gen_salt('bf')),
+  crypt('Playerwvv016qt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13026,7 +13026,7 @@ VALUES (
   'christian.sorteberg.3dd92f09@apsl.player',
   'Christian',
   'Sorteberg',
-  crypt('Playeros81n20s!', gen_salt('bf')),
+  crypt('Playeryxl0xj9o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13040,7 +13040,7 @@ VALUES (
   'sekou.sylla.3dd92f09@apsl.player',
   'Sekou',
   'Sylla',
-  crypt('Playervswwwgio!', gen_salt('bf')),
+  crypt('Player1yrenm2f!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13054,7 +13054,7 @@ VALUES (
   'abraham.waldman.3dd92f09@apsl.player',
   'Abraham',
   'Waldman',
-  crypt('Playergiqakcaf!', gen_salt('bf')),
+  crypt('Playerrlxkaq77!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13072,7 +13072,7 @@ VALUES (
   'mark.abbonizio.907ece9f@apsl.player',
   'Mark',
   'Abbonizio',
-  crypt('Playerbp2dmyh7!', gen_salt('bf')),
+  crypt('Playerlud9x7en!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13086,7 +13086,7 @@ VALUES (
   'sergio.abelardy.907ece9f@apsl.player',
   'Sergio',
   'Abelardy',
-  crypt('Playerh2iz59df!', gen_salt('bf')),
+  crypt('Playerls24mwda!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13100,7 +13100,7 @@ VALUES (
   'pedro.barbosa.907ece9f@apsl.player',
   'Pedro',
   'Barbosa',
-  crypt('Playerwz0qg9a1!', gen_salt('bf')),
+  crypt('Playeranzrcob9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13114,7 +13114,7 @@ VALUES (
   'hunter.bell.907ece9f@apsl.player',
   'Hunter',
   'Bell',
-  crypt('Player3vsefud2!', gen_salt('bf')),
+  crypt('Player57nphvl9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13128,7 +13128,7 @@ VALUES (
   'mohamed.elgayar.907ece9f@apsl.player',
   'Mohamed',
   'Elgayar',
-  crypt('Player6z5yophr!', gen_salt('bf')),
+  crypt('Player6z3dwlwj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13142,7 +13142,7 @@ VALUES (
   'salvatore.ficarotta.907ece9f@apsl.player',
   'Salvatore',
   'Ficarotta',
-  crypt('Playertss5b70m!', gen_salt('bf')),
+  crypt('Playerwx4tqqwy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13156,7 +13156,7 @@ VALUES (
   'henry.guzman.907ece9f@apsl.player',
   'Henry',
   'Guzman',
-  crypt('Player2iuweezu!', gen_salt('bf')),
+  crypt('Playercbm65ld3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13170,7 +13170,7 @@ VALUES (
   'theophilus.ijeboi.907ece9f@apsl.player',
   'Theophilus',
   'Ijeboi',
-  crypt('Playerpv21fzkv!', gen_salt('bf')),
+  crypt('Player4gfou8wm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13184,7 +13184,7 @@ VALUES (
   'mohamed.jawara.907ece9f@apsl.player',
   'Mohamed',
   'Jawara',
-  crypt('Playervcwwuz5h!', gen_salt('bf')),
+  crypt('Player06jl0tme!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13198,7 +13198,7 @@ VALUES (
   'sean.murray.907ece9f@apsl.player',
   'Sean',
   'Murray',
-  crypt('Player9tp990tt!', gen_salt('bf')),
+  crypt('Playera5202vqv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13212,7 +13212,7 @@ VALUES (
   'laurence.narcisi.907ece9f@apsl.player',
   'Laurence',
   'Narcisi',
-  crypt('Player5oovxydb!', gen_salt('bf')),
+  crypt('Player4qi4b7sn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13226,7 +13226,7 @@ VALUES (
   'michael.newell.907ece9f@apsl.player',
   'Michael',
   'Newell',
-  crypt('Playernj0dnoor!', gen_salt('bf')),
+  crypt('Playerfc98gao2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13240,7 +13240,7 @@ VALUES (
   'kaleb.raymond.907ece9f@apsl.player',
   'Kaleb',
   'Raymond',
-  crypt('Playert2zl2bc0!', gen_salt('bf')),
+  crypt('Playerzx12eclj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13254,7 +13254,7 @@ VALUES (
   'joel.richmond.907ece9f@apsl.player',
   'Joel',
   'Richmond',
-  crypt('Player4x2hvwj1!', gen_salt('bf')),
+  crypt('Playere2c9iwjw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13268,7 +13268,7 @@ VALUES (
   'benjamin.richter.907ece9f@apsl.player',
   'Benjamin',
   'Richter',
-  crypt('Playert1bmls8g!', gen_salt('bf')),
+  crypt('Playerxxd3duxt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13282,7 +13282,7 @@ VALUES (
   'joshua.rifkin.907ece9f@apsl.player',
   'Joshua',
   'Rifkin',
-  crypt('Playern9jzjamp!', gen_salt('bf')),
+  crypt('Playerhjjbx259!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13296,7 +13296,7 @@ VALUES (
   'daniel.saint.pol.907ece9f@apsl.player',
   'Daniel',
   'Saint-Pol',
-  crypt('Player1gfoitb8!', gen_salt('bf')),
+  crypt('Playerqtfv92y5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13310,7 +13310,7 @@ VALUES (
   'david.skiendzielewski.907ece9f@apsl.player',
   'David',
   'Skiendzielewski',
-  crypt('Playerpdcmhpjb!', gen_salt('bf')),
+  crypt('Playerm21s5pse!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13324,7 +13324,7 @@ VALUES (
   'owen.stock.907ece9f@apsl.player',
   'Owen',
   'Stock',
-  crypt('Playervm0qju6d!', gen_salt('bf')),
+  crypt('Playerxobv21hm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13338,7 +13338,7 @@ VALUES (
   'ryan.stock.907ece9f@apsl.player',
   'Ryan',
   'Stock',
-  crypt('Playeryjsglyde!', gen_salt('bf')),
+  crypt('Playerw878teh6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13352,7 +13352,7 @@ VALUES (
   'rasheed.thomas.907ece9f@apsl.player',
   'Rasheed',
   'Thomas',
-  crypt('Playersycq08ox!', gen_salt('bf')),
+  crypt('Playerm56odx7k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13366,7 +13366,7 @@ VALUES (
   'sean.touey.907ece9f@apsl.player',
   'Sean',
   'Touey',
-  crypt('Playero1q4dci3!', gen_salt('bf')),
+  crypt('Player17fgyxyi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13380,7 +13380,7 @@ VALUES (
   'jesse.weick.907ece9f@apsl.player',
   'Jesse',
   'Weick',
-  crypt('Player8ian6wg2!', gen_salt('bf')),
+  crypt('Playertktoqnm7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13398,7 +13398,7 @@ VALUES (
   'osman.barrie.c2402f6c@apsl.player',
   'Osman',
   'Barrie',
-  crypt('Playerxrgb55j5!', gen_salt('bf')),
+  crypt('Playerl1kj0v1e!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13412,7 +13412,7 @@ VALUES (
   'paul.bechtelheimer.c2402f6c@apsl.player',
   'Paul',
   'Bechtelheimer',
-  crypt('Player6exnqn3d!', gen_salt('bf')),
+  crypt('Playerx9p78uvq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13426,7 +13426,7 @@ VALUES (
   'nathan.biersbach.c2402f6c@apsl.player',
   'Nathan',
   'Biersbach',
-  crypt('Playerp9cbwbik!', gen_salt('bf')),
+  crypt('Playerz05ji5hz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13440,7 +13440,7 @@ VALUES (
   'brayden.birnstiel.c2402f6c@apsl.player',
   'Brayden',
   'Birnstiel',
-  crypt('Player8d91od8f!', gen_salt('bf')),
+  crypt('Playerq09pwnsa!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13454,7 +13454,7 @@ VALUES (
   'theo.da.silva.c2402f6c@apsl.player',
   'Theo',
   'Da Silva',
-  crypt('Playerzbsoien2!', gen_salt('bf')),
+  crypt('Playerobvrac1f!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13468,7 +13468,7 @@ VALUES (
   'kaelan.debbage.c2402f6c@apsl.player',
   'Kaelan',
   'Debbage',
-  crypt('Playermm88uur2!', gen_salt('bf')),
+  crypt('Player2h9note9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13482,7 +13482,7 @@ VALUES (
   'blake.driehuis.c2402f6c@apsl.player',
   'Blake',
   'Driehuis',
-  crypt('Player8rvmlvxs!', gen_salt('bf')),
+  crypt('Playeri5nfwpo6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13496,7 +13496,7 @@ VALUES (
   'gavin.faracchio.c2402f6c@apsl.player',
   'Gavin',
   'Faracchio',
-  crypt('Playern39ucasl!', gen_salt('bf')),
+  crypt('Playerjcnpcf7k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13510,7 +13510,7 @@ VALUES (
   'emin.gunaydin.c2402f6c@apsl.player',
   'Emin',
   'Gunaydin',
-  crypt('Playerr3geisw2!', gen_salt('bf')),
+  crypt('Playerdip4auzf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13524,7 +13524,7 @@ VALUES (
   'vincent.guzzo.c2402f6c@apsl.player',
   'Vincent',
   'Guzzo',
-  crypt('Player27r0uvk7!', gen_salt('bf')),
+  crypt('Playerk3hem7rv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13538,7 +13538,7 @@ VALUES (
   'maxwell.byrd.hawk.c2402f6c@apsl.player',
   'Maxwell',
   'Byrd Hawk',
-  crypt('Playerb2lxykjx!', gen_salt('bf')),
+  crypt('Playert84uczlk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13552,7 +13552,7 @@ VALUES (
   'anthony.jenkins.c2402f6c@apsl.player',
   'Anthony',
   'Jenkins',
-  crypt('Player5mf2k7ae!', gen_salt('bf')),
+  crypt('Playerbbljt8sj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13566,7 +13566,7 @@ VALUES (
   'austin.johnson.c2402f6c@apsl.player',
   'Austin',
   'Johnson',
-  crypt('Playerv49w2t75!', gen_salt('bf')),
+  crypt('Playermz1zz6sr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13580,7 +13580,7 @@ VALUES (
   'sincere.kato.c2402f6c@apsl.player',
   'Sincere',
   'Kato',
-  crypt('Playerput10pl2!', gen_salt('bf')),
+  crypt('Playernyg5n7u6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13594,7 +13594,7 @@ VALUES (
   'muhammed.ali.kol.c2402f6c@apsl.player',
   'Muhammed',
   'Ali Kol',
-  crypt('Player4mqt1rfg!', gen_salt('bf')),
+  crypt('Player6zgh8cmu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13608,7 +13608,7 @@ VALUES (
   'berlenz.lumarque.c2402f6c@apsl.player',
   'Berlenz',
   'Lumarque',
-  crypt('Playeri596wde3!', gen_salt('bf')),
+  crypt('Playerho1iatdq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13622,7 +13622,7 @@ VALUES (
   'jason.mancuso.c2402f6c@apsl.player',
   'Jason',
   'Mancuso',
-  crypt('Playerysm81xvi!', gen_salt('bf')),
+  crypt('Playeror7t43o5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13636,7 +13636,7 @@ VALUES (
   'jade.mesias.c2402f6c@apsl.player',
   'Jade',
   'Mesias',
-  crypt('Player67i5z1pt!', gen_salt('bf')),
+  crypt('Playerp7vhyrq2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13650,7 +13650,7 @@ VALUES (
   'jeff.morgan.c2402f6c@apsl.player',
   'Jeff',
   'Morgan',
-  crypt('Playerh76q0b6t!', gen_salt('bf')),
+  crypt('Playerj36ve1rg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13664,7 +13664,7 @@ VALUES (
   'jake.mulinge.c2402f6c@apsl.player',
   'Jake',
   'Mulinge',
-  crypt('Players3ax5xe2!', gen_salt('bf')),
+  crypt('Playerulgimaf5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13678,7 +13678,7 @@ VALUES (
   'joseph.nguyen.c2402f6c@apsl.player',
   'Joseph',
   'Nguyen',
-  crypt('Playereuuh5zdr!', gen_salt('bf')),
+  crypt('Playerbozqzk0m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13692,7 +13692,7 @@ VALUES (
   'matthew.perrella.c2402f6c@apsl.player',
   'Matthew',
   'Perrella',
-  crypt('Playerhb08169m!', gen_salt('bf')),
+  crypt('Playerwpojizlu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13706,7 +13706,7 @@ VALUES (
   'samuel.quaye.c2402f6c@apsl.player',
   'Samuel',
   'Quaye',
-  crypt('Player4eh322sz!', gen_salt('bf')),
+  crypt('Playerprd9dc73!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13720,7 +13720,7 @@ VALUES (
   'julito.quintana.c2402f6c@apsl.player',
   'Julito',
   'Quintana',
-  crypt('Playern0whsbib!', gen_salt('bf')),
+  crypt('Playerpbjvtqe0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13734,7 +13734,7 @@ VALUES (
   'ethan.romito.c2402f6c@apsl.player',
   'Ethan',
   'Romito',
-  crypt('Playeruuyt7nve!', gen_salt('bf')),
+  crypt('Player5ja8xff2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13748,7 +13748,7 @@ VALUES (
   'ahmed.saidi.c2402f6c@apsl.player',
   'Ahmed',
   'Saidi',
-  crypt('Playerhdun86eg!', gen_salt('bf')),
+  crypt('Playerixwidgx1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13762,7 +13762,7 @@ VALUES (
   'seth.sidle.c2402f6c@apsl.player',
   'Seth',
   'Sidle',
-  crypt('Player3iblsjit!', gen_salt('bf')),
+  crypt('Playersd851bkw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13776,7 +13776,7 @@ VALUES (
   'adam.sternberger.c2402f6c@apsl.player',
   'Adam',
   'Sternberger',
-  crypt('Player05rupsfu!', gen_salt('bf')),
+  crypt('Playerf97qfi3m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13790,7 +13790,7 @@ VALUES (
   'steven.thompson.c2402f6c@apsl.player',
   'Steven',
   'Thompson',
-  crypt('Playerod50vpmp!', gen_salt('bf')),
+  crypt('Playerkfu58h6s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13804,7 +13804,7 @@ VALUES (
   'nico.tramontana.c2402f6c@apsl.player',
   'Nico',
   'Tramontana',
-  crypt('Player1stsaa2w!', gen_salt('bf')),
+  crypt('Player2d08fx90!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13822,7 +13822,7 @@ VALUES (
   'geovany.acevedo.f11cc01a@apsl.player',
   'Geovany',
   'Acevedo',
-  crypt('Playerzlntwwne!', gen_salt('bf')),
+  crypt('Playerwzd0ombr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13836,7 +13836,7 @@ VALUES (
   'axel.bladimir.f11cc01a@apsl.player',
   'Axel',
   'Bladimir',
-  crypt('Playertbik3pta!', gen_salt('bf')),
+  crypt('Playera9cxfxai!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13850,7 +13850,7 @@ VALUES (
   'julien.carraha.f11cc01a@apsl.player',
   'Julien',
   'Carraha',
-  crypt('Playercxnkjxbk!', gen_salt('bf')),
+  crypt('Player4sc27gr8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13864,7 +13864,7 @@ VALUES (
   'nicholas.cruz.f11cc01a@apsl.player',
   'Nicholas',
   'Cruz',
-  crypt('Playerfttnq23n!', gen_salt('bf')),
+  crypt('Player7c54ktt6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13878,7 +13878,7 @@ VALUES (
   'aba.david.f11cc01a@apsl.player',
   'Aba',
   'David',
-  crypt('Playerh5pn6vx0!', gen_salt('bf')),
+  crypt('Player5jjapezo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13892,7 +13892,7 @@ VALUES (
   'jonah.dias.f11cc01a@apsl.player',
   'Jonah',
   'Dias',
-  crypt('Player1h0x3y5t!', gen_salt('bf')),
+  crypt('Playerc8k0mk2o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13906,7 +13906,7 @@ VALUES (
   'mamadou.diouf.f11cc01a@apsl.player',
   'Mamadou',
   'Diouf',
-  crypt('Playerl8q6lrdj!', gen_salt('bf')),
+  crypt('Playere774ncsk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13920,7 +13920,7 @@ VALUES (
   'oliver.dyson.f11cc01a@apsl.player',
   'Oliver',
   'Dyson',
-  crypt('Playerrvl6n80h!', gen_salt('bf')),
+  crypt('Playerkrlnbcod!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13934,7 +13934,7 @@ VALUES (
   'robert.ellerson.f11cc01a@apsl.player',
   'Robert',
   'Ellerson',
-  crypt('Player66cspw99!', gen_salt('bf')),
+  crypt('Player4o8c9yfk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13948,7 +13948,7 @@ VALUES (
   'carlos.fuentes.f11cc01a@apsl.player',
   'Carlos',
   'Fuentes',
-  crypt('Player8d7p9duh!', gen_salt('bf')),
+  crypt('Playerr61yxv6t!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13962,7 +13962,7 @@ VALUES (
   'randy.gonzalez.f11cc01a@apsl.player',
   'Randy',
   'Gonzalez',
-  crypt('Playerezimiu1x!', gen_salt('bf')),
+  crypt('Playerhwfrpuat!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13976,7 +13976,7 @@ VALUES (
   'daniel.grund.f11cc01a@apsl.player',
   'Daniel',
   'Grund',
-  crypt('Playerg1z29oip!', gen_salt('bf')),
+  crypt('Player23h0231f!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -13990,7 +13990,7 @@ VALUES (
   'ryan.grund.f11cc01a@apsl.player',
   'Ryan',
   'Grund',
-  crypt('Playervyejkosd!', gen_salt('bf')),
+  crypt('Playerykaw4w2e!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14004,7 +14004,7 @@ VALUES (
   'chidi.iloka.f11cc01a@apsl.player',
   'Chidi',
   'Iloka',
-  crypt('Player6q2bs58a!', gen_salt('bf')),
+  crypt('Playersgdp7df7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14018,7 +14018,7 @@ VALUES (
   'davenson.joinvilmar.f11cc01a@apsl.player',
   'Davenson',
   'Joinvilmar',
-  crypt('Playerrxfih3qk!', gen_salt('bf')),
+  crypt('Player12xrk6g2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14032,7 +14032,7 @@ VALUES (
   'dylan.kotch.f11cc01a@apsl.player',
   'Dylan',
   'Kotch',
-  crypt('Playere4pe3kqq!', gen_salt('bf')),
+  crypt('Playersnggpr7h!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14046,7 +14046,7 @@ VALUES (
   'liam.macdonald.f11cc01a@apsl.player',
   'Liam',
   'MacDonald',
-  crypt('Playermhifqfyv!', gen_salt('bf')),
+  crypt('Playery04msic2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14060,7 +14060,7 @@ VALUES (
   'anderson.martinez.f11cc01a@apsl.player',
   'Anderson',
   'Martinez',
-  crypt('Players0uoik4g!', gen_salt('bf')),
+  crypt('Playerbeq5urst!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14074,7 +14074,7 @@ VALUES (
   'arnaldo.mendoza.f11cc01a@apsl.player',
   'Arnaldo',
   'Mendoza',
-  crypt('Playerz9kupg5u!', gen_salt('bf')),
+  crypt('Playerjcm7p3px!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14088,7 +14088,7 @@ VALUES (
   'dani.morales.f11cc01a@apsl.player',
   'Dani',
   'Morales',
-  crypt('Player3zazas1t!', gen_salt('bf')),
+  crypt('Player4qq259u6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14102,7 +14102,7 @@ VALUES (
   'lucknerson.pierre.f11cc01a@apsl.player',
   'Lucknerson',
   'Pierre',
-  crypt('Player5vegrv44!', gen_salt('bf')),
+  crypt('Playerr60zhq9r!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14116,7 +14116,7 @@ VALUES (
   'kyle.pilliteri.f11cc01a@apsl.player',
   'Kyle',
   'Pilliteri',
-  crypt('Playerxnonxbh0!', gen_salt('bf')),
+  crypt('Player9dqkt3o2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14130,7 +14130,7 @@ VALUES (
   'alex.quezada.f11cc01a@apsl.player',
   'Alex',
   'Quezada',
-  crypt('Playerkdxthjwm!', gen_salt('bf')),
+  crypt('Playeru0w28hgy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14144,7 +14144,7 @@ VALUES (
   'wesley.reyes.f11cc01a@apsl.player',
   'Wesley',
   'Reyes',
-  crypt('Playerh0z005di!', gen_salt('bf')),
+  crypt('Playersfiusb9k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14158,7 +14158,7 @@ VALUES (
   'arnol.rodriguez.f11cc01a@apsl.player',
   'Arnol',
   'Rodriguez',
-  crypt('Playerwqsvotri!', gen_salt('bf')),
+  crypt('Playern1xfvljr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14172,7 +14172,7 @@ VALUES (
   'nick.sample.f11cc01a@apsl.player',
   'Nick',
   'Sample',
-  crypt('Player8iwtk1sy!', gen_salt('bf')),
+  crypt('Playeri90hygda!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14186,7 +14186,7 @@ VALUES (
   'melvin.sapon.f11cc01a@apsl.player',
   'Melvin',
   'Sapon',
-  crypt('Player12obp5s2!', gen_salt('bf')),
+  crypt('Playernk9ug718!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14200,7 +14200,7 @@ VALUES (
   'chefetson.simeus.f11cc01a@apsl.player',
   'Chefetson',
   'Simeus',
-  crypt('Playerjegaorem!', gen_salt('bf')),
+  crypt('Playern4llc44k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14214,7 +14214,7 @@ VALUES (
   'emerson.vicente.f11cc01a@apsl.player',
   'Emerson',
   'Vicente',
-  crypt('Playeruei0xhn0!', gen_salt('bf')),
+  crypt('Playermsjn5375!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14228,7 +14228,7 @@ VALUES (
   'mate.vilagosi.f11cc01a@apsl.player',
   'Mate',
   'Vilagosi',
-  crypt('Playerfta35qkp!', gen_salt('bf')),
+  crypt('Player0smmum3p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14242,7 +14242,7 @@ VALUES (
   'john.warwick.f11cc01a@apsl.player',
   'John',
   'Warwick',
-  crypt('Playerc4n920qa!', gen_salt('bf')),
+  crypt('Playern5aeg056!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14260,7 +14260,7 @@ VALUES (
   'musa.abdelgadir.d37eb44b@apsl.player',
   'Musa',
   'Abdelgadir',
-  crypt('Player36lr5p4v!', gen_salt('bf')),
+  crypt('Player4mvaf2q1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14274,7 +14274,7 @@ VALUES (
   'amar.abdelrazek.d37eb44b@apsl.player',
   'Amar',
   'Abdelrazek',
-  crypt('Playeronzwzy5e!', gen_salt('bf')),
+  crypt('Playerd06hbju2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14288,7 +14288,7 @@ VALUES (
   'abdelrahman.ali.d37eb44b@apsl.player',
   'Abdelrahman',
   'Ali',
-  crypt('Playermk5dyn3f!', gen_salt('bf')),
+  crypt('Playertp97aqzt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14302,7 +14302,7 @@ VALUES (
   'ahmed.ali.d37eb44b@apsl.player',
   'Ahmed',
   'Ali',
-  crypt('Player2tj719hh!', gen_salt('bf')),
+  crypt('Player5k26yspv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14316,7 +14316,7 @@ VALUES (
   'erwa.babiker.d37eb44b@apsl.player',
   'Erwa',
   'Babiker',
-  crypt('Player7q64wtid!', gen_salt('bf')),
+  crypt('Playeraopx3su5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14330,7 +14330,7 @@ VALUES (
   'arsene.bado.d37eb44b@apsl.player',
   'Arsene',
   'Bado',
-  crypt('Player9b1jtfme!', gen_salt('bf')),
+  crypt('Playeraubfriw6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14344,7 +14344,7 @@ VALUES (
   'logan.bersani.d37eb44b@apsl.player',
   'Logan',
   'Bersani',
-  crypt('Playerzg0booep!', gen_salt('bf')),
+  crypt('Playerr831kmyf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14358,7 +14358,7 @@ VALUES (
   'mohamed.bility.d37eb44b@apsl.player',
   'Mohamed',
   'Bility',
-  crypt('Playerl9alongr!', gen_salt('bf')),
+  crypt('Player3ewacw3a!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14372,7 +14372,7 @@ VALUES (
   'hamzah.dabbour.d37eb44b@apsl.player',
   'Hamzah',
   'Dabbour',
-  crypt('Playervg31ca0d!', gen_salt('bf')),
+  crypt('Playermswgfjuq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14386,7 +14386,7 @@ VALUES (
   'terrence.doe.d37eb44b@apsl.player',
   'Terrence',
   'Doe',
-  crypt('Playerpyvr4q2k!', gen_salt('bf')),
+  crypt('Player9qnuden7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14400,7 +14400,7 @@ VALUES (
   'musa.donza.d37eb44b@apsl.player',
   'Musa',
   'Donza',
-  crypt('Playermfdn5uyk!', gen_salt('bf')),
+  crypt('Player9xvu20ny!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14414,7 +14414,7 @@ VALUES (
   'alexander.duopu.d37eb44b@apsl.player',
   'Alexander',
   'Duopu',
-  crypt('Player9fxnyze8!', gen_salt('bf')),
+  crypt('Playerb2va3jga!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14428,7 +14428,7 @@ VALUES (
   'luis.espejo.d37eb44b@apsl.player',
   'Luis',
   'Espejo',
-  crypt('Playeriob7t0ql!', gen_salt('bf')),
+  crypt('Playeraqos3455!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14442,7 +14442,7 @@ VALUES (
   'christopher.fletcher.d37eb44b@apsl.player',
   'Christopher',
   'Fletcher',
-  crypt('Playerulb98rxc!', gen_salt('bf')),
+  crypt('Player69r50yyl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14456,7 +14456,7 @@ VALUES (
   'mujtaba.galas.d37eb44b@apsl.player',
   'Mujtaba',
   'Galas',
-  crypt('Playergc1isgfr!', gen_salt('bf')),
+  crypt('Playerv0zsw12v!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14470,7 +14470,7 @@ VALUES (
   'mustafa.galas.d37eb44b@apsl.player',
   'Mustafa',
   'Galas',
-  crypt('Player9g0s0796!', gen_salt('bf')),
+  crypt('Playerb3vv2lwg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14484,7 +14484,7 @@ VALUES (
   'john.gonzalez.d37eb44b@apsl.player',
   'John',
   'Gonzalez',
-  crypt('Playerllyd9n2a!', gen_salt('bf')),
+  crypt('Playerxx0qw5y9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14498,7 +14498,7 @@ VALUES (
   'ahmed.gosie.d37eb44b@apsl.player',
   'Ahmed',
   'Gosie',
-  crypt('Playeraxvxoezz!', gen_salt('bf')),
+  crypt('Playeri65wn6et!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14512,7 +14512,7 @@ VALUES (
   'maccarrey.guillaume.d37eb44b@apsl.player',
   'Maccarrey',
   'Guillaume',
-  crypt('Playerl4h2npm5!', gen_salt('bf')),
+  crypt('Playerq9jzwj6x!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14526,7 +14526,7 @@ VALUES (
   'otmane.houasli.d37eb44b@apsl.player',
   'Otmane',
   'Houasli',
-  crypt('Playervj35u4jy!', gen_salt('bf')),
+  crypt('Player5lizlm8n!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14540,7 +14540,7 @@ VALUES (
   'esnayder.josue.d37eb44b@apsl.player',
   'Esnayder',
   'Josue',
-  crypt('Playerkxyr2ihs!', gen_salt('bf')),
+  crypt('Playerq9f1kpg6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14554,7 +14554,7 @@ VALUES (
   'abdoulaye.kamagate.d37eb44b@apsl.player',
   'Abdoulaye',
   'Kamagate',
-  crypt('Playervkaa99ca!', gen_salt('bf')),
+  crypt('Playernzxdgxka!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14568,7 +14568,7 @@ VALUES (
   'amadou.kamagate.d37eb44b@apsl.player',
   'Amadou',
   'Kamagate',
-  crypt('Playeragf4o8iy!', gen_salt('bf')),
+  crypt('Playerlwd8oskl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14582,7 +14582,7 @@ VALUES (
   'majid.kawa.d37eb44b@apsl.player',
   'Majid',
   'Kawa',
-  crypt('Player9znmi6i5!', gen_salt('bf')),
+  crypt('Playernq9z8oo9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14596,7 +14596,7 @@ VALUES (
   'mohamed.khalafalla.d37eb44b@apsl.player',
   'Mohamed',
   'Khalafalla',
-  crypt('Player2z9km20m!', gen_salt('bf')),
+  crypt('Playerjivn5vov!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14610,7 +14610,7 @@ VALUES (
   'kouassi.nguessan.d37eb44b@apsl.player',
   'Kouassi',
   'Nguessan',
-  crypt('Playerbp9z6ywj!', gen_salt('bf')),
+  crypt('Playerlpy8cdd9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14624,7 +14624,7 @@ VALUES (
   'benell.saygarn.d37eb44b@apsl.player',
   'Benell',
   'Saygarn',
-  crypt('Player5w2a2e1t!', gen_salt('bf')),
+  crypt('Player3nic8kya!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14638,7 +14638,7 @@ VALUES (
   'oumar.sylla.d37eb44b@apsl.player',
   'Oumar',
   'Sylla',
-  crypt('Player2ji0twwc!', gen_salt('bf')),
+  crypt('Player2mtdwq76!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14656,7 +14656,7 @@ VALUES (
   'justin.alves.7288846b@apsl.player',
   'Justin',
   'Alves',
-  crypt('Player63hxgjk9!', gen_salt('bf')),
+  crypt('Playerne3n23mm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14670,7 +14670,7 @@ VALUES (
   'rob.andrade.7288846b@apsl.player',
   'Rob',
   'Andrade',
-  crypt('Playerhivatbef!', gen_salt('bf')),
+  crypt('Playeryfa2xvh1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14684,7 +14684,7 @@ VALUES (
   'tyler.andreas.7288846b@apsl.player',
   'Tyler',
   'Andreas',
-  crypt('Playeray4j4ihb!', gen_salt('bf')),
+  crypt('Player86iq6uoq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14698,7 +14698,7 @@ VALUES (
   'william.bartels.7288846b@apsl.player',
   'William',
   'Bartels',
-  crypt('Playerwrminsqj!', gen_salt('bf')),
+  crypt('Playervietu726!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14712,7 +14712,7 @@ VALUES (
   'harmony.bell.gam.7288846b@apsl.player',
   'Harmony',
   'Bell-Gam',
-  crypt('Playerkavwebtq!', gen_salt('bf')),
+  crypt('Playerr4wzt2ji!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14726,7 +14726,7 @@ VALUES (
   'dane.calhoun.7288846b@apsl.player',
   'Dane',
   'Calhoun',
-  crypt('Playermnblcjgz!', gen_salt('bf')),
+  crypt('Playerf8j5gqa4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14740,7 +14740,7 @@ VALUES (
   'adrian.dilascio.7288846b@apsl.player',
   'Adrian',
   'Dilascio',
-  crypt('Playerti8mvqja!', gen_salt('bf')),
+  crypt('Playerbfttkv8m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14754,7 +14754,7 @@ VALUES (
   'grady.edwards.7288846b@apsl.player',
   'Grady',
   'Edwards',
-  crypt('Playervhyxoyx8!', gen_salt('bf')),
+  crypt('Player95hkiom0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14768,7 +14768,7 @@ VALUES (
   'matt.fuentes.7288846b@apsl.player',
   'Matt',
   'Fuentes',
-  crypt('Playerzrv8p83i!', gen_salt('bf')),
+  crypt('Playerg9ks16ko!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14782,7 +14782,7 @@ VALUES (
   'douglas.jensen.7288846b@apsl.player',
   'Douglas',
   'Jensen',
-  crypt('Player92spyra4!', gen_salt('bf')),
+  crypt('Playerxrep5cyx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14796,7 +14796,7 @@ VALUES (
   'dylan.kanson.7288846b@apsl.player',
   'Dylan',
   'Kanson',
-  crypt('Playerkv0r7ztb!', gen_salt('bf')),
+  crypt('Player5bog425i!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14810,7 +14810,7 @@ VALUES (
   'marcus.mason.7288846b@apsl.player',
   'Marcus',
   'Mason',
-  crypt('Player2ic9t2wz!', gen_salt('bf')),
+  crypt('Player5a1i6dni!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14824,7 +14824,7 @@ VALUES (
   'carter.mathis.7288846b@apsl.player',
   'Carter',
   'Mathis',
-  crypt('Playera9h088k6!', gen_salt('bf')),
+  crypt('Playern8slhtm6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14838,7 +14838,7 @@ VALUES (
   'alex.matos.7288846b@apsl.player',
   'Alex',
   'Matos',
-  crypt('Playerjhtf8c28!', gen_salt('bf')),
+  crypt('Playerg4bl9g4s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14852,7 +14852,7 @@ VALUES (
   'rafael.pereira.7288846b@apsl.player',
   'Rafael',
   'Pereira',
-  crypt('Player3a1aaw6p!', gen_salt('bf')),
+  crypt('Playerg7x69ha8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14866,7 +14866,7 @@ VALUES (
   'anthony.ryan.7288846b@apsl.player',
   'Anthony',
   'Ryan',
-  crypt('Player6krz1ko4!', gen_salt('bf')),
+  crypt('Player3itflbq8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14880,7 +14880,7 @@ VALUES (
   'bryan.sanchez.7288846b@apsl.player',
   'Bryan',
   'Sanchez',
-  crypt('Player1z1pp1ow!', gen_salt('bf')),
+  crypt('Playergcx7v9o8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14894,7 +14894,7 @@ VALUES (
   'dante.shenkin.7288846b@apsl.player',
   'Dante',
   'Shenkin',
-  crypt('Playerb6pk50ua!', gen_salt('bf')),
+  crypt('Playerr539z5co!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14908,7 +14908,7 @@ VALUES (
   'gianni.smith.7288846b@apsl.player',
   'Gianni',
   'Smith',
-  crypt('Playerplb2w4zx!', gen_salt('bf')),
+  crypt('Playercygrmmpa!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14922,7 +14922,7 @@ VALUES (
   'kieran.sundermann.7288846b@apsl.player',
   'Kieran',
   'Sundermann',
-  crypt('Player0nc7iiyn!', gen_salt('bf')),
+  crypt('Playerlf5xmyl9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14936,7 +14936,7 @@ VALUES (
   'albert.truszkowski.7288846b@apsl.player',
   'Albert',
   'Truszkowski',
-  crypt('Player3jo55g45!', gen_salt('bf')),
+  crypt('Playeryt6zo4i4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14950,7 +14950,7 @@ VALUES (
   'uche.wokocha.7288846b@apsl.player',
   'Uche',
   'Wokocha',
-  crypt('Playeriz2jl2as!', gen_salt('bf')),
+  crypt('Playerxafnw0ho!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14964,7 +14964,7 @@ VALUES (
   'clay.yannazzone.7288846b@apsl.player',
   'Clay',
   'Yannazzone',
-  crypt('Playerj3p0ubhv!', gen_salt('bf')),
+  crypt('Player7rtq9i97!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14978,7 +14978,7 @@ VALUES (
   'alex.zargo.7288846b@apsl.player',
   'Alex',
   'Zargo',
-  crypt('Player84yh2hb4!', gen_salt('bf')),
+  crypt('Playerele6qapd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -14996,7 +14996,7 @@ VALUES (
   'dylan.frank.aportela.50720c09@apsl.player',
   'Dylan',
   'Frank Aportela',
-  crypt('Playerc0w75ov4!', gen_salt('bf')),
+  crypt('Playerozufazg2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15010,7 +15010,7 @@ VALUES (
   'monsif.atify.50720c09@apsl.player',
   'Monsif',
   'Atify',
-  crypt('Playerar03puta!', gen_salt('bf')),
+  crypt('Playergrmknxlr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15024,7 +15024,7 @@ VALUES (
   'shane.baker.50720c09@apsl.player',
   'Shane',
   'Baker',
-  crypt('Playerhuynim5w!', gen_salt('bf')),
+  crypt('Playervs5h9npv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15038,7 +15038,7 @@ VALUES (
   'mava.mboko.celestin.50720c09@apsl.player',
   'Mava',
   'Mboko Celestin',
-  crypt('Playerlgt0kego!', gen_salt('bf')),
+  crypt('Playera725ijew!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15052,7 +15052,7 @@ VALUES (
   'gunnar.william.christensen.50720c09@apsl.player',
   'Gunnar',
   'William Christensen',
-  crypt('Player20penpvw!', gen_salt('bf')),
+  crypt('Player6nzihzlk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15066,7 +15066,7 @@ VALUES (
   'bailey.cifone.50720c09@apsl.player',
   'Bailey',
   'Cifone',
-  crypt('Playerxubzr2pj!', gen_salt('bf')),
+  crypt('Playersy0yoy8p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15080,7 +15080,7 @@ VALUES (
   'emmett.dougherty.50720c09@apsl.player',
   'Emmett',
   'Dougherty',
-  crypt('Playerg4cff03e!', gen_salt('bf')),
+  crypt('Playermsg9bt16!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15094,7 +15094,7 @@ VALUES (
   'sean.fatiga.50720c09@apsl.player',
   'Sean',
   'Fatiga',
-  crypt('Player3tf2zlll!', gen_salt('bf')),
+  crypt('Player2kfienc6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15108,7 +15108,7 @@ VALUES (
   'gil.ferreira.50720c09@apsl.player',
   'Gil',
   'Ferreira',
-  crypt('Playergfyjwo12!', gen_salt('bf')),
+  crypt('Playeragaj8dvw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15122,7 +15122,7 @@ VALUES (
   'ryan.gale.50720c09@apsl.player',
   'Ryan',
   'Gale',
-  crypt('Player84gck08m!', gen_salt('bf')),
+  crypt('Playerlq1z3qe0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15136,7 +15136,7 @@ VALUES (
   'elvis.gboho.50720c09@apsl.player',
   'Elvis',
   'Gboho',
-  crypt('Player49ogwiiz!', gen_salt('bf')),
+  crypt('Playerpqhpk602!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15150,7 +15150,7 @@ VALUES (
   'mccarthy.tyler.gomes.50720c09@apsl.player',
   'McCarthy',
   'Tyler Gomes',
-  crypt('Playerrjkkdwjz!', gen_salt('bf')),
+  crypt('Playernx79jref!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15164,7 +15164,7 @@ VALUES (
   'jeshohaih.hernandez.50720c09@apsl.player',
   'Jeshohaih',
   'Hernandez',
-  crypt('Player59j2u38q!', gen_salt('bf')),
+  crypt('Playerk1lni0ul!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15178,7 +15178,7 @@ VALUES (
   'ahmir.lamar.johnson.50720c09@apsl.player',
   'Ahmir',
   'Lamar Johnson',
-  crypt('Playermkqkggb8!', gen_salt('bf')),
+  crypt('Playerqe88p8fw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15192,7 +15192,7 @@ VALUES (
   'ahsan.johnson.50720c09@apsl.player',
   'Ahsan',
   'Johnson',
-  crypt('Playersl1l1lif!', gen_salt('bf')),
+  crypt('Playerxwgpqntc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15206,7 +15206,7 @@ VALUES (
   'bugra.kumas.50720c09@apsl.player',
   'Bugra',
   'Kumas',
-  crypt('Playerzqhe07jc!', gen_salt('bf')),
+  crypt('Playero8er7fx7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15220,7 +15220,7 @@ VALUES (
   'jake.kuzmick.50720c09@apsl.player',
   'Jake',
   'Kuzmick',
-  crypt('Player6s0c2v4v!', gen_salt('bf')),
+  crypt('Playerxy3mihur!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15234,7 +15234,7 @@ VALUES (
   'dominic.antonio.lodise.50720c09@apsl.player',
   'Dominic',
   'Antonio lodise',
-  crypt('Playervpfswsbj!', gen_salt('bf')),
+  crypt('Playervwe1zgar!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15248,7 +15248,7 @@ VALUES (
   'gavin.o.neill.50720c09@apsl.player',
   'Gavin',
   'O''Neill',
-  crypt('Playerwap4e13y!', gen_salt('bf')),
+  crypt('Playerekjk8b0v!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15262,7 +15262,7 @@ VALUES (
   'krish.olmedo.50720c09@apsl.player',
   'Krish',
   'Olmedo',
-  crypt('Playermwr0398n!', gen_salt('bf')),
+  crypt('Playerooaovqym!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15276,7 +15276,7 @@ VALUES (
   'alexander.charles.patton.50720c09@apsl.player',
   'Alexander',
   'Charles Patton',
-  crypt('Playerb264tosu!', gen_salt('bf')),
+  crypt('Players951drj8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15290,7 +15290,7 @@ VALUES (
   'mason.james.regan.50720c09@apsl.player',
   'Mason',
   'James Regan',
-  crypt('Playermyey21bs!', gen_salt('bf')),
+  crypt('Playera9kgg0ha!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15304,7 +15304,7 @@ VALUES (
   'fred.renzulli.50720c09@apsl.player',
   'Fred',
   'Renzulli',
-  crypt('Player0prxnq9o!', gen_salt('bf')),
+  crypt('Playerpsaxdbzo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15318,7 +15318,7 @@ VALUES (
   'joseph.romano.50720c09@apsl.player',
   'Joseph',
   'Romano',
-  crypt('Player2zr4g2iv!', gen_salt('bf')),
+  crypt('Playereewummns!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15332,7 +15332,7 @@ VALUES (
   'joshua.rossell.50720c09@apsl.player',
   'Joshua',
   'Rossell',
-  crypt('Playerdmaqkjsm!', gen_salt('bf')),
+  crypt('Player7h3r4wk1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15346,7 +15346,7 @@ VALUES (
   'brian.sharkey.50720c09@apsl.player',
   'Brian',
   'Sharkey',
-  crypt('Player7e3r812v!', gen_salt('bf')),
+  crypt('Playeran8u7wrc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15360,7 +15360,7 @@ VALUES (
   'christopher.john.spicer.50720c09@apsl.player',
   'Christopher',
   'John Spicer',
-  crypt('Playerlr1mrekr!', gen_salt('bf')),
+  crypt('Playerjt94z0rq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15374,7 +15374,7 @@ VALUES (
   'kyle.william.stone.50720c09@apsl.player',
   'Kyle',
   'William Stone',
-  crypt('Player0wizvm27!', gen_salt('bf')),
+  crypt('Playerri544erm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15388,7 +15388,7 @@ VALUES (
   'owen.strohm.50720c09@apsl.player',
   'Owen',
   'Strohm',
-  crypt('Playeryr3q52qf!', gen_salt('bf')),
+  crypt('Playera11ilof6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15402,7 +15402,7 @@ VALUES (
   'melcohol.velasquez.50720c09@apsl.player',
   'Melcohol',
   'Velasquez',
-  crypt('Player3sb8ilbo!', gen_salt('bf')),
+  crypt('Playerhiav2jc1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15416,7 +15416,7 @@ VALUES (
   'christian.vetter.50720c09@apsl.player',
   'Christian',
   'Vetter',
-  crypt('Playerltkzlo1v!', gen_salt('bf')),
+  crypt('Playervpx8yall!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15434,7 +15434,7 @@ VALUES (
   'anthony.alexis.ali.77b6674f@apsl.player',
   'Anthony',
   'Alexis Ali',
-  crypt('Playercpsaqaqa!', gen_salt('bf')),
+  crypt('Player8vtq0wco!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15448,7 +15448,7 @@ VALUES (
   'dylan.bednarek.77b6674f@apsl.player',
   'Dylan',
   'Bednarek',
-  crypt('Playertus31wsr!', gen_salt('bf')),
+  crypt('Playeryu4ceyz4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15462,7 +15462,7 @@ VALUES (
   'garrett.blankinship.77b6674f@apsl.player',
   'Garrett',
   'Blankinship',
-  crypt('Playermvac21yc!', gen_salt('bf')),
+  crypt('Player16ppdxne!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15476,7 +15476,7 @@ VALUES (
   'matthew.david.dottavi.77b6674f@apsl.player',
   'Matthew',
   'David Dottavi',
-  crypt('Playeraf6za1o2!', gen_salt('bf')),
+  crypt('Playerbpsco90v!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15490,7 +15490,7 @@ VALUES (
   'mohamed.kasongo.doukoure.77b6674f@apsl.player',
   'Mohamed',
   'Kasongo Doukoure',
-  crypt('Player85w8k5m3!', gen_salt('bf')),
+  crypt('Playertaxv58rj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15504,7 +15504,7 @@ VALUES (
   'noel.fernadez.77b6674f@apsl.player',
   'Noel',
   'Fernadez',
-  crypt('Playerd16113c7!', gen_salt('bf')),
+  crypt('Playerju3l8bb9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15518,7 +15518,7 @@ VALUES (
   'patrick.james.fluharty.77b6674f@apsl.player',
   'Patrick',
   'James Fluharty',
-  crypt('Playererwvxb9g!', gen_salt('bf')),
+  crypt('Playeru3o3jeu0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15532,7 +15532,7 @@ VALUES (
   'astin.timothy.galanis.77b6674f@apsl.player',
   'Astin',
   'Timothy Galanis',
-  crypt('Playerqpixzvq1!', gen_salt('bf')),
+  crypt('Playerfddeblly!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15546,7 +15546,7 @@ VALUES (
   'anthony.frank.giafaglione.77b6674f@apsl.player',
   'Anthony',
   'Frank Giafaglione',
-  crypt('Playerumx0didw!', gen_salt('bf')),
+  crypt('Player7qt2g7pc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15560,7 +15560,7 @@ VALUES (
   'amir.khan.77b6674f@apsl.player',
   'Amir',
   'Khan',
-  crypt('Player1o6w2jtu!', gen_salt('bf')),
+  crypt('Playerdc3byv5i!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15574,7 +15574,7 @@ VALUES (
   'anthony.konah.77b6674f@apsl.player',
   'Anthony',
   'Konah',
-  crypt('Playerglshjboa!', gen_salt('bf')),
+  crypt('Playeril5rbdiy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15588,7 +15588,7 @@ VALUES (
   'brian.lorenz.77b6674f@apsl.player',
   'Brian',
   'Lorenz',
-  crypt('Playeritu47fzk!', gen_salt('bf')),
+  crypt('Playercx3jqyaf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15602,7 +15602,7 @@ VALUES (
   'yoni.andre.moussodou.77b6674f@apsl.player',
   'Yoni',
   'Andre Moussodou',
-  crypt('Player6l496b0n!', gen_salt('bf')),
+  crypt('Playerl6fm4mf1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15616,7 +15616,7 @@ VALUES (
   'oguzhan.mutaf.77b6674f@apsl.player',
   'Oguzhan',
   'Mutaf',
-  crypt('Playerey5zsykd!', gen_salt('bf')),
+  crypt('Playerdkbn4qet!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15630,7 +15630,7 @@ VALUES (
   'rami.mahmoud.nasr.77b6674f@apsl.player',
   'Rami',
   'Mahmoud Nasr',
-  crypt('Playerzfkqw8rw!', gen_salt('bf')),
+  crypt('Playerf3yin5lb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15644,7 +15644,7 @@ VALUES (
   'michael.negrete.77b6674f@apsl.player',
   'Michael',
   'Negrete',
-  crypt('Playerqyoewjbn!', gen_salt('bf')),
+  crypt('Playerng2o558r!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15658,7 +15658,7 @@ VALUES (
   'juan.oliveira.77b6674f@apsl.player',
   'Juan',
   'Oliveira',
-  crypt('Playerywhllc5z!', gen_salt('bf')),
+  crypt('Playerccms1wc3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15672,7 +15672,7 @@ VALUES (
   'edwin.perez.77b6674f@apsl.player',
   'Edwin',
   'Perez',
-  crypt('Playerlmen6y3e!', gen_salt('bf')),
+  crypt('Playerz7uo9i73!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15686,7 +15686,7 @@ VALUES (
   'antonio.ramos.77b6674f@apsl.player',
   'Antonio',
   'Ramos',
-  crypt('Playerwv923k9i!', gen_salt('bf')),
+  crypt('Playeruaix5bzo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15700,7 +15700,7 @@ VALUES (
   'ethan.rosado.77b6674f@apsl.player',
   'Ethan',
   'Rosado',
-  crypt('Playeri4hicg7b!', gen_salt('bf')),
+  crypt('Playerr5ihfywr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15714,7 +15714,7 @@ VALUES (
   'todd.richard.salmon.77b6674f@apsl.player',
   'Todd',
   'Richard Salmon',
-  crypt('Player3yty2mr1!', gen_salt('bf')),
+  crypt('Playersk6nweu4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15728,7 +15728,7 @@ VALUES (
   'aiden.francis.schmitt.77b6674f@apsl.player',
   'Aiden',
   'Francis Schmitt',
-  crypt('Playerbi8m2ctl!', gen_salt('bf')),
+  crypt('Playersnjds3e1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15742,7 +15742,7 @@ VALUES (
   'liam.smith.77b6674f@apsl.player',
   'Liam',
   'Smith',
-  crypt('Player53249jei!', gen_salt('bf')),
+  crypt('Playervjbvip4c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15756,7 +15756,7 @@ VALUES (
   'jovanny.trinidad.romero.77b6674f@apsl.player',
   'Jovanny',
   'Trinidad-Romero',
-  crypt('Playerpu09yxpo!', gen_salt('bf')),
+  crypt('Playerzm5sjea8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15770,7 +15770,7 @@ VALUES (
   'isaiah.roman.woods.kolsky.77b6674f@apsl.player',
   'Isaiah',
   'Roman Woods-Kolsky',
-  crypt('Playerfvhlc7b4!', gen_salt('bf')),
+  crypt('Playerctrd0taz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15784,7 +15784,7 @@ VALUES (
   'chenyu.yi.77b6674f@apsl.player',
   'Chenyu',
   'Yi',
-  crypt('Playerjz5i9ho2!', gen_salt('bf')),
+  crypt('Playerjt6037vg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15798,7 +15798,7 @@ VALUES (
   'samuel.tony.zonoe.77b6674f@apsl.player',
   'Samuel',
   'Tony Zonoe',
-  crypt('Player69lwcbuw!', gen_salt('bf')),
+  crypt('Player110yop8g!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15812,7 +15812,7 @@ VALUES (
   'skylar.zugay.77b6674f@apsl.player',
   'Skylar',
   'Zugay',
-  crypt('Player4ki2rcjn!', gen_salt('bf')),
+  crypt('Playerh2x6mzfy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15830,7 +15830,7 @@ VALUES (
   'soheyl.ali.rafi.4975b02e@apsl.player',
   'Soheyl',
   'Ali Rafi',
-  crypt('Playerqste1eh4!', gen_salt('bf')),
+  crypt('Playerkirw9x5u!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15844,7 +15844,7 @@ VALUES (
   'jonathan.arguta.4975b02e@apsl.player',
   'Jonathan',
   'Arguta',
-  crypt('Playerry05rvif!', gen_salt('bf')),
+  crypt('Playerj75ey6ac!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15858,7 +15858,7 @@ VALUES (
   'jean.ayolmbong.4975b02e@apsl.player',
   'Jean',
   'Ayolmbong',
-  crypt('Playerm301uscb!', gen_salt('bf')),
+  crypt('Playerivehfcc0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15872,7 +15872,7 @@ VALUES (
   'eric.calvillo.4975b02e@apsl.player',
   'Eric',
   'Calvillo',
-  crypt('Playeranqc4gyb!', gen_salt('bf')),
+  crypt('Playertnnakyg8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15886,7 +15886,7 @@ VALUES (
   'jhonny.de.souza.4975b02e@apsl.player',
   'Jhonny',
   'De Souza',
-  crypt('Playerjc4yu7hf!', gen_salt('bf')),
+  crypt('Playere3o8pv8y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15900,7 +15900,7 @@ VALUES (
   'valdir.de.souza.4975b02e@apsl.player',
   'Valdir',
   'De Souza',
-  crypt('Playerx575kcm2!', gen_salt('bf')),
+  crypt('Playerpxnlk8th!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15914,7 +15914,7 @@ VALUES (
   'isiah.dorsey.4975b02e@apsl.player',
   'Isiah',
   'Dorsey',
-  crypt('Playerd7aisqbb!', gen_salt('bf')),
+  crypt('Player3msvya6v!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15928,7 +15928,7 @@ VALUES (
   'ricardo.espinoza.4975b02e@apsl.player',
   'Ricardo',
   'Espinoza',
-  crypt('Playertykjush7!', gen_salt('bf')),
+  crypt('Playerflrqx21d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15942,7 +15942,7 @@ VALUES (
   'jerry.felix.4975b02e@apsl.player',
   'Jerry',
   'Felix',
-  crypt('Playerqowzn1sq!', gen_salt('bf')),
+  crypt('Playerwsbc81im!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15956,7 +15956,7 @@ VALUES (
   'caleb.ghannam.4975b02e@apsl.player',
   'Caleb',
   'Ghannam',
-  crypt('Playerivkqqqbc!', gen_salt('bf')),
+  crypt('Playertlr3wowu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15970,7 +15970,7 @@ VALUES (
   'jose.gonzlaez.4975b02e@apsl.player',
   'Jose',
   'Gonzlaez',
-  crypt('Playery3s11awu!', gen_salt('bf')),
+  crypt('Playerltxac0no!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15984,7 +15984,7 @@ VALUES (
   'adsam.guennouni.4975b02e@apsl.player',
   'Adsam',
   'Guennouni',
-  crypt('Player5krb4at2!', gen_salt('bf')),
+  crypt('Playerb2cihc1z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -15998,7 +15998,7 @@ VALUES (
   'jackson.hall.4975b02e@apsl.player',
   'Jackson',
   'Hall',
-  crypt('Player245pw6nj!', gen_salt('bf')),
+  crypt('Player5uivq5jl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16012,7 +16012,7 @@ VALUES (
   'emmitt.inestroza.4975b02e@apsl.player',
   'Emmitt',
   'Inestroza',
-  crypt('Player4jew9uin!', gen_salt('bf')),
+  crypt('Playerqw65yzz8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16026,7 +16026,7 @@ VALUES (
   'abdul.azim.ismail.4975b02e@apsl.player',
   'Abdul-Azim',
   'Ismail',
-  crypt('Player3w45uokz!', gen_salt('bf')),
+  crypt('Playerochcmi46!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16040,7 +16040,7 @@ VALUES (
   'abdul.rahman.ismail.4975b02e@apsl.player',
   'Abdul-Rahman',
   'Ismail',
-  crypt('Playerquhz9hln!', gen_salt('bf')),
+  crypt('Playerzv6uydtj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16054,7 +16054,7 @@ VALUES (
   'ethan.lee.4975b02e@apsl.player',
   'Ethan',
   'Lee',
-  crypt('Playerg03g27rd!', gen_salt('bf')),
+  crypt('Player49amc2n5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16068,7 +16068,7 @@ VALUES (
   'huber.letona.4975b02e@apsl.player',
   'Huber',
   'Letona',
-  crypt('Players6dfqsa8!', gen_salt('bf')),
+  crypt('Playerfwpd91y5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16082,7 +16082,7 @@ VALUES (
   'ethan.lloyd.4975b02e@apsl.player',
   'Ethan',
   'Lloyd',
-  crypt('Playerwy4lv1qp!', gen_salt('bf')),
+  crypt('Playereu97cbcs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16096,7 +16096,7 @@ VALUES (
   'bernardo.majano.4975b02e@apsl.player',
   'Bernardo',
   'Majano',
-  crypt('Playerugzlw95h!', gen_salt('bf')),
+  crypt('Playerofp90y1j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16110,7 +16110,7 @@ VALUES (
   'reda.manafi.4975b02e@apsl.player',
   'Reda',
   'Manafi',
-  crypt('Playerc9zxre3g!', gen_salt('bf')),
+  crypt('Playerb75jt7cl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16124,7 +16124,7 @@ VALUES (
   'jack.pinson.4975b02e@apsl.player',
   'Jack',
   'Pinson',
-  crypt('Playerw2gz0afr!', gen_salt('bf')),
+  crypt('Playerd5x7huo6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16138,7 +16138,7 @@ VALUES (
   'jaime.quintanilla.4975b02e@apsl.player',
   'Jaime',
   'Quintanilla',
-  crypt('Playerv3bj10sq!', gen_salt('bf')),
+  crypt('Playerog91frkn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16152,7 +16152,7 @@ VALUES (
   'michael.radomski.4975b02e@apsl.player',
   'Michael',
   'Radomski',
-  crypt('Playernpr4o3yh!', gen_salt('bf')),
+  crypt('Playerdpekc4ht!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16166,7 +16166,7 @@ VALUES (
   'ahmed.sheta.4975b02e@apsl.player',
   'Ahmed',
   'Sheta',
-  crypt('Playerjgpqgd95!', gen_salt('bf')),
+  crypt('Playergeoiyjl1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16180,7 +16180,7 @@ VALUES (
   'roman.topler.4975b02e@apsl.player',
   'Roman',
   'Topler',
-  crypt('Playerlfzxeatv!', gen_salt('bf')),
+  crypt('Player00xq6pu9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16194,7 +16194,7 @@ VALUES (
   'marques.vagner.4975b02e@apsl.player',
   'Marques',
   'Vagner',
-  crypt('Player8w00l7cw!', gen_salt('bf')),
+  crypt('Playerdfiot277!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16208,7 +16208,7 @@ VALUES (
   'alton.west.4975b02e@apsl.player',
   'Alton',
   'West',
-  crypt('Playersdwvugu4!', gen_salt('bf')),
+  crypt('Player8d0vw7xw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16226,7 +16226,7 @@ VALUES (
   'kelechi.akujuobi.5cb8a2b2@apsl.player',
   'Kelechi',
   'Akujuobi',
-  crypt('Playerownlittp!', gen_salt('bf')),
+  crypt('Playerirrrrqjo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16240,7 +16240,7 @@ VALUES (
   'faisal.alay.5cb8a2b2@apsl.player',
   'Faisal',
   'Alay',
-  crypt('Playerywuqvo34!', gen_salt('bf')),
+  crypt('Player5fwshk6m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16254,7 +16254,7 @@ VALUES (
   'victorine.kwame.appohsam.5cb8a2b2@apsl.player',
   'Victorine',
   'Kwame Appohsam',
-  crypt('Playerze9hrmc2!', gen_salt('bf')),
+  crypt('Playerftbt629c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16268,7 +16268,7 @@ VALUES (
   'hector.avila.hernandez.5cb8a2b2@apsl.player',
   'Hector',
   'Avila Hernandez',
-  crypt('Playercrdtritj!', gen_salt('bf')),
+  crypt('Playerv2rofzoq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16282,7 +16282,7 @@ VALUES (
   'eduardo.g.barria.5cb8a2b2@apsl.player',
   'Eduardo',
   'G Barria',
-  crypt('Playera8ztjx0i!', gen_salt('bf')),
+  crypt('Playercsxi5cvf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16296,7 +16296,7 @@ VALUES (
   'zavier.bell.5cb8a2b2@apsl.player',
   'Zavier',
   'Bell',
-  crypt('Player2g15n6tm!', gen_salt('bf')),
+  crypt('Playerzesblwjh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16310,7 +16310,7 @@ VALUES (
   'zach.boyd.5cb8a2b2@apsl.player',
   'Zach',
   'Boyd',
-  crypt('Playerrmkuiaq4!', gen_salt('bf')),
+  crypt('Player1n1ch7ud!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16324,7 +16324,7 @@ VALUES (
   'julio.bravo.guzman.5cb8a2b2@apsl.player',
   'Julio',
   'Bravo-Guzman',
-  crypt('Player9xq30ez2!', gen_salt('bf')),
+  crypt('Playerv4kot7bo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16338,7 +16338,7 @@ VALUES (
   'deontae.campbell.5cb8a2b2@apsl.player',
   'Deontae',
   'Campbell',
-  crypt('Playeri3i7q5r3!', gen_salt('bf')),
+  crypt('Playeruqh86i9m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16352,7 +16352,7 @@ VALUES (
   'brandon.chambers.5cb8a2b2@apsl.player',
   'Brandon',
   'Chambers',
-  crypt('Playernmdzba0i!', gen_salt('bf')),
+  crypt('Playerqroxsvfo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16366,7 +16366,7 @@ VALUES (
   'aiden.chen.5cb8a2b2@apsl.player',
   'Aiden',
   'Chen',
-  crypt('Playerjzcc0kic!', gen_salt('bf')),
+  crypt('Playerf3ce17rq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16380,7 +16380,7 @@ VALUES (
   'marckensley.constant.5cb8a2b2@apsl.player',
   'Marckensley',
   'Constant',
-  crypt('Player7k1sa91c!', gen_salt('bf')),
+  crypt('Playerzwss5kn6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16394,7 +16394,7 @@ VALUES (
   'tim.cooley.5cb8a2b2@apsl.player',
   'Tim',
   'Cooley',
-  crypt('Playerod3wb8at!', gen_salt('bf')),
+  crypt('Player7s1lh5f4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16408,7 +16408,7 @@ VALUES (
   'christian.cruz.5cb8a2b2@apsl.player',
   'Christian',
   'Cruz',
-  crypt('Player8hfizi78!', gen_salt('bf')),
+  crypt('Player2gs2qpo9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16422,7 +16422,7 @@ VALUES (
   'danilo.duric.5cb8a2b2@apsl.player',
   'Danilo',
   'Duric',
-  crypt('Playerr3at35uv!', gen_salt('bf')),
+  crypt('Player0tyi7vfa!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16436,7 +16436,7 @@ VALUES (
   'logan.flanagan.5cb8a2b2@apsl.player',
   'Logan',
   'Flanagan',
-  crypt('Playerch54nhv0!', gen_salt('bf')),
+  crypt('Playery0e1az7p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16450,7 +16450,7 @@ VALUES (
   'colin.foley.5cb8a2b2@apsl.player',
   'Colin',
   'Foley',
-  crypt('Playery8bdsn0e!', gen_salt('bf')),
+  crypt('Playervd6x7f8z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16464,7 +16464,7 @@ VALUES (
   'nathan.gichuhi.5cb8a2b2@apsl.player',
   'Nathan',
   'Gichuhi',
-  crypt('Playerar7s6oxq!', gen_salt('bf')),
+  crypt('Playernr34eql1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16478,7 +16478,7 @@ VALUES (
   'jeremy.gonzalez.5cb8a2b2@apsl.player',
   'Jeremy',
   'Gonzalez',
-  crypt('Playertn4gj4ah!', gen_salt('bf')),
+  crypt('Playerjgg92g3j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16492,7 +16492,7 @@ VALUES (
   'josh.gutierrez.5cb8a2b2@apsl.player',
   'Josh',
   'Gutierrez',
-  crypt('Playera3pf0bzo!', gen_salt('bf')),
+  crypt('Player16nqznjc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16506,7 +16506,7 @@ VALUES (
   'jonah.harvey.5cb8a2b2@apsl.player',
   'Jonah',
   'Harvey',
-  crypt('Playeryru5q1ti!', gen_salt('bf')),
+  crypt('Playere7h70sk1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16520,7 +16520,7 @@ VALUES (
   'josh.haynie.5cb8a2b2@apsl.player',
   'Josh',
   'Haynie',
-  crypt('Playerr2u3fl7c!', gen_salt('bf')),
+  crypt('Player8hm7e4ca!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16534,7 +16534,7 @@ VALUES (
   'mitchell.hopkins.5cb8a2b2@apsl.player',
   'Mitchell',
   'Hopkins',
-  crypt('Player5m4k9m23!', gen_salt('bf')),
+  crypt('Playermikef8c2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16548,7 +16548,7 @@ VALUES (
   'tanner.johnston.5cb8a2b2@apsl.player',
   'Tanner',
   'Johnston',
-  crypt('Playerbnjllo7j!', gen_salt('bf')),
+  crypt('Playeropc7t9v9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16562,7 +16562,7 @@ VALUES (
   'david.miller.5cb8a2b2@apsl.player',
   'David',
   'Miller',
-  crypt('Player3boyfp39!', gen_salt('bf')),
+  crypt('Player0y9kp0mf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16576,7 +16576,7 @@ VALUES (
   'abdul.mokhtar.5cb8a2b2@apsl.player',
   'Abdul',
   'Mokhtar',
-  crypt('Playermth7cw9t!', gen_salt('bf')),
+  crypt('Playerbvtlyifj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16590,7 +16590,7 @@ VALUES (
   'bijan.morshedi.5cb8a2b2@apsl.player',
   'Bijan',
   'Morshedi',
-  crypt('Playerd060ik7l!', gen_salt('bf')),
+  crypt('Player5ue68gre!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16604,7 +16604,7 @@ VALUES (
   'ander.ochoa.5cb8a2b2@apsl.player',
   'Ander',
   'Ochoa',
-  crypt('Player6eexkhrn!', gen_salt('bf')),
+  crypt('Playerk5zo6vdv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16618,7 +16618,7 @@ VALUES (
   'victor.oladeinde.5cb8a2b2@apsl.player',
   'Victor',
   'Oladeinde',
-  crypt('Playerforsd7ic!', gen_salt('bf')),
+  crypt('Playereb0ecx5n!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16632,7 +16632,7 @@ VALUES (
   'oved.ortega.5cb8a2b2@apsl.player',
   'Oved',
   'Ortega',
-  crypt('Playeriog5oy0b!', gen_salt('bf')),
+  crypt('Playerdwqd8on1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16646,7 +16646,7 @@ VALUES (
   'kameron.payne.5cb8a2b2@apsl.player',
   'Kameron',
   'Payne',
-  crypt('Playerocnvhy2m!', gen_salt('bf')),
+  crypt('Playerc90awaub!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16660,7 +16660,7 @@ VALUES (
   'jayden.rodriguez.5cb8a2b2@apsl.player',
   'Jayden',
   'Rodriguez',
-  crypt('Playervs09zgbd!', gen_salt('bf')),
+  crypt('Playerbxns4feh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16674,7 +16674,7 @@ VALUES (
   'oumar.thiandoum.5cb8a2b2@apsl.player',
   'Oumar',
   'Thiandoum',
-  crypt('Player15nhjdq8!', gen_salt('bf')),
+  crypt('Playerjljomhc9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16688,7 +16688,7 @@ VALUES (
   'ronju.walters.5cb8a2b2@apsl.player',
   'Ronju',
   'Walters',
-  crypt('Playerroy1hyos!', gen_salt('bf')),
+  crypt('Player87caoslt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16706,7 +16706,7 @@ VALUES (
   'mohamed.abdelrehman.8d88ffe1@apsl.player',
   'Mohamed',
   'Abdelrehman',
-  crypt('Playerqg7cya95!', gen_salt('bf')),
+  crypt('Playery3n04l7h!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16720,7 +16720,7 @@ VALUES (
   'nyliek.allen.8d88ffe1@apsl.player',
   'Nyliek',
   'Allen',
-  crypt('Playered4hipr3!', gen_salt('bf')),
+  crypt('Playera2o38hst!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16734,7 +16734,7 @@ VALUES (
   'jared.benedict.8d88ffe1@apsl.player',
   'Jared',
   'Benedict',
-  crypt('Playereqm9cy3d!', gen_salt('bf')),
+  crypt('Player4t181pfg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16748,7 +16748,7 @@ VALUES (
   'david.bernal.clark.8d88ffe1@apsl.player',
   'David',
   'Bernal-Clark',
-  crypt('Player4p3fepcy!', gen_salt('bf')),
+  crypt('Playerkv4r51eg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16762,7 +16762,7 @@ VALUES (
   'alex.bilski.8d88ffe1@apsl.player',
   'Alex',
   'Bilski',
-  crypt('Playeragblvtyx!', gen_salt('bf')),
+  crypt('Playera6ixykhy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16776,7 +16776,7 @@ VALUES (
   'nicholas.blake.8d88ffe1@apsl.player',
   'Nicholas',
   'Blake',
-  crypt('Playercowrbepm!', gen_salt('bf')),
+  crypt('Player72m3yo3y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16790,7 +16790,7 @@ VALUES (
   'edwardo.chavez.8d88ffe1@apsl.player',
   'Edwardo',
   'Chavez',
-  crypt('Playeri6s88a4j!', gen_salt('bf')),
+  crypt('Playerki5dyicp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16804,7 +16804,7 @@ VALUES (
   'charles.evangelos.8d88ffe1@apsl.player',
   'Charles',
   'Evangelos',
-  crypt('Playerc7p7u06h!', gen_salt('bf')),
+  crypt('Playerntbzsokd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16818,7 +16818,7 @@ VALUES (
   'jessi.e.garcia.8d88ffe1@apsl.player',
   'Jessi',
   'e Garcia',
-  crypt('Playerjzgb44vy!', gen_salt('bf')),
+  crypt('Playerpbl8lubs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16832,7 +16832,7 @@ VALUES (
   'daniel.gonzalez.8d88ffe1@apsl.player',
   'Daniel',
   'Gonzalez',
-  crypt('Playersgbca97f!', gen_salt('bf')),
+  crypt('Playertk5vvol8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16846,7 +16846,7 @@ VALUES (
   'sayed.hashemi.8d88ffe1@apsl.player',
   'Sayed',
   'Hashemi',
-  crypt('Player7zn8cua9!', gen_salt('bf')),
+  crypt('Playerwratxg73!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16860,7 +16860,7 @@ VALUES (
   'vasilios.kazakos.8d88ffe1@apsl.player',
   'Vasilios',
   'Kazakos',
-  crypt('Playervhoci7ww!', gen_salt('bf')),
+  crypt('Playerh6r5gnom!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16874,7 +16874,7 @@ VALUES (
   'alejandro.lenz.8d88ffe1@apsl.player',
   'Alejandro',
   'Lenz',
-  crypt('Player7ox6614u!', gen_salt('bf')),
+  crypt('Playerr3n7k41w!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16888,7 +16888,7 @@ VALUES (
   'josaphat.letona.8d88ffe1@apsl.player',
   'Josaphat',
   'Letona',
-  crypt('Playerauljh6h2!', gen_salt('bf')),
+  crypt('Playert1q1nk42!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16902,7 +16902,7 @@ VALUES (
   'braden.lopez.8d88ffe1@apsl.player',
   'Braden',
   'Lopez',
-  crypt('Playeril327xnk!', gen_salt('bf')),
+  crypt('Playervc47kar3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16916,7 +16916,7 @@ VALUES (
   'gabriel.maguire.8d88ffe1@apsl.player',
   'Gabriel',
   'Maguire',
-  crypt('Playerys1wt64e!', gen_salt('bf')),
+  crypt('Playeryhzs1bhz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16930,7 +16930,7 @@ VALUES (
   'moussa.mahama.8d88ffe1@apsl.player',
   'Moussa',
   'Mahama',
-  crypt('Player9whhbr8f!', gen_salt('bf')),
+  crypt('Player23zr3yd6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16944,7 +16944,7 @@ VALUES (
   'louis.manyele.8d88ffe1@apsl.player',
   'Louis',
   'Manyele',
-  crypt('Player1vitg3fb!', gen_salt('bf')),
+  crypt('Playerevsv411u!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16958,7 +16958,7 @@ VALUES (
   'carlos.mareno.8d88ffe1@apsl.player',
   'Carlos',
   'Mareno',
-  crypt('Playerir8lrzcs!', gen_salt('bf')),
+  crypt('Playergun85w9b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16972,7 +16972,7 @@ VALUES (
   'george.mavronis.8d88ffe1@apsl.player',
   'George',
   'Mavronis',
-  crypt('Playerycv5231f!', gen_salt('bf')),
+  crypt('Playermelx56v8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -16986,7 +16986,7 @@ VALUES (
   'michael.medina.8d88ffe1@apsl.player',
   'Michael',
   'Medina',
-  crypt('Playerj1e9nlty!', gen_salt('bf')),
+  crypt('Playere6ahtf49!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17000,7 +17000,7 @@ VALUES (
   'roman.milian.8d88ffe1@apsl.player',
   'Roman',
   'Milian',
-  crypt('Playerdqyxq6gg!', gen_salt('bf')),
+  crypt('Playern8uvqdvi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17014,7 +17014,7 @@ VALUES (
   'johnny.paletar.8d88ffe1@apsl.player',
   'Johnny',
   'Paletar',
-  crypt('Playerdaqe4dqg!', gen_salt('bf')),
+  crypt('Player38tx55cc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17028,7 +17028,7 @@ VALUES (
   'danish.saeedi.8d88ffe1@apsl.player',
   'Danish',
   'Saeedi',
-  crypt('Playerkz4tqfdb!', gen_salt('bf')),
+  crypt('Playerfbnfxruu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17042,7 +17042,7 @@ VALUES (
   'jordon.salvi.8d88ffe1@apsl.player',
   'Jordon',
   'Salvi',
-  crypt('Player3o0r54ru!', gen_salt('bf')),
+  crypt('Playeree44kdmy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17056,7 +17056,7 @@ VALUES (
   'leonel.sanchez.8d88ffe1@apsl.player',
   'Leonel',
   'Sanchez',
-  crypt('Playerhdkasn5o!', gen_salt('bf')),
+  crypt('Player89plerw0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17070,7 +17070,7 @@ VALUES (
   'selim.senel.8d88ffe1@apsl.player',
   'Selim',
   'Senel',
-  crypt('Playermmrai81a!', gen_salt('bf')),
+  crypt('Player7hot3f1q!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17084,7 +17084,7 @@ VALUES (
   'ahmadi.shayan.8d88ffe1@apsl.player',
   'Ahmadi',
   'Shayan',
-  crypt('Player87uzfz5j!', gen_salt('bf')),
+  crypt('Player8bqokxif!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17098,7 +17098,7 @@ VALUES (
   'akimanzi.siibo.8d88ffe1@apsl.player',
   'Akimanzi',
   'Siibo',
-  crypt('Playerimimxsv9!', gen_salt('bf')),
+  crypt('Player6jnivxpt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17112,7 +17112,7 @@ VALUES (
   'alex.sosa.8d88ffe1@apsl.player',
   'Alex',
   'Sosa',
-  crypt('Playerguka6shh!', gen_salt('bf')),
+  crypt('Playerz17cq0ws!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17126,7 +17126,7 @@ VALUES (
   'viktor.tachev.8d88ffe1@apsl.player',
   'Viktor',
   'Tachev',
-  crypt('Playerl2m4yvx0!', gen_salt('bf')),
+  crypt('Playerqq8ltbxk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17140,7 +17140,7 @@ VALUES (
   'matthew.zelaya.8d88ffe1@apsl.player',
   'Matthew',
   'Zelaya',
-  crypt('Playerxs7u6zq3!', gen_salt('bf')),
+  crypt('Playersouzo5d5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17154,7 +17154,7 @@ VALUES (
   'nebeyo.zerihun.8d88ffe1@apsl.player',
   'Nebeyo',
   'Zerihun',
-  crypt('Playermhnw3qel!', gen_salt('bf')),
+  crypt('Playerj3pl1dlb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17168,7 +17168,7 @@ VALUES (
   'ossy.zubiria.8d88ffe1@apsl.player',
   'Ossy',
   'Zubiria',
-  crypt('Playerqtc5tpoo!', gen_salt('bf')),
+  crypt('Playerj4onmfqs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17186,7 +17186,7 @@ VALUES (
   'sami.afiouni.cf7f17f3@apsl.player',
   'Sami',
   'Afiouni',
-  crypt('Playerlkfauf4o!', gen_salt('bf')),
+  crypt('Playeru9ljbe2g!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17200,7 +17200,7 @@ VALUES (
   'samuel.amedeker.cf7f17f3@apsl.player',
   'Samuel',
   'Amedeker',
-  crypt('Playersmvu119e!', gen_salt('bf')),
+  crypt('Player3odxp9vk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17214,7 +17214,7 @@ VALUES (
   'owen.blount.cf7f17f3@apsl.player',
   'Owen',
   'Blount',
-  crypt('Player5h001uev!', gen_salt('bf')),
+  crypt('Player8rz6go4n!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17228,7 +17228,7 @@ VALUES (
   'jordan.bonnett.cf7f17f3@apsl.player',
   'Jordan',
   'Bonnett',
-  crypt('Player4lf85wxp!', gen_salt('bf')),
+  crypt('Player1u1qkrnx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17242,7 +17242,7 @@ VALUES (
   'evan.bosak.cf7f17f3@apsl.player',
   'Evan',
   'Bosak',
-  crypt('Playerrnvquzxu!', gen_salt('bf')),
+  crypt('Playerezg979ny!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17256,7 +17256,7 @@ VALUES (
   'gerard.broussard.cf7f17f3@apsl.player',
   'Gerard',
   'Broussard',
-  crypt('Player141npq36!', gen_salt('bf')),
+  crypt('Playercj4xospk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17270,7 +17270,7 @@ VALUES (
   'brian.chidzvondo.cf7f17f3@apsl.player',
   'Brian',
   'Chidzvondo',
-  crypt('Player0vf9ords!', gen_salt('bf')),
+  crypt('Playerk17ar156!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17284,7 +17284,7 @@ VALUES (
   'matthew.do.cf7f17f3@apsl.player',
   'Matthew',
   'Do',
-  crypt('Player481kgyru!', gen_salt('bf')),
+  crypt('Playerhq2eeulx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17298,7 +17298,7 @@ VALUES (
   'joseph.enebeli.cf7f17f3@apsl.player',
   'Joseph',
   'Enebeli',
-  crypt('Playercbgnvub6!', gen_salt('bf')),
+  crypt('Player51qrtphw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17312,7 +17312,7 @@ VALUES (
   'adam.grace.cf7f17f3@apsl.player',
   'Adam',
   'Grace',
-  crypt('Playersrvl2pm5!', gen_salt('bf')),
+  crypt('Playerezfzd3hy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17326,7 +17326,7 @@ VALUES (
   'demetrius.howe.cf7f17f3@apsl.player',
   'Demetrius',
   'Howe',
-  crypt('Playerczt3yqkc!', gen_salt('bf')),
+  crypt('Player8yq78e9z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17340,7 +17340,7 @@ VALUES (
   'massimo.johnson.cf7f17f3@apsl.player',
   'Massimo',
   'Johnson',
-  crypt('Player1zudc8iy!', gen_salt('bf')),
+  crypt('Playeriuiysbwh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17354,7 +17354,7 @@ VALUES (
   'benjamin.jones.cf7f17f3@apsl.player',
   'Benjamin',
   'Jones',
-  crypt('Playerj2qyeny1!', gen_salt('bf')),
+  crypt('Playeretjggcy1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17368,7 +17368,7 @@ VALUES (
   'aidan.krivanec.cf7f17f3@apsl.player',
   'Aidan',
   'Krivanec',
-  crypt('Playertr2warlq!', gen_salt('bf')),
+  crypt('Player8pm9zn37!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17382,7 +17382,7 @@ VALUES (
   'leighton.langenhoven.cf7f17f3@apsl.player',
   'Leighton',
   'Langenhoven',
-  crypt('Player62mv31f4!', gen_salt('bf')),
+  crypt('Playert5f1vwb0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17396,7 +17396,7 @@ VALUES (
   'salah.mahmoud.cf7f17f3@apsl.player',
   'Salah',
   'Mahmoud',
-  crypt('Player3hx08c27!', gen_salt('bf')),
+  crypt('Playery8w15fll!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17410,7 +17410,7 @@ VALUES (
   'treyvon.medley.green.cf7f17f3@apsl.player',
   'Treyvon',
   'Medley-Green',
-  crypt('Playertzoldtdu!', gen_salt('bf')),
+  crypt('Playerogpp2su5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17424,7 +17424,7 @@ VALUES (
   'museba.mwape.cf7f17f3@apsl.player',
   'Museba',
   'Mwape',
-  crypt('Playerlrgg2hw7!', gen_salt('bf')),
+  crypt('Playerlaidl52e!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17438,7 +17438,7 @@ VALUES (
   'jake.nelson.cf7f17f3@apsl.player',
   'Jake',
   'Nelson',
-  crypt('Player1j4x1rfw!', gen_salt('bf')),
+  crypt('Playercp3wuebc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17452,7 +17452,7 @@ VALUES (
   'abulfazl.panahi.cf7f17f3@apsl.player',
   'Abulfazl',
   'Panahi',
-  crypt('Playerf01ke4wd!', gen_salt('bf')),
+  crypt('Playerjr5tkqwv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17466,7 +17466,7 @@ VALUES (
   'dame.pene.cf7f17f3@apsl.player',
   'Dame',
   'Pene',
-  crypt('Playeruplc0rxq!', gen_salt('bf')),
+  crypt('Player6ep57qrg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17480,7 +17480,7 @@ VALUES (
   'henry.pittman.cf7f17f3@apsl.player',
   'Henry',
   'Pittman',
-  crypt('Playerthtfkc9c!', gen_salt('bf')),
+  crypt('Player4ppxdv6w!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17494,7 +17494,7 @@ VALUES (
   'yoskar.alejandro.quintanilla.cf7f17f3@apsl.player',
   'Yoskar',
   'Alejandro Quintanilla',
-  crypt('Playerow05v0g1!', gen_salt('bf')),
+  crypt('Playern0amh9m7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17508,7 +17508,7 @@ VALUES (
   'emerson.reyes.cf7f17f3@apsl.player',
   'Emerson',
   'Reyes',
-  crypt('Playerfy7nyey5!', gen_salt('bf')),
+  crypt('Playeropro8huq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17522,7 +17522,7 @@ VALUES (
   'mahdi.reza.cf7f17f3@apsl.player',
   'Mahdi',
   'Reza',
-  crypt('Playerpqzpwivk!', gen_salt('bf')),
+  crypt('Player6ong70nz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17536,7 +17536,7 @@ VALUES (
   'mourtala.seck.cf7f17f3@apsl.player',
   'Mourtala',
   'Seck',
-  crypt('Playerre5fvzxd!', gen_salt('bf')),
+  crypt('Player463xjisv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17550,7 +17550,7 @@ VALUES (
   'alakhe.sibeko.cf7f17f3@apsl.player',
   'Alakhe',
   'Sibeko',
-  crypt('Playerbx7mm7r5!', gen_salt('bf')),
+  crypt('Playerwy00dno9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17564,7 +17564,7 @@ VALUES (
   'noe.soriano.cf7f17f3@apsl.player',
   'Noe',
   'Soriano',
-  crypt('Playerlzzqhi9t!', gen_salt('bf')),
+  crypt('Playeri8kaergm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17578,7 +17578,7 @@ VALUES (
   'sharief.stancil.cf7f17f3@apsl.player',
   'Sharief',
   'Stancil',
-  crypt('Playerewjl09t0!', gen_salt('bf')),
+  crypt('Playergo15wnvg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17592,7 +17592,7 @@ VALUES (
   'max.taliaferro.cf7f17f3@apsl.player',
   'Max',
   'Taliaferro',
-  crypt('Playerhf0afcxn!', gen_salt('bf')),
+  crypt('Playerum49mu2k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17606,7 +17606,7 @@ VALUES (
   'asanda.tom.cf7f17f3@apsl.player',
   'Asanda',
   'Tom',
-  crypt('Playeryl84k9lh!', gen_salt('bf')),
+  crypt('Playerunixcin0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17620,7 +17620,7 @@ VALUES (
   'caleb.underwood.cf7f17f3@apsl.player',
   'Caleb',
   'Underwood',
-  crypt('Playermnypcrgt!', gen_salt('bf')),
+  crypt('Playernb5jqt6p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17634,7 +17634,7 @@ VALUES (
   'callum.vellozzi.cf7f17f3@apsl.player',
   'Callum',
   'Vellozzi',
-  crypt('Player5lnw9mpt!', gen_salt('bf')),
+  crypt('Playerkij1wxud!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17648,7 +17648,7 @@ VALUES (
   'chrisendo.wentzel.cf7f17f3@apsl.player',
   'Chrisendo',
   'Wentzel',
-  crypt('Playerzvp6epx1!', gen_salt('bf')),
+  crypt('Playerwo1n14o6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17662,7 +17662,7 @@ VALUES (
   'john.williams.cf7f17f3@apsl.player',
   'John',
   'Williams',
-  crypt('Playervlt8ez90!', gen_salt('bf')),
+  crypt('Player8il1zx6f!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17680,7 +17680,7 @@ VALUES (
   'felix.amankwah.226c892a@apsl.player',
   'Felix',
   'Amankwah',
-  crypt('Playerf68njn8w!', gen_salt('bf')),
+  crypt('Playerywhtw1dp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17694,7 +17694,7 @@ VALUES (
   'daniel.baxter.226c892a@apsl.player',
   'Daniel',
   'Baxter',
-  crypt('Playerbvvkm4ng!', gen_salt('bf')),
+  crypt('Player8asqd0h3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17708,7 +17708,7 @@ VALUES (
   'drew.belcher.226c892a@apsl.player',
   'Drew',
   'Belcher',
-  crypt('Playerum30izje!', gen_salt('bf')),
+  crypt('Playerxztyy7hy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17722,7 +17722,7 @@ VALUES (
   'elijah.belcher.226c892a@apsl.player',
   'Elijah',
   'Belcher',
-  crypt('Player6kwct5h6!', gen_salt('bf')),
+  crypt('Player17ofzy1w!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17736,7 +17736,7 @@ VALUES (
   'ethan.belcher.226c892a@apsl.player',
   'Ethan',
   'Belcher',
-  crypt('Player0gfxmim2!', gen_salt('bf')),
+  crypt('Player9jufr66w!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17750,7 +17750,7 @@ VALUES (
   'jacob.bender.226c892a@apsl.player',
   'Jacob',
   'Bender',
-  crypt('Playerevp1aln6!', gen_salt('bf')),
+  crypt('Playerhwdxcxic!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17764,7 +17764,7 @@ VALUES (
   'jalen.boston.226c892a@apsl.player',
   'Jalen',
   'Boston',
-  crypt('Player6ctwjlkq!', gen_salt('bf')),
+  crypt('Playerrh7s5y37!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17778,7 +17778,7 @@ VALUES (
   'brandon.burkholder.226c892a@apsl.player',
   'Brandon',
   'Burkholder',
-  crypt('Player6ug0xd2e!', gen_salt('bf')),
+  crypt('Playerwru9h13x!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17792,7 +17792,7 @@ VALUES (
   'nero.cooper.226c892a@apsl.player',
   'Nero',
   'Cooper',
-  crypt('Playerme74jlo1!', gen_salt('bf')),
+  crypt('Playerohorw40h!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17806,7 +17806,7 @@ VALUES (
   'anthony.dragisics.226c892a@apsl.player',
   'Anthony',
   'Dragisics',
-  crypt('Playerqet71k1q!', gen_salt('bf')),
+  crypt('Playerrrxzy65b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17820,7 +17820,7 @@ VALUES (
   'alejandro.estrada.226c892a@apsl.player',
   'Alejandro',
   'Estrada',
-  crypt('Playerjx3zcpqx!', gen_salt('bf')),
+  crypt('Playermh3noefe!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17834,7 +17834,7 @@ VALUES (
   'justin.gielen.226c892a@apsl.player',
   'Justin',
   'Gielen',
-  crypt('Player8tx14678!', gen_salt('bf')),
+  crypt('Player1ef9kksy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17848,7 +17848,7 @@ VALUES (
   'brian.graham.226c892a@apsl.player',
   'Brian',
   'Graham',
-  crypt('Player09eeohhw!', gen_salt('bf')),
+  crypt('Playerq2hsnsc7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17862,7 +17862,7 @@ VALUES (
   'brett.joyner.226c892a@apsl.player',
   'Brett',
   'Joyner',
-  crypt('Playervg2ok6w1!', gen_salt('bf')),
+  crypt('Playerwtkztnvn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17876,7 +17876,7 @@ VALUES (
   'tanner.kennard.226c892a@apsl.player',
   'Tanner',
   'Kennard',
-  crypt('Playerdisipfz3!', gen_salt('bf')),
+  crypt('Playercurz2a0x!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17890,7 +17890,7 @@ VALUES (
   'tyler.lee.226c892a@apsl.player',
   'Tyler',
   'Lee',
-  crypt('Playerumgnzbxy!', gen_salt('bf')),
+  crypt('Player8uatdmxs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17904,7 +17904,7 @@ VALUES (
   'stiven.llano.226c892a@apsl.player',
   'Stiven',
   'Llano',
-  crypt('Playerfgq5y60d!', gen_salt('bf')),
+  crypt('Playerbldd4kjy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17918,7 +17918,7 @@ VALUES (
   'morgan.lussi.226c892a@apsl.player',
   'Morgan',
   'Lussi',
-  crypt('Playerih59i89p!', gen_salt('bf')),
+  crypt('Playero9vhx1o6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17932,7 +17932,7 @@ VALUES (
   'raffaele.mazzone.226c892a@apsl.player',
   'Raffaele',
   'Mazzone',
-  crypt('Playervjiltu4u!', gen_salt('bf')),
+  crypt('Player3fgf8mgp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17946,7 +17946,7 @@ VALUES (
   'daniel.mccleary.226c892a@apsl.player',
   'Daniel',
   'McCleary',
-  crypt('Playerj9diwsxe!', gen_salt('bf')),
+  crypt('Playerbav53ruf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17960,7 +17960,7 @@ VALUES (
   'edixon.moreira.226c892a@apsl.player',
   'Edixon',
   'Moreira',
-  crypt('Playerkyua65j5!', gen_salt('bf')),
+  crypt('Player78zteesi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17974,7 +17974,7 @@ VALUES (
   'david.ogbonna.226c892a@apsl.player',
   'David',
   'Ogbonna',
-  crypt('Player1fmd9wgk!', gen_salt('bf')),
+  crypt('Playeriinjuc7j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -17988,7 +17988,7 @@ VALUES (
   'garrett.peters.226c892a@apsl.player',
   'Garrett',
   'Peters',
-  crypt('Playerkwyl8eb8!', gen_salt('bf')),
+  crypt('Playerv9700jc0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18002,7 +18002,7 @@ VALUES (
   'juston.rainey.226c892a@apsl.player',
   'Juston',
   'Rainey',
-  crypt('Player8zsj810v!', gen_salt('bf')),
+  crypt('Playeryo8aphgq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18016,7 +18016,7 @@ VALUES (
   'cesar.ramos.226c892a@apsl.player',
   'Cesar',
   'Ramos',
-  crypt('Playerebbyu59o!', gen_salt('bf')),
+  crypt('Playerw7seggip!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18030,7 +18030,7 @@ VALUES (
   'aaron.rilling.226c892a@apsl.player',
   'Aaron',
   'Rilling',
-  crypt('Playeraqc5jdh2!', gen_salt('bf')),
+  crypt('Playerldcwanyy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18044,7 +18044,7 @@ VALUES (
   'jackson.ruckman.226c892a@apsl.player',
   'Jackson',
   'Ruckman',
-  crypt('Playerqyo163vh!', gen_salt('bf')),
+  crypt('Player4ob0he2e!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18058,7 +18058,7 @@ VALUES (
   'kyle.saunderson.226c892a@apsl.player',
   'Kyle',
   'Saunderson',
-  crypt('Playerkssr7r84!', gen_salt('bf')),
+  crypt('Playerypb578ul!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18072,7 +18072,7 @@ VALUES (
   'luis.soria.226c892a@apsl.player',
   'Luis',
   'Soria',
-  crypt('Playerbhz7f65q!', gen_salt('bf')),
+  crypt('Player3e4hvj4f!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18086,7 +18086,7 @@ VALUES (
   'brett.st.martin.226c892a@apsl.player',
   'Brett',
   'St Martin',
-  crypt('Playerhjrod51a!', gen_salt('bf')),
+  crypt('Playersbog1hza!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18100,7 +18100,7 @@ VALUES (
   'alexander.wardle.226c892a@apsl.player',
   'Alexander',
   'Wardle',
-  crypt('Playert7174amp!', gen_salt('bf')),
+  crypt('Playerfyd7hk2u!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18118,7 +18118,7 @@ VALUES (
   'kennison.akuro.d8e57bbb@apsl.player',
   'Kennison',
   'Akuro',
-  crypt('Player8ib08xn7!', gen_salt('bf')),
+  crypt('Playerzixsij0o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18132,7 +18132,7 @@ VALUES (
   'melvin.asanji.d8e57bbb@apsl.player',
   'Melvin',
   'Asanji',
-  crypt('Players4vyt9yx!', gen_salt('bf')),
+  crypt('Player4whgicqh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18146,7 +18146,7 @@ VALUES (
   'brandon.betts.d8e57bbb@apsl.player',
   'Brandon',
   'Betts',
-  crypt('Playerisshdfvd!', gen_salt('bf')),
+  crypt('Playere006o0gx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18160,7 +18160,7 @@ VALUES (
   'isaac.carvajal.d8e57bbb@apsl.player',
   'Isaac',
   'Carvajal',
-  crypt('Playerwg3rdv1b!', gen_salt('bf')),
+  crypt('Playerwq346b74!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18174,7 +18174,7 @@ VALUES (
   'jenovic.elumbu.d8e57bbb@apsl.player',
   'Jenovic',
   'Elumbu',
-  crypt('Playerzkhz9mey!', gen_salt('bf')),
+  crypt('Player99x1nlwa!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18188,7 +18188,7 @@ VALUES (
   'anderson.fernandez.d8e57bbb@apsl.player',
   'Anderson',
   'Fernandez',
-  crypt('Player0yml8kwd!', gen_salt('bf')),
+  crypt('Players990mbtg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18202,7 +18202,7 @@ VALUES (
   'angello.fernandez.d8e57bbb@apsl.player',
   'Angello',
   'Fernandez',
-  crypt('Playerytl87uyy!', gen_salt('bf')),
+  crypt('Playerectrg3fe!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18216,7 +18216,7 @@ VALUES (
   'terry.fon.d8e57bbb@apsl.player',
   'Terry',
   'Fon',
-  crypt('Player3v6c7xxm!', gen_salt('bf')),
+  crypt('Playerd5rlwppx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18230,7 +18230,7 @@ VALUES (
   'eduardo.fuentes.d8e57bbb@apsl.player',
   'Eduardo',
   'Fuentes',
-  crypt('Playerwsj90xbd!', gen_salt('bf')),
+  crypt('Playerj4r3pk0z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18244,7 +18244,7 @@ VALUES (
   'christian.garavito.d8e57bbb@apsl.player',
   'Christian',
   'Garavito',
-  crypt('Player58gjg0j3!', gen_salt('bf')),
+  crypt('Player3tyuflh4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18258,7 +18258,7 @@ VALUES (
   'thaddeus.goddard.d8e57bbb@apsl.player',
   'Thaddeus',
   'Goddard',
-  crypt('Playerix7sm0u4!', gen_salt('bf')),
+  crypt('Player7mdd6oiw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18272,7 +18272,7 @@ VALUES (
   'alexis.gonzalez.ayala.d8e57bbb@apsl.player',
   'Alexis',
   'Gonzalez Ayala',
-  crypt('Playerslyw0m1b!', gen_salt('bf')),
+  crypt('Playerjxsbxo06!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18286,7 +18286,7 @@ VALUES (
   'chayton.kuidlan.d8e57bbb@apsl.player',
   'Chayton',
   'Kuidlan',
-  crypt('Playerl4zw54sh!', gen_salt('bf')),
+  crypt('Playert4oszmty!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18300,7 +18300,7 @@ VALUES (
   'tobias.lane.d8e57bbb@apsl.player',
   'Tobias',
   'Lane',
-  crypt('Player0nvydxv1!', gen_salt('bf')),
+  crypt('Playerpw1a6fzx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18314,7 +18314,7 @@ VALUES (
   'jonathan.lemus.morales.d8e57bbb@apsl.player',
   'Jonathan',
   'Lemus Morales',
-  crypt('Playerd5h8uyb4!', gen_salt('bf')),
+  crypt('Playeryeh67wxj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18328,7 +18328,7 @@ VALUES (
   'creasy.lopez.d8e57bbb@apsl.player',
   'Creasy',
   'Lopez',
-  crypt('Playeryf5jn4r2!', gen_salt('bf')),
+  crypt('Playertk1aut24!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18342,7 +18342,7 @@ VALUES (
   'lutho.mlunguza.d8e57bbb@apsl.player',
   'Lutho',
   'Mlunguza',
-  crypt('Playeriqdel0tp!', gen_salt('bf')),
+  crypt('Playerp2ovlsjs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18356,7 +18356,7 @@ VALUES (
   'toju.okonedo.d8e57bbb@apsl.player',
   'Toju',
   'Okonedo',
-  crypt('Player4ksmy72t!', gen_salt('bf')),
+  crypt('Playerj16bx6gp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18370,7 +18370,7 @@ VALUES (
   'david.pawlowski.d8e57bbb@apsl.player',
   'David',
   'Pawlowski',
-  crypt('Player1n6t1yey!', gen_salt('bf')),
+  crypt('Playeryce50rld!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18384,7 +18384,7 @@ VALUES (
   'danny.paz.d8e57bbb@apsl.player',
   'Danny',
   'Paz',
-  crypt('Playerb7pbzeu5!', gen_salt('bf')),
+  crypt('Playersgw59cmi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18398,7 +18398,7 @@ VALUES (
   'brayan.perez.mendez.d8e57bbb@apsl.player',
   'Brayan',
   'Perez Mendez',
-  crypt('Playerfourhxf2!', gen_salt('bf')),
+  crypt('Playerfp6z0uot!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18412,7 +18412,7 @@ VALUES (
   'nicholas.tziamouranis.d8e57bbb@apsl.player',
   'Nicholas',
   'Tziamouranis',
-  crypt('Playerl9rphnsa!', gen_salt('bf')),
+  crypt('Playere0ckkr3z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18426,7 +18426,7 @@ VALUES (
   'william.villatoro.velasquez.d8e57bbb@apsl.player',
   'William',
   'Villatoro Velasquez',
-  crypt('Player1w69n6k0!', gen_salt('bf')),
+  crypt('Player7g6p9ciy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18440,7 +18440,7 @@ VALUES (
   'brian.ware.d8e57bbb@apsl.player',
   'Brian',
   'Ware',
-  crypt('Playerrtacvvui!', gen_salt('bf')),
+  crypt('Player5zhyhyy1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18458,7 +18458,7 @@ VALUES (
   'david.alverez.7425cb8d@apsl.player',
   'David',
   'Alverez',
-  crypt('Playerlfjqggct!', gen_salt('bf')),
+  crypt('Playerk87e5hes!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18472,7 +18472,7 @@ VALUES (
   'carlos.amador.7425cb8d@apsl.player',
   'Carlos',
   'Amador',
-  crypt('Playerqnfn7hf9!', gen_salt('bf')),
+  crypt('Player1v8g0cvu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18486,7 +18486,7 @@ VALUES (
   'chris.avila.7425cb8d@apsl.player',
   'Chris',
   'Avila',
-  crypt('Player8oqn5ra2!', gen_salt('bf')),
+  crypt('Playerrvz9ed4q!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18500,7 +18500,7 @@ VALUES (
   'yaseen.ben.chouikha.7425cb8d@apsl.player',
   'Yaseen',
   'Ben Chouikha',
-  crypt('Player7gjtotzq!', gen_salt('bf')),
+  crypt('Playerefcyhyd4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18514,7 +18514,7 @@ VALUES (
   'amir.bentaleb.7425cb8d@apsl.player',
   'Amir',
   'Bentaleb',
-  crypt('Playervp21apcb!', gen_salt('bf')),
+  crypt('Player817ph0m8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18528,7 +18528,7 @@ VALUES (
   'angel.viera.castro.7425cb8d@apsl.player',
   'Angel',
   'Viera Castro',
-  crypt('Player97i6oqb9!', gen_salt('bf')),
+  crypt('Playertiie7ow8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18542,7 +18542,7 @@ VALUES (
   'jesse.conteh.7425cb8d@apsl.player',
   'Jesse',
   'Conteh',
-  crypt('Playerwy9ene8v!', gen_salt('bf')),
+  crypt('Playerm6impgxw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18556,7 +18556,7 @@ VALUES (
   'gio.cruz.7425cb8d@apsl.player',
   'Gio',
   'Cruz',
-  crypt('Playeromd713gf!', gen_salt('bf')),
+  crypt('Playerlqtlfvul!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18570,7 +18570,7 @@ VALUES (
   'german.del.cid.7425cb8d@apsl.player',
   'German',
   'Del Cid',
-  crypt('Playerst7005c4!', gen_salt('bf')),
+  crypt('Player6zcefuek!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18584,7 +18584,7 @@ VALUES (
   'mohammed.ahmed.elsir.7425cb8d@apsl.player',
   'Mohammed',
   'Ahmed Elsir',
-  crypt('Player5cz34py4!', gen_salt('bf')),
+  crypt('Playerd8bpne2o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18598,7 +18598,7 @@ VALUES (
   'collins.frimpong.7425cb8d@apsl.player',
   'Collins',
   'Frimpong',
-  crypt('Playertbbpn7ls!', gen_salt('bf')),
+  crypt('Playero9g0owmz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18612,7 +18612,7 @@ VALUES (
   'roy.alex.galeano.7425cb8d@apsl.player',
   'Roy',
   'Alex Galeano',
-  crypt('Playerxqpq7az9!', gen_salt('bf')),
+  crypt('Player88oufpxt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18626,7 +18626,7 @@ VALUES (
   'oscar.garcia.7425cb8d@apsl.player',
   'Oscar',
   'Garcia',
-  crypt('Playerkm4tbzu9!', gen_salt('bf')),
+  crypt('Playergxg98loh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18640,7 +18640,7 @@ VALUES (
   'sam.garcia.7425cb8d@apsl.player',
   'Sam',
   'Garcia',
-  crypt('Playerfd9ucj37!', gen_salt('bf')),
+  crypt('Playerux59fqbe!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18654,7 +18654,7 @@ VALUES (
   'anthony.juarez.7425cb8d@apsl.player',
   'Anthony',
   'Juarez',
-  crypt('Player3mc6we2f!', gen_salt('bf')),
+  crypt('Player1ays6o26!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18668,7 +18668,7 @@ VALUES (
   'kwasi.kotoko.7425cb8d@apsl.player',
   'Kwasi',
   'Kotoko',
-  crypt('Playervt0utxt0!', gen_salt('bf')),
+  crypt('Player3cbambtq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18682,7 +18682,7 @@ VALUES (
   'orlando.martinez.7425cb8d@apsl.player',
   'Orlando',
   'Martinez',
-  crypt('Playerqr8t98us!', gen_salt('bf')),
+  crypt('Playerx3upyhmb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18696,7 +18696,7 @@ VALUES (
   'andrew.mejia.7425cb8d@apsl.player',
   'Andrew',
   'Mejia',
-  crypt('Playerwsd2pmrq!', gen_salt('bf')),
+  crypt('Player52w1pdnb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18710,7 +18710,7 @@ VALUES (
   'chris.mejia.7425cb8d@apsl.player',
   'Chris',
   'Mejia',
-  crypt('Playeroag7eld4!', gen_salt('bf')),
+  crypt('Playerjhv5shrc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18724,7 +18724,7 @@ VALUES (
   'milton.miranda.7425cb8d@apsl.player',
   'Milton',
   'Miranda',
-  crypt('Playerlbktr70m!', gen_salt('bf')),
+  crypt('Player8atwq59p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18738,7 +18738,7 @@ VALUES (
   'nasrullah.muhammed.7425cb8d@apsl.player',
   'Nasrullah',
   'Muhammed',
-  crypt('Player56w8ey0o!', gen_salt('bf')),
+  crypt('Playerg1pj7g78!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18752,7 +18752,7 @@ VALUES (
   'alexis.palma.7425cb8d@apsl.player',
   'Alexis',
   'Palma',
-  crypt('Player7hglzfoc!', gen_salt('bf')),
+  crypt('Playerm7l5cggp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18766,7 +18766,7 @@ VALUES (
   'luis.reyes.7425cb8d@apsl.player',
   'Luis',
   'Reyes',
-  crypt('Playertqucmt3n!', gen_salt('bf')),
+  crypt('Player22efxhs8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18780,7 +18780,7 @@ VALUES (
   'romel.reyes.7425cb8d@apsl.player',
   'Romel',
   'Reyes',
-  crypt('Playerfbhetsb1!', gen_salt('bf')),
+  crypt('Playerftv660ks!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18794,7 +18794,7 @@ VALUES (
   'jason.rodriguez.7425cb8d@apsl.player',
   'Jason',
   'Rodriguez',
-  crypt('Playerfwcb63z7!', gen_salt('bf')),
+  crypt('Playerbj2m5sid!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18808,7 +18808,7 @@ VALUES (
   'elias.san.juan.7425cb8d@apsl.player',
   'Elias',
   'San Juan',
-  crypt('Playerk1ku2f90!', gen_salt('bf')),
+  crypt('Playerw0isfcct!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18822,7 +18822,7 @@ VALUES (
   'ricardo.vega.7425cb8d@apsl.player',
   'Ricardo',
   'Vega',
-  crypt('Playereuku4joc!', gen_salt('bf')),
+  crypt('Playeryxltqiwp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18836,7 +18836,7 @@ VALUES (
   'raul.villalta.7425cb8d@apsl.player',
   'Raul',
   'Villalta',
-  crypt('Playeru48ip4k3!', gen_salt('bf')),
+  crypt('Playeryyymu6eo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18854,7 +18854,7 @@ VALUES (
   'joseph.daly.aigner.171f448b@apsl.player',
   'Joseph',
   'Daly Aigner',
-  crypt('Player9az8uh2o!', gen_salt('bf')),
+  crypt('Playerz2pz5fps!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18868,7 +18868,7 @@ VALUES (
   'liam.charles.aigner.171f448b@apsl.player',
   'Liam',
   'Charles Aigner',
-  crypt('Players6ffw3p5!', gen_salt('bf')),
+  crypt('Player18kk5ooo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18882,7 +18882,7 @@ VALUES (
   'jacob.l.amon.171f448b@apsl.player',
   'Jacob',
   'L Amon',
-  crypt('Playeroaycz4to!', gen_salt('bf')),
+  crypt('Playerxblbwg5q!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18896,7 +18896,7 @@ VALUES (
   'samuel.amon.171f448b@apsl.player',
   'Samuel',
   'Amon',
-  crypt('Playerzl4ckjpq!', gen_salt('bf')),
+  crypt('Playerzlgmyw56!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18910,7 +18910,7 @@ VALUES (
   'walner.anescar.171f448b@apsl.player',
   'Walner',
   'Anescar',
-  crypt('Playerotvjzb02!', gen_salt('bf')),
+  crypt('Playerzuz3fvtt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18924,7 +18924,7 @@ VALUES (
   'samuel.burbage.171f448b@apsl.player',
   'Samuel',
   'Burbage',
-  crypt('Playermknfgk64!', gen_salt('bf')),
+  crypt('Playerum4jdp57!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18938,7 +18938,7 @@ VALUES (
   'joshua.alexander.carey.171f448b@apsl.player',
   'Joshua',
   'Alexander Carey',
-  crypt('Player0n5durcb!', gen_salt('bf')),
+  crypt('Playere5fvps77!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18952,7 +18952,7 @@ VALUES (
   'corvens.jay.corvil.171f448b@apsl.player',
   'Corvens',
   'Jay Corvil',
-  crypt('Playerqe0qhvnw!', gen_salt('bf')),
+  crypt('Playerwvc5l1cx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18966,7 +18966,7 @@ VALUES (
   'zechariah.dapaah.171f448b@apsl.player',
   'Zechariah',
   'Dapaah',
-  crypt('Playerkdziiy13!', gen_salt('bf')),
+  crypt('Playeryabxk133!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18980,7 +18980,7 @@ VALUES (
   'adam.stephen.delizza.171f448b@apsl.player',
   'Adam',
   'Stephen DeLizza',
-  crypt('Playerl0fcu74d!', gen_salt('bf')),
+  crypt('Player8o79sa4e!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -18994,7 +18994,7 @@ VALUES (
   'heberson.edouard.171f448b@apsl.player',
   'Heberson',
   'Edouard',
-  crypt('Player22z15tgq!', gen_salt('bf')),
+  crypt('Player34uby95f!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19008,7 +19008,7 @@ VALUES (
   'christ.daniel.fils.171f448b@apsl.player',
   'Christ-Daniel',
   'Fils',
-  crypt('Playerpspvzqnl!', gen_salt('bf')),
+  crypt('Playerl0zqfkxz!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19022,7 +19022,7 @@ VALUES (
   'caleb.james.gragg.171f448b@apsl.player',
   'Caleb',
   'James Gragg',
-  crypt('Player9w6w1zak!', gen_salt('bf')),
+  crypt('Player3uvfii41!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19036,7 +19036,7 @@ VALUES (
   'colin.benjamin.hofmann.171f448b@apsl.player',
   'Colin',
   'Benjamin Hofmann',
-  crypt('Playerqq9af6nn!', gen_salt('bf')),
+  crypt('Player7lq725s3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19050,7 +19050,7 @@ VALUES (
   'elijah.jabagat.171f448b@apsl.player',
   'Elijah',
   'Jabagat',
-  crypt('Player9ifcvqfh!', gen_salt('bf')),
+  crypt('Playerq1aikysp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19064,7 +19064,7 @@ VALUES (
   'rickelmy.jeune.171f448b@apsl.player',
   'Rickelmy',
   'Jeune',
-  crypt('Playera93o2gnr!', gen_salt('bf')),
+  crypt('Playerhakeeydy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19078,7 +19078,7 @@ VALUES (
   'damarius.kelley.171f448b@apsl.player',
   'Damarius',
   'Kelley',
-  crypt('Playerzym3rk03!', gen_salt('bf')),
+  crypt('Playerxjfyl880!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19092,7 +19092,7 @@ VALUES (
   'goran.mijalkovski.171f448b@apsl.player',
   'Goran',
   'Mijalkovski',
-  crypt('Player4l1rz4t1!', gen_salt('bf')),
+  crypt('Player5vkg03wm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19106,7 +19106,7 @@ VALUES (
   'sean.chidozie.morse.171f448b@apsl.player',
   'Sean',
   'Chidozie Morse',
-  crypt('Playerk77kuhyj!', gen_salt('bf')),
+  crypt('Player4kp6brgp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19120,7 +19120,7 @@ VALUES (
   'abdelazim.osman.171f448b@apsl.player',
   'Abdelazim',
   'Osman',
-  crypt('Player6lqvmem0!', gen_salt('bf')),
+  crypt('Playerjh5azmge!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19134,7 +19134,7 @@ VALUES (
   'ahmed.osman.171f448b@apsl.player',
   'Ahmed',
   'Osman',
-  crypt('Playersflxx86f!', gen_salt('bf')),
+  crypt('Playerjeh50clm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19148,7 +19148,7 @@ VALUES (
   'pat.parrish.171f448b@apsl.player',
   'Pat',
   'Parrish',
-  crypt('Playerd50trxwh!', gen_salt('bf')),
+  crypt('Playerjwdr9m57!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19162,7 +19162,7 @@ VALUES (
   'caden.mark.pollard.171f448b@apsl.player',
   'Caden',
   'Mark Pollard',
-  crypt('Playerri6bu1a0!', gen_salt('bf')),
+  crypt('Player7bjbgg1k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19176,7 +19176,7 @@ VALUES (
   'ivan.sanchez.gonzalez.171f448b@apsl.player',
   'Ivan',
   'Sanchez-Gonzalez',
-  crypt('Playery8mmgbsl!', gen_salt('bf')),
+  crypt('Player1e7jxihk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19190,7 +19190,7 @@ VALUES (
   'gianluca.secondi.171f448b@apsl.player',
   'Gianluca',
   'Secondi',
-  crypt('Playerp29jyw25!', gen_salt('bf')),
+  crypt('Player7utotjvi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19204,7 +19204,7 @@ VALUES (
   'mourad.shalaby.171f448b@apsl.player',
   'Mourad',
   'Shalaby',
-  crypt('Playerjjk4dd43!', gen_salt('bf')),
+  crypt('Playerg638bezk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19218,7 +19218,7 @@ VALUES (
   'kenny.spock.171f448b@apsl.player',
   'Kenny',
   'Spock',
-  crypt('Playerc1feft65!', gen_salt('bf')),
+  crypt('Playerelqipm5x!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19232,7 +19232,7 @@ VALUES (
   'guy.holmeade.talbott.v.171f448b@apsl.player',
   'Guy',
   'Holmeade Talbott V',
-  crypt('Player3yhwg0hy!', gen_salt('bf')),
+  crypt('Playerkg3xp11o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19246,7 +19246,7 @@ VALUES (
   'devon.warman.171f448b@apsl.player',
   'Devon',
   'Warman',
-  crypt('Player96n5bf5u!', gen_salt('bf')),
+  crypt('Playerqir9gc3g!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19260,7 +19260,7 @@ VALUES (
   'skyler.williams.171f448b@apsl.player',
   'Skyler',
   'Williams',
-  crypt('Player8wns71e4!', gen_salt('bf')),
+  crypt('Playerun4bupd8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19278,7 +19278,7 @@ VALUES (
   'nour.alamri.f05b54ff@apsl.player',
   'Nour',
   'Alamri',
-  crypt('Playerazdnkor5!', gen_salt('bf')),
+  crypt('Playernhkzd48o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19292,7 +19292,7 @@ VALUES (
   'henry.asbill.f05b54ff@apsl.player',
   'Henry',
   'Asbill',
-  crypt('Playerab6lm2js!', gen_salt('bf')),
+  crypt('Playernjvic00d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19306,7 +19306,7 @@ VALUES (
   'asad.bashir.f05b54ff@apsl.player',
   'Asad',
   'Bashir',
-  crypt('Playerkl97finz!', gen_salt('bf')),
+  crypt('Player72ayrhjn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19320,7 +19320,7 @@ VALUES (
   'kai.bennett.f05b54ff@apsl.player',
   'Kai',
   'Bennett',
-  crypt('Playerb9bylebh!', gen_salt('bf')),
+  crypt('Player9i971vuo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19334,7 +19334,7 @@ VALUES (
   'alex.caskey.f05b54ff@apsl.player',
   'Alex',
   'Caskey',
-  crypt('Playerl89aej7v!', gen_salt('bf')),
+  crypt('Playerpoewebdp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19348,7 +19348,7 @@ VALUES (
   'damian.charles.f05b54ff@apsl.player',
   'Damian',
   'Charles',
-  crypt('Playeree0jx8mx!', gen_salt('bf')),
+  crypt('Playerr8ped6qs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19362,7 +19362,7 @@ VALUES (
   'jamie.gleeson.f05b54ff@apsl.player',
   'Jamie',
   'Gleeson',
-  crypt('Playerec94xtni!', gen_salt('bf')),
+  crypt('Player2yprgrxv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19376,7 +19376,7 @@ VALUES (
   'noah.goodman.f05b54ff@apsl.player',
   'Noah',
   'Goodman',
-  crypt('Playerbyz91im9!', gen_salt('bf')),
+  crypt('Playerhn8tosc6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19390,7 +19390,7 @@ VALUES (
   'anthony.gourdine.f05b54ff@apsl.player',
   'Anthony',
   'Gourdine',
-  crypt('Playerqvhxqcnb!', gen_salt('bf')),
+  crypt('Playeryavqzel0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19404,7 +19404,7 @@ VALUES (
   'morgan.hall.f05b54ff@apsl.player',
   'Morgan',
   'Hall',
-  crypt('Playerm53u8vno!', gen_salt('bf')),
+  crypt('Playert3mdzlqo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19418,7 +19418,7 @@ VALUES (
   'josh.hughes.f05b54ff@apsl.player',
   'Josh',
   'Hughes',
-  crypt('Playergus0m139!', gen_salt('bf')),
+  crypt('Playerrm3vid3d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19432,7 +19432,7 @@ VALUES (
   'gad.kabwende.f05b54ff@apsl.player',
   'Gad',
   'Kabwende',
-  crypt('Playerjj02o8re!', gen_salt('bf')),
+  crypt('Playerzzr88h9u!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19446,7 +19446,7 @@ VALUES (
   'jason.kayne.f05b54ff@apsl.player',
   'Jason',
   'Kayne',
-  crypt('Playerhav1rdle!', gen_salt('bf')),
+  crypt('Playerifdp85ix!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19460,7 +19460,7 @@ VALUES (
   'jt.keiffer.f05b54ff@apsl.player',
   'JT',
   'Keiffer',
-  crypt('Playervqyzq6fy!', gen_salt('bf')),
+  crypt('Playerbw3czk7s!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19474,7 +19474,7 @@ VALUES (
   'sebastian.lopez.f05b54ff@apsl.player',
   'Sebastian',
   'Lopez',
-  crypt('Playerph4ru3o2!', gen_salt('bf')),
+  crypt('Playerttgkb5mx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19488,7 +19488,7 @@ VALUES (
   'jean.malilo.f05b54ff@apsl.player',
   'Jean',
   'Malilo',
-  crypt('Playerrj8ruhwk!', gen_salt('bf')),
+  crypt('Playeroo15p69y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19502,7 +19502,7 @@ VALUES (
   'zion.jediah.jason.mcclean.f05b54ff@apsl.player',
   'Zion',
   'Jediah-Jason McClean',
-  crypt('Player9n06o00b!', gen_salt('bf')),
+  crypt('Playerap5e879m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19516,7 +19516,7 @@ VALUES (
   'gregg.mcpheely.f05b54ff@apsl.player',
   'Gregg',
   'McPheely',
-  crypt('Playere71ks9jz!', gen_salt('bf')),
+  crypt('Playerv7vvnvtv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19530,7 +19530,7 @@ VALUES (
   'nathan.miles.f05b54ff@apsl.player',
   'Nathan',
   'Miles',
-  crypt('Player18vn163t!', gen_salt('bf')),
+  crypt('Playerlkoz4h46!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19544,7 +19544,7 @@ VALUES (
   'alex.rotoloni.f05b54ff@apsl.player',
   'Alex',
   'Rotoloni',
-  crypt('Playerav5x02se!', gen_salt('bf')),
+  crypt('Playera6sdr8te!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19558,7 +19558,7 @@ VALUES (
   'jack.snyder.f05b54ff@apsl.player',
   'Jack',
   'Snyder',
-  crypt('Playere4k478xs!', gen_salt('bf')),
+  crypt('Playeroqz8o24x!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19572,7 +19572,7 @@ VALUES (
   'brynn.thompson.f05b54ff@apsl.player',
   'Brynn',
   'Thompson',
-  crypt('Playerr3vxgpvr!', gen_salt('bf')),
+  crypt('Playerlf5ibdr3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19586,7 +19586,7 @@ VALUES (
   'tyler.vogt.f05b54ff@apsl.player',
   'Tyler',
   'Vogt',
-  crypt('Playerexpky4vu!', gen_salt('bf')),
+  crypt('Player7o9d7uz1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19600,7 +19600,7 @@ VALUES (
   'renaldo.walters.f05b54ff@apsl.player',
   'Renaldo',
   'Walters',
-  crypt('Playerb9l8npea!', gen_salt('bf')),
+  crypt('Player5r2tzwx0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19614,7 +19614,7 @@ VALUES (
   'matt.williams.f05b54ff@apsl.player',
   'Matt',
   'Williams',
-  crypt('Playernjyfekki!', gen_salt('bf')),
+  crypt('Playerr2uuclij!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19628,7 +19628,7 @@ VALUES (
   'nick.york.f05b54ff@apsl.player',
   'Nick',
   'York',
-  crypt('Player2bp24e9t!', gen_salt('bf')),
+  crypt('Player6eukzs5p!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19646,7 +19646,7 @@ VALUES (
   'rashid.alarape.55bd7a24@apsl.player',
   'Rashid',
   'Alarape',
-  crypt('Playerc08ckz6u!', gen_salt('bf')),
+  crypt('Playerwhmiokq1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19660,7 +19660,7 @@ VALUES (
   'alex.archambeau.55bd7a24@apsl.player',
   'Alex',
   'Archambeau',
-  crypt('Playerim70ldzi!', gen_salt('bf')),
+  crypt('Playerl4ne4w5a!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19674,7 +19674,7 @@ VALUES (
   'christopher.avery.55bd7a24@apsl.player',
   'Christopher',
   'Avery',
-  crypt('Player8qnrj8ov!', gen_salt('bf')),
+  crypt('Playerx3lipnph!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19688,7 +19688,7 @@ VALUES (
   'carlos.ayala.viera.55bd7a24@apsl.player',
   'Carlos',
   'Ayala-Viera',
-  crypt('Player35sb9c9o!', gen_salt('bf')),
+  crypt('Player71a3hlv4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19702,7 +19702,7 @@ VALUES (
   'carlos.becerra.gomez.55bd7a24@apsl.player',
   'Carlos',
   'Becerra-Gomez',
-  crypt('Playerg7pew2bz!', gen_salt('bf')),
+  crypt('Playerf6nazmf9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19716,7 +19716,7 @@ VALUES (
   'elliot.curtin.55bd7a24@apsl.player',
   'Elliot',
   'Curtin',
-  crypt('Player9bzgqzrt!', gen_salt('bf')),
+  crypt('Player5d4xtaz0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19730,7 +19730,7 @@ VALUES (
   'eli.dent.55bd7a24@apsl.player',
   'Eli',
   'Dent',
-  crypt('Playerqevxui2p!', gen_salt('bf')),
+  crypt('Player732z5t6k!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19744,7 +19744,7 @@ VALUES (
   'jackson.eskay.55bd7a24@apsl.player',
   'Jackson',
   'Eskay',
-  crypt('Playerxnqxnxag!', gen_salt('bf')),
+  crypt('Player2akfalam!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19758,7 +19758,7 @@ VALUES (
   'andrew.fitton.55bd7a24@apsl.player',
   'Andrew',
   'Fitton',
-  crypt('Player09d95rvs!', gen_salt('bf')),
+  crypt('Playerlbw8lh24!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19772,7 +19772,7 @@ VALUES (
   'mike.foutsop.55bd7a24@apsl.player',
   'Mike',
   'Foutsop',
-  crypt('Playerbuahguej!', gen_salt('bf')),
+  crypt('Playerm0u5xnz7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19786,7 +19786,7 @@ VALUES (
   'neema.gharib.55bd7a24@apsl.player',
   'Neema',
   'Gharib',
-  crypt('Playerlgp012ny!', gen_salt('bf')),
+  crypt('Playerewnewvbr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19800,7 +19800,7 @@ VALUES (
   'andrew.halloran.55bd7a24@apsl.player',
   'Andrew',
   'Halloran',
-  crypt('Playerfy9vzcpa!', gen_salt('bf')),
+  crypt('Playerwprplpme!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19814,7 +19814,7 @@ VALUES (
   'thierno.issabre.55bd7a24@apsl.player',
   'Thierno',
   'Issabre',
-  crypt('Playeruh42pxcr!', gen_salt('bf')),
+  crypt('Playeru4gxo0st!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19828,7 +19828,7 @@ VALUES (
   'michael.johnson.55bd7a24@apsl.player',
   'Michael',
   'Johnson',
-  crypt('Playerlhhp9tzz!', gen_salt('bf')),
+  crypt('Playerwo731q9y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19842,7 +19842,7 @@ VALUES (
   'brennan.koslow.55bd7a24@apsl.player',
   'Brennan',
   'Koslow',
-  crypt('Player6kwql0gb!', gen_salt('bf')),
+  crypt('Playermscknef4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19856,7 +19856,7 @@ VALUES (
   'mitchell.kupstas.55bd7a24@apsl.player',
   'Mitchell',
   'Kupstas',
-  crypt('Player7egisjba!', gen_salt('bf')),
+  crypt('Player3issetq6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19870,7 +19870,7 @@ VALUES (
   'adrian.lollar.55bd7a24@apsl.player',
   'Adrian',
   'Lollar',
-  crypt('Player9ks6nhze!', gen_salt('bf')),
+  crypt('Playerby24f093!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19884,7 +19884,7 @@ VALUES (
   'mckinley.mercer.iii.55bd7a24@apsl.player',
   'McKinley',
   'Mercer III',
-  crypt('Playeraki61h57!', gen_salt('bf')),
+  crypt('Player4l8iteem!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19898,7 +19898,7 @@ VALUES (
   'luke.narker.55bd7a24@apsl.player',
   'Luke',
   'Narker',
-  crypt('Playerbb049h22!', gen_salt('bf')),
+  crypt('Player9mstxzpq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19912,7 +19912,7 @@ VALUES (
   'hassan.pinto.55bd7a24@apsl.player',
   'Hassan',
   'Pinto',
-  crypt('Playerud4zqpw1!', gen_salt('bf')),
+  crypt('Player1axrf87y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19926,7 +19926,7 @@ VALUES (
   'cory.plasker.55bd7a24@apsl.player',
   'Cory',
   'Plasker',
-  crypt('Playeru266i6ys!', gen_salt('bf')),
+  crypt('Playernoc69l3h!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19940,7 +19940,7 @@ VALUES (
   'max.poore.55bd7a24@apsl.player',
   'Max',
   'Poore',
-  crypt('Player2irah8xh!', gen_salt('bf')),
+  crypt('Playerdkrh6upw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19954,7 +19954,7 @@ VALUES (
   'kevin.reyes.55bd7a24@apsl.player',
   'Kevin',
   'Reyes',
-  crypt('Playergplbi5i3!', gen_salt('bf')),
+  crypt('Playerwmxrnyxq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19968,7 +19968,7 @@ VALUES (
   'sharpe.sablon.55bd7a24@apsl.player',
   'Sharpe',
   'Sablon',
-  crypt('Player3f7renuc!', gen_salt('bf')),
+  crypt('Playern2e41izd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19982,7 +19982,7 @@ VALUES (
   'iain.smith.55bd7a24@apsl.player',
   'Iain',
   'Smith',
-  crypt('Playerguz31v5o!', gen_salt('bf')),
+  crypt('Playercvr2p4l1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -19996,7 +19996,7 @@ VALUES (
   'thor.svienbjorsson.55bd7a24@apsl.player',
   'Thor',
   'Svienbjorsson',
-  crypt('Playereanc30lu!', gen_salt('bf')),
+  crypt('Playerkx6u8r1b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20010,7 +20010,7 @@ VALUES (
   'thomas.toney.55bd7a24@apsl.player',
   'Thomas',
   'Toney',
-  crypt('Playernmmychbe!', gen_salt('bf')),
+  crypt('Player9k994afs!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20024,7 +20024,7 @@ VALUES (
   'zachary.paul.young.55bd7a24@apsl.player',
   'Zachary',
   'Paul Young',
-  crypt('Playerctk46vrd!', gen_salt('bf')),
+  crypt('Playerelyfqyej!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20042,7 +20042,7 @@ VALUES (
   'bilal.ahmed.ec1718e1@apsl.player',
   'Bilal',
   'Ahmed',
-  crypt('Playerr6fctzyc!', gen_salt('bf')),
+  crypt('Playerjteojmmy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20056,7 +20056,7 @@ VALUES (
   'tim.amoui.ec1718e1@apsl.player',
   'Tim',
   'Amoui',
-  crypt('Player5iqqgedh!', gen_salt('bf')),
+  crypt('Player5kvpsk6h!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20070,7 +20070,7 @@ VALUES (
   'badr.el.yazami.ec1718e1@apsl.player',
   'Badr',
   'El Yazami',
-  crypt('Playervytfzjmb!', gen_salt('bf')),
+  crypt('Playerxf3f1x8c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20084,7 +20084,7 @@ VALUES (
   'stan.lee.etienne.ec1718e1@apsl.player',
   'Stan-Lee',
   'Etienne',
-  crypt('Playerx5mx0crm!', gen_salt('bf')),
+  crypt('Playernineuw7j!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20098,7 +20098,7 @@ VALUES (
   'sylvi.mahmood.ec1718e1@apsl.player',
   'Sylvi',
   'Mahmood',
-  crypt('Player46z0wbu3!', gen_salt('bf')),
+  crypt('Playerbkj29t4m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20112,7 +20112,7 @@ VALUES (
   'pedro.marinho.ec1718e1@apsl.player',
   'Pedro',
   'Marinho',
-  crypt('Playerxv61hwsa!', gen_salt('bf')),
+  crypt('Player0ltf2upi!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20126,7 +20126,7 @@ VALUES (
   'juan.martinez.ec1718e1@apsl.player',
   'Juan',
   'Martinez',
-  crypt('Playerc862jxrh!', gen_salt('bf')),
+  crypt('Playerals42zjf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20140,7 +20140,7 @@ VALUES (
   'david.michaelson.ec1718e1@apsl.player',
   'David',
   'Michaelson',
-  crypt('Playerccmo47ij!', gen_salt('bf')),
+  crypt('Player53198b9b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20154,7 +20154,7 @@ VALUES (
   'metsantika.mokgoatsana.ec1718e1@apsl.player',
   'Metsantika',
   'Mokgoatsana',
-  crypt('Players7va2y3a!', gen_salt('bf')),
+  crypt('Playeroj6a41cu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20168,7 +20168,7 @@ VALUES (
   'ali.niang.ec1718e1@apsl.player',
   'Ali',
   'Niang',
-  crypt('Player2r3n637m!', gen_salt('bf')),
+  crypt('Player80a4j0wq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20182,7 +20182,7 @@ VALUES (
   'javier.pace.ec1718e1@apsl.player',
   'Javier',
   'Pace',
-  crypt('Playerrjbhuxdf!', gen_salt('bf')),
+  crypt('Playerp0z47n4b!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20196,7 +20196,7 @@ VALUES (
   'osman.rodriguez.ec1718e1@apsl.player',
   'Osman',
   'Rodriguez',
-  crypt('Playerk4z2znly!', gen_salt('bf')),
+  crypt('Player919sm78e!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20210,7 +20210,7 @@ VALUES (
   'aaron.shiffman.ec1718e1@apsl.player',
   'Aaron',
   'Shiffman',
-  crypt('Playeroi5wv0mi!', gen_salt('bf')),
+  crypt('Playerosmlfi5i!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20224,7 +20224,7 @@ VALUES (
   'miwoned.siraj.ec1718e1@apsl.player',
   'Miwoned',
   'Siraj',
-  crypt('Playeru3a8237o!', gen_salt('bf')),
+  crypt('Playert4p7riwh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20238,7 +20238,7 @@ VALUES (
   'tyler.swinehart.ec1718e1@apsl.player',
   'Tyler',
   'Swinehart',
-  crypt('Players89i8pio!', gen_salt('bf')),
+  crypt('Playerfjpir8do!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20252,7 +20252,7 @@ VALUES (
   'gabriel.villar.ec1718e1@apsl.player',
   'Gabriel',
   'Villar',
-  crypt('Playerr2s0fmm5!', gen_salt('bf')),
+  crypt('Playerct2prgrh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20266,7 +20266,7 @@ VALUES (
   'michael.walsh.ec1718e1@apsl.player',
   'Michael',
   'Walsh',
-  crypt('Playervffjtbhg!', gen_salt('bf')),
+  crypt('Playeroyqwmlml!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20280,7 +20280,7 @@ VALUES (
   'joshua.warde.ec1718e1@apsl.player',
   'Joshua',
   'Warde',
-  crypt('Players5nl21yx!', gen_salt('bf')),
+  crypt('Playermrhtxsc3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20294,7 +20294,7 @@ VALUES (
   'christopher.wilson.ec1718e1@apsl.player',
   'Christopher',
   'Wilson',
-  crypt('Playeryp9ngt0u!', gen_salt('bf')),
+  crypt('Playergfltn9ld!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20308,7 +20308,7 @@ VALUES (
   'kyle.xhajanka.ec1718e1@apsl.player',
   'Kyle',
   'Xhajanka',
-  crypt('Playernomyfxaf!', gen_salt('bf')),
+  crypt('Playeridfgwd4w!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20326,7 +20326,7 @@ VALUES (
   'zackeriah.aday.nicholson.07e8c5da@apsl.player',
   'Zackeriah',
   'Aday-Nicholson',
-  crypt('Player5ax3d9bc!', gen_salt('bf')),
+  crypt('Playerfw9hedrn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20340,7 +20340,7 @@ VALUES (
   'gabriel.alvarez.07e8c5da@apsl.player',
   'Gabriel',
   'Alvarez',
-  crypt('Playerdwwmdis2!', gen_salt('bf')),
+  crypt('Player7a7t8ni3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20354,7 +20354,7 @@ VALUES (
   'dylan.bapst.07e8c5da@apsl.player',
   'Dylan',
   'Bapst',
-  crypt('Playery1kge0sd!', gen_salt('bf')),
+  crypt('Player0jod0gpd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20368,7 +20368,7 @@ VALUES (
   'mitchell.barry.07e8c5da@apsl.player',
   'Mitchell',
   'Barry',
-  crypt('Playerj2x8b9x3!', gen_salt('bf')),
+  crypt('Player303hfqve!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20382,7 +20382,7 @@ VALUES (
   'charles.blakenship.07e8c5da@apsl.player',
   'Charles',
   'Blakenship',
-  crypt('Players1xzeiyr!', gen_salt('bf')),
+  crypt('Playera9ky3pm6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20396,7 +20396,7 @@ VALUES (
   'kevin.carvalho.07e8c5da@apsl.player',
   'Kevin',
   'Carvalho',
-  crypt('Playerk20cqriq!', gen_salt('bf')),
+  crypt('Playerzydwywop!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20410,7 +20410,7 @@ VALUES (
   'stefan.gojic.07e8c5da@apsl.player',
   'Stefan',
   'Gojic',
-  crypt('Playerhd1fh79o!', gen_salt('bf')),
+  crypt('Player84v1li31!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20424,7 +20424,7 @@ VALUES (
   'andrew.grodhaus.07e8c5da@apsl.player',
   'Andrew',
   'Grodhaus',
-  crypt('Playercbfvpttr!', gen_salt('bf')),
+  crypt('Player3fswjfdg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20438,7 +20438,7 @@ VALUES (
   'colton.huebner.07e8c5da@apsl.player',
   'Colton',
   'Huebner',
-  crypt('Player4jxitz4c!', gen_salt('bf')),
+  crypt('Playerra7aw3ls!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20452,7 +20452,7 @@ VALUES (
   'joshua.james.07e8c5da@apsl.player',
   'Joshua',
   'James',
-  crypt('Playerzz2bc6ve!', gen_salt('bf')),
+  crypt('Player5pexnf10!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20466,7 +20466,7 @@ VALUES (
   'william.keegan.07e8c5da@apsl.player',
   'William',
   'Keegan',
-  crypt('Playerwv6uy19l!', gen_salt('bf')),
+  crypt('Playerjuyj5npp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20480,7 +20480,7 @@ VALUES (
   'konrad.knap.07e8c5da@apsl.player',
   'Konrad',
   'Knap',
-  crypt('Playerf9xj59ms!', gen_salt('bf')),
+  crypt('Playerjpm7arzc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20494,7 +20494,7 @@ VALUES (
   'jordan.locke.07e8c5da@apsl.player',
   'Jordan',
   'Locke',
-  crypt('Playernlczrfsn!', gen_salt('bf')),
+  crypt('Playeriybw35p5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20508,7 +20508,7 @@ VALUES (
   'christopher.marshall.07e8c5da@apsl.player',
   'Christopher',
   'Marshall',
-  crypt('Player1cq2z2qh!', gen_salt('bf')),
+  crypt('Playerza7lagw6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20522,7 +20522,7 @@ VALUES (
   'javier.martinez.07e8c5da@apsl.player',
   'Javier',
   'Martinez',
-  crypt('Player62ixqa0v!', gen_salt('bf')),
+  crypt('Playerypszs8oc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20536,7 +20536,7 @@ VALUES (
   'cain.mcmillan.07e8c5da@apsl.player',
   'Cain',
   'McMillan',
-  crypt('Playerza2rh58p!', gen_salt('bf')),
+  crypt('Playerlyozoxv6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20550,7 +20550,7 @@ VALUES (
   'anthony.norman.07e8c5da@apsl.player',
   'Anthony',
   'Norman',
-  crypt('Playertauspona!', gen_salt('bf')),
+  crypt('Playermazr5cu4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20564,7 +20564,7 @@ VALUES (
   'sampson.nsemoh.07e8c5da@apsl.player',
   'Sampson',
   'Nsemoh',
-  crypt('Player8w0z0c6t!', gen_salt('bf')),
+  crypt('Playergrv56fws!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20578,7 +20578,7 @@ VALUES (
   'thomas.powers.07e8c5da@apsl.player',
   'Thomas',
   'Powers',
-  crypt('Playerq3hly1x1!', gen_salt('bf')),
+  crypt('Playerg8ybrhuj!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20592,7 +20592,7 @@ VALUES (
   'seth.prieto.07e8c5da@apsl.player',
   'Seth',
   'Prieto',
-  crypt('Player6f79orps!', gen_salt('bf')),
+  crypt('Playern05h9iko!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20606,7 +20606,7 @@ VALUES (
   'adam.rooney.07e8c5da@apsl.player',
   'Adam',
   'Rooney',
-  crypt('Playerdx6re635!', gen_salt('bf')),
+  crypt('Playerwje2hy56!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20620,7 +20620,7 @@ VALUES (
   'jacob.sayer.07e8c5da@apsl.player',
   'Jacob',
   'Sayer',
-  crypt('Playerhgw8ppgc!', gen_salt('bf')),
+  crypt('Playerqod3dvtk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20634,7 +20634,7 @@ VALUES (
   'zachary.smith.07e8c5da@apsl.player',
   'Zachary',
   'Smith',
-  crypt('Player4ngr8jxa!', gen_salt('bf')),
+  crypt('Player6gfn8z89!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20648,7 +20648,7 @@ VALUES (
   'christian.waeglin.07e8c5da@apsl.player',
   'Christian',
   'Waeglin',
-  crypt('Player33ozbp5d!', gen_salt('bf')),
+  crypt('Playernhiyz2dv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20662,7 +20662,7 @@ VALUES (
   'christopher.witmond.07e8c5da@apsl.player',
   'Christopher',
   'Witmond',
-  crypt('Player1kbjrtfv!', gen_salt('bf')),
+  crypt('Player9pcheun5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20680,7 +20680,7 @@ VALUES (
   'nathan.bio.268164a2@apsl.player',
   'Nathan',
   'Bio',
-  crypt('Playerddhm9awt!', gen_salt('bf')),
+  crypt('Playerxut5dsx6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20694,7 +20694,7 @@ VALUES (
   'rob.bonet.268164a2@apsl.player',
   'Rob',
   'Bonet',
-  crypt('Playerkmgj1187!', gen_salt('bf')),
+  crypt('Playerzx5xppmc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20708,7 +20708,7 @@ VALUES (
   'aziymu.shamil.burns.268164a2@apsl.player',
   'Aziymu',
   'Shamil Burns',
-  crypt('Playervkody5w5!', gen_salt('bf')),
+  crypt('Playerxz4a2dqv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20722,7 +20722,7 @@ VALUES (
   'jackson.cavenaugh.268164a2@apsl.player',
   'Jackson',
   'Cavenaugh',
-  crypt('Player6vh1shmw!', gen_salt('bf')),
+  crypt('Playerebr5djfr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20736,7 +20736,7 @@ VALUES (
   'kyle.crawford.268164a2@apsl.player',
   'Kyle',
   'Crawford',
-  crypt('Playerx2xsh3un!', gen_salt('bf')),
+  crypt('Playerbks2z2er!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20750,7 +20750,7 @@ VALUES (
   'eduardo.delgado.268164a2@apsl.player',
   'Eduardo',
   'Delgado',
-  crypt('Playerlao0bh1a!', gen_salt('bf')),
+  crypt('Playerpthqd62w!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20764,7 +20764,7 @@ VALUES (
   'matheus.fineto.268164a2@apsl.player',
   'Matheus',
   'Fineto',
-  crypt('Playerxfpttkwo!', gen_salt('bf')),
+  crypt('Player8a37wek8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20778,7 +20778,7 @@ VALUES (
   'enrique.gonzalez.plaza.268164a2@apsl.player',
   'Enrique',
   'Gonzalez Plaza',
-  crypt('Player5aezestl!', gen_salt('bf')),
+  crypt('Player23g9sjxd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20792,7 +20792,7 @@ VALUES (
   'chris.griffith.268164a2@apsl.player',
   'Chris',
   'Griffith',
-  crypt('Playerxt4zkilf!', gen_salt('bf')),
+  crypt('Player2cig5v77!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20806,7 +20806,7 @@ VALUES (
   'philip.harris.268164a2@apsl.player',
   'Philip',
   'Harris',
-  crypt('Playertsfeosex!', gen_salt('bf')),
+  crypt('Playeregyhygs9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20820,7 +20820,7 @@ VALUES (
   'justin.heimerl.268164a2@apsl.player',
   'Justin',
   'Heimerl',
-  crypt('Playerhr57nwv9!', gen_salt('bf')),
+  crypt('Playerw64sfszc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20834,7 +20834,7 @@ VALUES (
   'lucas.horton.268164a2@apsl.player',
   'Lucas',
   'Horton',
-  crypt('Playero2kp3or2!', gen_salt('bf')),
+  crypt('Playerda8y1hum!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20848,7 +20848,7 @@ VALUES (
   'karson.reese.kendall.268164a2@apsl.player',
   'Karson',
   'Reese Kendall',
-  crypt('Playervguebhla!', gen_salt('bf')),
+  crypt('Playerxcwguzle!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20862,7 +20862,7 @@ VALUES (
   'konner.kendall.268164a2@apsl.player',
   'Konner',
   'Kendall',
-  crypt('Playerf4famj1m!', gen_salt('bf')),
+  crypt('Playerue2hbctm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20876,7 +20876,7 @@ VALUES (
   'mouad.labied.268164a2@apsl.player',
   'Mouad',
   'Labied',
-  crypt('Playertmknirsl!', gen_salt('bf')),
+  crypt('Playerk1b8ibc8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20890,7 +20890,7 @@ VALUES (
   'jake.langton.268164a2@apsl.player',
   'Jake',
   'Langton',
-  crypt('Player6vd9oyr5!', gen_salt('bf')),
+  crypt('Player6oxpa0y3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20904,7 +20904,7 @@ VALUES (
   'myles.levelle.268164a2@apsl.player',
   'Myles',
   'Levelle',
-  crypt('Playernhqvwmrv!', gen_salt('bf')),
+  crypt('Playerv4wg5f72!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20918,7 +20918,7 @@ VALUES (
   'randy.mallar.calvillo.268164a2@apsl.player',
   'Randy',
   'Mallar-Calvillo',
-  crypt('Playeraavrwj10!', gen_salt('bf')),
+  crypt('Playerxafy7zlp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20932,7 +20932,7 @@ VALUES (
   'matt.mitchell.268164a2@apsl.player',
   'Matt',
   'Mitchell',
-  crypt('Playerc8bps3jx!', gen_salt('bf')),
+  crypt('Playern3zfg9cn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20946,7 +20946,7 @@ VALUES (
   'nikos.papanikolopoulos.268164a2@apsl.player',
   'Nikos',
   'Papanikolopoulos',
-  crypt('Player7ovdjjtw!', gen_salt('bf')),
+  crypt('Playeruh62h3vx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20960,7 +20960,7 @@ VALUES (
   'cade.quinto.268164a2@apsl.player',
   'Cade',
   'Quinto',
-  crypt('Playerigz9sp76!', gen_salt('bf')),
+  crypt('Playerkdlnpl3o!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20974,7 +20974,7 @@ VALUES (
   'juandi.riley.268164a2@apsl.player',
   'Juandi',
   'Riley',
-  crypt('Playerz5phdt3e!', gen_salt('bf')),
+  crypt('Playerbay6o2lu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -20988,7 +20988,7 @@ VALUES (
   'luis.romero.268164a2@apsl.player',
   'Luis',
   'Romero',
-  crypt('Player3dqff22d!', gen_salt('bf')),
+  crypt('Playerzsdxir8d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21002,7 +21002,7 @@ VALUES (
   'eduardo.ernesto.salmeron.268164a2@apsl.player',
   'Eduardo',
   'Ernesto Salmeron',
-  crypt('Playerv77whp9j!', gen_salt('bf')),
+  crypt('Playerew08ga1m!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21016,7 +21016,7 @@ VALUES (
   'aswin.sembu.268164a2@apsl.player',
   'Aswin',
   'Sembu',
-  crypt('Playerdfy7q32s!', gen_salt('bf')),
+  crypt('Playerghg2fmzx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21030,7 +21030,7 @@ VALUES (
   'adam.sole.268164a2@apsl.player',
   'Adam',
   'Sole',
-  crypt('Playerrdjlukop!', gen_salt('bf')),
+  crypt('Playerpg9jgmox!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21044,7 +21044,7 @@ VALUES (
   'zaid.takrouri.268164a2@apsl.player',
   'Zaid',
   'Takrouri',
-  crypt('Playerzjqm3vpg!', gen_salt('bf')),
+  crypt('Playerfua8c7m4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21058,7 +21058,7 @@ VALUES (
   'michael.touihri.268164a2@apsl.player',
   'Michael',
   'Touihri',
-  crypt('Playerbqqf0a6o!', gen_salt('bf')),
+  crypt('Playerorukbya7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21072,7 +21072,7 @@ VALUES (
   'ivan.verdezoto.268164a2@apsl.player',
   'Ivan',
   'Verdezoto',
-  crypt('Playerh5xy8c6p!', gen_salt('bf')),
+  crypt('Player8ezrw2md!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21086,7 +21086,7 @@ VALUES (
   'min.yoo.268164a2@apsl.player',
   'Min',
   'Yoo',
-  crypt('Playerle57hbk1!', gen_salt('bf')),
+  crypt('Playerqz7hhdwl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21104,7 +21104,7 @@ VALUES (
   'jonathan.adabi.3ae0fc91@apsl.player',
   'Jonathan',
   'Adabi',
-  crypt('Player3f5et32p!', gen_salt('bf')),
+  crypt('Playeryt8rsik6!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21118,7 +21118,7 @@ VALUES (
   'tishe.adekanmbi.3ae0fc91@apsl.player',
   'Tishe',
   'Adekanmbi',
-  crypt('Playerikebmb0a!', gen_salt('bf')),
+  crypt('Playergscdfoq2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21132,7 +21132,7 @@ VALUES (
   'abdoulmalik.adesanya.3ae0fc91@apsl.player',
   'Abdoulmalik',
   'Adesanya',
-  crypt('Playergrkw95yn!', gen_salt('bf')),
+  crypt('Player6m2vcfkv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21146,7 +21146,7 @@ VALUES (
   'caleb.ayan.3ae0fc91@apsl.player',
   'Caleb',
   'Ayan',
-  crypt('Playerp9nuqa7e!', gen_salt('bf')),
+  crypt('Playerd22q4k8g!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21160,7 +21160,7 @@ VALUES (
   'olumide.ayo.ajibike.3ae0fc91@apsl.player',
   'Olumide',
   'Ayo-Ajibike',
-  crypt('Playerjdn583gk!', gen_salt('bf')),
+  crypt('Playerg18l60zh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21174,7 +21174,7 @@ VALUES (
   'elad.khaleef.bogle.3ae0fc91@apsl.player',
   'Elad',
   'Khaleef Bogle',
-  crypt('Playerb8dyzwm9!', gen_salt('bf')),
+  crypt('Playerkte4cqnl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21188,7 +21188,7 @@ VALUES (
   'tobias.ciho.3ae0fc91@apsl.player',
   'Tobias',
   'Ciho',
-  crypt('Player1shq10xd!', gen_salt('bf')),
+  crypt('Players3k3g6xk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21202,7 +21202,7 @@ VALUES (
   'nixon.manuel.condolo.3ae0fc91@apsl.player',
   'Nixon',
   'Manuel Condolo',
-  crypt('Player2lohsru6!', gen_salt('bf')),
+  crypt('Playern5u08bvq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21216,7 +21216,7 @@ VALUES (
   'felipe.correa.3ae0fc91@apsl.player',
   'Felipe',
   'Correa',
-  crypt('Playeravojzxe4!', gen_salt('bf')),
+  crypt('Playerftpsl3wv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21230,7 +21230,7 @@ VALUES (
   'michael.dardis.3ae0fc91@apsl.player',
   'Michael',
   'Dardis',
-  crypt('Playera7pkplm4!', gen_salt('bf')),
+  crypt('Player8otjn3n5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21244,7 +21244,7 @@ VALUES (
   'abdoulaye.diba.3ae0fc91@apsl.player',
   'Abdoulaye',
   'Diba',
-  crypt('Playerktqa7rmk!', gen_salt('bf')),
+  crypt('Playeraqestucw!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21258,7 +21258,7 @@ VALUES (
   'lech.dunser.3ae0fc91@apsl.player',
   'Lech',
   'Dunser',
-  crypt('Playerzp0i617c!', gen_salt('bf')),
+  crypt('Playerw6genwy3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21272,7 +21272,7 @@ VALUES (
   'daniel.duran.gonzalez.3ae0fc91@apsl.player',
   'Daniel',
   'Duran Gonzalez',
-  crypt('Playerwb3dfq42!', gen_salt('bf')),
+  crypt('Playerbq1wq1vg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21286,7 +21286,7 @@ VALUES (
   'david.alejandro.fierro.3ae0fc91@apsl.player',
   'David',
   'Alejandro Fierro',
-  crypt('Playeryssofo1d!', gen_salt('bf')),
+  crypt('Playerqf65yp0g!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21300,7 +21300,7 @@ VALUES (
   'caleb.johnson.3ae0fc91@apsl.player',
   'Caleb',
   'Johnson',
-  crypt('Playerkrb9o3xl!', gen_salt('bf')),
+  crypt('Playerrnideems!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21314,7 +21314,7 @@ VALUES (
   'ian.thomas.kunkel.3ae0fc91@apsl.player',
   'Ian',
   'Thomas Kunkel',
-  crypt('Playerdnzzz3eq!', gen_salt('bf')),
+  crypt('Player9x8bmbq0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21328,7 +21328,7 @@ VALUES (
   'jelle.lansdaal.3ae0fc91@apsl.player',
   'Jelle',
   'Lansdaal',
-  crypt('Playereii12k5j!', gen_salt('bf')),
+  crypt('Playert15ds8ht!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21342,7 +21342,7 @@ VALUES (
   'ruari.eamonn.o.rourke.3ae0fc91@apsl.player',
   'Ruari',
   'Eamonn O’Rourke',
-  crypt('Player8xq7q2kw!', gen_salt('bf')),
+  crypt('Playerqgzl92d9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21356,7 +21356,7 @@ VALUES (
   'siddharth.rajesh.3ae0fc91@apsl.player',
   'Siddharth',
   'Rajesh',
-  crypt('Playervfc2esg0!', gen_salt('bf')),
+  crypt('Player1f2qcpmk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21370,7 +21370,7 @@ VALUES (
   'anel.ramic.3ae0fc91@apsl.player',
   'Anel',
   'Ramic',
-  crypt('Playeric2zjem6!', gen_salt('bf')),
+  crypt('Playernquhktat!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21384,7 +21384,7 @@ VALUES (
   'sumner.richardson.3ae0fc91@apsl.player',
   'Sumner',
   'Richardson',
-  crypt('Playerv58ruqvj!', gen_salt('bf')),
+  crypt('Player0o3wyxe4!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21398,7 +21398,7 @@ VALUES (
   'george.bishop.rodi.3ae0fc91@apsl.player',
   'George',
   'Bishop Rodi',
-  crypt('Playerg16eig7u!', gen_salt('bf')),
+  crypt('Player5y5qcifp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21412,7 +21412,7 @@ VALUES (
   'connor.rosenthal.3ae0fc91@apsl.player',
   'Connor',
   'Rosenthal',
-  crypt('Playergxu5duoj!', gen_salt('bf')),
+  crypt('Player172kzlne!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21426,7 +21426,7 @@ VALUES (
   'godfred.nii.tettey.3ae0fc91@apsl.player',
   'Godfred',
   'Nii Tettey',
-  crypt('Playerxqh1t5nv!', gen_salt('bf')),
+  crypt('Playerrzf4cp4y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21440,7 +21440,7 @@ VALUES (
   'joshua.parbie.tettey.3ae0fc91@apsl.player',
   'Joshua',
   'Parbie Tettey',
-  crypt('Playerk0pxpu64!', gen_salt('bf')),
+  crypt('Playerflqo1d2d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21454,7 +21454,7 @@ VALUES (
   'robert.a.thomas.3ae0fc91@apsl.player',
   'Robert',
   'A Thomas',
-  crypt('Playerhf7b7ynb!', gen_salt('bf')),
+  crypt('Playerwu3y6a6d!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21468,7 +21468,7 @@ VALUES (
   'chris.arturo.vitela.3ae0fc91@apsl.player',
   'Chris',
   'Arturo Vitela',
-  crypt('Playery7msio01!', gen_salt('bf')),
+  crypt('Playerrttjn3rr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21482,7 +21482,7 @@ VALUES (
   'noah.wieland.3ae0fc91@apsl.player',
   'Noah',
   'Wieland',
-  crypt('Playerm4mxa7r9!', gen_salt('bf')),
+  crypt('Player2x1t768y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21496,7 +21496,7 @@ VALUES (
   'olanrewaju.yusuff.3ae0fc91@apsl.player',
   'Olanrewaju',
   'Yusuff',
-  crypt('Playersu7ipfxx!', gen_salt('bf')),
+  crypt('Playerflbk8ylp!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21514,7 +21514,7 @@ VALUES (
   'roberto.carlos.calix.6778fbca@apsl.player',
   'Roberto',
   'Carlos Calix',
-  crypt('Player2gg44y0c!', gen_salt('bf')),
+  crypt('Player7wue7t2c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21528,7 +21528,7 @@ VALUES (
   'eli.francisco.carrasco.6778fbca@apsl.player',
   'Eli',
   'Francisco Carrasco',
-  crypt('Playerzp75mypk!', gen_salt('bf')),
+  crypt('Playerz3xguwst!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21542,7 +21542,7 @@ VALUES (
   'axel.castrejon.6778fbca@apsl.player',
   'Axel',
   'Castrejon',
-  crypt('Playerw6mv0l7b!', gen_salt('bf')),
+  crypt('Playero4lcj370!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21556,7 +21556,7 @@ VALUES (
   'gael.jared.castrejon.6778fbca@apsl.player',
   'Gael',
   'Jared Castrejon',
-  crypt('Playercqh9tq5b!', gen_salt('bf')),
+  crypt('Playerc5cvaufq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21570,7 +21570,7 @@ VALUES (
   'jared.scott.childs.6778fbca@apsl.player',
   'Jared',
   'Scott Childs',
-  crypt('Player7wz528vp!', gen_salt('bf')),
+  crypt('Player1ofw530l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21584,7 +21584,7 @@ VALUES (
   'dylan.bright.edmonds.6778fbca@apsl.player',
   'Dylan',
   'Bright Edmonds',
-  crypt('Player6hqwqh5k!', gen_salt('bf')),
+  crypt('Playernwjn2p1l!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21598,7 +21598,7 @@ VALUES (
   'mason.mcgill.fifer.6778fbca@apsl.player',
   'Mason',
   'McGill Fifer',
-  crypt('Playerdudjkxgc!', gen_salt('bf')),
+  crypt('Playerfddu9ckv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21612,7 +21612,7 @@ VALUES (
   'omar.guadarrama.6778fbca@apsl.player',
   'Omar',
   'Guadarrama',
-  crypt('Playerximh30b2!', gen_salt('bf')),
+  crypt('Playertcbfny2g!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21626,7 +21626,7 @@ VALUES (
   'brandon.gutierrez.6778fbca@apsl.player',
   'Brandon',
   'Gutierrez',
-  crypt('Playertmofv9wx!', gen_salt('bf')),
+  crypt('Playert8ri56v0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21640,7 +21640,7 @@ VALUES (
   'maury.ibarra.6778fbca@apsl.player',
   'Maury',
   'Ibarra',
-  crypt('Playerlpdwayho!', gen_salt('bf')),
+  crypt('Playerqlxwksll!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21654,7 +21654,7 @@ VALUES (
   'sebastian.tyler.jones.6778fbca@apsl.player',
   'Sebastian',
   'Tyler Jones',
-  crypt('Playerukec73o9!', gen_salt('bf')),
+  crypt('Playerc0shurpf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21668,7 +21668,7 @@ VALUES (
   'dino.kalac.6778fbca@apsl.player',
   'Dino',
   'Kalac',
-  crypt('Playerkmyh5zfp!', gen_salt('bf')),
+  crypt('Playergqbgjsk7!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21682,7 +21682,7 @@ VALUES (
   'taylor.benjamin.lemmon.6778fbca@apsl.player',
   'Taylor',
   'Benjamin Lemmon',
-  crypt('Player4oc9cnqk!', gen_salt('bf')),
+  crypt('Player1hz04i1y!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21696,7 +21696,7 @@ VALUES (
   'ivan.israel.lopez.6778fbca@apsl.player',
   'Ivan',
   'Israel Lopez',
-  crypt('Playerv5nc144m!', gen_salt('bf')),
+  crypt('Playerd7ok5791!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21710,7 +21710,7 @@ VALUES (
   'sebastian.lopez.6778fbca@apsl.player',
   'Sebastian',
   'Lopez',
-  crypt('Playerr30k567e!', gen_salt('bf')),
+  crypt('Playerm1xx41s2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21724,7 +21724,7 @@ VALUES (
   'juanes.martinez.6778fbca@apsl.player',
   'Juanes',
   'Martinez',
-  crypt('Playerk4vvxqz1!', gen_salt('bf')),
+  crypt('Playerk7zm7wsf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21738,7 +21738,7 @@ VALUES (
   'sebastian.nu.ez.6778fbca@apsl.player',
   'Sebastian',
   'Nuñez',
-  crypt('Player1evcm3j5!', gen_salt('bf')),
+  crypt('Playerwxx7ah9z!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21752,7 +21752,7 @@ VALUES (
   'ashton.thomas.parnell.6778fbca@apsl.player',
   'Ashton',
   'Thomas Parnell',
-  crypt('Playerpe2wryng!', gen_salt('bf')),
+  crypt('Player39dknv5t!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21766,7 +21766,7 @@ VALUES (
   'tyler.pineda.6778fbca@apsl.player',
   'Tyler',
   'Pineda',
-  crypt('Playern1roiplo!', gen_salt('bf')),
+  crypt('Playerl9rs8edf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21780,7 +21780,7 @@ VALUES (
   'voshon.ramcharan.6778fbca@apsl.player',
   'Voshon',
   'Ramcharan',
-  crypt('Playerornc2tc7!', gen_salt('bf')),
+  crypt('Playerhweaj6fx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21794,7 +21794,7 @@ VALUES (
   'marvin.rodriguez.6778fbca@apsl.player',
   'Marvin',
   'Rodriguez',
-  crypt('Playeruyusz8d4!', gen_salt('bf')),
+  crypt('Playerxcxwus85!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21808,7 +21808,7 @@ VALUES (
   'fabian.rodriguez.escobedo.6778fbca@apsl.player',
   'Fabian',
   'Rodriguez-Escobedo',
-  crypt('Playerx0q9wll6!', gen_salt('bf')),
+  crypt('Playermfiye8ec!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21822,7 +21822,7 @@ VALUES (
   'blair.springhall.6778fbca@apsl.player',
   'Blair',
   'Springhall',
-  crypt('Player2th45n8n!', gen_salt('bf')),
+  crypt('Playerm30tw7zk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21836,7 +21836,7 @@ VALUES (
   'bradley.hamilton.tidwell.6778fbca@apsl.player',
   'Bradley',
   'Hamilton Tidwell',
-  crypt('Playercbyqosjs!', gen_salt('bf')),
+  crypt('Playerv0afhhny!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21850,7 +21850,7 @@ VALUES (
   'edward.trejo.6778fbca@apsl.player',
   'Edward',
   'Trejo',
-  crypt('Playeri6khr66w!', gen_salt('bf')),
+  crypt('Player4psiv5eg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21864,7 +21864,7 @@ VALUES (
   'johan.miguel.trigo.rios.6778fbca@apsl.player',
   'Johan',
   'Miguel Trigo-Rios',
-  crypt('Player2bx3tm89!', gen_salt('bf')),
+  crypt('Player4xtzim3r!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21878,7 +21878,7 @@ VALUES (
   'luis.albert.ventura.6778fbca@apsl.player',
   'Luis',
   'Albert Ventura',
-  crypt('Player5rf5qkdy!', gen_salt('bf')),
+  crypt('Player4ayuxyyb!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21892,7 +21892,7 @@ VALUES (
   'patrick.ventura.6778fbca@apsl.player',
   'Patrick',
   'Ventura',
-  crypt('Player5grffpnt!', gen_salt('bf')),
+  crypt('Playerrmgcm7qx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21906,7 +21906,7 @@ VALUES (
   'nicholas.wheeler.6778fbca@apsl.player',
   'Nicholas',
   'Wheeler',
-  crypt('Playerg9aku769!', gen_salt('bf')),
+  crypt('Playery5tnhzf0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21924,7 +21924,7 @@ VALUES (
   'adam.abdullahi.d2c80f1f@apsl.player',
   'Adam',
   'Abdullahi',
-  crypt('Playerdhywribr!', gen_salt('bf')),
+  crypt('Player1bdwprs2!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21938,7 +21938,7 @@ VALUES (
   'mohammed.al.asady.d2c80f1f@apsl.player',
   'Mohammed',
   'Al-Asady',
-  crypt('Playermlakbo2a!', gen_salt('bf')),
+  crypt('Player7z50gzoe!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21952,7 +21952,7 @@ VALUES (
   'malek.almariri.d2c80f1f@apsl.player',
   'Malek',
   'Almariri',
-  crypt('Playerrxxdfqtf!', gen_salt('bf')),
+  crypt('Player2bijpatq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21966,7 +21966,7 @@ VALUES (
   'mario.arreguin.d2c80f1f@apsl.player',
   'Mario',
   'Arreguin',
-  crypt('Player2c4egfmw!', gen_salt('bf')),
+  crypt('Player71km2pgr!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21980,7 +21980,7 @@ VALUES (
   'ali.bazz.d2c80f1f@apsl.player',
   'Ali',
   'Bazz',
-  crypt('Playermmvkmdrh!', gen_salt('bf')),
+  crypt('Player2wlw5gar!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -21994,7 +21994,7 @@ VALUES (
   'monchu.camara.d2c80f1f@apsl.player',
   'Monchu',
   'Camara',
-  crypt('Player4gu61e63!', gen_salt('bf')),
+  crypt('Playero7ymogy3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22008,7 +22008,7 @@ VALUES (
   'steven.carrillo.d2c80f1f@apsl.player',
   'Steven',
   'Carrillo',
-  crypt('Playery120cz60!', gen_salt('bf')),
+  crypt('Player0c37f0eu!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22022,7 +22022,7 @@ VALUES (
   'karl.christiansen.d2c80f1f@apsl.player',
   'Karl',
   'Christiansen',
-  crypt('Player53ot9fh8!', gen_salt('bf')),
+  crypt('Playersefl77oa!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22036,7 +22036,7 @@ VALUES (
   'franklin.contreras.d2c80f1f@apsl.player',
   'Franklin',
   'Contreras',
-  crypt('Playerxci4nk3l!', gen_salt('bf')),
+  crypt('Playerzzmzb8u0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22050,7 +22050,7 @@ VALUES (
   'vitor.de.souza.d2c80f1f@apsl.player',
   'Vitor',
   'De Souza',
-  crypt('Player93fcwzpo!', gen_salt('bf')),
+  crypt('Playerz6c3zza8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22064,7 +22064,7 @@ VALUES (
   'adrian.garcia.d2c80f1f@apsl.player',
   'Adrian',
   'Garcia',
-  crypt('Player92wffbc5!', gen_salt('bf')),
+  crypt('Player8sntx4g3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22078,7 +22078,7 @@ VALUES (
   'josue.gomez.d2c80f1f@apsl.player',
   'Josue',
   'Gomez',
-  crypt('Playerclfd21mh!', gen_salt('bf')),
+  crypt('Playerjpawv5h5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22092,7 +22092,7 @@ VALUES (
   'jafet.higuera.d2c80f1f@apsl.player',
   'Jafet',
   'Higuera',
-  crypt('Playera13ahop8!', gen_salt('bf')),
+  crypt('Player5unnn7gd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22106,7 +22106,7 @@ VALUES (
   'rui.james.pereira.d2c80f1f@apsl.player',
   'Rui',
   'James-Pereira',
-  crypt('Playervzrmywe7!', gen_salt('bf')),
+  crypt('Playertbqy3xcm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22120,7 +22120,7 @@ VALUES (
   'kendrick.jean.d2c80f1f@apsl.player',
   'Kendrick',
   'Jean',
-  crypt('Playerkoen5wq0!', gen_salt('bf')),
+  crypt('Playerg4ycpfpv!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22134,7 +22134,7 @@ VALUES (
   'sanaa.listenbee.d2c80f1f@apsl.player',
   'Sanaa',
   'Listenbee',
-  crypt('Playerq24711v6!', gen_salt('bf')),
+  crypt('Playerliprgxcm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22148,7 +22148,7 @@ VALUES (
   'chris.louissaint.d2c80f1f@apsl.player',
   'Chris',
   'Louissaint',
-  crypt('Playerkd46k8zy!', gen_salt('bf')),
+  crypt('Playerpjt5dvyl!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22162,7 +22162,7 @@ VALUES (
   'david.martinez.d2c80f1f@apsl.player',
   'David',
   'Martinez',
-  crypt('Player70f9ztaz!', gen_salt('bf')),
+  crypt('Player7xzw2dp1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22176,7 +22176,7 @@ VALUES (
   'ramsis.martinez.d2c80f1f@apsl.player',
   'Ramsis',
   'Martinez',
-  crypt('Playerasuqdtyv!', gen_salt('bf')),
+  crypt('Player7m8bebvt!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22190,7 +22190,7 @@ VALUES (
   'ruben.martinez.d2c80f1f@apsl.player',
   'Ruben',
   'Martinez',
-  crypt('Playerudv1gi37!', gen_salt('bf')),
+  crypt('Player90vr5f8c!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22204,7 +22204,7 @@ VALUES (
   'jonathan.may.d2c80f1f@apsl.player',
   'Jonathan',
   'May',
-  crypt('Playeruqbazpfz!', gen_salt('bf')),
+  crypt('Playeraqzn4bkf!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22218,7 +22218,7 @@ VALUES (
   'jaylen.mccray.d2c80f1f@apsl.player',
   'Jaylen',
   'McCray',
-  crypt('Playerkfekvlpp!', gen_salt('bf')),
+  crypt('Playerj8j16xer!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22232,7 +22232,7 @@ VALUES (
   'tariq.mohammed.d2c80f1f@apsl.player',
   'Tariq',
   'Mohammed',
-  crypt('Player07uf4idy!', gen_salt('bf')),
+  crypt('Player60czg2oh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22246,7 +22246,7 @@ VALUES (
   'geovanni.oboh.d2c80f1f@apsl.player',
   'Geovanni',
   'Oboh',
-  crypt('Player3vle5ogx!', gen_salt('bf')),
+  crypt('Player6es01orx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22260,7 +22260,7 @@ VALUES (
   'jordan.paul.d2c80f1f@apsl.player',
   'Jordan',
   'Paul',
-  crypt('Playerwghzmk80!', gen_salt('bf')),
+  crypt('Player21h3eojn!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22274,7 +22274,7 @@ VALUES (
   'nicolas.pegorer.d2c80f1f@apsl.player',
   'Nicolas',
   'Pegorer',
-  crypt('Playertktnx4ow!', gen_salt('bf')),
+  crypt('Playerpkjfwawo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22288,7 +22288,7 @@ VALUES (
   'pablo.piraquive.d2c80f1f@apsl.player',
   'Pablo',
   'Piraquive',
-  crypt('Playerwfdjy95g!', gen_salt('bf')),
+  crypt('Playerzht22971!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22302,7 +22302,7 @@ VALUES (
   'roney.rubio.d2c80f1f@apsl.player',
   'Roney',
   'Rubio',
-  crypt('Playerwiwy4idc!', gen_salt('bf')),
+  crypt('Player1wdasgy9!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22316,7 +22316,7 @@ VALUES (
   'anakin.ruiz.d2c80f1f@apsl.player',
   'Anakin',
   'Ruiz',
-  crypt('Player9dspmcpj!', gen_salt('bf')),
+  crypt('Playeri1ehje97!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22330,7 +22330,7 @@ VALUES (
   'jazeime.russell.d2c80f1f@apsl.player',
   'Jazeime',
   'Russell',
-  crypt('Player3kng00nt!', gen_salt('bf')),
+  crypt('Playerifl9suek!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22344,7 +22344,7 @@ VALUES (
   'jonathan.sandoval.d2c80f1f@apsl.player',
   'Jonathan',
   'Sandoval',
-  crypt('Playervq8ulk2r!', gen_salt('bf')),
+  crypt('Playereaxw6nrc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22358,7 +22358,7 @@ VALUES (
   'ayman.saudin.d2c80f1f@apsl.player',
   'Ayman',
   'Saudin',
-  crypt('Playerjlpunpi3!', gen_salt('bf')),
+  crypt('Playerlggmttii!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22372,7 +22372,7 @@ VALUES (
   'manuel.simental.d2c80f1f@apsl.player',
   'Manuel',
   'Simental',
-  crypt('Playerb2tdl75u!', gen_salt('bf')),
+  crypt('Playerjwotoyug!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22386,7 +22386,7 @@ VALUES (
   'mahmoud.tasslak.d2c80f1f@apsl.player',
   'Mahmoud',
   'Tasslak',
-  crypt('Playerrodq1fm2!', gen_salt('bf')),
+  crypt('Playericqeqbxm!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22400,7 +22400,7 @@ VALUES (
   'myles.williams.d2c80f1f@apsl.player',
   'Myles',
   'Williams',
-  crypt('Playersrf75suj!', gen_salt('bf')),
+  crypt('Playern4pe4fdh!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22418,7 +22418,7 @@ VALUES (
   'ochuko.asibelua.fcccc73d@apsl.player',
   'Ochuko',
   'Asibelua',
-  crypt('Playerdui7k9ro!', gen_salt('bf')),
+  crypt('Playerkh3nzhti!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22432,7 +22432,7 @@ VALUES (
   'sang.bawi.fcccc73d@apsl.player',
   'Sang',
   'Bawi',
-  crypt('Playerfjn5zwc8!', gen_salt('bf')),
+  crypt('Player8a090m6u!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22446,7 +22446,7 @@ VALUES (
   'kanye.alexander.blake.fcccc73d@apsl.player',
   'Kanye',
   'Alexander Blake',
-  crypt('Playersf9kw4nh!', gen_salt('bf')),
+  crypt('Playerh7v4mxw1!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22460,7 +22460,7 @@ VALUES (
   'jackson.cherfils.fcccc73d@apsl.player',
   'Jackson',
   'Cherfils',
-  crypt('Playerfn69yt8a!', gen_salt('bf')),
+  crypt('Playeryvmzy3m3!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22474,7 +22474,7 @@ VALUES (
   'okikiade.leo.faduyile.fcccc73d@apsl.player',
   'Okikiade',
   'Leo Faduyile',
-  crypt('Player8bjckdkl!', gen_salt('bf')),
+  crypt('Player0lu6fcoq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22488,7 +22488,7 @@ VALUES (
   'alivic.fossem.fcccc73d@apsl.player',
   'Alivic',
   'Fossem',
-  crypt('Playerdx8gwv2p!', gen_salt('bf')),
+  crypt('Player3xoka5jo!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22502,7 +22502,7 @@ VALUES (
   'didier.lehman.fresh.fcccc73d@apsl.player',
   'Didier',
   'Lehman Fresh',
-  crypt('Player768m5qo8!', gen_salt('bf')),
+  crypt('Playerhdeyv6o8!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22516,7 +22516,7 @@ VALUES (
   'daniel.gonzalez.fcccc73d@apsl.player',
   'Daniel',
   'Gonzalez',
-  crypt('Playeruk9lzyeu!', gen_salt('bf')),
+  crypt('Playeru5d51u7u!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22530,7 +22530,7 @@ VALUES (
   'james.wedson.jean.fcccc73d@apsl.player',
   'James',
   'Wedson Jean',
-  crypt('Playerlf012zj4!', gen_salt('bf')),
+  crypt('Player6apqwafk!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22544,7 +22544,7 @@ VALUES (
   'maxinio.joseph.fcccc73d@apsl.player',
   'Maxinio',
   'Joseph',
-  crypt('Playermu0pchjs!', gen_salt('bf')),
+  crypt('Player5q9l9pdx!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22558,7 +22558,7 @@ VALUES (
   'berlin.marcelin.fcccc73d@apsl.player',
   'Berlin',
   'Marcelin',
-  crypt('Playerp44qp9dg!', gen_salt('bf')),
+  crypt('Playerjnq4tcqq!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22572,7 +22572,7 @@ VALUES (
   'hachem.alaoui.mhamdi.fcccc73d@apsl.player',
   'Hachem',
   'Alaoui Mhamdi',
-  crypt('Player761ptlub!', gen_salt('bf')),
+  crypt('Playeruekl9h4r!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22586,7 +22586,7 @@ VALUES (
   'olivier.a.momplaisir.fcccc73d@apsl.player',
   'Olivier',
   'A. Momplaisir',
-  crypt('Player11p97ql5!', gen_salt('bf')),
+  crypt('Playerhsc4u1ff!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22600,7 +22600,7 @@ VALUES (
   'aaron.morales.fcccc73d@apsl.player',
   'Aaron',
   'Morales',
-  crypt('Playernmdt56yk!', gen_salt('bf')),
+  crypt('Playerbm2ub4ol!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22614,7 +22614,7 @@ VALUES (
   'taft.parsons.fcccc73d@apsl.player',
   'Taft',
   'Parsons',
-  crypt('Playerwetdrxov!', gen_salt('bf')),
+  crypt('Playerlfycmxbg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22628,7 +22628,7 @@ VALUES (
   'edmar.pere.de.leon.fcccc73d@apsl.player',
   'Edmar',
   'Pere-de Leon',
-  crypt('Playernnqck0hr!', gen_salt('bf')),
+  crypt('Playerk2q4pczg!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22642,7 +22642,7 @@ VALUES (
   'paul.phillips.fcccc73d@apsl.player',
   'Paul',
   'Phillips',
-  crypt('Playerj25nbz50!', gen_salt('bf')),
+  crypt('Playerqrlzvax5!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22656,7 +22656,7 @@ VALUES (
   'moise.pierre.fcccc73d@apsl.player',
   'Moise',
   'Pierre',
-  crypt('Player164q7rlr!', gen_salt('bf')),
+  crypt('Playerof8iq7jd!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22670,7 +22670,7 @@ VALUES (
   'neo.ramos.lorza.fcccc73d@apsl.player',
   'Neo',
   'Ramos Lorza',
-  crypt('Playerc8fer7k3!', gen_salt('bf')),
+  crypt('Player5j0cqme0!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22684,7 +22684,7 @@ VALUES (
   'edwin.rios.zapata.fcccc73d@apsl.player',
   'Edwin',
   'Rios Zapata',
-  crypt('Playerl037ctis!', gen_salt('bf')),
+  crypt('Player9fgok745!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22698,7 +22698,7 @@ VALUES (
   'jose.ruben.fcccc73d@apsl.player',
   'Jose',
   'Ruben',
-  crypt('Playercq9d66b0!', gen_salt('bf')),
+  crypt('Playerw3jyt1wy!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22712,7 +22712,7 @@ VALUES (
   'emmanuel.michael.rwakabuba.fcccc73d@apsl.player',
   'Emmanuel',
   'Michael Rwakabuba',
-  crypt('Player7ziv9wp2!', gen_salt('bf')),
+  crypt('Playerktkyixbc!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22726,7 +22726,7 @@ VALUES (
   'rickenson.saint.quitte.fcccc73d@apsl.player',
   'Rickenson',
   'Saint Quitte',
-  crypt('Playerro2uizb6!', gen_salt('bf')),
+  crypt('Playerpewspe1e!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
@@ -22740,7 +22740,7 @@ VALUES (
   'calvin.ventura.fcccc73d@apsl.player',
   'Calvin',
   'Ventura',
-  crypt('Playerasx315md!', gen_salt('bf')),
+  crypt('Playervi9zct57!', gen_salt('bf')),
   true
 )
 ON CONFLICT (email) DO UPDATE SET
