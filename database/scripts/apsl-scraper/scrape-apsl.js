@@ -304,19 +304,12 @@ async function scrapeTeamRoster(teamId, teamUrl) {
       const playerId = userId;
       const teamPlayerId = generateUUID('0007', teamId + userId);
 
-      // Generate email from name + team (to handle duplicate names across teams)
-      const teamSlug = teams.get(teamId)?.slug || teamId.substring(0, 8);
-      const email = slugify(playerName).replace(/-/g, '.') + '.' + teamSlug + '@apsl.player';
-      const password = generatePassword();
-
-      // Store user
+      // Store user (no email/password - only scraped data)
       if (!users.has(userId)) {
         users.set(userId, {
           id: userId,
-          email: email,
           first_name: firstName,
-          last_name: lastName,
-          password: password
+          last_name: lastName
         });
 
         // Store player
@@ -502,8 +495,8 @@ ON CONFLICT (id) DO UPDATE SET
   
   // 7. USERS (write to separate APSL file, grouped by team)
   let usersSQL = `
--- Note: Passwords are bcrypt-hashed. Default pattern: Player[random]!
--- Players should reset passwords on first login.
+-- Note: Scraped users have no email/password (roster display only)
+-- They cannot log in until they register with a real email
 
 `;
   
@@ -530,16 +523,14 @@ ON CONFLICT (id) DO UPDATE SET
 -- ========================================
 `;
       for (const user of teamUsers) {
-        usersSQL += `INSERT INTO users (id, email, first_name, last_name, password_hash, is_active)
+        usersSQL += `INSERT INTO users (id, first_name, last_name, is_active)
 VALUES (
   ${sqlEscape(user.id)},
-  ${sqlEscape(user.email)},
   ${sqlEscape(user.first_name)},
   ${sqlEscape(user.last_name)},
-  crypt(${sqlEscape(user.password)}, gen_salt('bf')),
   true
 )
-ON CONFLICT (email) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
   last_name = EXCLUDED.last_name,
   updated_at = CURRENT_TIMESTAMP;
