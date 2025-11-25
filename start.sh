@@ -76,75 +76,10 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}Step 2: Configure Database Loading${NC}"
+echo -e "${BLUE}Step 2: Build and Start Containers${NC}"
 
-# Back up original docker-compose.yml if it doesn't have a backup
-if [ ! -f "docker-compose.yml.original" ]; then
-    cp docker-compose.yml docker-compose.yml.original
-fi
-
-# Start building the volumes section for db service
-SQL_MOUNTS="      # Mount database initialization files (loaded in alphabetical order)\n"
-SQL_MOUNTS+="      - ./database/schema/01-create-tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro\n"
-
-# Counter for file ordering
-MOUNT_NUMBER=2
-
-# Function to add all SQL files from a folder
-add_all_sql_files() {
-    local folder=$1
-    
-    if [ -d "database/data/$folder" ]; then
-        local files_found=false
-        # Find all *.sql files and sort them
-        for file in $(find database/data/$folder -name "*.sql" -type f | sort); do
-            files_found=true
-            local filename=$(basename "$file")
-            SQL_MOUNTS+="      - ./$file:/docker-entrypoint-initdb.d/$(printf "%02d" $MOUNT_NUMBER)-$folder-$filename:ro\n"
-            ((MOUNT_NUMBER++))
-        done
-        
-        if [ "$files_found" = true ]; then
-            local folder_name=$(echo $folder | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
-            echo -e "${GREEN}✓ Loading all $folder_name files${NC}"
-        fi
-    fi
-}
-
-# Load ALL SQL files from all data folders in order
-echo -e "${YELLOW}Loading ALL SQL files from database/data folders...${NC}"
-for folder in seed-data venues leagues conferences league-divisions clubs sport-divisions users admins coaches teams team-coaches players rosters; do
-    add_all_sql_files "$folder"
-done
-
-# Add persistent data volume mount
-SQL_MOUNTS+="      # Persistent data storage\n"
-SQL_MOUNTS+="      - db_data:/var/lib/postgresql/data"
-
-# Update docker-compose.yml with the new volumes
-# Use sed to replace the volumes section for db service
-awk -v mounts="$SQL_MOUNTS" '
-    /^  db:$/,/^  [a-z]/ {
-        if (/^    volumes:$/) {
-            print "    volumes:"
-            printf "%b\n", mounts
-            in_volumes=1
-            next
-        }
-        if (in_volumes && /^      -/) {
-            next
-        }
-        if (in_volumes && !/^      /) {
-            in_volumes=0
-        }
-    }
-    { print }
-' docker-compose.yml.original > docker-compose.yml
-
-echo -e "${GREEN}✓ docker-compose.yml configured with all SQL files${NC}"
 echo ""
-
-echo -e "${BLUE}Step 3: Build and Start Containers${NC}"
+echo -e "${BLUE}Step 2: Build and Start Containers${NC}"
 
 # Build
 if [ "$NO_CACHE" = true ]; then
