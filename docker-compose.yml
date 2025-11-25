@@ -12,9 +12,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      # Mount database initialization files (loaded in alphabetical order)
-      - ./database/schema/01-create-tables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
-      # Data files mounted via docker-compose.override.yml based on start.sh parameters
+      # Mount data folder - PostgreSQL runs *.sql files alphabetically
+      - ./database/data:/docker-entrypoint-initdb.d:ro
       # Persistent data storage
       - db_data:/var/lib/postgresql/data
     networks:
