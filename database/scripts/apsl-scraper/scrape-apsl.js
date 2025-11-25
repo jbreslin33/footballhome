@@ -44,6 +44,16 @@ const teams = new Map();
 const users = new Map();
 const players = new Map();
 const teamPlayers = new Map();
+const events = new Map();
+const matches = new Map();
+
+// Event type IDs (from 01-core-lookups.sql)
+const MATCH_EVENT_TYPE_ID = '550e8400-e29b-41d4-a716-446655440402';
+const HOME_STATUS_ID = '550e8400-e29b-41d4-a716-446655440801';
+const AWAY_STATUS_ID = '550e8400-e29b-41d4-a716-446655440802';
+
+// System user for creating events (James Breslin - admin)
+const SYSTEM_USER_ID = '77d77471-1250-47e0-81ab-d4626595d63c';
 
 // Helper: Fetch HTML from URL
 function fetchHTML(url) {
@@ -191,6 +201,10 @@ async function scrapeAPSL() {
           const teamName = teamLink.textContent.trim();
           const teamUrl = teamLink.getAttribute('href');
           const fullTeamUrl = teamUrl.startsWith('http') ? teamUrl : BASE_URL + teamUrl;
+          
+          // Extract APSL team ID from URL (e.g., /APSL/Team/114822)
+          const apslIdMatch = teamUrl.match(/\/Team\/(\d+)/);
+          const apslTeamId = apslIdMatch ? apslIdMatch[1] : null;
 
           const clubId = generateUUID('0003', teamName);
           const sportDivId = generateUUID('0004', teamName);
@@ -224,7 +238,8 @@ async function scrapeAPSL() {
             name: teamName,
             division_id: sportDivId,
             league_division_id: divId,
-            team_url: fullTeamUrl
+            team_url: fullTeamUrl,
+            apsl_team_id: apslTeamId
           });
 
           // Step 3: Scrape player roster for this team
@@ -232,6 +247,9 @@ async function scrapeAPSL() {
           await scrapeTeamRoster(teamId, fullTeamUrl);
         }
       }
+
+    // Step 4: Scrape fixtures/schedule
+    await scrapeFixtures();
 
     // Generate SQL output
     generateSQL();
@@ -336,6 +354,181 @@ async function scrapeTeamRoster(teamId, teamUrl) {
 
   } catch (error) {
     console.error(`    Error scraping roster from ${teamUrl}:`, error.message);
+  }
+}
+
+// Scrape team schedules from individual team pages
+async function scrapeFixtures() {
+  console.error('\n📅 Scraping team schedules...');
+  
+  // Build team ID lookup by APSL team ID
+  const teamIdByApslId = new Map();
+  for (const [teamId, team] of teams.entries()) {
+    if (team.apsl_team_id) {
+      teamIdByApslId.set(team.apsl_team_id, { id: teamId, name: team.name, url: team.team_url });
+    }
+  }
+  
+  console.error(`  Built lookup map for ${teamIdByApslId.size} teams`);
+  
+  // Track which matches we've already added (to avoid duplicates from both teams' pages)
+  const processedMatches = new Set();
+  
+  try {
+    // Scrape schedule from each team's page
+    for (const [apslId, teamData] of teamIdByApslId.entries()) {
+      const teamUrl = `${BASE_URL}/APSL/Team/${apslId}`;
+      console.error(`  Scraping schedule for ${teamData.name}...`);
+      
+      const html = await fetchHTML(teamUrl);
+      const dom = new JSDOM(html);
+      const doc = dom.window.document;
+      
+      // Find the Match Schedule table
+      const tables = doc.querySelectorAll('table.Table');
+      let scheduleTable = null;
+      
+      for (const table of tables) {
+        const header = table.querySelector('th');
+        if (header?.textContent.includes('Date & Time')) {
+          scheduleTable = table;
+          break;
+        }
+      }
+      
+      if (!scheduleTable) {
+        console.error(`    ⚠ No schedule table found`);
+        continue;
+      }
+      
+      // Process each row in the schedule
+      const rows = scheduleTable.querySelectorAll('tr.TableRow0, tr.TableRow1');
+      let matchCount = 0;
+      
+      for (const row of rows) {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 3) continue;
+        
+        // Cell 0: Date & Time (e.g., "Sunday, Sep 07 - 4:30 PM")
+        const dateTimeText = cells[0].textContent.trim();
+        const dateMatch = dateTimeText.match(/(\w+),\s*(\w+)\s+(\d+)/);
+        const timeMatch = dateTimeText.match(/(\d{1,2}:\d{2})\s*(AM|PM)/i);
+        
+        if (!dateMatch) continue;
+        
+        // Parse date - assume current season year (2025)
+        const monthName = dateMatch[2];
+        const day = parseInt(dateMatch[3]);
+        const months = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+        const month = months[monthName];
+        
+        // Determine year: Sep-Dec = 2025, Jan-May = 2026
+        const year = month >= 8 ? 2025 : 2026;
+        
+        const eventDate = new Date(year, month, day);
+        
+        // Add time if available
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1].split(':')[0]);
+          const minutes = parseInt(timeMatch[1].split(':')[1]);
+          if (timeMatch[2].toUpperCase() === 'PM' && hours !== 12) hours += 12;
+          if (timeMatch[2].toUpperCase() === 'AM' && hours === 12) hours = 0;
+          eventDate.setHours(hours, minutes, 0, 0);
+        }
+        
+        // Cell 1: Location
+        const locationText = cells[1].textContent.trim().split('\n')[0].trim();
+        
+        // Cell 2: Match info - contains opponent link and vs/@ indicator
+        const matchCell = cells[2];
+        const opponentLink = matchCell.querySelector('a[href*="/APSL/Team/"]');
+        if (!opponentLink) continue;
+        
+        const opponentApslId = opponentLink.getAttribute('href').match(/\/Team\/(\d+)/)?.[1];
+        if (!opponentApslId) continue;
+        
+        // Determine home/away from vs (home) or @ (away)
+        const vsSpan = matchCell.querySelector('span');
+        const isHome = vsSpan?.textContent.trim() === 'vs';
+        
+        // Get opponent team data
+        const opponentData = teamIdByApslId.get(opponentApslId);
+        if (!opponentData) {
+          // Opponent might be from another conference we haven't scraped
+          continue;
+        }
+        
+        // Determine home and away teams
+        const homeTeamData = isHome ? teamData : opponentData;
+        const awayTeamData = isHome ? opponentData : teamData;
+        
+        // Create dedup key (sorted team IDs + date to handle both teams' pages)
+        const sortedIds = [homeTeamData.id, awayTeamData.id].sort();
+        const dedupKey = `${sortedIds[0]}-${sortedIds[1]}-${eventDate.toISOString().split('T')[0]}`;
+        
+        if (processedMatches.has(dedupKey)) {
+          continue; // Already processed from other team's page
+        }
+        processedMatches.add(dedupKey);
+        
+        const eventId = generateUUID('0010', dedupKey);
+        
+        // Cell 3: Result (if played)
+        const resultCell = cells[3];
+        const resultText = resultCell?.textContent.trim() || '';
+        const scoreMatch = resultText.match(/\((\d+)\s*-\s*(\d+)\)/);
+        const statusMatch = resultText.match(/(Win|Loss|Draw)/i);
+        
+        let homeScore = null;
+        let awayScore = null;
+        let matchStatus = 'scheduled';
+        
+        if (scoreMatch && statusMatch) {
+          // Scores in result are from current team's perspective
+          // If current team is home: first score is home, second is away
+          // If current team is away: first score is away, second is home
+          const firstScore = parseInt(scoreMatch[1]);
+          const secondScore = parseInt(scoreMatch[2]);
+          
+          if (isHome) {
+            homeScore = firstScore;
+            awayScore = secondScore;
+          } else {
+            homeScore = secondScore;
+            awayScore = firstScore;
+          }
+          matchStatus = 'completed';
+        }
+        
+        // Store event
+        events.set(eventId, {
+          id: eventId,
+          title: `${homeTeamData.name} vs ${awayTeamData.name}`,
+          event_date: eventDate.toISOString(),
+          location: locationText || null
+        });
+        
+        // Store match with scores
+        matches.set(eventId, {
+          id: eventId,
+          home_team_id: homeTeamData.id,
+          away_team_id: awayTeamData.id,
+          home_score: homeScore,
+          away_score: awayScore,
+          match_status: matchStatus,
+          competition_name: 'APSL Regular Season'
+        });
+        
+        matchCount++;
+      }
+      
+      console.error(`    ✓ Found ${matchCount} matches`);
+    }
+    
+    console.error(`\n  Total unique matches: ${events.size}`);
+    
+  } catch (error) {
+    console.error('  Error scraping fixtures:', error.message);
   }
 }
 
@@ -617,6 +810,64 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   }
   writeFile('data/14-rosters.sql', 'ROSTERS', rostersSQL);
   
+  // 10. EVENTS (matches from fixtures)
+  let eventsSQL = `
+-- Note: Events are scraped from APSL fixtures page
+-- Deduplication key: home_team + away_team + event_date
+
+`;
+  
+  for (const event of events.values()) {
+    eventsSQL += `INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  ${sqlEscape(event.id)},
+  ${sqlEscape(SYSTEM_USER_ID)},
+  ${sqlEscape(MATCH_EVENT_TYPE_ID)},
+  ${sqlEscape(event.title)},
+  ${sqlEscape(event.event_date)},
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+`;
+  }
+  writeFile('data/15-events.sql', 'EVENTS (APSL MATCHES)', eventsSQL);
+  
+  // 11. MATCHES (extends events with team details)
+  let matchesSQL = `
+-- Note: Matches extend events with home/away team details
+-- Includes scores for completed matches
+
+`;
+  
+  for (const match of matches.values()) {
+    const homeScore = match.home_score !== null ? match.home_score : 'NULL';
+    const awayScore = match.away_score !== null ? match.away_score : 'NULL';
+    
+    matchesSQL += `INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  ${sqlEscape(match.id)},
+  ${sqlEscape(match.home_team_id)},
+  ${sqlEscape(match.away_team_id)},
+  ${sqlEscape(HOME_STATUS_ID)},
+  ${sqlEscape(match.competition_name)},
+  ${sqlEscape(match.match_status)},
+  ${homeScore},
+  ${awayScore}
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+`;
+  }
+  writeFile('data/16-matches.sql', 'MATCHES (APSL)', matchesSQL);
+  
   // Summary
   console.error('\n========================================');
   console.error('SCRAPE SUMMARY');
@@ -627,6 +878,7 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   console.error(`Teams: ${teams.size}`);
   console.error(`Players: ${players.size}`);
   console.error(`Total User Accounts: ${users.size}`);
+  console.error(`Matches: ${matches.size}`);
   console.error('========================================\n');
 }
 
