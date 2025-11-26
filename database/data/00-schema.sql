@@ -76,6 +76,16 @@ CREATE TABLE rsvp_statuses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- RSVP change sources lookup table (how was RSVP submitted)
+CREATE TABLE rsvp_change_sources (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(30) UNIQUE NOT NULL,          -- 'app', 'coach_entry', 'magic_link', 'bulk_import'
+    display_name VARCHAR(50) NOT NULL,         -- 'Mobile App', 'Coach Entry', 'Email Link', 'Bulk Import'
+    description TEXT,                          -- Additional context
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Home/Away venue status lookup table
 CREATE TABLE home_away_statuses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -721,57 +731,107 @@ CREATE TABLE matches (
     CONSTRAINT different_teams CHECK (home_team_id != away_team_id)
 );
 
--- Event RSVPs (player responses to practices/events)
--- Player RSVPs (for players attending events)
-CREATE TABLE player_rsvps (
+-- ========================================
+-- RSVP HISTORY TABLES (Append-Only)
+-- ========================================
+-- Each RSVP change creates a new row, preserving full audit trail.
+-- Use the *_current views to get the latest RSVP for each person/event.
+
+-- Player RSVP History (append-only log of all player RSVP changes)
+CREATE TABLE player_rsvp_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    player_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL CHECK (status IN ('attending', 'not_attending', 'maybe')),
-    response_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(event_id, player_id)
+    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    rsvp_status_id UUID NOT NULL REFERENCES rsvp_statuses(id),
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    changed_by UUID REFERENCES users(id),      -- Who made the change (player or coach on behalf)
+    change_source_id UUID REFERENCES rsvp_change_sources(id),  -- How it was submitted
+    notes TEXT
+    -- NO unique constraint - multiple rows per player/event allowed
 );
 
-CREATE INDEX idx_player_rsvps_event ON player_rsvps(event_id);
-CREATE INDEX idx_player_rsvps_player ON player_rsvps(player_id);
-CREATE INDEX idx_player_rsvps_status ON player_rsvps(status);
+CREATE INDEX idx_player_rsvp_history_lookup ON player_rsvp_history(event_id, player_id, changed_at DESC);
+CREATE INDEX idx_player_rsvp_history_event ON player_rsvp_history(event_id);
+CREATE INDEX idx_player_rsvp_history_player ON player_rsvp_history(player_id);
+CREATE INDEX idx_player_rsvp_history_status ON player_rsvp_history(rsvp_status_id);
 
--- Coach RSVPs (for coaches attending events)
-CREATE TABLE coach_rsvps (
+-- Coach RSVP History (append-only log of all coach RSVP changes)
+CREATE TABLE coach_rsvp_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    coach_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL CHECK (status IN ('attending', 'not_attending', 'maybe')),
-    response_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(event_id, coach_id)
+    coach_id UUID NOT NULL REFERENCES coaches(id) ON DELETE CASCADE,
+    rsvp_status_id UUID NOT NULL REFERENCES rsvp_statuses(id),
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    changed_by UUID REFERENCES users(id),      -- Who made the change
+    change_source_id UUID REFERENCES rsvp_change_sources(id),
+    notes TEXT
 );
 
-CREATE INDEX idx_coach_rsvps_event ON coach_rsvps(event_id);
-CREATE INDEX idx_coach_rsvps_coach ON coach_rsvps(coach_id);
-CREATE INDEX idx_coach_rsvps_status ON coach_rsvps(status);
+CREATE INDEX idx_coach_rsvp_history_lookup ON coach_rsvp_history(event_id, coach_id, changed_at DESC);
+CREATE INDEX idx_coach_rsvp_history_event ON coach_rsvp_history(event_id);
+CREATE INDEX idx_coach_rsvp_history_coach ON coach_rsvp_history(coach_id);
+CREATE INDEX idx_coach_rsvp_history_status ON coach_rsvp_history(rsvp_status_id);
 
--- Parent RSVPs (for parents attending events)
-CREATE TABLE parent_rsvps (
+-- Parent RSVP History (append-only log of all parent RSVP changes)
+CREATE TABLE parent_rsvp_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    parent_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL CHECK (status IN ('attending', 'not_attending', 'maybe')),
-    response_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(event_id, parent_id)
+    parent_id UUID NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
+    rsvp_status_id UUID NOT NULL REFERENCES rsvp_statuses(id),
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    changed_by UUID REFERENCES users(id),      -- Who made the change
+    change_source_id UUID REFERENCES rsvp_change_sources(id),
+    notes TEXT
 );
 
-CREATE INDEX idx_parent_rsvps_event ON parent_rsvps(event_id);
-CREATE INDEX idx_parent_rsvps_parent ON parent_rsvps(parent_id);
-CREATE INDEX idx_parent_rsvps_status ON parent_rsvps(status);
+CREATE INDEX idx_parent_rsvp_history_lookup ON parent_rsvp_history(event_id, parent_id, changed_at DESC);
+CREATE INDEX idx_parent_rsvp_history_event ON parent_rsvp_history(event_id);
+CREATE INDEX idx_parent_rsvp_history_parent ON parent_rsvp_history(parent_id);
+CREATE INDEX idx_parent_rsvp_history_status ON parent_rsvp_history(rsvp_status_id);
+
+-- ========================================
+-- CURRENT RSVP VIEWS
+-- ========================================
+-- These views return only the latest RSVP for each person/event
+
+CREATE VIEW player_rsvps_current AS
+SELECT DISTINCT ON (event_id, player_id)
+    id,
+    event_id,
+    player_id,
+    rsvp_status_id,
+    changed_at,
+    changed_by,
+    change_source_id,
+    notes
+FROM player_rsvp_history
+ORDER BY event_id, player_id, changed_at DESC;
+
+CREATE VIEW coach_rsvps_current AS
+SELECT DISTINCT ON (event_id, coach_id)
+    id,
+    event_id,
+    coach_id,
+    rsvp_status_id,
+    changed_at,
+    changed_by,
+    change_source_id,
+    notes
+FROM coach_rsvp_history
+ORDER BY event_id, coach_id, changed_at DESC;
+
+CREATE VIEW parent_rsvps_current AS
+SELECT DISTINCT ON (event_id, parent_id)
+    id,
+    event_id,
+    parent_id,
+    rsvp_status_id,
+    changed_at,
+    changed_by,
+    change_source_id,
+    notes
+FROM parent_rsvp_history
+ORDER BY event_id, parent_id, changed_at DESC;
 
 -- Match Officials (referees assigned to matches)
 CREATE TABLE match_officials (
@@ -809,19 +869,6 @@ CREATE TABLE meeting_teams (
     UNIQUE(meeting_id, team_id)
 );
 
--- RSVPs (now references rsvp_status)
-CREATE TABLE rsvps (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    rsvp_status_id UUID NOT NULL REFERENCES rsvp_statuses(id),
-    response_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    dietary_requirements TEXT,
-    transport_needed BOOLEAN DEFAULT false,
-    UNIQUE(event_id, user_id)
-);
-
 -- Magic tokens for RSVP links via email/SMS (unchanged)
 CREATE TABLE magic_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -844,8 +891,6 @@ CREATE INDEX idx_matches_away_team ON matches(away_team_id);
 CREATE INDEX idx_matches_competition ON matches(competition_name);
 CREATE INDEX idx_matches_status ON matches(match_status);
 CREATE INDEX idx_matches_home_away ON matches(home_away_status_id);
-CREATE INDEX idx_rsvps_event ON rsvps(event_id);
-CREATE INDEX idx_rsvps_status ON rsvps(rsvp_status_id);
 
 -- User entity indexes
 CREATE INDEX idx_players_position ON players(preferred_position_id);

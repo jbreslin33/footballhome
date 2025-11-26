@@ -56,6 +56,15 @@ INSERT INTO rsvp_statuses (id, name, display_name, sort_order, color) VALUES
 ('550e8400-e29b-41d4-a716-446655440303', 'no', 'Not Attending', 3, '#e74c3c')
 ON CONFLICT (id) DO NOTHING;
 
+-- RSVP change sources (how the RSVP was submitted)
+INSERT INTO rsvp_change_sources (id, name, display_name, description, sort_order) VALUES 
+('550e8400-e29b-41d4-a716-446655440311', 'app', 'Mobile/Web App', 'RSVP submitted through the app by the user', 1),
+('550e8400-e29b-41d4-a716-446655440312', 'coach_entry', 'Coach Entry', 'RSVP entered by coach on behalf of player', 2),
+('550e8400-e29b-41d4-a716-446655440313', 'magic_link', 'Email/SMS Link', 'RSVP submitted via magic link in email or SMS', 3),
+('550e8400-e29b-41d4-a716-446655440314', 'bulk_import', 'Bulk Import', 'RSVP imported in bulk by admin', 4),
+('550e8400-e29b-41d4-a716-446655440315', 'parent_entry', 'Parent Entry', 'RSVP entered by parent on behalf of player', 5)
+ON CONFLICT (id) DO NOTHING;
+
 -- Home/Away venue statuses
 INSERT INTO home_away_statuses (id, name, display_name, description, sort_order) VALUES 
 ('550e8400-e29b-41d4-a716-446655440801', 'home', 'Home', 'Event at our home venue', 1),
