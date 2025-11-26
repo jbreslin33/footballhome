@@ -109,11 +109,17 @@ fi
 echo ""
 echo -e "${YELLOW}⏳ Waiting for database initialization...${NC}"
 echo -e "  📊 Loading SQL files and populating tables..."
-for i in {1..10}; do
-    echo -ne "  ⏱️  Initialization progress: $i/10 seconds\r"
-    sleep 1
-done
-echo -e "\n  ${GREEN}✓${NC} Database initialization window complete"
+echo ""
+echo -e "  ${BLUE}━━━━━━━━━━ Database Log (live) ━━━━━━━━━━${NC}"
+
+# Show live database logs filtered for SQL activity
+(timeout 30 docker logs -f footballhome_db 2>&1 | grep --line-buffered -E "(CREATE TABLE|INSERT|COPY.*FROM|processing|complete)" | head -n 20 | while IFS= read -r line; do
+    echo -e "  ${YELLOW}│${NC} $line"
+done) 2>/dev/null || true
+
+echo -e "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ⏱️  (Continuing in background, check: ${GREEN}docker logs footballhome_db${NC})"
+echo -e "  ${GREEN}✓${NC} Database initialization window complete"
 
 # Check container status with details
 echo ""

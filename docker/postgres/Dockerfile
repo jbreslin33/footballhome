@@ -9,4 +9,8 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy custom init script with progress indicators
+COPY init-with-progress.sh /docker-entrypoint-initdb.d/000-init-with-progress.sh
+RUN chmod +x /docker-entrypoint-initdb.d/000-init-with-progress.sh
+
 # pg_cron configuration is handled by docker-compose command

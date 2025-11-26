@@ -59,7 +59,7 @@ services:
     container_name: footballhome_simple_backend
     restart: unless-stopped
     environment:
-      POSTGRES_PASSWORD: footballhome_password
+      POSTGRES_PASSWORD: footballhome_pass
     ports:
       - "3001:3001"
     networks:
