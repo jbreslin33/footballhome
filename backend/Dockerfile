@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     cmake \
     pkg-config \
     wget \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -23,5 +24,9 @@ RUN mkdir -p build && cd build && \
 # Expose port
 EXPOSE 3001
 
-# Run the server
-CMD ["./build/server"]
+# Copy wait-for-db script
+COPY wait-for-db.sh /wait-for-db.sh
+RUN chmod +x /wait-for-db.sh
+
+# Run the server with wait-for-db wrapper
+CMD ["/wait-for-db.sh", "db", "5432", "footballhome_user", "footballhome", "./build/server"]

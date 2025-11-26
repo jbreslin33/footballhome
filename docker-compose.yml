@@ -58,6 +58,8 @@ services:
       dockerfile: Dockerfile
     container_name: footballhome_simple_backend
     restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: footballhome_password
     ports:
       - "3001:3001"
     networks:
