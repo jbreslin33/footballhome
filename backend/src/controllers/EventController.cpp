@@ -107,14 +107,12 @@ Response EventController::handleCreateEvent(const Request& request) {
         // Create timestamp from date and start_time
         std::string event_datetime = date + " " + start_time + ":00";
         
-        // Generate event ID
-        std::string event_id = generateUUID();
-        
         // Build INSERT query for events table
+        // Use database uuid_generate_v4() for reliable UUID generation
         std::ostringstream event_query;
         event_query << "INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, created_at, updated_at) ";
         event_query << "VALUES (";
-        event_query << "'" << event_id << "', ";
+        event_query << "uuid_generate_v4(), ";
         event_query << "'" << created_by << "', ";
         event_query << "'" << event_type_id << "', ";
         event_query << "'" << title << "', ";
@@ -184,13 +182,18 @@ Response EventController::handleGetEvents(const Request& request) {
         std::cout << "🔍 Getting events for team: " << team_id << std::endl;
         
         // Query events for team
+        // Show: all upcoming events + events ended within last 8 hours
+        // Include has_ended flag so frontend knows whether to show RSVP buttons
         std::ostringstream query;
-        query << "SELECT e.id, e.title, e.event_date, e.duration_minutes, et.name as event_type, p.notes ";
+        query << "SELECT e.id, e.title, e.event_date, e.duration_minutes, et.name as event_type, p.notes, ";
+        query << "CASE WHEN (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) < NOW() ";
+        query << "THEN true ELSE false END as has_ended ";
         query << "FROM events e ";
         query << "JOIN event_types et ON e.event_type_id = et.id ";
         query << "LEFT JOIN practices p ON e.id = p.id ";
         query << "WHERE p.team_id = '" << team_id << "' ";
-        query << "ORDER BY e.event_date DESC ";
+        query << "AND (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) > (NOW() - INTERVAL '8 hours') ";
+        query << "ORDER BY e.event_date ASC ";
         query << "LIMIT 50";
         
         pqxx::result result = db_->query(query.str());
@@ -205,7 +208,8 @@ Response EventController::handleGetEvents(const Request& request) {
             events_json << "\"title\":\"" << result[i][1].c_str() << "\",";
             events_json << "\"event_date\":\"" << result[i][2].c_str() << "\",";
             events_json << "\"duration_minutes\":" << result[i][3].c_str() << ",";
-            events_json << "\"type\":\"" << result[i][4].c_str() << "\"";
+            events_json << "\"type\":\"" << result[i][4].c_str() << "\",";
+            events_json << "\"has_ended\":" << (result[i][6].as<bool>() ? "true" : "false");
             if (!result[i][5].is_null()) {
                 events_json << ",\"notes\":\"" << result[i][5].c_str() << "\"";
             }
@@ -236,15 +240,20 @@ Response EventController::handleGetMatches(const Request& request) {
         std::cout << "🔍 Getting matches for team: " << team_id << std::endl;
         
         // Query matches where team is home or away
+        // Show: all upcoming matches + matches ended within last 8 hours
+        // Include has_ended flag so frontend knows whether to show RSVP buttons
         std::ostringstream query;
         query << "SELECT e.id, e.title, e.event_date, e.duration_minutes, et.name as event_type, ";
-        query << "m.home_team_score, m.away_team_score, m.match_status, m.competition_name, v.name as venue_name ";
+        query << "m.home_team_score, m.away_team_score, m.match_status, m.competition_name, v.name as venue_name, ";
+        query << "CASE WHEN (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) < NOW() ";
+        query << "THEN true ELSE false END as has_ended ";
         query << "FROM events e ";
         query << "JOIN event_types et ON e.event_type_id = et.id ";
         query << "JOIN matches m ON e.id = m.id ";
         query << "LEFT JOIN venues v ON e.venue_id = v.id ";
         query << "WHERE (m.home_team_id = '" << team_id << "' OR m.away_team_id = '" << team_id << "') ";
-        query << "ORDER BY e.event_date DESC ";
+        query << "AND (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) > (NOW() - INTERVAL '8 hours') ";
+        query << "ORDER BY e.event_date ASC ";
         query << "LIMIT 100";
         
         pqxx::result result = db_->query(query.str());
@@ -259,7 +268,8 @@ Response EventController::handleGetMatches(const Request& request) {
             matches_json << "\"title\":\"" << escapeJSON(result[i][1].c_str()) << "\",";
             matches_json << "\"event_date\":\"" << result[i][2].c_str() << "\",";
             matches_json << "\"duration_minutes\":" << result[i][3].c_str() << ",";
-            matches_json << "\"type\":\"" << result[i][4].c_str() << "\"";
+            matches_json << "\"type\":\"" << result[i][4].c_str() << "\",";
+            matches_json << "\"has_ended\":" << (result[i][10].as<bool>() ? "true" : "false");
             
             // Add match-specific fields
             if (!result[i][5].is_null()) {
@@ -580,25 +590,6 @@ std::string EventController::parseJSON(const std::string& body, const std::strin
     return body.substr(pos, end_pos - pos);
 }
 
-std::string EventController::generateUUID() {
-    // Simple UUID v4 generation using random
-    std::ostringstream uuid;
-    uuid << std::hex;
-    
-    for (int i = 0; i < 8; i++) uuid << (rand() % 16);
-    uuid << "-";
-    for (int i = 0; i < 4; i++) uuid << (rand() % 16);
-    uuid << "-4"; // Version 4
-    for (int i = 0; i < 3; i++) uuid << (rand() % 16);
-    uuid << "-";
-    uuid << (8 + rand() % 4); // Variant
-    for (int i = 0; i < 3; i++) uuid << (rand() % 16);
-    uuid << "-";
-    for (int i = 0; i < 12; i++) uuid << (rand() % 16);
-    
-    return uuid.str();
-}
-
 std::string EventController::escapeJSON(const std::string& str) {
     std::ostringstream escaped;
     for (char c : str) {
@@ -653,6 +644,27 @@ Response EventController::handleCreateRSVP(const Request& request) {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid role_type. Must be: player, coach, or parent"));
         }
         
+        // Check if event has ended (event_date + duration has passed)
+        std::string event_ended_query = R"(
+            SELECT CASE 
+                WHEN (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) < NOW()
+                THEN true ELSE false 
+            END as has_ended
+            FROM events e
+            JOIN event_types et ON e.event_type_id = et.id
+            WHERE e.id = $1
+        )";
+        pqxx::result event_check = db_->query(event_ended_query, {event_id});
+        
+        if (event_check.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Event not found"));
+        }
+        
+        bool has_ended = event_check[0]["has_ended"].as<bool>();
+        if (has_ended) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "This event has ended. RSVPs are no longer accepted."));
+        }
+        
         // Map frontend status values to database values
         std::string db_status;
         if (status == "attending") {
@@ -680,10 +692,10 @@ Response EventController::handleCreateRSVP(const Request& request) {
         std::string rsvp_status_id = status_result[0]["id"].c_str();
         
         // Always INSERT into history table (append-only, no updates)
-        std::string rsvp_id = generateUUID();
+        // Use database uuid_generate_v4() for reliable UUID generation
         std::string insert_query = "INSERT INTO " + table_name + " (id, event_id, " + id_column + ", rsvp_status_id, changed_by, change_source_id, notes, changed_at) "
-                                   "VALUES ($1, $2, $3, $4, $5, (SELECT id FROM rsvp_change_sources WHERE name = 'app'), $6, CURRENT_TIMESTAMP)";
-        db_->query(insert_query, {rsvp_id, event_id, user_id, rsvp_status_id, user_id, notes});
+                                   "VALUES (uuid_generate_v4(), $1, $2, $3, $4, (SELECT id FROM rsvp_change_sources WHERE name = 'app'), $5, CURRENT_TIMESTAMP)";
+        db_->query(insert_query, {event_id, user_id, rsvp_status_id, user_id, notes});
         std::cout << "✅ " << role_type << " RSVP recorded in history" << std::endl;
         
         std::string data = "{\"event_id\": \"" + event_id + "\", \"user_id\": \"" + user_id + "\", \"role_type\": \"" + role_type + "\", \"status\": \"" + status + "\"}";

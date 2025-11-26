@@ -433,6 +433,30 @@ textarea.form-input {
     justify-content: center;
 }
 
+/* Ended event styling */
+.practice-ended {
+    opacity: 0.7;
+    background-color: var(--gray-100);
+}
+
+.practice-ended .practice-card-header h3 {
+    color: var(--gray-600);
+}
+
+.badge-muted {
+    background-color: var(--gray-200);
+    color: var(--gray-600);
+}
+
+.event-ended-notice {
+    text-align: center;
+    padding: var(--space-3);
+    background-color: var(--gray-200);
+    border-radius: var(--radius);
+    color: var(--gray-600);
+    font-size: var(--text-sm);
+}
+
 /* Empty State */
 .empty-state {
     text-align: center;

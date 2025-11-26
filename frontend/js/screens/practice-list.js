@@ -128,6 +128,38 @@ class PracticeListScreen extends Screen {
     
     this.renderList('#practice-list', transformedPractices,
       p => {
+        // Check if event has ended - no RSVP allowed
+        if (p.has_ended) {
+          return `
+            <div class="card practice-card practice-ended">
+              <div class="practice-card-header">
+                <h3>${p.title}</h3>
+                <span class="badge badge-muted">Ended</span>
+              </div>
+              
+              <div class="practice-card-meta">
+                <div class="meta-item">
+                  <span class="meta-icon">📅</span>
+                  <span>${p.dateDisplay}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-icon">🕐</span>
+                  <span>${p.time}</span>
+                </div>
+              </div>
+              
+              ${p.notes ? `<p class="practice-notes">${p.notes}</p>` : ''}
+              
+              <div class="practice-card-actions">
+                <div class="event-ended-notice">
+                  ${p.userRsvpStatus ? `You RSVP'd: <strong>${p.userRsvpStatus === 'attending' ? '✓ Attending' : '✗ Not Attending'}</strong>` : 'No RSVP recorded'}
+                </div>
+              </div>
+            </div>
+          `;
+        }
+        
+        // Active event - show RSVP buttons
         // Determine current RSVP status styling
         console.log(`Rendering practice ${p.id} with RSVP status: "${p.userRsvpStatus}"`);
         const attendingClass = p.userRsvpStatus === 'attending' ? 'btn-success' : 'btn-secondary';

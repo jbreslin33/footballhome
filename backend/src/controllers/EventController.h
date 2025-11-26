@@ -28,6 +28,5 @@ private:
     std::string createJSONResponse(bool success, const std::string& message, const std::string& data = "");
     std::string parseJSON(const std::string& body, const std::string& key);
     std::string getCurrentTimestamp();
-    std::string generateUUID();
     std::string escapeJSON(const std::string& str);
 };
