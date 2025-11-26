@@ -653,33 +653,38 @@ Response EventController::handleCreateRSVP(const Request& request) {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid role_type. Must be: player, coach, or parent"));
         }
         
-        // Validate status
-        if (status != "attending" && status != "not_attending" && status != "maybe") {
+        // Map frontend status values to database values
+        std::string db_status;
+        if (status == "attending") {
+            db_status = "yes";
+        } else if (status == "not_attending") {
+            db_status = "no";
+        } else if (status == "maybe") {
+            db_status = "maybe";
+        } else {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid status. Must be: attending, not_attending, or maybe"));
         }
         
-        // Determine the correct table based on role_type
-        std::string table_name = role_type + "_rsvps";
+        // Use history table (append-only) based on role_type
+        std::string table_name = role_type + "_rsvp_history";
         std::string id_column = role_type + "_id";
         
-        // Check if RSVP already exists
-        std::string check_query = "SELECT id FROM " + table_name + " WHERE event_id = $1 AND " + id_column + " = $2";
-        pqxx::result existing = db_->query(check_query, {event_id, user_id});
+        // Get rsvp_status_id from rsvp_statuses lookup table
+        std::string status_query = "SELECT id FROM rsvp_statuses WHERE name = $1";
+        pqxx::result status_result = db_->query(status_query, {db_status});
         
-        if (existing.empty()) {
-            // Insert new RSVP
-            std::string rsvp_id = generateUUID();
-            std::string insert_query = "INSERT INTO " + table_name + " (id, event_id, " + id_column + ", status, notes, response_date) "
-                                       "VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)";
-            db_->query(insert_query, {rsvp_id, event_id, user_id, status, notes});
-            std::cout << "✅ " << role_type << " RSVP created successfully" << std::endl;
-        } else {
-            // Update existing RSVP
-            std::string update_query = "UPDATE " + table_name + " SET status = $1, notes = $2, updated_at = CURRENT_TIMESTAMP "
-                                       "WHERE event_id = $3 AND " + id_column + " = $4";
-            db_->query(update_query, {status, notes, event_id, user_id});
-            std::cout << "✅ " << role_type << " RSVP updated successfully" << std::endl;
+        if (status_result.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid status value"));
         }
+        
+        std::string rsvp_status_id = status_result[0]["id"].c_str();
+        
+        // Always INSERT into history table (append-only, no updates)
+        std::string rsvp_id = generateUUID();
+        std::string insert_query = "INSERT INTO " + table_name + " (id, event_id, " + id_column + ", rsvp_status_id, changed_by, change_source_id, notes, changed_at) "
+                                   "VALUES ($1, $2, $3, $4, $5, (SELECT id FROM rsvp_change_sources WHERE name = 'app'), $6, CURRENT_TIMESTAMP)";
+        db_->query(insert_query, {rsvp_id, event_id, user_id, rsvp_status_id, user_id, notes});
+        std::cout << "✅ " << role_type << " RSVP recorded in history" << std::endl;
         
         std::string data = "{\"event_id\": \"" + event_id + "\", \"user_id\": \"" + user_id + "\", \"role_type\": \"" + role_type + "\", \"status\": \"" + status + "\"}";
         return Response(HttpStatus::OK, createJSONResponse(true, "RSVP saved successfully", data));
@@ -720,15 +725,17 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
         }
         
         for (const auto& role : roles_to_query) {
-            std::string table_name = role + "_rsvps";
+            // Use the current view which shows latest RSVP status
+            std::string view_name = role + "_rsvps_current";
             std::string id_column = role + "_id";
             
-            std::string query = "SELECT r.id, r.event_id, r." + id_column + " as user_id, r.status, r.notes, r.response_date, "
+            std::string query = "SELECT r.event_id, r." + id_column + " as user_id, rs.name as status, r.notes, r.changed_at as response_date, "
                                "u.first_name, u.last_name, COALESCE(u.preferred_name, '') as preferred_name, u.email "
-                               "FROM " + table_name + " r "
+                               "FROM " + view_name + " r "
                                "JOIN users u ON r." + id_column + " = u.id "
+                               "JOIN rsvp_statuses rs ON r.rsvp_status_id = rs.id "
                                "WHERE r.event_id = $1 "
-                               "ORDER BY r.response_date DESC";
+                               "ORDER BY r.changed_at DESC";
             
             pqxx::result result = db_->query(query, {event_id});
             
@@ -742,12 +749,22 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
                 std::string user_name = first_name + " " + last_name;
                 std::string email = escapeJSON(result[i]["email"].c_str());
                 
+                // Map database status values back to frontend values
+                std::string db_status = result[i]["status"].c_str();
+                std::string frontend_status;
+                if (db_status == "yes") {
+                    frontend_status = "attending";
+                } else if (db_status == "no") {
+                    frontend_status = "not_attending";
+                } else {
+                    frontend_status = db_status; // "maybe" stays as is
+                }
+                
                 json_array << "{"
-                          << "\"id\": \"" << result[i]["id"].c_str() << "\", "
                           << "\"event_id\": \"" << result[i]["event_id"].c_str() << "\", "
                           << "\"user_id\": \"" << result[i]["user_id"].c_str() << "\", "
                           << "\"role_type\": \"" << role << "\", "
-                          << "\"status\": \"" << result[i]["status"].c_str() << "\", "
+                          << "\"status\": \"" << frontend_status << "\", "
                           << "\"notes\": \"" << notes_value << "\", "
                           << "\"response_date\": \"" << result[i]["response_date"].c_str() << "\", "
                           << "\"user_name\": \"" << user_name << "\", "
