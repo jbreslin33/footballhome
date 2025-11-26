@@ -1,7 +1,9 @@
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database with pg_cron for scheduled jobs
   db:
-    image: postgres:15-alpine
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
     container_name: footballhome_db
     restart: unless-stopped
     environment:
@@ -23,6 +25,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    # Required for pg_cron
+    command: postgres -c shared_preload_libraries=pg_cron -c cron.database_name=footballhome
 
   # pgAdmin - Database Administration Interface
   pgadmin:

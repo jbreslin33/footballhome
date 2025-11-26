@@ -53,6 +53,22 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
     router.get(prefix + "/:eventId/rsvps", [this](const Request& request) {
         return this->handleGetEventRSVPs(request);
     });
+    
+    // Attendance endpoints
+    // GET /api/events/:eventId/attendance - Get attendance for an event
+    router.get(prefix + "/:eventId/attendance", [this](const Request& request) {
+        return this->handleGetEventAttendance(request);
+    });
+    
+    // PUT /api/attendance/:attendanceId - Update a single attendance record
+    router.put("/api/attendance/:attendanceId", [this](const Request& request) {
+        return this->handleUpdateAttendance(request);
+    });
+    
+    // GET /api/attendance/statuses - Get all attendance status options
+    router.get("/api/attendance/statuses", [this](const Request& request) {
+        return this->handleGetAttendanceStatuses(request);
+    });
 }
 
 Response EventController::handleCreateEvent(const Request& request) {
@@ -794,5 +810,199 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting RSVPs: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get RSVPs: ") + e.what()));
+    }
+}
+
+// ============================================
+// ATTENDANCE ENDPOINTS
+// ============================================
+
+Response EventController::handleGetAttendanceStatuses(const Request& request) {
+    std::cout << "📋 Getting attendance statuses..." << std::endl;
+    
+    try {
+        std::string query = "SELECT id, name, display_name, sort_order, color FROM attendance_statuses ORDER BY sort_order";
+        pqxx::result result = db_->query(query, {});
+        
+        std::ostringstream json_array;
+        json_array << "[";
+        
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json_array << ",";
+            
+            std::string color = result[i]["color"].is_null() ? "" : result[i]["color"].c_str();
+            
+            json_array << "{"
+                      << "\"id\": " << result[i]["id"].as<int>() << ", "
+                      << "\"name\": \"" << escapeJSON(result[i]["name"].c_str()) << "\", "
+                      << "\"display_name\": \"" << escapeJSON(result[i]["display_name"].c_str()) << "\", "
+                      << "\"sort_order\": " << result[i]["sort_order"].as<int>() << ", "
+                      << "\"color\": \"" << escapeJSON(color) << "\""
+                      << "}";
+        }
+        
+        json_array << "]";
+        
+        return Response(HttpStatus::OK, createJSONResponse(true, "Attendance statuses retrieved", json_array.str()));
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error getting attendance statuses: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get attendance statuses: ") + e.what()));
+    }
+}
+
+Response EventController::handleGetEventAttendance(const Request& request) {
+    std::cout << "📋 Getting event attendance..." << std::endl;
+    
+    std::string event_id = extractEventIdFromPath(request.getPath());
+    if (event_id.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Event ID is required"));
+    }
+    
+    try {
+        std::string query = R"(
+            SELECT 
+                ea.id,
+                ea.event_id,
+                ea.player_id,
+                u.first_name,
+                u.last_name,
+                COALESCE(u.preferred_name, '') as preferred_name,
+                u.email,
+                ats.id as status_id,
+                ats.name as status_name,
+                ats.display_name as status_display_name,
+                ats.color as status_color,
+                rs.name as rsvp_snapshot,
+                ea.notes,
+                ea.created_at,
+                ea.updated_at,
+                upd.first_name as updated_by_first_name,
+                upd.last_name as updated_by_last_name
+            FROM event_attendance ea
+            JOIN users u ON ea.player_id = u.id
+            JOIN attendance_statuses ats ON ea.status_id = ats.id
+            LEFT JOIN rsvp_statuses rs ON ea.rsvp_snapshot_id = rs.id
+            LEFT JOIN users upd ON ea.updated_by = upd.id
+            WHERE ea.event_id = $1
+            ORDER BY u.last_name, u.first_name
+        )";
+        
+        pqxx::result result = db_->query(query, {event_id});
+        
+        std::ostringstream json_array;
+        json_array << "[";
+        
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json_array << ",";
+            
+            std::string notes = result[i]["notes"].is_null() ? "" : result[i]["notes"].c_str();
+            std::string rsvp_snapshot = result[i]["rsvp_snapshot"].is_null() ? "" : result[i]["rsvp_snapshot"].c_str();
+            std::string status_color = result[i]["status_color"].is_null() ? "" : result[i]["status_color"].c_str();
+            std::string updated_by_name = "";
+            if (!result[i]["updated_by_first_name"].is_null()) {
+                updated_by_name = std::string(result[i]["updated_by_first_name"].c_str()) + " " + result[i]["updated_by_last_name"].c_str();
+            }
+            
+            json_array << "{"
+                      << "\"id\": \"" << result[i]["id"].c_str() << "\", "
+                      << "\"event_id\": \"" << result[i]["event_id"].c_str() << "\", "
+                      << "\"player_id\": \"" << result[i]["player_id"].c_str() << "\", "
+                      << "\"player_name\": \"" << escapeJSON(result[i]["first_name"].c_str()) << " " << escapeJSON(result[i]["last_name"].c_str()) << "\", "
+                      << "\"player_email\": \"" << escapeJSON(result[i]["email"].c_str()) << "\", "
+                      << "\"status_id\": " << result[i]["status_id"].as<int>() << ", "
+                      << "\"status_name\": \"" << escapeJSON(result[i]["status_name"].c_str()) << "\", "
+                      << "\"status_display_name\": \"" << escapeJSON(result[i]["status_display_name"].c_str()) << "\", "
+                      << "\"status_color\": \"" << escapeJSON(status_color) << "\", "
+                      << "\"rsvp_snapshot\": \"" << escapeJSON(rsvp_snapshot) << "\", "
+                      << "\"notes\": \"" << escapeJSON(notes) << "\", "
+                      << "\"updated_by\": \"" << escapeJSON(updated_by_name) << "\", "
+                      << "\"created_at\": \"" << result[i]["created_at"].c_str() << "\", "
+                      << "\"updated_at\": \"" << result[i]["updated_at"].c_str() << "\""
+                      << "}";
+        }
+        
+        json_array << "]";
+        
+        return Response(HttpStatus::OK, createJSONResponse(true, "Attendance retrieved", json_array.str()));
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error getting attendance: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get attendance: ") + e.what()));
+    }
+}
+
+std::string EventController::extractAttendanceIdFromPath(const std::string& path) {
+    // Path format: /api/attendance/:attendanceId
+    std::string prefix = "/api/attendance/";
+    if (path.substr(0, prefix.length()) == prefix) {
+        return path.substr(prefix.length());
+    }
+    return "";
+}
+
+Response EventController::handleUpdateAttendance(const Request& request) {
+    std::cout << "📋 Updating attendance record..." << std::endl;
+    
+    std::string attendance_id = extractAttendanceIdFromPath(request.getPath());
+    if (attendance_id.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Attendance ID is required"));
+    }
+    
+    // Parse request body
+    std::string body = request.getBody();
+    
+    // Extract fields from JSON
+    std::string status_id_str = parseJSON(body, "status_id");
+    std::string notes = parseJSON(body, "notes");
+    std::string updated_by = parseJSON(body, "updated_by"); // user_id of the coach
+    
+    if (status_id_str.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "status_id is required"));
+    }
+    
+    try {
+        int status_id = std::stoi(status_id_str);
+        
+        // TODO: Verify user is a coach for this event's team
+        
+        std::string query;
+        pqxx::result result;
+        
+        if (updated_by.empty()) {
+            // No updated_by provided
+            query = R"(
+                UPDATE event_attendance 
+                SET status_id = $1, 
+                    notes = $2, 
+                    updated_at = NOW()
+                WHERE id = $3
+                RETURNING id
+            )";
+            result = db_->query(query, {std::to_string(status_id), notes, attendance_id});
+        } else {
+            query = R"(
+                UPDATE event_attendance 
+                SET status_id = $1, 
+                    notes = $2, 
+                    updated_at = NOW(), 
+                    updated_by = $3
+                WHERE id = $4
+                RETURNING id
+            )";
+            result = db_->query(query, {std::to_string(status_id), notes, updated_by, attendance_id});
+        }
+        
+        if (result.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Attendance record not found"));
+        }
+        
+        std::cout << "✅ Attendance updated: " << attendance_id << std::endl;
+        
+        return Response(HttpStatus::OK, createJSONResponse(true, "Attendance updated successfully"));
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error updating attendance: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to update attendance: ") + e.what()));
     }
 }

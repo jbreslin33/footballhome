@@ -1359,3 +1359,199 @@ COMMENT ON COLUMN login_history.login_time IS 'Timestamp when login occurred';
 COMMENT ON COLUMN login_history.ip_address IS 'IP address of the login attempt';
 COMMENT ON COLUMN login_history.user_agent IS 'Browser user agent string';
 COMMENT ON COLUMN login_history.success IS 'Whether the login was successful';
+
+-- ==============================================
+-- ATTENDANCE SYSTEM
+-- ==============================================
+-- Tracks player attendance at events, auto-populated from RSVPs
+
+-- Attendance statuses lookup table
+CREATE TABLE attendance_statuses (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(20) UNIQUE NOT NULL,          -- 'present', 'absent', 'late', 'excused', 'unknown'
+    display_name VARCHAR(50) NOT NULL,         -- 'Present', 'Absent', 'Late', 'Excused', 'Unknown'
+    sort_order INTEGER DEFAULT 0,
+    color VARCHAR(7),                          -- Hex color for UI
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert attendance statuses
+INSERT INTO attendance_statuses (name, display_name, sort_order, color) VALUES
+('present', 'Present', 1, '#27ae60'),
+('absent', 'Absent', 2, '#e74c3c'),
+('late', 'Late', 3, '#f39c12'),
+('excused', 'Excused', 4, '#3498db'),
+('unknown', 'Unknown', 5, '#95a5a6');
+
+-- Event attendance table (one row per player per event)
+CREATE TABLE event_attendance (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    status_id INT NOT NULL REFERENCES attendance_statuses(id),
+    rsvp_snapshot_id UUID REFERENCES rsvp_statuses(id),  -- What their RSVP was when record created
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by UUID REFERENCES users(id),       -- Coach who edited, if any
+    UNIQUE(event_id, player_id)
+);
+
+-- Indexes for attendance queries
+CREATE INDEX idx_event_attendance_event ON event_attendance(event_id);
+CREATE INDEX idx_event_attendance_player ON event_attendance(player_id);
+CREATE INDEX idx_event_attendance_status ON event_attendance(status_id);
+CREATE INDEX idx_event_attendance_created ON event_attendance(created_at);
+
+-- Comments
+COMMENT ON TABLE event_attendance IS 'Player attendance records, auto-populated from RSVPs at event start/end';
+COMMENT ON COLUMN event_attendance.rsvp_snapshot_id IS 'RSVP status at time attendance was created';
+COMMENT ON COLUMN event_attendance.updated_by IS 'Coach who manually edited, NULL if auto-generated';
+
+-- ==============================================
+-- ATTENDANCE AUTO-CREATION FUNCTION
+-- ==============================================
+-- This function creates attendance records from RSVPs
+-- Called by pg_cron at event start and event end
+
+CREATE OR REPLACE FUNCTION create_attendance_from_rsvps(p_event_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+    rows_affected INTEGER := 0;
+    v_team_id UUID;
+    v_rsvp_yes_id UUID;
+    v_rsvp_no_id UUID;
+    v_rsvp_maybe_id UUID;
+    v_status_present INT;
+    v_status_absent INT;
+    v_status_unknown INT;
+BEGIN
+    -- Get RSVP status IDs
+    SELECT id INTO v_rsvp_yes_id FROM rsvp_statuses WHERE name = 'yes';
+    SELECT id INTO v_rsvp_no_id FROM rsvp_statuses WHERE name = 'no';
+    SELECT id INTO v_rsvp_maybe_id FROM rsvp_statuses WHERE name = 'maybe';
+    
+    -- Get attendance status IDs
+    SELECT id INTO v_status_present FROM attendance_statuses WHERE name = 'present';
+    SELECT id INTO v_status_absent FROM attendance_statuses WHERE name = 'absent';
+    SELECT id INTO v_status_unknown FROM attendance_statuses WHERE name = 'unknown';
+    
+    -- Get the team_id for this event (from practices table)
+    SELECT team_id INTO v_team_id FROM practices WHERE id = p_event_id;
+    
+    -- If not a practice, try matches
+    IF v_team_id IS NULL THEN
+        SELECT home_team_id INTO v_team_id FROM matches WHERE id = p_event_id;
+    END IF;
+    
+    -- If no team found, exit
+    IF v_team_id IS NULL THEN
+        RETURN 0;
+    END IF;
+    
+    -- Insert/update attendance for all team players based on their current RSVP
+    INSERT INTO event_attendance (event_id, player_id, status_id, rsvp_snapshot_id, notes)
+    SELECT 
+        p_event_id,
+        tp.player_id,
+        CASE 
+            WHEN prc.rsvp_status_id = v_rsvp_yes_id THEN v_status_present
+            WHEN prc.rsvp_status_id = v_rsvp_no_id THEN v_status_absent
+            ELSE v_status_unknown
+        END,
+        prc.rsvp_status_id,
+        CASE 
+            WHEN prc.rsvp_status_id IS NULL THEN 'No RSVP submitted'
+            ELSE NULL
+        END
+    FROM team_players tp
+    LEFT JOIN player_rsvps_current prc 
+        ON prc.player_id = tp.player_id 
+        AND prc.event_id = p_event_id
+    WHERE tp.team_id = v_team_id
+        AND tp.is_active = true
+    ON CONFLICT (event_id, player_id) 
+    DO UPDATE SET
+        -- Only update if the RSVP changed (for event-end re-run)
+        status_id = CASE 
+            WHEN EXCLUDED.rsvp_snapshot_id != event_attendance.rsvp_snapshot_id 
+                 AND event_attendance.updated_by IS NULL  -- Don't overwrite coach edits
+            THEN EXCLUDED.status_id
+            ELSE event_attendance.status_id
+        END,
+        rsvp_snapshot_id = COALESCE(EXCLUDED.rsvp_snapshot_id, event_attendance.rsvp_snapshot_id),
+        updated_at = CASE 
+            WHEN EXCLUDED.rsvp_snapshot_id != event_attendance.rsvp_snapshot_id 
+                 AND event_attendance.updated_by IS NULL
+            THEN NOW()
+            ELSE event_attendance.updated_at
+        END;
+    
+    GET DIAGNOSTICS rows_affected = ROW_COUNT;
+    RETURN rows_affected;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ==============================================
+-- ATTENDANCE CRON JOB FUNCTION
+-- ==============================================
+-- This function is called every minute by pg_cron
+-- It finds events that just started or just ended and creates attendance
+
+CREATE OR REPLACE FUNCTION process_attendance_snapshots()
+RETURNS TABLE(event_id UUID, snapshot_type TEXT, rows_created INTEGER) AS $$
+DECLARE
+    v_event RECORD;
+    v_rows INTEGER;
+BEGIN
+    -- Process events that started in the last 2 minutes
+    FOR v_event IN 
+        SELECT e.id, 'start' as snap_type
+        FROM events e
+        JOIN event_types et ON e.event_type_id = et.id
+        WHERE e.cancelled = false
+        AND e.event_date <= NOW()
+        AND e.event_date > NOW() - INTERVAL '2 minutes'
+        AND NOT EXISTS (
+            SELECT 1 FROM event_attendance ea WHERE ea.event_id = e.id
+        )
+    LOOP
+        v_rows := create_attendance_from_rsvps(v_event.id);
+        event_id := v_event.id;
+        snapshot_type := v_event.snap_type;
+        rows_created := v_rows;
+        RETURN NEXT;
+    END LOOP;
+    
+    -- Process events that ended in the last 2 minutes (catch late RSVPs)
+    FOR v_event IN 
+        SELECT e.id, 'end' as snap_type
+        FROM events e
+        JOIN event_types et ON e.event_type_id = et.id
+        WHERE e.cancelled = false
+        AND (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) <= NOW()
+        AND (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) > NOW() - INTERVAL '2 minutes'
+        AND EXISTS (
+            SELECT 1 FROM event_attendance ea WHERE ea.event_id = e.id
+        )
+    LOOP
+        v_rows := create_attendance_from_rsvps(v_event.id);
+        event_id := v_event.id;
+        snapshot_type := v_event.snap_type;
+        rows_created := v_rows;
+        RETURN NEXT;
+    END LOOP;
+    
+    RETURN;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Log table for attendance cron jobs
+CREATE TABLE attendance_cron_log (
+    id SERIAL PRIMARY KEY,
+    run_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    events_processed INTEGER DEFAULT 0,
+    details JSONB
+);
+
+COMMENT ON TABLE attendance_cron_log IS 'Log of attendance auto-creation cron job runs';

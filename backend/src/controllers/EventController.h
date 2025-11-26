@@ -22,9 +22,15 @@ private:
     Response handleCreateRSVP(const Request& request);
     Response handleGetEventRSVPs(const Request& request);
     
+    // Attendance endpoints
+    Response handleGetEventAttendance(const Request& request);
+    Response handleUpdateAttendance(const Request& request);
+    Response handleGetAttendanceStatuses(const Request& request);
+    
     // Helper methods
     std::string extractTeamIdFromPath(const std::string& path);
     std::string extractEventIdFromPath(const std::string& path);
+    std::string extractAttendanceIdFromPath(const std::string& path);
     std::string createJSONResponse(bool success, const std::string& message, const std::string& data = "");
     std::string parseJSON(const std::string& body, const std::string& key);
     std::string getCurrentTimestamp();
