@@ -1,35 +1,35 @@
-// PracticeOptionsScreen - choose between managing or RSVPing to practices
-class PracticeOptionsScreen extends Screen {
+// MatchOptionsScreen - choose between managing or RSVPing to matches
+class MatchOptionsScreen extends Screen {
   render() {
     const teamName = this.navigation.context.team?.name || 'Unknown Team';
     const userRole = this.navigation.context.role; // 'coach', 'player', or 'parent'
     
-    // Only coaches can manage practices
-    const showManageButton = userRole === 'coach';
+    // Only coaches can manage matches (for now - RSVP only for MVP)
+    const showManageButton = false; // Will enable later
     
     const div = document.createElement('div');
-    div.className = 'screen screen-practice-options';
+    div.className = 'screen screen-match-options';
     div.innerHTML = `
       <div class="screen-header">
-        <button id="back-btn" class="btn btn-secondary">← Back</button>
-        <h1>⚽ ${teamName} - Practices</h1>
+        <button id="back-btn" class="btn btn-secondary">← Back to Dashboard</button>
+        <h1>🏆 ${teamName} Matches</h1>
         <p class="subtitle">What would you like to do?</p>
       </div>
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
         ${showManageButton ? `
           <button data-action="manage" class="btn btn-lg btn-primary">
-            📝 Manage Practices
+            📝 Manage Matches
             <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
-              Create, edit, and delete practices
+              Create, edit, and delete matches
             </small>
           </button>
         ` : ''}
         
-        <button data-action="rsvp" class="btn btn-lg ${showManageButton ? 'btn-secondary' : 'btn-primary'}">
-          ✓ RSVP to Practices
+        <button data-action="rsvp" class="btn btn-lg btn-primary">
+          ✓ RSVP to Matches
           <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
-            View and respond to scheduled practices
+            View and respond to scheduled matches
           </small>
         </button>
       </div>
@@ -45,9 +45,10 @@ class PracticeOptionsScreen extends Screen {
         const action = actionBtn.getAttribute('data-action');
         
         if (action === 'manage') {
-          this.navigation.goTo('practice-management');
+          // Future: this.navigation.goTo('match-management');
+          alert('Match management coming soon!');
         } else if (action === 'rsvp') {
-          this.navigation.goTo('practice-list');
+          this.navigation.goTo('match-list');
         }
         return;
       }

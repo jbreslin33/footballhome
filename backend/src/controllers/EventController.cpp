@@ -19,6 +19,11 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
         return this->handleGetEvents(request);
     });
     
+    // GET /api/matches/team/:teamId - Get matches for a team
+    router.get("/api/matches/team/:teamId", [this](const Request& request) {
+        return this->handleGetMatches(request);
+    });
+    
     // GET /api/events/:eventId - Get single event by ID
     router.get(prefix + "/:eventId", [this](const Request& request) {
         return this->handleGetEvent(request);
@@ -215,6 +220,75 @@ Response EventController::handleGetEvents(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ EventController::handleGetEvents error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve events");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response EventController::handleGetMatches(const Request& request) {
+    try {
+        std::string team_id = extractTeamIdFromPath(request.getPath());
+        
+        if (team_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid team ID in path");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        std::cout << "🔍 Getting matches for team: " << team_id << std::endl;
+        
+        // Query matches where team is home or away
+        std::ostringstream query;
+        query << "SELECT e.id, e.title, e.event_date, e.duration_minutes, et.name as event_type, ";
+        query << "m.home_team_score, m.away_team_score, m.match_status, m.competition_name, v.name as venue_name ";
+        query << "FROM events e ";
+        query << "JOIN event_types et ON e.event_type_id = et.id ";
+        query << "JOIN matches m ON e.id = m.id ";
+        query << "LEFT JOIN venues v ON e.venue_id = v.id ";
+        query << "WHERE (m.home_team_id = '" << team_id << "' OR m.away_team_id = '" << team_id << "') ";
+        query << "ORDER BY e.event_date DESC ";
+        query << "LIMIT 100";
+        
+        pqxx::result result = db_->query(query.str());
+        
+        std::ostringstream matches_json;
+        matches_json << "[";
+        
+        for (size_t i = 0; i < result.size(); i++) {
+            if (i > 0) matches_json << ",";
+            matches_json << "{";
+            matches_json << "\"id\":\"" << result[i][0].c_str() << "\",";
+            matches_json << "\"title\":\"" << escapeJSON(result[i][1].c_str()) << "\",";
+            matches_json << "\"event_date\":\"" << result[i][2].c_str() << "\",";
+            matches_json << "\"duration_minutes\":" << result[i][3].c_str() << ",";
+            matches_json << "\"type\":\"" << result[i][4].c_str() << "\"";
+            
+            // Add match-specific fields
+            if (!result[i][5].is_null()) {
+                matches_json << ",\"home_team_score\":" << result[i][5].c_str();
+            }
+            if (!result[i][6].is_null()) {
+                matches_json << ",\"away_team_score\":" << result[i][6].c_str();
+            }
+            if (!result[i][7].is_null()) {
+                matches_json << ",\"match_status\":\"" << result[i][7].c_str() << "\"";
+            }
+            if (!result[i][8].is_null()) {
+                matches_json << ",\"competition_name\":\"" << escapeJSON(result[i][8].c_str()) << "\"";
+            }
+            if (!result[i][9].is_null()) {
+                matches_json << ",\"venue_name\":\"" << escapeJSON(result[i][9].c_str()) << "\"";
+            }
+            
+            matches_json << "}";
+        }
+        
+        matches_json << "]";
+        
+        std::string json = createJSONResponse(true, "Matches retrieved successfully", matches_json.str());
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ EventController::handleGetMatches error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve matches");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }
@@ -436,11 +510,12 @@ Response EventController::handleDeleteEvent(const Request& request) {
 }
 
 std::string EventController::extractTeamIdFromPath(const std::string& path) {
-    std::regex uuid_regex(R"(/api/events/team/([a-f0-9-]{36}))");
+    // Match both /api/events/team/:teamId and /api/matches/team/:teamId
+    std::regex uuid_regex(R"(/api/(events|matches)/team/([a-f0-9-]{36}))");
     std::smatch match;
     
     if (std::regex_search(path, match, uuid_regex)) {
-        return match[1].str();
+        return match[2].str();  // Return second capture group (team ID)
     }
     
     return "";

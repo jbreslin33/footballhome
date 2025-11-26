@@ -11,20 +11,26 @@ class App {
       login: new LoginScreen(this.navigation, this.auth),
       roleSelection: new RoleSelectionScreen(this.navigation, this.auth),
       teamSelection: new TeamSelectionScreen(this.navigation, this.auth),
+      teamDashboard: new TeamDashboardScreen(this.navigation, this.auth),
       practiceOptions: new PracticeOptionsScreen(this.navigation, this.auth),
       practiceManagement: new PracticeManagementScreen(this.navigation, this.auth),
       practiceForm: new PracticeFormScreen(this.navigation, this.auth),
-      practiceList: new PracticeListScreen(this.navigation, this.auth)
+      practiceList: new PracticeListScreen(this.navigation, this.auth),
+      matchOptions: new MatchOptionsScreen(this.navigation, this.auth),
+      matchList: new MatchListScreen(this.navigation, this.auth)
     };
     
     // Register all screens with the manager
     this.screenManager.register('login', this.screens.login);
     this.screenManager.register('role-selection', this.screens.roleSelection);
     this.screenManager.register('team-selection', this.screens.teamSelection);
+    this.screenManager.register('team-dashboard', this.screens.teamDashboard);
     this.screenManager.register('practice-options', this.screens.practiceOptions);
     this.screenManager.register('practice-management', this.screens.practiceManagement);
     this.screenManager.register('practice-form', this.screens.practiceForm);
     this.screenManager.register('practice-list', this.screens.practiceList);
+    this.screenManager.register('match-options', this.screens.matchOptions);
+    this.screenManager.register('match-list', this.screens.matchList);
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }

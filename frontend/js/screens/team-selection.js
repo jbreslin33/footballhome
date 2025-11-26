@@ -51,7 +51,7 @@ class TeamSelectionScreen extends Screen {
         };
         
         console.log('Selected team:', team);
-        this.navigation.goTo('practice-options', { team: team });
+        this.navigation.goTo('team-dashboard', { team: team });
       }
     });
   }
