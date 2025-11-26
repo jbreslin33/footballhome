@@ -1,7 +1,7 @@
 -- ========================================
 -- ROSTERS
 -- ========================================
--- Generated: 2025-11-26T14:02:34.736Z
+-- Generated: 2025-11-26T17:53:24.973Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -2411,7 +2411,7 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
-VALUES ('fa192988-e35f-0007-ff9e-34b85d10b050', 'a9e2b1a8-5969-0005-f674-2f918d293250', 'ba2d6091-0a3f-0006-db9f-ac243be4023d', 8, true)
+VALUES ('fa192988-e35f-0007-ff9e-34b85d10b050', 'a9e2b1a8-5969-0005-f674-2f918d293250', 'ba2d6091-0a3f-0006-db9f-ac243be4023d', 11, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   is_active = EXCLUDED.is_active;
@@ -2459,7 +2459,7 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
-VALUES ('9ab95d89-1154-0007-690c-10c692b35171', 'a9e2b1a8-5969-0005-f674-2f918d293250', 'fa28096f-ce43-0006-25e3-e703808e45d5', 7, true)
+VALUES ('9ab95d89-1154-0007-690c-10c692b35171', 'a9e2b1a8-5969-0005-f674-2f918d293250', 'fa28096f-ce43-0006-25e3-e703808e45d5', 8, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   is_active = EXCLUDED.is_active;
@@ -3581,7 +3581,7 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
-VALUES ('e623475e-e4fa-0007-d75c-756fc735c434', 'c99ade72-80a1-0005-bb2a-e36057334cac', 'f4db866f-e2e1-0006-f1d7-878a45e9e6a0', NULL, true)
+VALUES ('e623475e-e4fa-0007-d75c-756fc735c434', 'c99ade72-80a1-0005-bb2a-e36057334cac', 'f4db866f-e2e1-0006-f1d7-878a45e9e6a0', 1, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   is_active = EXCLUDED.is_active;
