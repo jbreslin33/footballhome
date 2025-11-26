@@ -13,22 +13,15 @@ database="$1"
 shift
 
 echo "⏳ Waiting for PostgreSQL at $host:$port..."
+echo "   Database may be initializing with data - this can take 1-2 minutes..."
 
-# Install psql if not available (usually available in postgres images)
 attempts=0
-max_attempts=60
 
 until PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$host" -p "$port" -U "$user" -d "$database" -c '\q' 2>/dev/null; do
   attempts=$((attempts + 1))
-  percent=$((attempts * 100 / max_attempts))
   
-  if [ $attempts -ge $max_attempts ]; then
-    echo "❌ PostgreSQL did not become ready after ${max_attempts} attempts"
-    exit 1
-  fi
-  
-  # Show progress with elapsed time and percentage
-  printf "\r⏳ Waiting for database... %ds elapsed [%d%%]" "$attempts" "$percent"
+  # Show progress with elapsed time
+  printf "\r⏳ Waiting for database to be ready... %ds elapsed" "$attempts"
   sleep 1
 done
 

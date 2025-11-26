@@ -146,26 +146,21 @@ echo "  pgAdmin:   http://localhost:5050"
 echo ""
 echo -e "${BLUE}Testing connectivity...${NC}"
 
-# Wait for backend to be ready (with timeout)
+# Wait for backend to be ready (poll indefinitely with progress)
 echo -e "  Backend:  Waiting for health check..."
+echo -e "            (Backend is waiting for database to initialize - this can take 1-2 minutes)"
 BACKEND_READY=false
-for i in {1..60}; do
+i=0
+while true; do
+    i=$((i + 1))
     if curl -s http://localhost:3001/health > /dev/null 2>&1; then
-        echo -e "\r  Backend:  ${GREEN}✓ Responding (took ${i}s)${NC}                    "
+        echo -e "\r  Backend:  ${GREEN}✓ Responding (took ${i}s)${NC}                              "
         BACKEND_READY=true
         break
     fi
-    # Calculate percentage
-    percent=$((i * 100 / 60))
-    printf "\r  Backend:  Checking... %ds elapsed [%d%%]" "$i" "$percent"
+    printf "\r  Backend:  Checking... %ds elapsed" "$i"
     sleep 1
 done
-
-if [ "$BACKEND_READY" = false ]; then
-    echo -e "\r  Backend:  ${YELLOW}⚠ Not responding after 60 seconds${NC}            "
-    echo -e "  ${YELLOW}Backend may still be connecting to database...${NC}"
-    echo -e "  ${YELLOW}Check logs: docker logs footballhome_simple_backend${NC}"
-fi
 
 # Test frontend
 if curl -s http://localhost:3000 > /dev/null 2>&1; then
