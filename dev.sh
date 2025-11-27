@@ -117,7 +117,7 @@ if [ "$QUICK_MODE" = true ]; then
     echo -e "${GREEN}✓ Containers stopped${NC}"
     echo ""
     echo -e "${YELLOW}🔨 Building images...${NC}"
-    docker compose build --no-cache
+    docker compose build --no-cache --progress=plain
     echo -e "${GREEN}✓ Images built${NC}"
 else
     echo -e "${YELLOW}🔨 Step 2: Full Rebuild${NC}"
@@ -134,7 +134,7 @@ else
     echo -e "${GREEN}✓ Build cache cleared${NC}"
     echo ""
     echo -e "${YELLOW}🔨 Building images from scratch...${NC}"
-    docker compose build --no-cache
+    docker compose build --no-cache --progress=plain
     echo -e "${GREEN}✓ Images built${NC}"
 fi
 
