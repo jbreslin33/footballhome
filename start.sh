@@ -174,17 +174,43 @@ echo -e "${BLUE}Testing connectivity...${NC}"
 
 # Wait for backend to be ready (poll indefinitely with progress)
 echo -e "  Backend:  Waiting for health check..."
-echo -e "            (Backend is waiting for database to initialize - this can take 1-2 minutes)"
+echo -e "            (Backend is waiting for database to initialize - showing SQL activity)"
+echo -e "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
 BACKEND_READY=false
 i=0
+
+# Start showing database logs in background while waiting
+(docker logs -f footballhome_db 2>&1 | grep --line-buffered -E "(INSERT INTO|CREATE TABLE|COPY|duration: [0-9]{3,})" | while IFS= read -r line; do
+    if echo "$line" | grep -q "INSERT INTO"; then
+        TABLE=$(echo "$line" | grep -oP "INSERT INTO \K[^ (]+")
+        printf "\r  ${YELLOW}│${NC} ➕ Inserting: %-35s " "$TABLE"
+    elif echo "$line" | grep -q "CREATE TABLE"; then
+        TABLE=$(echo "$line" | grep -oP "CREATE TABLE \K[^ ;]+")
+        echo -e "\n  ${GREEN}│ ✨ Creating table: $TABLE${NC}"
+    elif echo "$line" | grep -q "^.*COPY .*FROM"; then
+        TABLE=$(echo "$line" | grep -oP "COPY \K[^ ]+")
+        echo -e "\n  ${BLUE}│ 📥 Bulk loading: $TABLE${NC}"
+    elif echo "$line" | grep -qE "duration: [0-9]{3,}"; then
+        DUR=$(echo "$line" | grep -oP "duration: \K[0-9.]+")
+        if (( $(echo "$DUR > 100" | bc -l) )); then
+            echo -e "\n  ${YELLOW}│ ⏱️  Slow query: ${DUR}ms${NC}"
+        fi
+    fi
+done) &
+LOG_PID=$!
+
+# Poll backend health with counter
 while true; do
     i=$((i + 1))
     if curl -s http://localhost:3001/health > /dev/null 2>&1; then
-        echo -e "\r  Backend:  ${GREEN}✓ Responding (took ${i}s)${NC}                              "
+        kill $LOG_PID 2>/dev/null || true
+        wait $LOG_PID 2>/dev/null || true
+        echo -e "\n  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "  Backend:  ${GREEN}✓ Responding (took ${i}s)${NC}"
         BACKEND_READY=true
         break
     fi
-    printf "\r  Backend:  Checking... %ds elapsed" "$i"
     sleep 1
 done
 
