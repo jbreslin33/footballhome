@@ -237,12 +237,15 @@ done) &
 LOG_PID=$!
 
 # Also show a heartbeat so user knows the script is still running
+# Use a file to track elapsed time since subprocess can't access parent vars
+WAIT_START=$(date +%s)
 HEARTBEAT_PID=""
 (while true; do
     sleep 5
     # If backend isn't ready yet, show we're still waiting
     if ! curl -s http://localhost:3001/health > /dev/null 2>&1; then
-        printf "\r  ${BLUE}│${NC} ⏳ Still initializing... (${i}s elapsed)  "
+        ELAPSED=$(($(date +%s) - WAIT_START))
+        printf "\r  ${BLUE}│${NC} ⏳ Still initializing... (${ELAPSED}s elapsed)  "
     fi
 done) &
 HEARTBEAT_PID=$!
