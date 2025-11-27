@@ -1,387 +1,233 @@
-# Football Home ⚽# Football Home ⚽
+# Football Home ⚽
 
+A comprehensive team management system for football/soccer leagues, built with C++, Vanilla JavaScript, and PostgreSQL.
 
-
-A minimal football/soccer team RSVP system built with:A comprehensive team management system for football/soccer teams, built with React, Node.js, and PostgreSQL.
-
-- 🔥 **C++ Backend** - Ultra-fast HTTP server with PostgreSQL
-
-- ⚡ **Vanilla JS Frontend** - Pure JavaScript with Finite State Machine architecture  ## 🚀 Complete Setup from Scratch
-
-- 🗄️ **PostgreSQL Database** - Reliable data storage
-
-- 🐳 **Docker** - Containerized deploymentFootball Home is designed to be completely rebuildable from scratch. Follow these steps:
-
-- 🔒 **nginx + SSL** - Secure reverse proxy
+## 🚀 Quick Start
 
 ### Prerequisites
 
-## 🚀 Quick Start```bash
+- Docker and Docker Compose
+- Node.js (for APSL data scraping)
+- Git
 
-# Install Docker and Docker Compose (Ubuntu/Debian)
-
-```bashsudo apt update
-
-# Clone repositorysudo apt install docker.io docker-compose-plugin
-
-git clone https://github.com/jbreslin33/footballhome.git
-
-cd footballhome# Add your user to docker group
-
-sudo usermod -aG docker $USER
-
-# Start all services# Log out and back in for group changes to take effect
-
-docker compose up -d```
-
-
-
-# Access the application### One-Command Setup
-
-open http://localhost:3000```bash
-
-```# Clone and setup everything
-
-git clone https://github.com/jbreslin33/footballhome.git
-
-## 🏗️ Architecturecd footballhome
-
-./setup-complete.sh
-
-``````
-
-Internet → nginx (SSL) → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
-
-```### Manual Setup
-
-If you prefer manual control:
-
-**Components:**
-
-- **Frontend**: Pure JavaScript FSM-based UI on port 3000```bash
-
-- **Backend**: C++ HTTP server with authentication on port 3001  # 1. Create environment file
-
-- **Database**: PostgreSQL with football data on port 5432cp .env.example .env
-
-- **Admin**: pgAdmin interface on port 5050# Edit .env with your settings
-
-
-
-## 🔐 Demo Login# 2. Build and start services
-
-docker compose down --volumes  # Clean slate
-
-- **Email**: `test@test.com`docker compose up -d --build   # Build and start
-
-- **Password**: `password`
-
-# 3. Add to your hosts file (optional)
-
-## 📁 Project Structureecho '127.0.0.1 footballhome.org' | sudo tee -a /etc/hosts
-
-```
-
-```
-
-├── frontend/             # Vanilla JS frontend with FSM
-
-## 🏈 Features
-
-├── backend/              # C++ HTTP server
-
-├── database/             # PostgreSQL schema and data### Core System
-
-├── docker-compose.yml    # Container orchestration- **Multi-League Management**: APSL, CASA, TCWL with promotion/relegation
-
-└── nginx-footballhome.conf  # Production SSL config- **User Authentication**: JWT-based login/register with role management
-
-```- **Event Management**: Create and manage practices, games, meetings
-
-- **RSVP System**: Players can respond to events, capacity management
-
-## 🛠️ Development- **League Games Integration**: Import official match data from external leagues with comprehensive statistics tracking
-
-- **Team Organization**: Role-based permissions (players, coaches, admins)
+### Initial Setup
 
 ```bash
+# 1. Clone repository
+git clone https://github.com/jbreslin33/footballhome.git
+cd footballhome
 
-# View logs### League Structure
+# 2. Full setup (scrape data + build + start)
+./dev.sh
 
-docker compose logs -f- **6 APSL Conferences**: Delaware River, Metropolitan NY/NJ, Southeast, Mid-Atlantic, Northeast, South Atlantic
+# Access at http://localhost:3000
+```
 
-- **CASA Divisions**: Liga 1, Liga 2, Over 30 with tier-based hierarchy
+## 🔧 Development Workflows
 
-# Rebuild backend- **TCWL Structure**: Division 1, 2, 3 for women's leagues
+```bash
+# Full rebuild with fresh APSL data (5-15 min)
+./dev.sh
 
-docker compose build backend- **Inter-league Promotion**: Geographic routing and complex relationships
+# Quick restart after code changes (keeps database)
+./dev.sh --quick
 
+# Just update APSL league data
+./dev.sh --scrape-only
 
+# Rebuild without scraping (after git pull)
+./dev.sh --no-scrape
 
-# Database admin## 🌐 Access Points
-
-open http://localhost:5050
-
-```After running setup:
-
-
-
-## 📊 Performance| Service | URL | Purpose |
-
-|---------|-----|---------|
-
-- **C++ Backend**: ~10x faster than Node.js| **Frontend** | http://footballhome.org:3000 | Main application |
-
-- **Vanilla JS**: No framework overhead| **Backend API** | http://footballhome.org:3001/api | REST API |
-
-- **PostgreSQL**: Production-ready database| **pgAdmin** | http://footballhome.org:5050 | Database admin |
-
-- **Docker**: Efficient containerization| **Database** | localhost:5432 | Direct DB access |
-
-
-
----### Default Credentials
-
-*Built for speed, simplicity, and scalability* ⚡- **pgAdmin**: admin@footballhome.org / admin123
-- **Database**: footballhome_user / footballhome_pass
+# Show all options
+./dev.sh --help
+```
 
 ## 🏗️ Architecture
 
-### Tech Stack
-- **Frontend**: React 18 + TypeScript + React Router
-- **Backend**: Node.js + Express + JWT Authentication
-- **Database**: PostgreSQL 15 with comprehensive schema
-- **Infrastructure**: Docker + Docker Compose
-- **Security**: Rate limiting, input validation, CORS
-
-### Project Structure
 ```
-footballhome/
-├── backend/              # Node.js API server
-│   ├── middleware/       # Auth, rate limiting
-│   ├── routes/          # API endpoints
-│   └── services/        # Business logic
-├── frontend/            # React application
-│   ├── src/components/  # React components
-│   └── src/contexts/    # Auth context
-├── database/            # SQL schema and data
-├── ssl/                # SSL certificates
-└── scripts/            # Utility scripts
+Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 ```
 
-## 🔧 Development
+**Stack:**
+- **Frontend**: Vanilla JavaScript FSM-based UI (port 3000)
+- **Backend**: Custom C++ HTTP server (port 3001)
+- **Database**: PostgreSQL with APSL league data (port 5432)
+- **Admin**: pgAdmin interface (port 5050)
 
-### Backend Development
+## 🔐 Demo Login
+
+- **Email**: `jbreslin@footballhome.org`
+- **Password**: `1893Soccer!`
+
+## 📁 Project Structure
+
+```
+├── frontend/                  # Vanilla JS frontend with FSM
+│   ├── js/
+│   │   ├── screens/          # Screen state machines
+│   │   ├── screen-manager.js # FSM controller
+│   │   └── app.js            # Application entry
+│   └── css/
+├── backend/                   # C++ HTTP server
+│   ├── src/
+│   │   ├── core/             # HTTP framework
+│   │   ├── controllers/      # Route handlers
+│   │   ├── models/           # Database models
+│   │   └── database/         # PostgreSQL client
+│   └── CMakeLists.txt
+├── database/                  # PostgreSQL setup
+│   ├── data/                 # SQL data files
+│   │   ├── *.sql            # INSERT format
+│   │   └── *.copy.sql       # COPY format (100x faster)
+│   └── scripts/
+│       └── apsl-scraper/    # APSL league data scraper
+├── docker/                   # Docker configuration
+│   └── postgres/
+│       └── init-with-progress.sh
+├── docker-compose.yml        # Container orchestration
+└── dev.sh                    # Unified development script
+```
+
+## 🏈 Features
+
+### League Management
+- **APSL Integration**: Automatically scrapes teams, players, rosters, matches from American Premier Soccer League
+- **Multiple Leagues**: Support for APSL, CASA, TCWL with division tracking
+- **Bulk Data Loading**: PostgreSQL COPY format for 100x faster database initialization
+
+### Team Management
+- **Roster Management**: Track players, jersey numbers, positions
+- **Multiple Teams**: Users can manage multiple teams across leagues
+- **Role-Based Access**: Admin, Coach, Player roles with appropriate permissions
+
+### Event Management
+- **Practice Scheduling**: Create and manage team practices
+- **Match Tracking**: View upcoming and past matches from league schedule
+- **RSVP System**: Players can respond to events
+
+### Technical Features
+- **Fast Database Initialization**: COPY format loads 1000s of rows in seconds
+- **Automatic Data Updates**: Scraper regenerates both INSERT and COPY SQL formats
+- **Health Monitoring**: Built-in health checks and progress logging
+- **Docker Development**: Complete containerized workflow with single command
+
+## 🗄️ Database
+
+### Data Sources
+
+1. **Manual Data** (in `database/data/`):
+   - Core lookups (sports, event types, statuses)
+   - Venues
+   - Manual users and teams
+
+2. **Scraped APSL Data** (auto-generated):
+   - Leagues and conferences
+   - Clubs and sport divisions
+   - Teams and rosters
+   - Players (1000+ from APSL)
+   - Match schedules
+
+### Database Initialization
+
+The system uses two SQL formats for optimal performance:
+
+- **`.sql` files**: Traditional INSERT statements with `ON CONFLICT DO UPDATE`
+- **`.copy.sql` files**: PostgreSQL COPY format (100x faster for bulk inserts)
+
+The init script automatically prefers `.copy.sql` when available.
+
+### Regenerating APSL Data
+
 ```bash
-cd backend
-npm install
-npm run dev  # Development with nodemon
+# Scrape latest APSL data (generates both .sql and .copy.sql)
+./dev.sh --scrape-only
+
+# Review changes
+git diff database/data/
+
+# Commit if needed
+git add database/data/
+git commit -m "Update APSL data"
 ```
 
-### Frontend Development
-```bash
-cd frontend
-npm install
-npm start   # Development server
-```
-
-### Database Management
-```bash
-# Connect to database
-docker exec -it footballhome_db psql -U footballhome_user -d footballhome
-
-# View tables
-\dt
-
-# Run migrations
-docker exec footballhome_db psql -U footballhome_user -d footballhome -f /docker-entrypoint-initdb.d/01-init.sql
-
-# Apply league games migration
-docker exec footballhome_db psql -U footballhome_user -d footballhome -f /docker-entrypoint-initdb.d/migration_003_league_games.sql
-```
-
-### League Games System
-The system includes comprehensive support for importing official league match data:
-
-- **External Integration**: Import matches from APSL, CASA, and other leagues
-- **Duplicate Prevention**: Automatic detection prevents importing the same match twice
-- **Rich Statistics**: Match events, player statistics, and comprehensive match data
-- **Team Integration**: Links external league games with internal team events
-
-See [`database/LEAGUE_GAMES_README.md`](database/LEAGUE_GAMES_README.md) for detailed documentation.
-
-## 📊 API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
-- `GET /api/auth/me` - Get current user
-
-### Events
-- `GET /api/events/team/:teamId` - Get team events
-- `POST /api/events` - Create event (coaches only)
-- `PUT /api/events/:eventId` - Update event
-- `DELETE /api/events/:eventId` - Delete event
-
-### RSVPs
-- `POST /api/rsvps` - Create/update RSVP
-- `GET /api/rsvps/my-rsvps` - Get user's RSVPs
-- `GET /api/rsvps/event/:eventId/attendees` - Get event attendees
-
-## 🔄 Rebuilding from Scratch
-
-The entire system can be rebuilt at any time:
+## 🐳 Docker Services
 
 ```bash
-# Complete cleanup and rebuild
-docker compose down --volumes --rmi all
-docker system prune -f
-./setup-complete.sh
+# View logs
+docker logs -f footballhome_backend
+docker logs -f footballhome_db
+docker logs -f footballhome_frontend
+
+# Access database directly
+docker exec -it footballhome_db psql -U footballhome footballhome
+
+# Restart single service
+docker compose restart backend
+
+# Stop everything
+docker compose down
+
+# Stop and remove volumes (fresh database)
+docker compose down -v
 ```
 
-This will:
-1. Remove all containers and volumes
-2. Delete all built images
-3. Rebuild everything from source
-4. Initialize fresh database
-5. Start all services
+## 📊 pgAdmin
 
-## 🚢 Production Deployment
+Access database admin at http://localhost:5050
 
-### Environment Variables
-Key variables for production in `.env`:
+- **Email**: `admin@footballhome.org`
+- **Password**: `admin`
+
+Connection settings are pre-configured in `docker/pgadmin-servers.json`.
+
+## 🔍 Troubleshooting
+
+### Database won't initialize
 ```bash
-# Security
-JWT_SECRET=your-super-secret-production-key
-NODE_ENV=production
+# Check database logs
+docker logs footballhome_db
 
-# Database
-POSTGRES_PASSWORD=strong-production-password
+# Verify SQL files exist
+ls -lh database/data/*.copy.sql
 
-# Frontend
-REACT_APP_API_URL=https://api.footballhome.org
-
-# SSL (if using)
-SSL_CERT_PATH=./ssl/footballhome.org.crt
-SSL_KEY_PATH=./ssl/footballhome.org.key
+# Force full rebuild
+docker compose down -v
+./dev.sh
 ```
 
-### SSL Setup
+### Backend won't start
 ```bash
-# Place SSL certificates in ssl/ directory
-./scripts/setup-ssl.sh
+# Check backend logs
+docker logs footballhome_backend
+
+# Rebuild C++ backend
+docker compose build --no-cache backend
+docker compose up -d backend
 ```
 
-## 🧪 Testing
-
-### Manual Testing
-1. Register a new user at http://footballhome.org:3000/register
-2. Login and view dashboard
-3. Create events (if you have coach/admin role)
-4. Test RSVP functionality
-
-### Health Checks
-```bash
-# Check all services
-curl http://footballhome.org:3000/health  # Frontend
-curl http://footballhome.org:3001/health  # Backend
-docker compose ps                          # All services
-```
+### Slow database loading
+The system uses COPY format for fast bulk loading. If you see slow performance:
+- Ensure `.copy.sql` files are generated (run `./dev.sh --scrape-only`)
+- Check init script prefers COPY files in `docker/postgres/init-with-progress.sh`
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create feature branch: `git checkout -b feature-name`
-3. Make changes and test with `./setup-complete.sh`
-4. Commit: `git commit -m "Add feature"`
-5. Push: `git push origin feature-name`
-6. Create Pull Request
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## � Full Reproducibility 
+## 📝 License
 
-Football Home is designed to be **100% reproducible** from scratch on any server:
+This project is licensed under the MIT License.
 
-### What's Automated
-✅ **Database Schema**: Complete PostgreSQL setup with all tables  
-✅ **Admin User**: Default admin account with all roles  
-✅ **Sample Team**: Lighthouse 1893 SC with proper structure  
-✅ **Docker Build**: Multi-stage builds with proper dependencies  
-✅ **SSL Setup**: Self-signed certificates for development  
-✅ **Nginx Config**: Production-ready reverse proxy  
-✅ **Environment**: All required environment variables  
+## 👤 Author
 
-### Production Deployment
-```bash
-# For production servers
-./setup-production.sh
-```
+**James Breslin**
+- GitHub: [@jbreslin33](https://github.com/jbreslin33)
+- Email: jbreslin@footballhome.org
 
-This script:
-- Installs Docker and Nginx
-- Generates SSL certificates  
-- Configures nginx reverse proxy
-- Sets up domain resolution
-- Creates complete Football Home system
-- Provides admin login credentials
+---
 
-### Backup & Restore
-```bash
-# Backup complete system
-docker compose exec db pg_dump -U footballhome_user footballhome > backup.sql
-tar -czf footballhome-backup.tar.gz backup.sql .env docker-compose.yml
-
-# Restore on new server
-git clone https://github.com/jbreslin33/footballhome.git
-cd footballhome
-tar -xzf footballhome-backup.tar.gz
-./setup-production.sh
-docker compose exec -T db psql -U footballhome_user -d footballhome < backup.sql
-```
-
-## �📝 License
-
-MIT License - see LICENSE file for details.
-
-## 🆘 Troubleshooting
-
-### Common Issues
-
-**"Docker not found"**
-```bash
-sudo apt install docker.io docker-compose-plugin
-sudo usermod -aG docker $USER
-# Logout and login again
-```
-
-**"Port already in use"**
-```bash
-docker compose down
-sudo lsof -i :3000 :3001 :5432  # Find conflicting processes
-```
-
-**"Database connection failed"**
-```bash
-docker compose logs db           # Check database logs
-docker compose restart db       # Restart database
-```
-
-**"Frontend not loading"**
-```bash
-# Add to /etc/hosts if using footballhome.org locally
-echo '127.0.0.1 footballhome.org' | sudo tee -a /etc/hosts
-```
-
-**"Game/Match submission not working"**
-```bash
-# Rebuild backend container with latest code
-docker compose build backend --no-cache
-docker compose up -d backend
-```
-
-### Getting Help
-- Check service logs: `docker compose logs [service-name]`
-- View all services: `docker compose ps`
-- Restart specific service: `docker compose restart [service-name]`
-- Force rebuild: `docker compose build --no-cache && docker compose up -d`
-- Complete reset: `./setup-complete.sh`
+Built with ❤️ for football/soccer team management
