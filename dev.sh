@@ -1,0 +1,268 @@
+#!/bin/bash
+
+# Football Home - Development Script
+# Unified workflow for scraping, building, and running the application
+#
+# Usage:
+#   ./dev.sh                    # Full rebuild (scrape + clean rebuild + start)
+#   ./dev.sh --quick            # Quick restart (no scrape, keep DB volumes)
+#   ./dev.sh --scrape-only      # Only scrape APSL data, don't rebuild
+#   ./dev.sh --no-scrape        # Full rebuild but skip scraping (use existing data)
+#   ./dev.sh --help             # Show this help
+
+set -e
+
+# Colors
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+# Flags
+QUICK_MODE=false
+SCRAPE_ONLY=false
+SKIP_SCRAPE=false
+
+# Parse arguments
+for arg in "$@"; do
+    case $arg in
+        --quick)
+            QUICK_MODE=true
+            SKIP_SCRAPE=true
+            ;;
+        --scrape-only)
+            SCRAPE_ONLY=true
+            ;;
+        --no-scrape)
+            SKIP_SCRAPE=true
+            ;;
+        --help|-h)
+            echo "Football Home Development Script"
+            echo ""
+            echo "Usage:"
+            echo "  ./dev.sh                Full rebuild (scrape + clean rebuild)"
+            echo "  ./dev.sh --quick        Quick restart (no scrape, keep volumes)"
+            echo "  ./dev.sh --scrape-only  Only scrape APSL data"
+            echo "  ./dev.sh --no-scrape    Rebuild without scraping"
+            echo "  ./dev.sh --help         Show this help"
+            echo ""
+            echo "Common workflows:"
+            echo "  - Fresh setup:           ./dev.sh"
+            echo "  - Code changes only:     ./dev.sh --quick"
+            echo "  - Update APSL data:      ./dev.sh --scrape-only"
+            echo "  - After git pull:        ./dev.sh --no-scrape"
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Unknown option: $arg${NC}"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Football Home - Development Workflow${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 1: SCRAPE APSL DATA
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ "$SKIP_SCRAPE" = false ]; then
+    echo -e "${YELLOW}📊 Step 1: Scraping APSL Data${NC}"
+    echo -e "  This will take 5-15 minutes..."
+    echo ""
+    
+    if node database/scripts/apsl-scraper/scrape-apsl.js; then
+        echo ""
+        echo -e "${GREEN}✓ APSL data scraped successfully${NC}"
+    else
+        echo -e "${RED}✗ APSL scraping failed${NC}"
+        exit 1
+    fi
+    
+    echo ""
+    echo -e "${BLUE}📋 Changes:${NC}"
+    git status --short database/data/ || true
+else
+    echo -e "${BLUE}⏭️  Step 1: Skipping APSL scrape${NC}"
+fi
+
+# Exit if scrape-only mode
+if [ "$SCRAPE_ONLY" = true ]; then
+    echo ""
+    echo -e "${GREEN}✓ Scrape complete! (scrape-only mode)${NC}"
+    echo ""
+    echo "Review changes with:"
+    echo "  git status"
+    echo "  git diff database/data/"
+    exit 0
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 2: DOCKER BUILD & DEPLOY
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+echo ""
+if [ "$QUICK_MODE" = true ]; then
+    echo -e "${YELLOW}🔨 Step 2: Quick Restart${NC}"
+    echo -e "  - Keeping volumes (preserving database)"
+    echo -e "  - Rebuilding images"
+    echo ""
+    echo -e "${YELLOW}🛑 Stopping containers...${NC}"
+    docker compose down
+    echo -e "${GREEN}✓ Containers stopped${NC}"
+    echo ""
+    echo -e "${YELLOW}🔨 Building images...${NC}"
+    docker compose build --no-cache
+    echo -e "${GREEN}✓ Images built${NC}"
+else
+    echo -e "${YELLOW}🔨 Step 2: Full Rebuild${NC}"
+    echo -e "  - Removing all volumes (fresh database)"
+    echo -e "  - Clearing all caches"
+    echo -e "  - Rebuilding all images"
+    echo ""
+    echo -e "${YELLOW}🛑 Stopping containers and removing volumes...${NC}"
+    docker compose down -v
+    echo -e "${GREEN}✓ Containers stopped and volumes removed${NC}"
+    echo ""
+    echo -e "${YELLOW}🗑️  Clearing Docker build cache...${NC}"
+    docker builder prune -f > /dev/null 2>&1
+    echo -e "${GREEN}✓ Build cache cleared${NC}"
+    echo ""
+    echo -e "${YELLOW}🔨 Building images from scratch...${NC}"
+    docker compose build --no-cache
+    echo -e "${GREEN}✓ Images built${NC}"
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 3: START CONTAINERS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+echo ""
+echo -e "${YELLOW}🚀 Step 3: Starting containers...${NC}"
+docker compose up -d
+
+echo -e "${GREEN}✓ Startup complete!${NC}"
+echo ""
+echo -e "${BLUE}Services:${NC}"
+echo "  Frontend:  http://localhost:3000"
+echo "  Backend:   http://localhost:3001"
+echo "  Database:  localhost:5432"
+echo "  pgAdmin:   http://localhost:5050"
+echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 4: WAIT FOR SERVICES TO BE READY
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+echo -e "${BLUE}Testing connectivity...${NC}"
+echo -e "  Backend:  Waiting for health check..."
+echo -e "            (Backend is waiting for database to initialize - showing SQL activity)"
+echo -e "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+BACKEND_READY=false
+i=0
+
+# Start showing database logs in background while waiting
+LAST_QUERY=""
+(docker logs -f footballhome_db 2>&1 | grep --line-buffered -E "(INSERT INTO|CREATE TABLE|COPY|duration: [0-9]{3,}|statement:|LOG:)" | while IFS= read -r line; do
+    # Capture the query being executed
+    if echo "$line" | grep -qE "(statement:|LOG:.*execute)"; then
+        LAST_QUERY=$(echo "$line" | sed 's/^.*statement: //; s/^.*execute.*: //' | head -c 100)
+    fi
+    
+    if echo "$line" | grep -q "INSERT INTO"; then
+        TABLE=$(echo "$line" | grep -oP "INSERT INTO \K[^ (]+")
+        printf "\r  ${YELLOW}│${NC} ➕ Inserting: %-35s " "$TABLE"
+    elif echo "$line" | grep -q "CREATE TABLE"; then
+        # Handle "CREATE TABLE IF EXISTS" properly
+        TABLE=$(echo "$line" | grep -oP "CREATE TABLE (?:IF (?:NOT )?EXISTS )?+\K[^ ;(]+")
+        if [ -z "$TABLE" ]; then
+            # Fallback: just get the first word after CREATE TABLE
+            TABLE=$(echo "$line" | awk '{for(i=1;i<=NF;i++) if($i=="TABLE"){print $(i+1); exit}}' | sed 's/[;(].*//; s/"//g')
+        fi
+        echo -e "\n  ${GREEN}│ ✨ Creating table: $TABLE${NC}"
+    elif echo "$line" | grep -q "^.*COPY .*FROM"; then
+        TABLE=$(echo "$line" | grep -oP "COPY \K[^ (]+")
+        echo -e "\n  ${BLUE}│ 📥 Bulk loading: $TABLE${NC}"
+    elif echo "$line" | grep -qE "duration: [0-9]{3,}"; then
+        DUR=$(echo "$line" | grep -oP "duration: \K[0-9.]+")
+        if (( $(echo "$DUR > 100" | bc -l) )); then
+            # Show the query with the duration
+            if [ -n "$LAST_QUERY" ]; then
+                echo -e "\n  ${YELLOW}│ ⏱️  Slow query (${DUR}ms): ${LAST_QUERY:0:70}...${NC}"
+            else
+                echo -e "\n  ${YELLOW}│ ⏱️  Slow query: ${DUR}ms${NC}"
+            fi
+        fi
+    fi
+done) &
+LOG_PID=$!
+
+# Poll backend health with counter
+while true; do
+    i=$((i + 1))
+    if curl -s http://localhost:3001/health > /dev/null 2>&1; then
+        kill $LOG_PID 2>/dev/null || true
+        wait $LOG_PID 2>/dev/null || true
+        echo -e "\n  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "  Backend:  ${GREEN}✓ Responding (took ${i}s)${NC}"
+        BACKEND_READY=true
+        break
+    fi
+    sleep 1
+    
+    # Timeout after 5 minutes
+    if [ $i -ge 300 ]; then
+        kill $LOG_PID 2>/dev/null || true
+        wait $LOG_PID 2>/dev/null || true
+        echo -e "\n  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+        echo -e "  ${RED}✗ Timeout waiting for backend${NC}"
+        echo ""
+        echo "Check logs with:"
+        echo "  docker logs footballhome_backend"
+        echo "  docker logs footballhome_db"
+        exit 1
+    fi
+done
+
+echo ""
+
+# Test frontend
+echo -e "  Frontend: Checking..."
+if curl -s http://localhost:3000 > /dev/null 2>&1; then
+    echo -e "  Frontend: ${GREEN}✓ Responding${NC}"
+else
+    echo -e "  Frontend: ${RED}✗ Not responding${NC}"
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# FINAL STATUS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+echo ""
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}✓ All services ready!${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo ""
+echo -e "${BLUE}Next Steps:${NC}"
+echo "  1. Test login at http://localhost:3000"
+echo "     Email: jbreslin@footballhome.org"
+echo "     Password: 1893Soccer!"
+echo ""
+echo "  2. View logs:"
+echo "     docker logs -f footballhome_backend"
+echo "     docker logs -f footballhome_db"
+echo ""
+
+if [ "$SKIP_SCRAPE" = false ] && [ "$QUICK_MODE" = false ]; then
+    echo "  3. If data updated, commit changes:"
+    echo "     git add database/data/"
+    echo "     git commit -m \"Update APSL data\""
+    echo "     git push"
+    echo ""
+fi
