@@ -110,15 +110,35 @@ echo ""
 echo -e "${YELLOW}⏳ Waiting for database initialization...${NC}"
 echo -e "  📊 Loading SQL files and populating tables..."
 echo ""
-echo -e "  ${BLUE}━━━━━━━━━━ Database Log (live) ━━━━━━━━━━${NC}"
+echo -e "  ${BLUE}━━━━━━━━━━ Database SQL Progress (live) ━━━━━━━━━━${NC}"
 
-# Show live database logs filtered for SQL activity
-(timeout 30 docker logs -f footballhome_db 2>&1 | grep --line-buffered -E "(CREATE TABLE|INSERT|COPY.*FROM|processing|complete)" | head -n 20 | while IFS= read -r line; do
-    echo -e "  ${YELLOW}│${NC} $line"
+# Show live database logs filtered for SQL activity with better formatting
+(timeout 40 docker logs -f footballhome_db 2>&1 | grep --line-buffered -E "(CREATE TABLE|INSERT INTO|COPY|statement:|duration:)" | head -n 40 | while IFS= read -r line; do
+    # Format CREATE TABLE
+    if echo "$line" | grep -q "CREATE TABLE"; then
+        TABLE=$(echo "$line" | grep -oP "CREATE TABLE \K[^ ;]+")
+        echo -e "  ${GREEN}│ ✨ Creating table: $TABLE${NC}"
+    # Format INSERT INTO
+    elif echo "$line" | grep -q "INSERT INTO"; then
+        TABLE=$(echo "$line" | grep -oP "INSERT INTO \K[^ (]+")
+        echo -e "  ${YELLOW}│ ➕ Inserting into: $TABLE${NC}"
+    # Format COPY (bulk load)
+    elif echo "$line" | grep -q "^.*COPY"; then
+        TABLE=$(echo "$line" | grep -oP "COPY \K[^ ]+")
+        echo -e "  ${BLUE}│ 📥 Bulk loading: $TABLE${NC}"
+    # Show statement execution
+    elif echo "$line" | grep -q "statement:"; then
+        STMT=$(echo "$line" | grep -oP "statement: \K.*" | head -c 60)
+        echo -e "  ${YELLOW}│${NC} $STMT..."
+    # Show duration for slow queries
+    elif echo "$line" | grep -q "duration:"; then
+        DUR=$(echo "$line" | grep -oP "duration: \K[^ ]+")
+        echo -e "  ${YELLOW}│${NC} ⏱️  ${DUR}ms"
+    fi
 done) 2>/dev/null || true
 
-echo -e "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "  ⏱️  (Continuing in background, check: ${GREEN}docker logs footballhome_db${NC})"
+echo -e "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ⏱️  (SQL execution continuing, check: ${GREEN}docker logs -f footballhome_db${NC})"
 echo -e "  ${GREEN}✓${NC} Database initialization window complete"
 
 # Check container status with details

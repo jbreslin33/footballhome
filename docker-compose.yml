@@ -25,8 +25,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    # Required for pg_cron
-    command: postgres -c shared_preload_libraries=pg_cron -c cron.database_name=footballhome
+    # Required for pg_cron and enable verbose logging
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_cron
+      -c cron.database_name=footballhome
+      -c log_statement=all
+      -c log_duration=on
+      -c client_min_messages=notice
 
   # pgAdmin - Database Administration Interface
   pgadmin:
