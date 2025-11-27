@@ -72,7 +72,7 @@
 
 To see the performance improvement:
 ```bash
-./start.sh
+./dev.sh
 ```
 
 The database will now initialize in 5-10 seconds instead of 200 seconds.
