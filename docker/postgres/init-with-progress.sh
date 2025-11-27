@@ -57,10 +57,13 @@ for sql_file in "${FILES_TO_LOAD[@]}"; do
             --echo-all \
             -f "$sql_file" 2>&1 | while IFS= read -r line; do
             
-            # Show CREATE TABLE statements
+            # Show CREATE TABLE statements (handle IF NOT EXISTS)
             if echo "$line" | grep -qE "^CREATE TABLE"; then
-                TABLE_NAME=$(echo "$line" | grep -oP "CREATE TABLE \K[^ ]+")
-                echo "   ✨ Creating table: $TABLE_NAME"
+                # Extract table name properly, handling IF NOT EXISTS syntax
+                TABLE_NAME=$(echo "$line" | sed -n 's/^CREATE TABLE \(IF NOT EXISTS \)\?\([^ (;]*\).*/\2/p')
+                if [ -n "$TABLE_NAME" ]; then
+                    echo "   ✨ Creating table: $TABLE_NAME"
+                fi
             
             # Show INSERT statements with details
             elif echo "$line" | grep -qE "^INSERT INTO"; then
@@ -68,12 +71,15 @@ for sql_file in "${FILES_TO_LOAD[@]}"; do
                 VALUES=$(echo "$line" | grep -oP "VALUES \(\K[^)]*" | head -c 100)
                 echo "   ➕ Inserting into $TABLE_NAME: ${VALUES:0:80}..."
             
-            # Show COPY statements (bulk inserts)
-            elif echo "$line" | grep -qE "^COPY"; then
-                TABLE_NAME=$(echo "$line" | grep -oP "COPY \K[^ ]+")
-                echo "   📥 Bulk loading data into: $TABLE_NAME"
+            # Show COPY statements (bulk inserts) - this is the start of COPY
+            elif echo "$line" | grep -qE "^COPY [a-z_]+.*FROM stdin"; then
+                TABLE_NAME=$(echo "$line" | grep -oP "COPY \K[^ (]+")
+                COLUMNS=$(echo "$line" | grep -oP "\(\K[^)]+")
+                COL_COUNT=$(echo "$COLUMNS" | tr ',' '\n' | wc -l)
+                echo "   📥 Bulk loading $COL_COUNT columns into: $TABLE_NAME"
+                echo "      (Reading tab-delimited data...)"
             
-            # Show completion of COPY
+            # Show completion of COPY - this shows how many rows were loaded
             elif echo "$line" | grep -qE "^COPY [0-9]+"; then
                 ROW_COUNT=$(echo "$line" | grep -oP "^COPY \K[0-9]+")
                 echo "   ✅ Loaded $ROW_COUNT rows"

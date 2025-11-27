@@ -181,20 +181,36 @@ BACKEND_READY=false
 i=0
 
 # Start showing database logs in background while waiting
-(docker logs -f footballhome_db 2>&1 | grep --line-buffered -E "(INSERT INTO|CREATE TABLE|COPY|duration: [0-9]{3,})" | while IFS= read -r line; do
+LAST_QUERY=""
+(docker logs -f footballhome_db 2>&1 | grep --line-buffered -E "(INSERT INTO|CREATE TABLE|COPY|duration: [0-9]{3,}|statement:|LOG:)" | while IFS= read -r line; do
+    # Capture the query being executed
+    if echo "$line" | grep -qE "(statement:|LOG:.*execute)"; then
+        LAST_QUERY=$(echo "$line" | sed 's/^.*statement: //; s/^.*execute.*: //' | head -c 100)
+    fi
+    
     if echo "$line" | grep -q "INSERT INTO"; then
         TABLE=$(echo "$line" | grep -oP "INSERT INTO \K[^ (]+")
         printf "\r  ${YELLOW}│${NC} ➕ Inserting: %-35s " "$TABLE"
     elif echo "$line" | grep -q "CREATE TABLE"; then
-        TABLE=$(echo "$line" | grep -oP "CREATE TABLE \K[^ ;]+")
+        # Handle "CREATE TABLE IF EXISTS" properly
+        TABLE=$(echo "$line" | grep -oP "CREATE TABLE (?:IF (?:NOT )?EXISTS )?+\K[^ ;(]+")
+        if [ -z "$TABLE" ]; then
+            # Fallback: just get the first word after CREATE TABLE
+            TABLE=$(echo "$line" | awk '{for(i=1;i<=NF;i++) if($i=="TABLE"){print $(i+1); exit}}' | sed 's/[;(].*//; s/"//g')
+        fi
         echo -e "\n  ${GREEN}│ ✨ Creating table: $TABLE${NC}"
     elif echo "$line" | grep -q "^.*COPY .*FROM"; then
-        TABLE=$(echo "$line" | grep -oP "COPY \K[^ ]+")
+        TABLE=$(echo "$line" | grep -oP "COPY \K[^ (]+")
         echo -e "\n  ${BLUE}│ 📥 Bulk loading: $TABLE${NC}"
     elif echo "$line" | grep -qE "duration: [0-9]{3,}"; then
         DUR=$(echo "$line" | grep -oP "duration: \K[0-9.]+")
         if (( $(echo "$DUR > 100" | bc -l) )); then
-            echo -e "\n  ${YELLOW}│ ⏱️  Slow query: ${DUR}ms${NC}"
+            # Show the query with the duration
+            if [ -n "$LAST_QUERY" ]; then
+                echo -e "\n  ${YELLOW}│ ⏱️  Slow query (${DUR}ms): ${LAST_QUERY:0:70}...${NC}"
+            else
+                echo -e "\n  ${YELLOW}│ ⏱️  Slow query: ${DUR}ms${NC}"
+            fi
         fi
     fi
 done) &
