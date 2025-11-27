@@ -76,6 +76,13 @@ if [ "$SKIP_SCRAPE" = false ]; then
     echo -e "  This will take 5-15 minutes..."
     echo ""
     
+    # Clean up old .copy.sql files before scraping (scraper will generate fresh ones)
+    OLD_COPY_COUNT=$(ls database/data/*.copy.sql 2>/dev/null | wc -l)
+    if [ "$OLD_COPY_COUNT" -gt 0 ]; then
+        echo -e "${BLUE}🗑️  Cleaning up $OLD_COPY_COUNT old .copy.sql files...${NC}"
+        rm database/data/*.copy.sql
+    fi
+    
     if node database/scripts/apsl-scraper/scrape-apsl.js; then
         echo ""
         echo -e "${GREEN}✓ APSL data scraped successfully${NC}"
