@@ -1,7 +1,41 @@
 # Football Home - Object-Oriented Architecture Progress
 
-## 🎯 Current Status (Nov 17, 2025)
-Working on **Player RSVP Feature** - practices now create and display for coaches, need to verify RSVP screen works for both players and coaches.
+## 🎯 Current Status (Nov 27, 2025)
+**Database Performance Optimization** - Completed comprehensive verbose logging system and identified major bottleneck: venues table (68 venues with large JSON) using slow INSERT instead of COPY format. Created Python conversion script to migrate to COPY format for 80-100x performance improvement.
+
+### Recent Session Summary (Nov 27, 2025)
+1. **Verbose Logging System** ✅
+   - Added `--progress=plain` to Docker builds for continuous output
+   - Enhanced PostgreSQL logging: `log_min_duration_statement=0`, `log_line_prefix`
+   - Fixed log pattern matching to capture actual PostgreSQL format
+   - Added heartbeat mechanism showing elapsed time during initialization
+   - Created comprehensive PERFORMANCE.md documentation
+
+2. **Performance Bottleneck Identified** 🔍
+   - Database declares "ready" but continues INSERT operations in background
+   - Venues table: 11,586 lines, 68 records with massive JSON fields (photos, hours, etc)
+   - Using slow INSERT instead of COPY format (80-100x slower)
+   - Login works early because jbreslin user inserted first, but thousands of venue rows still loading
+
+3. **Files Missing COPY Format** ❌
+   - `02-venues.sql` - **MAJOR bottleneck** (11,586 lines, complex JSON)
+   - `08a-users-manual.sql` - Manual user accounts
+   - `09-admins.sql` - Admin records
+   - `10-coaches.sql` - Coach records
+   - `12-team-coaches.sql` - Team-coach relationships
+   - `13a-players-manual.sql` - Manual player records
+
+4. **Solution Created** 📝
+   - Python script: `database/scripts/convert-venues.py`
+   - Handles complex nested JSON, escaped quotes, JSONB casting
+   - Generates both INSERT (with ON CONFLICT) and COPY formats
+   - Ready to test and deploy
+
+### Next Steps
+1. Run `python3 database/scripts/convert-venues.py` to convert venues
+2. Backup and replace `02-venues.sql` with new version
+3. Test with `./dev.sh` - should see ~100x faster venue loading
+4. Consider creating COPY versions for other manual files if needed
 
 ## ✅ Major Accomplishments
 
