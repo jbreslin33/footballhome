@@ -111,7 +111,8 @@ echo -e "${YELLOW}⚡ Step 1.5: Converting SQL to COPY format${NC}"
 echo -e "  This enables 20-40x faster database initialization..."
 echo ""
 
-if ./database/scripts/convert-to-copy.sh database/data/*.sql > /dev/null 2>&1; then
+# Exclude schema file (has CREATE TABLE statements)
+if ./database/scripts/convert-to-copy.sh database/data/[0-9][1-9]*.sql database/data/[1-9][0-9]*.sql > /dev/null 2>&1; then
     COPY_COUNT=$(ls database/data/*.copy.sql 2>/dev/null | wc -l)
     echo -e "${GREEN}✓ Generated $COPY_COUNT .copy.sql files for fast loading${NC}"
 else
