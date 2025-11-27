@@ -28,3 +28,5 @@ lighthouse_*.txt
 
 # Docker data
 /docker/data/
+# Generated COPY format SQL files (created from INSERT SQL for fast loading)
+database/data/*.copy.sql

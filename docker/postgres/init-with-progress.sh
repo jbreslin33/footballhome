@@ -9,8 +9,22 @@ echo "📊 Initializing Football Home Database"
 echo "=========================================="
 echo ""
 
-# Count total SQL files (exclude this script)
-TOTAL_FILES=$(find "$SQL_DIR" -maxdepth 1 -name "*.sql" -type f 2>/dev/null | wc -l)
+# Build list of files to load, preferring .copy.sql when available
+FILES_TO_LOAD=()
+for sql_file in $(find "$SQL_DIR" -maxdepth 1 -name "*.sql" -type f ! -name "*.copy.sql" | sort); do
+    BASENAME=$(basename "$sql_file" .sql)
+    COPY_FILE="$SQL_DIR/${BASENAME}.copy.sql"
+    
+    if [ -f "$COPY_FILE" ]; then
+        # Use COPY version (faster)
+        FILES_TO_LOAD+=("$COPY_FILE")
+    else
+        # Use INSERT version (slower)
+        FILES_TO_LOAD+=("$sql_file")
+    fi
+done
+
+TOTAL_FILES=${#FILES_TO_LOAD[@]}
 CURRENT=0
 
 if [ "$TOTAL_FILES" -eq 0 ]; then
@@ -22,7 +36,7 @@ echo "📁 Found $TOTAL_FILES SQL files to process"
 echo ""
 
 # Process each SQL file
-for sql_file in $(find "$SQL_DIR" -maxdepth 1 -name "*.sql" -type f | sort); do
+for sql_file in "${FILES_TO_LOAD[@]}"; do
     if [ -f "$sql_file" ]; then
         CURRENT=$((CURRENT + 1))
         FILENAME=$(basename "$sql_file")

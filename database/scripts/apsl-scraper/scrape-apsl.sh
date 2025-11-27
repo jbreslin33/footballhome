@@ -116,6 +116,15 @@ if [ "$SHOULD_SCRAPE" = true ]; then
         echo -e "${BLUE}  Teams:   $TEAMS${NC}"
         echo -e "${BLUE}  Players: $PLAYERS${NC}"
         echo -e "${BLUE}========================================${NC}"
+        
+        # Automatically convert to COPY format for fast loading
+        echo ""
+        if [ -x "$SCRIPT_DIR/post-scrape.sh" ]; then
+            "$SCRIPT_DIR/post-scrape.sh"
+        else
+            echo -e "${YELLOW}⚠ post-scrape.sh not found or not executable${NC}"
+            echo "Run manually: ./post-scrape.sh"
+        fi
     else
         echo ""
         echo -e "${RED}✗ Scrape failed!${NC}"
