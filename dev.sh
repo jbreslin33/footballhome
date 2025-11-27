@@ -103,6 +103,22 @@ if [ "$SCRAPE_ONLY" = true ]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 1.5: CONVERT SQL TO COPY FORMAT (for 20-40x faster loading)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+echo ""
+echo -e "${YELLOW}⚡ Step 1.5: Converting SQL to COPY format${NC}"
+echo -e "  This enables 20-40x faster database initialization..."
+echo ""
+
+if ./database/scripts/convert-to-copy.sh database/data/*.sql > /dev/null 2>&1; then
+    COPY_COUNT=$(ls database/data/*.copy.sql 2>/dev/null | wc -l)
+    echo -e "${GREEN}✓ Generated $COPY_COUNT .copy.sql files for fast loading${NC}"
+else
+    echo -e "${YELLOW}⚠ COPY conversion failed, will use slower INSERT format${NC}"
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 2: DOCKER BUILD & DEPLOY
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
