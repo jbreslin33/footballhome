@@ -532,11 +532,119 @@ async function scrapeFixtures() {
   }
 }
 
+// Convert INSERT statements to PostgreSQL COPY format
+function convertInsertToCopy(sqlContent, header) {
+  const copyHeader = `-- ========================================
+-- ${header}
+-- ========================================
+-- Generated: ${new Date().toISOString()}
+-- Source: ${LEAGUE_URL}
+-- AUTO-GENERATED - DO NOT EDIT MANUALLY
+-- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
+-- ========================================
+
+`;
+
+  // Parse INSERT statements and convert to COPY
+  const insertRegex = /INSERT INTO (\w+) \(([^)]+)\)\s*VALUES \(([^)]+)\)(?:\s*ON CONFLICT[^;]+)?;/gi;
+  
+  const tableData = new Map();
+  let match;
+  
+  while ((match = insertRegex.exec(sqlContent)) !== null) {
+    const tableName = match[1];
+    const columns = match[2];
+    const valuesStr = match[3];
+    
+    // Parse values - handle quoted strings and NULL
+    const values = [];
+    let current = '';
+    let inQuote = false;
+    let quoteChar = null;
+    
+    for (let i = 0; i < valuesStr.length; i++) {
+      const char = valuesStr[i];
+      
+      if (!inQuote && (char === "'" || char === '"')) {
+        inQuote = true;
+        quoteChar = char;
+        continue;
+      }
+      
+      if (inQuote && char === quoteChar) {
+        // Check for escaped quote
+        if (i + 1 < valuesStr.length && valuesStr[i + 1] === quoteChar) {
+          current += char;
+          i++; // Skip next char
+          continue;
+        }
+        inQuote = false;
+        quoteChar = null;
+        continue;
+      }
+      
+      if (!inQuote && char === ',') {
+        values.push(current.trim());
+        current = '';
+        continue;
+      }
+      
+      current += char;
+    }
+    
+    if (current.trim()) {
+      values.push(current.trim());
+    }
+    
+    // Convert values to COPY format (tab-separated, \N for NULL, boolean as t/f)
+    const copyValues = values.map(v => {
+      if (v === 'NULL') return '\\N';
+      if (v === 'true') return 't';
+      if (v === 'false') return 'f';
+      // Remove surrounding quotes if present
+      return v.replace(/^['"]|['"]$/g, '').replace(/\t/g, '    ');
+    }).join('\t');
+    
+    if (!tableData.has(tableName)) {
+      tableData.set(tableName, { columns, rows: [] });
+    }
+    tableData.get(tableName).rows.push(copyValues);
+  }
+  
+  // Build COPY output
+  let copyOutput = copyHeader;
+  
+  for (const [tableName, data] of tableData.entries()) {
+    copyOutput += `COPY ${tableName} (${data.columns}) FROM stdin;\n`;
+    for (const row of data.rows) {
+      copyOutput += row + '\n';
+    }
+    copyOutput += '\\.\n\n';
+  }
+  
+  return copyOutput;
+}
+
 // Generate SQL output to multiple files
 function generateSQL() {
   const baseDir = path.join(__dirname, '../..');
   
   console.error('\n📝 Writing SQL files...');
+  
+  // Delete old .copy.sql files to ensure clean regeneration
+  console.error('  🗑️  Cleaning old .copy.sql files...');
+  const dataDir = path.join(baseDir, 'data');
+  if (fs.existsSync(dataDir)) {
+    const files = fs.readdirSync(dataDir);
+    let deleteCount = 0;
+    for (const file of files) {
+      if (file.endsWith('.copy.sql')) {
+        fs.unlinkSync(path.join(dataDir, file));
+        deleteCount++;
+      }
+    }
+    console.error(`  ✓ Deleted ${deleteCount} old .copy.sql files`);
+  }
   
   // Helper to write file with header
   function writeFile(relativePath, header, content) {
@@ -559,8 +667,15 @@ function generateSQL() {
 
 ${content}`;
     
+    // Write INSERT version (.sql)
     fs.writeFileSync(fullPath, output);
     console.error(`  ✓ ${relativePath}`);
+    
+    // Also generate COPY version (.copy.sql)
+    const copyPath = fullPath.replace(/\.sql$/, '.copy.sql');
+    const copyContent = convertInsertToCopy(content, header);
+    fs.writeFileSync(copyPath, copyContent);
+    console.error(`  ✓ ${relativePath.replace(/\.sql$/, '.copy.sql')}`);
   }
   
   // Helper to update APSL section in existing file (preserves manual sections)
