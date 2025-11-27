@@ -171,6 +171,8 @@ i=0
 LAST_QUERY=""
 LAST_TABLE=""
 ROW_COUNT=0
+# Show all existing logs plus continue following for new ones
+# This captures initialization that may have already started
 (docker logs -f footballhome_db 2>&1 | while IFS= read -r line; do
     # Capture the full query being executed
     if echo "$line" | grep -qE "statement:"; then
