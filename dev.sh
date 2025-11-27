@@ -171,9 +171,9 @@ i=0
 LAST_QUERY=""
 LAST_TABLE=""
 ROW_COUNT=0
-# Show all existing logs plus continue following for new ones
-# This captures initialization that may have already started
-(docker logs -f footballhome_db 2>&1 | while IFS= read -r line; do
+# Use --follow to show ALL logs (existing + new) not just new ones from this point forward
+# This captures initialization that starts immediately when container launches
+(docker logs --follow footballhome_db 2>&1 | while IFS= read -r line; do
     # Capture the full query being executed
     if echo "$line" | grep -qE "statement:"; then
         FULL_STATEMENT=$(echo "$line" | sed 's/^.*statement: //')
@@ -199,19 +199,19 @@ ROW_COUNT=0
         if [ $((ROW_COUNT % 10)) -eq 0 ]; then
             printf "\r  ${YELLOW}│${NC}    ↳ $ROW_COUNT rows inserted...  "
         fi
-    elif echo "$line" | grep -q "CREATE TABLE"; then
-        # Handle "CREATE TABLE IF NOT EXISTS" properly
-        TABLE=$(echo "$line" | grep -oP "CREATE TABLE (?:IF (?:NOT )?EXISTS )?+\K[^ ;(]+")
+    elif echo "$line" | grep -qE "statement:.*CREATE TABLE"; then
+        # Extract table name from statement line
+        TABLE=$(echo "$line" | grep -oP "CREATE TABLE (?:IF (?:NOT )?EXISTS )?\K[^ ;(]+")
         if [ -z "$TABLE" ]; then
-            # Fallback: just get the first word after CREATE TABLE
-            TABLE=$(echo "$line" | awk '{for(i=1;i<=NF;i++) if($i=="TABLE"){print $(i+1); exit}}' | sed 's/[;(].*//; s/"//g')
+            # Fallback: look for word after TABLE
+            TABLE=$(echo "$line" | sed -n 's/.*CREATE TABLE[^a-zA-Z_]*\([a-zA-Z_][a-zA-Z0-9_]*\).*/\1/p')
         fi
         if [ -n "$TABLE" ]; then
             echo -e "\n  ${GREEN}│ ✨ Creating table: $TABLE${NC}"
             LAST_TABLE="$TABLE"
         fi
-    elif echo "$line" | grep -qE "^.*COPY .* FROM"; then
-        TABLE=$(echo "$line" | grep -oP "COPY \K[^ (]+")
+    elif echo "$line" | grep -qE "statement:.*COPY .* FROM"; then
+        TABLE=$(echo "$line" | grep -oP "statement:.*COPY \K[^ (]+")
         COLUMNS=$(echo "$line" | grep -oP '\(\K[^)]+' | tr ',' '\n' | wc -l)
         echo -e "\n  ${BLUE}│ 📥 COPY $COLUMNS columns into: $TABLE${NC}"
         echo -e "  ${BLUE}│${NC}    ↳ Reading bulk data..."
