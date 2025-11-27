@@ -32,6 +32,8 @@ services:
       -c cron.database_name=footballhome
       -c log_statement=all
       -c log_duration=on
+      -c log_min_duration_statement=0
+      -c log_line_prefix='%t [%p] %u@%d '
       -c client_min_messages=notice
 
   # pgAdmin - Database Administration Interface

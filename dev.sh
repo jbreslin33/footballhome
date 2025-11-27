@@ -169,46 +169,90 @@ i=0
 
 # Start showing database logs in background while waiting
 LAST_QUERY=""
-(docker logs -f footballhome_db 2>&1 | grep --line-buffered -E "(INSERT INTO|CREATE TABLE|COPY|duration: [0-9]{3,}|statement:|LOG:)" | while IFS= read -r line; do
-    # Capture the query being executed
-    if echo "$line" | grep -qE "(statement:|LOG:.*execute)"; then
-        LAST_QUERY=$(echo "$line" | sed 's/^.*statement: //; s/^.*execute.*: //' | head -c 100)
+LAST_TABLE=""
+ROW_COUNT=0
+(docker logs -f footballhome_db 2>&1 | while IFS= read -r line; do
+    # Capture the full query being executed
+    if echo "$line" | grep -qE "statement:"; then
+        FULL_STATEMENT=$(echo "$line" | sed 's/^.*statement: //')
+        LAST_QUERY=$(echo "$FULL_STATEMENT" | head -c 150)
+        
+        # Show all statements in real-time for debugging
+        if echo "$FULL_STATEMENT" | grep -qE "(CREATE TABLE|ALTER TABLE|CREATE INDEX|COPY)"; then
+            STMT_TYPE=$(echo "$FULL_STATEMENT" | grep -oE "^(CREATE TABLE|ALTER TABLE|CREATE INDEX|COPY)" | head -1)
+            echo -e "\n  ${BLUE}│ 🔧 $STMT_TYPE...${NC}"
+        fi
     fi
     
+    # Track what table we're working on
     if echo "$line" | grep -q "INSERT INTO"; then
         TABLE=$(echo "$line" | grep -oP "INSERT INTO \K[^ (]+")
-        printf "\r  ${YELLOW}│${NC} ➕ Inserting: %-35s " "$TABLE"
+        if [ "$TABLE" != "$LAST_TABLE" ]; then
+            echo -e "\n  ${YELLOW}│ ➕ Inserting into: $TABLE${NC}"
+            LAST_TABLE="$TABLE"
+            ROW_COUNT=0
+        fi
+        ROW_COUNT=$((ROW_COUNT + 1))
+        # Show progress every 10 rows
+        if [ $((ROW_COUNT % 10)) -eq 0 ]; then
+            printf "\r  ${YELLOW}│${NC}    ↳ $ROW_COUNT rows inserted...  "
+        fi
     elif echo "$line" | grep -q "CREATE TABLE"; then
-        # Handle "CREATE TABLE IF EXISTS" properly
+        # Handle "CREATE TABLE IF NOT EXISTS" properly
         TABLE=$(echo "$line" | grep -oP "CREATE TABLE (?:IF (?:NOT )?EXISTS )?+\K[^ ;(]+")
         if [ -z "$TABLE" ]; then
             # Fallback: just get the first word after CREATE TABLE
             TABLE=$(echo "$line" | awk '{for(i=1;i<=NF;i++) if($i=="TABLE"){print $(i+1); exit}}' | sed 's/[;(].*//; s/"//g')
         fi
-        echo -e "\n  ${GREEN}│ ✨ Creating table: $TABLE${NC}"
-    elif echo "$line" | grep -q "^.*COPY .*FROM"; then
+        if [ -n "$TABLE" ]; then
+            echo -e "\n  ${GREEN}│ ✨ Creating table: $TABLE${NC}"
+            LAST_TABLE="$TABLE"
+        fi
+    elif echo "$line" | grep -qE "^.*COPY .* FROM"; then
         TABLE=$(echo "$line" | grep -oP "COPY \K[^ (]+")
-        echo -e "\n  ${BLUE}│ 📥 Bulk loading: $TABLE${NC}"
-    elif echo "$line" | grep -qE "duration: [0-9]{3,}"; then
+        COLUMNS=$(echo "$line" | grep -oP '\(\K[^)]+' | tr ',' '\n' | wc -l)
+        echo -e "\n  ${BLUE}│ 📥 COPY $COLUMNS columns into: $TABLE${NC}"
+        echo -e "  ${BLUE}│${NC}    ↳ Reading bulk data..."
+        LAST_TABLE="$TABLE"
+    elif echo "$line" | grep -qE "^COPY [0-9]+"; then
+        ROWS=$(echo "$line" | grep -oP "^COPY \K[0-9]+")
+        echo -e "\n  ${GREEN}│ ✅ Loaded $ROWS rows into $LAST_TABLE${NC}"
+    elif echo "$line" | grep -qE "duration: [0-9]+\.[0-9]+ ms"; then
         DUR=$(echo "$line" | grep -oP "duration: \K[0-9.]+")
-        if (( $(echo "$DUR > 100" | bc -l) )); then
-            # Show the query with the duration
+        # Show slow queries (>500ms) with details
+        if (( $(echo "$DUR > 500" | bc -l) )); then
             if [ -n "$LAST_QUERY" ]; then
-                echo -e "\n  ${YELLOW}│ ⏱️  Slow query (${DUR}ms): ${LAST_QUERY:0:70}...${NC}"
+                echo -e "\n  ${YELLOW}│ ⏱️  SLOW (${DUR}ms): ${LAST_QUERY:0:80}...${NC}"
             else
-                echo -e "\n  ${YELLOW}│ ⏱️  Slow query: ${DUR}ms${NC}"
+                echo -e "\n  ${YELLOW}│ ⏱️  SLOW QUERY: ${DUR}ms${NC}"
             fi
+        elif (( $(echo "$DUR > 100" | bc -l) )); then
+            # Show medium queries (100-500ms) more briefly
+            echo -e "\n  ${YELLOW}│ ⏱️  ${DUR}ms${NC}"
         fi
     fi
 done) &
 LOG_PID=$!
+
+# Also show a heartbeat so user knows the script is still running
+HEARTBEAT_PID=""
+(while true; do
+    sleep 5
+    # If backend isn't ready yet, show we're still waiting
+    if ! curl -s http://localhost:3001/health > /dev/null 2>&1; then
+        printf "\r  ${BLUE}│${NC} ⏳ Still initializing... (${i}s elapsed)  "
+    fi
+done) &
+HEARTBEAT_PID=$!
 
 # Poll backend health with counter
 while true; do
     i=$((i + 1))
     if curl -s http://localhost:3001/health > /dev/null 2>&1; then
         kill $LOG_PID 2>/dev/null || true
+        kill $HEARTBEAT_PID 2>/dev/null || true
         wait $LOG_PID 2>/dev/null || true
+        wait $HEARTBEAT_PID 2>/dev/null || true
         echo -e "\n  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "  Backend:  ${GREEN}✓ Responding (took ${i}s)${NC}"
         BACKEND_READY=true
@@ -219,7 +263,9 @@ while true; do
     # Timeout after 5 minutes
     if [ $i -ge 300 ]; then
         kill $LOG_PID 2>/dev/null || true
+        kill $HEARTBEAT_PID 2>/dev/null || true
         wait $LOG_PID 2>/dev/null || true
+        wait $HEARTBEAT_PID 2>/dev/null || true
         echo -e "\n  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "  ${RED}✗ Timeout waiting for backend${NC}"
         echo ""
