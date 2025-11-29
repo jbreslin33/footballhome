@@ -1,7 +1,7 @@
 -- ========================================
 -- ROSTERS
 -- ========================================
--- Generated: 2025-11-27T18:48:57.136Z
+-- Generated: 2025-11-29T22:20:39.787Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -2713,12 +2713,6 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
-VALUES ('f12e65d2-73a3-0007-3fa8-5f4b92eb0cbf', 'cd0f7cdf-7018-0005-51d9-cafefed696e5', '375d9aff-512e-0006-9d11-705d57b38f2c', NULL, true)
-ON CONFLICT (team_id, player_id) DO UPDATE SET
-  jersey_number = EXCLUDED.jersey_number,
-  is_active = EXCLUDED.is_active;
-
-INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
 VALUES ('10bbb029-99b6-0007-a4d9-02618f6a6fae', 'cd0f7cdf-7018-0005-51d9-cafefed696e5', '2a9d2882-1fba-0006-a423-f0addab7b5be', NULL, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
@@ -2732,6 +2726,12 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
 VALUES ('d46ec8df-4125-0007-5dc1-d9c83e814eaa', 'cd0f7cdf-7018-0005-51d9-cafefed696e5', '0a912565-84ec-0006-d1c3-e33df55ab126', 1, true)
+ON CONFLICT (team_id, player_id) DO UPDATE SET
+  jersey_number = EXCLUDED.jersey_number,
+  is_active = EXCLUDED.is_active;
+
+INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
+VALUES ('8588e8c5-9d1c-0007-e797-23d4d454cfe9', 'cd0f7cdf-7018-0005-51d9-cafefed696e5', '85b51d2d-23a3-0006-7452-c1380cce73cc', NULL, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   is_active = EXCLUDED.is_active;
@@ -2786,12 +2786,6 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
 VALUES ('fafe7c4a-5a08-0007-9c19-5ca0ff554e22', 'cd0f7cdf-7018-0005-51d9-cafefed696e5', '9812044e-02b4-0006-f0df-fc72fb89b3dd', 2, true)
-ON CONFLICT (team_id, player_id) DO UPDATE SET
-  jersey_number = EXCLUDED.jersey_number,
-  is_active = EXCLUDED.is_active;
-
-INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
-VALUES ('5c2c14ad-63cf-0007-cbf4-d60e81e8cfde', 'cd0f7cdf-7018-0005-51d9-cafefed696e5', '233f1298-8ddb-0006-74d3-74647a81d1f0', NULL, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   is_active = EXCLUDED.is_active;
@@ -4781,13 +4775,13 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
-VALUES ('15495374-63b0-0007-2127-e9ac3ef49058', '84a1029b-04c8-0005-5548-e180ad338d6b', '1821dd74-7def-0006-5d0d-8fc2237b95a9', NULL, true)
+VALUES ('79bebf65-acaf-0007-0544-7ebb95b9d5ec', '84a1029b-04c8-0005-5548-e180ad338d6b', '8e947f42-3cf8-0006-843e-60f8b5fea83d', 1, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   is_active = EXCLUDED.is_active;
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
-VALUES ('79bebf65-acaf-0007-0544-7ebb95b9d5ec', '84a1029b-04c8-0005-5548-e180ad338d6b', '8e947f42-3cf8-0006-843e-60f8b5fea83d', 1, true)
+VALUES ('95a29ddd-f0c1-0007-fddb-8213b75bd82b', '84a1029b-04c8-0005-5548-e180ad338d6b', '36922a3a-f659-0006-9c4d-0e16a1ca9095', NULL, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   is_active = EXCLUDED.is_active;

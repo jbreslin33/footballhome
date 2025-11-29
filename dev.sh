@@ -23,6 +23,23 @@ NC='\033[0m'
 QUICK_MODE=false
 SCRAPE_ONLY=false
 SKIP_SCRAPE=false
+VERBOSE=false
+SUMMARY_ONLY=false
+# Temp file for collecting slow SQL statements (duration_ms<TAB>query)
+SLOW_SQL_LOG=""
+# Persist DB sampler log
+PERSIST_DB_SAMPLE=false
+# Optional output path to save DB sampler log when persisting
+DB_SAMPLE_OUT=""
+# Whether to persist slow-sql log after run
+PERSIST_SLOW_SQL=false
+# Optional output path to save slow sql log when persisting
+SLOW_SQL_OUT=""
+# Alert pattern (grep regex) for alert watcher
+ALERT_PATTERN='error|warn|fatal|panic|exception'
+# DB sampler log and pid
+SAMP_LOG=""
+SAMPLER_PID=""
 
 # Parse arguments
 for arg in "$@"; do
@@ -31,8 +48,29 @@ for arg in "$@"; do
             QUICK_MODE=true
             SKIP_SCRAPE=true
             ;;
+        --verbose)
+            VERBOSE=true
+            ;;
         --scrape-only)
             SCRAPE_ONLY=true
+            ;;
+        --persist-slow-sql)
+            PERSIST_SLOW_SQL=true
+            ;;
+        --persist-db-sample)
+            PERSIST_DB_SAMPLE=true
+            ;;
+        --db-sample-out=*)
+            DB_SAMPLE_OUT="${arg#--db-sample-out=}"
+            ;;
+        --slow-sql-out=*)
+            SLOW_SQL_OUT="${arg#--slow-sql-out=}"
+            ;;
+        --alert-pattern=*)
+            ALERT_PATTERN="${arg#--alert-pattern=}"
+            ;;
+        --summary-only)
+            SUMMARY_ONLY=true
             ;;
         --no-scrape)
             SKIP_SCRAPE=true
@@ -61,6 +99,25 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+# Enable verbose shell tracing when requested
+if [ "$VERBOSE" = true ]; then
+    set -x
+fi
+
+# If no parameters were provided, enable verbose by default so
+# running `./dev.sh` is verbose and performs a full rebuild + scrape.
+if [ $# -eq 0 ]; then
+    VERBOSE=true
+    set -x
+fi
+
+# Prepare slow-SQL log file when verbose
+if [ "$VERBOSE" = true ]; then
+    SLOW_SQL_LOG=$(mktemp /tmp/dev_slow_sql.XXXXXX)
+    # ensure it's empty
+    : > "$SLOW_SQL_LOG"
+fi
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Football Home - Development Workflow${NC}"
@@ -143,8 +200,19 @@ if [ "$QUICK_MODE" = true ]; then
     echo -e "${GREEN}✓ Containers stopped${NC}"
     echo ""
     echo -e "${YELLOW}🔨 Building images...${NC}"
-    docker compose build --no-cache --progress=plain
-    echo -e "${GREEN}✓ Images built${NC}"
+    echo -e "  Building services individually for per-service timing..."
+    for svc in $(docker compose config --services); do
+        echo -e "  ${BLUE}→ Building: $svc${NC}"
+        BUILD_START=$(date +%s)
+        docker compose build --no-cache --progress=plain "$svc" || true
+        BUILD_END=$(date +%s)
+        BUILD_DUR=$((BUILD_END - BUILD_START))
+        echo -e "  ${GREEN}✓ $svc built (${BUILD_DUR}s)${NC}"
+    done
+    echo "  Docker Compose status:"
+    docker compose ps --all || true
+    echo "  Docker Compose images:"
+    docker compose images || true
 else
     echo -e "${YELLOW}🔨 Step 2: Full Rebuild${NC}"
     echo -e "  - Removing all volumes (fresh database)"
@@ -160,8 +228,19 @@ else
     echo -e "${GREEN}✓ Build cache cleared${NC}"
     echo ""
     echo -e "${YELLOW}🔨 Building images from scratch...${NC}"
-    docker compose build --no-cache --progress=plain
-    echo -e "${GREEN}✓ Images built${NC}"
+    echo -e "  Building services individually for per-service timing..."
+    for svc in $(docker compose config --services); do
+        echo -e "  ${BLUE}→ Building: $svc${NC}"
+        BUILD_START=$(date +%s)
+        docker compose build --no-cache --progress=plain "$svc" || true
+        BUILD_END=$(date +%s)
+        BUILD_DUR=$((BUILD_END - BUILD_START))
+        echo -e "  ${GREEN}✓ $svc built (${BUILD_DUR}s)${NC}"
+    done
+    echo "  Docker Compose status:"
+    docker compose ps --all || true
+    echo "  Docker Compose images:"
+    docker compose images || true
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -190,6 +269,14 @@ echo -e "  Backend:  Waiting for health check..."
 echo -e "            (Backend is waiting for database to initialize - showing SQL activity)"
 echo -e "  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
+echo ""
+echo -e "  ${YELLOW}🔎 Database: Initialization and SQL import may take several minutes.${NC}"
+echo -e "             Watching DB logs for progress (COPY/CREATE statements)..."
+
+if [ "$SUMMARY_ONLY" = true ]; then
+    echo -e "  ${YELLOW}ℹ️  Summary-only mode: skipping live log-followers and DB sampling${NC}"
+fi
+
 BACKEND_READY=false
 i=0
 
@@ -197,9 +284,27 @@ i=0
 LAST_QUERY=""
 LAST_TABLE=""
 ROW_COUNT=0
-# Use --follow to show ALL logs (existing + new) not just new ones from this point forward
-# This captures initialization that starts immediately when container launches
-(docker logs --follow footballhome_db 2>&1 | while IFS= read -r line; do
+# Use `docker compose logs --follow db` so the script follows the service logs
+# (this works whether or not `container_name` or a project prefix is present).
+# It captures initialization output including SQL COPY/CREATE statements.
+
+# Start a DB resource sampler (docker stats) if possible
+if [ "$SUMMARY_ONLY" != true ]; then
+    DB_CID=""
+    if command -v docker >/dev/null 2>&1; then
+        DB_CID=$(docker compose ps -q db 2>/dev/null || true)
+    fi
+    if [ -n "$DB_CID" ]; then
+        SAMP_LOG=$(mktemp /tmp/dev_db_stats.XXXXXX)
+        (while true; do
+            TS=$(date '+%Y-%m-%d %H:%M:%S')
+            docker stats --no-stream --format '{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}\t{{.BlockIO}}' "$DB_CID" 2>/dev/null | awk -v ts="$TS" '{print ts "\t" $0}' >> "$SAMP_LOG" 2>/dev/null || true
+            sleep 2
+        done) &
+        SAMPLER_PID=$!
+    fi
+
+    (docker compose logs --no-color --follow db 2>&1 | while IFS= read -r line; do
     # Capture the full query being executed
     if echo "$line" | grep -qE "statement:"; then
         FULL_STATEMENT=$(echo "$line" | sed 's/^.*statement: //')
@@ -247,6 +352,12 @@ ROW_COUNT=0
         echo -e "\n  ${GREEN}│ ✅ Loaded $ROWS rows into $LAST_TABLE${NC}"
     elif echo "$line" | grep -qE "duration: [0-9]+\.[0-9]+ ms"; then
         DUR=$(echo "$line" | grep -oP "duration: \K[0-9.]+")
+        # record slow queries to temp file when verbose
+        if [ "$VERBOSE" = true ] && [ -n "$LAST_QUERY" ]; then
+            # convert ms to numeric (float) and store as milliseconds
+            # Use printf to keep consistent formatting
+            printf "%s\t%s\n" "$DUR" "${LAST_QUERY//\t/ }" >> "$SLOW_SQL_LOG" 2>/dev/null || true
+        fi
         # Show slow queries (>500ms) with details
         if (( $(echo "$DUR > 500" | bc -l) )); then
             if [ -n "$LAST_QUERY" ]; then
@@ -261,6 +372,57 @@ ROW_COUNT=0
     fi
 done) &
 LOG_PID=$!
+fi
+
+# Also follow backend and frontend logs for verbose build/runtime diagnostics
+if [ "$SUMMARY_ONLY" != true ]; then
+    BACKEND_LOG_PID=""
+    FRONTEND_LOG_PID=""
+    (docker compose logs --no-color --follow backend 2>&1 | sed 's/^/  [BE] /') &
+    BACKEND_LOG_PID=$!
+    (docker compose logs --no-color --follow frontend 2>&1 | sed 's/^/  [FE] /') &
+    FRONTEND_LOG_PID=$!
+
+    # Alert watcher: highlight warnings/errors across services (configurable pattern)
+    ALERT_LOG_PID=""
+    if command -v grep >/dev/null 2>&1; then
+        (docker compose logs --no-color --follow db backend frontend 2>&1 | grep --line-buffered -iE "$ALERT_PATTERN" | sed 's/^/  [ALERT] /') &
+        ALERT_LOG_PID=$!
+    fi
+fi
+
+# Cleanup function to stop background processes and optionally persist logs
+cleanup() {
+    kill $LOG_PID $HEARTBEAT_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID $ALERT_LOG_PID $SAMPLER_PID 2>/dev/null || true
+
+    if [ -n "$SLOW_SQL_LOG" ] && [ -f "$SLOW_SQL_LOG" ]; then
+        if [ "$PERSIST_SLOW_SQL" = "true" ]; then
+            if [ -n "$SLOW_SQL_OUT" ]; then
+                cp "$SLOW_SQL_LOG" "$SLOW_SQL_OUT" 2>/dev/null || true
+                echo "Saved slow-SQL log to: $SLOW_SQL_OUT"
+            else
+                echo "Slow-SQL log preserved at: $SLOW_SQL_LOG"
+            fi
+        else
+            rm -f "$SLOW_SQL_LOG" 2>/dev/null || true
+        fi
+    fi
+
+    if [ -n "$SAMP_LOG" ] && [ -f "$SAMP_LOG" ]; then
+        if [ "$PERSIST_DB_SAMPLE" = "true" ]; then
+            if [ -n "$DB_SAMPLE_OUT" ]; then
+                cp "$SAMP_LOG" "$DB_SAMPLE_OUT" 2>/dev/null || true
+                echo "Saved DB sampler log to: $DB_SAMPLE_OUT"
+            else
+                echo "DB sampler log preserved at: $SAMP_LOG"
+            fi
+        else
+            rm -f "$SAMP_LOG" 2>/dev/null || true
+        fi
+    fi
+}
+
+trap 'cleanup' EXIT
 
 # Also show a heartbeat so user knows the script is still running
 # Use a file to track elapsed time since subprocess can't access parent vars
@@ -280,9 +442,9 @@ HEARTBEAT_PID=$!
 while true; do
     i=$((i + 1))
     if curl -s http://localhost:3001/health > /dev/null 2>&1; then
-        kill $LOG_PID 2>/dev/null || true
+        kill $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID 2>/dev/null || true
         kill $HEARTBEAT_PID 2>/dev/null || true
-        wait $LOG_PID 2>/dev/null || true
+        wait $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID 2>/dev/null || true
         wait $HEARTBEAT_PID 2>/dev/null || true
         echo -e "\n  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "  Backend:  ${GREEN}✓ Responding (took ${i}s)${NC}"
@@ -293,9 +455,9 @@ while true; do
     
     # Timeout after 5 minutes
     if [ $i -ge 300 ]; then
-        kill $LOG_PID 2>/dev/null || true
+        kill $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID $SAMPLER_PID 2>/dev/null || true
         kill $HEARTBEAT_PID 2>/dev/null || true
-        wait $LOG_PID 2>/dev/null || true
+        wait $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID $SAMPLER_PID 2>/dev/null || true
         wait $HEARTBEAT_PID 2>/dev/null || true
         echo -e "\n  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "  ${RED}✗ Timeout waiting for backend${NC}"
@@ -315,6 +477,59 @@ if curl -s http://localhost:3000 > /dev/null 2>&1; then
     echo -e "  Frontend: ${GREEN}✓ Responding${NC}"
 else
     echo -e "  Frontend: ${RED}✗ Not responding${NC}"
+fi
+
+# If verbose slow-SQL log exists, print a short summary of the slowest statements
+if [ -n "$SLOW_SQL_LOG" ] && [ -s "$SLOW_SQL_LOG" ]; then
+    echo ""
+    echo -e "${BLUE}Top slow SQL statements (ms)${NC}"
+    echo "  duration_ms    query"
+    awk -F'\t' '{print $1 "\t" $2}' "$SLOW_SQL_LOG" | sort -t$'\t' -k1,1 -g -r | head -n 10 | nl -w2 -s'. '
+    echo ""
+fi
+
+# If DB sampler log exists, print a small resource summary
+if [ -n "$SAMP_LOG" ] && [ -s "$SAMP_LOG" ]; then
+    # Produce numeric summary: sample count, avg/max CPU, avg/max memory (bytes)
+    SAMP_SUM=$(awk -F'\t' '
+    function toBytes(s,   a,b,val,unit,mul){gsub(/^ +| +$/,"",s); split(s,a,"/"); mval=a[1]; if(match(mval,/([0-9.]+)([A-Za-z%]*)/,b)){val=b[1]; unit=b[2]} else {val=0; unit=""} mul=1; if(unit~/[Kk]i?/){mul=1024} else if(unit~/[Mm]i?/){mul=1024*1024} else if(unit~/[Gg]i?/){mul=1024*1024*1024} else if(unit~/[Tt]i?/){mul=1024*1024*1024*1024} return val*mul }
+    { cpu=$3; gsub(/%/,"",cpu); mem=toBytes($4); sumcpu+=cpu; summem+=mem; if(cpu>maxc) maxc=cpu; if(mem>maxm) maxm=mem; cnt++ }
+    END{ if(cnt==0) print "0\t0\t0\t0\t0"; else printf "%d\t%.2f\t%.2f\t%.0f\t%.0f", cnt, sumcpu/cnt, maxc, summem/cnt, maxm }' "$SAMP_LOG")
+
+    IFS=$'\t' read -r s_cnt s_avg_cpu s_max_cpu s_avg_mem_bytes s_max_mem_bytes <<< "$SAMP_SUM"
+
+    human_readable() {
+        local bytes="$1"
+        local units=(B KiB MiB GiB TiB)
+        local u=0
+        local val="$bytes"
+        # handle zero
+        if [ "$val" -le 0 ]; then
+            printf "0B"
+            return
+        fi
+        while [ $(echo "$val >= 1024" | bc) -eq 1 ] && [ $u -lt 4 ]; do
+            val=$(echo "scale=2; $val/1024" | bc)
+            u=$((u+1))
+        done
+        printf "%.2f%s" "$val" "${units[$u]}"
+    }
+
+    echo -e "${BLUE}Database resource sampling summary${NC}"
+    echo "  samples=${s_cnt} avg_cpu=${s_avg_cpu}% max_cpu=${s_max_cpu}% avg_mem=$(human_readable $s_avg_mem_bytes) max_mem=$(human_readable $s_max_mem_bytes)"
+    echo "  Recent samples (last 10):"
+    tail -n 10 "$SAMP_LOG" | sed -n '1,100p'
+    echo ""
+fi
+
+# If persisting slow-sql log, copy it now if path provided
+if [ "$PERSIST_SLOW_SQL" = true ] && [ -n "$SLOW_SQL_LOG" ] && [ -s "$SLOW_SQL_LOG" ]; then
+    if [ -n "$SLOW_SQL_OUT" ]; then
+        cp "$SLOW_SQL_LOG" "$SLOW_SQL_OUT" 2>/dev/null || true
+        echo "Saved slow-SQL log to: $SLOW_SQL_OUT"
+    else
+        echo "Slow-SQL log preserved at: $SLOW_SQL_LOG"
+    fi
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

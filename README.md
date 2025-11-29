@@ -42,6 +42,29 @@ cd footballhome
 ./dev.sh --help
 ```
 
+### dev.sh: verbose diagnostics
+
+The `dev.sh` script now includes additional diagnostic flags to help find build and database initialization bottlenecks:
+
+- `--verbose` : Enable shell tracing, collect slow SQL statements, and show per-service build timings.
+- `--summary-only` : Run builds and start services but skip live log-followers and DB sampling. Useful when you only want a compact summary.
+- `--persist-slow-sql` and `--slow-sql-out=<PATH>` : Save the collected slow-SQL log to a path for later analysis.
+- `--persist-db-sample` and `--db-sample-out=<PATH>` : Save the DB resource sampler log (docker stats) to a path.
+- `--alert-pattern=<REGEX>` : Customize the realtime alert regex used to highlight warnings/errors in logs.
+
+Examples:
+
+```bash
+# Verbose run with persisted logs
+./dev.sh --verbose --persist-slow-sql --slow-sql-out=/tmp/slow_sql.tsv --persist-db-sample --db-sample-out=/tmp/db_stats.log
+
+# Quick restart with summary-only output
+./dev.sh --quick --summary-only
+
+# Customize alert pattern to include 'duration' lines
+./dev.sh --verbose --alert-pattern='error|duration|deadlock'
+```
+
 ## 🏗️ Architecture
 
 ```

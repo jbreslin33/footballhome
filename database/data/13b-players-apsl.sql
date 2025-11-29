@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYERS
 -- ========================================
--- Generated: 2025-11-27T18:48:57.104Z
+-- Generated: 2025-11-29T22:20:39.742Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -2274,11 +2274,6 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, notes)
-VALUES ('375d9aff-512e-0006-9d11-705d57b38f2c', 'APSL player - position: not specified')
-ON CONFLICT (id) DO UPDATE SET
-  notes = EXCLUDED.notes;
-
-INSERT INTO players (id, notes)
 VALUES ('2a9d2882-1fba-0006-a423-f0addab7b5be', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
@@ -2290,6 +2285,11 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO players (id, notes)
 VALUES ('0a912565-84ec-0006-d1c3-e33df55ab126', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('85b51d2d-23a3-0006-7452-c1380cce73cc', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
@@ -2335,11 +2335,6 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO players (id, notes)
 VALUES ('9812044e-02b4-0006-f0df-fc72fb89b3dd', 'APSL player - position: not specified')
-ON CONFLICT (id) DO UPDATE SET
-  notes = EXCLUDED.notes;
-
-INSERT INTO players (id, notes)
-VALUES ('233f1298-8ddb-0006-74d3-74647a81d1f0', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
@@ -4004,12 +3999,12 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, notes)
-VALUES ('1821dd74-7def-0006-5d0d-8fc2237b95a9', 'APSL player - position: not specified')
+VALUES ('8e947f42-3cf8-0006-843e-60f8b5fea83d', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, notes)
-VALUES ('8e947f42-3cf8-0006-843e-60f8b5fea83d', 'APSL player - position: not specified')
+VALUES ('36922a3a-f659-0006-9c4d-0e16a1ca9095', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
