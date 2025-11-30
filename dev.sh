@@ -154,6 +154,36 @@ echo -e "${BLUE}Football Home - Development Workflow${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
+# Show execution plan
+echo -e "${YELLOW}📋 Execution Plan:${NC}"
+if [ "$APSL_SCRAPE" = true ]; then
+    echo -e "  ${GREEN}✓${NC} APSL scraping enabled"
+else
+    echo -e "  ${BLUE}⏭${NC}  APSL scraping skipped"
+fi
+
+if [ "$VENUE_SCRAPE" = true ]; then
+    echo -e "  ${GREEN}✓${NC} Venue scraping enabled"
+else
+    echo -e "  ${BLUE}⏭${NC}  Venue scraping skipped"
+fi
+
+if [ "$QUICK_MODE" = true ]; then
+    echo -e "  ${GREEN}✓${NC} Quick mode (keep database volumes)"
+else
+    echo -e "  ${YELLOW}⚠${NC}  Full rebuild (clean database)"
+fi
+
+if [ "$SCRAPE_ONLY" = true ]; then
+    echo -e "  ${GREEN}✓${NC} Scrape-only mode (skip rebuild)"
+fi
+
+if [ "$VERBOSE" = true ]; then
+    echo -e "  ${GREEN}✓${NC} Verbose logging enabled"
+fi
+
+echo ""
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 0: PRESERVE EXISTING VENUES (before volume deletion)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
