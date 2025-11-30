@@ -155,6 +155,65 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 0: PRESERVE EXISTING VENUES (before volume deletion)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Check if DB is running and has venues data
+if docker ps --format '{{.Names}}' | grep -q "^footballhome_db$"; then
+    echo -e "${YELLOW}💾 Step 0: Preserving existing venues from database${NC}"
+    
+    VENUE_COUNT=$(docker exec footballhome_db psql -U footballhome_user -d footballhome -t -c "SELECT COUNT(*) FROM venues;" 2>/dev/null | tr -d ' ' || echo "0")
+    
+    if [ "$VENUE_COUNT" -gt 0 ]; then
+        echo -e "  Found $VENUE_COUNT venues in database, exporting to COPY format..."
+        
+        # Export venues to COPY format
+        docker exec footballhome_db psql -U footballhome_user -d footballhome -c "\\copy venues TO STDOUT" > /tmp/venues_export.txt 2>/dev/null
+        
+        # Create COPY file
+        {
+            echo "-- Venues data exported from running database"
+            echo "-- Exported: $(date)"
+            echo "-- Count: $VENUE_COUNT venues"
+            echo ""
+            echo "COPY venues ("
+            echo "    id, name, venue_type, formatted_address, city, state, postal_code, country,"
+            echo "    latitude, longitude, surface_type, phone, international_phone_number, website,"
+            echo "    place_id, rating, user_ratings_total, price_level, business_status,"
+            echo "    google_types, opening_hours, photos, data_source, last_google_update, is_active,"
+            echo "    created_at, updated_at"
+            echo ") FROM stdin;"
+            cat /tmp/venues_export.txt
+            echo "\\."
+            echo ""
+        } > database/data/02-venues.copy.sql
+        
+        rm -f /tmp/venues_export.txt
+        echo -e "${GREEN}✓ Exported $VENUE_COUNT venues to 02-venues.copy.sql${NC}"
+    else
+        echo -e "  Database has no venues, checking for existing data files..."
+        
+        if [ -f "database/data/02-venues.sql" ] && [ ! -f "database/data/02-venues.copy.sql" ]; then
+            echo -e "  Found venues.sql, will convert to COPY format later"
+        elif [ -f "database/data/02-venues.copy.sql" ]; then
+            echo -e "  Found existing venues.copy.sql"
+        else
+            echo -e "${YELLOW}⚠️  No venue data found anywhere${NC}"
+        fi
+    fi
+else
+    echo -e "${BLUE}⏭️  Step 0: No running database to export from${NC}"
+    
+    if [ -f "database/data/02-venues.copy.sql" ]; then
+        echo -e "  Will use existing 02-venues.copy.sql"
+    elif [ -f "database/data/02-venues.sql" ]; then
+        echo -e "  Will convert 02-venues.sql to COPY format later"
+    fi
+fi
+
+echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 1: SCRAPE DATA (opt-in with flags)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -189,17 +248,51 @@ fi
 # Venue Scraping
 if [ "$VENUE_SCRAPE" = true ]; then
     echo ""
-    echo -e "${YELLOW}📍 Step 1b: Scraping Venues${NC}"
+    echo -e "${YELLOW}📍 Step 1b: Scraping New Venues${NC}"
     echo -e "  This will take 2-5 minutes..."
     echo ""
     
-    # Note: Add venue scraping script call here when implemented
-    echo -e "${YELLOW}⚠️  Venue scraper not yet implemented${NC}"
-    echo -e "    Venues are currently manual/static data"
+    # Ensure we have a base COPY file to append to
+    if [ ! -f "database/data/02-venues.copy.sql" ]; then
+        echo -e "${RED}✗ No existing venues COPY file found${NC}"
+        echo -e "  Run ./dev.sh first to establish baseline venues"
+        exit 1
+    fi
     
-    # if node database/scripts/venue-scraper/scrape-google-venues.js; then
-    #     echo ""
-    #     echo -e "${GREEN}✓ Venues scraped successfully${NC}"
+    # Extract existing place_ids to avoid duplicates
+    EXISTING_IDS=$(grep -v "^--" database/data/02-venues.copy.sql | grep -v "^COPY" | grep -v "^\\\\\." | grep -v "^$" | awk -F'\t' '{print $15}' | sort -u)
+    EXISTING_COUNT=$(echo "$EXISTING_IDS" | wc -l)
+    
+    echo -e "  Existing venues: $EXISTING_COUNT (will skip duplicates based on place_id)"
+    echo ""
+    
+    # TODO: Implement actual venue scraper
+    # The scraper should:
+    # 1. Fetch new venues from Google Places API
+    # 2. Check each venue's place_id against EXISTING_IDS
+    # 3. Only add venues with new place_ids
+    # 4. Append new rows to the COPY file (before the \. terminator)
+    
+    echo -e "${YELLOW}⚠️  Venue scraper not yet fully implemented${NC}"
+    echo -e "    To implement:"
+    echo -e "    1. Create database/scripts/venue-scraper/scrape-google-venues.js"
+    echo -e "    2. Fetch venues from Google Places API"
+    echo -e "    3. Output new venues in COPY format to stdout"
+    echo -e "    4. This script will merge them into 02-venues.copy.sql"
+    
+    # Example of how it would work when implemented:
+    # if node database/scripts/venue-scraper/scrape-google-venues.js > /tmp/new_venues.txt 2>&1; then
+    #     NEW_COUNT=$(wc -l < /tmp/new_venues.txt)
+    #     
+    #     # Insert new venues before the \. terminator
+    #     head -n -2 database/data/02-venues.copy.sql > /tmp/venues_temp.sql
+    #     cat /tmp/new_venues.txt >> /tmp/venues_temp.sql
+    #     echo "\\." >> /tmp/venues_temp.sql
+    #     echo "" >> /tmp/venues_temp.sql
+    #     mv /tmp/venues_temp.sql database/data/02-venues.copy.sql
+    #     
+    #     echo -e "${GREEN}✓ Added $NEW_COUNT new venues${NC}"
+    #     rm -f /tmp/new_venues.txt
     # else
     #     echo -e "${RED}✗ Venue scraping failed${NC}"
     #     exit 1
@@ -207,7 +300,7 @@ if [ "$VENUE_SCRAPE" = true ]; then
     
     echo ""
     echo -e "${BLUE}📋 Venue Changes:${NC}"
-    git status --short database/data/02-venues.sql || echo "  (no changes)"
+    git diff --stat database/data/02-venues.copy.sql || echo "  (no changes)"
 else
     echo -e "${BLUE}⏭️  Step 1b: Skipping venue scrape (use --venue-scrape to enable)${NC}"
 fi
