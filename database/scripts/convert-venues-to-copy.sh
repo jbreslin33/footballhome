@@ -26,6 +26,8 @@ echo "📦 Output: $OUTPUT_COPY (COPY format)"
 echo ""
 
 # Use Node.js to parse and convert
+# Export vars so they're available in the heredoc
+export INPUT_FILE OUTPUT_SQL OUTPUT_COPY
 node << 'EOF'
 const fs = require('fs');
 

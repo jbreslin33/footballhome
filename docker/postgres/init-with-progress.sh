@@ -52,6 +52,10 @@ for sql_file in "${FILES_TO_LOAD[@]}"; do
         # Execute with verbose output showing what's happening
         START=$(date +%s)
         
+        # Track current table and row count for this table
+        CURRENT_TABLE=""
+        TABLE_INSERT_COUNT=0
+        
         # Run psql with detailed output
         psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
             --echo-all \
@@ -65,24 +69,36 @@ for sql_file in "${FILES_TO_LOAD[@]}"; do
                     echo "   ✨ Creating table: $TABLE_NAME"
                 fi
             
-            # Show INSERT statements with details
+            # Show INSERT statements with per-table counts
             elif echo "$line" | grep -qE "^INSERT INTO"; then
                 TABLE_NAME=$(echo "$line" | grep -oP "INSERT INTO \K[^ ]+")
-                VALUES=$(echo "$line" | grep -oP "VALUES \(\K[^)]*" | head -c 100)
-                echo "   ➕ Inserting into $TABLE_NAME: ${VALUES:0:80}..."
+                # Reset counter if we're on a new table
+                if [ "$TABLE_NAME" != "$CURRENT_TABLE" ]; then
+                    if [ -n "$CURRENT_TABLE" ] && [ "$TABLE_INSERT_COUNT" -gt 0 ]; then
+                        echo "   ✅ Inserted $TABLE_INSERT_COUNT rows into $CURRENT_TABLE"
+                    fi
+                    CURRENT_TABLE="$TABLE_NAME"
+                    TABLE_INSERT_COUNT=0
+                fi
+                TABLE_INSERT_COUNT=$((TABLE_INSERT_COUNT + 1))
+                # Only show progress every 50 rows to reduce spam
+                if [ $((TABLE_INSERT_COUNT % 50)) -eq 0 ]; then
+                    echo "   ➕ $CURRENT_TABLE: $TABLE_INSERT_COUNT rows..."
+                fi
             
             # Show COPY statements (bulk inserts) - this is the start of COPY
             elif echo "$line" | grep -qE "^COPY [a-z_]+.*FROM stdin"; then
                 TABLE_NAME=$(echo "$line" | grep -oP "COPY \K[^ (]+")
-                COLUMNS=$(echo "$line" | grep -oP "\(\K[^)]+")
-                COL_COUNT=$(echo "$COLUMNS" | tr ',' '\n' | wc -l)
-                echo "   📥 Bulk loading $COL_COUNT columns into: $TABLE_NAME"
-                echo "      (Reading tab-delimited data...)"
+                echo "   📥 BULK LOADING into: $TABLE_NAME (COPY format - fast!)"
+                CURRENT_TABLE="$TABLE_NAME"
+                TABLE_INSERT_COUNT=0
             
             # Show completion of COPY - this shows how many rows were loaded
             elif echo "$line" | grep -qE "^COPY [0-9]+"; then
                 ROW_COUNT=$(echo "$line" | grep -oP "^COPY \K[0-9]+")
-                echo "   ✅ Loaded $ROW_COUNT rows"
+                echo "   ✅ Loaded $ROW_COUNT rows into $CURRENT_TABLE"
+                CURRENT_TABLE=""
+                TABLE_INSERT_COUNT=0
             
             # Show ALTER TABLE
             elif echo "$line" | grep -qE "^ALTER TABLE"; then
@@ -103,6 +119,11 @@ for sql_file in "${FILES_TO_LOAD[@]}"; do
                 echo "   ⚠️  WARNING: $line"
             fi
         done
+        
+        # Show final count for last table if we were tracking INSERTs
+        if [ -n "$CURRENT_TABLE" ] && [ "$TABLE_INSERT_COUNT" -gt 0 ]; then
+            echo "   ✅ Inserted $TABLE_INSERT_COUNT rows into $CURRENT_TABLE"
+        fi
         
         END=$(date +%s)
         DURATION=$((END - START))

@@ -105,12 +105,8 @@ if [ "$VERBOSE" = true ]; then
     set -x
 fi
 
-# If no parameters were provided, enable verbose by default so
-# running `./dev.sh` is verbose and performs a full rebuild + scrape.
-if [ $# -eq 0 ]; then
-    VERBOSE=true
-    set -x
-fi
+# Verbose mode is now opt-in via --verbose flag
+# (no longer enabled by default)
 
 # Prepare slow-SQL log file when verbose
 if [ "$VERBOSE" = true ]; then
@@ -183,6 +179,15 @@ if [ "$COPY_COUNT" -gt 0 ]; then
 else
     echo ""
     echo -e "${YELLOW}⚠ No .copy.sql files found - database will load slower${NC}"
+fi
+
+# Special case: venues is manual data (not scraped), convert if needed
+if [ -f "database/data/02-venues.sql" ] && [ ! -f "database/data/02-venues.copy.sql" ]; then
+    echo -e "${YELLOW}🔄 Converting venues to COPY format for faster loading...${NC}"
+    if [ -f "database/scripts/convert-to-copy.sh" ]; then
+        database/scripts/convert-to-copy.sh database/data/02-venues.sql database/data/02-venues.copy.sql > /dev/null
+        echo -e "${GREEN}✓ Venues converted to COPY format${NC}"
+    fi
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -374,8 +379,8 @@ done) &
 LOG_PID=$!
 fi
 
-# Also follow backend and frontend logs for verbose build/runtime diagnostics
-if [ "$SUMMARY_ONLY" != true ]; then
+# Also follow backend and frontend logs for verbose build/runtime diagnostics (only if verbose)
+if [ "$VERBOSE" = true ] && [ "$SUMMARY_ONLY" != true ]; then
     BACKEND_LOG_PID=""
     FRONTEND_LOG_PID=""
     (docker compose logs --no-color --follow backend 2>&1 | sed 's/^/  [BE] /') &
@@ -442,10 +447,9 @@ HEARTBEAT_PID=$!
 while true; do
     i=$((i + 1))
     if curl -s http://localhost:3001/health > /dev/null 2>&1; then
-        kill $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID 2>/dev/null || true
-        kill $HEARTBEAT_PID 2>/dev/null || true
-        wait $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID 2>/dev/null || true
-        wait $HEARTBEAT_PID 2>/dev/null || true
+        # Kill all background processes
+        kill $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID $ALERT_LOG_PID $HEARTBEAT_PID 2>/dev/null || true
+        wait $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID $ALERT_LOG_PID $HEARTBEAT_PID 2>/dev/null || true
         echo -e "\n  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "  Backend:  ${GREEN}✓ Responding (took ${i}s)${NC}"
         BACKEND_READY=true
@@ -455,10 +459,8 @@ while true; do
     
     # Timeout after 5 minutes
     if [ $i -ge 300 ]; then
-        kill $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID $SAMPLER_PID 2>/dev/null || true
-        kill $HEARTBEAT_PID 2>/dev/null || true
-        wait $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID $SAMPLER_PID 2>/dev/null || true
-        wait $HEARTBEAT_PID 2>/dev/null || true
+        kill $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID $ALERT_LOG_PID $SAMPLER_PID $HEARTBEAT_PID 2>/dev/null || true
+        wait $LOG_PID $BACKEND_LOG_PID $FRONTEND_LOG_PID $ALERT_LOG_PID $SAMPLER_PID $HEARTBEAT_PID 2>/dev/null || true
         echo -e "\n  ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "  ${RED}✗ Timeout waiting for backend${NC}"
         echo ""
