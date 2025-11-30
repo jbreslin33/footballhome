@@ -284,9 +284,33 @@ if [ "$VENUE_SCRAPE" = true ]; then
     
     # Ensure we have a base COPY file to append to
     if [ ! -f "database/data/02-venues.copy.sql" ]; then
-        echo -e "${RED}✗ No existing venues COPY file found${NC}"
-        echo -e "  Run ./dev.sh first to establish baseline venues"
-        exit 1
+        echo -e "${YELLOW}⚠️  No existing venues COPY file found${NC}"
+        
+        if [ -f "database/data/02-venues.sql" ]; then
+            echo -e "  Converting venues.sql to COPY format first..."
+            echo -e "  ${BLUE}(This is a one-time conversion)${NC}"
+            # The conversion will happen in Step 1.5 below
+            # For now, create an empty COPY file to append to
+            {
+                echo "-- Venues data in COPY format"
+                echo "-- Created: $(date)"
+                echo ""
+                echo "COPY venues ("
+                echo "    id, name, venue_type, formatted_address, city, state, postal_code, country,"
+                echo "    latitude, longitude, surface_type, phone, international_phone_number, website,"
+                echo "    place_id, rating, user_ratings_total, price_level, business_status,"
+                echo "    google_types, opening_hours, photos, data_source, last_google_update, is_active,"
+                echo "    created_at, updated_at"
+                echo ") FROM stdin;"
+                echo "\\."
+                echo ""
+            } > database/data/02-venues.copy.sql
+            echo -e "${GREEN}✓ Created empty COPY file (will be populated)${NC}"
+        else
+            echo -e "${RED}✗ No venues data found (need either venues.sql or venues.copy.sql)${NC}"
+            echo -e "  Please add venue data before scraping new ones"
+            exit 1
+        fi
     fi
     
     # Extract existing place_ids to avoid duplicates
