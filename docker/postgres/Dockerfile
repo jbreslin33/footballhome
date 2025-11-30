@@ -10,3 +10,5 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # pg_cron configuration is handled by docker-compose command
+
+

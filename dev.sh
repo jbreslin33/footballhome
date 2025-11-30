@@ -190,6 +190,32 @@ if [ -f "database/data/02-venues.sql" ] && [ ! -f "database/data/02-venues.copy.
     fi
 fi
 
+# CRITICAL: Rename .sql files to .sql.skip when .copy.sql exists
+# This prevents PostgreSQL from loading both INSERT and COPY versions
+echo -e "${YELLOW}🔄 Preparing database files (preferring COPY format)...${NC}"
+RENAMED=0
+for sql_file in database/data/*.sql; do
+    # Skip if this is already a .copy.sql or .skip file
+    if [[ "$sql_file" =~ \.copy\.sql$ ]] || [[ "$sql_file" =~ \.skip$ ]]; then
+        continue
+    fi
+    
+    # Check if corresponding .copy.sql exists
+    base=$(basename "$sql_file" .sql)
+    copy_file="database/data/${base}.copy.sql"
+    skip_file="database/data/${base}.sql.skip"
+    
+    if [ -f "$copy_file" ] && [ ! -f "$skip_file" ]; then
+        # Rename .sql to .sql.skip so PostgreSQL won't load it
+        mv "$sql_file" "$skip_file"
+        RENAMED=$((RENAMED + 1))
+    fi
+done
+
+if [ "$RENAMED" -gt 0 ]; then
+    echo -e "${GREEN}✓ Renamed $RENAMED .sql files to .sql.skip (COPY versions will be used)${NC}"
+fi
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 2: DOCKER BUILD & DEPLOY
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
