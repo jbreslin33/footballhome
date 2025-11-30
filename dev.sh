@@ -22,7 +22,9 @@ NC='\033[0m'
 # Flags
 QUICK_MODE=false
 SCRAPE_ONLY=false
-SKIP_SCRAPE=false
+SKIP_SCRAPE=true  # Default: skip scraping unless explicitly requested
+APSL_SCRAPE=false
+VENUE_SCRAPE=false
 VERBOSE=false
 SUMMARY_ONLY=false
 # Temp file for collecting slow SQL statements (duration_ms<TAB>query)
@@ -46,13 +48,30 @@ for arg in "$@"; do
     case $arg in
         --quick)
             QUICK_MODE=true
-            SKIP_SCRAPE=true
             ;;
         --verbose)
             VERBOSE=true
             ;;
         --scrape-only)
             SCRAPE_ONLY=true
+            ;;
+        --apsl-scrape)
+            APSL_SCRAPE=true
+            SKIP_SCRAPE=false
+            ;;
+        --venue-scrape)
+            VENUE_SCRAPE=true
+            SKIP_SCRAPE=false
+            ;;
+        --all-scrape)
+            APSL_SCRAPE=true
+            VENUE_SCRAPE=true
+            SKIP_SCRAPE=false
+            ;;
+        --no-scrape)
+            SKIP_SCRAPE=true
+            APSL_SCRAPE=false
+            VENUE_SCRAPE=false
             ;;
         --persist-slow-sql)
             PERSIST_SLOW_SQL=true
@@ -74,11 +93,26 @@ for arg in "$@"; do
             ;;
         --no-scrape)
             SKIP_SCRAPE=true
+            APSL_SCRAPE=false
+            VENUE_SCRAPE=false
             ;;
         --help|-h)
             echo "Football Home Development Script"
             echo ""
             echo "Usage:"
+            echo "  ./dev.sh                        # Full rebuild (no scraping by default)"
+            echo "  ./dev.sh --apsl-scrape          # Scrape APSL data + rebuild"
+            echo "  ./dev.sh --venue-scrape         # Scrape venues + rebuild"
+            echo "  ./dev.sh --all-scrape           # Scrape everything + rebuild"
+            echo "  ./dev.sh --quick                # Quick restart (no scrape, keep DB)"
+            echo "  ./dev.sh --scrape-only          # Only scrape (use with --apsl-scrape/--venue-scrape)"
+            echo "  ./dev.sh --no-scrape            # Explicitly skip all scraping"
+            echo "  ./dev.sh --verbose              # Show detailed logs"
+            echo ""
+            echo "Examples:"
+            echo "  ./dev.sh --apsl-scrape --scrape-only    # Just update APSL data"
+            echo "  ./dev.sh --venue-scrape                 # Update venues and rebuild"
+            echo "  ./dev.sh --all-scrape --verbose         # Full scrape with logs"
             echo "  ./dev.sh                Full rebuild (scrape + clean rebuild)"
             echo "  ./dev.sh --quick        Quick restart (no scrape, keep volumes)"
             echo "  ./dev.sh --scrape-only  Only scrape APSL data"
@@ -121,19 +155,20 @@ echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 1: SCRAPE APSL DATA
+# STEP 1: SCRAPE DATA (opt-in with flags)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-if [ "$SKIP_SCRAPE" = false ]; then
-    echo -e "${YELLOW}📊 Step 1: Scraping APSL Data${NC}"
+# APSL Scraping
+if [ "$APSL_SCRAPE" = true ]; then
+    echo -e "${YELLOW}📊 Step 1a: Scraping APSL Data${NC}"
     echo -e "  This will take 5-15 minutes..."
     echo ""
     
-    # Clean up old .copy.sql files before scraping (scraper will generate fresh ones)
-    OLD_COPY_COUNT=$(ls database/data/*.copy.sql 2>/dev/null | wc -l)
+    # Clean up old APSL .copy.sql files before scraping (scraper will generate fresh ones)
+    OLD_COPY_COUNT=$(ls database/data/{03,04,05,06,07,08b,11,13b,14,15,16}*.copy.sql 2>/dev/null | wc -l)
     if [ "$OLD_COPY_COUNT" -gt 0 ]; then
-        echo -e "${BLUE}🗑️  Cleaning up $OLD_COPY_COUNT old .copy.sql files...${NC}"
-        rm database/data/*.copy.sql
+        echo -e "${BLUE}🗑️  Cleaning up $OLD_COPY_COUNT old APSL .copy.sql files...${NC}"
+        rm database/data/{03,04,05,06,07,08b,11,13b,14,15,16}*.copy.sql 2>/dev/null || true
     fi
     
     if node database/scripts/apsl-scraper/scrape-apsl.js; then
@@ -145,10 +180,43 @@ if [ "$SKIP_SCRAPE" = false ]; then
     fi
     
     echo ""
-    echo -e "${BLUE}📋 Changes:${NC}"
-    git status --short database/data/ || true
+    echo -e "${BLUE}📋 APSL Changes:${NC}"
+    git status --short database/data/ | grep -E "(03|04|05|06|07|08b|11|13b|14|15|16)-" || echo "  (no changes)"
 else
-    echo -e "${BLUE}⏭️  Step 1: Skipping APSL scrape${NC}"
+    echo -e "${BLUE}⏭️  Step 1a: Skipping APSL scrape (use --apsl-scrape to enable)${NC}"
+fi
+
+# Venue Scraping
+if [ "$VENUE_SCRAPE" = true ]; then
+    echo ""
+    echo -e "${YELLOW}📍 Step 1b: Scraping Venues${NC}"
+    echo -e "  This will take 2-5 minutes..."
+    echo ""
+    
+    # Note: Add venue scraping script call here when implemented
+    echo -e "${YELLOW}⚠️  Venue scraper not yet implemented${NC}"
+    echo -e "    Venues are currently manual/static data"
+    
+    # if node database/scripts/venue-scraper/scrape-google-venues.js; then
+    #     echo ""
+    #     echo -e "${GREEN}✓ Venues scraped successfully${NC}"
+    # else
+    #     echo -e "${RED}✗ Venue scraping failed${NC}"
+    #     exit 1
+    # fi
+    
+    echo ""
+    echo -e "${BLUE}📋 Venue Changes:${NC}"
+    git status --short database/data/02-venues.sql || echo "  (no changes)"
+else
+    echo -e "${BLUE}⏭️  Step 1b: Skipping venue scrape (use --venue-scrape to enable)${NC}"
+fi
+
+# Show summary if any scraping was done
+if [ "$APSL_SCRAPE" = true ] || [ "$VENUE_SCRAPE" = true ]; then
+    echo ""
+    echo -e "${BLUE}📋 All Changes:${NC}"
+    git status --short database/data/ || true
 fi
 
 # Exit if scrape-only mode
@@ -163,32 +231,92 @@ if [ "$SCRAPE_ONLY" = true ]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 1.5: CONVERT SQL TO COPY FORMAT (for 20-40x faster loading)
+# STEP 1.5: CONVERT VENUES TO COPY FORMAT (for 20-40x faster loading)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 1.5: CONVERT SQL TO COPY FORMAT (for 20-40x faster loading)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# NOTE: Scraper now generates .copy.sql files directly, so we don't need to convert
-# Just verify they exist
-# Special case: venues is manual data (not scraped), convert if needed
-# MUST happen BEFORE renaming .sql files
-if [ ! -f "database/data/02-venues.copy.sql" ]; then
-    if [ -f "database/data/02-venues.sql" ]; then
-        echo -e "${YELLOW}🔄 Converting venues to COPY format for faster loading...${NC}"
-        if [ -f "database/scripts/convert-to-copy.sh" ]; then
-            database/scripts/convert-to-copy.sh database/data/02-venues.sql database/data/02-venues.copy.sql > /dev/null
-            echo -e "${GREEN}✓ Venues converted to COPY format${NC}"
-        fi
-    elif [ -f "database/data/02-venues.sql.skip" ]; then
-        echo -e "${YELLOW}🔄 Converting venues.sql.skip to COPY format...${NC}"
-        if [ -f "database/scripts/convert-to-copy.sh" ]; then
-            database/scripts/convert-to-copy.sh database/data/02-venues.sql.skip database/data/02-venues.copy.sql > /dev/null
-            echo -e "${GREEN}✓ Venues converted to COPY format${NC}"
-        fi
+# Special case: venues.sql contains complex JSONB data that breaks our converters
+# Solution: Use PostgreSQL itself to convert by loading into temp DB and dumping as COPY
+if [ -f "database/data/02-venues.sql" ] && [ ! -f "database/data/02-venues.copy.sql" ]; then
+    echo -e "${YELLOW}🔄 Converting venues.sql to COPY format using PostgreSQL...${NC}"
+    
+    # Start a temporary PostgreSQL container
+    TEMP_CONTAINER="temp_venues_converter_$$"
+    docker run --name "$TEMP_CONTAINER" -e POSTGRES_PASSWORD=temp -d postgres:15-alpine > /dev/null 2>&1
+    
+    # Wait for it to be ready
+    sleep 3
+    
+    # Create the venues table schema (extract from schema file)
+    docker exec "$TEMP_CONTAINER" psql -U postgres -c "
+        CREATE TABLE venues (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            name VARCHAR(255) NOT NULL,
+            venue_type VARCHAR(50),
+            formatted_address TEXT,
+            city VARCHAR(100),
+            state VARCHAR(50),
+            postal_code VARCHAR(20),
+            country VARCHAR(100),
+            latitude DECIMAL(10, 7),
+            longitude DECIMAL(10, 7),
+            surface_type VARCHAR(50),
+            phone VARCHAR(50),
+            international_phone_number VARCHAR(50),
+            website TEXT,
+            place_id VARCHAR(255) UNIQUE,
+            rating DECIMAL(2, 1),
+            user_ratings_total INTEGER,
+            price_level INTEGER,
+            business_status VARCHAR(50),
+            google_types JSONB,
+            opening_hours JSONB,
+            photos JSONB,
+            data_source VARCHAR(50) DEFAULT 'manual',
+            last_google_update TIMESTAMP,
+            is_active BOOLEAN DEFAULT true,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );" > /dev/null 2>&1
+    
+    # Load the INSERT data
+    docker exec -i "$TEMP_CONTAINER" psql -U postgres < database/data/02-venues.sql > /dev/null 2>&1
+    
+    # Dump as COPY format
+    docker exec "$TEMP_CONTAINER" psql -U postgres -c "
+        \\copy venues TO STDOUT
+    " > /tmp/venues_data.txt 2>/dev/null
+    
+    # Create the COPY format file
+    {
+        echo "-- Venues data in COPY format (converted from INSERT format)"
+        echo "-- Original: database/data/02-venues.sql"
+        echo "-- Converted: $(date)"
+        echo ""
+        echo "COPY venues ("
+        echo "    id, name, venue_type, formatted_address, city, state, postal_code, country,"
+        echo "    latitude, longitude, surface_type, phone, international_phone_number, website,"
+        echo "    place_id, rating, user_ratings_total, price_level, business_status,"
+        echo "    google_types, opening_hours, photos, data_source, last_google_update, is_active,"
+        echo "    created_at, updated_at"
+        echo ") FROM stdin;"
+        cat /tmp/venues_data.txt
+        echo "\\."
+        echo ""
+    } > database/data/02-venues.copy.sql
+    
+    # Cleanup
+    docker rm -f "$TEMP_CONTAINER" > /dev/null 2>&1
+    rm -f /tmp/venues_data.txt
+    
+    if [ -f "database/data/02-venues.copy.sql" ] && [ -s "database/data/02-venues.copy.sql" ]; then
+        echo -e "${GREEN}✓ Venues converted to COPY format ($(wc -l < database/data/02-venues.copy.sql) lines)${NC}"
+    else
+        echo -e "${RED}✗ Venues conversion failed, will use INSERT format${NC}"
+        rm -f database/data/02-venues.copy.sql
     fi
 fi
+
+# NOTE: Scraper generates .copy.sql files directly for APSL data
 
 COPY_COUNT=$(ls database/data/*.copy.sql 2>/dev/null | wc -l)
 if [ "$COPY_COUNT" -gt 0 ]; then
@@ -565,10 +693,21 @@ echo "     docker logs -f footballhome_backend"
 echo "     docker logs -f footballhome_db"
 echo ""
 
-if [ "$SKIP_SCRAPE" = false ] && [ "$QUICK_MODE" = false ]; then
-    echo "  3. If data updated, commit changes:"
+if [ "$APSL_SCRAPE" = true ] || [ "$VENUE_SCRAPE" = true ]; then
+    echo "  3. Review scraped data changes:"
+    echo "     git status"
+    echo "     git diff database/data/"
+    echo ""
+    echo "  4. Commit changes:"
     echo "     git add database/data/"
-    echo "     git commit -m \"Update APSL data\""
+    echo "     git commit -m \"Update scraped data\""
     echo "     git push"
     echo ""
 fi
+
+echo -e "${YELLOW}💡 Scraping Tips:${NC}"
+echo "  - Update APSL data:    ./dev.sh --apsl-scrape"
+echo "  - Update venues:       ./dev.sh --venue-scrape"
+echo "  - Update all:          ./dev.sh --all-scrape"
+echo "  - Just scrape:         ./dev.sh --apsl-scrape --scrape-only"
+echo ""
