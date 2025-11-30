@@ -172,6 +172,24 @@ fi
 
 # NOTE: Scraper now generates .copy.sql files directly, so we don't need to convert
 # Just verify they exist
+# Special case: venues is manual data (not scraped), convert if needed
+# MUST happen BEFORE renaming .sql files
+if [ ! -f "database/data/02-venues.copy.sql" ]; then
+    if [ -f "database/data/02-venues.sql" ]; then
+        echo -e "${YELLOW}🔄 Converting venues to COPY format for faster loading...${NC}"
+        if [ -f "database/scripts/convert-to-copy.sh" ]; then
+            database/scripts/convert-to-copy.sh database/data/02-venues.sql database/data/02-venues.copy.sql > /dev/null
+            echo -e "${GREEN}✓ Venues converted to COPY format${NC}"
+        fi
+    elif [ -f "database/data/02-venues.sql.skip" ]; then
+        echo -e "${YELLOW}🔄 Converting venues.sql.skip to COPY format...${NC}"
+        if [ -f "database/scripts/convert-to-copy.sh" ]; then
+            database/scripts/convert-to-copy.sh database/data/02-venues.sql.skip database/data/02-venues.copy.sql > /dev/null
+            echo -e "${GREEN}✓ Venues converted to COPY format${NC}"
+        fi
+    fi
+fi
+
 COPY_COUNT=$(ls database/data/*.copy.sql 2>/dev/null | wc -l)
 if [ "$COPY_COUNT" -gt 0 ]; then
     echo ""
@@ -181,40 +199,34 @@ else
     echo -e "${YELLOW}⚠ No .copy.sql files found - database will load slower${NC}"
 fi
 
-# Special case: venues is manual data (not scraped), convert if needed
-if [ -f "database/data/02-venues.sql" ] && [ ! -f "database/data/02-venues.copy.sql" ]; then
-    echo -e "${YELLOW}🔄 Converting venues to COPY format for faster loading...${NC}"
-    if [ -f "database/scripts/convert-to-copy.sh" ]; then
-        database/scripts/convert-to-copy.sh database/data/02-venues.sql database/data/02-venues.copy.sql > /dev/null
-        echo -e "${GREEN}✓ Venues converted to COPY format${NC}"
-    fi
-fi
-
-# CRITICAL: Rename .sql files to .sql.skip when .copy.sql exists
+# CRITICAL: Delete .sql files when .copy.sql exists
 # This prevents PostgreSQL from loading both INSERT and COPY versions
+# Scraper regenerates .sql files, so we must delete them every time, not just rename once
 echo -e "${YELLOW}🔄 Preparing database files (preferring COPY format)...${NC}"
-RENAMED=0
+DELETED=0
 for sql_file in database/data/*.sql; do
-    # Skip if this is already a .copy.sql or .skip file
-    if [[ "$sql_file" =~ \.copy\.sql$ ]] || [[ "$sql_file" =~ \.skip$ ]]; then
+    # Skip if this is already a .copy.sql file
+    if [[ "$sql_file" =~ \.copy\.sql$ ]]; then
         continue
     fi
     
     # Check if corresponding .copy.sql exists
     base=$(basename "$sql_file" .sql)
     copy_file="database/data/${base}.copy.sql"
-    skip_file="database/data/${base}.sql.skip"
     
-    if [ -f "$copy_file" ] && [ ! -f "$skip_file" ]; then
-        # Rename .sql to .sql.skip so PostgreSQL won't load it
-        mv "$sql_file" "$skip_file"
-        RENAMED=$((RENAMED + 1))
+    if [ -f "$copy_file" ]; then
+        # Delete .sql file so PostgreSQL only loads the .copy.sql version
+        rm "$sql_file"
+        DELETED=$((DELETED + 1))
     fi
 done
 
-if [ "$RENAMED" -gt 0 ]; then
-    echo -e "${GREEN}✓ Renamed $RENAMED .sql files to .sql.skip (COPY versions will be used)${NC}"
+if [ "$DELETED" -gt 0 ]; then
+    echo -e "${GREEN}✓ Deleted $DELETED .sql files (COPY versions will be used instead)${NC}"
 fi
+
+# Clean up any old .sql.skip files from previous approach
+rm -f database/data/*.sql.skip 2>/dev/null || true
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 2: DOCKER BUILD & DEPLOY
@@ -518,35 +530,9 @@ fi
 
 # If DB sampler log exists, print a small resource summary
 if [ -n "$SAMP_LOG" ] && [ -s "$SAMP_LOG" ]; then
-    # Produce numeric summary: sample count, avg/max CPU, avg/max memory (bytes)
-    SAMP_SUM=$(awk -F'\t' '
-    function toBytes(s,   a,b,val,unit,mul){gsub(/^ +| +$/,"",s); split(s,a,"/"); mval=a[1]; if(match(mval,/([0-9.]+)([A-Za-z%]*)/,b)){val=b[1]; unit=b[2]} else {val=0; unit=""} mul=1; if(unit~/[Kk]i?/){mul=1024} else if(unit~/[Mm]i?/){mul=1024*1024} else if(unit~/[Gg]i?/){mul=1024*1024*1024} else if(unit~/[Tt]i?/){mul=1024*1024*1024*1024} return val*mul }
-    { cpu=$3; gsub(/%/,"",cpu); mem=toBytes($4); sumcpu+=cpu; summem+=mem; if(cpu>maxc) maxc=cpu; if(mem>maxm) maxm=mem; cnt++ }
-    END{ if(cnt==0) print "0\t0\t0\t0\t0"; else printf "%d\t%.2f\t%.2f\t%.0f\t%.0f", cnt, sumcpu/cnt, maxc, summem/cnt, maxm }' "$SAMP_LOG")
-
-    IFS=$'\t' read -r s_cnt s_avg_cpu s_max_cpu s_avg_mem_bytes s_max_mem_bytes <<< "$SAMP_SUM"
-
-    human_readable() {
-        local bytes="$1"
-        local units=(B KiB MiB GiB TiB)
-        local u=0
-        local val="$bytes"
-        # handle zero
-        if [ "$val" -le 0 ]; then
-            printf "0B"
-            return
-        fi
-        while [ $(echo "$val >= 1024" | bc) -eq 1 ] && [ $u -lt 4 ]; do
-            val=$(echo "scale=2; $val/1024" | bc)
-            u=$((u+1))
-        done
-        printf "%.2f%s" "$val" "${units[$u]}"
-    }
-
-    echo -e "${BLUE}Database resource sampling summary${NC}"
-    echo "  samples=${s_cnt} avg_cpu=${s_avg_cpu}% max_cpu=${s_max_cpu}% avg_mem=$(human_readable $s_avg_mem_bytes) max_mem=$(human_readable $s_max_mem_bytes)"
-    echo "  Recent samples (last 10):"
-    tail -n 10 "$SAMP_LOG" | sed -n '1,100p'
+    echo -e "${BLUE}Database resource sampling${NC}"
+    echo "  Recent samples (last 5):"
+    tail -n 5 "$SAMP_LOG" 2>/dev/null | sed 's/\t/ | /g' || echo "  (no samples)"
     echo ""
 fi
 
