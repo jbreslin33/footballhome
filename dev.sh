@@ -260,43 +260,44 @@ if [ "$VENUE_SCRAPE" = true ]; then
     fi
     
     # Extract existing place_ids to avoid duplicates
-    EXISTING_IDS=$(grep -v "^--" database/data/02-venues.copy.sql | grep -v "^COPY" | grep -v "^\\\\\." | grep -v "^$" | awk -F'\t' '{print $15}' | sort -u)
-    EXISTING_COUNT=$(echo "$EXISTING_IDS" | wc -l)
+    echo -e "  Extracting existing place_ids for duplicate detection..."
+    grep -v "^--" database/data/02-venues.copy.sql | \
+      grep -v "^COPY" | \
+      grep -v "^\\\\\." | \
+      grep -v "^$" | \
+      awk -F'\t' '{print $15}' | \
+      sort -u > /tmp/existing_place_ids.txt
     
-    echo -e "  Existing venues: $EXISTING_COUNT (will skip duplicates based on place_id)"
+    EXISTING_COUNT=$(wc -l < /tmp/existing_place_ids.txt)
+    echo -e "  Existing venues: $EXISTING_COUNT (will skip duplicates)"
     echo ""
     
-    # TODO: Implement actual venue scraper
-    # The scraper should:
-    # 1. Fetch new venues from Google Places API
-    # 2. Check each venue's place_id against EXISTING_IDS
-    # 3. Only add venues with new place_ids
-    # 4. Append new rows to the COPY file (before the \. terminator)
-    
-    echo -e "${YELLOW}⚠️  Venue scraper not yet fully implemented${NC}"
-    echo -e "    To implement:"
-    echo -e "    1. Create database/scripts/venue-scraper/scrape-google-venues.js"
-    echo -e "    2. Fetch venues from Google Places API"
-    echo -e "    3. Output new venues in COPY format to stdout"
-    echo -e "    4. This script will merge them into 02-venues.copy.sql"
-    
-    # Example of how it would work when implemented:
-    # if node database/scripts/venue-scraper/scrape-google-venues.js > /tmp/new_venues.txt 2>&1; then
-    #     NEW_COUNT=$(wc -l < /tmp/new_venues.txt)
-    #     
-    #     # Insert new venues before the \. terminator
-    #     head -n -2 database/data/02-venues.copy.sql > /tmp/venues_temp.sql
-    #     cat /tmp/new_venues.txt >> /tmp/venues_temp.sql
-    #     echo "\\." >> /tmp/venues_temp.sql
-    #     echo "" >> /tmp/venues_temp.sql
-    #     mv /tmp/venues_temp.sql database/data/02-venues.copy.sql
-    #     
-    #     echo -e "${GREEN}✓ Added $NEW_COUNT new venues${NC}"
-    #     rm -f /tmp/new_venues.txt
-    # else
-    #     echo -e "${RED}✗ Venue scraping failed${NC}"
-    #     exit 1
-    # fi
+    # Run incremental scraper (passes existing IDs, outputs only new venues in COPY format)
+    if node database/scripts/venue-scraper/scrape-google-venues-incremental.js /tmp/existing_place_ids.txt > /tmp/new_venues.txt 2>&1; then
+        # Check if any new venues were found
+        NEW_COUNT=$(grep -v "^$" /tmp/new_venues.txt | grep -v "^⚠️" | grep -v "^Loaded" | grep -v "^Found" | grep -v "^✓" | grep -v "^Skipping" | wc -l)
+        
+        if [ "$NEW_COUNT" -gt 0 ]; then
+            echo -e "  Adding $NEW_COUNT new venues to COPY file..."
+            
+            # Insert new venues before the \. terminator
+            head -n -2 database/data/02-venues.copy.sql > /tmp/venues_temp.sql
+            grep -v "^$" /tmp/new_venues.txt | grep -v "^⚠️" | grep -v "^Loaded" | grep -v "^Found" | grep -v "^✓" | grep -v "^Skipping" >> /tmp/venues_temp.sql
+            echo "\\." >> /tmp/venues_temp.sql
+            echo "" >> /tmp/venues_temp.sql
+            mv /tmp/venues_temp.sql database/data/02-venues.copy.sql
+            
+            echo -e "${GREEN}✓ Added $NEW_COUNT new venues (skipped $EXISTING_COUNT existing)${NC}"
+        else
+            echo -e "${YELLOW}No new venues found (all were duplicates)${NC}"
+        fi
+        
+        rm -f /tmp/new_venues.txt /tmp/existing_place_ids.txt
+    else
+        echo -e "${RED}✗ Venue scraping failed${NC}"
+        cat /tmp/new_venues.txt
+        exit 1
+    fi
     
     echo ""
     echo -e "${BLUE}📋 Venue Changes:${NC}"
