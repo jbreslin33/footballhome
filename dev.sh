@@ -185,6 +185,99 @@ fi
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# AUTOMATED VENUE COPY FILE VALIDATION
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+echo -e "${YELLOW}🔍 Validating venue data files...${NC}"
+
+# Check if we have both files
+if [ -f "database/data/02-venues.sql" ] && [ -f "database/data/02-venues.copy.sql" ]; then
+    SQL_SIZE=$(stat -f%z "database/data/02-venues.sql" 2>/dev/null || stat -c%s "database/data/02-venues.sql" 2>/dev/null)
+    COPY_SIZE=$(stat -f%z "database/data/02-venues.copy.sql" 2>/dev/null || stat -c%s "database/data/02-venues.copy.sql" 2>/dev/null)
+    
+    # If venues.sql is much larger (> 100KB difference), COPY file is probably stale/mock data
+    SIZE_DIFF=$((SQL_SIZE - COPY_SIZE))
+    
+    if [ "$SIZE_DIFF" -gt 102400 ]; then
+        echo -e "${YELLOW}⚠️  Detected stale COPY file:${NC}"
+        echo -e "    venues.sql: $(numfmt --to=iec-i --suffix=B $SQL_SIZE 2>/dev/null || echo "${SQL_SIZE} bytes")"
+        echo -e "    venues.copy.sql: $(numfmt --to=iec-i --suffix=B $COPY_SIZE 2>/dev/null || echo "${COPY_SIZE} bytes")"
+        echo -e "  ${BLUE}Automatically regenerating COPY file from venues.sql...${NC}"
+        echo ""
+        
+        # Delete stale COPY file
+        rm -f database/data/02-venues.copy.sql
+        
+        # Convert using temp container
+        TEMP_CONTAINER="temp_venues_converter_$$"
+        echo -e "  Starting temporary PostgreSQL container..."
+        docker run --name "$TEMP_CONTAINER" -e POSTGRES_PASSWORD=temp -d postgres:15-alpine > /dev/null 2>&1
+        sleep 3
+        
+        echo -e "  Creating venues table..."
+        docker exec "$TEMP_CONTAINER" psql -U postgres -c "
+            CREATE TABLE venues (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                name VARCHAR(255) NOT NULL, venue_type VARCHAR(50), formatted_address TEXT,
+                city VARCHAR(100), state VARCHAR(50), postal_code VARCHAR(20), country VARCHAR(100),
+                latitude DECIMAL(10, 7), longitude DECIMAL(10, 7), surface_type VARCHAR(50),
+                phone VARCHAR(50), international_phone_number VARCHAR(50), website TEXT,
+                place_id VARCHAR(255) UNIQUE, rating DECIMAL(2, 1), user_ratings_total INTEGER,
+                price_level INTEGER, business_status VARCHAR(50), google_types JSONB,
+                opening_hours JSONB, photos JSONB, data_source VARCHAR(50) DEFAULT 'manual',
+                last_google_update TIMESTAMP, is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );" > /dev/null 2>&1
+        
+        echo -e "  Loading INSERT data..."
+        docker exec -i "$TEMP_CONTAINER" psql -U postgres < database/data/02-venues.sql > /dev/null 2>&1
+        
+        echo -e "  Exporting as COPY format..."
+        docker exec "$TEMP_CONTAINER" psql -U postgres -c "\\copy venues TO STDOUT" > /tmp/venues_data.txt 2>/dev/null
+        
+        # Create the COPY format file
+        {
+            echo "-- Venues data in COPY format (auto-converted from INSERT format)"
+            echo "-- Original: database/data/02-venues.sql"
+            echo "-- Converted: $(date)"
+            echo ""
+            echo "COPY venues ("
+            echo "    id, name, venue_type, formatted_address, city, state, postal_code, country,"
+            echo "    latitude, longitude, surface_type, phone, international_phone_number, website,"
+            echo "    place_id, rating, user_ratings_total, price_level, business_status,"
+            echo "    google_types, opening_hours, photos, data_source, last_google_update, is_active,"
+            echo "    created_at, updated_at"
+            echo ") FROM stdin;"
+            cat /tmp/venues_data.txt
+            echo "\\."
+            echo ""
+        } > database/data/02-venues.copy.sql
+        
+        # Cleanup
+        docker rm -f "$TEMP_CONTAINER" > /dev/null 2>&1
+        rm -f /tmp/venues_data.txt
+        
+        if [ -f "database/data/02-venues.copy.sql" ] && [ -s "database/data/02-venues.copy.sql" ]; then
+            NEW_COPY_SIZE=$(stat -f%z "database/data/02-venues.copy.sql" 2>/dev/null || stat -c%s "database/data/02-venues.copy.sql" 2>/dev/null)
+            echo -e "${GREEN}✓ Regenerated venues.copy.sql ($(numfmt --to=iec-i --suffix=B $NEW_COPY_SIZE 2>/dev/null || echo "${NEW_COPY_SIZE} bytes"))${NC}"
+        else
+            echo -e "${RED}✗ Conversion failed, will use INSERT format${NC}"
+            rm -f database/data/02-venues.copy.sql
+        fi
+    else
+        echo -e "${GREEN}✓ Venue COPY file looks current${NC}"
+    fi
+elif [ -f "database/data/02-venues.sql" ] && [ ! -f "database/data/02-venues.copy.sql" ]; then
+    echo -e "${BLUE}ℹ️  Found venues.sql but no COPY file - will convert during build${NC}"
+elif [ -f "database/data/02-venues.copy.sql" ]; then
+    echo -e "${GREEN}✓ Using existing venues.copy.sql${NC}"
+else
+    echo -e "${YELLOW}⚠️  No venue data files found${NC}"
+fi
+
+echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 0: PRESERVE EXISTING VENUES (before volume deletion)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
