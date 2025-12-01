@@ -186,16 +186,17 @@ class MatchRSVPManagementScreen extends Screen {
       const players = rosterResponse.data || [];
       const rsvps = rsvpResponse.data || [];
       
-      // Create a map of player RSVPs
+      // Create a map of player RSVPs (keyed by user_id from RSVP response)
       const rsvpMap = {};
       rsvps.forEach(rsvp => {
         rsvpMap[rsvp.user_id] = rsvp.status;
       });
       
       // Merge roster with RSVP status
+      // Roster uses 'id' for player ID, RSVPs use 'user_id'
       const playersWithRSVP = players.map(player => ({
         ...player,
-        rsvpStatus: rsvpMap[player.user_id] || null
+        rsvpStatus: rsvpMap[player.id] || null
       }));
       
       this.teamPlayers = playersWithRSVP;
@@ -228,14 +229,14 @@ class MatchRSVPManagementScreen extends Screen {
     const sorted = [...players].sort((a, b) => {
       if (!a.rsvpStatus && b.rsvpStatus) return -1;
       if (a.rsvpStatus && !b.rsvpStatus) return 1;
-      const nameA = `${a.first_name} ${a.last_name}`.toLowerCase();
-      const nameB = `${b.first_name} ${b.last_name}`.toLowerCase();
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
       return nameA.localeCompare(nameB);
     });
     
     rsvpList.innerHTML = sorted.map(player => {
-      const name = `${player.first_name || ''} ${player.last_name || ''}`.trim() || 'Unknown';
-      const jersey = player.jersey_number ? `#${player.jersey_number}` : '';
+      const name = player.name || 'Unknown';
+      const jersey = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
       const status = player.rsvpStatus;
       
       // Button classes based on current status
@@ -252,19 +253,19 @@ class MatchRSVPManagementScreen extends Screen {
           </div>
           <div class="rsvp-buttons" style="display: flex; gap: 8px;">
             <button class="rsvp-btn btn btn-sm ${yesClass}" 
-                    data-player-id="${player.user_id}" 
+                    data-player-id="${player.id}" 
                     data-status="attending"
                     title="Attending">
               ✓
             </button>
             <button class="rsvp-btn btn btn-sm ${maybeClass}" 
-                    data-player-id="${player.user_id}" 
+                    data-player-id="${player.id}" 
                     data-status="maybe"
                     title="Maybe">
               ?
             </button>
             <button class="rsvp-btn btn btn-sm ${noClass}" 
-                    data-player-id="${player.user_id}" 
+                    data-player-id="${player.id}" 
                     data-status="not_attending"
                     title="Not Attending">
               ✗
@@ -308,8 +309,8 @@ class MatchRSVPManagementScreen extends Screen {
     .then(response => {
       console.log('RSVP updated:', response);
       
-      // Update local state
-      const player = this.teamPlayers.find(p => p.user_id === playerId);
+      // Update local state (roster uses 'id' not 'user_id')
+      const player = this.teamPlayers.find(p => p.id === playerId);
       if (player) {
         player.rsvpStatus = status;
       }
