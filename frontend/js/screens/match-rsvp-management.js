@@ -260,22 +260,25 @@ class MatchRSVPManagementScreen extends Screen {
       const jersey = player.jerseyNumber || '-';
       const name = player.name || 'Unknown';
       const isPending = !status;
+      const isMaybe = status === 'maybe';
+      const needsAttention = isPending || isMaybe;
       
       // Button styles
       const yesClass = status === 'attending' ? 'btn-success' : 'btn-outline';
       const maybeClass = status === 'maybe' ? 'btn-warning' : 'btn-outline';
       const noClass = status === 'not_attending' ? 'btn-danger' : 'btn-outline';
       
-      // Highlight pending rows with yellow background
-      const rowStyle = isPending 
-        ? 'border-bottom: 1px solid var(--color-border); background: #fff3cd;' 
-        : 'border-bottom: 1px solid var(--color-border);';
+      // Highlight pending/maybe rows with yellow background on each cell
+      const cellBg = needsAttention ? 'background-color: #fef08a;' : '';
+      const statusLabel = isPending 
+        ? ' <span style="color: #92400e; font-weight: bold;">⚠️ No response</span>' 
+        : (isMaybe ? ' <span style="color: #92400e; font-weight: bold;">❓ Maybe</span>' : '');
       
       return `
-        <tr style="${rowStyle}">
-          <td style="padding: var(--space-2); font-weight: bold; width: 50px; text-align: center;">${jersey}</td>
-          <td style="padding: var(--space-2);">${name}${isPending ? ' <span style="color: #856404; font-size: 0.85em;">⚠️ No response</span>' : ''}</td>
-          <td style="padding: var(--space-2); text-align: right; white-space: nowrap;">
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: var(--space-2); font-weight: bold; width: 50px; text-align: center; ${cellBg}">${jersey}</td>
+          <td style="padding: var(--space-2); ${cellBg}">${name}${statusLabel}</td>
+          <td style="padding: var(--space-2); text-align: right; white-space: nowrap; ${cellBg}">
             <button class="rsvp-btn btn btn-sm ${yesClass}" 
                     data-match-id="${matchId}"
                     data-player-id="${player.id}" 
