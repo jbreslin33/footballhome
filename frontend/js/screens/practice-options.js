@@ -4,7 +4,7 @@ class PracticeOptionsScreen extends Screen {
     const teamName = this.navigation.context.team?.name || 'Unknown Team';
     const userRole = this.navigation.context.role; // 'coach', 'player', or 'parent'
     
-    // Only coaches can manage practices
+    // Only coaches can manage practices and attendance
     const showManageButton = userRole === 'coach';
     
     const div = document.createElement('div');
@@ -22,6 +22,13 @@ class PracticeOptionsScreen extends Screen {
             📝 Manage Practices
             <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
               Create, edit, and delete practices
+            </small>
+          </button>
+          
+          <button data-action="attendance" class="btn btn-lg btn-primary">
+            📋 Manage Practice Attendance
+            <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
+              Track who attended each practice
             </small>
           </button>
         ` : ''}
@@ -46,6 +53,8 @@ class PracticeOptionsScreen extends Screen {
         
         if (action === 'manage') {
           this.navigation.goTo('practice-management');
+        } else if (action === 'attendance') {
+          this.navigation.goTo('practice-attendance');
         } else if (action === 'rsvp') {
           this.navigation.goTo('practice-list');
         }

@@ -1097,3 +1097,124 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
         padding: 0 var(--space-8);
     }
 }
+
+/* =====================================================
+   MODAL STYLES
+   ===================================================== */
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: var(--space-4);
+}
+
+.modal-content {
+    background: white;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.modal-header h2 {
+    font-size: var(--text-lg);
+    margin: 0;
+}
+
+.modal-header .btn {
+    padding: var(--space-2);
+    min-width: auto;
+}
+
+/* =====================================================
+   ATTENDANCE STYLES
+   ===================================================== */
+
+.attendance-list {
+    padding: var(--space-4);
+    overflow-y: auto;
+    flex: 1;
+}
+
+.attendance-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.attendance-row:last-child {
+    border-bottom: none;
+}
+
+.attendance-player {
+    flex: 1;
+    font-size: var(--text-base);
+}
+
+.attendance-status-buttons {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.attendance-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: var(--text-lg);
+    transition: all 0.15s ease;
+    padding: 0;
+}
+
+.attendance-btn:hover {
+    transform: scale(1.1);
+}
+
+.attendance-btn.active {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Badge styles */
+.badge {
+    display: inline-block;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.badge-secondary {
+    background: var(--gray-400);
+    color: white;
+}
