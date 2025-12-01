@@ -22,7 +22,7 @@ class RosterManagementScreen extends Screen {
       <div style="padding: var(--space-4); max-width: 1000px; margin: 0 auto;">
         <div style="margin-bottom: var(--space-3); display: flex; justify-content: space-between; align-items: center;">
           <button id="toggle-edit-btn" class="btn btn-secondary">
-            ✏️ Enable Editing
+            ✏️ Edit Roster
           </button>
           <button id="add-player-btn" class="btn btn-primary" style="display: none;">
             ➕ Add Player
@@ -211,13 +211,13 @@ class RosterManagementScreen extends Screen {
     const addBtn = this.element.querySelector('#add-player-btn');
     
     if (this.editMode) {
-      toggleBtn.innerHTML = '👁️ View Only';
+      toggleBtn.innerHTML = '✅ Done Editing';
       toggleBtn.classList.remove('btn-secondary');
-      toggleBtn.classList.add('btn-warning');
+      toggleBtn.classList.add('btn-success');
       addBtn.style.display = 'inline-block';
     } else {
-      toggleBtn.innerHTML = '✏️ Enable Editing';
-      toggleBtn.classList.remove('btn-warning');
+      toggleBtn.innerHTML = '✏️ Edit Roster';
+      toggleBtn.classList.remove('btn-success');
       toggleBtn.classList.add('btn-secondary');
       addBtn.style.display = 'none';
     }
