@@ -13,6 +13,10 @@ class TeamDashboardScreen extends Screen {
       </div>
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); max-width: 500px; margin: 0 auto;">
+        <button data-action="roster" class="btn btn-lg btn-primary">
+          👥 Manage Roster
+        </button>
+        
         <button data-action="practices" class="btn btn-lg btn-primary">
           ⚽ Practices
         </button>
@@ -32,7 +36,9 @@ class TeamDashboardScreen extends Screen {
       if (actionBtn) {
         const action = actionBtn.getAttribute('data-action');
         
-        if (action === 'practices') {
+        if (action === 'roster') {
+          this.navigation.goTo('roster-management');
+        } else if (action === 'practices') {
           this.navigation.goTo('practice-options');
         } else if (action === 'matches') {
           this.navigation.goTo('match-options');

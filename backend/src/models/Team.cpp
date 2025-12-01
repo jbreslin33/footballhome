@@ -1,6 +1,7 @@
 #include "Team.h"
 #include <iostream>
 #include <sstream>
+#include <iomanip>
 
 Team::Team() : Model("teams", "id") {
 }
@@ -104,18 +105,23 @@ std::string Team::getTeamRoster(const std::string& team_id) {
         for (const auto& row : result) {
             if (!first) json << ",";
             
-            std::string full_name = row["first_name"].as<std::string>() + " " + row["last_name"].as<std::string>();
+            std::string first_name = row["first_name"].is_null() ? "" : row["first_name"].as<std::string>();
+            std::string last_name = row["last_name"].is_null() ? "" : row["last_name"].as<std::string>();
+            std::string full_name = escapeJSON(first_name + " " + last_name);
+            std::string email = row["email"].is_null() ? "" : escapeJSON(row["email"].as<std::string>());
+            std::string position = row["position"].is_null() ? "No Position" : escapeJSON(row["position"].as<std::string>());
+            std::string joined_date = row["joined_date"].is_null() ? "" : row["joined_date"].as<std::string>();
             
             json << "{";
             json << "\"id\":\"" << row["user_id"].as<std::string>() << "\",";
             json << "\"name\":\"" << full_name << "\",";
-            json << "\"email\":\"" << row["email"].as<std::string>() << "\",";
+            json << "\"email\":\"" << email << "\",";
             json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].as<std::string>()) << ",";
-            json << "\"position\":\"" << (row["position"].is_null() ? "No Position" : row["position"].as<std::string>()) << "\",";
+            json << "\"position\":\"" << position << "\",";
             json << "\"isCaptain\":" << (row["is_captain"].as<bool>() ? "true" : "false") << ",";
             json << "\"isViceCaptain\":" << (row["is_vice_captain"].as<bool>() ? "true" : "false") << ",";
             json << "\"isActive\":" << (row["is_active"].as<bool>() ? "true" : "false") << ",";
-            json << "\"joinedDate\":\"" << row["joined_date"].as<std::string>() << "\",";
+            json << "\"joinedDate\":\"" << joined_date << "\",";
             json << "\"roleType\":\"PLAYER\"";
             json << "}";
             
@@ -142,14 +148,18 @@ std::string Team::getTeamRoster(const std::string& team_id) {
         for (const auto& row : coach_result) {
             if (!first) json << ",";
             
-            std::string full_name = row["first_name"].as<std::string>() + " " + row["last_name"].as<std::string>();
+            std::string first_name = row["first_name"].is_null() ? "" : row["first_name"].as<std::string>();
+            std::string last_name = row["last_name"].is_null() ? "" : row["last_name"].as<std::string>();
+            std::string full_name = escapeJSON(first_name + " " + last_name);
+            std::string email = row["email"].is_null() ? "" : escapeJSON(row["email"].as<std::string>());
+            std::string coach_role = row["coach_role"].is_null() ? "Coach" : escapeJSON(row["coach_role"].as<std::string>());
             
             json << "{";
             json << "\"id\":\"" << row["user_id"].as<std::string>() << "\",";
             json << "\"name\":\"" << full_name << "\",";
-            json << "\"email\":\"" << row["email"].as<std::string>() << "\",";
+            json << "\"email\":\"" << email << "\",";
             json << "\"jerseyNumber\":null,";
-            json << "\"position\":\"" << row["coach_role"].as<std::string>() << "\",";
+            json << "\"position\":\"" << coach_role << "\",";
             json << "\"isCaptain\":false,";
             json << "\"isViceCaptain\":false,";
             json << "\"isActive\":true,";
@@ -180,4 +190,27 @@ void Team::populateFromMap(const std::unordered_map<std::string, std::string>& d
     
     it = data.find("league_division_id");
     if (it != data.end()) league_division_id_ = it->second;
+}
+
+std::string Team::escapeJSON(const std::string& str) {
+    std::ostringstream escaped;
+    for (char c : str) {
+        switch (c) {
+            case '"':  escaped << "\\\""; break;
+            case '\\': escaped << "\\\\"; break;
+            case '\b': escaped << "\\b"; break;
+            case '\f': escaped << "\\f"; break;
+            case '\n': escaped << "\\n"; break;
+            case '\r': escaped << "\\r"; break;
+            case '\t': escaped << "\\t"; break;
+            default:
+                if (c < 0x20) {
+                    // Escape other control characters
+                    escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
+                } else {
+                    escaped << c;
+                }
+        }
+    }
+    return escaped.str();
 }

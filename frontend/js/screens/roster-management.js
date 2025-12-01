@@ -1,0 +1,248 @@
+// RosterManagementScreen - view and edit team roster
+class RosterManagementScreen extends Screen {
+  constructor(navigation, auth) {
+    super(navigation, auth);
+    this.roster = [];
+    this.editMode = false;
+  }
+
+  render() {
+    const teamName = this.navigation.context.team?.name || 'Unknown Team';
+    const teamId = this.navigation.context.team?.id;
+    
+    const div = document.createElement('div');
+    div.className = 'screen screen-roster-management';
+    div.innerHTML = `
+      <div class="screen-header">
+        <button id="back-btn" class="btn btn-secondary">← Back</button>
+        <h1>👥 ${teamName} Roster</h1>
+        <p class="subtitle">View and manage your team roster</p>
+      </div>
+      
+      <div style="padding: var(--space-4); max-width: 1000px; margin: 0 auto;">
+        <div style="margin-bottom: var(--space-3); display: flex; justify-content: space-between; align-items: center;">
+          <button id="toggle-edit-btn" class="btn btn-secondary">
+            ✏️ Enable Editing
+          </button>
+          <button id="add-player-btn" class="btn btn-primary" style="display: none;">
+            ➕ Add Player
+          </button>
+        </div>
+        
+        <div id="roster-loading" style="text-align: center; padding: var(--space-4);">
+          <div class="spinner"></div>
+          <p>Loading roster...</p>
+        </div>
+        
+        <div id="roster-container" style="display: none;">
+          <!-- Roster will be loaded here -->
+        </div>
+      </div>
+    `;
+    this.element = div;
+    return div;
+  }
+  
+  async onEnter(params) {
+    const teamId = this.navigation.context.team?.id;
+    
+    // Load roster data
+    await this.loadRoster(teamId);
+    
+    // Event listeners
+    this.element.addEventListener('click', async (e) => {
+      if (e.target.id === 'back-btn' || e.target.closest('#back-btn')) {
+        this.navigation.goBack();
+        return;
+      }
+      
+      if (e.target.id === 'toggle-edit-btn' || e.target.closest('#toggle-edit-btn')) {
+        this.toggleEditMode();
+        return;
+      }
+      
+      if (e.target.id === 'add-player-btn' || e.target.closest('#add-player-btn')) {
+        this.addPlayer();
+        return;
+      }
+      
+      // Handle edit/remove buttons for individual players
+      const editBtn = e.target.closest('[data-action="edit"]');
+      if (editBtn) {
+        const playerId = editBtn.getAttribute('data-player-id');
+        this.editPlayer(playerId);
+        return;
+      }
+      
+      const removeBtn = e.target.closest('[data-action="remove"]');
+      if (removeBtn) {
+        const playerId = removeBtn.getAttribute('data-player-id');
+        this.removePlayer(playerId);
+        return;
+      }
+    });
+  }
+  
+  async loadRoster(teamId) {
+    try {
+      const response = await fetch(`/api/teams/${teamId}/roster`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load roster');
+      }
+      
+      const result = await response.json();
+      this.roster = result.data || [];
+      
+      // Hide loading, show roster
+      this.element.querySelector('#roster-loading').style.display = 'none';
+      this.element.querySelector('#roster-container').style.display = 'block';
+      
+      this.renderRoster();
+      
+    } catch (error) {
+      console.error('Error loading roster:', error);
+      this.element.querySelector('#roster-loading').innerHTML = `
+        <p style="color: var(--color-danger);">❌ Failed to load roster</p>
+      `;
+    }
+  }
+  
+  renderRoster() {
+    const container = this.element.querySelector('#roster-container');
+    
+    // Separate players and coaches
+    const players = this.roster.filter(member => member.roleType === 'PLAYER');
+    const coaches = this.roster.filter(member => member.roleType === 'COACH');
+    
+    let html = '';
+    
+    // Coaches section
+    if (coaches.length > 0) {
+      html += `
+        <div style="margin-bottom: var(--space-4);">
+          <h2 style="font-size: 1.5rem; margin-bottom: var(--space-3); border-bottom: 2px solid var(--color-primary); padding-bottom: var(--space-2);">
+            👨‍🏫 Coaching Staff (${coaches.length})
+          </h2>
+          <div class="roster-table">
+            ${this.renderTable(coaches, true)}
+          </div>
+        </div>
+      `;
+    }
+    
+    // Players section
+    html += `
+      <div>
+        <h2 style="font-size: 1.5rem; margin-bottom: var(--space-3); border-bottom: 2px solid var(--color-primary); padding-bottom: var(--space-2);">
+          ⚽ Players (${players.length})
+        </h2>
+        <div class="roster-table">
+          ${this.renderTable(players, false)}
+        </div>
+      </div>
+    `;
+    
+    container.innerHTML = html;
+  }
+  
+  renderTable(members, isCoach) {
+    if (members.length === 0) {
+      return '<p style="text-align: center; padding: var(--space-3); color: var(--color-text-secondary);">No members found</p>';
+    }
+    
+    let html = `
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background: var(--color-background-secondary); border-bottom: 2px solid var(--color-border);">
+            ${!isCoach ? '<th style="padding: var(--space-2); text-align: left;">#</th>' : ''}
+            <th style="padding: var(--space-2); text-align: left;">Name</th>
+            <th style="padding: var(--space-2); text-align: left;">Position/Role</th>
+            <th style="padding: var(--space-2); text-align: left;">Email</th>
+            ${!isCoach ? '<th style="padding: var(--space-2); text-align: center;">Captain</th>' : ''}
+            ${this.editMode ? '<th style="padding: var(--space-2); text-align: center;">Actions</th>' : ''}
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    
+    members.forEach(member => {
+      const captainBadge = member.isCaptain ? '🏅 C' : (member.isViceCaptain ? '🎖️ VC' : '');
+      
+      html += `
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          ${!isCoach ? `<td style="padding: var(--space-2); font-weight: bold;">${member.jerseyNumber || '-'}</td>` : ''}
+          <td style="padding: var(--space-2);">
+            ${member.name}
+          </td>
+          <td style="padding: var(--space-2);">${member.position || '-'}</td>
+          <td style="padding: var(--space-2); color: var(--color-text-secondary); font-size: 0.9em;">${member.email}</td>
+          ${!isCoach ? `<td style="padding: var(--space-2); text-align: center;">${captainBadge}</td>` : ''}
+          ${this.editMode ? `
+            <td style="padding: var(--space-2); text-align: center;">
+              <button class="btn btn-sm btn-secondary" data-action="edit" data-player-id="${member.id}" style="margin-right: var(--space-1);">
+                ✏️ Edit
+              </button>
+              <button class="btn btn-sm btn-danger" data-action="remove" data-player-id="${member.id}">
+                🗑️ Remove
+              </button>
+            </td>
+          ` : ''}
+        </tr>
+      `;
+    });
+    
+    html += `
+        </tbody>
+      </table>
+    `;
+    
+    return html;
+  }
+  
+  toggleEditMode() {
+    this.editMode = !this.editMode;
+    
+    const toggleBtn = this.element.querySelector('#toggle-edit-btn');
+    const addBtn = this.element.querySelector('#add-player-btn');
+    
+    if (this.editMode) {
+      toggleBtn.innerHTML = '👁️ View Only';
+      toggleBtn.classList.remove('btn-secondary');
+      toggleBtn.classList.add('btn-warning');
+      addBtn.style.display = 'inline-block';
+    } else {
+      toggleBtn.innerHTML = '✏️ Enable Editing';
+      toggleBtn.classList.remove('btn-warning');
+      toggleBtn.classList.add('btn-secondary');
+      addBtn.style.display = 'none';
+    }
+    
+    this.renderRoster();
+  }
+  
+  addPlayer() {
+    alert('Add Player functionality coming soon!\n\nThis will allow you to:\n- Search for existing users\n- Invite new players via email\n- Set jersey number and position\n- Assign captain/vice-captain roles');
+  }
+  
+  editPlayer(playerId) {
+    const player = this.roster.find(p => p.id === playerId);
+    if (!player) return;
+    
+    alert(`Edit Player: ${player.name}\n\nFunctionality coming soon!\n\nYou'll be able to edit:\n- Jersey number\n- Position\n- Captain/Vice-captain status`);
+  }
+  
+  removePlayer(playerId) {
+    const player = this.roster.find(p => p.id === playerId);
+    if (!player) return;
+    
+    if (confirm(`Remove ${player.name} from the roster?\n\nThis will mark them as inactive but preserve their history.`)) {
+      alert('Remove player functionality coming soon!');
+      // TODO: Implement API call to deactivate player
+    }
+  }
+}

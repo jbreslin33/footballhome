@@ -31,4 +31,5 @@ public:
 
 private:
     void populateFromMap(const std::unordered_map<std::string, std::string>& data);
+    std::string escapeJSON(const std::string& str);
 };
