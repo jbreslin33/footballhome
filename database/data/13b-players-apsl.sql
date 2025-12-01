@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYERS
 -- ========================================
--- Generated: 2025-12-01T13:17:51.881Z
+-- Generated: 2025-12-01T16:28:41.234Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -2234,6 +2234,31 @@ VALUES ('bc8312ea-2301-0006-3e60-14898c745702', 'APSL player - position: not spe
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
+INSERT INTO players (id, notes)
+VALUES ('2a717cb8-51f9-0006-424b-7076d7b8094d', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('a6b9182f-2fb2-0006-4a50-4af2135fa73e', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('8491030a-f94b-0006-fd55-bafaf47c0edd', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('d6fc4bf2-d8d4-0006-bfc0-4af2eb2fac02', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('d6e5cc1e-3ac2-0006-4679-69265ffb7db4', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
 
 -- ========================================
 -- NY Pancyprian Freedoms PLAYERS
@@ -3084,6 +3109,61 @@ VALUES ('e6db93de-0ef0-0006-ea37-fd688fefc784', 'APSL player - position: not spe
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
+INSERT INTO players (id, notes)
+VALUES ('c09a46ce-a1c6-0006-f7c8-d913e187a126', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('2be3d446-3985-0006-8c50-20605dba15ea', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('e81d75ce-30f8-0006-62b6-720544945cd2', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('a3f32d5d-d1b9-0006-5597-d51d7e92fdd4', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('abcbec62-7b44-0006-3fb9-3e6f2a7ed0ed', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('b42b069b-4f25-0006-644c-961801f01d60', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('eb107333-7818-0006-7d4a-0451d6408b9f', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('cc6680ef-4e03-0006-49bc-843fcb3d6dd3', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('4bf1185a-5255-0006-bd54-555b7146fa45', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('df468722-4b96-0006-601e-58502ac14f08', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('4f3b2d52-0dcf-0006-0641-0ecd2df7faea', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
 
 -- ========================================
 -- Richmond County FC PLAYERS
@@ -3432,6 +3512,46 @@ VALUES ('73473ad7-30f2-0006-3739-85cd61eccf2b', 'APSL player - position: not spe
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
+INSERT INTO players (id, notes)
+VALUES ('ff2cd3c5-3806-0006-50c1-505b0a8faf9b', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('94c15fb3-06da-0006-1cf1-2fbe68fcb74a', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('5629afc8-5aca-0006-ace4-95e66613719a', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('be318990-e936-0006-d560-86a007610418', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('8c8c0782-7447-0006-dde9-53e926ea773b', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('6633acfc-5236-0006-75e8-dd996453d84c', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('039abdc6-5af2-0006-54a3-cc5235454322', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('fb1ca8eb-808f-0006-46e9-98af456c584b', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
 
 -- ========================================
 -- SC Vistula Garfield PLAYERS
@@ -3593,6 +3713,81 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO players (id, notes)
 VALUES ('8791a6a4-41ef-0006-a249-a284f3a9aa48', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('c5caf3a5-b03e-0006-0096-b53a64d135a4', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('30793206-aca9-0006-6d1c-107456eda201', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('3a7f7277-fcd2-0006-ed5d-1c567ef5045e', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('e5bc7598-0a1a-0006-02f9-2fb99c94386e', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f150be8f-7b35-0006-fc41-fc0667884a98', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('b215972e-ce8c-0006-5b41-36fd5385a491', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('3bfc9c8e-200c-0006-dbb3-aecfe4e5acdf', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('897431e9-f88a-0006-e564-471e85555182', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('4b338326-9839-0006-0fed-e87a8cd60e03', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('5cf381b9-e911-0006-72d7-497ffb00919e', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f0a6f957-b179-0006-58cc-37d9001b4100', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('94696aee-2fab-0006-27a0-97e67db0601a', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('e2191327-bf13-0006-2977-991710192c29', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ce1534ec-dfcc-0006-f2f6-759520cd9c1c', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('673f66f4-a2fe-0006-aa06-6bc5b95e352c', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
@@ -3775,6 +3970,91 @@ VALUES ('30471c7b-f4fe-0006-2daf-ff0aa57c8207', 'APSL player - position: not spe
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
+INSERT INTO players (id, notes)
+VALUES ('b66fe0cf-00cb-0006-e270-e009e16942d6', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('77645e85-bc2f-0006-8c53-482252c4d6e3', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('8632a457-a762-0006-7340-657a7b3c58e9', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('a0e5c989-25ea-0006-6d41-c906d5aa6e56', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('5056c009-3e27-0006-bd36-a76da19227ad', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('cf5fa5f5-9be7-0006-91fd-00cfb960370f', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('8d8d2411-b126-0006-7ff9-66f00112ff5c', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ce3861d2-3e87-0006-4ad8-ca93c2ef2804', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('4e032211-f613-0006-d4eb-8f3d2213f370', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('0a9556d8-0f8c-0006-cdcd-6664eacf55bc', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('26f2cb1d-cc63-0006-29f2-ed1b0ffc4b1c', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f4919dae-990c-0006-d5e4-e20d274b760f', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('8a329194-4c19-0006-cdc4-f36ed2c2faea', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('31452cc5-8845-0006-3734-b46cfb3793af', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('52f50f14-d44b-0006-5054-605a1c3b10cc', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('76ef3f9b-803f-0006-e3d7-72e54f0c2141', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ae6b8570-672e-0006-92a9-c48683a9b732', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
 
 -- ========================================
 -- Central Park Rangers FC PLAYERS
@@ -3921,6 +4201,86 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO players (id, notes)
 VALUES ('6001a807-29e9-0006-7e2b-4e92d522ed9e', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('0c2a8623-c3b7-0006-fbed-f2c04867e4a9', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f7d93c24-473a-0006-9a43-34971cec523a', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('bbd66182-b0af-0006-3499-7ed040eb3aca', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('e6b295ec-3d53-0006-eaf4-0db3d7663e1e', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('266b5c1f-ffac-0006-e203-ca3800df58f9', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('874751e2-eda6-0006-9563-b52731fbd89e', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('dac3dbb4-c206-0006-97b6-15e253b128e6', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ca1d95af-79dc-0006-c41f-4240f243d1e0', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('a7801a4e-8f4f-0006-f313-01f7fc81d0d0', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('7fadfa95-3ec5-0006-b93d-b0842ac2fdc8', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('d452a72e-511a-0006-0792-6d63151dd438', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('8b16ca48-948f-0006-9963-6ecdbe9f4f8b', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f83444d3-3d7c-0006-774c-4e26e20c2a1d', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('52f84ecb-dbdc-0006-b743-97a47fa22a59', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('508b39c3-1168-0006-427d-fd04ab0e707f', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('64dcecf5-7b40-0006-13da-2d5717f2640b', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
@@ -4277,6 +4637,71 @@ VALUES ('868ba230-c422-0006-edb3-2d111bc2f2d0', 'APSL player - position: not spe
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
+INSERT INTO players (id, notes)
+VALUES ('ab2f2171-acd0-0006-1d76-66f484986a88', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('0dfada6f-6e39-0006-0d0b-1202a61f2898', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('bde9976e-b29f-0006-f68e-27c84ac2bba0', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('be102653-0955-0006-39b8-5c0c1e846f82', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('e913e933-33d5-0006-ad23-6586ec9c5813', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ff827088-9e31-0006-c5f7-5139d0f0f61b', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('10ce28e8-95b4-0006-53f1-e2d400c6835f', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('c617bd8d-57f9-0006-f358-44242c9be1bb', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('5cd2aeb0-5546-0006-14c9-4c1eb91b2ca4', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('4ff4b866-91a4-0006-dccd-13a06549e8dd', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('0154cbde-3c60-0006-28a0-a934584a407a', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('8abe654b-1bab-0006-a261-3e20ea138164', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('6f191c57-1dc6-0006-0d6e-e737bb1694b1', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
 
 -- ========================================
 -- Philadelphia Heritage SC PLAYERS
@@ -4580,6 +5005,51 @@ VALUES ('6b595c01-24db-0006-8754-89f6298a6d58', 'APSL player - position: not spe
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
+INSERT INTO players (id, notes)
+VALUES ('0deec1cf-7b49-0006-b6fe-f722f94aa079', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('4495ad80-9927-0006-fca1-f88692b55feb', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ff20f743-4dba-0006-0e6f-f5ff73f37778', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('c24c9895-f2ba-0006-4df1-3fb92429acff', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('7b281ced-cfd9-0006-1869-fe06c0cc4d0e', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('b6b89033-4acf-0006-e766-0b728504f01f', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('36de4112-9d5b-0006-5c1b-0e7bbad8e3e5', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ffa0f384-3e92-0006-3533-706f91e6f75f', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('aedd070a-30c8-0006-8228-744f4dfa7612', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
 
 -- ========================================
 -- Vidas United FC PLAYERS
@@ -4848,6 +5318,51 @@ VALUES ('2d7f675c-563a-0006-2dfd-c9692bbc5d9f', 'APSL player - position: not spe
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
+INSERT INTO players (id, notes)
+VALUES ('d9b9dbe9-421f-0006-71f5-e268353a1a24', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('15795f0d-798c-0006-0f94-f23eb5da1d56', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('3b78428a-fd24-0006-b0cd-f4ce638c7227', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('2822dd63-d8d2-0006-17d1-95086cd6be97', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('618090fe-345d-0006-52b7-079e35e707ad', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('cdc083cb-54e7-0006-8315-aa39a765a10e', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('598c162e-bac7-0006-27b2-b1288cbf9b82', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('a6c42a10-4c7f-0006-47f3-f37eb86cc16d', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('963d94fa-eb7f-0006-7ce7-cbede87d1de2', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
 
 -- ========================================
 -- Oaklyn United FC PLAYERS
@@ -4999,6 +5514,66 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO players (id, notes)
 VALUES ('ee75d842-1ae6-0006-8c53-9d885fc74c26', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('32670b1a-3a0f-0006-b697-6cbdc80ba419', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('70095c63-411d-0006-2f78-7aaae8d50f52', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('1c6f3935-cb7c-0006-c8ac-8b8e98679203', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('07f578ac-f462-0006-c49b-0d55f4461954', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('54afd9f7-24cb-0006-63ff-ba2c3aaeb1a1', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('cba11569-a188-0006-23d1-4042202515a2', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('8fd618a2-11f9-0006-2185-cbd6708400e7', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('5b5b0a37-666b-0006-681e-df64c0541f5d', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ee36a913-4506-0006-8fb1-25a7198f1db8', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('2f2e2baa-d232-0006-c825-bbfa8314cd2a', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f1fd3567-ef4f-0006-1529-4f842b97f6ec', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('9d86fae5-6620-0006-d19f-d6833d2a0027', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
@@ -5305,6 +5880,141 @@ VALUES ('0af0fa43-db02-0006-b625-bf47c0eb6099', 'APSL player - position: not spe
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
+INSERT INTO players (id, notes)
+VALUES ('30ce494f-868f-0006-f5a6-bb7294f48b55', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('38a9c99e-c1b2-0006-f413-3b377a2f5e26', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('3d97ea32-b214-0006-679a-d6489302db67', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('bc5ccf9c-ed6b-0006-aafc-ba7b0002a837', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('c56e0026-ce36-0006-a667-30493706f607', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('515aaae2-1b18-0006-42f6-9f746c261fca', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('c0b8f774-97f0-0006-ad04-7c8af9350371', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('97774ed1-60d5-0006-e0f8-4b9602517d6a', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('376367d7-41ea-0006-6bc9-097e36813802', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('80c1d8bb-e0ce-0006-853b-ba21e898befc', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ee690b3a-7840-0006-709a-c2bd3b274870', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('a0bcb0c0-a561-0006-6c6f-4cbe60070f91', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('3547790a-f69c-0006-bf2e-4c9711255702', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('c03e3cbf-b5ca-0006-3a41-498cadc325ea', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('38e42fd0-2eb6-0006-fcc5-d4f0c871b852', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('3aa05eea-e677-0006-a25b-7d72278f6cde', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('22d21f30-49b6-0006-c153-13bcd11bd208', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('d8d6f8fe-5812-0006-3abe-34da60c79cb6', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('d1b23fe2-7c0b-0006-0827-31fca413a5d3', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('cf3a5601-e677-0006-2a24-d05c220c4b6a', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('300b5c50-5d0e-0006-3ad2-8611c1d6196f', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('dc43b8da-fa16-0006-8d04-2653b7b59ae0', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('401bf4d5-8869-0006-947a-957f0b2ea1c9', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('2b59f3e5-efd7-0006-db76-62c2276703db', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f8cb832f-60ab-0006-4c2d-5eafd093e888', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('fccdb158-2076-0006-a2eb-2b0b488507ee', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('c3be71d8-03da-0006-261b-d099c7bdc46c', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
 
 -- ========================================
 -- Jersey Shore Boca PLAYERS
@@ -5426,6 +6136,66 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO players (id, notes)
 VALUES ('b7472afb-4a7e-0006-96bb-0e68d3872ae0', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('113a8374-52fc-0006-c4c6-82adad11f39a', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('b0577756-ba35-0006-a8d4-188544af41a3', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('c88f59df-3723-0006-c120-d48c05b7bb5d', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('e9020c06-732e-0006-f407-09e2955d090b', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('93987ac8-e588-0006-2f83-a20f599bf277', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('0b91119b-27fe-0006-06f7-36a20f9bbf28', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('84828d5b-79fa-0006-4e1e-a6ecfad9f56d', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f5b8c9c0-8699-0006-9f72-4aef1d1e4322', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('0961e655-5692-0006-4fba-9ef162a0778e', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('4e1d0810-bd2f-0006-f6b0-7e9947c4ba64', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('4d6fd5f7-e54b-0006-dc66-f44cc929ce86', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('754dc8bf-55d6-0006-f86c-c86bcba8e4e5', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
@@ -7118,6 +7888,166 @@ VALUES ('1b776436-699a-0006-beb5-ee8d690e183f', 'APSL player - position: not spe
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
+INSERT INTO players (id, notes)
+VALUES ('0dd5e4b5-9d7c-0006-c06b-55836931c450', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('7b0bc186-1654-0006-48e9-cf7886427640', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('037a3e6f-9606-0006-4fc9-e5d314c99e84', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('4d6e8424-b0a6-0006-c6ea-b46b55f394c7', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('e0ed8e68-be01-0006-0a0d-79d5e166f357', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('e559aa1a-1249-0006-26cb-99caf1c32007', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('156ba99b-42c7-0006-bd9a-4d394ecb65d6', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('45e5d065-12d2-0006-104a-92ecbdb49799', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('73ed171b-dc8a-0006-184f-66237a3760ce', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('5000b170-37ab-0006-65d2-2d8a1c734954', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('65ca1823-976a-0006-7813-ab6112c48778', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f5d6e0fa-279d-0006-08cb-2ebbd27d8296', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('031b1ea2-681c-0006-c27a-254ea65ba550', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('37c885a2-0ab9-0006-b042-3436918a5912', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('2d06ef58-fcf3-0006-02b2-af37cac565bd', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('593e4e29-c18a-0006-2410-5a3cc5ed6065', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('d3921aed-cc6c-0006-ec83-ab5f8aad3c8b', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('1c193e9f-1189-0006-3f21-293833f906da', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('79d43a34-01dd-0006-f394-b426250b5adf', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('edb36eec-89de-0006-cea6-f79b04eae44f', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('6453622f-703e-0006-a77a-568d52570586', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('21e08479-5059-0006-720b-36880ea826b4', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('de8ff1df-ffc0-0006-8ae8-eb1927e102b1', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('e891200f-927a-0006-cead-e97e980245da', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('69ccca28-f6a4-0006-d6c0-08adb6b1ada9', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('9c129616-47c7-0006-b95a-aa4bb3d373f6', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('0f2da084-0de6-0006-07a9-d0c4f4443f5c', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('1b5b8580-36a4-0006-e540-1c181d5cf4cf', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('91cc5490-f346-0006-6049-434cc6b89d3b', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('b1c66e96-b6a0-0006-3854-836c19b1edeb', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('4cafb3c9-0bd7-0006-c171-5415ed6e89b7', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('77cbc057-722e-0006-cb97-7fa864aba702', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
 
 -- ========================================
 -- Majestic SC PLAYERS
@@ -7363,6 +8293,46 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO players (id, notes)
 VALUES ('1a392f98-9da7-0006-1a53-6dbc563e6a10', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('e1f15cf2-95c1-0006-bc9e-caa81976ee39', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('25e6744f-22b8-0006-02bd-a9eaf44074f1', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('8a2460fc-4f4c-0006-a117-986e63f6a939', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('d39ddcfb-7e8f-0006-83a1-f85cf8a37c77', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f1e5a22b-179b-0006-2059-52356359f5e4', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f9d63682-bffa-0006-eff6-72dbab0365f2', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('7477d2f4-761e-0006-72c0-df5c858a1210', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('0e726fb2-55dd-0006-b617-d89d008da979', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
@@ -7649,6 +8619,21 @@ VALUES ('98a982b4-e3dd-0006-a7eb-c107c716b5ad', 'APSL player - position: not spe
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
+INSERT INTO players (id, notes)
+VALUES ('a19ef09a-bb92-0006-444f-54d6137af323', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ec423f37-57e5-0006-c928-4b99ce99b63b', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('3653ed16-3a23-0006-19c0-d5f8575b4815', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
 
 -- ========================================
 -- Buckhead SC PLAYERS
@@ -7795,6 +8780,26 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO players (id, notes)
 VALUES ('d5aa9ec2-8926-0006-5b24-ce213b96f3aa', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('800d470d-f9d3-0006-a680-3b52a6787d59', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('32fcfff3-bf52-0006-3d93-7d93ddbc3ca1', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('68c031f0-91c8-0006-a62c-f00e64f48603', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ba52db7d-7e19-0006-e06a-2c692eefc4de', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
@@ -8123,6 +9128,76 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO players (id, notes)
 VALUES ('2190ac37-15a8-0006-456d-119506e76681', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('f8eced56-d69a-0006-f53b-3220242f803f', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('ed991c95-61ff-0006-3e72-6b4427973b28', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('c854eba3-7d7e-0006-ec5b-100a49fb4008', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('275867f1-2f1d-0006-48d9-52acdf058b53', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('b979144e-f13a-0006-d073-9d7395135fce', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('11a79595-d543-0006-6724-5a60f65aa447', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('7bc33332-c71b-0006-11b3-91a29b1943c4', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('bff67770-1a0b-0006-a19f-a73c7cc0776b', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('bf524d90-e409-0006-7dd9-a87fc8cfc4aa', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('602c23d3-9a87-0006-be8f-7e4d1ff9af3c', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('9c0bf01f-8396-0006-5e9d-937eba00a25c', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('35e2ef03-fb37-0006-a18b-b41cf4b78cd3', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('b59b8790-b192-0006-b675-18efd8de3040', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('af5f3821-d0db-0006-6569-baa423dc39f3', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
