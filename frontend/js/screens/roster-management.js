@@ -233,16 +233,128 @@ class RosterManagementScreen extends Screen {
     const player = this.roster.find(p => p.id === playerId);
     if (!player) return;
     
-    alert(`Edit Player: ${player.name}\n\nFunctionality coming soon!\n\nYou'll be able to edit:\n- Jersey number\n- Position\n- Captain/Vice-captain status`);
+    // Create edit modal
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content" style="max-width: 450px;">
+        <h2 style="margin-bottom: var(--space-3);">✏️ Edit Player</h2>
+        <p style="margin-bottom: var(--space-4); color: var(--color-text-secondary);">${player.name}</p>
+        
+        <div style="margin-bottom: var(--space-3);">
+          <label style="display: block; margin-bottom: var(--space-1); font-weight: bold;">Jersey Number</label>
+          <input type="number" id="edit-jersey" value="${player.jerseyNumber || ''}" min="1" max="99" 
+                 style="width: 100%; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: 4px; font-size: 1rem;">
+        </div>
+        
+        <div style="margin-bottom: var(--space-3);">
+          <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+            <input type="checkbox" id="edit-captain" ${player.isCaptain ? 'checked' : ''}>
+            <span>🏅 Team Captain</span>
+          </label>
+        </div>
+        
+        <div style="margin-bottom: var(--space-4);">
+          <label style="display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
+            <input type="checkbox" id="edit-vice-captain" ${player.isViceCaptain ? 'checked' : ''}>
+            <span>🎖️ Vice Captain</span>
+          </label>
+        </div>
+        
+        <div style="display: flex; gap: var(--space-2); justify-content: flex-end;">
+          <button id="edit-cancel" class="btn btn-secondary">Cancel</button>
+          <button id="edit-save" class="btn btn-primary">💾 Save Changes</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Focus jersey input
+    modal.querySelector('#edit-jersey').focus();
+    
+    // Event handlers
+    modal.querySelector('#edit-cancel').addEventListener('click', () => {
+      modal.remove();
+    });
+    
+    modal.querySelector('#edit-save').addEventListener('click', async () => {
+      const jerseyNumber = modal.querySelector('#edit-jersey').value;
+      const isCaptain = modal.querySelector('#edit-captain').checked;
+      const isViceCaptain = modal.querySelector('#edit-vice-captain').checked;
+      
+      // Can't be both captain and vice captain
+      if (isCaptain && isViceCaptain) {
+        alert('A player cannot be both Captain and Vice Captain');
+        return;
+      }
+      
+      const teamId = this.navigation.context.team?.id;
+      
+      try {
+        const response = await fetch(`/api/teams/${teamId}/roster/${playerId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            jerseyNumber: jerseyNumber ? parseInt(jerseyNumber) : null,
+            isCaptain: isCaptain,
+            isViceCaptain: isViceCaptain
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          modal.remove();
+          // Reload roster to show changes
+          await this.loadRoster(teamId);
+        } else {
+          alert('Failed to update player: ' + result.message);
+        }
+      } catch (error) {
+        console.error('Error updating player:', error);
+        alert('Failed to update player. Please try again.');
+      }
+    });
+    
+    // Close on overlay click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
   }
   
-  removePlayer(playerId) {
+  async removePlayer(playerId) {
     const player = this.roster.find(p => p.id === playerId);
     if (!player) return;
     
     if (confirm(`Remove ${player.name} from the roster?\n\nThis will mark them as inactive but preserve their history.`)) {
-      alert('Remove player functionality coming soon!');
-      // TODO: Implement API call to deactivate player
+      const teamId = this.navigation.context.team?.id;
+      
+      try {
+        const response = await fetch(`/api/teams/${teamId}/roster/${playerId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Reload roster to show changes
+          await this.loadRoster(teamId);
+        } else {
+          alert('Failed to remove player: ' + result.message);
+        }
+      } catch (error) {
+        console.error('Error removing player:', error);
+        alert('Failed to remove player. Please try again.');
+      }
     }
   }
 }

@@ -178,6 +178,73 @@ std::string Team::getTeamRoster(const std::string& team_id) {
     return json.str();
 }
 
+bool Team::updateRosterMember(const std::string& team_id, const std::string& player_id,
+                              const std::string& jersey_number, bool is_captain, bool is_vice_captain) {
+    try {
+        // If setting this player as captain, first unset any existing captain
+        if (is_captain) {
+            std::string unset_sql = "UPDATE team_players SET is_captain = false WHERE team_id = $1 AND is_captain = true";
+            executeQuery(unset_sql, {team_id});
+        }
+        
+        // If setting this player as vice captain, first unset any existing vice captain
+        if (is_vice_captain) {
+            std::string unset_sql = "UPDATE team_players SET is_vice_captain = false WHERE team_id = $1 AND is_vice_captain = true";
+            executeQuery(unset_sql, {team_id});
+        }
+        
+        // Build the update query with hard-coded booleans (pqxx string params don't work for bool)
+        std::ostringstream sql;
+        sql << "UPDATE team_players SET ";
+        
+        std::vector<std::string> params;
+        int param_num = 1;
+        
+        if (!jersey_number.empty()) {
+            sql << "jersey_number = $" << param_num++ << ", ";
+            params.push_back(jersey_number);
+        }
+        
+        // Use literal true/false for boolean columns
+        sql << "is_captain = " << (is_captain ? "true" : "false") << ", ";
+        sql << "is_vice_captain = " << (is_vice_captain ? "true" : "false") << " ";
+        
+        sql << "WHERE team_id = $" << param_num++ << " AND player_id = $" << param_num;
+        params.push_back(team_id);
+        params.push_back(player_id);
+        
+        std::string sql_str = sql.str();
+        std::cout << "🔍 SQL: " << sql_str << std::endl;
+        std::cout << "🔍 Params: ";
+        for (const auto& p : params) std::cout << p << " ";
+        std::cout << std::endl;
+        
+        executeQuery(sql_str, params);
+        
+        std::cout << "✅ Updated roster member: " << player_id << std::endl;
+        return true;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ updateRosterMember error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool Team::removeRosterMember(const std::string& team_id, const std::string& player_id) {
+    try {
+        // Soft delete - set is_active to false
+        std::string sql = "UPDATE team_players SET is_active = false WHERE team_id = $1 AND player_id = $2";
+        executeQuery(sql, {team_id, player_id});
+        
+        std::cout << "✅ Removed roster member: " << player_id << " from team: " << team_id << std::endl;
+        return true;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ removeRosterMember error: " << e.what() << std::endl;
+        return false;
+    }
+}
+
 void Team::populateFromMap(const std::unordered_map<std::string, std::string>& data) {
     auto it = data.find("id");
     if (it != data.end()) id_ = it->second;

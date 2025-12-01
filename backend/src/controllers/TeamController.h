@@ -13,8 +13,11 @@ public:
 
 private:
     Response handleGetRoster(const Request& request);
+    Response handleUpdateRosterMember(const Request& request);
+    Response handleRemoveRosterMember(const Request& request);
     
     // Helper methods
     std::string extractTeamIdFromPath(const std::string& path);
+    std::string extractPlayerIdFromPath(const std::string& path);
     std::string createJSONResponse(bool success, const std::string& message);
 };

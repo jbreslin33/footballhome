@@ -19,6 +19,9 @@ public:
     
     // Team-specific methods
     std::string getTeamRoster(const std::string& team_id);
+    bool updateRosterMember(const std::string& team_id, const std::string& player_id, 
+                            const std::string& jersey_number, bool is_captain, bool is_vice_captain);
+    bool removeRosterMember(const std::string& team_id, const std::string& player_id);
     bool loadByUuid(const std::string& uuid);
     
     // Getters and setters

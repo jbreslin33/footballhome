@@ -1,15 +1,26 @@
 #include "TeamController.h"
 #include <sstream>
 #include <regex>
+#include <iostream>
 
 TeamController::TeamController() {
     team_model_ = std::make_unique<Team>();
 }
 
 void TeamController::registerRoutes(Router& router, const std::string& prefix) {
-    // Register route with parameter syntax
+    // Get team roster
     router.get(prefix + "/:teamId/roster", [this](const Request& request) {
         return this->handleGetRoster(request);
+    });
+    
+    // Update roster member (jersey number, position, captain status)
+    router.put(prefix + "/:teamId/roster/:playerId", [this](const Request& request) {
+        return this->handleUpdateRosterMember(request);
+    });
+    
+    // Remove player from roster
+    router.del(prefix + "/:teamId/roster/:playerId", [this](const Request& request) {
+        return this->handleRemoveRosterMember(request);
     });
 }
 
@@ -46,6 +57,7 @@ Response TeamController::handleGetRoster(const Request& request) {
 
 std::string TeamController::extractTeamIdFromPath(const std::string& path) {
     // Extract UUID from path like "/api/teams/d37eb44b-8e47-0005-9060-f0cbe96fe089/roster"
+    // or "/api/teams/d37eb44b-8e47-0005-9060-f0cbe96fe089/roster/player-id"
     std::regex uuid_regex(R"(/api/teams/([a-f0-9-]{36})/roster)");
     std::smatch match;
     
@@ -54,6 +66,111 @@ std::string TeamController::extractTeamIdFromPath(const std::string& path) {
     }
     
     return "";
+}
+
+std::string TeamController::extractPlayerIdFromPath(const std::string& path) {
+    // Extract player UUID from path like "/api/teams/team-id/roster/player-id"
+    std::regex uuid_regex(R"(/api/teams/[a-f0-9-]{36}/roster/([a-f0-9-]{36}))");
+    std::smatch match;
+    
+    if (std::regex_search(path, match, uuid_regex)) {
+        return match[1].str();
+    }
+    
+    return "";
+}
+
+Response TeamController::handleUpdateRosterMember(const Request& request) {
+    try {
+        std::string team_id = extractTeamIdFromPath(request.getPath());
+        std::string player_id = extractPlayerIdFromPath(request.getPath());
+        
+        if (team_id.empty() || player_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid team ID or player ID in path");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        std::cout << "🔧 Updating roster member: " << player_id << " for team: " << team_id << std::endl;
+        
+        // Parse request body for updates
+        std::string body = request.getBody();
+        
+        // Simple JSON parsing for jersey_number, position_id, is_captain, is_vice_captain
+        std::string jersey_number = "";
+        std::string position_id = "";
+        bool is_captain = false;
+        bool is_vice_captain = false;
+        
+        // Parse jersey_number
+        std::regex jersey_regex(R"("jerseyNumber"\s*:\s*(\d+|null))");
+        std::smatch jersey_match;
+        if (std::regex_search(body, jersey_match, jersey_regex)) {
+            std::string val = jersey_match[1].str();
+            if (val != "null") {
+                jersey_number = val;
+            }
+        }
+        
+        // Parse is_captain
+        std::regex captain_regex(R"("isCaptain"\s*:\s*(true|false))");
+        std::smatch captain_match;
+        if (std::regex_search(body, captain_match, captain_regex)) {
+            is_captain = (captain_match[1].str() == "true");
+        }
+        
+        // Parse is_vice_captain  
+        std::regex vc_regex(R"("isViceCaptain"\s*:\s*(true|false))");
+        std::smatch vc_match;
+        if (std::regex_search(body, vc_match, vc_regex)) {
+            is_vice_captain = (vc_match[1].str() == "true");
+        }
+        
+        // Update the roster entry
+        bool success = team_model_->updateRosterMember(team_id, player_id, jersey_number, is_captain, is_vice_captain);
+        
+        if (success) {
+            std::string json = createJSONResponse(true, "Roster member updated successfully");
+            return Response(HttpStatus::OK, json);
+        } else {
+            std::string json = createJSONResponse(false, "Failed to update roster member");
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+        }
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ TeamController::handleUpdateRosterMember error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to update roster member");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response TeamController::handleRemoveRosterMember(const Request& request) {
+    try {
+        std::string team_id = extractTeamIdFromPath(request.getPath());
+        std::string player_id = extractPlayerIdFromPath(request.getPath());
+        
+        if (team_id.empty() || player_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid team ID or player ID in path");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        std::cout << "🗑️ Removing roster member: " << player_id << " from team: " << team_id << std::endl;
+        
+        // Deactivate the player (soft delete)
+        bool success = team_model_->removeRosterMember(team_id, player_id);
+        
+        if (success) {
+            std::string json = createJSONResponse(true, "Player removed from roster");
+            return Response(HttpStatus::OK, json);
+        } else {
+            std::string json = createJSONResponse(false, "Failed to remove player from roster");
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+        }
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ TeamController::handleRemoveRosterMember error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to remove player from roster");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
 }
 
 std::string TeamController::createJSONResponse(bool success, const std::string& message) {
