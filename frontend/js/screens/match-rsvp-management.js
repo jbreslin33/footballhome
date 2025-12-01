@@ -1,5 +1,13 @@
-// MatchRSVPManagementScreen - Coach manages player RSVPs for matches
+// MatchRSVPManagementScreen - Coach manages player RSVPs for matches (inline accordion style)
 class MatchRSVPManagementScreen extends Screen {
+  constructor(navigation, auth) {
+    super(navigation, auth);
+    this.matches = [];
+    this.expandedMatchId = null;
+    this.teamPlayers = [];
+    this.rsvpCache = {}; // Cache RSVPs per match
+  }
+
   render() {
     const teamName = this.navigation.context.team?.name || 'Unknown Team';
     
@@ -8,22 +16,18 @@ class MatchRSVPManagementScreen extends Screen {
     div.innerHTML = `
       <div class="screen-header">
         <button id="back-btn" class="btn btn-secondary">← Back</button>
-        <h1>📋 Player RSVPs</h1>
-        <p class="subtitle">${teamName} - Select a match to manage RSVPs</p>
+        <h1>📋 Manage Player RSVPs</h1>
+        <p class="subtitle">${teamName}</p>
       </div>
       
-      <div style="padding: var(--space-4);">
-        <div id="match-list" class="match-cards"></div>
-      </div>
-      
-      <!-- RSVP Management Modal -->
-      <div id="rsvp-modal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 600px;">
-          <div class="modal-header">
-            <h2 id="modal-title">Player RSVPs</h2>
-            <button id="modal-close" class="btn btn-secondary">✕</button>
-          </div>
-          <div id="rsvp-list" class="rsvp-list"></div>
+      <div style="padding: var(--space-4); max-width: 1000px; margin: 0 auto;">
+        <div id="roster-loading" style="text-align: center; padding: var(--space-4);">
+          <div class="spinner"></div>
+          <p>Loading matches...</p>
+        </div>
+        
+        <div id="match-container" style="display: none;">
+          <!-- Matches will be loaded here -->
         </div>
       </div>
     `;
@@ -32,62 +36,82 @@ class MatchRSVPManagementScreen extends Screen {
   }
   
   onEnter(params) {
-    this.teamPlayers = [];
-    this.loadMatches();
+    this.loadData();
     
     this.element.addEventListener('click', (e) => {
-      // Match card clicked - open RSVP modal
-      const matchCard = e.target.closest('[data-match-id]');
-      if (matchCard && !e.target.closest('.rsvp-btn')) {
-        const matchId = matchCard.getAttribute('data-match-id');
-        const matchTitle = matchCard.getAttribute('data-match-title');
-        this.openRSVPModal(matchId, matchTitle);
+      // Back button
+      if (e.target.id === 'back-btn' || e.target.closest('#back-btn')) {
+        this.navigation.goBack();
+        return;
+      }
+      
+      // Match header clicked - toggle expansion
+      const matchHeader = e.target.closest('.match-header');
+      if (matchHeader && !e.target.closest('.rsvp-btn')) {
+        const matchId = matchHeader.getAttribute('data-match-id');
+        this.toggleMatch(matchId);
         return;
       }
       
       // RSVP button clicked
       const rsvpBtn = e.target.closest('.rsvp-btn');
       if (rsvpBtn) {
+        const matchId = rsvpBtn.getAttribute('data-match-id');
         const playerId = rsvpBtn.getAttribute('data-player-id');
         const status = rsvpBtn.getAttribute('data-status');
-        this.updatePlayerRSVP(playerId, status, rsvpBtn);
+        this.updatePlayerRSVP(matchId, playerId, status, rsvpBtn);
         return;
-      }
-      
-      // Modal close
-      if (e.target.id === 'modal-close' || e.target.id === 'rsvp-modal') {
-        this.closeRSVPModal();
-        return;
-      }
-      
-      // Back button
-      if (e.target.id === 'back-btn' || e.target.closest('#back-btn')) {
-        this.navigation.goBack();
       }
     });
   }
   
-  loadMatches() {
+  async loadData() {
     const teamId = this.navigation.context.team?.id;
     if (!teamId) {
       console.error('No team selected');
       return;
     }
     
-    const listContainer = this.find('#match-list');
-    listContainer.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading matches...</p></div>';
-    
-    this.safeFetch(`/api/matches/team/${teamId}`, response => {
-      const matches = response.data || [];
-      this.renderMatches(matches);
-    });
+    try {
+      // Load matches and roster in parallel
+      const [matchesResponse, rosterResponse] = await Promise.all([
+        this.auth.fetch(`/api/matches/team/${teamId}`).then(r => r.json()),
+        this.auth.fetch(`/api/teams/${teamId}/roster`).then(r => r.json())
+      ]);
+      
+      this.matches = matchesResponse.data || [];
+      this.teamPlayers = (rosterResponse.data || []).filter(p => p.roleType === 'PLAYER');
+      
+      // Hide loading, show content
+      this.find('#roster-loading').style.display = 'none';
+      this.find('#match-container').style.display = 'block';
+      
+      this.renderMatches();
+      
+    } catch (error) {
+      console.error('Error loading data:', error);
+      this.find('#roster-loading').innerHTML = `
+        <p style="color: var(--color-danger);">❌ Failed to load data</p>
+      `;
+    }
   }
   
-  renderMatches(matches) {
+  renderMatches() {
+    const container = this.find('#match-container');
     const now = new Date();
     
-    // Transform for display
-    const transformedMatches = matches.map(m => {
+    if (this.matches.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state" style="text-align: center; padding: var(--space-4);">
+          <p>🏆 No matches found</p>
+          <p class="text-muted">Create matches first to manage RSVPs</p>
+        </div>
+      `;
+      return;
+    }
+    
+    // Transform matches for display
+    const transformedMatches = this.matches.map(m => {
       const eventDate = new Date(m.event_date);
       const isPast = eventDate < now;
       
@@ -116,168 +140,174 @@ class MatchRSVPManagementScreen extends Screen {
       };
     });
     
-    this.renderList('#match-list', transformedMatches,
-      m => `
-        <div class="card match-card" data-match-id="${m.id}" data-match-title="${m.title}" style="cursor: pointer; ${m.isPast ? 'opacity: 0.7;' : ''}">
-          <div class="match-card-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <h3>${m.title}</h3>
-            <span class="badge ${m.isPast ? 'badge-secondary' : 'badge-primary'}">${m.isPast ? 'Past' : 'Upcoming'}</span>
-          </div>
-          
-          <div class="match-card-meta">
-            <div class="meta-item">
-              <span class="meta-icon">📅</span>
-              <span>${m.dateDisplay}</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-icon">🕐</span>
-              <span>${m.time}</span>
-            </div>
-            ${m.venue_name ? `
-            <div class="meta-item">
-              <span class="meta-icon">📍</span>
-              <span>${m.venue_name}</span>
-            </div>
-            ` : ''}
-          </div>
-          
-          <p style="margin-top: var(--space-3); color: var(--text-muted); font-size: 0.9em;">
-            Tap to manage player RSVPs →
-          </p>
-        </div>
-      `,
-      '<div class="empty-state"><p>🏆 No matches found</p><p class="text-muted">Create matches first to manage RSVPs</p></div>'
-    );
-  }
-  
-  openRSVPModal(matchId, matchTitle) {
-    const modal = this.find('#rsvp-modal');
-    const modalTitle = this.find('#modal-title');
-    const rsvpList = this.find('#rsvp-list');
-    
-    modalTitle.textContent = `${matchTitle} - Player RSVPs`;
-    rsvpList.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading players...</p></div>';
-    modal.style.display = 'flex';
-    
-    this.currentMatchId = matchId;
-    this.loadPlayersWithRSVP(matchId);
-  }
-  
-  closeRSVPModal() {
-    const modal = this.find('#rsvp-modal');
-    modal.style.display = 'none';
-    this.currentMatchId = null;
-  }
-  
-  async loadPlayersWithRSVP(matchId) {
-    const teamId = this.navigation.context.team?.id;
-    const rsvpList = this.find('#rsvp-list');
-    
-    try {
-      // Load team roster and match RSVPs in parallel
-      const [rosterResponse, rsvpResponse] = await Promise.all([
-        this.auth.fetch(`/api/teams/${teamId}/roster`).then(r => r.json()),
-        this.auth.fetch(`/api/events/${matchId}/rsvps?role_type=player`).then(r => r.json())
-      ]);
-      
-      console.log('Roster:', rosterResponse);
-      console.log('RSVPs:', rsvpResponse);
-      
-      const players = rosterResponse.data || [];
-      const rsvps = rsvpResponse.data || [];
-      
-      // Create a map of player RSVPs (keyed by user_id from RSVP response)
-      const rsvpMap = {};
-      rsvps.forEach(rsvp => {
-        rsvpMap[rsvp.user_id] = rsvp.status;
-      });
-      
-      // Merge roster with RSVP status
-      // Roster uses 'id' for player ID, RSVPs use 'user_id'
-      const playersWithRSVP = players.map(player => ({
-        ...player,
-        rsvpStatus: rsvpMap[player.id] || null
-      }));
-      
-      this.teamPlayers = playersWithRSVP;
-      this.renderPlayerRSVPs(playersWithRSVP);
-      
-    } catch (err) {
-      console.error('Failed to load players/RSVPs:', err);
-      rsvpList.innerHTML = `
-        <div class="error-state">
-          <p>Failed to load data: ${err.message}</p>
-        </div>
-      `;
-    }
-  }
-  
-  renderPlayerRSVPs(players) {
-    const rsvpList = this.find('#rsvp-list');
-    
-    if (!players || players.length === 0) {
-      rsvpList.innerHTML = `
-        <div class="empty-state">
-          <p>No players on roster</p>
-          <p class="text-muted">Add players to the team roster first</p>
-        </div>
-      `;
-      return;
-    }
-    
-    // Sort: no response first, then by name
-    const sorted = [...players].sort((a, b) => {
-      if (!a.rsvpStatus && b.rsvpStatus) return -1;
-      if (a.rsvpStatus && !b.rsvpStatus) return 1;
-      const nameA = (a.name || '').toLowerCase();
-      const nameB = (b.name || '').toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
-    
-    rsvpList.innerHTML = sorted.map(player => {
-      const name = player.name || 'Unknown';
-      const jersey = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
-      const status = player.rsvpStatus;
-      
-      // Button classes based on current status
-      const yesClass = status === 'attending' ? 'btn-success' : 'btn-outline';
-      const noClass = status === 'not_attending' ? 'btn-danger' : 'btn-outline';
-      const maybeClass = status === 'maybe' ? 'btn-warning' : 'btn-outline';
+    container.innerHTML = transformedMatches.map(m => {
+      const isExpanded = this.expandedMatchId === m.id;
       
       return `
-        <div class="rsvp-row" style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-3); border-bottom: 1px solid var(--border-color);">
-          <div class="player-info" style="flex: 1;">
-            <strong>${name}</strong>
-            ${jersey ? `<span class="badge badge-secondary" style="margin-left: 8px;">${jersey}</span>` : ''}
-            ${!status ? '<span class="badge badge-muted" style="margin-left: 8px;">No response</span>' : ''}
+        <div class="match-accordion" style="margin-bottom: var(--space-3); border: 1px solid var(--color-border); border-radius: 8px; overflow: hidden; ${m.isPast ? 'opacity: 0.7;' : ''}">
+          <div class="match-header" data-match-id="${m.id}" style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-3); background: var(--color-background-secondary); cursor: pointer;">
+            <div>
+              <strong style="font-size: 1.1em;">${m.title}</strong>
+              <div style="font-size: 0.9em; color: var(--color-text-secondary); margin-top: 4px;">
+                📅 ${m.dateDisplay} &nbsp; 🕐 ${m.time}
+                ${m.venue_name ? ` &nbsp; 📍 ${m.venue_name}` : ''}
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="badge ${m.isPast ? 'badge-secondary' : 'badge-primary'}">${m.isPast ? 'Past' : 'Upcoming'}</span>
+              <span style="font-size: 1.2em;">${isExpanded ? '▼' : '▶'}</span>
+            </div>
           </div>
-          <div class="rsvp-buttons" style="display: flex; gap: 8px;">
-            <button class="rsvp-btn btn btn-sm ${yesClass}" 
-                    data-player-id="${player.id}" 
-                    data-status="attending"
-                    title="Attending">
-              ✓
-            </button>
-            <button class="rsvp-btn btn btn-sm ${maybeClass}" 
-                    data-player-id="${player.id}" 
-                    data-status="maybe"
-                    title="Maybe">
-              ?
-            </button>
-            <button class="rsvp-btn btn btn-sm ${noClass}" 
-                    data-player-id="${player.id}" 
-                    data-status="not_attending"
-                    title="Not Attending">
-              ✗
-            </button>
+          <div class="match-players" id="players-${m.id}" style="display: ${isExpanded ? 'block' : 'none'}; padding: 0;">
+            ${isExpanded ? this.renderPlayerTable(m.id) : '<div style="padding: var(--space-3); text-align: center;"><div class="spinner"></div></div>'}
           </div>
         </div>
       `;
     }).join('');
   }
   
-  updatePlayerRSVP(playerId, status, buttonEl) {
-    const matchId = this.currentMatchId;
+  async toggleMatch(matchId) {
+    if (this.expandedMatchId === matchId) {
+      // Collapse
+      this.expandedMatchId = null;
+      this.renderMatches();
+    } else {
+      // Expand new match
+      this.expandedMatchId = matchId;
+      this.renderMatches();
+      
+      // Load RSVPs if not cached
+      if (!this.rsvpCache[matchId]) {
+        await this.loadMatchRSVPs(matchId);
+      } else {
+        // Re-render with cached data
+        const playersDiv = this.find(`#players-${matchId}`);
+        if (playersDiv) {
+          playersDiv.innerHTML = this.renderPlayerTable(matchId);
+        }
+      }
+    }
+  }
+  
+  async loadMatchRSVPs(matchId) {
+    try {
+      const response = await this.auth.fetch(`/api/events/${matchId}/rsvps?role_type=player`);
+      const data = await response.json();
+      
+      const rsvps = data.data || [];
+      
+      // Create map of player RSVPs
+      const rsvpMap = {};
+      rsvps.forEach(rsvp => {
+        rsvpMap[rsvp.user_id] = rsvp.status;
+      });
+      
+      this.rsvpCache[matchId] = rsvpMap;
+      
+      // Re-render the player table
+      const playersDiv = this.find(`#players-${matchId}`);
+      if (playersDiv) {
+        playersDiv.innerHTML = this.renderPlayerTable(matchId);
+      }
+      
+    } catch (err) {
+      console.error('Failed to load RSVPs:', err);
+      const playersDiv = this.find(`#players-${matchId}`);
+      if (playersDiv) {
+        playersDiv.innerHTML = `<div style="padding: var(--space-3); color: var(--color-danger);">Failed to load RSVPs</div>`;
+      }
+    }
+  }
+  
+  renderPlayerTable(matchId) {
+    const rsvpMap = this.rsvpCache[matchId] || {};
+    
+    if (this.teamPlayers.length === 0) {
+      return `<div style="padding: var(--space-3); text-align: center; color: var(--color-text-secondary);">No players on roster</div>`;
+    }
+    
+    // Count RSVPs
+    let yesCount = 0, noCount = 0, maybeCount = 0, pendingCount = 0;
+    this.teamPlayers.forEach(p => {
+      const status = rsvpMap[p.id];
+      if (status === 'attending') yesCount++;
+      else if (status === 'not_attending') noCount++;
+      else if (status === 'maybe') maybeCount++;
+      else pendingCount++;
+    });
+    
+    // Summary row
+    const summary = `
+      <div style="padding: var(--space-2) var(--space-3); background: var(--color-background); border-bottom: 2px solid var(--color-border); display: flex; gap: var(--space-3); flex-wrap: wrap;">
+        <span style="color: var(--color-success);">✓ ${yesCount} Yes</span>
+        <span style="color: var(--color-warning);">? ${maybeCount} Maybe</span>
+        <span style="color: var(--color-danger);">✗ ${noCount} No</span>
+        <span style="color: var(--color-text-secondary);">⏳ ${pendingCount} Pending</span>
+      </div>
+    `;
+    
+    // Sort: pending first, then by name
+    const sorted = [...this.teamPlayers].sort((a, b) => {
+      const statusA = rsvpMap[a.id];
+      const statusB = rsvpMap[b.id];
+      if (!statusA && statusB) return -1;
+      if (statusA && !statusB) return 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+    
+    const tableRows = sorted.map(player => {
+      const status = rsvpMap[player.id];
+      const jersey = player.jerseyNumber || '-';
+      const name = player.name || 'Unknown';
+      
+      // Button styles
+      const yesClass = status === 'attending' ? 'btn-success' : 'btn-outline';
+      const maybeClass = status === 'maybe' ? 'btn-warning' : 'btn-outline';
+      const noClass = status === 'not_attending' ? 'btn-danger' : 'btn-outline';
+      
+      return `
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: var(--space-2); font-weight: bold; width: 50px; text-align: center;">${jersey}</td>
+          <td style="padding: var(--space-2);">${name}</td>
+          <td style="padding: var(--space-2); text-align: right; white-space: nowrap;">
+            <button class="rsvp-btn btn btn-sm ${yesClass}" 
+                    data-match-id="${matchId}"
+                    data-player-id="${player.id}" 
+                    data-status="attending"
+                    style="min-width: 36px;">✓</button>
+            <button class="rsvp-btn btn btn-sm ${maybeClass}" 
+                    data-match-id="${matchId}"
+                    data-player-id="${player.id}" 
+                    data-status="maybe"
+                    style="min-width: 36px;">?</button>
+            <button class="rsvp-btn btn btn-sm ${noClass}" 
+                    data-match-id="${matchId}"
+                    data-player-id="${player.id}" 
+                    data-status="not_attending"
+                    style="min-width: 36px;">✗</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    
+    return `
+      ${summary}
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background: var(--color-background-secondary); border-bottom: 2px solid var(--color-border);">
+            <th style="padding: var(--space-2); text-align: center;">#</th>
+            <th style="padding: var(--space-2); text-align: left;">Player</th>
+            <th style="padding: var(--space-2); text-align: right;">RSVP</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+    `;
+  }
+  
+  updatePlayerRSVP(matchId, playerId, status, buttonEl) {
     const coachId = this.auth.getUser()?.id;
     
     if (!matchId || !playerId || !coachId) {
@@ -288,7 +318,7 @@ class MatchRSVPManagementScreen extends Screen {
     console.log('Coach updating player RSVP:', { matchId, playerId, status, coachId });
     
     // Disable buttons during update
-    const row = buttonEl.closest('.rsvp-row');
+    const row = buttonEl.closest('tr');
     const buttons = row.querySelectorAll('.rsvp-btn');
     buttons.forEach(btn => btn.disabled = true);
     
@@ -296,10 +326,10 @@ class MatchRSVPManagementScreen extends Screen {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_id: playerId,        // The player's ID
+        user_id: playerId,
         role_type: 'player',
         status: status,
-        notes: `Set by coach`
+        notes: 'Set by coach'
       })
     })
     .then(r => {
@@ -309,14 +339,15 @@ class MatchRSVPManagementScreen extends Screen {
     .then(response => {
       console.log('RSVP updated:', response);
       
-      // Update local state (roster uses 'id' not 'user_id')
-      const player = this.teamPlayers.find(p => p.id === playerId);
-      if (player) {
-        player.rsvpStatus = status;
-      }
+      // Update cache
+      if (!this.rsvpCache[matchId]) this.rsvpCache[matchId] = {};
+      this.rsvpCache[matchId][playerId] = status;
       
-      // Re-render the list to show updated state
-      this.renderPlayerRSVPs(this.teamPlayers);
+      // Re-render the player table
+      const playersDiv = this.find(`#players-${matchId}`);
+      if (playersDiv) {
+        playersDiv.innerHTML = this.renderPlayerTable(matchId);
+      }
     })
     .catch(err => {
       console.error('RSVP update error:', err);
