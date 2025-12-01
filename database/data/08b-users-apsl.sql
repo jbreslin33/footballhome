@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYER USERS
 -- ========================================
--- Generated: 2025-12-01T12:58:31.272Z
+-- Generated: 2025-12-01T13:17:51.839Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -19195,6 +19195,298 @@ VALUES (
   '2190ac37-15a8-0006-456d-119506e76681',
   'Myles',
   'Williams',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+
+-- ========================================
+-- Lithonia City FC USERS
+-- ========================================
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'c739b13a-6576-0006-5bb2-2f93ba74cbb6',
+  'Ochuko',
+  'Asibelua',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'b6d97c5d-90b2-0006-37b6-5a2303eb163a',
+  'Sang',
+  'Bawi',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'b87af906-b8b3-0006-29f7-0ddfa1ac3862',
+  'Kanye',
+  'Alexander Blake',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'b1aae734-0d27-0006-66fc-a13ddc50bfca',
+  'Jackson',
+  'Cherfils',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'fee02eb6-dd59-0006-5d57-7b75d5b12b9e',
+  'Okikiade',
+  'Leo Faduyile',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'e9961d8f-b74d-0006-5056-6efe24b3bbbe',
+  'Alivic',
+  'Fossem',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  '08913780-7bf7-0006-d3df-41e01b27d88d',
+  'Didier',
+  'Lehman Fresh',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  '67201bda-2955-0006-b71f-927618f5ae53',
+  'Daniel',
+  'Gonzalez',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'f7514e41-5757-0006-80fc-b9c5f31fa934',
+  'James',
+  'Wedson Jean',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'de1fe14e-bb12-0006-827b-b1012f5d69de',
+  'Maxinio',
+  'Joseph',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  '1d4e2c2d-30b6-0006-3bc6-2e7c2ff30140',
+  'Berlin',
+  'Marcelin',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'd8c47625-808c-0006-61ee-ae7cb3e3a52c',
+  'Hachem',
+  'Alaoui Mhamdi',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'e27e77a2-a2d8-0006-a353-bc685f147361',
+  'Olivier',
+  'A. Momplaisir',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'a2e665d8-ffb4-0006-f969-a936d7d7ca41',
+  'Aaron',
+  'Morales',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  '3f422c12-7367-0006-e9c7-5e73cb0fd6fd',
+  'Taft',
+  'Parsons',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'a96fb340-d6a4-0006-5451-e428593dcc62',
+  'Edmar',
+  'Pere-de Leon',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'e7f2f206-b43d-0006-5b70-cd9a8a9f4292',
+  'Paul',
+  'Phillips',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  '0fbec5c8-2659-0006-c844-9742e6b518ca',
+  'Moise',
+  'Pierre',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  '258ebc29-8db9-0006-affd-8026eaa7d7d6',
+  'Neo',
+  'Ramos Lorza',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  '6cfa8eb7-033a-0006-5b54-6e5d0bed1f7e',
+  'Edwin',
+  'Rios Zapata',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  '401961e9-22fc-0006-e710-dc480de22552',
+  'Jose',
+  'Ruben',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  '0244d2b0-f028-0006-4cd6-b4055957613b',
+  'Emmanuel',
+  'Michael Rwakabuba',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  '9e344863-6949-0006-201e-cd6a0c3876eb',
+  'Rickenson',
+  'Saint Quitte',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  '23051d8c-96d9-0006-db80-f0fba977bafa',
+  'Calvin',
+  'Ventura',
   true
 )
 ON CONFLICT (id) DO UPDATE SET

@@ -1,7 +1,7 @@
 -- ========================================
 -- LEAGUES
 -- ========================================
--- Generated: 2025-12-01T12:58:31.256Z
+-- Generated: 2025-12-01T13:17:51.822Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
