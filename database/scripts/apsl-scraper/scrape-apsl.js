@@ -55,16 +55,105 @@ const AWAY_STATUS_ID = '550e8400-e29b-41d4-a716-446655440802';
 // System user for creating events (James Breslin - admin)
 const SYSTEM_USER_ID = '77d77471-1250-47e0-81ab-d4626595d63c';
 
-// Helper: Fetch HTML from URL
+// TeamPass authentication cookies (set by login())
+let authCookies = '';
+
+// Helper: Login to TeamPass to access reserve rosters
+async function loginToTeamPass() {
+  const querystring = require('querystring');
+  
+  // Check for credentials in environment, fallback to development defaults
+  // WARNING: Development credentials only - override with TEAMPASS_USER/TEAMPASS_PASS for production
+  const username = process.env.TEAMPASS_USER || 'soccer@lighthouse1893.org';
+  const password = process.env.TEAMPASS_PASS || '1893Soccer!';
+  
+  console.error('🔐 Logging into TeamPass...');
+  
+  // Step 1: Get initial session cookies
+  const initCookies = await new Promise((resolve, reject) => {
+    https.get('https://app.teampass.com/reg/login/', (res) => {
+      const cookies = res.headers['set-cookie'] || [];
+      resolve(cookies.map(c => c.split(';')[0]).join('; '));
+    }).on('error', reject);
+  });
+  
+  // Step 2: Login - MUST include Update_Account=Update button name
+  const postData = querystring.stringify({
+    'Reg.Login.Action': 'VerifyUser',
+    'folder.contentid': '0',
+    'Reg_Pass_Folder': '0',
+    'form_Login_idValue': '0',
+    'form_Login_rowCount': '1',
+    'form_Login_newrowCount': '1',
+    'form_Login_UserName': username,
+    'form_Login_Password': password,
+    'Update_Account': 'Update'
+  });
+  
+  const loginResult = await new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'app.teampass.com',
+      path: '/Reg/Login/index.cfm',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(postData),
+        'Cookie': initCookies,
+        'Origin': 'https://app.teampass.com',
+        'Referer': 'https://app.teampass.com/reg/login/'
+      }
+    }, (res) => {
+      const newCookies = res.headers['set-cookie'] || [];
+      
+      // Merge all cookies
+      const cookieMap = {};
+      initCookies.split('; ').forEach(c => {
+        const [k, v] = c.split('=');
+        if (k && v) cookieMap[k] = v;
+      });
+      newCookies.forEach(c => {
+        const parts = c.split(';')[0].split('=');
+        if (parts.length >= 2) cookieMap[parts[0]] = parts.slice(1).join('=');
+      });
+      
+      const allCookies = Object.entries(cookieMap).map(([k,v]) => k+'='+v).join('; ');
+      const success = newCookies.some(c => c.includes('NETAPPS.USER.ID'));
+      
+      resolve({ success, cookies: allCookies });
+    });
+    req.write(postData);
+    req.end();
+  });
+  
+  if (loginResult.success) {
+    authCookies = loginResult.cookies;
+    console.error('✓ Logged into TeamPass successfully');
+    console.error('  Reserve rosters will be included.');
+    return true;
+  } else {
+    console.error('✗ TeamPass login failed');
+    return false;
+  }
+}
+
+// Helper: Fetch HTML from URL (with optional auth)
 function fetchHTML(url) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    };
+    
+    // Add auth cookies to ALL requests (TeamPass cookies work cross-domain)
+    // The cookies set on .teampass.com are used by apslsoccer.com through shared session
+    if (authCookies) {
+      headers['Cookie'] = authCookies;
+    }
+    
     const options = {
       hostname: urlObj.hostname,
       path: urlObj.pathname + urlObj.search,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
+      headers
     };
     
     https.get(options, (res) => {
@@ -123,6 +212,9 @@ async function scrapeAPSL() {
   console.log('-- ========================================\n');
 
   try {
+    // Try to login for reserve roster access
+    await loginToTeamPass();
+    
     console.error('Fetching APSL standings page...');
     const html = await fetchHTML(LEAGUE_URL);
     const dom = new JSDOM(html);
@@ -267,25 +359,88 @@ async function scrapeTeamRoster(teamId, teamUrl) {
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
-    // Find all tables on the page
-    const tables = doc.querySelectorAll('table');
-    let playerRows = [];
+    // Find roster tables with TableRoster class (more specific selector)
+    // This finds Active, Reserve, and Inactive rosters when authenticated
+    const rosterTables = doc.querySelectorAll('table.TableRoster');
+    let allPlayerRows = [];
+    let mainRosterCount = 0;
+    let reserveRosterCount = 0;
+    let inactiveSkipped = 0;
     
-    // Look for the table containing "added:" text (roster table)
-    for (const table of tables) {
-      const tableText = table.textContent.toLowerCase();
-      if (tableText.includes('added:')) {
-        playerRows = Array.from(table.querySelectorAll('tr'));
-        break;
+    console.error(`    Found ${rosterTables.length} roster table(s)`);
+    
+    // Process each roster table
+    for (const table of rosterTables) {
+      // Walk UP through DOM to find the h2 header for this section
+      let sectionType = 'main';
+      let current = table;
+      let found = false;
+      
+      while (current && !found) {
+        let prev = current.previousElementSibling;
+        while (prev) {
+          if (prev.tagName === 'H2') {
+            const headerText = prev.textContent.toLowerCase();
+            if (headerText.includes('inactive')) {
+              sectionType = 'inactive';
+            } else if (headerText.includes('reserve')) {
+              sectionType = 'reserve';
+            }
+            found = true;
+            break;
+          }
+          prev = prev.previousElementSibling;
+        }
+        if (!found) {
+          current = current.parentElement;
+        }
+      }
+      
+      const rows = Array.from(table.querySelectorAll('tr'));
+      const playerRows = rows.filter(r => r.textContent.includes('added:'));
+      
+      // Skip inactive roster players
+      if (sectionType === 'inactive') {
+        inactiveSkipped += playerRows.length;
+        console.error(`    Skipping ${playerRows.length} inactive player(s)`);
+        continue;
+      }
+      
+      if (sectionType === 'reserve') {
+        reserveRosterCount += playerRows.length;
+        console.error(`    Found ${playerRows.length} reserve player(s)`);
+      } else {
+        mainRosterCount += playerRows.length;
+        console.error(`    Found ${playerRows.length} main roster player(s)`);
+      }
+      
+      allPlayerRows = allPlayerRows.concat(playerRows);
+    }
+    
+    // Fallback: if no TableRoster tables, look for any table with "added:" text
+    if (rosterTables.length === 0) {
+      console.error(`    No TableRoster found, trying fallback...`);
+      const allTables = doc.querySelectorAll('table');
+      for (const table of allTables) {
+        if (table.textContent.includes('added:')) {
+          const rows = Array.from(table.querySelectorAll('tr'));
+          allPlayerRows = rows.filter(r => r.textContent.includes('added:'));
+          mainRosterCount = allPlayerRows.length;
+          console.error(`    Fallback found ${mainRosterCount} player(s)`);
+          break;
+        }
       }
     }
 
-    if (playerRows.length === 0) {
+    if (allPlayerRows.length === 0) {
       console.error(`    No roster found for ${teamUrl}`);
       return;
     }
     
-    for (const row of playerRows) {
+    console.error(`    Total: ${mainRosterCount} main + ${reserveRosterCount} reserve = ${allPlayerRows.length} (skipped ${inactiveSkipped} inactive)`)
+    
+    let playersAdded = 0;
+    for (const row of allPlayerRows) {
       const cells = row.querySelectorAll('td');
       if (cells.length < 2) continue;
 
@@ -347,10 +502,19 @@ async function scrapeTeamRoster(teamId, teamUrl) {
           jersey_number: jerseyNum ? parseInt(jerseyNum) : null,
           position: position
         });
+        playersAdded++;
       }
     }
 
-    console.error(`    Found ${playerRows.length} players`);
+    // Log roster stats
+    let logMsg = `    Found ${playersAdded} players`;
+    if (reserveRosterCount > 0 || inactiveSkipped > 0) {
+      const parts = [`${mainRosterCount} main`];
+      if (reserveRosterCount > 0) parts.push(`${reserveRosterCount} reserve`);
+      if (inactiveSkipped > 0) parts.push(`${inactiveSkipped} inactive skipped`);
+      logMsg += ` (${parts.join(', ')})`;
+    }
+    console.error(logMsg);
 
   } catch (error) {
     console.error(`    Error scraping roster from ${teamUrl}:`, error.message);
