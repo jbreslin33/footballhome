@@ -4,7 +4,8 @@ class MatchOptionsScreen extends Screen {
     const teamName = this.navigation.context.team?.name || 'Unknown Team';
     const userRole = this.navigation.context.role; // 'coach', 'player', or 'parent'
     
-    // Only coaches can manage matches (for now - RSVP only for MVP)
+    // Only coaches can manage matches and player RSVPs
+    const isCoach = userRole === 'coach';
     const showManageButton = false; // Will enable later
     
     const div = document.createElement('div');
@@ -27,11 +28,20 @@ class MatchOptionsScreen extends Screen {
         ` : ''}
         
         <button data-action="rsvp" class="btn btn-lg btn-primary">
-          ✓ RSVP to Matches
+          ✓ My RSVP
           <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
             View and respond to scheduled matches
           </small>
         </button>
+        
+        ${isCoach ? `
+          <button data-action="manage-rsvps" class="btn btn-lg btn-secondary">
+            📋 Manage Player RSVPs
+            <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
+              View and edit player availability for matches
+            </small>
+          </button>
+        ` : ''}
       </div>
     `;
     this.element = div;
@@ -49,6 +59,8 @@ class MatchOptionsScreen extends Screen {
           alert('Match management coming soon!');
         } else if (action === 'rsvp') {
           this.navigation.goTo('match-list');
+        } else if (action === 'manage-rsvps') {
+          this.navigation.goTo('match-rsvp-management');
         }
         return;
       }
