@@ -115,6 +115,19 @@ echo ""
 
 echo -e "${YELLOW}🚀 Step 4: Starting containers...${NC}"
 docker compose up -d
+
+# Wait for containers to be fully running
+echo -n "  Waiting for containers to initialize"
+for i in $(seq 1 30); do
+    RUNNING=$(docker compose ps --status running -q 2>/dev/null | wc -l)
+    if [ "$RUNNING" -ge 3 ]; then
+        echo -e " ${GREEN}✓${NC}"
+        break
+    fi
+    echo -n "."
+    sleep 1
+done
+
 echo -e "${GREEN}✓ Containers started${NC}"
 echo ""
 
@@ -124,32 +137,51 @@ echo ""
 
 echo -e "${YELLOW}⏳ Step 5: Waiting for services...${NC}"
 
+# Wait for database to be healthy first
+echo -n "  Database: "
+for i in $(seq 1 60); do
+    if docker compose exec -T db pg_isready -U footballhome > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Ready (${i}s)${NC}"
+        break
+    fi
+    if [ "$i" -eq 60 ]; then
+        echo -e "${RED}✗ Timeout after 60s${NC}"
+        docker compose logs db | tail -20
+        exit 1
+    fi
+    sleep 1
+done
+
 # Wait for backend (includes DB init time)
 echo -n "  Backend: "
-for i in $(seq 1 300); do
+for i in $(seq 1 120); do
     if curl -s http://localhost:3001/health > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Ready (${i}s)${NC}"
         break
     fi
-    if [ "$i" -eq 300 ]; then
-        echo -e "${RED}✗ Timeout after 300s${NC}"
+    if [ "$i" -eq 120 ]; then
+        echo -e "${RED}✗ Timeout after 120s${NC}"
         echo ""
         echo "Check logs:"
-        echo "  docker logs footballhome_simple_backend"
-        echo "  docker logs footballhome_db"
+        echo "  docker compose logs backend"
+        docker compose logs backend | tail -30
         exit 1
     fi
-    [ $((i % 30)) -eq 0 ] && echo -n "."
     sleep 1
 done
 
 # Check frontend
 echo -n "  Frontend: "
-if curl -s http://localhost:3000 > /dev/null 2>&1; then
-    echo -e "${GREEN}✓ Ready${NC}"
-else
-    echo -e "${YELLOW}⚠ Not ready yet (may need a moment)${NC}"
-fi
+for i in $(seq 1 30); do
+    if curl -s http://localhost:3000 > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Ready (${i}s)${NC}"
+        break
+    fi
+    if [ "$i" -eq 30 ]; then
+        echo -e "${YELLOW}⚠ Not ready yet (may need a moment)${NC}"
+    fi
+    sleep 1
+done
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
