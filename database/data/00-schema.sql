@@ -404,16 +404,6 @@ CREATE TABLE roster_statuses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Roster Status History (track changes over time)
-CREATE TABLE team_players_status_history (
-    id SERIAL PRIMARY KEY,
-    team_player_id UUID REFERENCES team_players(id) ON DELETE CASCADE,
-    roster_status_id INTEGER REFERENCES roster_statuses(id),
-    changed_by_user_id UUID REFERENCES users(id),
-    changed_at TIMESTAMPTZ DEFAULT NOW(),
-    notes TEXT
-);
-
 -- Team Players (players on teams)
 CREATE TABLE team_players (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -430,6 +420,16 @@ CREATE TABLE team_players (
     notes TEXT,
     UNIQUE(team_id, player_id)
     -- Note: Jersey numbers not enforced as unique due to unreliable APSL data
+);
+
+-- Roster Status History (track changes over time)
+CREATE TABLE team_players_status_history (
+    id SERIAL PRIMARY KEY,
+    team_player_id UUID REFERENCES team_players(id) ON DELETE CASCADE,
+    roster_status_id INTEGER REFERENCES roster_statuses(id),
+    changed_by_user_id UUID REFERENCES users(id),
+    changed_at TIMESTAMPTZ DEFAULT NOW(),
+    notes TEXT
 );
 
 -- Indexes for team_players
