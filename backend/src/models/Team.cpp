@@ -77,7 +77,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
     json << "[";
     
     try {
-        // Get all players for the team
+        // Get all players for the team (including roster status info)
         std::string sql = 
             "SELECT "
             "  u.id as user_id, "
@@ -89,13 +89,20 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "  tp.is_captain, "
             "  tp.is_vice_captain, "
             "  tp.is_active, "
+            "  tp.roster_status_id, "
+            "  rs.code as roster_status_code, "
+            "  rs.display_name as roster_status, "
+            "  rs.show_in_rsvp, "
+            "  rs.show_in_official_roster, "
             "  DATE(tp.joined_at) as joined_date "
             "FROM team_players tp "
             "JOIN players pl ON tp.player_id = pl.id "
             "JOIN users u ON pl.id = u.id "
             "LEFT JOIN positions p ON tp.position_id = p.id "
-            "WHERE tp.team_id = $1 AND tp.is_active = true "
+            "LEFT JOIN roster_statuses rs ON tp.roster_status_id = rs.id "
+            "WHERE tp.team_id = $1 "
             "ORDER BY "
+            "  rs.sort_order, "
             "  tp.jersey_number NULLS LAST, "
             "  u.last_name, u.first_name";
         
@@ -111,6 +118,11 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             std::string email = row["email"].is_null() ? "" : escapeJSON(row["email"].as<std::string>());
             std::string position = row["position"].is_null() ? "No Position" : escapeJSON(row["position"].as<std::string>());
             std::string joined_date = row["joined_date"].is_null() ? "" : row["joined_date"].as<std::string>();
+            std::string roster_status = row["roster_status"].is_null() ? "Active Player" : escapeJSON(row["roster_status"].as<std::string>());
+            std::string roster_status_code = row["roster_status_code"].is_null() ? "active" : row["roster_status_code"].as<std::string>();
+            int roster_status_id = row["roster_status_id"].is_null() ? 1 : row["roster_status_id"].as<int>();
+            bool show_in_rsvp = row["show_in_rsvp"].is_null() ? true : row["show_in_rsvp"].as<bool>();
+            bool show_in_official = row["show_in_official_roster"].is_null() ? true : row["show_in_official_roster"].as<bool>();
             
             json << "{";
             json << "\"id\":\"" << row["user_id"].as<std::string>() << "\",";
@@ -121,6 +133,11 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             json << "\"isCaptain\":" << (row["is_captain"].as<bool>() ? "true" : "false") << ",";
             json << "\"isViceCaptain\":" << (row["is_vice_captain"].as<bool>() ? "true" : "false") << ",";
             json << "\"isActive\":" << (row["is_active"].as<bool>() ? "true" : "false") << ",";
+            json << "\"rosterStatusId\":" << roster_status_id << ",";
+            json << "\"rosterStatusCode\":\"" << roster_status_code << "\",";
+            json << "\"rosterStatus\":\"" << roster_status << "\",";
+            json << "\"showInRsvp\":" << (show_in_rsvp ? "true" : "false") << ",";
+            json << "\"showInOfficialRoster\":" << (show_in_official ? "true" : "false") << ",";
             json << "\"joinedDate\":\"" << joined_date << "\",";
             json << "\"roleType\":\"PLAYER\"";
             json << "}";
@@ -163,6 +180,11 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             json << "\"isCaptain\":false,";
             json << "\"isViceCaptain\":false,";
             json << "\"isActive\":true,";
+            json << "\"rosterStatusId\":null,";
+            json << "\"rosterStatusCode\":null,";
+            json << "\"rosterStatus\":null,";
+            json << "\"showInRsvp\":true,";
+            json << "\"showInOfficialRoster\":true,";
             json << "\"joinedDate\":\"\",";
             json << "\"roleType\":\"COACH\"";
             json << "}";
@@ -178,8 +200,50 @@ std::string Team::getTeamRoster(const std::string& team_id) {
     return json.str();
 }
 
+std::string Team::getRosterStatuses() {
+    std::ostringstream json;
+    json << "[";
+    
+    try {
+        std::string sql = 
+            "SELECT id, code, display_name, description, "
+            "       show_in_rsvp, show_in_official_roster, sort_order, is_active "
+            "FROM roster_statuses "
+            "WHERE is_active = true "
+            "ORDER BY sort_order";
+        
+        pqxx::result result = executeQuery(sql, {});
+        
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) json << ",";
+            
+            std::string description = row["description"].is_null() ? "" : escapeJSON(row["description"].as<std::string>());
+            
+            json << "{";
+            json << "\"id\":" << row["id"].as<int>() << ",";
+            json << "\"code\":\"" << row["code"].as<std::string>() << "\",";
+            json << "\"displayName\":\"" << escapeJSON(row["display_name"].as<std::string>()) << "\",";
+            json << "\"description\":\"" << description << "\",";
+            json << "\"showInRsvp\":" << (row["show_in_rsvp"].as<bool>() ? "true" : "false") << ",";
+            json << "\"showInOfficialRoster\":" << (row["show_in_official_roster"].as<bool>() ? "true" : "false") << ",";
+            json << "\"sortOrder\":" << row["sort_order"].as<int>();
+            json << "}";
+            
+            first = false;
+        }
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ getRosterStatuses error: " << e.what() << std::endl;
+    }
+    
+    json << "]";
+    return json.str();
+}
+
 bool Team::updateRosterMember(const std::string& team_id, const std::string& player_id,
-                              const std::string& jersey_number, bool is_captain, bool is_vice_captain) {
+                              const std::string& jersey_number, bool is_captain, bool is_vice_captain,
+                              const std::string& roster_status_id) {
     try {
         // If setting this player as captain, first unset any existing captain
         if (is_captain) {
@@ -203,6 +267,11 @@ bool Team::updateRosterMember(const std::string& team_id, const std::string& pla
         if (!jersey_number.empty()) {
             sql << "jersey_number = $" << param_num++ << ", ";
             params.push_back(jersey_number);
+        }
+        
+        if (!roster_status_id.empty()) {
+            sql << "roster_status_id = $" << param_num++ << ", ";
+            params.push_back(roster_status_id);
         }
         
         // Use literal true/false for boolean columns

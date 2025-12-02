@@ -13,6 +13,7 @@ public:
 
 private:
     Response handleGetRoster(const Request& request);
+    Response handleGetRosterStatuses(const Request& request);
     Response handleUpdateRosterMember(const Request& request);
     Response handleRemoveRosterMember(const Request& request);
     

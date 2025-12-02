@@ -13,6 +13,8 @@ class App {
       teamSelection: new TeamSelectionScreen(this.navigation, this.auth),
       teamDashboard: new TeamDashboardScreen(this.navigation, this.auth),
       rosterManagement: new RosterManagementScreen(this.navigation, this.auth),
+      rosterDashboard: new RosterDashboardScreen(this.navigation, this.auth),
+      rosterCategory: new RosterCategoryScreen(this.navigation, this.auth),
       practiceOptions: new PracticeOptionsScreen(this.navigation, this.auth),
       practiceManagement: new PracticeManagementScreen(this.navigation, this.auth),
       practiceForm: new PracticeFormScreen(this.navigation, this.auth),
@@ -29,6 +31,8 @@ class App {
     this.screenManager.register('team-selection', this.screens.teamSelection);
     this.screenManager.register('team-dashboard', this.screens.teamDashboard);
     this.screenManager.register('roster-management', this.screens.rosterManagement);
+    this.screenManager.register('roster-dashboard', this.screens.rosterDashboard);
+    this.screenManager.register('roster-category', this.screens.rosterCategory);
     this.screenManager.register('practice-options', this.screens.practiceOptions);
     this.screenManager.register('practice-management', this.screens.practiceManagement);
     this.screenManager.register('practice-form', this.screens.practiceForm);

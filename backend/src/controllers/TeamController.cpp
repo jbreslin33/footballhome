@@ -8,12 +8,17 @@ TeamController::TeamController() {
 }
 
 void TeamController::registerRoutes(Router& router, const std::string& prefix) {
+    // Get roster statuses (lookup table)
+    router.get(prefix + "/roster-statuses", [this](const Request& request) {
+        return this->handleGetRosterStatuses(request);
+    });
+    
     // Get team roster
     router.get(prefix + "/:teamId/roster", [this](const Request& request) {
         return this->handleGetRoster(request);
     });
     
-    // Update roster member (jersey number, position, captain status)
+    // Update roster member (jersey number, position, captain status, roster status)
     router.put(prefix + "/:teamId/roster/:playerId", [this](const Request& request) {
         return this->handleUpdateRosterMember(request);
     });
@@ -36,7 +41,7 @@ Response TeamController::handleGetRoster(const Request& request) {
         
         std::cout << "🔍 Getting roster for team: " << team_id << std::endl;
         
-        // Get team roster from database
+        // Get team roster from database (now includes roster status)
         std::string roster_json = team_model_->getTeamRoster(team_id);
         
         std::ostringstream json;
@@ -51,6 +56,28 @@ Response TeamController::handleGetRoster(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ TeamController::handleGetRoster error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve team roster");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response TeamController::handleGetRosterStatuses(const Request& request) {
+    try {
+        std::cout << "🔍 Getting roster statuses" << std::endl;
+        
+        std::string statuses_json = team_model_->getRosterStatuses();
+        
+        std::ostringstream json;
+        json << "{";
+        json << "\"success\":true,";
+        json << "\"message\":\"Roster statuses retrieved successfully\",";
+        json << "\"data\":" << statuses_json;
+        json << "}";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ TeamController::handleGetRosterStatuses error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve roster statuses");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }
@@ -95,9 +122,9 @@ Response TeamController::handleUpdateRosterMember(const Request& request) {
         // Parse request body for updates
         std::string body = request.getBody();
         
-        // Simple JSON parsing for jersey_number, position_id, is_captain, is_vice_captain
+        // Simple JSON parsing for jersey_number, position_id, is_captain, is_vice_captain, roster_status_id
         std::string jersey_number = "";
-        std::string position_id = "";
+        std::string roster_status_id = "";
         bool is_captain = false;
         bool is_vice_captain = false;
         
@@ -109,6 +136,13 @@ Response TeamController::handleUpdateRosterMember(const Request& request) {
             if (val != "null") {
                 jersey_number = val;
             }
+        }
+        
+        // Parse roster_status_id
+        std::regex status_regex(R"("rosterStatusId"\s*:\s*(\d+))");
+        std::smatch status_match;
+        if (std::regex_search(body, status_match, status_regex)) {
+            roster_status_id = status_match[1].str();
         }
         
         // Parse is_captain
@@ -126,7 +160,8 @@ Response TeamController::handleUpdateRosterMember(const Request& request) {
         }
         
         // Update the roster entry
-        bool success = team_model_->updateRosterMember(team_id, player_id, jersey_number, is_captain, is_vice_captain);
+        bool success = team_model_->updateRosterMember(team_id, player_id, jersey_number, 
+                                                        is_captain, is_vice_captain, roster_status_id);
         
         if (success) {
             std::string json = createJSONResponse(true, "Roster member updated successfully");

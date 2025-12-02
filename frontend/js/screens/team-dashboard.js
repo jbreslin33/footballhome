@@ -37,7 +37,7 @@ class TeamDashboardScreen extends Screen {
         const action = actionBtn.getAttribute('data-action');
         
         if (action === 'roster') {
-          this.navigation.goTo('roster-management');
+          this.navigation.goTo('roster-dashboard');
         } else if (action === 'practices') {
           this.navigation.goTo('practice-options');
         } else if (action === 'matches') {
