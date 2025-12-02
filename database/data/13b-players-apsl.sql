@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYERS
 -- ========================================
--- Generated: 2025-12-01T16:28:41.234Z
+-- Generated: 2025-12-02T13:53:53.729Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -1952,6 +1952,11 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO players (id, notes)
 VALUES ('ba2dd9ea-4e93-0006-1076-f501632aac0f', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('d7a0a679-edbb-0006-abdb-2464cb1460d0', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
@@ -6012,6 +6017,11 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO players (id, notes)
 VALUES ('c3be71d8-03da-0006-261b-d099c7bdc46c', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, notes)
+VALUES ('4b8f7643-2044-0006-6b76-1d334fe7ca14', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 

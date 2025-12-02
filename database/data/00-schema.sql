@@ -391,22 +391,56 @@ CREATE TABLE admin_permissions (
 -- ========================================
 -- Link entity tables to teams with role-specific fields
 
+-- Roster Status Lookup Table
+CREATE TABLE roster_statuses (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(30) UNIQUE NOT NULL,
+    display_name VARCHAR(50) NOT NULL,
+    description TEXT,
+    show_in_rsvp BOOLEAN DEFAULT true,           -- Should they receive RSVP invitations?
+    show_in_official_roster BOOLEAN DEFAULT true, -- Show on official roster reports?
+    sort_order INTEGER DEFAULT 0,                 -- For UI display ordering
+    is_active BOOLEAN DEFAULT true,               -- Can this status still be used?
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Roster Status History (track changes over time)
+CREATE TABLE team_players_status_history (
+    id SERIAL PRIMARY KEY,
+    team_player_id UUID REFERENCES team_players(id) ON DELETE CASCADE,
+    roster_status_id INTEGER REFERENCES roster_statuses(id),
+    changed_by_user_id UUID REFERENCES users(id),
+    changed_at TIMESTAMPTZ DEFAULT NOW(),
+    notes TEXT
+);
+
 -- Team Players (players on teams)
 CREATE TABLE team_players (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    roster_status_id INTEGER NOT NULL REFERENCES roster_statuses(id) DEFAULT 1,
     position_id UUID REFERENCES positions(id),  -- Position on THIS team
     jersey_number INTEGER,                      -- Jersey number on THIS team
     is_captain BOOLEAN DEFAULT false,
     is_vice_captain BOOLEAN DEFAULT false,
-    is_active BOOLEAN DEFAULT true,
+    is_active BOOLEAN DEFAULT true,             -- Still on team (not departed)
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     left_at TIMESTAMP,
     notes TEXT,
     UNIQUE(team_id, player_id)
     -- Note: Jersey numbers not enforced as unique due to unreliable APSL data
 );
+
+-- Indexes for team_players
+CREATE INDEX idx_team_players_roster_status ON team_players(roster_status_id);
+CREATE INDEX idx_team_players_team ON team_players(team_id);
+CREATE INDEX idx_team_players_player ON team_players(player_id);
+CREATE INDEX idx_team_players_active ON team_players(is_active) WHERE is_active = true;
+
+-- Indexes for team_players_status_history
+CREATE INDEX idx_team_players_status_history_player ON team_players_status_history(team_player_id, changed_at DESC);
+CREATE INDEX idx_team_players_status_history_status ON team_players_status_history(roster_status_id);
 
 -- Team Coaches (coaches for teams)
 CREATE TABLE team_coaches (
@@ -1052,6 +1086,15 @@ INSERT INTO positions (id, sport_id, name, display_name, abbreviation, sort_orde
 ('550e8400-e29b-41d4-a716-446655440502', '550e8400-e29b-41d4-a716-446655440101', 'defender', 'Defender', 'DEF', 2),
 ('550e8400-e29b-41d4-a716-446655440503', '550e8400-e29b-41d4-a716-446655440101', 'midfielder', 'Midfielder', 'MID', 3),
 ('550e8400-e29b-41d4-a716-446655440504', '550e8400-e29b-41d4-a716-446655440101', 'forward', 'Forward', 'FWD', 4);
+
+-- Roster statuses (for team_players)
+INSERT INTO roster_statuses (code, display_name, description, show_in_rsvp, show_in_official_roster, sort_order) VALUES
+('active', 'Active Player', 'Currently playing with the team', true, true, 1),
+('official_inactive', 'Official Roster (Inactive)', 'On APSL roster but not participating', false, true, 2),
+('trial', 'On Trial', 'Trialing with team, not official yet', true, false, 3),
+('injured_reserve', 'Injured Reserve', 'Injured, not on official roster', true, false, 4),
+('suspended', 'Suspended', 'Temporarily suspended from team', false, true, 5),
+('departed', 'Departed', 'No longer with team', false, false, 6);
 
 -- Sample teams - removed fake data
 

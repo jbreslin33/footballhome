@@ -1076,10 +1076,13 @@ ON CONFLICT (id) DO UPDATE SET
 -- ========================================
 `;
       for (const tp of roster) {
-        rostersSQL += `INSERT INTO team_players (id, team_id, player_id, jersey_number, is_active)
-VALUES (${sqlEscape(tp.id)}, ${sqlEscape(tp.team_id)}, ${sqlEscape(tp.player_id)}, ${tp.jersey_number || 'NULL'}, true)
+        // Default to 'active' status (id=1) for all scraped players
+        // Coaches can later change status to 'official_inactive', 'trial', etc.
+        rostersSQL += `INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
+VALUES (${sqlEscape(tp.id)}, ${sqlEscape(tp.team_id)}, ${sqlEscape(tp.player_id)}, ${tp.jersey_number || 'NULL'}, 1, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
+  roster_status_id = EXCLUDED.roster_status_id,
   is_active = EXCLUDED.is_active;
 
 `;
