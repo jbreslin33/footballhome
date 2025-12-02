@@ -226,93 +226,97 @@ class MatchRSVPManagementScreen extends Screen {
       return `<div style="padding: var(--space-3); text-align: center; color: var(--color-text-secondary);">No players on roster</div>`;
     }
     
-    // Count RSVPs
-    let yesCount = 0, noCount = 0, maybeCount = 0, pendingCount = 0;
+    // Categorize players by status
+    const attending = [];
+    const notAttending = [];
+    const maybe = [];
+    const pending = [];
+    
     this.teamPlayers.forEach(p => {
       const status = rsvpMap[p.id];
-      if (status === 'attending') yesCount++;
-      else if (status === 'not_attending') noCount++;
-      else if (status === 'maybe') maybeCount++;
-      else pendingCount++;
+      if (status === 'attending') attending.push(p);
+      else if (status === 'not_attending') notAttending.push(p);
+      else if (status === 'maybe') maybe.push(p);
+      else pending.push(p);
     });
     
-    // Summary row
-    const summary = `
-      <div style="padding: var(--space-2) var(--space-3); background: var(--color-background); border-bottom: 2px solid var(--color-border); display: flex; gap: var(--space-3); flex-wrap: wrap;">
-        <span style="color: var(--color-success);">✓ ${yesCount} Yes</span>
-        <span style="color: var(--color-warning);">? ${maybeCount} Maybe</span>
-        <span style="color: var(--color-danger);">✗ ${noCount} No</span>
-        <span style="color: var(--color-text-secondary);">⏳ ${pendingCount} Pending</span>
-      </div>
-    `;
+    // Sort each category alphabetically
+    const sortByName = (a, b) => (a.name || '').localeCompare(b.name || '');
+    attending.sort(sortByName);
+    maybe.sort(sortByName);
+    notAttending.sort(sortByName);
+    pending.sort(sortByName);
     
-    // Sort: pending first, then by name
-    const sorted = [...this.teamPlayers].sort((a, b) => {
-      const statusA = rsvpMap[a.id];
-      const statusB = rsvpMap[b.id];
-      if (!statusA && statusB) return -1;
-      if (statusA && !statusB) return 1;
-      return (a.name || '').localeCompare(b.name || '');
-    });
-    
-    const tableRows = sorted.map(player => {
-      const status = rsvpMap[player.id];
-      const jersey = player.jerseyNumber || '-';
-      const name = player.name || 'Unknown';
-      const isPending = !status;
-      const isMaybe = status === 'maybe';
-      const needsAttention = isPending || isMaybe;
-      
-      // Button styles
-      const yesClass = status === 'attending' ? 'btn-success' : 'btn-outline';
-      const maybeClass = status === 'maybe' ? 'btn-warning' : 'btn-outline';
-      const noClass = status === 'not_attending' ? 'btn-danger' : 'btn-outline';
-      
-      // Highlight pending/maybe rows with yellow background on each cell
-      const cellBg = needsAttention ? 'background-color: #fef08a;' : '';
-      const statusLabel = isPending 
-        ? ' <span style="color: #92400e; font-weight: bold;">⚠️ No response</span>' 
-        : (isMaybe ? ' <span style="color: #92400e; font-weight: bold;">❓ Maybe</span>' : '');
-      
+    // Render three-column layout
+    const renderColumn = (players, status, title, icon, color) => {
       return `
-        <tr style="border-bottom: 1px solid var(--color-border);">
-          <td style="padding: var(--space-2); font-weight: bold; width: 50px; text-align: center; ${cellBg}">${jersey}</td>
-          <td style="padding: var(--space-2); ${cellBg}">${name}${statusLabel}</td>
-          <td style="padding: var(--space-2); text-align: right; white-space: nowrap; ${cellBg}">
-            <button class="rsvp-btn btn btn-sm ${yesClass}" 
-                    data-match-id="${matchId}"
-                    data-player-id="${player.id}" 
-                    data-status="attending"
-                    style="min-width: 36px;">✓</button>
-            <button class="rsvp-btn btn btn-sm ${maybeClass}" 
-                    data-match-id="${matchId}"
-                    data-player-id="${player.id}" 
-                    data-status="maybe"
-                    style="min-width: 36px;">?</button>
-            <button class="rsvp-btn btn btn-sm ${noClass}" 
-                    data-match-id="${matchId}"
-                    data-player-id="${player.id}" 
-                    data-status="not_attending"
-                    style="min-width: 36px;">✗</button>
-          </td>
-        </tr>
+        <div style="flex: 1; min-width: 250px;">
+          <div style="background: ${color}; color: white; padding: var(--space-2); text-align: center; font-weight: bold; border-radius: 8px 8px 0 0;">
+            ${icon} ${title} (${players.length})
+          </div>
+          <div style="border: 2px solid ${color}; border-top: none; border-radius: 0 0 8px 8px; min-height: 200px; background: white;">
+            ${players.map(p => this.renderPlayerCard(p, status, matchId)).join('')}
+            ${players.length === 0 ? `<div style="padding: var(--space-3); text-align: center; color: var(--color-text-secondary); font-style: italic;">No players</div>` : ''}
+          </div>
+        </div>
       `;
-    }).join('');
+    };
     
     return `
-      ${summary}
-      <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-          <tr style="background: var(--color-background-secondary); border-bottom: 2px solid var(--color-border);">
-            <th style="padding: var(--space-2); text-align: center;">#</th>
-            <th style="padding: var(--space-2); text-align: left;">Player</th>
-            <th style="padding: var(--space-2); text-align: right;">RSVP</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tableRows}
-        </tbody>
-      </table>
+      <div style="padding: var(--space-3); background: var(--color-background);">
+        <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
+          ${renderColumn(attending, 'attending', 'Yes', '✓', '#16a34a')}
+          ${renderColumn(maybe, 'maybe', 'Maybe', '?', '#d97706')}
+          ${renderColumn(notAttending, 'not_attending', 'No', '✗', '#dc2626')}
+        </div>
+        ${pending.length > 0 ? `
+          <div style="margin-top: var(--space-3); padding: var(--space-3); background: #fef08a; border: 2px solid #d97706; border-radius: 8px;">
+            <div style="font-weight: bold; margin-bottom: var(--space-2); color: #92400e;">⚠️ Pending Responses (${pending.length})</div>
+            <div style="display: flex; flex-wrap: wrap; gap: var(--space-2);">
+              ${pending.map(p => this.renderPlayerCard(p, null, matchId)).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+  
+  renderPlayerCard(player, currentStatus, matchId) {
+    const jersey = player.jerseyNumber || '-';
+    const name = player.name || 'Unknown';
+    const isPending = !currentStatus;
+    
+    // Show move buttons based on current status
+    let moveButtons = '';
+    if (isPending) {
+      moveButtons = `
+        <button class="rsvp-btn btn btn-xs btn-success" data-match-id="${matchId}" data-player-id="${player.id}" data-status="attending" style="padding: 2px 6px; font-size: 11px;">✓ Yes</button>
+        <button class="rsvp-btn btn btn-xs btn-warning" data-match-id="${matchId}" data-player-id="${player.id}" data-status="maybe" style="padding: 2px 6px; font-size: 11px;">? Maybe</button>
+        <button class="rsvp-btn btn btn-xs btn-danger" data-match-id="${matchId}" data-player-id="${player.id}" data-status="not_attending" style="padding: 2px 6px; font-size: 11px;">✗ No</button>
+      `;
+    } else {
+      // Show arrows to move to other columns
+      if (currentStatus !== 'attending') {
+        moveButtons += `<button class="rsvp-btn btn btn-xs btn-outline" data-match-id="${matchId}" data-player-id="${player.id}" data-status="attending" title="Move to Yes" style="padding: 2px 6px; font-size: 11px;">→ ✓</button>`;
+      }
+      if (currentStatus !== 'maybe') {
+        moveButtons += `<button class="rsvp-btn btn btn-xs btn-outline" data-match-id="${matchId}" data-player-id="${player.id}" data-status="maybe" title="Move to Maybe" style="padding: 2px 6px; font-size: 11px;">→ ?</button>`;
+      }
+      if (currentStatus !== 'not_attending') {
+        moveButtons += `<button class="rsvp-btn btn btn-xs btn-outline" data-match-id="${matchId}" data-player-id="${player.id}" data-status="not_attending" title="Move to No" style="padding: 2px 6px; font-size: 11px;">→ ✗</button>`;
+      }
+    }
+    
+    return `
+      <div style="padding: var(--space-2); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; gap: var(--space-2);">
+        <div style="display: flex; align-items: center; gap: var(--space-2); flex: 1; min-width: 0;">
+          <span style="font-weight: bold; color: var(--color-primary); min-width: 24px;">#${jersey}</span>
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${name}</span>
+        </div>
+        <div style="display: flex; gap: 4px; flex-shrink: 0;">
+          ${moveButtons}
+        </div>
+      </div>
     `;
   }
   
@@ -326,10 +330,10 @@ class MatchRSVPManagementScreen extends Screen {
     
     console.log('Coach updating player RSVP:', { matchId, playerId, status, coachId });
     
-    // Disable buttons during update
-    const row = buttonEl.closest('tr');
-    const buttons = row.querySelectorAll('.rsvp-btn');
-    buttons.forEach(btn => btn.disabled = true);
+    // Disable button during update
+    buttonEl.disabled = true;
+    const originalText = buttonEl.innerHTML;
+    buttonEl.innerHTML = '⏳';
     
     this.auth.fetch(`/api/events/${matchId}/rsvp`, {
       method: 'POST',
@@ -345,23 +349,26 @@ class MatchRSVPManagementScreen extends Screen {
       if (!r.ok) throw new Error('RSVP update failed');
       return r.json();
     })
-    .then(response => {
-      console.log('RSVP updated:', response);
+    .then(result => {
+      console.log('RSVP updated successfully:', result);
       
       // Update cache
-      if (!this.rsvpCache[matchId]) this.rsvpCache[matchId] = {};
+      if (!this.rsvpCache[matchId]) {
+        this.rsvpCache[matchId] = {};
+      }
       this.rsvpCache[matchId][playerId] = status;
       
-      // Re-render the player table
+      // Re-render the player table with new column layout
       const playersDiv = this.find(`#players-${matchId}`);
       if (playersDiv) {
         playersDiv.innerHTML = this.renderPlayerTable(matchId);
       }
     })
     .catch(err => {
-      console.error('RSVP update error:', err);
-      alert('Failed to update RSVP: ' + err.message);
-      buttons.forEach(btn => btn.disabled = false);
+      console.error('RSVP update failed:', err);
+      alert('Failed to update RSVP. Please try again.');
+      buttonEl.disabled = false;
+      buttonEl.innerHTML = originalText;
     });
   }
 }
