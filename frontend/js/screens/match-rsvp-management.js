@@ -6,6 +6,7 @@ class MatchRSVPManagementScreen extends Screen {
     this.expandedMatchId = null;
     this.teamPlayers = [];
     this.rsvpCache = {}; // Cache RSVPs per match
+    this.selectedPlayer = null; // For bottom sheet
   }
 
   render() {
@@ -28,6 +29,20 @@ class MatchRSVPManagementScreen extends Screen {
         
         <div id="match-container" style="display: none;">
           <!-- Matches will be loaded here -->
+        </div>
+      </div>
+      
+      <!-- Bottom Sheet for RSVP Selection -->
+      <div id="rsvp-bottom-sheet" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;">
+        <div id="sheet-backdrop" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5);"></div>
+        <div id="sheet-content" style="position: absolute; bottom: 0; left: 0; right: 0; background: white; border-radius: 16px 16px 0 0; padding: var(--space-4); transform: translateY(100%); transition: transform 0.3s ease;">
+          <div id="sheet-player-name" style="font-size: 1.2em; font-weight: bold; margin-bottom: var(--space-3); text-align: center;"></div>
+          <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+            <button id="sheet-yes" class="btn btn-lg btn-success" style="width: 100%; justify-content: center;">✓ Attending</button>
+            <button id="sheet-maybe" class="btn btn-lg btn-warning" style="width: 100%; justify-content: center;">? Maybe</button>
+            <button id="sheet-no" class="btn btn-lg btn-danger" style="width: 100%; justify-content: center;">✗ Not Attending</button>
+            <button id="sheet-cancel" class="btn btn-lg btn-secondary" style="width: 100%; justify-content: center; margin-top: var(--space-2);">Cancel</button>
+          </div>
         </div>
       </div>
     `;
@@ -53,16 +68,69 @@ class MatchRSVPManagementScreen extends Screen {
         return;
       }
       
-      // RSVP button clicked
-      const rsvpBtn = e.target.closest('.rsvp-btn');
-      if (rsvpBtn) {
-        const matchId = rsvpBtn.getAttribute('data-match-id');
-        const playerId = rsvpBtn.getAttribute('data-player-id');
-        const status = rsvpBtn.getAttribute('data-status');
-        this.updatePlayerRSVP(matchId, playerId, status, rsvpBtn);
+      // Player card clicked - show bottom sheet
+      const playerCard = e.target.closest('.player-card');
+      if (playerCard) {
+        const matchId = playerCard.getAttribute('data-match-id');
+        const playerId = playerCard.getAttribute('data-player-id');
+        const playerName = playerCard.getAttribute('data-player-name');
+        this.showBottomSheet(matchId, playerId, playerName);
+        return;
+      }
+      
+      // Bottom sheet backdrop clicked - close sheet
+      if (e.target.id === 'sheet-backdrop') {
+        this.hideBottomSheet();
+        return;
+      }
+      
+      // Bottom sheet button clicked
+      const sheetBtn = e.target.closest('#sheet-yes, #sheet-maybe, #sheet-no, #sheet-cancel');
+      if (sheetBtn) {
+        if (sheetBtn.id === 'sheet-cancel') {
+          this.hideBottomSheet();
+        } else {
+          const status = {
+            'sheet-yes': 'attending',
+            'sheet-maybe': 'maybe',
+            'sheet-no': 'not_attending'
+          }[sheetBtn.id];
+          
+          if (this.selectedPlayer && status) {
+            this.updatePlayerRSVP(this.selectedPlayer.matchId, this.selectedPlayer.playerId, status);
+            this.hideBottomSheet();
+          }
+        }
         return;
       }
     });
+  }
+  
+  showBottomSheet(matchId, playerId, playerName) {
+    this.selectedPlayer = { matchId, playerId };
+    
+    const sheet = this.find('#rsvp-bottom-sheet');
+    const content = this.find('#sheet-content');
+    const nameEl = this.find('#sheet-player-name');
+    
+    nameEl.textContent = playerName;
+    sheet.style.display = 'block';
+    
+    // Animate in
+    setTimeout(() => {
+      content.style.transform = 'translateY(0)';
+    }, 10);
+  }
+  
+  hideBottomSheet() {
+    const sheet = this.find('#rsvp-bottom-sheet');
+    const content = this.find('#sheet-content');
+    
+    content.style.transform = 'translateY(100%)';
+    setTimeout(() => {
+      sheet.style.display = 'none';
+      this.selectedPlayer = null;
+    }, 300);
   }
   
   async loadData() {
@@ -284,43 +352,25 @@ class MatchRSVPManagementScreen extends Screen {
   renderPlayerCard(player, currentStatus, matchId) {
     const jersey = player.jerseyNumber || '-';
     const name = player.name || 'Unknown';
-    const isPending = !currentStatus;
-    
-    // Show move buttons based on current status
-    let moveButtons = '';
-    if (isPending) {
-      moveButtons = `
-        <button class="rsvp-btn btn btn-xs btn-success" data-match-id="${matchId}" data-player-id="${player.id}" data-status="attending" style="padding: 2px 6px; font-size: 11px;">✓ Yes</button>
-        <button class="rsvp-btn btn btn-xs btn-warning" data-match-id="${matchId}" data-player-id="${player.id}" data-status="maybe" style="padding: 2px 6px; font-size: 11px;">? Maybe</button>
-        <button class="rsvp-btn btn btn-xs btn-danger" data-match-id="${matchId}" data-player-id="${player.id}" data-status="not_attending" style="padding: 2px 6px; font-size: 11px;">✗ No</button>
-      `;
-    } else {
-      // Show arrows to move to other columns
-      if (currentStatus !== 'attending') {
-        moveButtons += `<button class="rsvp-btn btn btn-xs btn-outline" data-match-id="${matchId}" data-player-id="${player.id}" data-status="attending" title="Move to Yes" style="padding: 2px 6px; font-size: 11px;">→ ✓</button>`;
-      }
-      if (currentStatus !== 'maybe') {
-        moveButtons += `<button class="rsvp-btn btn btn-xs btn-outline" data-match-id="${matchId}" data-player-id="${player.id}" data-status="maybe" title="Move to Maybe" style="padding: 2px 6px; font-size: 11px;">→ ?</button>`;
-      }
-      if (currentStatus !== 'not_attending') {
-        moveButtons += `<button class="rsvp-btn btn btn-xs btn-outline" data-match-id="${matchId}" data-player-id="${player.id}" data-status="not_attending" title="Move to No" style="padding: 2px 6px; font-size: 11px;">→ ✗</button>`;
-      }
-    }
     
     return `
-      <div style="padding: var(--space-2); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; gap: var(--space-2);">
-        <div style="display: flex; align-items: center; gap: var(--space-2); flex: 1; min-width: 0;">
-          <span style="font-weight: bold; color: var(--color-primary); min-width: 24px;">#${jersey}</span>
-          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${name}</span>
+      <div class="player-card" 
+           data-match-id="${matchId}" 
+           data-player-id="${player.id}" 
+           data-player-name="${name}"
+           style="padding: var(--space-3); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s;"
+           onmouseover="this.style.background='var(--color-background)'" 
+           onmouseout="this.style.background='white'">
+        <div style="display: flex; align-items: center; gap: var(--space-2);">
+          <span style="font-weight: bold; color: var(--color-primary); min-width: 28px; font-size: 1.1em;">#${jersey}</span>
+          <span style="font-size: 1.05em;">${name}</span>
         </div>
-        <div style="display: flex; gap: 4px; flex-shrink: 0;">
-          ${moveButtons}
-        </div>
+        <span style="color: var(--color-text-secondary); font-size: 1.2em;">›</span>
       </div>
     `;
   }
   
-  updatePlayerRSVP(matchId, playerId, status, buttonEl) {
+  updatePlayerRSVP(matchId, playerId, status) {
     const coachId = this.auth.getUser()?.id;
     
     if (!matchId || !playerId || !coachId) {
@@ -329,11 +379,6 @@ class MatchRSVPManagementScreen extends Screen {
     }
     
     console.log('Coach updating player RSVP:', { matchId, playerId, status, coachId });
-    
-    // Disable button during update
-    buttonEl.disabled = true;
-    const originalText = buttonEl.innerHTML;
-    buttonEl.innerHTML = '⏳';
     
     this.auth.fetch(`/api/events/${matchId}/rsvp`, {
       method: 'POST',
@@ -367,8 +412,10 @@ class MatchRSVPManagementScreen extends Screen {
     .catch(err => {
       console.error('RSVP update failed:', err);
       alert('Failed to update RSVP. Please try again.');
-      buttonEl.disabled = false;
-      buttonEl.innerHTML = originalText;
     });
+  }
+  
+  find(selector) {
+    return this.element.querySelector(selector);
   }
 }
