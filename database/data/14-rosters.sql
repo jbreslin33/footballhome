@@ -1,7 +1,7 @@
 -- ========================================
 -- ROSTERS
 -- ========================================
--- Generated: 2025-12-02T13:53:53.759Z
+-- Generated: 2025-12-02T15:48:22.820Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -3067,6 +3067,13 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
 VALUES ('7be1f81a-f8f4-0007-7a71-f6e50eec39a5', '49df0225-be54-0005-699c-ee6cd5da686b', 'a85fbe60-64e9-0006-05c3-ebce0212c4b5', NULL, 1, true)
+ON CONFLICT (team_id, player_id) DO UPDATE SET
+  jersey_number = EXCLUDED.jersey_number,
+  roster_status_id = EXCLUDED.roster_status_id,
+  is_active = EXCLUDED.is_active;
+
+INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
+VALUES ('887f1126-271b-0007-95c3-17d2ed801f13', '49df0225-be54-0005-699c-ee6cd5da686b', 'f2730927-fc3e-0006-f91a-449c19d19b37', NULL, 1, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   roster_status_id = EXCLUDED.roster_status_id,

@@ -938,11 +938,7 @@ CREATE INDEX idx_admins_level ON admins(admin_level);
 CREATE INDEX idx_admin_permissions_admin ON admin_permissions(admin_id);
 CREATE INDEX idx_admin_permissions_permission ON admin_permissions(permission_id);
 
--- Team relationship indexes
-CREATE INDEX idx_team_players_team ON team_players(team_id);
-CREATE INDEX idx_team_players_player ON team_players(player_id);
-CREATE INDEX idx_team_players_position ON team_players(position_id);
-CREATE INDEX idx_team_players_active ON team_players(team_id, is_active);
+-- Team relationship indexes (defined earlier in file)
 CREATE INDEX idx_team_coaches_team ON team_coaches(team_id);
 CREATE INDEX idx_team_coaches_coach ON team_coaches(coach_id);
 CREATE INDEX idx_team_coaches_active ON team_coaches(team_id, is_active);

@@ -152,15 +152,15 @@ for i in $(seq 1 60); do
     sleep 1
 done
 
-# Wait for backend (includes DB init time)
+# Wait for backend (includes DB init time - can take 3+ minutes with APSL data)
 echo -n "  Backend: "
-for i in $(seq 1 120); do
+for i in $(seq 1 240); do
     if curl -s http://localhost:3001/health > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Ready (${i}s)${NC}"
         break
     fi
-    if [ "$i" -eq 120 ]; then
-        echo -e "${RED}✗ Timeout after 120s${NC}"
+    if [ "$i" -eq 240 ]; then
+        echo -e "${RED}✗ Timeout after 240s${NC}"
         echo ""
         echo "Check logs:"
         echo "  docker compose logs backend"

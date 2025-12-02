@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYER USERS
 -- ========================================
--- Generated: 2025-12-02T13:53:53.695Z
+-- Generated: 2025-12-02T15:48:22.766Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -5219,6 +5219,18 @@ VALUES (
   'a85fbe60-64e9-0006-05c3-ebce0212c4b5',
   'Rodrigo',
   'Santiago',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'f2730927-fc3e-0006-f91a-449c19d19b37',
+  'Toheeb',
+  'Shodimu',
   true
 )
 ON CONFLICT (id) DO UPDATE SET
