@@ -717,13 +717,13 @@ CREATE TABLE events (
     event_type_id UUID NOT NULL REFERENCES event_types(id),
     title VARCHAR(200) NOT NULL,
     description TEXT,
-    event_date TIMESTAMP NOT NULL,
+    event_date TIMESTAMPTZ NOT NULL,            -- Timezone-aware for correct display
     venue_id UUID REFERENCES venues(id),
     duration_minutes INTEGER,                   -- Will default from event_type if null
     cancelled BOOLEAN DEFAULT false,
     cancellation_reason TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Practices table (extends events for training/practice sessions)
@@ -880,6 +880,49 @@ CREATE TABLE match_officials (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(match_id, referee_id, official_role)
 );
+
+-- ========================================
+-- MATCH ROSTER & LINEUP TABLES
+-- ========================================
+-- Formations reference table (4-4-2, 4-3-3, etc.)
+CREATE TABLE formations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(20) UNIQUE NOT NULL,          -- '4-4-2', '4-3-3', '3-5-2'
+    name VARCHAR(50) NOT NULL,                 -- 'Four-Four-Two'
+    positions JSONB NOT NULL,                  -- Array of position codes with coordinates
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Match Rosters (who is available/selected for game day)
+CREATE TABLE match_rosters (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    added_by UUID REFERENCES users(id),        -- Coach who added them
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(match_id, player_id)
+);
+
+CREATE INDEX idx_match_rosters_match ON match_rosters(match_id);
+CREATE INDEX idx_match_rosters_player ON match_rosters(player_id);
+
+-- Match Lineups (starting 11 + bench with positions)
+CREATE TABLE match_lineups (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    formation_id UUID REFERENCES formations(id), -- Formation used for this match
+    lineup_type VARCHAR(10) NOT NULL,          -- 'starting' or 'bench'
+    formation_position VARCHAR(20),            -- 'GK', 'LB', 'CB1', 'CB2', 'RB', etc.
+    bench_order INTEGER,                       -- Order on bench (1, 2, 3...)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(match_id, player_id),
+    CONSTRAINT valid_lineup_type CHECK (lineup_type IN ('starting', 'bench'))
+);
+
+CREATE INDEX idx_match_lineups_match ON match_lineups(match_id);
+CREATE INDEX idx_match_lineups_player ON match_lineups(player_id);
+CREATE INDEX idx_match_lineups_type ON match_lineups(lineup_type);
 
 -- Meetings table (extends events for team meetings, parent meetings, etc.)
 CREATE TABLE meetings (
@@ -1091,6 +1134,15 @@ INSERT INTO roster_statuses (code, display_name, description, show_in_rsvp, show
 ('injured_reserve', 'Injured Reserve', 'Injured, not on official roster', true, false, 4),
 ('suspended', 'Suspended', 'Temporarily suspended from team', false, true, 5),
 ('departed', 'Departed', 'No longer with team', false, false, 6);
+
+-- Formations (common soccer formations)
+INSERT INTO formations (id, code, name, positions) VALUES
+('550e8400-e29b-41d4-a716-446655440f01', '4-4-2', 'Four-Four-Two', '["GK", "LB", "CB1", "CB2", "RB", "LM", "CM1", "CM2", "RM", "ST1", "ST2"]'),
+('550e8400-e29b-41d4-a716-446655440f02', '4-3-3', 'Four-Three-Three', '["GK", "LB", "CB1", "CB2", "RB", "CM1", "CM2", "CM3", "LW", "ST", "RW"]'),
+('550e8400-e29b-41d4-a716-446655440f03', '3-5-2', 'Three-Five-Two', '["GK", "CB1", "CB2", "CB3", "LWB", "CM1", "CM2", "CM3", "RWB", "ST1", "ST2"]'),
+('550e8400-e29b-41d4-a716-446655440f04', '4-2-3-1', 'Four-Two-Three-One', '["GK", "LB", "CB1", "CB2", "RB", "CDM1", "CDM2", "LAM", "CAM", "RAM", "ST"]'),
+('550e8400-e29b-41d4-a716-446655440f05', '5-3-2', 'Five-Three-Two', '["GK", "LWB", "CB1", "CB2", "CB3", "RWB", "CM1", "CM2", "CM3", "ST1", "ST2"]'),
+('550e8400-e29b-41d4-a716-446655440f06', '4-1-4-1', 'Four-One-Four-One', '["GK", "LB", "CB1", "CB2", "RB", "CDM", "LM", "CM1", "CM2", "RM", "ST"]');
 
 -- Sample teams - removed fake data
 

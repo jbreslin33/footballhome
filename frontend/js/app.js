@@ -22,7 +22,8 @@ class App {
       practiceAttendance: new PracticeAttendanceScreen(this.navigation, this.auth),
       matchOptions: new MatchOptionsScreen(this.navigation, this.auth),
       matchList: new MatchListScreen(this.navigation, this.auth),
-      matchRSVPManagement: new MatchRSVPManagementScreen(this.navigation, this.auth)
+      matchRSVPManagement: new MatchRSVPManagementScreen(this.navigation, this.auth),
+      gameDayRoster: new GameDayRosterScreen(this.navigation, this.auth)
     };
     
     // Register all screens with the manager
@@ -41,6 +42,7 @@ class App {
     this.screenManager.register('match-options', this.screens.matchOptions);
     this.screenManager.register('match-list', this.screens.matchList);
     this.screenManager.register('match-rsvp-management', this.screens.matchRSVPManagement);
+    this.screenManager.register('game-day-roster', this.screens.gameDayRoster);
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }

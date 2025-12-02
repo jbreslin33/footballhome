@@ -27,6 +27,11 @@ private:
     Response handleUpdateAttendance(const Request& request);
     Response handleGetAttendanceStatuses(const Request& request);
     
+    // Game Day Roster endpoints
+    Response handleGetGameRoster(const Request& request);
+    Response handleUpdateGameRoster(const Request& request);
+    Response handleGetEligiblePlayers(const Request& request);
+    
     // Helper methods
     std::string extractTeamIdFromPath(const std::string& path);
     std::string extractEventIdFromPath(const std::string& path);

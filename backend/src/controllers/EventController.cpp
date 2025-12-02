@@ -69,6 +69,22 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
     router.get("/api/attendance/statuses", [this](const Request& request) {
         return this->handleGetAttendanceStatuses(request);
     });
+    
+    // Game Day Roster endpoints
+    // GET /api/matches/:matchId/game-roster - Get game day roster for a match
+    router.get("/api/matches/:matchId/game-roster", [this](const Request& request) {
+        return this->handleGetGameRoster(request);
+    });
+    
+    // PUT /api/matches/:matchId/game-roster - Update game day roster (set who's on it)
+    router.put("/api/matches/:matchId/game-roster", [this](const Request& request) {
+        return this->handleUpdateGameRoster(request);
+    });
+    
+    // GET /api/matches/:matchId/eligible-players - Get players who RSVP'd attending
+    router.get("/api/matches/:matchId/eligible-players", [this](const Request& request) {
+        return this->handleGetEligiblePlayers(request);
+    });
 }
 
 Response EventController::handleCreateEvent(const Request& request) {
@@ -1004,5 +1020,218 @@ Response EventController::handleUpdateAttendance(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Error updating attendance: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to update attendance: ") + e.what()));
+    }
+}
+
+// ========================================
+// Game Day Roster Endpoints
+// ========================================
+
+Response EventController::handleGetGameRoster(const Request& request) {
+    std::string matchId = extractEventIdFromPath(request.getPath());
+    if (matchId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Match ID is required"));
+    }
+    
+    std::cout << "📋 Getting game roster for match: " << matchId << std::endl;
+    
+    try {
+        std::string query = R"(
+            SELECT 
+                mr.id,
+                mr.player_id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                p.jersey_number,
+                pos.abbreviation as position,
+                mr.created_at
+            FROM match_rosters mr
+            JOIN players p ON mr.player_id = p.id
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN positions pos ON p.preferred_position_id = pos.id
+            WHERE mr.match_id = $1
+            ORDER BY u.last_name, u.first_name
+        )";
+        
+        pqxx::result result = db_->query(query, {matchId});
+        
+        std::ostringstream json;
+        json << "{\"success\":true,\"data\":[";
+        
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) json << ",";
+            first = false;
+            
+            json << "{";
+            json << "\"id\":\"" << row["id"].c_str() << "\",";
+            json << "\"playerId\":\"" << row["player_id"].c_str() << "\",";
+            json << "\"firstName\":\"" << escapeJSON(row["first_name"].c_str()) << "\",";
+            json << "\"lastName\":\"" << escapeJSON(row["last_name"].c_str()) << "\",";
+            json << "\"email\":\"" << escapeJSON(row["email"].c_str()) << "\",";
+            json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].c_str()) << ",";
+            json << "\"position\":" << (row["position"].is_null() ? "null" : "\"" + std::string(row["position"].c_str()) + "\"");
+            json << "}";
+        }
+        
+        json << "],\"count\":" << result.size() << "}";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error getting game roster: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get game roster: ") + e.what()));
+    }
+}
+
+Response EventController::handleUpdateGameRoster(const Request& request) {
+    std::string matchId = extractEventIdFromPath(request.getPath());
+    if (matchId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Match ID is required"));
+    }
+    
+    std::cout << "📋 Updating game roster for match: " << matchId << std::endl;
+    
+    try {
+        std::string body = request.getBody();
+        
+        // Parse player_ids array from JSON body
+        // Expected: {"player_ids": ["uuid1", "uuid2", ...], "added_by": "coach-uuid"}
+        std::string addedBy = parseJSON(body, "added_by");
+        
+        // Extract player_ids array (simple parsing for JSON array)
+        std::vector<std::string> playerIds;
+        size_t arrayStart = body.find("\"player_ids\"");
+        if (arrayStart != std::string::npos) {
+            size_t bracketStart = body.find("[", arrayStart);
+            size_t bracketEnd = body.find("]", bracketStart);
+            if (bracketStart != std::string::npos && bracketEnd != std::string::npos) {
+                std::string arrayContent = body.substr(bracketStart + 1, bracketEnd - bracketStart - 1);
+                
+                // Parse UUIDs from the array
+                std::regex uuidRegex("\"([0-9a-fA-F-]{36})\"");
+                std::sregex_iterator iter(arrayContent.begin(), arrayContent.end(), uuidRegex);
+                std::sregex_iterator end;
+                
+                while (iter != end) {
+                    playerIds.push_back((*iter)[1].str());
+                    ++iter;
+                }
+            }
+        }
+        
+        std::cout << "📋 Player IDs to add: " << playerIds.size() << std::endl;
+        
+        // Start transaction: clear existing roster and add new players
+        // First, delete existing roster entries for this match
+        std::string deleteQuery = "DELETE FROM match_rosters WHERE match_id = $1";
+        db_->query(deleteQuery, {matchId});
+        
+        // Insert new roster entries
+        int addedCount = 0;
+        for (const auto& playerId : playerIds) {
+            std::string insertQuery;
+            if (addedBy.empty()) {
+                insertQuery = R"(
+                    INSERT INTO match_rosters (match_id, player_id)
+                    VALUES ($1, $2)
+                    ON CONFLICT (match_id, player_id) DO NOTHING
+                )";
+                db_->query(insertQuery, {matchId, playerId});
+            } else {
+                insertQuery = R"(
+                    INSERT INTO match_rosters (match_id, player_id, added_by)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (match_id, player_id) DO NOTHING
+                )";
+                db_->query(insertQuery, {matchId, playerId, addedBy});
+            }
+            addedCount++;
+        }
+        
+        std::cout << "✅ Game roster updated: " << addedCount << " players" << std::endl;
+        
+        std::ostringstream json;
+        json << "{\"success\":true,\"message\":\"Game roster updated\",\"count\":" << addedCount << "}";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error updating game roster: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to update game roster: ") + e.what()));
+    }
+}
+
+Response EventController::handleGetEligiblePlayers(const Request& request) {
+    std::string matchId = extractEventIdFromPath(request.getPath());
+    if (matchId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Match ID is required"));
+    }
+    
+    std::cout << "📋 Getting eligible players for match: " << matchId << std::endl;
+    
+    try {
+        // Get players who:
+        // 1. Are on the team roster (from home_team_id in matches table)
+        // 2. Have RSVP'd 'yes' (attending) for this event
+        // 3. Have show_in_rsvp = true on their roster status
+        std::string query = R"(
+            SELECT DISTINCT
+                p.id as player_id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                p.jersey_number,
+                pos.abbreviation as position,
+                rs.code as rsvp_status,
+                CASE WHEN mr.id IS NOT NULL THEN true ELSE false END as on_game_roster
+            FROM matches m
+            JOIN team_players tp ON tp.team_id = m.home_team_id
+            JOIN players p ON tp.player_id = p.id
+            JOIN users u ON p.user_id = u.id
+            LEFT JOIN positions pos ON p.preferred_position_id = pos.id
+            LEFT JOIN roster_statuses rost ON tp.roster_status_id = rost.id
+            LEFT JOIN player_rsvps_current prc ON prc.player_id = p.id AND prc.event_id = m.id
+            LEFT JOIN rsvp_statuses rs ON prc.rsvp_status_id = rs.id
+            LEFT JOIN match_rosters mr ON mr.match_id = m.id AND mr.player_id = p.id
+            WHERE m.id = $1
+              AND tp.is_active = true
+              AND (rost.show_in_rsvp = true OR rost.show_in_rsvp IS NULL)
+            ORDER BY 
+                CASE WHEN rs.name = 'yes' THEN 0 ELSE 1 END,
+                u.last_name, 
+                u.first_name
+        )";
+        
+        pqxx::result result = db_->query(query, {matchId});
+        
+        std::ostringstream json;
+        json << "{\"success\":true,\"data\":[";
+        
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) json << ",";
+            first = false;
+            
+            json << "{";
+            json << "\"playerId\":\"" << row["player_id"].c_str() << "\",";
+            json << "\"firstName\":\"" << escapeJSON(row["first_name"].c_str()) << "\",";
+            json << "\"lastName\":\"" << escapeJSON(row["last_name"].c_str()) << "\",";
+            json << "\"email\":\"" << escapeJSON(row["email"].c_str()) << "\",";
+            json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].c_str()) << ",";
+            json << "\"position\":" << (row["position"].is_null() ? "null" : "\"" + std::string(row["position"].c_str()) + "\"") << ",";
+            json << "\"rsvpStatus\":" << (row["rsvp_status"].is_null() ? "null" : "\"" + std::string(row["rsvp_status"].c_str()) + "\"") << ",";
+            json << "\"onGameRoster\":" << (row["on_game_roster"].as<bool>() ? "true" : "false");
+            json << "}";
+        }
+        
+        json << "],\"count\":" << result.size() << "}";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error getting eligible players: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get eligible players: ") + e.what()));
     }
 }

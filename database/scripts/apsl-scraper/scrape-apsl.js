@@ -192,6 +192,30 @@ function sqlEscape(str) {
   return "'" + str.toString().replace(/'/g, "''") + "'";
 }
 
+// Helper: Format date as EST timezone string for TIMESTAMPTZ
+// APSL is a Pennsylvania league, all times are Eastern Time
+function formatDateEST(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  // Format: 2025-12-02 20:30:00-05 (EST is UTC-5, EDT is UTC-4)
+  // Use America/New_York offset based on date
+  const isDST = isDaylightSavingTime(date);
+  const offset = isDST ? '-04' : '-05';
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}${offset}`;
+}
+
+// Helper: Check if date is in DST (rough approximation for US Eastern)
+function isDaylightSavingTime(date) {
+  const jan = new Date(date.getFullYear(), 0, 1);
+  const jul = new Date(date.getFullYear(), 6, 1);
+  const stdOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset());
+  return date.getTimezoneOffset() < stdOffset;
+}
+
 // Helper: SQL array escape
 function sqlArray(arr) {
   if (!arr || arr.length === 0) return 'NULL';
@@ -668,7 +692,7 @@ async function scrapeFixtures() {
         events.set(eventId, {
           id: eventId,
           title: `${homeTeamData.name} vs ${awayTeamData.name}`,
-          event_date: eventDate.toISOString(),
+          event_date: formatDateEST(eventDate),
           location: locationText || null
         });
         

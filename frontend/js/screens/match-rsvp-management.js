@@ -60,6 +60,18 @@ class MatchRSVPManagementScreen extends Screen {
         return;
       }
       
+      // Game Day Roster button clicked
+      const gameRosterBtn = e.target.closest('.game-roster-btn');
+      if (gameRosterBtn) {
+        const matchId = gameRosterBtn.getAttribute('data-match-id');
+        const match = this.matches.find(m => m.id === matchId);
+        if (match) {
+          this.navigation.context.match = match;
+          this.navigation.goTo('game-day-roster');
+        }
+        return;
+      }
+      
       // Match header clicked - toggle expansion
       const matchHeader = e.target.closest('.match-header');
       if (matchHeader && !e.target.closest('.rsvp-btn')) {
@@ -332,6 +344,11 @@ class MatchRSVPManagementScreen extends Screen {
     
     return `
       <div style="padding: var(--space-3); background: var(--color-background);">
+        <div style="margin-bottom: var(--space-3);">
+          <button class="btn btn-primary game-roster-btn" data-match-id="${matchId}" style="width: 100%;">
+            📋 Set Game Day Roster
+          </button>
+        </div>
         <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
           ${renderColumn(attending, 'attending', 'Yes', '✓', '#16a34a')}
           ${renderColumn(maybe, 'maybe', 'Maybe', '?', '#d97706')}

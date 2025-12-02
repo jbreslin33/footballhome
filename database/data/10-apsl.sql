@@ -1,0 +1,11 @@
+-- ========================================
+-- APSL LEAGUE DATA (AUTO-GENERATED)
+-- ========================================
+-- Generated: 2025-12-02T18:56:30.110Z
+-- Source: https://apslsoccer.com/standings/
+-- Includes: Conferences, Divisions, Teams, Players
+--
+-- This file is automatically regenerated on rebuild.
+-- Uses ON CONFLICT DO UPDATE for idempotent inserts.
+-- ========================================
+
