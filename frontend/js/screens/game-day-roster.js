@@ -30,13 +30,13 @@ class GameDayRosterScreen extends Screen {
         </div>
         
         <div id="roster-content" style="display: none;">
-          <div style="background: var(--color-surface); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
-            <p style="margin: 0; font-size: 0.9em; color: var(--color-text-muted);">
+          <div style="background: var(--gray-100); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-4);">
+            <p style="margin: 0; font-size: 0.9em; color: var(--gray-600);">
               ✓ Select players who will be on the game day roster. Players who RSVP'd "Attending" are shown first.
             </p>
           </div>
           
-          <div id="selected-count" style="text-align: center; font-weight: bold; margin-bottom: var(--space-3); padding: var(--space-2); background: var(--color-primary); color: white; border-radius: var(--radius-sm);">
+          <div id="selected-count" style="text-align: center; font-weight: bold; margin-bottom: var(--space-3); padding: var(--space-2); background: var(--primary-color); color: #ffffff; border-radius: var(--radius-sm);">
             0 players selected
           </div>
           
@@ -156,22 +156,22 @@ class GameDayRosterScreen extends Screen {
     let html = '';
     
     if (attending.length > 0) {
-      html += `<div class="player-group-header" style="font-weight: bold; color: var(--color-success); margin-top: var(--space-2);">✓ Attending (${attending.length})</div>`;
+      html += `<div class="player-group-header" style="font-weight: bold; color: var(--success-color); margin-top: var(--space-2);">✓ Attending (${attending.length})</div>`;
       html += attending.map(p => this.renderPlayerCard(p)).join('');
     }
     
     if (maybe.length > 0) {
-      html += `<div class="player-group-header" style="font-weight: bold; color: var(--color-warning); margin-top: var(--space-3);">? Maybe (${maybe.length})</div>`;
+      html += `<div class="player-group-header" style="font-weight: bold; color: var(--warning-color); margin-top: var(--space-3);">? Maybe (${maybe.length})</div>`;
       html += maybe.map(p => this.renderPlayerCard(p)).join('');
     }
     
     if (notResponded.length > 0) {
-      html += `<div class="player-group-header" style="font-weight: bold; color: var(--color-text-muted); margin-top: var(--space-3);">— No Response (${notResponded.length})</div>`;
+      html += `<div class="player-group-header" style="font-weight: bold; color: var(--gray-600); margin-top: var(--space-3);">— No Response (${notResponded.length})</div>`;
       html += notResponded.map(p => this.renderPlayerCard(p)).join('');
     }
     
     if (notAttending.length > 0) {
-      html += `<div class="player-group-header" style="font-weight: bold; color: var(--color-danger); margin-top: var(--space-3);">✗ Not Attending (${notAttending.length})</div>`;
+      html += `<div class="player-group-header" style="font-weight: bold; color: var(--error-color); margin-top: var(--space-3);">✗ Not Attending (${notAttending.length})</div>`;
       html += notAttending.map(p => this.renderPlayerCard(p)).join('');
     }
     
@@ -190,19 +190,20 @@ class GameDayRosterScreen extends Screen {
              display: flex;
              align-items: center;
              padding: var(--space-3);
-             background: ${isSelected ? 'var(--color-primary)' : 'var(--color-surface)'};
-             color: ${isSelected ? 'white' : 'inherit'};
+             background: ${isSelected ? '#16a34a' : 'var(--gray-100)'};
+             color: ${isSelected ? '#ffffff' : 'var(--gray-900)'};
              border-radius: var(--radius-md);
              cursor: pointer;
              transition: all 0.2s ease;
-             border: 2px solid ${isSelected ? 'var(--color-primary)' : 'transparent'};
+             border: 2px solid ${isSelected ? '#16a34a' : 'var(--gray-200)'};
+             font-weight: ${isSelected ? '600' : 'normal'};
            ">
         <div style="
           width: 32px;
           height: 32px;
           border-radius: 50%;
-          background: ${isSelected ? 'white' : 'var(--color-primary)'};
-          color: ${isSelected ? 'var(--color-primary)' : 'white'};
+          background: ${isSelected ? '#ffffff' : 'var(--primary-color)'};
+          color: ${isSelected ? '#16a34a' : '#ffffff'};
           display: flex;
           align-items: center;
           justify-content: center;
@@ -213,10 +214,10 @@ class GameDayRosterScreen extends Screen {
           ${isSelected ? '✓' : (player.firstName ? player.firstName[0] : '?')}
         </div>
         <div style="flex: 1;">
-          <div style="font-weight: 500;">
+          <div style="font-weight: ${isSelected ? '700' : '500'};">
             ${player.firstName} ${player.lastName}
           </div>
-          <div style="font-size: 0.85em; opacity: 0.8;">
+          <div style="font-size: 0.85em; color: ${isSelected ? 'rgba(255,255,255,0.9)' : 'var(--gray-600)'};">
             ${[jerseyDisplay, positionDisplay].filter(Boolean).join(' · ') || 'No position'}
           </div>
         </div>
