@@ -32,6 +32,18 @@ class MatchManagementScreen extends Screen {
         return;
       }
       
+      // Share match
+      const shareBtn = e.target.closest('[data-action="share"]');
+      if (shareBtn) {
+        const matchId = shareBtn.getAttribute('data-id');
+        const match = this.matches.find(m => m.id === matchId);
+        if (match) {
+            this.navigation.context.match = match;
+            this.navigation.goTo('match-share');
+        }
+        return;
+      }
+
       // Edit match
       const editBtn = e.target.closest('[data-action="edit"]');
       if (editBtn) {
@@ -125,6 +137,8 @@ class MatchManagementScreen extends Screen {
         };
       });
       
+      this.matches = transformedMatches;
+      
       this.renderList('#match-list', transformedMatches,
         m => {
           const homeLogo = m.home_team_logo 
@@ -171,6 +185,7 @@ class MatchManagementScreen extends Screen {
             </div>
             
             <div style="display: flex; gap: var(--space-3); margin-top: var(--space-4);">
+              <button data-action="share" data-id="${m.id}" class="btn btn-secondary" style="flex: 1;">Share</button>
               <button data-action="edit" data-id="${m.id}" class="btn btn-primary" style="flex: 1;">Edit</button>
               <button data-action="delete" data-id="${m.id}" data-name="${m.title}" class="btn btn-danger" style="flex: 1;">Delete</button>
             </div>
