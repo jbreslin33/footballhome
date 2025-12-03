@@ -8,6 +8,11 @@ TeamController::TeamController() {
 }
 
 void TeamController::registerRoutes(Router& router, const std::string& prefix) {
+    // Get all teams
+    router.get(prefix, [this](const Request& request) {
+        return this->handleGetAllTeams(request);
+    });
+    
     // Get roster statuses (lookup table)
     router.get(prefix + "/roster-statuses", [this](const Request& request) {
         return this->handleGetRosterStatuses(request);
@@ -204,6 +209,29 @@ Response TeamController::handleRemoveRosterMember(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ TeamController::handleRemoveRosterMember error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to remove player from roster");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response TeamController::handleGetAllTeams(const Request& request) {
+    try {
+        std::cout << "🔍 Getting all teams" << std::endl;
+        
+        // Get all teams from database
+        std::string teams_json = team_model_->getAllTeams();
+        
+        std::ostringstream json;
+        json << "{";
+        json << "\"success\":true,";
+        json << "\"message\":\"Teams retrieved successfully\",";
+        json << "\"data\":" << teams_json;
+        json << "}";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ TeamController::handleGetAllTeams error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve teams");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }

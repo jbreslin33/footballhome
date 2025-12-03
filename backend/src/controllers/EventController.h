@@ -22,6 +22,12 @@ private:
     Response handleCreateRSVP(const Request& request);
     Response handleGetEventRSVPs(const Request& request);
     
+    // Match-specific endpoints
+    Response handleCreateMatch(const Request& request);
+    Response handleGetMatch(const Request& request);
+    Response handleUpdateMatch(const Request& request);
+    Response handleDeleteMatch(const Request& request);
+    
     // Attendance endpoints
     Response handleGetEventAttendance(const Request& request);
     Response handleUpdateAttendance(const Request& request);

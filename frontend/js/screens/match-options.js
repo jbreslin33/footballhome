@@ -6,8 +6,7 @@ class MatchOptionsScreen extends Screen {
     
     // Only coaches can manage matches and player RSVPs
     const isCoach = userRole === 'coach';
-    const showManageButton = false; // Will enable later
-    
+
     const div = document.createElement('div');
     div.className = 'screen screen-match-options';
     div.innerHTML = `
@@ -18,7 +17,7 @@ class MatchOptionsScreen extends Screen {
       </div>
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
-        ${showManageButton ? `
+        ${isCoach ? `
           <button data-action="manage" class="btn btn-lg btn-primary">
             📝 Manage Matches
             <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
@@ -55,8 +54,7 @@ class MatchOptionsScreen extends Screen {
         const action = actionBtn.getAttribute('data-action');
         
         if (action === 'manage') {
-          // Future: this.navigation.goTo('match-management');
-          alert('Match management coming soon!');
+          this.navigation.goTo('match-management');
         } else if (action === 'rsvp') {
           this.navigation.goTo('match-list');
         } else if (action === 'manage-rsvps') {

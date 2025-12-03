@@ -18,6 +18,7 @@ public:
     bool remove() override;
     
     // Team-specific methods
+    std::string getAllTeams();
     std::string getTeamRoster(const std::string& team_id);
     std::string getRosterStatuses();
     bool updateRosterMember(const std::string& team_id, const std::string& player_id, 

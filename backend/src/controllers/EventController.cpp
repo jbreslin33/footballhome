@@ -24,6 +24,26 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
         return this->handleGetMatches(request);
     });
     
+    // POST /api/matches - Create new match
+    router.post("/api/matches", [this](const Request& request) {
+        return this->handleCreateMatch(request);
+    });
+    
+    // GET /api/matches/:matchId - Get single match by ID
+    router.get("/api/matches/:matchId", [this](const Request& request) {
+        return this->handleGetMatch(request);
+    });
+    
+    // PUT /api/matches/:matchId - Update match
+    router.put("/api/matches/:matchId", [this](const Request& request) {
+        return this->handleUpdateMatch(request);
+    });
+    
+    // DELETE /api/matches/:matchId - Delete match
+    router.del("/api/matches/:matchId", [this](const Request& request) {
+        return this->handleDeleteMatch(request);
+    });
+    
     // GET /api/events/:eventId - Get single event by ID
     router.get(prefix + "/:eventId", [this](const Request& request) {
         return this->handleGetEvent(request);
@@ -331,6 +351,269 @@ Response EventController::handleGetMatches(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ EventController::handleGetMatches error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve matches");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response EventController::handleCreateMatch(const Request& request) {
+    try {
+        std::string body = request.getBody();
+        std::cout << "📝 Creating match with body: " << body << std::endl;
+        
+        // Parse JSON body
+        std::string home_team_id = parseJSON(body, "home_team_id");
+        std::string away_team_id = parseJSON(body, "away_team_id");
+        std::string title = parseJSON(body, "title");
+        std::string date = parseJSON(body, "date");
+        std::string start_time = parseJSON(body, "start_time");
+        std::string venue_id = parseJSON(body, "venue_id");
+        std::string competition_name = parseJSON(body, "competition_name");
+        std::string match_status = parseJSON(body, "match_status");
+        std::string notes = parseJSON(body, "notes");
+        
+        // Validate required fields
+        if (home_team_id.empty() || away_team_id.empty() || title.empty() || date.empty() || start_time.empty()) {
+            std::string json = createJSONResponse(false, "Missing required fields: home_team_id, away_team_id, title, date, start_time");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        // Get event_type_id for 'match'
+        std::string event_type_query = "SELECT id FROM event_types WHERE name = 'match' LIMIT 1";
+        pqxx::result type_result = db_->query(event_type_query);
+        if (type_result.empty()) {
+            std::string json = createJSONResponse(false, "Event type 'match' not found");
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+        }
+        std::string event_type_id = type_result[0][0].c_str();
+        
+        // Get created_by user (for now, use the system admin user)
+        std::string created_by = "77d77471-1250-47e0-81ab-d4626595d63c";
+        
+        // Create timestamp from date and start_time
+        std::string event_datetime = date + " " + start_time + ":00";
+        
+        // Get home_away_status_id (home)
+        std::string home_status_query = "SELECT id FROM home_away_statuses WHERE name = 'home' LIMIT 1";
+        pqxx::result home_status_result = db_->query(home_status_query);
+        std::string home_away_status_id = home_status_result.empty() ? "550e8400-e29b-41d4-a716-446655440801" : home_status_result[0][0].c_str();
+        
+        // Build INSERT query for events table
+        std::ostringstream event_query;
+        event_query << "INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, created_at, updated_at) ";
+        event_query << "VALUES (";
+        event_query << "uuid_generate_v4(), ";
+        event_query << "'" << created_by << "', ";
+        event_query << "'" << event_type_id << "', ";
+        event_query << "'" << title << "', ";
+        event_query << (notes.empty() ? "NULL" : "'" + notes + "'") << ", ";
+        event_query << "'" << event_datetime << "', ";
+        event_query << (venue_id.empty() ? "NULL" : "'" + venue_id + "'") << ", ";
+        event_query << "120, "; // 2 hour duration for matches
+        event_query << "CURRENT_TIMESTAMP, ";
+        event_query << "CURRENT_TIMESTAMP";
+        event_query << ") RETURNING id";
+        
+        std::cout << "📊 Event query: " << event_query.str() << std::endl;
+        
+        pqxx::result event_result = db_->query(event_query.str());
+        if (event_result.empty()) {
+            std::cerr << "❌ Failed to create event" << std::endl;
+            std::string json = createJSONResponse(false, "Failed to create event");
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+        }
+        
+        std::string inserted_event_id = event_result[0][0].c_str();
+        
+        // Insert into matches table (extends events)
+        std::ostringstream match_query;
+        match_query << "INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status) ";
+        match_query << "VALUES (";
+        match_query << "'" << inserted_event_id << "', ";
+        match_query << "'" << home_team_id << "', ";
+        match_query << "'" << away_team_id << "', ";
+        match_query << "'" << home_away_status_id << "', ";
+        match_query << (competition_name.empty() ? "NULL" : "'" + competition_name + "'") << ", ";
+        match_query << "'" << (match_status.empty() ? "scheduled" : match_status) << "'";
+        match_query << ")";
+        
+        std::cout << "📊 Match query: " << match_query.str() << std::endl;
+        
+        db_->query(match_query.str());
+        
+        std::ostringstream result_json;
+        result_json << "{\"id\":\"" << inserted_event_id << "\"}";
+        
+        std::string json = createJSONResponse(true, "Match created successfully", result_json.str());
+        return Response(HttpStatus::CREATED, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ EventController::handleCreateMatch error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, std::string("Failed to create match: ") + e.what());
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response EventController::handleGetMatch(const Request& request) {
+    try {
+        std::string match_id = extractMatchIdFromPath(request.getPath());
+        if (match_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid match ID in path");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        std::cout << "🔍 Getting match: " << match_id << std::endl;
+        
+        // Query single match with all details
+        std::ostringstream query;
+        query << "SELECT e.id, e.title, e.event_date, e.duration_minutes, e.venue_id, ";
+        query << "m.home_team_id, m.away_team_id, m.competition_name, m.match_status, ";
+        query << "m.home_team_score, m.away_team_score, e.description as notes, ";
+        query << "v.name as venue_name ";
+        query << "FROM events e ";
+        query << "JOIN matches m ON e.id = m.id ";
+        query << "LEFT JOIN venues v ON e.venue_id = v.id ";
+        query << "WHERE e.id = '" << match_id << "'";
+        
+        pqxx::result result = db_->query(query.str());
+        
+        if (result.empty()) {
+            std::string json = createJSONResponse(false, "Match not found");
+            return Response(HttpStatus::NOT_FOUND, json);
+        }
+        
+        // Build JSON for single match
+        std::ostringstream match_json;
+        match_json << "{";
+        match_json << "\"id\":\"" << result[0][0].c_str() << "\",";
+        match_json << "\"title\":\"" << escapeJSON(result[0][1].c_str()) << "\",";
+        match_json << "\"event_date\":\"" << result[0][2].c_str() << "\",";
+        match_json << "\"duration_minutes\":" << result[0][3].c_str() << ",";
+        
+        if (!result[0][4].is_null()) {
+            match_json << "\"venue_id\":\"" << result[0][4].c_str() << "\",";
+        }
+        
+        match_json << "\"home_team_id\":\"" << result[0][5].c_str() << "\",";
+        match_json << "\"away_team_id\":\"" << result[0][6].c_str() << "\"";
+        
+        if (!result[0][7].is_null()) {
+            match_json << ",\"competition_name\":\"" << escapeJSON(result[0][7].c_str()) << "\"";
+        }
+        if (!result[0][8].is_null()) {
+            match_json << ",\"match_status\":\"" << result[0][8].c_str() << "\"";
+        }
+        if (!result[0][9].is_null()) {
+            match_json << ",\"home_team_score\":" << result[0][9].c_str();
+        }
+        if (!result[0][10].is_null()) {
+            match_json << ",\"away_team_score\":" << result[0][10].c_str();
+        }
+        if (!result[0][11].is_null()) {
+            match_json << ",\"notes\":\"" << escapeJSON(result[0][11].c_str()) << "\"";
+        }
+        if (!result[0][12].is_null()) {
+            match_json << ",\"venue_name\":\"" << escapeJSON(result[0][12].c_str()) << "\"";
+        }
+        
+        match_json << "}";
+        
+        std::string json = createJSONResponse(true, "Match retrieved successfully", match_json.str());
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ EventController::handleGetMatch error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve match");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response EventController::handleUpdateMatch(const Request& request) {
+    try {
+        std::string match_id = extractMatchIdFromPath(request.getPath());
+        if (match_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid match ID in path");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        std::string body = request.getBody();
+        std::cout << "📝 Updating match " << match_id << " with body: " << body << std::endl;
+        
+        // Parse JSON body
+        std::string home_team_id = parseJSON(body, "home_team_id");
+        std::string away_team_id = parseJSON(body, "away_team_id");
+        std::string title = parseJSON(body, "title");
+        std::string date = parseJSON(body, "date");
+        std::string start_time = parseJSON(body, "start_time");
+        std::string venue_id = parseJSON(body, "venue_id");
+        std::string competition_name = parseJSON(body, "competition_name");
+        std::string match_status = parseJSON(body, "match_status");
+        std::string home_team_score = parseJSON(body, "home_team_score");
+        std::string away_team_score = parseJSON(body, "away_team_score");
+        std::string notes = parseJSON(body, "notes");
+        
+        // Update events table
+        std::ostringstream event_update;
+        event_update << "UPDATE events SET ";
+        event_update << "title = '" << title << "', ";
+        event_update << "event_date = '" << date << " " << start_time << ":00', ";
+        event_update << "venue_id = " << (venue_id.empty() ? "NULL" : "'" + venue_id + "'") << ", ";
+        event_update << "description = " << (notes.empty() ? "NULL" : "'" + notes + "'") << ", ";
+        event_update << "updated_at = CURRENT_TIMESTAMP ";
+        event_update << "WHERE id = '" << match_id << "'";
+        
+        db_->query(event_update.str());
+        
+        // Update matches table
+        std::ostringstream match_update;
+        match_update << "UPDATE matches SET ";
+        match_update << "home_team_id = '" << home_team_id << "', ";
+        match_update << "away_team_id = '" << away_team_id << "', ";
+        match_update << "competition_name = " << (competition_name.empty() ? "NULL" : "'" + competition_name + "'") << ", ";
+        match_update << "match_status = '" << (match_status.empty() ? "scheduled" : match_status) << "'";
+        
+        if (!home_team_score.empty()) {
+            match_update << ", home_team_score = " << home_team_score;
+        }
+        if (!away_team_score.empty()) {
+            match_update << ", away_team_score = " << away_team_score;
+        }
+        
+        match_update << " WHERE id = '" << match_id << "'";
+        
+        db_->query(match_update.str());
+        
+        std::string json = createJSONResponse(true, "Match updated successfully");
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ EventController::handleUpdateMatch error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, std::string("Failed to update match: ") + e.what());
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response EventController::handleDeleteMatch(const Request& request) {
+    try {
+        std::string match_id = extractMatchIdFromPath(request.getPath());
+        if (match_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid match ID in path");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        std::cout << "🗑️ Deleting match: " << match_id << std::endl;
+        
+        // Delete from matches table first (FK constraint)
+        db_->query("DELETE FROM matches WHERE id = '" + match_id + "'");
+        
+        // Delete from events table (cascades to RSVPs, etc.)
+        db_->query("DELETE FROM events WHERE id = '" + match_id + "'");
+        
+        std::string json = createJSONResponse(true, "Match deleted successfully");
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ EventController::handleDeleteMatch error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, std::string("Failed to delete match: ") + e.what());
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }

@@ -12,6 +12,7 @@ public:
     void registerRoutes(Router& router, const std::string& prefix) override;
 
 private:
+    Response handleGetAllTeams(const Request& request);
     Response handleGetRoster(const Request& request);
     Response handleGetRosterStatuses(const Request& request);
     Response handleUpdateRosterMember(const Request& request);

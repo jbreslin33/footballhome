@@ -72,6 +72,49 @@ bool Team::remove() {
     }
 }
 
+std::string Team::getAllTeams() {
+    std::ostringstream json;
+    json << "[";
+    
+    try {
+        std::string sql = 
+            "SELECT t.id, t.name, t.age_group, t.skill_level, d.name as division_name "
+            "FROM teams t "
+            "LEFT JOIN sport_divisions d ON t.division_id = d.id "
+            "ORDER BY t.name";
+        
+        pqxx::result result = executeQuery(sql, {});
+        
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json << ",";
+            
+            json << "{";
+            json << "\"id\":\"" << result[i]["id"].c_str() << "\",";
+            json << "\"name\":\"" << escapeJSON(result[i]["name"].c_str()) << "\"";
+            
+            if (!result[i]["age_group"].is_null()) {
+                json << ",\"age_group\":\"" << escapeJSON(result[i]["age_group"].c_str()) << "\"";
+            }
+            if (!result[i]["skill_level"].is_null()) {
+                json << ",\"skill_level\":\"" << escapeJSON(result[i]["skill_level"].c_str()) << "\"";
+            }
+            if (!result[i]["division_name"].is_null()) {
+                json << ",\"division_name\":\"" << escapeJSON(result[i]["division_name"].c_str()) << "\"";
+            }
+            
+            json << "}";
+        }
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Team getAllTeams error: " << e.what() << std::endl;
+        json.str("");
+        json << "[";
+    }
+    
+    json << "]";
+    return json.str();
+}
+
 std::string Team::getTeamRoster(const std::string& team_id) {
     std::ostringstream json;
     json << "[";
