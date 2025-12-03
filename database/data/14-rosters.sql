@@ -1,7 +1,7 @@
 -- ========================================
 -- ROSTERS
 -- ========================================
--- Generated: 2025-12-03T18:05:02.873Z
+-- Generated: 2025-12-03T18:47:35.132Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -3501,6 +3501,13 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
+VALUES ('becab167-6003-0007-f5f4-fc3e2e655171', 'fd2f4fc8-6cbd-0005-8199-96a395b40d55', '10633afc-31fe-0006-2fd8-87a973b51a08', NULL, 1, true)
+ON CONFLICT (team_id, player_id) DO UPDATE SET
+  jersey_number = EXCLUDED.jersey_number,
+  roster_status_id = EXCLUDED.roster_status_id,
+  is_active = EXCLUDED.is_active;
+
+INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
 VALUES ('eeb02e45-630f-0007-d20a-7a4ba85b7168', 'fd2f4fc8-6cbd-0005-8199-96a395b40d55', 'f64b0b59-376d-0006-9d9f-25ba56d0af6b', NULL, 1, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
@@ -4158,6 +4165,13 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
 VALUES ('3da8f29e-609a-0007-68d5-01e279c89d3e', 'c99ade72-80a1-0005-bb2a-e36057334cac', 'c2780cd9-2043-0006-11f1-042bb40eae9d', NULL, 1, true)
+ON CONFLICT (team_id, player_id) DO UPDATE SET
+  jersey_number = EXCLUDED.jersey_number,
+  roster_status_id = EXCLUDED.roster_status_id,
+  is_active = EXCLUDED.is_active;
+
+INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
+VALUES ('3e686e57-5c32-0007-c878-5d0ba39452fb', 'c99ade72-80a1-0005-bb2a-e36057334cac', 'e0bea0e9-5b33-0006-4362-12bcae36696b', NULL, 1, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   roster_status_id = EXCLUDED.roster_status_id,

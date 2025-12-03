@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYER USERS
 -- ========================================
--- Generated: 2025-12-03T18:05:02.802Z
+-- Generated: 2025-12-03T18:47:35.063Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -5956,6 +5956,18 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO users (id, first_name, last_name, is_active)
 VALUES (
+  '10633afc-31fe-0006-2fd8-87a973b51a08',
+  'Henry',
+  'Hamilton',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
   'f64b0b59-376d-0006-9d9f-25ba56d0af6b',
   'Cillian',
   'Heaney',
@@ -7075,6 +7087,18 @@ VALUES (
   'c2780cd9-2043-0006-11f1-042bb40eae9d',
   'Eric',
   'Anderson',
+  true
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO users (id, first_name, last_name, is_active)
+VALUES (
+  'e0bea0e9-5b33-0006-4362-12bcae36696b',
+  'Raphael',
+  'Carvalho',
   true
 )
 ON CONFLICT (id) DO UPDATE SET
