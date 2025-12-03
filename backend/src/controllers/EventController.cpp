@@ -298,11 +298,14 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "SELECT e.id, e.title, e.event_date, e.duration_minutes, et.name as event_type, ";
         query << "m.home_team_score, m.away_team_score, m.match_status, m.competition_name, v.name as venue_name, ";
         query << "CASE WHEN (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) < NOW() ";
-        query << "THEN true ELSE false END as has_ended ";
+        query << "THEN true ELSE false END as has_ended, ";
+        query << "ht.logo_url as home_team_logo, at.logo_url as away_team_logo ";
         query << "FROM events e ";
         query << "JOIN event_types et ON e.event_type_id = et.id ";
         query << "JOIN matches m ON e.id = m.id ";
         query << "LEFT JOIN venues v ON e.venue_id = v.id ";
+        query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
+        query << "LEFT JOIN teams at ON m.away_team_id = at.id ";
         query << "WHERE (m.home_team_id = '" << team_id << "' OR m.away_team_id = '" << team_id << "') ";
         query << "AND (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) > (NOW() - INTERVAL '8 hours') ";
         query << "ORDER BY e.event_date ASC ";
@@ -338,6 +341,12 @@ Response EventController::handleGetMatches(const Request& request) {
             }
             if (!result[i][9].is_null()) {
                 matches_json << ",\"venue_name\":\"" << escapeJSON(result[i][9].c_str()) << "\"";
+            }
+            if (!result[i][11].is_null()) {
+                matches_json << ",\"home_team_logo\":\"" << escapeJSON(result[i][11].c_str()) << "\"";
+            }
+            if (!result[i][12].is_null()) {
+                matches_json << ",\"away_team_logo\":\"" << escapeJSON(result[i][12].c_str()) << "\"";
             }
             
             matches_json << "}";

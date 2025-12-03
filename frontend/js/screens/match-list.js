@@ -142,9 +142,22 @@ class MatchListScreen extends Screen {
             </div>`
           : '';
         
+        const homeLogo = m.home_team_logo 
+          ? `<img src="${m.home_team_logo}" class="team-logo" alt="Home Team">`
+          : `<div class="team-logo-placeholder">🏠</div>`;
+          
+        const awayLogo = m.away_team_logo 
+          ? `<img src="${m.away_team_logo}" class="team-logo" alt="Away Team">`
+          : `<div class="team-logo-placeholder">✈️</div>`;
+        
         return `
           <div class="card match-card">
-            <div class="match-card-header">
+            <div class="match-logos">
+              ${homeLogo}
+              <span class="match-vs">VS</span>
+              ${awayLogo}
+            </div>
+            <div class="match-card-header" style="text-align: center; justify-content: center; flex-direction: column; gap: var(--space-2);">
               <h3>${m.title}</h3>
               ${m.rsvpCount ? `<span class="badge">${m.rsvpCount} responses</span>` : ''}
             </div>
