@@ -126,9 +126,23 @@ class MatchManagementScreen extends Screen {
       });
       
       this.renderList('#match-list', transformedMatches,
-        m => `
+        m => {
+          const homeLogo = m.home_team_logo 
+            ? `<img src="${m.home_team_logo}" class="team-logo" alt="Home Team">`
+            : `<div class="team-logo-placeholder">🏠</div>`;
+            
+          const awayLogo = m.away_team_logo 
+            ? `<img src="${m.away_team_logo}" class="team-logo" alt="Away Team">`
+            : `<div class="team-logo-placeholder">✈️</div>`;
+
+          return `
           <div class="card match-card">
-            <div class="match-card-header">
+            <div class="match-logos">
+              ${homeLogo}
+              <span class="match-vs">VS</span>
+              ${awayLogo}
+            </div>
+            <div class="match-card-header" style="text-align: center; justify-content: center; flex-direction: column; gap: var(--space-2);">
               <h3>${m.title}</h3>
               <span class="match-status ${m.statusClass}">${m.statusDisplay}</span>
             </div>
@@ -161,7 +175,7 @@ class MatchManagementScreen extends Screen {
               <button data-action="delete" data-id="${m.id}" data-name="${m.title}" class="btn btn-danger" style="flex: 1;">Delete</button>
             </div>
           </div>
-        `,
+        `; },
         '<div class="empty-state"><p>🏆 No matches scheduled yet</p><p class="text-muted">Click "Add New Match" to create one</p></div>'
       );
     });
