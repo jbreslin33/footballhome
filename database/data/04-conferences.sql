@@ -1,7 +1,7 @@
 -- ========================================
 -- LEAGUE CONFERENCES
 -- ========================================
--- Generated: 2025-12-03T19:04:30.119Z
+-- Generated: 2025-12-03T19:19:53.479Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
