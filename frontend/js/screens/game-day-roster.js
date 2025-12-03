@@ -96,6 +96,9 @@ class GameDayRosterScreen extends Screen {
   
   async loadPlayers() {
     const matchId = this.navigation.context.match?.id;
+    console.log('GameDayRoster loadPlayers, context:', this.navigation.context);
+    console.log('GameDayRoster matchId:', matchId);
+    
     if (!matchId) {
       console.error('No match selected');
       this.find('#roster-loading').innerHTML = '<p style="color: var(--color-danger);">No match selected</p>';

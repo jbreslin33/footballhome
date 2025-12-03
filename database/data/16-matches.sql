@@ -1,7 +1,7 @@
 -- ========================================
 -- MATCHES (APSL)
 -- ========================================
--- Generated: 2025-12-02T19:05:34.076Z
+-- Generated: 2025-12-03T13:08:10.674Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -2092,9 +2092,9 @@ VALUES (
   'd37eb44b-8e47-0005-9060-f0cbe96fe089',
   '550e8400-e29b-41d4-a716-446655440801',
   'APSL Regular Season',
-  'scheduled',
-  NULL,
-  NULL
+  'completed',
+  7,
+  0
 )
 ON CONFLICT (id) DO UPDATE SET
   competition_name = EXCLUDED.competition_name,

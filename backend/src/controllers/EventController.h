@@ -35,6 +35,7 @@ private:
     // Helper methods
     std::string extractTeamIdFromPath(const std::string& path);
     std::string extractEventIdFromPath(const std::string& path);
+    std::string extractMatchIdFromPath(const std::string& path);
     std::string extractAttendanceIdFromPath(const std::string& path);
     std::string createJSONResponse(bool success, const std::string& message, const std::string& data = "");
     std::string parseJSON(const std::string& body, const std::string& key);

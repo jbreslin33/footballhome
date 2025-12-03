@@ -64,10 +64,15 @@ class MatchRSVPManagementScreen extends Screen {
       const gameRosterBtn = e.target.closest('.game-roster-btn');
       if (gameRosterBtn) {
         const matchId = gameRosterBtn.getAttribute('data-match-id');
+        console.log('Game Day Roster clicked, matchId:', matchId);
+        console.log('Available matches:', this.matches);
         const match = this.matches.find(m => m.id === matchId);
+        console.log('Found match:', match);
         if (match) {
           this.navigation.context.match = match;
           this.navigation.goTo('game-day-roster');
+        } else {
+          console.error('Match not found in this.matches for id:', matchId);
         }
         return;
       }

@@ -575,6 +575,18 @@ std::string EventController::extractEventIdFromPath(const std::string& path) {
     return "";
 }
 
+std::string EventController::extractMatchIdFromPath(const std::string& path) {
+    // Extract match ID from paths like /api/matches/:matchId/...
+    std::regex uuid_regex(R"(/api/matches/([a-f0-9-]{36}))");
+    std::smatch match;
+    
+    if (std::regex_search(path, match, uuid_regex)) {
+        return match[1].str();
+    }
+    
+    return "";
+}
+
 std::string EventController::createJSONResponse(bool success, const std::string& message, const std::string& data) {
     std::ostringstream json;
     json << "{";
@@ -1028,7 +1040,7 @@ Response EventController::handleUpdateAttendance(const Request& request) {
 // ========================================
 
 Response EventController::handleGetGameRoster(const Request& request) {
-    std::string matchId = extractEventIdFromPath(request.getPath());
+    std::string matchId = extractMatchIdFromPath(request.getPath());
     if (matchId.empty()) {
         return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Match ID is required"));
     }
@@ -1086,7 +1098,7 @@ Response EventController::handleGetGameRoster(const Request& request) {
 }
 
 Response EventController::handleUpdateGameRoster(const Request& request) {
-    std::string matchId = extractEventIdFromPath(request.getPath());
+    std::string matchId = extractMatchIdFromPath(request.getPath());
     if (matchId.empty()) {
         return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Match ID is required"));
     }
@@ -1164,7 +1176,7 @@ Response EventController::handleUpdateGameRoster(const Request& request) {
 }
 
 Response EventController::handleGetEligiblePlayers(const Request& request) {
-    std::string matchId = extractEventIdFromPath(request.getPath());
+    std::string matchId = extractMatchIdFromPath(request.getPath());
     if (matchId.empty()) {
         return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Match ID is required"));
     }
@@ -1182,14 +1194,15 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
                 u.first_name,
                 u.last_name,
                 u.email,
-                p.jersey_number,
+                tp.jersey_number,
                 pos.abbreviation as position,
-                rs.code as rsvp_status,
-                CASE WHEN mr.id IS NOT NULL THEN true ELSE false END as on_game_roster
+                rs.name as rsvp_status,
+                CASE WHEN mr.id IS NOT NULL THEN true ELSE false END as on_game_roster,
+                CASE WHEN rs.name = 'yes' THEN 0 ELSE 1 END as rsvp_order
             FROM matches m
             JOIN team_players tp ON tp.team_id = m.home_team_id
             JOIN players p ON tp.player_id = p.id
-            JOIN users u ON p.user_id = u.id
+            JOIN users u ON p.id = u.id
             LEFT JOIN positions pos ON p.preferred_position_id = pos.id
             LEFT JOIN roster_statuses rost ON tp.roster_status_id = rost.id
             LEFT JOIN player_rsvps_current prc ON prc.player_id = p.id AND prc.event_id = m.id
@@ -1199,7 +1212,7 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
               AND tp.is_active = true
               AND (rost.show_in_rsvp = true OR rost.show_in_rsvp IS NULL)
             ORDER BY 
-                CASE WHEN rs.name = 'yes' THEN 0 ELSE 1 END,
+                rsvp_order,
                 u.last_name, 
                 u.first_name
         )";
