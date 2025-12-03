@@ -30,3 +30,4 @@ lighthouse_*.txt
 /docker/data/
 # Generated COPY format SQL files (created from INSERT SQL for fast loading)
 database/data/*.copy.sql
+database/data/99-*.sql
