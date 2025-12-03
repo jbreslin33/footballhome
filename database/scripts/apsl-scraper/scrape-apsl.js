@@ -382,6 +382,28 @@ async function scrapeTeamRoster(teamId, teamUrl) {
     const html = await fetchHTML(teamUrl);
     const dom = new JSDOM(html);
     const doc = dom.window.document;
+    
+    // Extract team logo - look for img with max-height:130px that's NOT the header_logo
+    const logoImages = doc.querySelectorAll('img[style*="max-height:130px"]');
+    let logoUrl = null;
+    for (const img of logoImages) {
+      // Skip the header_logo (APSL league logo)
+      if (img.id === 'header_logo') continue;
+      
+      const src = img.getAttribute('src');
+      if (src && src.includes('/mediacontent/')) {
+        // Convert relative URL to absolute
+        logoUrl = src.startsWith('http') ? src : 'https://app.teampass.com' + src;
+        console.error(`    Found logo: ${logoUrl}`);
+        
+        // Update team with logo URL
+        const team = teams.get(teamId);
+        if (team) {
+          team.logo_url = logoUrl;
+        }
+        break;
+      }
+    }
 
     // Find roster tables with TableRoster class (more specific selector)
     // This finds Active, Reserve, and Inactive rosters when authenticated
@@ -978,11 +1000,13 @@ ON CONFLICT (id) DO UPDATE SET
   // 6. TEAMS (preserve manual Lighthouse section)
   let teamsSQL = '';
   for (const team of teams.values()) {
-    teamsSQL += `INSERT INTO teams (id, name, division_id, league_division_id, season, is_active)
-VALUES (${sqlEscape(team.id)}, ${sqlEscape(team.name)}, ${sqlEscape(team.division_id)}, ${sqlEscape(team.league_division_id)}, '2024-2025', true)
+    const logoValue = team.logo_url ? sqlEscape(team.logo_url) : 'NULL';
+    teamsSQL += `INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
+VALUES (${sqlEscape(team.id)}, ${sqlEscape(team.name)}, ${sqlEscape(team.division_id)}, ${sqlEscape(team.league_division_id)}, '2024-2025', true, ${logoValue})
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
   updated_at = CURRENT_TIMESTAMP;
 
 `;
