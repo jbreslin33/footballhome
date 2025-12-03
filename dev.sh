@@ -2,12 +2,16 @@
 # Football Home - Development Script
 #
 # Usage:
-#   ./dev.sh                  # Full rebuild (no scraping)
-#   ./dev.sh --apsl           # Full rebuild + scrape APSL data
-#   ./dev.sh --venues         # Full rebuild + scrape Google venues
-#   ./dev.sh --apsl --venues  # Full rebuild + scrape both
+#   ./dev.sh                       # Full rebuild (no scraping)
+#   ./dev.sh --apsl                # Full rebuild + scrape APSL data
+#   ./dev.sh --venues              # Full rebuild + scrape Google venues
+#   ./dev.sh --test-data           # Include test schedule data (spring 2026)
+#   ./dev.sh --apsl --test-data    # Full rebuild + APSL + test schedule
 
 set -e
+
+# Change to script directory (project root)
+cd "$(dirname "$0")"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -17,6 +21,7 @@ NC='\033[0m'
 
 APSL_SCRAPE=false
 VENUE_SCRAPE=false
+TEST_DATA=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -27,19 +32,23 @@ for arg in "$@"; do
         --venues)
             VENUE_SCRAPE=true
             ;;
+        --test-data)
+            TEST_DATA=true
+            ;;
         --help|-h)
             echo "Football Home Development Script"
             echo ""
             echo "Usage:"
-            echo "  ./dev.sh                  Full rebuild (no scraping)"
-            echo "  ./dev.sh --apsl           Full rebuild + scrape APSL data"
-            echo "  ./dev.sh --venues         Full rebuild + scrape Google venues"
-            echo "  ./dev.sh --apsl --venues  Full rebuild + scrape both"
+            echo "  ./dev.sh                       Full rebuild (no scraping)"
+            echo "  ./dev.sh --apsl                Full rebuild + scrape APSL data"
+            echo "  ./dev.sh --venues              Full rebuild + scrape Google venues"
+            echo "  ./dev.sh --test-data           Include test schedule data (spring 2026)"
+            echo "  ./dev.sh --apsl --test-data    Full rebuild + APSL + test schedule"
             exit 0
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --apsl, --venues, --help"
+            echo "Valid options: --apsl, --venues, --test-data, --help"
             exit 1
             ;;
     esac
@@ -60,6 +69,9 @@ if [ "$APSL_SCRAPE" = true ]; then
 fi
 if [ "$VENUE_SCRAPE" = true ]; then
     echo "  ✓ Scrape Google venues"
+fi
+if [ "$TEST_DATA" = true ]; then
+    echo "  ✓ Include test schedule data (spring 2026)"
 fi
 echo ""
 
@@ -86,6 +98,24 @@ if [ "$VENUE_SCRAPE" = true ]; then
         echo -e "${GREEN}✓ Venue scraping complete${NC}"
     else
         echo -e "${YELLOW}⚠ Venue scraper not found, skipping${NC}"
+    fi
+    echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 1c: COPY TEST DATA (if requested)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# First, clean up any previous test data from data folder
+rm -f database/data/99-*.sql
+
+if [ "$TEST_DATA" = true ]; then
+    echo -e "${YELLOW}🧪 Step 1c: Copying test data...${NC}"
+    if [ -d "database/test-data" ]; then
+        cp database/test-data/*.sql database/data/
+        echo -e "${GREEN}✓ Test data files copied to database/data/${NC}"
+    else
+        echo -e "${YELLOW}⚠ No test-data folder found${NC}"
     fi
     echo ""
 fi

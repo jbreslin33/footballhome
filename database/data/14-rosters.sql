@@ -1,7 +1,7 @@
 -- ========================================
 -- ROSTERS
 -- ========================================
--- Generated: 2025-12-03T14:08:42.242Z
+-- Generated: 2025-12-03T18:05:02.873Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -6078,7 +6078,7 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
-VALUES ('a9869ec1-c3fb-0007-bb9c-9bde7a434f17', '84a1029b-04c8-0005-5548-e180ad338d6b', '163628c2-89d1-0006-d1af-bb18a863454e', 1, 1, true)
+VALUES ('a9869ec1-c3fb-0007-bb9c-9bde7a434f17', '84a1029b-04c8-0005-5548-e180ad338d6b', '163628c2-89d1-0006-d1af-bb18a863454e', NULL, 1, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   roster_status_id = EXCLUDED.roster_status_id,
@@ -6155,7 +6155,7 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
-VALUES ('fe38cab5-30a3-0007-3f62-a227ab759135', '84a1029b-04c8-0005-5548-e180ad338d6b', '9df4a12e-0f4b-0006-42a6-9dc70077a9c7', 3, 1, true)
+VALUES ('fe38cab5-30a3-0007-3f62-a227ab759135', '84a1029b-04c8-0005-5548-e180ad338d6b', '9df4a12e-0f4b-0006-42a6-9dc70077a9c7', 4, 1, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   roster_status_id = EXCLUDED.roster_status_id,
