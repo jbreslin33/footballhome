@@ -447,3 +447,11 @@ ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, event_date = EXCLUDED.eve
 -- May 10 is final match of season
 
 -- Associate all practices with Lighthouse team
+
+-- Associate all practices with Lighthouse team
+INSERT INTO practices (id, team_id)
+SELECT id, 'd37eb44b-8e47-0005-9060-f0cbe96fe089'
+FROM events
+WHERE event_type_id = '550e8400-e29b-41d4-a716-446655440401'
+AND id::text LIKE 'b1000001-%'
+ON CONFLICT (id) DO NOTHING;
