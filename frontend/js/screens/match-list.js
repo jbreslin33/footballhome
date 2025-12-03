@@ -135,7 +135,7 @@ class MatchListScreen extends Screen {
         console.log(`Classes: attending=${attendingClass}, notAttending=${notAttendingClass}`);
         
         // Display score for completed matches
-        const scoreDisplay = m.home_team_score !== null && m.away_team_score !== null
+        const scoreDisplay = (m.home_team_score !== null && m.home_team_score !== undefined) && (m.away_team_score !== null && m.away_team_score !== undefined)
           ? `<div class="match-score">
               <span class="score">${m.home_team_score} - ${m.away_team_score}</span>
               <span class="status-badge ${m.match_status}">${m.match_status}</span>
