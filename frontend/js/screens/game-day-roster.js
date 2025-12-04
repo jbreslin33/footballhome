@@ -182,6 +182,30 @@ class GameDayRosterScreen extends Screen {
     const isSelected = this.selectedPlayerIds.has(player.playerId);
     const jerseyDisplay = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
     const positionDisplay = player.position || '';
+    const photoUrl = player.photoUrl || null;
+    
+    // Avatar: show photo if available, otherwise initials or checkmark when selected
+    const initial = player.firstName ? player.firstName[0] : '?';
+    let avatarHtml;
+    if (photoUrl && !isSelected) {
+      avatarHtml = `<img src="${photoUrl}" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; margin-right: var(--space-3); border: 2px solid ${isSelected ? '#ffffff' : 'var(--primary-color)'};" alt="${player.firstName} ${player.lastName}">`;
+    } else {
+      avatarHtml = `<div style="
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: ${isSelected ? '#ffffff' : 'var(--primary-color)'};
+        color: ${isSelected ? '#16a34a' : '#ffffff'};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: var(--space-3);
+        font-size: 1.2em;
+      ">
+        ${isSelected ? '✓' : initial}
+      </div>`;
+    }
     
     return `
       <div class="player-select-card ${isSelected ? 'selected' : ''}" 
@@ -198,21 +222,7 @@ class GameDayRosterScreen extends Screen {
              border: 2px solid ${isSelected ? '#16a34a' : 'var(--gray-200)'};
              font-weight: ${isSelected ? '600' : 'normal'};
            ">
-        <div style="
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          background: ${isSelected ? '#ffffff' : 'var(--primary-color)'};
-          color: ${isSelected ? '#16a34a' : '#ffffff'};
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: bold;
-          margin-right: var(--space-3);
-          font-size: 0.8em;
-        ">
-          ${isSelected ? '✓' : (player.firstName ? player.firstName[0] : '?')}
-        </div>
+        ${avatarHtml}
         <div style="flex: 1;">
           <div style="font-weight: ${isSelected ? '700' : '500'};">
             ${player.firstName} ${player.lastName}

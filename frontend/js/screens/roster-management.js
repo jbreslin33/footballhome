@@ -159,7 +159,8 @@ class RosterManagementScreen extends Screen {
       <table style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr style="background: var(--color-background-secondary); border-bottom: 2px solid var(--color-border);">
-            ${!isCoach ? '<th style="padding: var(--space-2); text-align: left;">#</th>' : ''}
+            <th style="padding: var(--space-2); text-align: left; width: 60px;"></th>
+            ${!isCoach ? '<th style="padding: var(--space-2); text-align: left; width: 50px;">#</th>' : ''}
             <th style="padding: var(--space-2); text-align: left;">Name</th>
             <th style="padding: var(--space-2); text-align: left;">Position/Role</th>
             <th style="padding: var(--space-2); text-align: left;">Email</th>
@@ -172,9 +173,15 @@ class RosterManagementScreen extends Screen {
     
     members.forEach(member => {
       const captainBadge = member.isCaptain ? '🏅 C' : (member.isViceCaptain ? '🎖️ VC' : '');
+      const photoUrl = member.photoUrl || null;
+      const initial = member.name ? member.name[0].toUpperCase() : '?';
+      const avatarHtml = photoUrl
+        ? `<img src="${photoUrl}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-border);" alt="${member.name}">`
+        : `<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--color-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${initial}</div>`;
       
       html += `
         <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: var(--space-2);">${avatarHtml}</td>
           ${!isCoach ? `<td style="padding: var(--space-2); font-weight: bold;">${member.jerseyNumber || '-'}</td>` : ''}
           <td style="padding: var(--space-2);">
             ${member.name}

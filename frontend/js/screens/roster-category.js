@@ -156,7 +156,8 @@ class RosterCategoryScreen extends Screen {
       <table style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr style="background: var(--color-background-secondary); border-bottom: 2px solid var(--color-border);">
-            <th style="padding: var(--space-2); text-align: left; width: 60px;">#</th>
+            <th style="padding: var(--space-2); text-align: left; width: 60px;"></th>
+            <th style="padding: var(--space-2); text-align: left; width: 50px;">#</th>
             <th style="padding: var(--space-2); text-align: left;">Name</th>
             <th style="padding: var(--space-2); text-align: left;">Position</th>
             <th style="padding: var(--space-2); text-align: center; width: 80px;">Captain</th>
@@ -168,9 +169,15 @@ class RosterCategoryScreen extends Screen {
     
     players.forEach(player => {
       const captainBadge = player.isCaptain ? '🏅 C' : (player.isViceCaptain ? '🎖️ VC' : '');
+      const photoUrl = player.photoUrl || null;
+      const initial = player.name ? player.name[0].toUpperCase() : '?';
+      const avatarHtml = photoUrl
+        ? `<img src="${photoUrl}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-border);" alt="${player.name}">`
+        : `<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--color-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold;">${initial}</div>`;
       
       html += `
         <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: var(--space-2);">${avatarHtml}</td>
           <td style="padding: var(--space-2); font-weight: bold; color: var(--color-primary);">
             ${player.jerseyNumber || '-'}
           </td>

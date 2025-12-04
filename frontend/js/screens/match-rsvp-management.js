@@ -374,6 +374,13 @@ class MatchRSVPManagementScreen extends Screen {
   renderPlayerCard(player, currentStatus, matchId) {
     const jersey = player.jerseyNumber || '-';
     const name = player.name || 'Unknown';
+    const photoUrl = player.photoUrl || null;
+    
+    // Player avatar - either photo or initials
+    const initial = name ? name[0].toUpperCase() : '?';
+    const avatarHtml = photoUrl 
+      ? `<img src="${photoUrl}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-primary);" alt="${name}">`
+      : `<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--color-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em;">${initial}</div>`;
     
     return `
       <div class="player-card" 
@@ -384,6 +391,7 @@ class MatchRSVPManagementScreen extends Screen {
            onmouseover="this.style.background='var(--color-background)'" 
            onmouseout="this.style.background='white'">
         <div style="display: flex; align-items: center; gap: var(--space-2);">
+          ${avatarHtml}
           <span style="font-weight: bold; color: var(--color-primary); min-width: 28px; font-size: 1.1em;">#${jersey}</span>
           <span style="font-size: 1.05em;">${name}</span>
         </div>
