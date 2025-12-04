@@ -36,3 +36,8 @@ database/data/99-*.sql
 frontend/images/teams/logos/*.png
 frontend/images/teams/logos/*.jpg
 frontend/images/teams/logos/*.jpeg
+
+# Downloaded player headshots (regenerated on scrape)
+frontend/images/players/headshots/*.png
+frontend/images/players/headshots/*.jpg
+frontend/images/players/headshots/*.jpeg

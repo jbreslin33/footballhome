@@ -35,6 +35,7 @@ const LEAGUE_URL = `${BASE_URL}/standings/`;
 const SOCCER_SPORT_ID = '550e8400-e29b-41d4-a716-446655440101';
 const APSL_LEAGUE_ID = '00000000-0000-0000-0001-000000000001';
 const LOGOS_DIR = path.join(__dirname, '../../../frontend/images/teams/logos');
+const HEADSHOTS_DIR = path.join(__dirname, '../../../frontend/images/players/headshots');
 
 // Tracking data structures
 const conferences = new Map();
@@ -78,7 +79,7 @@ async function downloadLogo(url, teamName) {
   if (!fs.existsSync(LOGOS_DIR)) {
     fs.mkdirSync(LOGOS_DIR, { recursive: true });
   }
-  
+
   return new Promise((resolve, reject) => {
     // Determine protocol
     const client = url.startsWith('https') ? https : require('http');
@@ -98,10 +99,50 @@ async function downloadLogo(url, teamName) {
           reject(err);
         });
       } else {
-        resolve(null); // Failed to download, return null
+        resolve(null); // Return null on non-200 status
       }
     }).on('error', (err) => {
-      resolve(null); // Failed to download, return null
+      reject(err);
+    });
+  });
+}
+
+// Helper: Download player headshot from URL and save to disk
+async function downloadHeadshot(url, playerName, playerId) {
+  if (!url) return null;
+  
+  // Use UUID for filename to avoid name collisions
+  const filename = `${playerId}.png`;
+  const filepath = path.join(HEADSHOTS_DIR, filename);
+  
+  // Create headshots directory if it doesn't exist
+  if (!fs.existsSync(HEADSHOTS_DIR)) {
+    fs.mkdirSync(HEADSHOTS_DIR, { recursive: true });
+  }
+
+  return new Promise((resolve, reject) => {
+    // Determine protocol
+    const client = url.startsWith('https') ? https : require('http');
+    
+    client.get(url, (response) => {
+      if (response.statusCode === 200) {
+        const fileStream = fs.createWriteStream(filepath);
+        response.pipe(fileStream);
+        
+        fileStream.on('finish', () => {
+          fileStream.close();
+          resolve(`/images/players/headshots/${filename}`); // Return web path
+        });
+        
+        fileStream.on('error', (err) => {
+          fs.unlink(filepath, () => {}); // Delete partial file
+          reject(err);
+        });
+      } else {
+        resolve(null); // Return null on non-200 status
+      }
+    }).on('error', (err) => {
+      reject(err);
     });
   });
 }
@@ -555,6 +596,16 @@ async function scrapeTeamRoster(teamId, teamUrl) {
       // Cell 2: Jersey number
       // Cell 3: (empty or other info)
       
+      // Extract player photo from Cell 0
+      const photoImg = cells[0]?.querySelector('img');
+      let photoUrl = null;
+      if (photoImg) {
+        const src = photoImg.getAttribute('src');
+        if (src && src.includes('/mediacontent/')) {
+          photoUrl = src.startsWith('http') ? src : 'https://app.teampass.com' + src;
+        }
+      }
+      
       // Look for player name in a div with style="font-size:12px;line-height:1;"
       const nameDiv = cells[1]?.querySelector('div[style*="font-size:12px"]');
       const playerName = nameDiv?.textContent.trim();
@@ -590,10 +641,21 @@ async function scrapeTeamRoster(teamId, teamUrl) {
           last_name: lastName
         });
 
+        // Download player headshot if available
+        let localPhotoPath = null;
+        if (photoUrl) {
+          try {
+            localPhotoPath = await downloadHeadshot(photoUrl, playerName, playerId);
+          } catch (err) {
+            console.error(`      ✗ Failed to download headshot for ${playerName}:`, err.message);
+          }
+        }
+
         // Store player
         players.set(playerId, {
           id: playerId,
-          position: position
+          position: position,
+          photo_url: localPhotoPath
         });
       }
 
@@ -1149,9 +1211,13 @@ ON CONFLICT (id) DO UPDATE SET
 -- ========================================
 `;
       for (const player of teamPlayersArr) {
-        playersSQL += `INSERT INTO players (id, notes)
-VALUES (${sqlEscape(player.id)}, 'APSL player - position: ${player.position || 'not specified'}')
+        const playerData = players.get(player.id);
+        const photoUrl = playerData?.photo_url || null;
+        
+        playersSQL += `INSERT INTO players (id, photo_url, notes)
+VALUES (${sqlEscape(player.id)}, ${sqlEscape(photoUrl)}, 'APSL player - position: ${player.position || 'not specified'}')
 ON CONFLICT (id) DO UPDATE SET
+  photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
 
 `;

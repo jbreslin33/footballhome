@@ -269,6 +269,7 @@ CREATE INDEX idx_users_first_name ON users(first_name);
 CREATE TABLE players (
     id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     preferred_position_id UUID REFERENCES positions(id),
+    photo_url TEXT,                          -- Player headshot photo path
     height_cm INTEGER,
     weight_kg INTEGER,
     dominant_foot VARCHAR(10),               -- 'left', 'right', 'both'
