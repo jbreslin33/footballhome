@@ -1,7 +1,7 @@
 -- ========================================
 -- EVENTS (APSL MATCHES)
 -- ========================================
--- Generated: 2025-12-04T12:58:38.992Z
+-- Generated: 2025-12-04T13:28:31.081Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -3154,6 +3154,300 @@ VALUES (
   '550e8400-e29b-41d4-a716-446655440402',
   'Prima FC vs Majestic SC',
   '2025-12-14 14:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'a6d032cd-6685-0010-0492-dc0c21f5f9f5',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Buckhead SC vs Peachtree FC',
+  '2025-09-21 13:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '785b2ef3-ba3a-0010-23b3-b2cdeba57413',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'SC Gwinnett vs Peachtree FC',
+  '2025-10-05 17:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '964657a9-caa3-0010-5d9f-f9a018ed4bfe',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Peachtree FC vs Alliance SC',
+  '2025-10-12 11:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'cdb1c5ac-70bf-0010-da75-57e57b70235c',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Lithonia City FC vs Peachtree FC',
+  '2025-10-19 18:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '4973ebc1-64a8-0010-efca-17ec484cbb9f',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Peachtree FC vs Bel Calcio FC',
+  '2025-10-26 11:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '9beab712-4a6e-0010-7e2f-3f877c405d02',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Peachtree FC vs Prima FC',
+  '2025-11-16 11:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '40f5d3e3-96a4-0010-b33a-dfe04de9f600',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Alliance SC vs Prima FC',
+  '2025-10-05 18:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '281b035f-c91b-0010-0fdf-48d660133290',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Buckhead SC vs Prima FC',
+  '2025-10-19 12:30:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '7c38c113-d9ab-0010-77ed-4500f2033b5e',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Prima FC vs SC Gwinnett',
+  '2025-11-09 16:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'cf5cc33f-7c26-0010-341a-dc571bb5a903',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Prima FC vs Lithonia City FC',
+  '2025-11-23 14:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'c41a5941-bd85-0010-cb78-f9f73738ddd8',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Bel Calcio FC vs Prima FC',
+  '2025-12-07 14:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '4a72847b-03a6-0010-67c0-cdbdedfc64fc',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Buckhead SC vs Bel Calcio FC',
+  '2025-10-05 13:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '1e81e224-67f4-0010-6a3f-e4b885c71f3e',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Bel Calcio FC vs SC Gwinnett',
+  '2025-10-19 14:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '85429edb-eff9-0010-dec1-e8b172836dcb',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Bel Calcio FC vs Lithonia City FC',
+  '2025-11-09 14:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'b5ba618c-72a7-0010-0ec8-01b5a65e00f0',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Bel Calcio FC vs Alliance SC',
+  '2025-11-16 14:30:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'cc89ae9a-3e08-0010-a6a6-72ae26f7feed',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Lithonia City FC vs Buckhead SC',
+  '2025-09-28 18:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '1041b424-dd78-0010-029c-77c783f3826c',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Alliance SC vs Buckhead SC',
+  '2025-11-09 18:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'fc7b82bb-0fdb-0010-12c2-d397a67072e7',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Buckhead SC vs SC Gwinnett',
+  '2025-11-23 13:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'baf5193c-a16a-0010-1b16-0fab94d985ea',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'SC Gwinnett vs Alliance SC',
+  '2025-09-28 15:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'f68bbb7f-16e1-0010-661c-0d0c920ef3bc',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Lithonia City FC vs Alliance SC',
+  '2025-10-26 18:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '8a1ec78b-9e5b-0010-a7ff-511b5a44dac8',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'SC Gwinnett vs Lithonia City FC',
+  '2025-10-12 15:00:00-04',
   120
 )
 ON CONFLICT (id) DO UPDATE SET
