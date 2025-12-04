@@ -1078,7 +1078,7 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
             std::string id_column = role + "_id";
             
             std::string query = "SELECT r.event_id, r." + id_column + " as user_id, rs.name as status, r.notes, r.changed_at as response_date, "
-                               "u.first_name, u.last_name, COALESCE(u.preferred_name, '') as preferred_name, u.email "
+                               "u.first_name, u.last_name, COALESCE(u.preferred_name, '') as preferred_name, u.email, u.avatar_url "
                                "FROM " + view_name + " r "
                                "JOIN users u ON r." + id_column + " = u.id "
                                "JOIN rsvp_statuses rs ON r.rsvp_status_id = rs.id "
@@ -1096,6 +1096,7 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
                 std::string last_name = escapeJSON(result[i]["last_name"].c_str());
                 std::string user_name = first_name + " " + last_name;
                 std::string email = escapeJSON(result[i]["email"].c_str());
+                std::string avatar_url = result[i]["avatar_url"].is_null() ? "" : result[i]["avatar_url"].c_str();
                 
                 // Map database status values back to frontend values
                 std::string db_status = result[i]["status"].c_str();
@@ -1116,7 +1117,8 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
                           << "\"notes\": \"" << notes_value << "\", "
                           << "\"response_date\": \"" << result[i]["response_date"].c_str() << "\", "
                           << "\"user_name\": \"" << user_name << "\", "
-                          << "\"user_email\": \"" << email << "\""
+                          << "\"user_email\": \"" << email << "\", "
+                          << "\"photoUrl\": \"" << escapeJSON(avatar_url) << "\""
                           << "}";
             }
         }
@@ -1189,6 +1191,7 @@ Response EventController::handleGetEventAttendance(const Request& request) {
                 u.last_name,
                 COALESCE(u.preferred_name, '') as preferred_name,
                 u.email,
+                u.avatar_url,
                 ats.id as status_id,
                 ats.name as status_name,
                 ats.display_name as status_display_name,
@@ -1219,6 +1222,7 @@ Response EventController::handleGetEventAttendance(const Request& request) {
             std::string notes = result[i]["notes"].is_null() ? "" : result[i]["notes"].c_str();
             std::string rsvp_snapshot = result[i]["rsvp_snapshot"].is_null() ? "" : result[i]["rsvp_snapshot"].c_str();
             std::string status_color = result[i]["status_color"].is_null() ? "" : result[i]["status_color"].c_str();
+            std::string avatar_url = result[i]["avatar_url"].is_null() ? "" : result[i]["avatar_url"].c_str();
             std::string updated_by_name = "";
             if (!result[i]["updated_by_first_name"].is_null()) {
                 updated_by_name = std::string(result[i]["updated_by_first_name"].c_str()) + " " + result[i]["updated_by_last_name"].c_str();
@@ -1230,6 +1234,7 @@ Response EventController::handleGetEventAttendance(const Request& request) {
                       << "\"player_id\": \"" << result[i]["player_id"].c_str() << "\", "
                       << "\"player_name\": \"" << escapeJSON(result[i]["first_name"].c_str()) << " " << escapeJSON(result[i]["last_name"].c_str()) << "\", "
                       << "\"player_email\": \"" << escapeJSON(result[i]["email"].c_str()) << "\", "
+                      << "\"photoUrl\": \"" << escapeJSON(avatar_url) << "\", "
                       << "\"status_id\": " << result[i]["status_id"].as<int>() << ", "
                       << "\"status_name\": \"" << escapeJSON(result[i]["status_name"].c_str()) << "\", "
                       << "\"status_display_name\": \"" << escapeJSON(result[i]["status_display_name"].c_str()) << "\", "
@@ -1347,12 +1352,14 @@ Response EventController::handleGetGameRoster(const Request& request) {
                 u.first_name,
                 u.last_name,
                 u.email,
-                p.jersey_number,
+                u.avatar_url,
+                tp.jersey_number,
                 pos.abbreviation as position,
                 mr.created_at
             FROM match_rosters mr
+            JOIN team_players tp ON mr.player_id = tp.player_id AND tp.team_id = (SELECT home_team_id FROM matches WHERE id = $1)
             JOIN players p ON mr.player_id = p.id
-            JOIN users u ON p.user_id = u.id
+            JOIN users u ON p.id = u.id
             LEFT JOIN positions pos ON p.preferred_position_id = pos.id
             WHERE mr.match_id = $1
             ORDER BY u.last_name, u.first_name
@@ -1374,6 +1381,7 @@ Response EventController::handleGetGameRoster(const Request& request) {
             json << "\"firstName\":\"" << escapeJSON(row["first_name"].c_str()) << "\",";
             json << "\"lastName\":\"" << escapeJSON(row["last_name"].c_str()) << "\",";
             json << "\"email\":\"" << escapeJSON(row["email"].c_str()) << "\",";
+            json << "\"photoUrl\":" << (row["avatar_url"].is_null() ? "null" : "\"" + escapeJSON(row["avatar_url"].c_str()) + "\"") << ",";
             json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].c_str()) << ",";
             json << "\"position\":" << (row["position"].is_null() ? "null" : "\"" + std::string(row["position"].c_str()) + "\"");
             json << "}";
@@ -1486,6 +1494,7 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
                 u.first_name,
                 u.last_name,
                 u.email,
+                u.avatar_url,
                 tp.jersey_number,
                 pos.abbreviation as position,
                 rs.name as rsvp_status,
@@ -1524,6 +1533,7 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
             json << "\"firstName\":\"" << escapeJSON(row["first_name"].c_str()) << "\",";
             json << "\"lastName\":\"" << escapeJSON(row["last_name"].c_str()) << "\",";
             json << "\"email\":\"" << escapeJSON(row["email"].c_str()) << "\",";
+            json << "\"photoUrl\":" << (row["avatar_url"].is_null() ? "null" : "\"" + escapeJSON(row["avatar_url"].c_str()) + "\"") << ",";
             json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].c_str()) << ",";
             json << "\"position\":" << (row["position"].is_null() ? "null" : "\"" + std::string(row["position"].c_str()) + "\"") << ",";
             json << "\"rsvpStatus\":" << (row["rsvp_status"].is_null() ? "null" : "\"" + std::string(row["rsvp_status"].c_str()) + "\"") << ",";

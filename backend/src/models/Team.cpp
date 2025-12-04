@@ -127,6 +127,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "  u.first_name, "
             "  u.last_name, "
             "  u.email, "
+            "  u.avatar_url, "
             "  tp.jersey_number, "
             "  p.display_name as position, "
             "  tp.is_captain, "
@@ -159,6 +160,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             std::string last_name = row["last_name"].is_null() ? "" : row["last_name"].as<std::string>();
             std::string full_name = escapeJSON(first_name + " " + last_name);
             std::string email = row["email"].is_null() ? "" : escapeJSON(row["email"].as<std::string>());
+            std::string avatar_url = row["avatar_url"].is_null() ? "" : escapeJSON(row["avatar_url"].as<std::string>());
             std::string position = row["position"].is_null() ? "No Position" : escapeJSON(row["position"].as<std::string>());
             std::string joined_date = row["joined_date"].is_null() ? "" : row["joined_date"].as<std::string>();
             std::string roster_status = row["roster_status"].is_null() ? "Active Player" : escapeJSON(row["roster_status"].as<std::string>());
@@ -171,6 +173,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             json << "\"id\":\"" << row["user_id"].as<std::string>() << "\",";
             json << "\"name\":\"" << full_name << "\",";
             json << "\"email\":\"" << email << "\",";
+            json << "\"photoUrl\":\"" << avatar_url << "\",";
             json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].as<std::string>()) << ",";
             json << "\"position\":\"" << position << "\",";
             json << "\"isCaptain\":" << (row["is_captain"].as<bool>() ? "true" : "false") << ",";
@@ -195,6 +198,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "  u.first_name, "
             "  u.last_name, "
             "  u.email, "
+            "  u.avatar_url, "
             "  tc.coach_role, "
             "  tc.is_primary "
             "FROM team_coaches tc "
@@ -212,12 +216,14 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             std::string last_name = row["last_name"].is_null() ? "" : row["last_name"].as<std::string>();
             std::string full_name = escapeJSON(first_name + " " + last_name);
             std::string email = row["email"].is_null() ? "" : escapeJSON(row["email"].as<std::string>());
+            std::string avatar_url = row["avatar_url"].is_null() ? "" : escapeJSON(row["avatar_url"].as<std::string>());
             std::string coach_role = row["coach_role"].is_null() ? "Coach" : escapeJSON(row["coach_role"].as<std::string>());
             
             json << "{";
             json << "\"id\":\"" << row["user_id"].as<std::string>() << "\",";
             json << "\"name\":\"" << full_name << "\",";
             json << "\"email\":\"" << email << "\",";
+            json << "\"photoUrl\":\"" << avatar_url << "\",";
             json << "\"jerseyNumber\":null,";
             json << "\"position\":\"" << coach_role << "\",";
             json << "\"isCaptain\":false,";
