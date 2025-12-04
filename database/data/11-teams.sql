@@ -1,7 +1,7 @@
 -- ========================================
 -- TEAMS
 -- ========================================
--- Generated: 2025-12-04T13:28:30.984Z
+-- Generated: 2025-12-04T15:06:57.568Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -216,7 +216,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('294a08ff-4f18-0005-c42b-a5fb0d5f0896', 'Philadelphia Heritage SC', '294a08ff-4f18-0004-c42b-a5fb0d5f0896', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true, '/images/teams/logos/philadelphia-heritage-sc.png')
+VALUES ('5d95682c-0ec8-0005-0728-deae7986a2e0', 'Real Central NJ Soccer', '5d95682c-0ec8-0004-0728-deae7986a2e0', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true, '/images/teams/logos/real-central-nj-soccer.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -224,7 +224,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('5d95682c-0ec8-0005-0728-deae7986a2e0', 'Real Central NJ Soccer', '5d95682c-0ec8-0004-0728-deae7986a2e0', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true, '/images/teams/logos/real-central-nj-soccer.png')
+VALUES ('294a08ff-4f18-0005-c42b-a5fb0d5f0896', 'Philadelphia Heritage SC', '294a08ff-4f18-0004-c42b-a5fb0d5f0896', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true, '/images/teams/logos/philadelphia-heritage-sc.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -384,7 +384,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('07e8c5da-df90-0005-7ef3-b55105901be2', 'Prima FC', '07e8c5da-df90-0004-7ef3-b55105901be2', '222b808e-5cee-0003-80b6-a4f6fa9f2917', '2024-2025', true, NULL)
+VALUES ('07e8c5da-df90-0005-7ef3-b55105901be2', 'Prima FC', '07e8c5da-df90-0004-7ef3-b55105901be2', '222b808e-5cee-0003-80b6-a4f6fa9f2917', '2024-2025', true, '/images/teams/logos/prima-fc.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,

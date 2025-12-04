@@ -1,7 +1,7 @@
 -- ========================================
 -- SPORT DIVISIONS
 -- ========================================
--- Generated: 2025-12-04T13:28:30.982Z
+-- Generated: 2025-12-04T15:06:57.567Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -190,14 +190,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('294a08ff-4f18-0004-c42b-a5fb0d5f0896', '294a08ff-4f18-0003-c42b-a5fb0d5f0896', '550e8400-e29b-41d4-a716-446655440101', 'Philadelphia Heritage SC Soccer', 'Philadelphia Heritage SC Soccer', 'philadelphia-heritage-sc-soccer', true)
+VALUES ('5d95682c-0ec8-0004-0728-deae7986a2e0', '5d95682c-0ec8-0003-0728-deae7986a2e0', '550e8400-e29b-41d4-a716-446655440101', 'Real Central NJ Soccer Soccer', 'Real Central NJ Soccer Soccer', 'real-central-nj-soccer-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('5d95682c-0ec8-0004-0728-deae7986a2e0', '5d95682c-0ec8-0003-0728-deae7986a2e0', '550e8400-e29b-41d4-a716-446655440101', 'Real Central NJ Soccer Soccer', 'Real Central NJ Soccer Soccer', 'real-central-nj-soccer-soccer', true)
+VALUES ('294a08ff-4f18-0004-c42b-a5fb0d5f0896', '294a08ff-4f18-0003-c42b-a5fb0d5f0896', '550e8400-e29b-41d4-a716-446655440101', 'Philadelphia Heritage SC Soccer', 'Philadelphia Heritage SC Soccer', 'philadelphia-heritage-sc-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

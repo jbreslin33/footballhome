@@ -1,7 +1,7 @@
 -- ========================================
 -- EVENTS (APSL MATCHES)
 -- ========================================
--- Generated: 2025-12-04T13:28:31.081Z
+-- Generated: 2025-12-04T15:06:57.683Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -1875,6 +1875,132 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
 VALUES (
+  'c7569806-c7ed-0010-6a46-da343db1aa8b',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Lighthouse 1893 SC vs Real Central NJ Soccer',
+  '2025-09-21 16:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '0da0b566-7ce2-0010-0be6-f071bfbd6d02',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Real Central NJ Soccer vs Philadelphia Soccer Club',
+  '2025-09-28 19:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '2bb4a2f8-9fea-0010-e295-b50a0d9034ea',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'GAK vs Real Central NJ Soccer',
+  '2025-10-01 21:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '1e7a8ecc-a1c4-0010-326b-a7d238305ae1',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Jersey Shore Boca vs Real Central NJ Soccer',
+  '2025-10-19 18:30:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '9593c33d-3b41-0010-311a-bfbb4017a168',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Real Central NJ Soccer vs Medford Strikers',
+  '2025-11-02 20:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '44628598-1cc3-0010-36ef-c7e21cff4a97',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Oaklyn United FC vs Real Central NJ Soccer',
+  '2025-11-14 20:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '46b39520-1d27-0010-263b-587ccbfed708',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Real Central NJ Soccer vs Philadelphia Heritage SC',
+  '2025-11-23 19:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'a7bf143c-5dd0-0010-3e94-f91a3eaef7b4',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Real Central NJ Soccer vs Sewell Old Boys FC',
+  '2025-12-03 20:30:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '4542e3ba-8e01-0010-bc05-ae0309dc3b33',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Vidas United FC vs Real Central NJ Soccer',
+  '2025-12-14 11:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
   '271bdf02-140f-0010-f77d-b6596b2f7345',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
@@ -1973,137 +2099,11 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
 VALUES (
-  '46b39520-1d27-0010-263b-587ccbfed708',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Real Central NJ Soccer vs Philadelphia Heritage SC',
-  '2025-11-23 19:00:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
   'f1e27c31-fe9e-0010-faa5-017c21de2588',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
   'Philadelphia Heritage SC vs Philadelphia Soccer Club',
   '2025-12-07 18:00:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  'c7569806-c7ed-0010-6a46-da343db1aa8b',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Lighthouse 1893 SC vs Real Central NJ Soccer',
-  '2025-09-21 16:00:00-04',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '0da0b566-7ce2-0010-0be6-f071bfbd6d02',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Real Central NJ Soccer vs Philadelphia Soccer Club',
-  '2025-09-28 19:00:00-04',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '2bb4a2f8-9fea-0010-e295-b50a0d9034ea',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'GAK vs Real Central NJ Soccer',
-  '2025-10-01 21:00:00-04',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '1e7a8ecc-a1c4-0010-326b-a7d238305ae1',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Jersey Shore Boca vs Real Central NJ Soccer',
-  '2025-10-19 18:30:00-04',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '9593c33d-3b41-0010-311a-bfbb4017a168',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Real Central NJ Soccer vs Medford Strikers',
-  '2025-11-02 20:00:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '44628598-1cc3-0010-36ef-c7e21cff4a97',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Oaklyn United FC vs Real Central NJ Soccer',
-  '2025-11-14 20:00:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  'a7bf143c-5dd0-0010-3e94-f91a3eaef7b4',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Real Central NJ Soccer vs Sewell Old Boys FC',
-  '2025-12-03 20:30:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '4542e3ba-8e01-0010-bc05-ae0309dc3b33',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Vidas United FC vs Real Central NJ Soccer',
-  '2025-12-14 11:00:00-05',
   120
 )
 ON CONFLICT (id) DO UPDATE SET
