@@ -34,6 +34,7 @@ const BASE_URL = 'https://apslsoccer.com';
 const LEAGUE_URL = `${BASE_URL}/standings/`;
 const SOCCER_SPORT_ID = '550e8400-e29b-41d4-a716-446655440101';
 const APSL_LEAGUE_ID = '00000000-0000-0000-0001-000000000001';
+const LOGOS_DIR = path.join(__dirname, '../../../frontend/images/teams/logos');
 
 // Tracking data structures
 const conferences = new Map();
@@ -57,6 +58,53 @@ const SYSTEM_USER_ID = '77d77471-1250-47e0-81ab-d4626595d63c';
 
 // TeamPass authentication cookies (set by login())
 let authCookies = '';
+
+// Helper: Create safe filename from team name
+function teamNameToFilename(teamName) {
+  return teamName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+// Helper: Download image from URL and save to disk
+async function downloadLogo(url, teamName) {
+  if (!url) return null;
+  
+  const filename = `${teamNameToFilename(teamName)}.png`;
+  const filepath = path.join(LOGOS_DIR, filename);
+  
+  // Create logos directory if it doesn't exist
+  if (!fs.existsSync(LOGOS_DIR)) {
+    fs.mkdirSync(LOGOS_DIR, { recursive: true });
+  }
+  
+  return new Promise((resolve, reject) => {
+    // Determine protocol
+    const client = url.startsWith('https') ? https : require('http');
+    
+    client.get(url, (response) => {
+      if (response.statusCode === 200) {
+        const fileStream = fs.createWriteStream(filepath);
+        response.pipe(fileStream);
+        
+        fileStream.on('finish', () => {
+          fileStream.close();
+          resolve(`/images/teams/logos/${filename}`); // Return web path
+        });
+        
+        fileStream.on('error', (err) => {
+          fs.unlink(filepath, () => {}); // Delete partial file
+          reject(err);
+        });
+      } else {
+        resolve(null); // Failed to download, return null
+      }
+    }).on('error', (err) => {
+      resolve(null); // Failed to download, return null
+    });
+  });
+}
 
 // Helper: Login to TeamPass to access reserve rosters
 async function loginToTeamPass() {
@@ -386,6 +434,8 @@ async function scrapeTeamRoster(teamId, teamUrl) {
     // Extract team logo - look for img with max-height:130px that's NOT the header_logo
     const logoImages = doc.querySelectorAll('img[style*="max-height:130px"]');
     let logoUrl = null;
+    let localLogoPath = null;
+    
     for (const img of logoImages) {
       // Skip the header_logo (APSL league logo)
       if (img.id === 'header_logo') continue;
@@ -394,12 +444,21 @@ async function scrapeTeamRoster(teamId, teamUrl) {
       if (src && src.includes('/mediacontent/')) {
         // Convert relative URL to absolute
         logoUrl = src.startsWith('http') ? src : 'https://app.teampass.com' + src;
-        console.error(`    Found logo: ${logoUrl}`);
         
-        // Update team with logo URL
+        // Download logo and get local path
         const team = teams.get(teamId);
         if (team) {
-          team.logo_url = logoUrl;
+          console.error(`    Found logo: ${logoUrl}`);
+          console.error(`    Downloading logo...`);
+          localLogoPath = await downloadLogo(logoUrl, team.name);
+          
+          if (localLogoPath) {
+            team.logo_url = localLogoPath;
+            console.error(`    ✓ Saved to: ${localLogoPath}`);
+          } else {
+            console.error(`    ✗ Failed to download logo`);
+            team.logo_url = logoUrl; // Fallback to external URL
+          }
         }
         break;
       }

@@ -31,3 +31,8 @@ lighthouse_*.txt
 # Generated COPY format SQL files (created from INSERT SQL for fast loading)
 database/data/*.copy.sql
 database/data/99-*.sql
+
+# Downloaded team logos (regenerated on scrape)
+frontend/images/teams/logos/*.png
+frontend/images/teams/logos/*.jpg
+frontend/images/teams/logos/*.jpeg

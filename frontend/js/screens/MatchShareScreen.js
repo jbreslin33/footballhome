@@ -146,7 +146,7 @@ class MatchShareScreen extends Screen {
     this.find('#home-name').textContent = homeName;
     this.find('#away-name').textContent = awayName;
 
-    // Logos
+    // Logos - Now served locally from /images/teams/logos/
     const homeContainer = this.find('#home-logo-container');
     const awayContainer = this.find('#away-logo-container');
 
