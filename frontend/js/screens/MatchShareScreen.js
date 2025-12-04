@@ -39,10 +39,10 @@ class MatchShareScreen extends Screen {
                 <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.1; background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px;"></div>
                 
                 <!-- Content -->
-                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px;">
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 100px 60px 60px 60px;">
                     
                     <!-- Header -->
-                    <h1 id="post-headline" style="font-size: 120px; font-weight: 900; letter-spacing: 10px; margin-bottom: 80px; text-transform: uppercase; text-shadow: 0 4px 10px rgba(0,0,0,0.5);">MATCH DAY</h1>
+                    <h1 id="post-headline" style="font-size: 120px; font-weight: 900; letter-spacing: 10px; margin-bottom: 80px; text-transform: uppercase; text-shadow: 0 4px 10px rgba(0,0,0,0.5); line-height: 1;">MATCH DAY</h1>
                     
                     <!-- Logos Container -->
                     <div style="display: flex; align-items: center; justify-content: center; gap: 60px; margin-bottom: 100px; width: 100%;">
