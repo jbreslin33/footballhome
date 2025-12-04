@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYERS
 -- ========================================
--- Generated: 2025-12-04T15:06:57.621Z
+-- Generated: 2025-12-04T17:49:06.442Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -1391,7 +1391,7 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('9fa25e9e-eef5-0006-0394-3175de0b12aa', '/images/players/headshots/9fa25e9e-eef5-0006-0394-3175de0b12aa.png', 'APSL player - position: not specified')
+VALUES ('9fa25e9e-eef5-0006-0394-3175de0b12aa', NULL, 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
@@ -4071,7 +4071,7 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('b6924d73-37de-0006-2267-13682493f9fa', '/images/players/headshots/b6924d73-37de-0006-2267-13682493f9fa.png', 'APSL player - position: not specified')
+VALUES ('b6924d73-37de-0006-2267-13682493f9fa', NULL, 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
