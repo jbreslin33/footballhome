@@ -39,9 +39,14 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
         return this->handleUpdateMatch(request);
     });
     
-    // DELETE /api/matches/:matchId - Delete match
+    // GET /api/matches/:matchId - Delete match
     router.del("/api/matches/:matchId", [this](const Request& request) {
         return this->handleDeleteMatch(request);
+    });
+
+    // GET /api/practices/team/:teamId - Get practices for a team
+    router.get("/api/practices/team/:teamId", [this](const Request& request) {
+        return this->handleGetPractices(request);
     });
     
     // GET /api/events/:eventId - Get single event by ID
@@ -277,6 +282,93 @@ Response EventController::handleGetEvents(const Request& request) {
         std::cerr << "❌ EventController::handleGetEvents error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve events");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response EventController::handleGetPractices(const Request& request) {
+    try {
+        std::string team_id = extractTeamIdFromPath(request.getPath());
+        
+        if (team_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Team ID is required"));
+        }
+
+        std::string sql = 
+            "SELECT "
+            "  e.id, "
+            "  e.title, "
+            "  e.description, "
+            "  e.event_date, "
+            "  e.duration_minutes, "
+            "  e.cancelled, "
+            "  e.venue_id, "
+            "  v.name as venue_name, "
+            "  p.team_id, "
+            "  p.focus_areas, "
+            "  p.drill_plan "
+            "FROM practices p "
+            "JOIN events e ON p.id = e.id "
+            "LEFT JOIN venues v ON e.venue_id = v.id "
+            "WHERE p.team_id = '" + team_id + "' "
+            "ORDER BY e.event_date ASC";
+
+        pqxx::result result = db_->query(sql);
+
+        std::ostringstream json;
+        json << "[";
+        
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) json << ",";
+            
+            std::string id = row["id"].as<std::string>();
+            std::string title = row["title"].is_null() ? "" : row["title"].as<std::string>();
+            std::string description = row["description"].is_null() ? "" : row["description"].as<std::string>();
+            std::string event_date = row["event_date"].is_null() ? "" : row["event_date"].as<std::string>();
+            int duration = row["duration_minutes"].is_null() ? 90 : row["duration_minutes"].as<int>();
+            bool cancelled = row["cancelled"].is_null() ? false : row["cancelled"].as<bool>();
+            std::string venue_name = row["venue_name"].is_null() ? "TBD" : row["venue_name"].as<std::string>();
+            std::string drill_plan = row["drill_plan"].is_null() ? "" : row["drill_plan"].as<std::string>();
+            
+            // Handle focus_areas array
+            std::string focus_areas = "[]";
+            if (!row["focus_areas"].is_null()) {
+                std::string raw_array = row["focus_areas"].as<std::string>();
+                // Convert {a,b} to ["a","b"] roughly for JSON
+                if (raw_array.size() >= 2) {
+                    std::string content = raw_array.substr(1, raw_array.size() - 2);
+                    focus_areas = "[\"" + content + "\"]"; 
+                    size_t pos = 0;
+                    while((pos = focus_areas.find(',', pos)) != std::string::npos) {
+                        focus_areas.replace(pos, 1, "\",\"");
+                        pos += 3;
+                    }
+                }
+            }
+
+            json << "{";
+            json << "\"id\":\"" << id << "\",";
+            json << "\"title\":\"" << escapeJSON(title) << "\",";
+            json << "\"description\":\"" << escapeJSON(description) << "\",";
+            json << "\"start\":\"" << event_date << "\",";
+            json << "\"durationMinutes\":" << duration << ",";
+            json << "\"isCancelled\":" << (cancelled ? "true" : "false") << ",";
+            json << "\"location\":\"" << escapeJSON(venue_name) << "\",";
+            json << "\"drillPlan\":\"" << escapeJSON(drill_plan) << "\",";
+            json << "\"focusAreas\":" << focus_areas << ",";
+            json << "\"type\":\"practice\"";
+            json << "}";
+            
+            first = false;
+        }
+        
+        json << "]";
+        
+        return Response(HttpStatus::OK, createJSONResponse(true, "Practices retrieved successfully", json.str()));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ EventController::handleGetPractices error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Internal server error"));
     }
 }
 

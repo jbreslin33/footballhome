@@ -27,6 +27,9 @@ private:
     Response handleGetMatch(const Request& request);
     Response handleUpdateMatch(const Request& request);
     Response handleDeleteMatch(const Request& request);
+
+    // Practice-specific endpoints
+    Response handleGetPractices(const Request& request);
     
     // Attendance endpoints
     Response handleGetEventAttendance(const Request& request);

@@ -24,6 +24,13 @@ class PracticeOptionsScreen extends Screen {
               Create, edit, and delete practices
             </small>
           </button>
+
+          <button data-action="rsvp-management" class="btn btn-lg btn-primary">
+            📋 Manage Player RSVPs
+            <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
+              View and update player RSVPs for practices
+            </small>
+          </button>
           
           <button data-action="attendance" class="btn btn-lg btn-primary">
             📋 Manage Practice Attendance
@@ -53,6 +60,8 @@ class PracticeOptionsScreen extends Screen {
         
         if (action === 'manage') {
           this.navigation.goTo('practice-management');
+        } else if (action === 'rsvp-management') {
+          this.navigation.goTo('practice-rsvp-management');
         } else if (action === 'attendance') {
           this.navigation.goTo('practice-attendance');
         } else if (action === 'rsvp') {
