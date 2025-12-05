@@ -6,10 +6,13 @@
     "groupme:list": "node scripts/groupme-scraper.js list",
     "groupme:messages": "node scripts/groupme-scraper.js messages",
     "groupme:rsvp": "node scripts/groupme-scraper.js rsvp",
-    "groupme:events": "node scripts/groupme-scraper.js events"
+    "groupme:events": "node scripts/groupme-scraper.js events",
+    "groupme:import": "node scripts/groupme-import.js",
+    "groupme:import:dry": "node scripts/groupme-import.js 108640377 --dry-run"
   },
   "dependencies": {
-    "dotenv": "^16.0.0"
+    "dotenv": "^16.0.0",
+    "pg": "^8.11.0"
   },
   "devDependencies": {},
   "engines": {
