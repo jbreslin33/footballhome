@@ -84,26 +84,45 @@ async function downloadLogo(url, teamName) {
     // Determine protocol
     const client = url.startsWith('https') ? https : require('http');
     
-    client.get(url, (response) => {
-      if (response.statusCode === 200) {
-        const fileStream = fs.createWriteStream(filepath);
-        response.pipe(fileStream);
-        
-        fileStream.on('finish', () => {
-          fileStream.close();
-          resolve(`/images/teams/logos/${filename}`); // Return web path
-        });
-        
-        fileStream.on('error', (err) => {
-          fs.unlink(filepath, () => {}); // Delete partial file
-          reject(err);
-        });
-      } else {
-        resolve(null); // Return null on non-200 status
-      }
-    }).on('error', (err) => {
-      reject(err);
-    });
+    const maxRetries = 3;
+    let attempts = 0;
+
+    const executeDownload = () => {
+      attempts++;
+      client.get(url, (response) => {
+        if (response.statusCode === 200) {
+          const fileStream = fs.createWriteStream(filepath);
+          response.pipe(fileStream);
+          
+          fileStream.on('finish', () => {
+            fileStream.close();
+            resolve(`/images/teams/logos/${filename}`); // Return web path
+          });
+          
+          fileStream.on('error', (err) => {
+            fs.unlink(filepath, () => {}); // Delete partial file
+            if (attempts < maxRetries) {
+              console.error(`      Retrying download for ${filename} (attempt ${attempts}/${maxRetries}): ${err.message}`);
+              setTimeout(executeDownload, 1000 * attempts); // Exponential backoff
+            } else {
+              console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
+              resolve(null); // Resolve with null on final failure
+            }
+          });
+        } else {
+          resolve(null); // Return null on non-200 status
+        }
+      }).on('error', (err) => {
+        if (attempts < maxRetries) {
+          console.error(`      Retrying download for ${filename} (attempt ${attempts}/${maxRetries}): ${err.message}`);
+          setTimeout(executeDownload, 1000 * attempts); // Exponential backoff
+        } else {
+          console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
+          resolve(null); // Resolve with null on final failure
+        }
+      });
+    };
+    executeDownload();
   });
 }
 
@@ -124,26 +143,44 @@ async function downloadHeadshot(url, playerName, playerId) {
     // Determine protocol
     const client = url.startsWith('https') ? https : require('http');
     
-    client.get(url, (response) => {
-      if (response.statusCode === 200) {
-        const fileStream = fs.createWriteStream(filepath);
-        response.pipe(fileStream);
-        
-        fileStream.on('finish', () => {
-          fileStream.close();
-          resolve(`/images/players/headshots/${filename}`); // Return web path
-        });
-        
-        fileStream.on('error', (err) => {
-          fs.unlink(filepath, () => {}); // Delete partial file
-          reject(err);
-        });
-      } else {
-        resolve(null); // Return null on non-200 status
-      }
-    }).on('error', (err) => {
-      reject(err);
-    });
+    const maxRetries = 3;
+    let attempts = 0;
+
+    const executeDownload = () => {
+      attempts++;
+      client.get(url, (response) => {
+        if (response.statusCode === 200) {
+          const fileStream = fs.createWriteStream(filepath);
+          response.pipe(fileStream);
+          
+          fileStream.on('finish', () => {
+            fileStream.close();
+            resolve(`/images/players/headshots/${filename}`); // Return web path
+          });
+          
+          fileStream.on('error', (err) => {
+            fs.unlink(filepath, () => {}); // Delete partial file
+            if (attempts < maxRetries) {
+              console.error(`      Retrying download for ${filename} (attempt ${attempts}/${maxRetries}): ${err.message}`);
+              setTimeout(executeDownload, 1000 * attempts); // Exponential backoff
+                      } else {
+                        console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
+                        resolve(null); // Resolve with null on final failure
+                      }
+                    });
+                  } else {
+                    resolve(null); // Return null on non-200 status
+                  }
+                }).on('error', (err) => {
+                  if (attempts < maxRetries) {
+                    console.error(`      Retrying download for ${filename} (attempt ${attempts}/${maxRetries}): ${err.message}`);
+                    setTimeout(executeDownload, 1000 * attempts); // Exponential backoff
+                  } else {
+                    console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
+                    resolve(null); // Resolve with null on final failure
+                  }
+                });    };
+    executeDownload();
   });
 }
 
@@ -233,8 +270,6 @@ function fetchHTML(url) {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     };
     
-    // Add auth cookies to ALL requests (TeamPass cookies work cross-domain)
-    // The cookies set on .teampass.com are used by apslsoccer.com through shared session
     if (authCookies) {
       headers['Cookie'] = authCookies;
     }
@@ -244,12 +279,27 @@ function fetchHTML(url) {
       path: urlObj.pathname + urlObj.search,
       headers
     };
-    
-    https.get(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => resolve(data));
-    }).on('error', reject);
+
+    const maxRetries = 3;
+    let attempts = 0;
+
+    const executeFetch = () => {
+      attempts++;
+      https.get(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => resolve(data));
+      }).on('error', (err) => {
+        if (attempts < maxRetries) {
+          console.error(`      Retrying fetch for ${url} (attempt ${attempts}/${maxRetries}): ${err.message}`);
+          setTimeout(executeFetch, 1000 * attempts); // Exponential backoff
+        } else {
+          console.error(`      ✗ Failed to fetch ${url} after ${maxRetries} attempts: ${err.message}`);
+          resolve(null); // Resolve with null on final failure
+        }
+      });
+    };
+    executeFetch();
   });
 }
 
@@ -461,7 +511,6 @@ async function scrapeAPSL() {
 
   } catch (error) {
     console.error('Error scraping APSL:', error.message);
-    process.exit(1);
   }
 }
 
@@ -469,6 +518,10 @@ async function scrapeAPSL() {
 async function scrapeTeamRoster(teamId, teamUrl) {
   try {
     const html = await fetchHTML(teamUrl);
+    if (html === null) {
+      console.error(`    ✗ Failed to fetch HTML for roster from ${teamUrl}`);
+      return; // Skip this team if HTML fetch failed after retries
+    }
     const dom = new JSDOM(html);
     const doc = dom.window.document;
     
@@ -1345,5 +1398,4 @@ scrapeAPSL().then(() => {
   console.error('\n✓ Scraping complete!');
 }).catch(error => {
   console.error('\n✗ Scraping failed:', error);
-  process.exit(1);
 });

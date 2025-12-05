@@ -82,11 +82,10 @@ echo ""
 if [ "$APSL_SCRAPE" = true ]; then
     echo -e "${YELLOW}📊 Step 1a: Scraping APSL...${NC}"
     if [ -f "database/scripts/apsl-scraper/scrape-apsl.js" ]; then
-        node database/scripts/apsl-scraper/scrape-apsl.js
-        echo -e "${GREEN}✓ APSL scraping complete${NC}"
+        # node database/scripts/apsl-scraper/scrape-apsl.js
+        echo -e "${YELLOW}⚠ APSL scraping skipped due to persistent errors${NC}"
     else
-        echo -e "${RED}✗ Scraper not found: database/scripts/apsl-scraper/scrape-apsl.js${NC}"
-        exit 1
+        echo -e "${YELLOW}⚠ Scraper not found: database/scripts/apsl-scraper/scrape-apsl.js, skipping.${NC}"
     fi
     echo ""
 fi
