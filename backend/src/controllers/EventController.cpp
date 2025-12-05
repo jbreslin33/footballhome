@@ -350,10 +350,10 @@ Response EventController::handleGetPractices(const Request& request) {
             json << "\"id\":\"" << id << "\",";
             json << "\"title\":\"" << escapeJSON(title) << "\",";
             json << "\"description\":\"" << escapeJSON(description) << "\",";
-            json << "\"start\":\"" << event_date << "\",";
+            json << "\"event_date\":\"" << event_date << "\",";
             json << "\"durationMinutes\":" << duration << ",";
             json << "\"isCancelled\":" << (cancelled ? "true" : "false") << ",";
-            json << "\"location\":\"" << escapeJSON(venue_name) << "\",";
+            json << "\"venue_name\":\"" << escapeJSON(venue_name) << "\",";
             json << "\"drillPlan\":\"" << escapeJSON(drill_plan) << "\",";
             json << "\"focusAreas\":" << focus_areas << ",";
             json << "\"type\":\"practice\"";
