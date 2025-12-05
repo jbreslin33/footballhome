@@ -1,6 +1,44 @@
 # Football Home - Object-Oriented Architecture Progress
 
-## 🎯 Current Status (Nov 27, 2025 - Latest)
+## 🎯 Current Status (Dec 5, 2025 - Latest)
+**GroupMe RSVP Scraper - Planning Phase** 🚀
+
+### Next Steps: GroupMe Integration
+**Goal:** Import real RSVP data from team's GroupMe chat into Football Home database
+
+**What We Need:**
+1. **GroupMe API Access Token**
+   - Get from: https://dev.groupme.com/
+   - User needs to: Log in → Click "Access Token" → Copy token
+   - Store securely in `.env` file (will not be committed to git)
+
+2. **Group ID** 
+   - Can be retrieved via API once we have the token
+   - This identifies the specific team chat group
+
+**What We'll Build:**
+- Node.js script: `scripts/groupme-scraper.js`
+- Features:
+  - List all user's GroupMe groups
+  - Read messages from specific group
+  - Parse RSVP patterns (yes/no/maybe responses)
+  - Match RSVPs to Football Home events by date/context
+  - Import RSVPs into `event_attendance` or `player_rsvp_history` tables
+  - Handle player matching (GroupMe names → Football Home users)
+
+**Tech Stack:**
+- GroupMe REST API (official, no HTML scraping needed)
+- Node.js with axios/fetch
+- Pattern matching for RSVP keywords
+- PostgreSQL import via pg library
+
+**Current Blocker:**
+- User switching internet connections (GroupMe blocked on current network)
+- Waiting for access token from https://dev.groupme.com/
+
+---
+
+## 🎯 Previous Status (Nov 27, 2025)
 **INSERT-to-COPY Conversion System COMPLETED** ✅ - Built comprehensive automated conversion pipeline that transforms all INSERT SQL to COPY format for 20-40x faster database initialization (200s → 5-10s). System includes universal conversion script, auto-conversion for scrapers, Docker integration, and full documentation.
 
 ### Recent Session Summary (Nov 27, 2025 - Latest)
