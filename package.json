@@ -7,14 +7,15 @@
     "groupme:messages": "node scripts/groupme-scraper.js messages",
     "groupme:rsvp": "node scripts/groupme-scraper.js rsvp",
     "groupme:events": "node scripts/groupme-scraper.js events",
+    "groupme:calendar": "node scripts/groupme-calendar-scraper.js",
     "groupme:import": "node scripts/groupme-import.js",
     "groupme:import:dry": "node scripts/groupme-import.js 108640377 --dry-run"
   },
   "dependencies": {
     "dotenv": "^16.0.0",
-    "pg": "^8.11.0"
+    "pg": "^8.11.0",
+    "puppeteer": "^24.32.0"
   },
-  "devDependencies": {},
   "engines": {
     "node": ">=18.0.0"
   }
