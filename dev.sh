@@ -22,6 +22,7 @@ NC='\033[0m'
 APSL_SCRAPE=false
 VENUE_SCRAPE=false
 TEST_DATA=false
+GROUPME_IMPORT=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -35,6 +36,9 @@ for arg in "$@"; do
         --test-data)
             TEST_DATA=true
             ;;
+        --groupme)
+            GROUPME_IMPORT=true
+            ;;
         --help|-h)
             echo "Football Home Development Script"
             echo ""
@@ -43,12 +47,13 @@ for arg in "$@"; do
             echo "  ./dev.sh --apsl                Full rebuild + scrape APSL data"
             echo "  ./dev.sh --venues              Full rebuild + scrape Google venues"
             echo "  ./dev.sh --test-data           Include test schedule data (spring 2026)"
-            echo "  ./dev.sh --apsl --test-data    Full rebuild + APSL + test schedule"
+            echo "  ./dev.sh --groupme             Import RSVPs from GroupMe after rebuild"
+            echo "  ./dev.sh --apsl --test-data --groupme    Full rebuild with all data"
             exit 0
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --apsl, --venues, --test-data, --help"
+            echo "Valid options: --apsl, --venues, --test-data, --groupme, --help"
             exit 1
             ;;
     esac
@@ -72,6 +77,9 @@ if [ "$VENUE_SCRAPE" = true ]; then
 fi
 if [ "$TEST_DATA" = true ]; then
     echo "  ✓ Include test schedule data (spring 2026)"
+fi
+if [ "$GROUPME_IMPORT" = true ]; then
+    echo "  ✓ Import RSVPs from GroupMe"
 fi
 echo ""
 
@@ -221,6 +229,36 @@ echo -e "${YELLOW}⏰ Step 6: Setting up pg_cron...${NC}"
 docker compose exec -T db bash /docker-entrypoint-initdb.d/ZZ-pg-cron-setup.sh 2>/dev/null || true
 echo -e "${GREEN}✓ pg_cron configured${NC}"
 echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 7: IMPORT GROUPME RSVPs (if requested)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ "$GROUPME_IMPORT" = true ]; then
+    echo -e "${YELLOW}📱 Step 7: Importing GroupMe RSVPs...${NC}"
+    
+    # Check if .env has GroupMe token
+    if grep -q "GROUPME_ACCESS_TOKEN=" .env 2>/dev/null; then
+        # Check if groupme-import.js exists
+        if [ -f "scripts/groupme-import.js" ]; then
+            # Run import with Lighthouse 1893 SC group ID
+            echo "  Running GroupMe import for Lighthouse 1893 SC..."
+            node scripts/groupme-import.js 108640377 2>&1 | sed 's/^/  /'
+            
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✓ GroupMe RSVPs imported${NC}"
+            else
+                echo -e "${YELLOW}⚠ GroupMe import completed with warnings${NC}"
+            fi
+        else
+            echo -e "${YELLOW}⚠ GroupMe import script not found${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
+        echo "  See GROUPME_IMPORT_README.md for setup instructions"
+    fi
+    echo ""
+fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # DONE
