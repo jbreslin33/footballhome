@@ -936,8 +936,8 @@ Response EventController::handleDeleteEvent(const Request& request) {
 }
 
 std::string EventController::extractTeamIdFromPath(const std::string& path) {
-    // Match both /api/events/team/:teamId and /api/matches/team/:teamId
-    std::regex uuid_regex(R"(/api/(events|matches)/team/([a-f0-9-]{36}))");
+    // Match /api/events/team/:teamId, /api/matches/team/:teamId, and /api/practices/team/:teamId
+    std::regex uuid_regex(R"(/api/(events|matches|practices)/team/([a-f0-9-]{36}))");
     std::smatch match;
     
     if (std::regex_search(path, match, uuid_regex)) {
