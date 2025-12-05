@@ -1,10 +1,11 @@
 #!/bin/bash
-# AI CLI - Command-line interface for Football Home AI features using GitHub Copilot
+# AI CLI - Command-line interface for Football Home AI features using Ollama + DeepSeek-Coder
 #
 # Usage:
-#   ./scripts/ai-cli.sh install        # Install GitHub Copilot CLI
+#   ./scripts/ai-cli.sh install        # Install Ollama and DeepSeek-Coder
 #   ./scripts/ai-cli.sh chat           # Start interactive chat
 #   ./scripts/ai-cli.sh query "text"   # Single query
+#   ./scripts/ai-cli.sh code "task"    # Generate code
 #   ./scripts/ai-cli.sh help           # Show help
 
 set -e
@@ -15,6 +16,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m'
+
+# Configuration - DeepSeek-Coder is best for coding tasks
+OLLAMA_MODEL="deepseek-coder:6.7b"
 
 # Change to project root
 cd "$(dirname "$0")/.."
@@ -41,123 +45,143 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Install GitHub CLI and Copilot extension
+# Install Ollama and DeepSeek-Coder
 install_deps() {
-    print_info "Installing GitHub Copilot CLI..."
+    print_info "Installing Ollama + DeepSeek-Coder (free, open-source, local AI)..."
+    echo ""
     
-    # Check if gh is installed
-    if ! command_exists gh; then
-        print_warning "GitHub CLI (gh) not found. Installing..."
-        
-        # Detect OS and install gh
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            # Check if we're on Ubuntu/Debian
-            if command_exists apt; then
-                print_info "Installing via apt..."
-                type -p curl >/dev/null || sudo apt install curl -y
-                curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-                && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-                && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-                && sudo apt update \
-                && sudo apt install gh -y
-            else
-                print_error "Please install GitHub CLI manually: https://cli.github.com/"
-                exit 1
-            fi
-        elif [[ "$OSTYPE" == "darwin"* ]]; then
-            if command_exists brew; then
-                brew install gh
-            else
-                print_error "Please install GitHub CLI manually: https://cli.github.com/"
-                exit 1
-            fi
-        else
-            print_error "Unsupported OS. Please install GitHub CLI manually: https://cli.github.com/"
-            exit 1
-        fi
-    fi
-    
-    print_success "GitHub CLI found: $(gh --version | head -n1)"
-    
-    # Check if authenticated
-    if ! gh auth status &>/dev/null; then
-        print_warning "GitHub CLI not authenticated"
-        print_info "Authenticating with GitHub..."
-        gh auth login
+    # Check if ollama is already installed
+    if command_exists ollama; then
+        print_success "Ollama already installed"
     else
-        print_success "GitHub CLI authenticated"
+        print_info "Downloading and installing Ollama..."
+        curl -fsSL https://ollama.com/install.sh | sh
+        print_success "Ollama installed successfully"
     fi
     
-    # Install Copilot extension
-    print_info "Installing GitHub Copilot extension..."
-    if gh extension list | grep -q "github/gh-copilot"; then
-        print_success "GitHub Copilot extension already installed"
+    # Start ollama service if not running
+    if ! pgrep -x "ollama" > /dev/null; then
+        print_info "Starting Ollama service..."
+        ollama serve > /dev/null 2>&1 &
+        sleep 3
+        print_success "Ollama service started"
     else
-        gh extension install github/gh-copilot
-        print_success "GitHub Copilot extension installed"
+        print_success "Ollama service already running"
     fi
     
-    print_success "Installation complete! You can now use: $0 chat"
+    # Check if model is already downloaded
+    if ollama list | grep -q "$OLLAMA_MODEL"; then
+        print_success "DeepSeek-Coder already downloaded"
+    else
+        print_info "Downloading DeepSeek-Coder model (~4GB, this will take a few minutes)..."
+        print_warning "First time only - future uses will be instant!"
+        ollama pull "$OLLAMA_MODEL"
+        print_success "DeepSeek-Coder downloaded successfully"
+    fi
+    
+    echo ""
+    print_success "✨ Installation complete!"
+    echo ""
+    print_info "What you just got:"
+    echo "  • Ollama (AI runtime)"
+    echo "  • DeepSeek-Coder 6.7B (coding AI model)"
+    echo "  • 100% free, open-source, runs locally"
+    echo "  • No API keys, no subscriptions, no internet needed"
+    echo ""
+    print_info "Try it now:"
+    echo "  ${GREEN}$0 chat${NC}              - Interactive coding assistant"
+    echo "  ${GREEN}$0 code \"write a function...\"${NC} - Generate code"
+    echo "  ${GREEN}$0 query \"how to...\"${NC}  - Ask questions"
+    echo ""
 }
 
-# Interactive chat mode using GitHub Copilot
+# Interactive chat mode using Ollama + DeepSeek-Coder
 start_chat() {
-    # Check if gh copilot is available
-    if ! command_exists gh; then
-        print_error "GitHub CLI not installed. Run: $0 install"
+    # Check if ollama is available
+    if ! command_exists ollama; then
+        print_error "Ollama not installed. Run: $0 install"
         exit 1
     fi
     
-    if ! gh extension list | grep -q "github/gh-copilot"; then
-        print_error "GitHub Copilot extension not installed. Run: $0 install"
+    # Start ollama service if not running
+    if ! pgrep -x "ollama" > /dev/null; then
+        print_info "Starting Ollama service..."
+        ollama serve > /dev/null 2>&1 &
+        sleep 2
+    fi
+    
+    # Check if model exists
+    if ! ollama list | grep -q "$OLLAMA_MODEL"; then
+        print_error "DeepSeek-Coder not found. Run: $0 install"
         exit 1
     fi
     
-    print_info "Starting AI Chat with GitHub Copilot..."
-    print_info "Context: Football Home - Team management application"
+    print_info "🤖 AI Coding Assistant - DeepSeek-Coder"
+    print_info "Context: Football Home (C++ backend, JavaScript frontend, PostgreSQL)"
     echo ""
-    print_success "Ask me anything about your Football Home app!"
-    print_info "Commands: 'exit', 'suggest', 'explain'"
+    print_success "I can help you write code, debug issues, explain concepts, and more!"
     echo ""
+    print_info "Commands:"
+    echo "  ${YELLOW}exit${NC} or ${YELLOW}quit${NC}  - Exit chat"
+    echo "  ${YELLOW}clear${NC}         - Clear conversation history"
+    echo ""
+    
+    # System prompt for Football Home context
+    SYSTEM_PROMPT="You are an expert coding assistant for Football Home, a sports team management application. 
+
+Tech stack:
+- Backend: C++ with libpqxx (PostgreSQL)
+- Frontend: Vanilla JavaScript (no frameworks)
+- Database: PostgreSQL
+- Infrastructure: Docker
+
+Help with: writing code, debugging, refactoring, SQL queries, explaining code, best practices. Be concise and provide working code examples."
+    
+    # Temporary file for conversation
+    CONV_FILE=$(mktemp)
+    echo "$SYSTEM_PROMPT" > "$CONV_FILE"
     
     while true; do
-        echo -e "${BLUE}You:${NC} \c"
+        echo -ne "${BLUE}You:${NC} "
         read -r user_input
         
         if [[ "$user_input" =~ ^(exit|quit|q)$ ]]; then
             print_success "Goodbye!"
+            rm -f "$CONV_FILE"
             break
+        fi
+        
+        if [[ "$user_input" == "clear" ]]; then
+            echo "$SYSTEM_PROMPT" > "$CONV_FILE"
+            print_success "Conversation cleared"
+            echo ""
+            continue
         fi
         
         if [ -z "$user_input" ]; then
             continue
         fi
         
-        # Check if it's a command suggestion request
-        if [[ "$user_input" =~ ^suggest ]]; then
-            query="${user_input#suggest }"
-            echo ""
-            gh copilot suggest "$query"
-        # Check if it's an explanation request
-        elif [[ "$user_input" =~ ^explain ]]; then
-            query="${user_input#explain }"
-            echo ""
-            gh copilot explain "$query"
-        else
-            # Use suggest as the default for general queries
-            echo ""
-            echo -e "${GREEN}AI:${NC}"
-            gh copilot suggest "$user_input" 2>&1 | sed 's/^/  /'
-        fi
+        # Add user message to conversation
+        echo -e "\nUser: $user_input" >> "$CONV_FILE"
+        
+        # Get AI response
+        echo ""
+        echo -e "${GREEN}AI:${NC}"
+        RESPONSE=$(ollama run "$OLLAMA_MODEL" "$(cat "$CONV_FILE")" 2>/dev/null)
+        echo "$RESPONSE"
+        
+        # Add AI response to conversation
+        echo -e "\nAssistant: $RESPONSE" >> "$CONV_FILE"
         
         echo ""
     done
 }
 
-# Single query mode using GitHub Copilot
+# Single query mode
 run_query() {
-    if ! command_exists gh; then
-        print_error "GitHub CLI not installed. Run: $0 install"
+    if ! command_exists ollama; then
+        print_error "Ollama not installed. Run: $0 install"
         exit 1
     fi
     
@@ -166,37 +190,89 @@ run_query() {
         exit 1
     fi
     
-    gh copilot suggest "$1"
+    # Start ollama service if not running
+    if ! pgrep -x "ollama" > /dev/null; then
+        ollama serve > /dev/null 2>&1 &
+        sleep 2
+    fi
+    
+    PROMPT="You are a coding assistant for Football Home (C++ backend, JavaScript frontend, PostgreSQL). Be concise and practical.
+
+Question: $1"
+    
+    ollama run "$OLLAMA_MODEL" "$PROMPT" 2>/dev/null
+}
+
+# Code generation mode
+generate_code() {
+    if ! command_exists ollama; then
+        print_error "Ollama not installed. Run: $0 install"
+        exit 1
+    fi
+    
+    if [ -z "$1" ]; then
+        print_error "No task provided"
+        exit 1
+    fi
+    
+    # Start ollama service if not running
+    if ! pgrep -x "ollama" > /dev/null; then
+        ollama serve > /dev/null 2>&1 &
+        sleep 2
+    fi
+    
+    PROMPT="You are a coding assistant for Football Home application.
+
+Tech stack:
+- Backend: C++ with libpqxx
+- Frontend: Vanilla JavaScript
+- Database: PostgreSQL
+
+Task: $1
+
+Provide only the code with minimal explanation. Make it production-ready."
+    
+    ollama run "$OLLAMA_MODEL" "$PROMPT" 2>/dev/null
 }
 
 # Show help
 show_help() {
     cat <<EOF
-${BLUE}Football Home AI CLI${NC} - Powered by GitHub Copilot
+${BLUE}Football Home AI CLI${NC} - Powered by Ollama + DeepSeek-Coder
 
 ${YELLOW}Usage:${NC}
-  $0 install              Install GitHub Copilot CLI
-  $0 chat                 Start interactive chat mode
-  $0 query "text"         Run a single query
+  $0 install              Install Ollama and DeepSeek-Coder
+  $0 chat                 Start interactive coding assistant
+  $0 query "question"     Ask a quick question
+  $0 code "task"          Generate code for a task
   $0 help                 Show this help
 
 ${YELLOW}Examples:${NC}
   $0 install
   $0 chat
-  $0 query "How do I schedule a practice?"
-  $0 query "explain docker compose up -d"
+  $0 query "How do I optimize this SQL query?"
+  $0 code "Write a C++ function to validate email addresses"
+  $0 code "Create a JavaScript component for RSVP buttons"
   
-${YELLOW}Requirements:${NC}
-  - GitHub account with Copilot access
-  - GitHub CLI authenticated
+${YELLOW}Features:${NC}
+  ✓ 100% free and open-source
+  ✓ Runs locally (no internet needed after install)
+  ✓ No API keys or subscriptions
+  ✓ Specialized for coding tasks
+  ✓ Understands your Football Home tech stack
   
-${YELLOW}Commands in Chat Mode:${NC}
+${YELLOW}Chat Mode Commands:${NC}
   exit, quit, q          Exit chat
-  suggest <query>        Get command suggestions
-  explain <query>        Get explanations
+  clear                  Clear conversation history
 
-${YELLOW}Note:${NC}
-  This uses your GitHub Copilot subscription - no additional API keys needed!
+${YELLOW}What can it do:${NC}
+  • Write code in any language (C++, JavaScript, SQL, etc.)
+  • Debug and fix code
+  • Explain complex code
+  • Refactor and optimize
+  • Generate SQL queries
+  • Write tests
+  • Convert between languages
 
 EOF
 }
@@ -211,6 +287,9 @@ case "${1:-}" in
         ;;
     query)
         run_query "$2"
+        ;;
+    code)
+        generate_code "$2"
         ;;
     help|--help|-h)
         show_help
