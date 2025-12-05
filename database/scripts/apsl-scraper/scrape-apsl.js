@@ -635,12 +635,6 @@ async function scrapeTeamRoster(teamId, teamUrl) {
 
       // Store user (no email/password - only scraped data)
       if (!users.has(userId)) {
-        users.set(userId, {
-          id: userId,
-          first_name: firstName,
-          last_name: lastName
-        });
-
         // Download player headshot if available
         let localPhotoPath = null;
         if (photoUrl) {
@@ -650,6 +644,13 @@ async function scrapeTeamRoster(teamId, teamUrl) {
             console.error(`      ✗ Failed to download headshot for ${playerName}:`, err.message);
           }
         }
+
+        users.set(userId, {
+          id: userId,
+          first_name: firstName,
+          last_name: lastName,
+          avatar_url: localPhotoPath
+        });
 
         // Store player
         players.set(playerId, {
@@ -1164,16 +1165,18 @@ ON CONFLICT (id) DO UPDATE SET
 -- ========================================
 `;
       for (const user of teamUsers) {
-        usersSQL += `INSERT INTO users (id, first_name, last_name, is_active)
+        usersSQL += `INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
 VALUES (
   ${sqlEscape(user.id)},
   ${sqlEscape(user.first_name)},
   ${sqlEscape(user.last_name)},
+  ${sqlEscape(user.avatar_url)},
   true
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
   last_name = EXCLUDED.last_name,
+  avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
   updated_at = CURRENT_TIMESTAMP;
 
 `;

@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYERS
 -- ========================================
--- Generated: 2025-12-04T17:49:06.442Z
+-- Generated: 2025-12-05T13:06:41.228Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -1391,7 +1391,7 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('9fa25e9e-eef5-0006-0394-3175de0b12aa', NULL, 'APSL player - position: not specified')
+VALUES ('9fa25e9e-eef5-0006-0394-3175de0b12aa', '/images/players/headshots/9fa25e9e-eef5-0006-0394-3175de0b12aa.png', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
@@ -2299,6 +2299,12 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
+VALUES ('3d208a13-9388-0006-3047-223dbfc46b7e', '/images/players/headshots/3d208a13-9388-0006-3047-223dbfc46b7e.png', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  photo_url = EXCLUDED.photo_url,
+  notes = EXCLUDED.notes;
+
+INSERT INTO players (id, photo_url, notes)
 VALUES ('aa2b3a30-9783-0006-3012-c96de69bf414', '/images/players/headshots/aa2b3a30-9783-0006-3012-c96de69bf414.png', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
@@ -2431,12 +2437,6 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('360fc8da-30d7-0006-df1d-2e4e1d1582d6', '/images/players/headshots/360fc8da-30d7-0006-df1d-2e4e1d1582d6.png', 'APSL player - position: not specified')
-ON CONFLICT (id) DO UPDATE SET
-  photo_url = EXCLUDED.photo_url,
-  notes = EXCLUDED.notes;
-
-INSERT INTO players (id, photo_url, notes)
 VALUES ('12cb46f3-5dd0-0006-4b3a-766d1902670e', '/images/players/headshots/12cb46f3-5dd0-0006-4b3a-766d1902670e.png', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
@@ -2455,7 +2455,7 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('1d7bb63d-1131-0006-4dac-9ef5900a4ea3', '/images/players/headshots/1d7bb63d-1131-0006-4dac-9ef5900a4ea3.png', 'APSL player - position: not specified')
+VALUES ('0530749a-992c-0006-21fe-8362fbf2057b', '/images/players/headshots/0530749a-992c-0006-21fe-8362fbf2057b.png', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
@@ -2983,7 +2983,7 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('0fa8333c-30ca-0006-a175-a4baa2c2d7a3', '/images/players/headshots/0fa8333c-30ca-0006-a175-a4baa2c2d7a3.png', 'APSL player - position: not specified')
+VALUES ('0fa8333c-30ca-0006-a175-a4baa2c2d7a3', NULL, 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
@@ -4071,7 +4071,7 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('b6924d73-37de-0006-2267-13682493f9fa', NULL, 'APSL player - position: not specified')
+VALUES ('b6924d73-37de-0006-2267-13682493f9fa', '/images/players/headshots/b6924d73-37de-0006-2267-13682493f9fa.png', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
@@ -6049,7 +6049,7 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('30939ef1-3caf-0006-f5c3-842dc5a6597e', '/images/players/headshots/30939ef1-3caf-0006-f5c3-842dc5a6597e.png', 'APSL player - position: not specified')
+VALUES ('30939ef1-3caf-0006-f5c3-842dc5a6597e', NULL, 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
@@ -6255,7 +6255,7 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('72e4776c-5809-0006-e317-9cf118445bd7', '/images/players/headshots/72e4776c-5809-0006-e317-9cf118445bd7.png', 'APSL player - position: not specified')
+VALUES ('72e4776c-5809-0006-e317-9cf118445bd7', NULL, 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
@@ -6951,7 +6951,7 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('f5dfe66e-8e08-0006-ff59-107bf2898b1a', '/images/players/headshots/f5dfe66e-8e08-0006-ff59-107bf2898b1a.png', 'APSL player - position: not specified')
+VALUES ('f5dfe66e-8e08-0006-ff59-107bf2898b1a', NULL, 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
@@ -8485,7 +8485,7 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('7cdb0545-2f44-0006-1096-5dc302f5286d', '/images/players/headshots/7cdb0545-2f44-0006-1096-5dc302f5286d.png', 'APSL player - position: not specified')
+VALUES ('7cdb0545-2f44-0006-1096-5dc302f5286d', NULL, 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
@@ -10927,7 +10927,7 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 INSERT INTO players (id, photo_url, notes)
-VALUES ('8b0f37c3-c302-0006-2b4b-0245b5403fd5', '/images/players/headshots/8b0f37c3-c302-0006-2b4b-0245b5403fd5.png', 'APSL player - position: not specified')
+VALUES ('8b0f37c3-c302-0006-2b4b-0245b5403fd5', NULL, 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;

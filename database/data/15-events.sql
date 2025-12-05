@@ -1,7 +1,7 @@
 -- ========================================
 -- EVENTS (APSL MATCHES)
 -- ========================================
--- Generated: 2025-12-04T17:49:06.507Z
+-- Generated: 2025-12-05T13:06:41.278Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
