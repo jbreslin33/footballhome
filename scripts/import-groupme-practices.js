@@ -69,17 +69,27 @@ async function fetchCalendarEvents(groupId) {
   console.log('📅 Fetching calendar events from GroupMe...');
   
   try {
-    const events = await apiRequest(`/conversations/${groupId}/events/list`);
+    const response = await apiRequest(`/conversations/${groupId}/events/list`);
     
-    // Filter to upcoming events only
-    const now = new Date();
-    const upcoming = events.filter(event => {
-      const eventDate = new Date(event.starts_at);
-      return eventDate >= now;
-    });
+    // Check if response has events array
+    const events = Array.isArray(response) ? response : (response.events || response.data || []);
     
-    console.log(`✅ Found ${upcoming.length} upcoming event(s)\n`);
-    return upcoming;
+    if (!Array.isArray(events)) {
+      console.error('❌ API response is not an array:', typeof events);
+      console.error('   Response structure:', Object.keys(response || {}));
+      return [];
+    }
+    
+    // For now, import all events (including past ones for testing)
+    // Filter to upcoming events only later in production
+    // const now = new Date();
+    // const upcoming = events.filter(event => {
+    //   const eventDate = new Date(event.start_at || event.starts_at);
+    //   return eventDate >= now;
+    // });
+    
+    console.log(`✅ Found ${events.length} event(s)\n`);
+    return events;
   } catch (error) {
     console.error('❌ Error fetching events:', error.message);
     console.error('   Note: Calendar API endpoint may require special permissions');
@@ -87,7 +97,58 @@ async function fetchCalendarEvents(groupId) {
   }
 }
 
-// Scrape RSVPs for a single event using the calendar scraper
+// Fetch group members to map user IDs to names
+async function fetchGroupMembers(groupId) {
+  console.log('👥 Fetching group members...');
+  
+  try {
+    const response = await apiRequest(`/groups/${groupId}`);
+    const members = response.members || [];
+    
+    // Create a map of user_id -> nickname
+    const memberMap = {};
+    members.forEach(member => {
+      memberMap[member.user_id] = member.nickname || member.name;
+    });
+    
+    console.log(`✅ Found ${members.length} group members\n`);
+    return memberMap;
+  } catch (error) {
+    console.error('❌ Error fetching members:', error.message);
+    return {};
+  }
+}
+
+// Convert RSVP user IDs to names using member map
+function convertRSVPsToNames(event, memberMap) {
+  const rsvps = {
+    going: [],
+    maybe: [],
+    not_going: [],
+    no_response: []
+  };
+  
+  // Map going user IDs to names
+  if (event.going && Array.isArray(event.going)) {
+    rsvps.going = event.going
+      .map(userId => memberMap[userId])
+      .filter(name => name);
+  }
+  
+  // Map not_going user IDs to names
+  if (event.not_going && Array.isArray(event.not_going)) {
+    rsvps.not_going = event.not_going
+      .map(userId => memberMap[userId])
+      .filter(name => name);
+  }
+  
+  // Note: GroupMe API doesn't provide "maybe" in this format
+  // It's binary: going or not_going
+  
+  return rsvps;
+}
+
+// Old scraper function - kept for reference but not used
 async function scrapeEventRSVPs(groupId, eventId) {
   try {
     const output = execSync(
@@ -124,7 +185,21 @@ async function scrapeEventRSVPs(groupId, eventId) {
   }
 }
 
-// Fuzzy name matching
+// Find user by GroupMe ID (direct match - no fuzzy logic needed!)
+async function findUserByGroupMeId(client, groupmeUserId) {
+  const result = await client.query(`
+    SELECT u.id, u.first_name, u.last_name, u.email, u.groupme_id
+    FROM users u
+    JOIN rosters r ON u.id = r.player_id
+    WHERE r.team_id = $1 
+      AND r.is_active = true
+      AND u.groupme_id = $2
+  `, [TEAM_ID, groupmeUserId]);
+  
+  return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+// Fuzzy name matching - FALLBACK ONLY if groupme_id not set
 function matchName(groupmeName, dbFirstName, dbLastName) {
   const gName = groupmeName.toLowerCase().trim();
   const first = dbFirstName.toLowerCase().trim();
@@ -141,10 +216,10 @@ function matchName(groupmeName, dbFirstName, dbLastName) {
   return 0;
 }
 
-// Find best matching user
-async function findMatchingUser(client, groupmeName) {
+// Find best matching user by name (fallback when groupme_id not set)
+async function findMatchingUserByName(client, groupmeName) {
   const result = await client.query(`
-    SELECT u.id, u.first_name, u.last_name, u.email
+    SELECT u.id, u.first_name, u.last_name, u.email, u.groupme_id
     FROM users u
     JOIN rosters r ON u.id = r.player_id
     WHERE r.team_id = $1 AND r.is_active = true
@@ -173,11 +248,14 @@ async function importPractices(groupId) {
     await client.connect();
     console.log('✅ Connected\n');
     
+    // Fetch group members first (for RSVP mapping)
+    const memberMap = await fetchGroupMembers(groupId);
+    
     // Fetch calendar events
     const events = await fetchCalendarEvents(groupId);
     
     if (events.length === 0) {
-      console.log('No upcoming events to import.');
+      console.log('No events to import.');
       return;
     }
     
@@ -193,9 +271,12 @@ async function importPractices(groupId) {
     console.log('📋 Processing events:\n');
     
     for (const event of events) {
-      const eventDate = new Date(event.starts_at);
+      const eventDate = new Date(event.start_at);
+      const endDate = new Date(event.end_at);
+      const durationMinutes = Math.round((endDate - eventDate) / 60000);
       const title = event.name || 'Practice';
-      const description = event.description || '';
+      const description = event.location?.name || '';
+      const venueName = event.location?.name || 'TBD';
       
       console.log(`⚽ ${title}`);
       console.log(`   📅 ${eventDate.toLocaleString()}`);
@@ -213,7 +294,7 @@ async function importPractices(groupId) {
         INSERT INTO events (id, created_by, event_type_id, title, description, event_date, duration_minutes, venue_id)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         ON CONFLICT (id) DO NOTHING
-      `, [eventId, CREATOR_ID, TRAINING_EVENT_TYPE_ID, title, description, eventDate, 120, defaultVenueId]);
+      `, [eventId, CREATOR_ID, TRAINING_EVENT_TYPE_ID, title, description, eventDate, durationMinutes, defaultVenueId]);
       
       // Create practice record
       await client.query(`
@@ -224,9 +305,9 @@ async function importPractices(groupId) {
       
       console.log(`   ✅ Practice created (ID: ${eventId})`);
       
-      // Scrape and import RSVPs
-      console.log(`   📥 Fetching RSVPs...`);
-      const rsvps = await scrapeEventRSVPs(groupId, event.event_id);
+      // Convert RSVP user IDs to names using member map
+      console.log(`   📥 Processing RSVPs...`);
+      const rsvps = convertRSVPsToNames(event, memberMap);
       
       const totalRsvps = rsvps.going.length + rsvps.maybe.length + 
                          rsvps.not_going.length + rsvps.no_response.length;
@@ -235,6 +316,8 @@ async function importPractices(groupId) {
         console.log(`   ⚠️  No RSVPs found\n`);
         continue;
       }
+      
+      console.log(`   📊 Going: ${rsvps.going.length}, Not Going: ${rsvps.not_going.length}`);
       
       // Get RSVP status IDs
       const statusIds = {};
@@ -249,20 +332,15 @@ async function importPractices(groupId) {
       );
       const sourceId = sourceResult.rows[0].id;
       
-      // Import each RSVP
+      // Import each RSVP using GroupMe user IDs from the event data
       let imported = 0;
       let skipped = 0;
       
-      for (const [status, names] of Object.entries(rsvps)) {
-        if (status === 'no_response' || names.length === 0) continue;
-        
-        const mappedStatus = status === 'going' ? 'yes' : status === 'not_going' ? 'no' : status;
-        const statusId = statusIds[mappedStatus];
-        
-        if (!statusId) continue;
-        
-        for (const name of names) {
-          const match = await findMatchingUser(client, name);
+      // Process "going" RSVPs
+      if (event.going && Array.isArray(event.going)) {
+        const statusId = statusIds['yes'];
+        for (const groupmeUserId of event.going) {
+          const match = await findUserByGroupMeId(client, groupmeUserId);
           
           if (match) {
             await client.query(`
@@ -274,30 +352,115 @@ async function importPractices(groupId) {
                 response_date = EXCLUDED.response_date,
                 change_source_id = EXCLUDED.change_source_id
             `, [eventId, match.id, statusId, sourceId]);
-            
             imported++;
           } else {
-            skipped++;
+            // Fallback: try name matching
+            const name = memberMap[groupmeUserId];
+            if (name) {
+              const nameMatch = await findMatchingUserByName(client, name);
+              if (nameMatch) {
+                await client.query(`
+                  INSERT INTO event_rsvps (event_id, user_id, rsvp_status_id, change_source_id, response_date)
+                  VALUES ($1, $2, $3, $4, NOW())
+                  ON CONFLICT (event_id, user_id) 
+                  DO UPDATE SET 
+                    rsvp_status_id = EXCLUDED.rsvp_status_id,
+                    response_date = EXCLUDED.response_date,
+                    change_source_id = EXCLUDED.change_source_id
+                `, [eventId, nameMatch.id, statusId, sourceId]);
+                imported++;
+                console.log(`   ⚠️  Matched by name: ${name} (consider setting groupme_id)`);
+              } else {
+                skipped++;
+              }
+            } else {
+              skipped++;
+            }
           }
         }
       }
       
-      console.log(`   ✅ Imported ${imported} RSVP(s), ${skipped} skipped (no match)\n`);
+      // Process "not_going" RSVPs
+      if (event.not_going && Array.isArray(event.not_going)) {
+        const statusId = statusIds['no'];
+        for (const groupmeUserId of event.not_going) {
+          const match = await findUserByGroupMeId(client, groupmeUserId);
+          
+          if (match) {
+            await client.query(`
+              INSERT INTO event_rsvps (event_id, user_id, rsvp_status_id, change_source_id, response_date)
+              VALUES ($1, $2, $3, $4, NOW())
+              ON CONFLICT (event_id, user_id) 
+              DO UPDATE SET 
+                rsvp_status_id = EXCLUDED.rsvp_status_id,
+                response_date = EXCLUDED.response_date,
+                change_source_id = EXCLUDED.change_source_id
+            `, [eventId, match.id, statusId, sourceId]);
+            imported++;
+          } else {
+            // Fallback: try name matching
+            const name = memberMap[groupmeUserId];
+            if (name) {
+              const nameMatch = await findMatchingUserByName(client, name);
+              if (nameMatch) {
+                await client.query(`
+                  INSERT INTO event_rsvps (event_id, user_id, rsvp_status_id, change_source_id, response_date)
+                  VALUES ($1, $2, $3, $4, NOW())
+                  ON CONFLICT (event_id, user_id) 
+                  DO UPDATE SET 
+                    rsvp_status_id = EXCLUDED.rsvp_status_id,
+                    response_date = EXCLUDED.response_date,
+                    change_source_id = EXCLUDED.change_source_id
+                `, [eventId, nameMatch.id, statusId, sourceId]);
+                imported++;
+                console.log(`   ⚠️  Matched by name: ${name} (consider setting groupme_id)`);
+              } else {
+                skipped++;
+              }
+            } else {
+              skipped++;
+            }
+          }
+        }
+      }
+      
+      console.log(`   ✅ Imported ${imported} RSVPs, skipped ${skipped}\n`);
     }
     
-    console.log('✨ Import complete!\n');
+    console.log('✨ Import complete!');
     
   } catch (error) {
-    console.error('\n❌ Error:', error);
+    console.error('❌ Error:', error);
     throw error;
   } finally {
     await client.end();
   }
 }
 
-// Main
-const groupId = process.argv[2];
+// Parse command line arguments
+const args = process.argv.slice(2);
+const groupId = args[0];
+const DRY_RUN = args.includes('--dry-run');
 
+if (!groupId) {
+  console.error('Usage: node import-groupme-practices.js <group_id> [--dry-run]');
+  console.error('Example: node import-groupme-practices.js 108640377 --dry-run');
+  process.exit(1);
+}
+
+// Run the import
+importPractices(groupId)
+  .then(() => {
+    console.log('Done!');
+    process.exit(0);
+  })
+  .catch(error => {
+    console.error('Import failed:', error);
+    process.exit(1);
+  });
+}
+
+// Main
 if (!groupId || groupId === '--help' || groupId === '-h') {
   console.log('GroupMe Practice Importer\n');
   console.log('Usage:');
@@ -308,9 +471,7 @@ if (!groupId || groupId === '--help' || groupId === '-h') {
   console.log('Setup:');
   console.log('  1. Get GroupMe Access Token: https://dev.groupme.com/');
   console.log('  2. Add to .env: GROUPME_ACCESS_TOKEN=your-token');
-  console.log('  3. Add GroupMe credentials for calendar scraper:');
-  console.log('     GROUPME_EMAIL=your-email@example.com');
-  console.log('     GROUPME_PASSWORD=your-password');
+  console.log('  3. Populate user.groupme_id for all team members');
   process.exit(0);
 }
 

@@ -241,6 +241,7 @@ CREATE TABLE users (
     date_of_birth DATE,
     emergency_contact VARCHAR(100),
     emergency_phone VARCHAR(20),
+    groupme_id VARCHAR(50),                  -- GroupMe user ID for external integration
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -248,6 +249,7 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_last_first_name ON users(last_name, first_name);
 CREATE INDEX idx_users_first_name ON users(first_name);
+CREATE UNIQUE INDEX idx_users_groupme_id ON users(groupme_id) WHERE groupme_id IS NOT NULL;
 
 -- ========================================
 -- USER ENTITY TABLES (Normalized)
