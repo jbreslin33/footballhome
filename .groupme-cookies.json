@@ -1,0 +1,46 @@
+[
+  {
+    "name": "_dd_s",
+    "value": "logs=1&id=3f725ab5-c6db-42c1-9aa6-9a0ff57bde49&created=1765052283552&expire=1765053243554",
+    "domain": "web.groupme.com",
+    "path": "/",
+    "expires": 1765053243,
+    "size": 94,
+    "httpOnly": false,
+    "secure": false,
+    "session": false,
+    "sameSite": "Strict",
+    "priority": "Medium",
+    "sameParty": false,
+    "sourceScheme": "Secure"
+  },
+  {
+    "name": "mp_54a7f6d9805cf997975d3f645e43ff3d_mixpanel",
+    "value": "%7B%22distinct_id%22%3A%20%22%24device%3A19af55076cad52-002917f6ff8d068-14543b4d-75300-19af55076cad52%22%2C%22%24device_id%22%3A%20%2219af55076cad52-002917f6ff8d068-14543b4d-75300-19af55076cad52%22%2C%22%24initial_referrer%22%3A%20%22%24direct%22%2C%22%24initial_referring_domain%22%3A%20%22%24direct%22%2C%22__mps%22%3A%20%7B%7D%2C%22__mpso%22%3A%20%7B%22%24initial_referrer%22%3A%20%22%24direct%22%2C%22%24initial_referring_domain%22%3A%20%22%24direct%22%7D%2C%22__mpus%22%3A%20%7B%7D%2C%22__mpa%22%3A%20%7B%7D%2C%22__mpu%22%3A%20%7B%7D%2C%22__mpr%22%3A%20%5B%5D%2C%22__mpap%22%3A%20%5B%5D%2C%22Platform%22%3A%20%22web%22%2C%22GroupMe%20Client%20Type%22%3A%20%22web%22%2C%22Language%22%3A%20%22en-US%22%2C%22%24app_version_string%22%3A%20%227.23.19-20251120.1%22%2C%22Is%20PWA%22%3A%20false%2C%22ECS%20Configs%22%3A%20%22P-R-1715937-5-6%22%7D",
+    "domain": ".groupme.com",
+    "path": "/",
+    "expires": 1796588284,
+    "size": 888,
+    "httpOnly": false,
+    "secure": false,
+    "session": false,
+    "priority": "Medium",
+    "sameParty": false,
+    "sourceScheme": "Secure"
+  },
+  {
+    "name": "MSCC",
+    "value": "NR",
+    "domain": ".groupme.com",
+    "path": "/",
+    "expires": 1765138682,
+    "size": 6,
+    "httpOnly": false,
+    "secure": true,
+    "session": false,
+    "sameSite": "None",
+    "priority": "Medium",
+    "sameParty": false,
+    "sourceScheme": "Secure"
+  }
+]

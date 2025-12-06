@@ -13,7 +13,9 @@
  */
 
 require('dotenv').config();
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
 const fs = require('fs');
 const path = require('path');
 
@@ -47,7 +49,7 @@ async function login(page) {
   if (GROUPME_EMAIL && GROUPME_PASSWORD) {
     try {
       console.log('   Entering credentials...');
-      await page.waitForSelector('input[name="email"], input[type="email"]', { timeout: 5000 });
+      await page.waitForSelector('input[name="email"], input[type="email"]', { timeout: 10000 });
       await page.type('input[name="email"], input[type="email"]', GROUPME_EMAIL);
       await page.type('input[name="password"], input[type="password"]', GROUPME_PASSWORD);
       
@@ -61,7 +63,7 @@ async function login(page) {
     } catch (error) {
       console.log('⚠️  Automated login failed, may need manual intervention');
       console.log('   Browser will stay open for 60 seconds - please login manually if needed');
-      await page.waitForTimeout(60000);
+      await new Promise(r => setTimeout(r, 60000));
     }
   } else {
     // Manual login required
@@ -130,11 +132,24 @@ async function scrapeEventRSVPs(groupId, eventId) {
     await page.goto(eventUrl, { waitUntil: 'networkidle2', timeout: 30000 });
     
     // Wait a bit for dynamic content to load
-    await page.waitForTimeout(3000);
+    console.log('⏳ Waiting for event details to load...');
+    try {
+      // Wait for a generic container that likely holds the RSVP info
+      // We'll wait for the body to be fully populated
+      await page.waitForSelector('body', { timeout: 10000 });
+      await new Promise(r => setTimeout(r, 5000)); // Extra wait for JS rendering
+    } catch (e) {
+      console.log('⚠️  Wait timed out, proceeding anyway...');
+    }
+    
+    // Save HTML for debugging
+    const html = await page.content();
+    fs.writeFileSync('debug-groupme-event.html', html);
+    console.log('📸 Saved page HTML to debug-groupme-event.html');
     
     // Take screenshot for debugging
-    await page.screenshot({ path: '/tmp/groupme-event.png', fullPage: true });
-    console.log('📸 Screenshot saved to /tmp/groupme-event.png');
+    await page.screenshot({ path: 'groupme-event.png', fullPage: true });
+    console.log('📸 Screenshot saved to groupme-event.png');
     
     // Extract RSVP data from the page
     console.log('\n🔍 Extracting RSVP data...');
@@ -213,10 +228,10 @@ async function scrapeEventRSVPs(groupId, eventId) {
       return results;
     });
     
-    // Also get full page HTML for debugging
-    const html = await page.content();
-    fs.writeFileSync('/tmp/groupme-event.html', html);
-    console.log('💾 Page HTML saved to /tmp/groupme-event.html\n');
+    // Also get full page HTML for debugging (already saved above)
+    // const html = await page.content();
+    // fs.writeFileSync('/tmp/groupme-event.html', html);
+    // console.log('💾 Page HTML saved to /tmp/groupme-event.html\n');
     
     // Display results
     console.log('📊 RSVP Results:\n');
