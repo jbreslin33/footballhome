@@ -1,40 +1,65 @@
 # Football Home - Object-Oriented Architecture Progress
 
 ## 🎯 Current Status (Dec 5, 2025 - Latest)
-**GroupMe RSVP Scraper - Planning Phase** 🚀
+**GroupMe Integration - COMPLETED** ✅
 
-### Next Steps: GroupMe Integration
-**Goal:** Import real RSVP data from team's GroupMe chat into Football Home database
+### GroupMe RSVP Import - Fully Working!
+Successfully integrated GroupMe calendar events and RSVPs into Football Home:
 
-**What We Need:**
-1. **GroupMe API Access Token**
-   - Get from: https://dev.groupme.com/
-   - User needs to: Log in → Click "Access Token" → Copy token
-   - Store securely in `.env` file (will not be committed to git)
+**What Was Built:**
+1. **Practice Import** (`scripts/import-groupme-practices-simple.js`)
+   - Fetches calendar events from GroupMe API
+   - Creates event + practice records in database
+   - Stores ALL GroupMe data (going/not_going arrays, timestamps) as JSON in practice notes
+   - No RSVP processing in this script - keeps it simple and focused
 
-2. **Group ID** 
-   - Can be retrieved via API once we have the token
-   - This identifies the specific team chat group
+2. **GroupMe ID Sync** (`scripts/sync-groupme-ids.js`)
+   - Matches GroupMe users to Football Home users via fuzzy name matching
+   - Populates `users.groupme_id` field for direct ID linking
+   - 80% match threshold (increased from 60% for accuracy)
+   - Duplicate prevention: tracks used GroupMe IDs from DB + within run
+   - Fixed to use correct tables: `team_players` not `rosters`
 
-**What We'll Build:**
-- Node.js script: `scripts/groupme-scraper.js`
-- Features:
-  - List all user's GroupMe groups
-  - Read messages from specific group
-  - Parse RSVP patterns (yes/no/maybe responses)
-  - Match RSVPs to Football Home events by date/context
-  - Import RSVPs into `event_attendance` or `player_rsvp_history` tables
-  - Handle player matching (GroupMe names → Football Home users)
+3. **RSVP Import** (`scripts/import-groupme-rsvps.js`)
+   - Reads practice notes JSON containing GroupMe RSVP data
+   - Matches users by `groupme_id` field
+   - Inserts into `player_rsvp_history` table
+   - Uses correct FK IDs: 'yes'/'no' rsvp_statuses, 'bulk_import' change_source
+   - Skips unmatched users (no groupme_id or not a player)
 
-**Tech Stack:**
-- GroupMe REST API (official, no HTML scraping needed)
-- Node.js with axios/fetch
-- Pattern matching for RSVP keywords
-- PostgreSQL import via pg library
+**Results:**
+- ✅ 4 practices imported from GroupMe
+- ✅ 29 users matched with GroupMe IDs (80% threshold)
+- ✅ 54 RSVPs successfully imported
+- ✅ RSVPs display correctly in frontend practice management
 
-**Current Blocker:**
-- User switching internet connections (GroupMe blocked on current network)
-- Waiting for access token from https://dev.groupme.com/
+**Dev Workflow:**
+- `./dev.sh --groupme` runs all 3 scripts automatically:
+  1. Sync GroupMe IDs (match names)
+  2. Import practices (with JSON RSVP data)
+  3. Import RSVPs (using synced IDs)
+
+**Schema Changes:**
+- Added `users.groupme_id VARCHAR(50)` field with unique partial index
+- Cleaned up: removed unused `database/schema/` folder (only `database/data/` is loaded)
+
+### 📝 Future Enhancement: GroupMe Alias Field
+**TODO:** Add `groupme_alias` field to users table to help with name matching
+
+**Problem:** GroupMe nicknames don't always match official names from APSL/CASA/Lighthouse
+- Example: GroupMe shows "MoMo" but real name is "Mohamed Bility"
+- Current fuzzy matching (80% threshold) misses some users
+
+**Proposed Solution:**
+- Add `users.groupme_alias VARCHAR(100)` field
+- Manual entry: coaches can set aliases for players
+- Sync script checks alias FIRST, then falls back to fuzzy matching
+- Benefits future data imports from CASA, Lighthouse websites
+
+**When to Implement:**
+- After testing current 80% threshold success rate
+- When we start scraping CASA/Lighthouse data (different name formats)
+- If coaches request manual override capability
 
 ---
 
