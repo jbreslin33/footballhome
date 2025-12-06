@@ -135,8 +135,9 @@ async function syncGroupMeIds(groupId) {
         u.email,
         u.groupme_id
       FROM users u
-      JOIN rosters r ON u.id = r.player_id
-      WHERE r.team_id = $1 AND r.is_active = true
+      JOIN players p ON u.id = p.id
+      JOIN team_players tp ON p.id = tp.player_id
+      WHERE tp.team_id = $1 AND tp.is_active = true
       ORDER BY u.last_name, u.first_name
     `, [TEAM_ID]);
     
@@ -145,6 +146,10 @@ async function syncGroupMeIds(groupId) {
     let updated = 0;
     let skipped = 0;
     let alreadySet = 0;
+    
+    // Get all groupme_ids already in use
+    const existingIds = await client.query('SELECT groupme_id FROM users WHERE groupme_id IS NOT NULL');
+    const usedGroupMeIds = new Set(existingIds.rows.map(row => row.groupme_id));
     
     for (const user of result.rows) {
       // Skip if already has groupme_id
@@ -158,6 +163,11 @@ async function syncGroupMeIds(groupId) {
       let bestScore = 0;
       
       for (const member of members) {
+        // Skip if this GroupMe ID is already assigned to someone else
+        if (usedGroupMeIds.has(member.user_id)) {
+          continue;
+        }
+        
         const score = matchName(
           member.nickname || member.name,
           user.first_name,
@@ -173,7 +183,7 @@ async function syncGroupMeIds(groupId) {
       
       const displayName = user.preferred_name || user.first_name;
       
-      if (bestMatch && bestScore >= 60) {
+      if (bestMatch && bestScore >= 80) {  // Increased threshold from 60% to 80%
         console.log(`✅ ${displayName} ${user.last_name}`);
         console.log(`   → ${bestMatch.nickname || bestMatch.name} (${bestScore}% match)`);
         console.log(`   → GroupMe ID: ${bestMatch.user_id}`);
@@ -184,8 +194,11 @@ async function syncGroupMeIds(groupId) {
             SET groupme_id = $1, updated_at = NOW()
             WHERE id = $2
           `, [bestMatch.user_id, user.id]);
+          
+          usedGroupMeIds.add(bestMatch.user_id); // Mark as used
         } else {
           console.log(`   🏃 DRY RUN - would update`);
+          usedGroupMeIds.add(bestMatch.user_id); // Mark as used even in dry-run
         }
         
         updated++;

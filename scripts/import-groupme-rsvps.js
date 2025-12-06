@@ -22,11 +22,11 @@ const dbConfig = {
 };
 
 // RSVP status IDs from database
-const RSVP_ATTENDING = 'c3a3e3f3-3333-3333-3333-333333333331';
-const RSVP_NOT_ATTENDING = 'c3a3e3f3-3333-3333-3333-333333333332';
+const RSVP_ATTENDING = '550e8400-e29b-41d4-a716-446655440301'; // yes
+const RSVP_NOT_ATTENDING = '550e8400-e29b-41d4-a716-446655440303'; // no
 
 // Change source for GroupMe imports
-const CHANGE_SOURCE_GROUPME = '550e8400-e29b-41d4-a716-446655440444'; // GroupMe import
+const CHANGE_SOURCE_GROUPME = '550e8400-e29b-41d4-a716-446655440314'; // bulk_import
 
 async function importRSVPs() {
   const client = new Client(dbConfig);
