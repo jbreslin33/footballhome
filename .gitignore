@@ -41,3 +41,8 @@ frontend/images/teams/logos/*.jpeg
 frontend/images/players/headshots/*.png
 frontend/images/players/headshots/*.jpg
 frontend/images/players/headshots/*.jpeg
+
+# Node.js dependencies
+node_modules/
+package-lock.json
+.env
