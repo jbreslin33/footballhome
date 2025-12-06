@@ -47,7 +47,7 @@ for arg in "$@"; do
             echo "  ./dev.sh --apsl                Full rebuild + scrape APSL data"
             echo "  ./dev.sh --venues              Full rebuild + scrape Google venues"
             echo "  ./dev.sh --test-data           Include test schedule data (spring 2026)"
-            echo "  ./dev.sh --groupme             Import RSVPs from GroupMe after rebuild"
+            echo "  ./dev.sh --groupme             Import practices/RSVPs from GroupMe after rebuild"
             echo "  ./dev.sh --apsl --test-data --groupme    Full rebuild with all data"
             exit 0
             ;;
@@ -79,7 +79,7 @@ if [ "$TEST_DATA" = true ]; then
     echo "  ✓ Include test schedule data (spring 2026)"
 fi
 if [ "$GROUPME_IMPORT" = true ]; then
-    echo "  ✓ Import RSVPs from GroupMe"
+    echo "  ✓ Import practices and RSVPs from GroupMe (Training Lighthouse)"
 fi
 echo ""
 
@@ -235,18 +235,33 @@ echo ""
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 if [ "$GROUPME_IMPORT" = true ]; then
-    echo -e "${YELLOW}📱 Step 7: Importing GroupMe RSVPs...${NC}"
+    echo -e "${YELLOW}📱 Step 7: Importing GroupMe data...${NC}"
     
     # Check if .env has GroupMe token
     if grep -q "GROUPME_ACCESS_TOKEN=" .env 2>/dev/null; then
-        # Check if groupme-import.js exists
-        if [ -f "scripts/groupme-import.js" ]; then
-            # Run import with Lighthouse 1893 SC group ID
-            echo "  Running GroupMe import for Lighthouse 1893 SC..."
-            node scripts/groupme-import.js 108640377 2>&1 | sed 's/^/  /'
+        GROUPME_GROUP_ID="108640377"  # Training Lighthouse chat
+        
+        # Step 7a: Sync GroupMe IDs to users table
+        if [ -f "scripts/sync-groupme-ids.js" ]; then
+            echo "  Syncing GroupMe IDs to users table..."
+            node scripts/sync-groupme-ids.js $GROUPME_GROUP_ID 2>&1 | sed 's/^/  /'
             
             if [ $? -eq 0 ]; then
-                echo -e "${GREEN}✓ GroupMe RSVPs imported${NC}"
+                echo -e "${GREEN}✓ GroupMe IDs synced${NC}"
+            else
+                echo -e "${YELLOW}⚠ GroupMe ID sync completed with warnings${NC}"
+            fi
+        else
+            echo -e "${YELLOW}⚠ GroupMe sync script not found${NC}"
+        fi
+        
+        # Step 7b: Import practices and RSVPs
+        if [ -f "scripts/import-groupme-practices.js" ]; then
+            echo "  Importing practices and RSVPs..."
+            node scripts/import-groupme-practices.js $GROUPME_GROUP_ID 2>&1 | sed 's/^/  /'
+            
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✓ GroupMe practices imported${NC}"
             else
                 echo -e "${YELLOW}⚠ GroupMe import completed with warnings${NC}"
             fi
@@ -255,7 +270,8 @@ if [ "$GROUPME_IMPORT" = true ]; then
         fi
     else
         echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
-        echo "  See GROUPME_IMPORT_README.md for setup instructions"
+        echo "  Add to .env: GROUPME_ACCESS_TOKEN=your-token"
+        echo "  Get token from: https://dev.groupme.com/"
     fi
     echo ""
 fi
