@@ -268,6 +268,20 @@ if [ "$GROUPME_IMPORT" = true ]; then
         else
             echo -e "${YELLOW}⚠ GroupMe import script not found${NC}"
         fi
+        
+        # Step 7c: Import RSVPs from practice notes
+        if [ -f "scripts/import-groupme-rsvps.js" ]; then
+            echo "  Importing RSVPs from GroupMe data..."
+            node scripts/import-groupme-rsvps.js 2>&1 | sed 's/^/  /'
+            
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✓ GroupMe RSVPs imported${NC}"
+            else
+                echo -e "${YELLOW}⚠ GroupMe RSVP import completed with warnings${NC}"
+            fi
+        else
+            echo -e "${YELLOW}⚠ GroupMe RSVP import script not found${NC}"
+        fi
     else
         echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
         echo "  Add to .env: GROUPME_ACCESS_TOKEN=your-token"
