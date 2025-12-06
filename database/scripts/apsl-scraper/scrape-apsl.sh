@@ -95,9 +95,30 @@ if [ "$SHOULD_SCRAPE" = true ]; then
     echo ""
     
     # Run scraper and save to file
-    if node "$SCRAPER_SCRIPT" > "$OUTPUT_FILE" 2>&1; then
+    if node "$SCRAPER_SCRIPT" > "$OUTPUT_FILE"; then
         echo ""
         echo -e "${GREEN}✓ Scrape successful!${NC}"
+        
+        # Auto-convert to COPY format
+        echo -e "${BLUE}Auto-converting to COPY format...${NC}"
+        "$SCRIPT_DIR/post-scrape.sh"
+    else
+        echo ""
+        echo -e "${RED}✗ Scrape failed!${NC}"
+        # Don't delete old file on failure, just warn
+        echo "Check output above for errors"
+        exit 1
+    fi
+else
+    # If we skipped scraping, we should still ensure the data is loaded if it exists
+    if [ -f "$OUTPUT_FILE" ]; then
+        echo -e "${BLUE}Using existing data file: $OUTPUT_FILE${NC}"
+        # We don't need to do anything else, the main init script will pick it up
+    else
+        echo -e "${RED}✗ Error: No data file found and scraping skipped${NC}"
+        exit 1
+    fi
+fi
         echo -e "${GREEN}✓ Data saved to: $OUTPUT_FILE${NC}"
         
         # Show file size
