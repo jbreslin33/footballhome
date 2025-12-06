@@ -255,10 +255,10 @@ if [ "$GROUPME_IMPORT" = true ]; then
             echo -e "${YELLOW}⚠ GroupMe sync script not found${NC}"
         fi
         
-        # Step 7b: Import practices and RSVPs
-        if [ -f "scripts/import-groupme-practices.js" ]; then
-            echo "  Importing practices and RSVPs..."
-            node scripts/import-groupme-practices.js $GROUPME_GROUP_ID 2>&1 | sed 's/^/  /'
+        # Step 7b: Import practices (simplified - RSVP import separate)
+        if [ -f "scripts/import-groupme-practices-simple.js" ]; then
+            echo "  Importing practices from GroupMe..."
+            node scripts/import-groupme-practices-simple.js $GROUPME_GROUP_ID 2>&1 | sed 's/^/  /'
             
             if [ $? -eq 0 ]; then
                 echo -e "${GREEN}✓ GroupMe practices imported${NC}"
