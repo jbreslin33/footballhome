@@ -1,7 +1,7 @@
 -- ========================================
 -- ROSTERS
 -- ========================================
--- Generated: 2025-12-07T01:38:09.977Z
+-- Generated: 2025-12-07T16:32:30.015Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -1876,6 +1876,7 @@ VALUES
   ('7a3eea30-f79f-0007-7cb8-9b55127c1bcd', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', 'ed7beb1e-57c6-0006-a964-c023ca33f018', NULL, 1, true),
   ('3e0d3916-a168-0007-df2c-bc522e6faafa', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', '4cdb4fec-a108-0006-3024-21c1b0e93639', NULL, 1, true),
   ('0984bcea-f2c4-0007-eb99-f617e08998cb', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', '1e9c5a6b-2745-0006-0d37-2dedaf509ac5', NULL, 1, true),
+  ('e2a220d3-ffbd-0007-f34c-fc84de5094de', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', '09f2e016-dfae-0006-66f5-fe5bb9d65608', NULL, 1, true),
   ('ea362a9a-648f-0007-1bfc-20bad4beff2d', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', '964640a2-b0cf-0006-4e8d-81e9aae27abd', NULL, 1, true),
   ('c207dc86-d5bf-0007-ce08-b73e8767abee', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', 'd54ec81f-b9e7-0006-1d81-59496222bc4f', NULL, 1, true),
   ('980d7f92-fd9b-0007-b989-d3e9e30b3ad5', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', 'a49747f8-58b4-0006-8041-226baa7079e7', NULL, 1, true),
@@ -1893,6 +1894,7 @@ VALUES
   ('29c7f9d2-46a0-0007-55fb-0562d0595a61', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', '91c7c07c-ddd4-0006-bb1d-ab37cffcd990', NULL, 1, true),
   ('e74d05a0-ead2-0007-5018-10419100e8fa', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', 'd95fdaf2-6af8-0006-3428-4a34e9ac6d8e', NULL, 1, true),
   ('9f3d7515-1db9-0007-d2f1-f09b59b76f12', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', 'a2c3b15d-df06-0006-c45f-c7e1d63c8dd0', NULL, 1, true),
+  ('3a15cc04-fa5b-0007-338b-6774dc9445b0', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', '2194a34f-038b-0006-a754-3cb2806ed2ce', NULL, 1, true),
   ('a62086d6-287d-0007-4700-999cb3db0374', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', 'b1fe8bfd-cc5e-0006-7327-3b331cfbf6ca', NULL, 1, true),
   ('8b813f09-be3a-0007-d4d3-4288cf29924c', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', '06e0323c-007c-0006-25c3-983115664737', NULL, 1, true),
   ('a3788ff6-3965-0007-2a6a-cff6bbc1653e', 'd8e57bbb-92dd-0005-95c3-76a8d99bb683', 'f7594491-6bda-0006-bcd1-ce32af311366', NULL, 1, true)

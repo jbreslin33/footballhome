@@ -1000,11 +1000,69 @@ function convertInsertToCopy(sqlContent, header) {
     
     // Parse multi-row VALUES: (row1), (row2), (row3)
     // Handle both single-line and multi-line formats
-    const rowRegex = /\(([^)]+(?:\([^)]*\)[^)]*)*)\)/g;
-    let rowMatch;
+    // Parse rows manually to respect quote boundaries
+    const rows = [];
+    let i = 0;
     
-    while ((rowMatch = rowRegex.exec(valuesBlock)) !== null) {
-      const valuesStr = rowMatch[1];
+    while (i < valuesBlock.length) {
+      // Skip whitespace and commas
+      while (i < valuesBlock.length && /[\s,]/.test(valuesBlock[i])) i++;
+      if (i >= valuesBlock.length) break;
+      
+      // Expect opening paren
+      if (valuesBlock[i] !== '(') break;
+      i++;
+      
+      // Extract content until matching closing paren (respecting quotes)
+      let rowContent = '';
+      let inQuote = false;
+      let quoteChar = null;
+      let parenDepth = 0;
+      
+      while (i < valuesBlock.length) {
+        const char = valuesBlock[i];
+        
+        if (!inQuote && (char === "'" || char === '"')) {
+          inQuote = true;
+          quoteChar = char;
+          rowContent += char;
+          i++;
+          continue;
+        }
+        
+        if (inQuote && char === quoteChar) {
+          // Check for escaped quote
+          if (i + 1 < valuesBlock.length && valuesBlock[i + 1] === quoteChar) {
+            rowContent += char + char;
+            i += 2;
+            continue;
+          }
+          inQuote = false;
+          quoteChar = null;
+          rowContent += char;
+          i++;
+          continue;
+        }
+        
+        if (!inQuote) {
+          if (char === '(') parenDepth++;
+          if (char === ')') {
+            if (parenDepth === 0) {
+              i++; // Skip closing paren
+              break;
+            }
+            parenDepth--;
+          }
+        }
+        
+        rowContent += char;
+        i++;
+      }
+      
+      rows.push(rowContent);
+    }
+    
+    for (const valuesStr of rows) {
       
       // Parse values - handle quoted strings, NULLs, and nested content
       const values = [];

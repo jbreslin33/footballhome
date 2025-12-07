@@ -1,7 +1,7 @@
 -- ========================================
 -- LEAGUE DIVISIONS
 -- ========================================
--- Generated: 2025-12-07T01:38:09.904Z
+-- Generated: 2025-12-07T16:32:29.903Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js

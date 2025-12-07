@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYER USERS
 -- ========================================
--- Generated: 2025-12-07T01:38:09.917Z
+-- Generated: 2025-12-07T16:32:29.924Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -1921,6 +1921,7 @@ VALUES
   ('ed7beb1e-57c6-0006-a964-c023ca33f018', 'Melvin', 'Asanji', '/images/players/headshots/ed7beb1e-57c6-0006-a964-c023ca33f018.png', true),
   ('4cdb4fec-a108-0006-3024-21c1b0e93639', 'Brandon', 'Betts', '/images/players/headshots/4cdb4fec-a108-0006-3024-21c1b0e93639.png', true),
   ('1e9c5a6b-2745-0006-0d37-2dedaf509ac5', 'Isaac', 'Carvajal', '/images/players/headshots/1e9c5a6b-2745-0006-0d37-2dedaf509ac5.png', true),
+  ('09f2e016-dfae-0006-66f5-fe5bb9d65608', 'Elido', 'Noel Chun Reyes', '/images/players/headshots/09f2e016-dfae-0006-66f5-fe5bb9d65608.png', true),
   ('964640a2-b0cf-0006-4e8d-81e9aae27abd', 'Jenovic', 'Elumbu', '/images/players/headshots/964640a2-b0cf-0006-4e8d-81e9aae27abd.png', true),
   ('d54ec81f-b9e7-0006-1d81-59496222bc4f', 'Anderson', 'Fernandez', '/images/players/headshots/d54ec81f-b9e7-0006-1d81-59496222bc4f.png', true),
   ('a49747f8-58b4-0006-8041-226baa7079e7', 'Angello', 'Fernandez', '/images/players/headshots/a49747f8-58b4-0006-8041-226baa7079e7.png', true),
@@ -1938,6 +1939,7 @@ VALUES
   ('91c7c07c-ddd4-0006-bb1d-ab37cffcd990', 'David', 'Pawlowski', '/images/players/headshots/91c7c07c-ddd4-0006-bb1d-ab37cffcd990.png', true),
   ('d95fdaf2-6af8-0006-3428-4a34e9ac6d8e', 'Danny', 'Paz', '/images/players/headshots/d95fdaf2-6af8-0006-3428-4a34e9ac6d8e.png', true),
   ('a2c3b15d-df06-0006-c45f-c7e1d63c8dd0', 'Brayan', 'Perez Mendez', '/images/players/headshots/a2c3b15d-df06-0006-c45f-c7e1d63c8dd0.png', true),
+  ('2194a34f-038b-0006-a754-3cb2806ed2ce', 'Bronson', 'Shepherd', '/images/players/headshots/2194a34f-038b-0006-a754-3cb2806ed2ce.png', true),
   ('b1fe8bfd-cc5e-0006-7327-3b331cfbf6ca', 'Nicholas', 'Tziamouranis', '/images/players/headshots/b1fe8bfd-cc5e-0006-7327-3b331cfbf6ca.png', true),
   ('06e0323c-007c-0006-25c3-983115664737', 'William', 'Villatoro Velasquez', '/images/players/headshots/06e0323c-007c-0006-25c3-983115664737.png', true),
   ('f7594491-6bda-0006-bcd1-ce32af311366', 'Brian', 'Ware', '/images/players/headshots/f7594491-6bda-0006-bcd1-ce32af311366.png', true)
