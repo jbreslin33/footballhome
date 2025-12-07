@@ -1,7 +1,7 @@
 -- ========================================
 -- MATCHES (APSL)
 -- ========================================
--- Generated: 2025-12-07T21:45:47.777Z
+-- Generated: 2025-12-07T22:36:26.384Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -2546,7 +2546,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
 VALUES (
-  'f1e27c31-fe9e-0010-faa5-017c21de2588',
+  'd07f40b0-1b41-0010-5969-a4bd91f2b9a6',
   '294a08ff-4f18-0005-c42b-a5fb0d5f0896',
   '907ece9f-5926-0005-cff6-7672dec05648',
   '550e8400-e29b-41d4-a716-446655440801',

@@ -1,0 +1,32 @@
+-- ========================================
+-- APP-CREATED USERS
+-- ========================================
+-- Users created via the web application during normal operation
+-- This file is manually maintained and version controlled
+--
+-- Add new users here when created via app to persist across rebuilds
+-- ========================================
+
+-- Example (commented out):
+-- INSERT INTO users (id, first_name, last_name, date_of_birth, email, phone, is_active)
+-- VALUES (
+--   'uuid-here',
+--   'John',
+--   'Doe',
+--   '1990-01-15',
+--   'john.doe@example.com',
+--   '555-1234',
+--   true
+-- ) ON CONFLICT (id) DO UPDATE SET
+--   first_name = EXCLUDED.first_name,
+--   last_name = EXCLUDED.last_name,
+--   date_of_birth = EXCLUDED.date_of_birth,
+--   email = EXCLUDED.email,
+--   phone = EXCLUDED.phone,
+--   is_active = EXCLUDED.is_active;
+--
+-- -- Create player record
+-- INSERT INTO players (id) VALUES ('uuid-here') ON CONFLICT DO NOTHING;
+
+-- Add your app-created users below:
+

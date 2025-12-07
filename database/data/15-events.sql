@@ -1,7 +1,7 @@
 -- ========================================
 -- EVENTS (APSL MATCHES)
 -- ========================================
--- Generated: 2025-12-07T21:45:47.774Z
+-- Generated: 2025-12-07T22:36:26.378Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -2099,11 +2099,11 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
 VALUES (
-  'f1e27c31-fe9e-0010-faa5-017c21de2588',
+  'd07f40b0-1b41-0010-5969-a4bd91f2b9a6',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
   'Philadelphia Heritage SC vs Philadelphia Soccer Club',
-  '2025-12-07 18:00:00-05',
+  '2025-12-10 20:15:00-05',
   120
 )
 ON CONFLICT (id) DO UPDATE SET

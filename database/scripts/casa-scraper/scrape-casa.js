@@ -291,8 +291,8 @@ INSERT INTO players (id) VALUES\n`;
 `;
 
   // Write files
-  const usersFile = path.join(DATA_DIR, '08c-users-casa.sql');
-  const rostersFile = path.join(DATA_DIR, '14c-casa-rosters.sql');
+  const usersFile = path.join(DATA_DIR, '21-users-casa.sql');
+  const rostersFile = path.join(DATA_DIR, '31-rosters-casa.sql');
   
   fs.writeFileSync(usersFile, usersSQL);
   fs.writeFileSync(rostersFile, rostersSQL);

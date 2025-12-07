@@ -1246,7 +1246,7 @@ ON CONFLICT (id) DO UPDATE SET
   website = EXCLUDED.website,
   updated_at = CURRENT_TIMESTAMP;
 `;
-  writeFile('data/03-leagues.sql', 'LEAGUES', leaguesSQL);
+  writeFile('data/10-leagues.sql', 'LEAGUES', leaguesSQL);
   
   // 2. CONFERENCES
   let conferencesSQL = '';
@@ -1275,7 +1275,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/05-league-divisions.sql', 'LEAGUE DIVISIONS', divisionsSQL);
+  writeFile('data/12-league-divisions.sql', 'LEAGUE DIVISIONS', divisionsSQL);
   
   // 4. CLUBS
   let clubsSQL = '';
@@ -1289,7 +1289,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/06-clubs.sql', 'CLUBS', clubsSQL);
+  writeFile('data/13-clubs.sql', 'CLUBS', clubsSQL);
   
   // 5. SPORT DIVISIONS
   let sportDivisionsSQL = '';
@@ -1303,7 +1303,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/07-sport-divisions.sql', 'SPORT DIVISIONS', sportDivisionsSQL);
+  writeFile('data/14-sport-divisions.sql', 'SPORT DIVISIONS', sportDivisionsSQL);
   
   // 6. TEAMS (preserve manual Lighthouse section)
   let teamsSQL = '';
@@ -1319,7 +1319,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/11b-apsl-teams.sql', 'TEAMS', teamsSQL);
+  writeFile('data/22-teams-apsl.sql', 'TEAMS', teamsSQL);
   
   // 7. USERS (write to separate APSL file, grouped by team)
   let usersSQL = `
@@ -1417,7 +1417,7 @@ ON CONFLICT (id) DO UPDATE SET
 `;
     }
   }
-  writeFile('data/13b-players-apsl.sql', 'PLAYERS', playersSQL);
+  writeFile('data/24-players-apsl.sql', 'PLAYERS', playersSQL);
   
   // 9. ROSTERS (grouped by team)
   let rostersSQL = '';
@@ -1460,7 +1460,7 @@ ON CONFLICT (id) DO UPDATE SET
 `;
     }
   }
-  writeFile('data/14b-apsl-rosters.sql', 'ROSTERS', rostersSQL);
+  writeFile('data/30-rosters-apsl.sql', 'ROSTERS', rostersSQL);
   
   // 10. EVENTS (matches from fixtures)
   let eventsSQL = `
