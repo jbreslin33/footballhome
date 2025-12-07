@@ -1,35 +1,85 @@
 # Football Home - Object-Oriented Architecture Progress
 
 ## 🎯 Current Status (Dec 6, 2025 - Latest)
-**GroupMe Integration - FULLY AUTOMATED** ✅
+**APSL Scraper + Multi-Team Roster Design** ✅
 
-### 🚀 Major Milestone: Full GroupMe Sync in `dev.sh`
-We have successfully integrated a robust, API-based GroupMe synchronization workflow into the main development script.
+### 🚀 APSL Scraper Now Working!
+Successfully fixed the APSL scraper to handle network errors and generate proper bulk INSERT statements:
 
-**Key Achievements:**
-1. **Multi-Group User Import:**
-   - Created `scripts/import-all-groupme-users.js`.
-   - Imports members from 3 key groups: "APSL Lighthouse", "Lighthouse Boys Club", and "Lighthouse Old Timers".
-   - **Normalization:** All users are assigned to a single "Club Team" (Lighthouse 1893 SC) to ensure unified practice management.
-   - **Fuzzy Matching:** Matches GroupMe members to existing DB users by ID first, then Name.
+**Fixes Completed:**
+1. **Network Error Handling:**
+   - Added `uncaughtException` handler for transient ECONNRESET errors
+   - Proper error handlers attached to request/response streams BEFORE operations
+   - 3-attempt retry logic with exponential backoff
+   - Scraper completes successfully despite intermittent network issues
 
-2. **Practice & RSVP Sync:**
-   - Created `scripts/import-groupme-practices.js`.
-   - Fetches calendar events directly from the GroupMe API.
-   - **Smart Deduplication:** Checks for existing events by Title + Date (+/- 1 minute) to prevent duplicates.
-   - **RSVP Processing:** Automatically inserts `player_rsvp_history` records for "Going" and "Not Going" responses, linked to the correct players.
+2. **Bulk INSERT Generation:**
+   - Changed from individual INSERT per row to multi-row VALUES statements
+   - Example: `INSERT INTO users (...) VALUES (row1), (row2), (row3) ON CONFLICT ...`
+   - Significantly faster than individual INSERTs
+   - Better for database performance
 
-3. **Database Structure:**
-   - Added `database/data/11-casa-teams.sql` to persist the CASA League, Conferences, and Lighthouse teams structure.
-   - This ensures the "Club Team" ID (`d37eb44b...`) always exists for the import scripts to target.
+3. **COPY Format Issues:**
+   - Identified converter bug with special characters (parentheses in names)
+   - Decision: Use bulk INSERTs instead of COPY for now (still fast)
+   - Removed broken COPY files to prevent database load failures
 
-4. **Workflow Integration:**
-   - Updated `dev.sh` to include the `--groupme` flag.
-   - Running `./dev.sh --apsl --test-data --groupme` now performs a full system rebuild, scrapes external data, loads test schedules, AND syncs all GroupMe data in one go.
+4. **Data Quality:**
+   - Fixed invalid UUID for Old Timers team (`01d71me5...` → `01d71ee5...`)
+   - All 3 Lighthouse teams now load correctly
+   - APSL scraper generates: 53 teams, 1842 players, 246 matches
+
+**Current State:**
+- ✅ All 3 teams visible in UI (Lighthouse 1893 SC, Boys Club, Old Timers)
+- ✅ Lighthouse 1893 SC has 122 players from APSL scraper
+- ⚠️  Boys Club and Old Timers have 0 players (need GroupMe roster import)
+
+### 📋 ROADMAP: Multi-Team Practice Management
+
+**Problem Identified:**
+- GroupMe "Training Lighthouse" group has ALL club members (~100+ people)
+- GroupMe "Boys Club" and "Old Timers" groups have team-specific rosters
+- Players can be on multiple teams (e.g., plays for both Boys Club AND Old Timers)
+- Current DB: Each practice linked to ONE team only
+
+**Solution Plan (in priority order):**
+
+**1. Fix GroupMe Team Mapping (5 min) - DO THIS FIRST**
+   - Update GroupMe import team IDs in scripts
+   - APSL Lighthouse group → `d37eb44b-8e47-0005-9060-f0cbe96fe089` ✓ (already correct)
+   - Boys Club group → `b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a`
+   - Old Timers group → `01d71ee5-01d7-0002-1ee5-01d71ee501d7`
+   - Run `dev.sh --groupme` to populate rosters
+   - **Result:** All 3 teams will have players
+
+**2. Add practice_teams Junction Table (30 min)**
+   - Create migration: `practice_teams` table
+     - Columns: `practice_id`, `team_id`, `is_primary`
+     - PKs and FKs to practices and teams
+   - Keep `practices.team_id` as primary/owning team (backward compatible)
+   - **Result:** Database ready for multi-team practices
+
+**3. Update Practice Creation UI/API (45 min)**
+   - Add "Additional Teams" checkboxes when creating practice
+   - Insert rows into `practice_teams` for each selected team
+   - Always include primary team with `is_primary=true`
+   - **Result:** Can create practices applying to multiple teams
+
+**4. Update RSVP Logic (30 min)**
+   - Query: JOIN through `practice_teams` instead of just `practices.team_id`
+   - Show player's RSVP once, even if on multiple teams for that practice
+   - Display which teams the practice applies to
+   - **Result:** RSVPs work correctly across all player's teams
+
+**Design Benefits:**
+- Players on multiple teams see practice once, RSVP once
+- RSVP automatically applies to all their teams for that practice
+- Normalized database structure
+- Backward compatible (existing single-team practices work)
 
 **Next Steps:**
-- **Frontend:** Verify that the imported practices and RSVPs display correctly on the Coach Dashboard.
-- **Automation:** Consider setting up a cron job or scheduled task to run the sync scripts periodically in production.
+- Start with #1 to get immediate value (all teams have rosters)
+- Then build #2-4 incrementally
 
 ---
 
