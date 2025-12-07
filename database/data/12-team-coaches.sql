@@ -37,7 +37,7 @@ ON CONFLICT (team_id, coach_id) DO UPDATE SET
 INSERT INTO team_coaches (id, team_id, coach_id, coach_role, is_primary, is_active)
 VALUES (
     '00000003-0000-0000-0000-000000000003',
-    '01d71me5-01d7-0002-1me5-01d71me501d7',  -- Lighthouse Old Timers Club
+    '01d71ee5-01d7-0002-1ee5-01d71ee501d7',  -- Lighthouse Old Timers Club
     '77d77471-1250-47e0-81ab-d4626595d63c',  -- James Breslin (soccer@lighthouse1893.org)
     'Head Coach',
     true,

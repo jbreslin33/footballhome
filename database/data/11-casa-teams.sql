@@ -61,7 +61,7 @@ VALUES (
 -- Lighthouse Old Timers Club (Liga 2)
 INSERT INTO teams (id, name, division_id, league_division_id, is_active)
 VALUES (
-    '01d71me5-01d7-0002-1me5-01d71me501d7',  -- Fixed UUID for Old Timers
+    '01d71ee5-01d7-0002-1ee5-01d71ee501d7',  -- Fixed UUID for Old Timers
     'Lighthouse Old Timers Club',
     (SELECT id FROM sport_divisions WHERE slug = 'lighthouse-1893-sc-soccer'), -- Assumes this exists
     (SELECT id FROM league_divisions WHERE slug = 'casa-liga-2'),
