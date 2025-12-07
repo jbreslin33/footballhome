@@ -22,7 +22,6 @@ NC='\033[0m'
 APSL_SCRAPE=false
 CASA_SCRAPE=false
 VENUE_SCRAPE=false
-TEST_DATA=false
 GROUPME_IMPORT=false
 FIND_ISSUES=false
 
@@ -38,9 +37,6 @@ for arg in "$@"; do
         --venues)
             VENUE_SCRAPE=true
             ;;
-        --test-data)
-            TEST_DATA=true
-            ;;
         --groupme)
             GROUPME_IMPORT=true
             ;;
@@ -55,15 +51,14 @@ for arg in "$@"; do
             echo "  ./dev.sh --apsl                Full rebuild + scrape APSL data"
             echo "  ./dev.sh --casa                Full rebuild + scrape CASA rosters"
             echo "  ./dev.sh --venues              Full rebuild + scrape Google venues"
-            echo "  ./dev.sh --test-data           Include test schedule data (spring 2026)"
             echo "  ./dev.sh --groupme             Import practices/RSVPs from GroupMe after rebuild"
             echo "  ./dev.sh --find-issues         Run data quality checks after rebuild"
-            echo "  ./dev.sh --apsl --casa --test-data --groupme    Full rebuild with all data"
+            echo "  ./dev.sh --apsl --casa --groupme              Full rebuild with all data"
             exit 0
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --apsl, --casa, --venues, --test-data, --groupme, --find-issues, --help"
+            echo "Valid options: --apsl, --casa, --venues, --groupme, --find-issues, --help"
             exit 1
             ;;
     esac
@@ -84,9 +79,6 @@ if [ "$APSL_SCRAPE" = true ]; then
 fi
 if [ "$VENUE_SCRAPE" = true ]; then
     echo "  ✓ Scrape Google venues"
-fi
-if [ "$TEST_DATA" = true ]; then
-    echo "  ✓ Include test schedule data (spring 2026)"
 fi
 if [ "$GROUPME_IMPORT" = true ]; then
     echo "  ✓ Import practices and RSVPs from GroupMe (Training Lighthouse)"
