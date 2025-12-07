@@ -25,7 +25,8 @@ const GROUP_MAPPINGS = [
   {
     name: 'APSL Lighthouse',
     groupMeId: '109785985',
-    dbTeamId: 'd37eb44b-8e47-0005-9060-f0cbe96fe089' // Lighthouse 1893 SC (APSL)
+    dbTeamId: 'd37eb44b-8e47-0005-9060-f0cbe96fe089', // Lighthouse 1893 SC (APSL)
+    skipRosterImport: true // Don't add to team_players - APSL scraper provides roster
   },
   {
     name: 'Lighthouse Boys Club (Liga 1)',
@@ -169,26 +170,28 @@ async function importAllUsers() {
         }
 
         if (userId) {
-          // 2. Add to Specific Team
-          try {
-            const teamCheck = await client.query(
-              `SELECT id FROM team_players WHERE team_id = $1 AND player_id = $2`,
-              [mapping.dbTeamId, userId]
-            );
-
-            if (teamCheck.rows.length === 0) {
-              await client.query(
-                `INSERT INTO team_players (team_id, player_id, roster_status_id)
-                 VALUES ($1, $2, 1)`,
+          // 2. Add to Specific Team (unless skipRosterImport is true)
+          if (!mapping.skipRosterImport) {
+            try {
+              const teamCheck = await client.query(
+                `SELECT id FROM team_players WHERE team_id = $1 AND player_id = $2`,
                 [mapping.dbTeamId, userId]
               );
-              stats.teamAdded++;
+
+              if (teamCheck.rows.length === 0) {
+                await client.query(
+                  `INSERT INTO team_players (team_id, player_id, roster_status_id)
+                   VALUES ($1, $2, 1)`,
+                  [mapping.dbTeamId, userId]
+                );
+                stats.teamAdded++;
+              }
+            } catch (err) {
+              console.error(`   ⚠️  Failed to add to team: ${err.message}`);
             }
-          } catch (err) {
-            console.error(`   ⚠️  Failed to add to team: ${err.message}`);
           }
 
-          // 3. Add to Club Team (if different)
+          // 3. Add to Club Team (if different and not skipping)
           if (mapping.dbTeamId !== CLUB_TEAM_ID) {
             try {
               const clubCheck = await client.query(
