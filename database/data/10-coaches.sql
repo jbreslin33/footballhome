@@ -4,7 +4,7 @@
 -- All coaches in the system
 -- This file is idempotent - can be run multiple times safely
 
--- jbreslin@footballhome.org coach entity
+-- soccer@lighthouse1893.org coach entity
 INSERT INTO coaches (id, coaching_license, license_expiry, years_experience, bio)
 VALUES (
     '77d77471-1250-47e0-81ab-d4626595d63c',

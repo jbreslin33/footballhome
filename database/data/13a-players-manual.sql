@@ -4,7 +4,7 @@
 -- Manually managed player profiles
 -- This file is idempotent - can be run multiple times safely
 
--- jbreslin@footballhome.org player entity
+-- soccer@lighthouse1893.org player entity
 INSERT INTO players (id, height_cm, weight_kg, notes)
 VALUES (
     '77d77471-1250-47e0-81ab-d4626595d63c',

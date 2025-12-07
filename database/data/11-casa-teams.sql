@@ -46,19 +46,27 @@ VALUES
 -- If not, we'd need to create them. But since Lighthouse is in APSL, the Club/Division should be there.
 
 -- Lighthouse Boys Club (Liga 1)
-INSERT INTO teams (name, division_id, league_division_id, is_active)
+INSERT INTO teams (id, name, division_id, league_division_id, is_active)
 VALUES (
+    'b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a',  -- Fixed UUID for Boys Club
     'Lighthouse Boys Club',
     (SELECT id FROM sport_divisions WHERE slug = 'lighthouse-1893-sc-soccer'), -- Assumes this exists
     (SELECT id FROM league_divisions WHERE slug = 'casa-liga-1'),
     true
-) ON CONFLICT DO NOTHING;
+) ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    league_division_id = EXCLUDED.league_division_id,
+    is_active = EXCLUDED.is_active;
 
 -- Lighthouse Old Timers Club (Liga 2)
-INSERT INTO teams (name, division_id, league_division_id, is_active)
+INSERT INTO teams (id, name, division_id, league_division_id, is_active)
 VALUES (
+    '01d71me5-01d7-0002-1me5-01d71me501d7',  -- Fixed UUID for Old Timers
     'Lighthouse Old Timers Club',
     (SELECT id FROM sport_divisions WHERE slug = 'lighthouse-1893-sc-soccer'), -- Assumes this exists
     (SELECT id FROM league_divisions WHERE slug = 'casa-liga-2'),
     true
-) ON CONFLICT DO NOTHING;
+) ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    league_division_id = EXCLUDED.league_division_id,
+    is_active = EXCLUDED.is_active;

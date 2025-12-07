@@ -89,14 +89,35 @@ async function downloadLogo(url, teamName) {
 
     const executeDownload = () => {
       attempts++;
-      client.get(url, (response) => {
+      
+      const request = client.get(url);
+      
+      // Attach request error handler IMMEDIATELY
+      request.on('error', (err) => {
+        if (attempts < maxRetries) {
+          console.error(`      Retrying download for ${filename} (attempt ${attempts}/${maxRetries}): ${err.message}`);
+          setTimeout(executeDownload, 1000 * attempts); // Exponential backoff
+        } else {
+          console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
+          resolve(null); // Resolve with null on final failure
+        }
+      });
+      
+      request.on('response', (response) => {
         if (response.statusCode === 200) {
           const fileStream = fs.createWriteStream(filepath);
-          response.pipe(fileStream);
           
-          fileStream.on('finish', () => {
-            fileStream.close();
-            resolve(`/images/teams/logos/${filename}`); // Return web path
+          // Attach error handlers BEFORE piping
+          response.on('error', (err) => {
+            fileStream.destroy();
+            fs.unlink(filepath, () => {}); // Delete partial file
+            if (attempts < maxRetries) {
+              console.error(`      Retrying download for ${filename} (attempt ${attempts}/${maxRetries}): ${err.message}`);
+              setTimeout(executeDownload, 1000 * attempts); // Exponential backoff
+            } else {
+              console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
+              resolve(null); // Resolve with null on final failure
+            }
           });
           
           fileStream.on('error', (err) => {
@@ -109,16 +130,16 @@ async function downloadLogo(url, teamName) {
               resolve(null); // Resolve with null on final failure
             }
           });
+          
+          fileStream.on('finish', () => {
+            fileStream.close();
+            resolve(`/images/teams/logos/${filename}`); // Return web path
+          });
+          
+          // Now pipe
+          response.pipe(fileStream);
         } else {
           resolve(null); // Return null on non-200 status
-        }
-      }).on('error', (err) => {
-        if (attempts < maxRetries) {
-          console.error(`      Retrying download for ${filename} (attempt ${attempts}/${maxRetries}): ${err.message}`);
-          setTimeout(executeDownload, 1000 * attempts); // Exponential backoff
-        } else {
-          console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
-          resolve(null); // Resolve with null on final failure
         }
       });
     };
@@ -148,14 +169,35 @@ async function downloadHeadshot(url, playerName, playerId) {
 
     const executeDownload = () => {
       attempts++;
-      client.get(url, (response) => {
+      
+      const request = client.get(url);
+      
+      // Attach request error handler IMMEDIATELY
+      request.on('error', (err) => {
+        if (attempts < maxRetries) {
+          console.error(`      Retrying download for ${filename} (attempt ${attempts}/${maxRetries}): ${err.message}`);
+          setTimeout(executeDownload, 1000 * attempts); // Exponential backoff
+        } else {
+          console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
+          resolve(null); // Resolve with null on final failure
+        }
+      });
+      
+      request.on('response', (response) => {
         if (response.statusCode === 200) {
           const fileStream = fs.createWriteStream(filepath);
-          response.pipe(fileStream);
           
-          fileStream.on('finish', () => {
-            fileStream.close();
-            resolve(`/images/players/headshots/${filename}`); // Return web path
+          // Attach error handlers BEFORE piping
+          response.on('error', (err) => {
+            fileStream.destroy();
+            fs.unlink(filepath, () => {}); // Delete partial file
+            if (attempts < maxRetries) {
+              console.error(`      Retrying download for ${filename} (attempt ${attempts}/${maxRetries}): ${err.message}`);
+              setTimeout(executeDownload, 1000 * attempts); // Exponential backoff
+            } else {
+              console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
+              resolve(null); // Resolve with null on final failure
+            }
           });
           
           fileStream.on('error', (err) => {
@@ -163,23 +205,24 @@ async function downloadHeadshot(url, playerName, playerId) {
             if (attempts < maxRetries) {
               console.error(`      Retrying download for ${filename} (attempt ${attempts}/${maxRetries}): ${err.message}`);
               setTimeout(executeDownload, 1000 * attempts); // Exponential backoff
-                      } else {
-                        console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
-                        resolve(null); // Resolve with null on final failure
-                      }
-                    });
-                  } else {
-                    resolve(null); // Return null on non-200 status
-                  }
-                }).on('error', (err) => {
-                  if (attempts < maxRetries) {
-                    console.error(`      Retrying download for ${filename} (attempt ${attempts}/${maxRetries}): ${err.message}`);
-                    setTimeout(executeDownload, 1000 * attempts); // Exponential backoff
-                  } else {
-                    console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
-                    resolve(null); // Resolve with null on final failure
-                  }
-                });    };
+            } else {
+              console.error(`      ✗ Failed to download ${filename} after ${maxRetries} attempts: ${err.message}`);
+              resolve(null); // Resolve with null on final failure
+            }
+          });
+          
+          fileStream.on('finish', () => {
+            fileStream.close();
+            resolve(`/images/players/headshots/${filename}`); // Return web path
+          });
+          
+          // Now pipe
+          response.pipe(fileStream);
+        } else {
+          resolve(null); // Return null on non-200 status
+        }
+      });
+    };
     executeDownload();
   });
 }
@@ -931,7 +974,8 @@ function convertInsertToCopy(sqlContent, header) {
 `;
 
   // Parse INSERT statements and convert to COPY
-  const insertRegex = /INSERT INTO (\w+) \(([^)]+)\)\s*VALUES \(([^)]+)\)(?:\s*ON CONFLICT[^;]+)?;/gi;
+  // Updated regex to handle multi-row INSERTs with VALUES\n(...),\n(...)
+  const insertRegex = /INSERT INTO (\w+) \(([^)]+)\)\s*VALUES\s*([\s\S]+?)(?:ON CONFLICT[\s\S]+?)?;/gi;
   
   const tableData = new Map();
   let match;
@@ -939,61 +983,79 @@ function convertInsertToCopy(sqlContent, header) {
   while ((match = insertRegex.exec(sqlContent)) !== null) {
     const tableName = match[1];
     const columns = match[2];
-    const valuesStr = match[3];
+    const valuesBlock = match[3].trim();
     
-    // Parse values - handle quoted strings and NULL
-    const values = [];
-    let current = '';
-    let inQuote = false;
-    let quoteChar = null;
+    // Parse multi-row VALUES: (row1), (row2), (row3)
+    // Handle both single-line and multi-line formats
+    const rowRegex = /\(([^)]+(?:\([^)]*\)[^)]*)*)\)/g;
+    let rowMatch;
     
-    for (let i = 0; i < valuesStr.length; i++) {
-      const char = valuesStr[i];
+    while ((rowMatch = rowRegex.exec(valuesBlock)) !== null) {
+      const valuesStr = rowMatch[1];
       
-      if (!inQuote && (char === "'" || char === '"')) {
-        inQuote = true;
-        quoteChar = char;
-        continue;
-      }
+      // Parse values - handle quoted strings, NULLs, and nested content
+      const values = [];
+      let current = '';
+      let inQuote = false;
+      let quoteChar = null;
+      let parenDepth = 0;
       
-      if (inQuote && char === quoteChar) {
-        // Check for escaped quote
-        if (i + 1 < valuesStr.length && valuesStr[i + 1] === quoteChar) {
-          current += char;
-          i++; // Skip next char
+      for (let i = 0; i < valuesStr.length; i++) {
+        const char = valuesStr[i];
+        
+        // Track parentheses depth for nested content (like ARRAY or function calls)
+        if (!inQuote) {
+          if (char === '(') parenDepth++;
+          if (char === ')') parenDepth--;
+        }
+        
+        if (!inQuote && (char === "'" || char === '"')) {
+          inQuote = true;
+          quoteChar = char;
           continue;
         }
-        inQuote = false;
-        quoteChar = null;
-        continue;
+        
+        if (inQuote && char === quoteChar) {
+          // Check for escaped quote
+          if (i + 1 < valuesStr.length && valuesStr[i + 1] === quoteChar) {
+            current += char;
+            i++; // Skip next char
+            continue;
+          }
+          inQuote = false;
+          quoteChar = null;
+          continue;
+        }
+        
+        // Only split on commas at depth 0 (not inside nested parens)
+        if (!inQuote && char === ',' && parenDepth === 0) {
+          values.push(current.trim());
+          current = '';
+          continue;
+        }
+        
+        current += char;
       }
       
-      if (!inQuote && char === ',') {
+      if (current.trim()) {
         values.push(current.trim());
-        current = '';
-        continue;
       }
       
-      current += char;
+      // Convert values to COPY format (tab-separated, \N for NULL, boolean as t/f)
+      const copyValues = values.map(v => {
+        const trimmed = v.trim();
+        if (trimmed === 'NULL') return '\\N';
+        if (trimmed === 'true') return 't';
+        if (trimmed === 'false') return 'f';
+        // Remove surrounding quotes if present
+        return trimmed.replace(/^['"]|['"]$/g, '').replace(/\t/g, '    ');
+      }).join('\t');
+      
+      if (!tableData.has(tableName)) {
+        tableData.set(tableName, { columns, rows: [] });
+      }
+      tableData.get(tableName).rows.push(copyValues);
     }
-    
-    if (current.trim()) {
-      values.push(current.trim());
-    }
-    
-    // Convert values to COPY format (tab-separated, \N for NULL, boolean as t/f)
-    const copyValues = values.map(v => {
-      if (v === 'NULL') return '\\N';
-      if (v === 'true') return 't';
-      if (v === 'false') return 'f';
-      // Remove surrounding quotes if present
-      return v.replace(/^['"]|['"]$/g, '').replace(/\t/g, '    ');
-    }).join('\t');
-    
-    if (!tableData.has(tableName)) {
-      tableData.set(tableName, { columns, rows: [] });
-    }
-    tableData.get(tableName).rows.push(copyValues);
   }
   
   // Build COPY output
@@ -1217,24 +1279,23 @@ ON CONFLICT (id) DO UPDATE SET
 -- ${team.name} USERS
 -- ========================================
 `;
-      for (const user of teamUsers) {
-        usersSQL += `INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
-VALUES (
-  ${sqlEscape(user.id)},
-  ${sqlEscape(user.first_name)},
-  ${sqlEscape(user.last_name)},
-  ${sqlEscape(user.avatar_url)},
-  true
-)
-ON CONFLICT (id) DO UPDATE SET
+      
+      // Generate bulk INSERT with multiple VALUES
+      usersSQL += `INSERT INTO users (id, first_name, last_name, avatar_url, is_active)\nVALUES\n`;
+      
+      const valueRows = teamUsers.map((user, idx) => {
+        const comma = idx < teamUsers.length - 1 ? ',' : '';
+        return `  (${sqlEscape(user.id)}, ${sqlEscape(user.first_name)}, ${sqlEscape(user.last_name)}, ${sqlEscape(user.avatar_url)}, true)${comma}`;
+      }).join('\n');
+      
+      usersSQL += valueRows + '\n';
+      usersSQL += `ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
   last_name = EXCLUDED.last_name,
   avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
   updated_at = CURRENT_TIMESTAMP;
 
 `;
-      }
-      usersSQL += '\n';
     }
   }
   writeFile('data/08b-users-apsl.sql', 'PLAYER USERS', usersSQL);
@@ -1266,19 +1327,23 @@ ON CONFLICT (id) DO UPDATE SET
 -- ${team.name} PLAYERS
 -- ========================================
 `;
-      for (const player of teamPlayersArr) {
+      
+      // Generate bulk INSERT with multiple VALUES
+      playersSQL += `INSERT INTO players (id, photo_url, notes)\nVALUES\n`;
+      
+      const valueRows = teamPlayersArr.map((player, idx) => {
         const playerData = players.get(player.id);
         const photoUrl = playerData?.photo_url || null;
-        
-        playersSQL += `INSERT INTO players (id, photo_url, notes)
-VALUES (${sqlEscape(player.id)}, ${sqlEscape(photoUrl)}, 'APSL player - position: ${player.position || 'not specified'}')
-ON CONFLICT (id) DO UPDATE SET
+        const comma = idx < teamPlayersArr.length - 1 ? ',' : '';
+        return `  (${sqlEscape(player.id)}, ${sqlEscape(photoUrl)}, 'APSL player - position: ${player.position || 'not specified'}')${comma}`;
+      }).join('\n');
+      
+      playersSQL += valueRows + '\n';
+      playersSQL += `ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
 
 `;
-      }
-      playersSQL += '\n';
     }
   }
   writeFile('data/13b-players-apsl.sql', 'PLAYERS', playersSQL);
@@ -1304,19 +1369,24 @@ ON CONFLICT (id) DO UPDATE SET
 -- ${team.name} ROSTER
 -- ========================================
 `;
-      for (const tp of roster) {
-        // Default to 'active' status (id=1) for all scraped players
-        // Coaches can later change status to 'official_inactive', 'trial', etc.
-        rostersSQL += `INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
-VALUES (${sqlEscape(tp.id)}, ${sqlEscape(tp.team_id)}, ${sqlEscape(tp.player_id)}, ${tp.jersey_number || 'NULL'}, 1, true)
-ON CONFLICT (team_id, player_id) DO UPDATE SET
+      
+      // Generate bulk INSERT with multiple VALUES
+      // Default to 'active' status (id=1) for all scraped players
+      // Coaches can later change status to 'official_inactive', 'trial', etc.
+      rostersSQL += `INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)\nVALUES\n`;
+      
+      const valueRows = roster.map((tp, idx) => {
+        const comma = idx < roster.length - 1 ? ',' : '';
+        return `  (${sqlEscape(tp.id)}, ${sqlEscape(tp.team_id)}, ${sqlEscape(tp.player_id)}, ${tp.jersey_number || 'NULL'}, 1, true)${comma}`;
+      }).join('\n');
+      
+      rostersSQL += valueRows + '\n';
+      rostersSQL += `ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   roster_status_id = EXCLUDED.roster_status_id,
   is_active = EXCLUDED.is_active;
 
 `;
-      }
-      rostersSQL += '\n';
     }
   }
   writeFile('data/14-rosters.sql', 'ROSTERS', rostersSQL);
