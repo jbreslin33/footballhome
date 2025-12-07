@@ -1,7 +1,7 @@
 -- ========================================
 -- CLUBS
 -- ========================================
--- Generated: 2025-12-07T16:32:29.904Z
+-- Generated: 2025-12-07T21:45:47.663Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -302,14 +302,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('7425cb8d-f81d-0003-8a67-7aa5c9dd6023', 'PW Nova', 'PW Nova', 'pw-nova', true)
+VALUES ('171f448b-97a3-0003-b875-35f9861c31b6', 'Delmarva Thunder', 'Delmarva Thunder', 'delmarva-thunder', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('171f448b-97a3-0003-b875-35f9861c31b6', 'Delmarva Thunder', 'Delmarva Thunder', 'delmarva-thunder', true)
+VALUES ('7425cb8d-f81d-0003-8a67-7aa5c9dd6023', 'PW Nova', 'PW Nova', 'pw-nova', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
@@ -330,14 +330,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('ec1718e1-142d-0003-ef5c-b49f0f144a3c', 'Peachtree FC', 'Peachtree FC', 'peachtree-fc', true)
+VALUES ('07e8c5da-df90-0003-7ef3-b55105901be2', 'Prima FC', 'Prima FC', 'prima-fc', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('07e8c5da-df90-0003-7ef3-b55105901be2', 'Prima FC', 'Prima FC', 'prima-fc', true)
+VALUES ('ec1718e1-142d-0003-ef5c-b49f0f144a3c', 'Peachtree FC', 'Peachtree FC', 'peachtree-fc', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

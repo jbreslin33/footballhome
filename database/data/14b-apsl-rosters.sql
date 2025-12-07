@@ -1,7 +1,7 @@
 -- ========================================
 -- ROSTERS
 -- ========================================
--- Generated: 2025-12-07T16:32:30.015Z
+-- Generated: 2025-12-07T21:45:47.756Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -1904,44 +1904,6 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 -- ========================================
--- PW Nova ROSTER
--- ========================================
-INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
-VALUES
-  ('68dbd65e-61ce-0007-1a11-cd0a64baee6c', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '55d1669d-900d-0006-5b25-e71fbd385c73', NULL, 1, true),
-  ('2bb41ca6-3e0f-0007-9886-99db8128c934', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'bde03f16-fc9e-0006-7f1f-07a163e91845', NULL, 1, true),
-  ('02dabe80-454a-0007-22e7-1b172e02f186', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'ba79f6c0-bcb7-0006-713d-a8c8dddac61b', NULL, 1, true),
-  ('4fdf5eea-cb17-0007-c207-1d7aa9279435', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '138b9956-acd0-0006-4107-074bd3b6dbef', NULL, 1, true),
-  ('1e31520e-e5c0-0007-6e9b-8d9738c57b9b', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '79cc1fc6-bc7e-0006-c036-109fa270d075', NULL, 1, true),
-  ('04263694-4809-0007-5318-ca87eb813fad', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '560f1dc3-425c-0006-415e-ffe391d03afa', NULL, 1, true),
-  ('edc6330a-5d66-0007-0972-ea7d720d7dc2', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'aa0e7838-9814-0006-aaaf-177c9b90771f', NULL, 1, true),
-  ('f460397f-278f-0007-fb1f-db35cd602089', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'e3cb0bf1-21f0-0006-00b6-55fe561e7371', NULL, 1, true),
-  ('ba56f06e-1780-0007-49fd-dcc0c08968df', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'ec9059d1-f21f-0006-1a51-67dbe179846f', NULL, 1, true),
-  ('224764bd-09e7-0007-e3d9-c14622c628d2', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'c4f5143c-3027-0006-389a-c34b7ed10779', NULL, 1, true),
-  ('b81a01a5-373a-0007-38c1-2cf0aeb941f8', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '1b7630a0-58b9-0006-0c92-653497774368', NULL, 1, true),
-  ('3c7f9d84-a676-0007-a2e7-b6b06cbc32fd', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'e84e4e0e-71bd-0006-6001-3df5c8c793c8', NULL, 1, true),
-  ('163ae1b5-b6f5-0007-9490-2697e4e246dc', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '8310d12a-836d-0006-fd98-a07a5a1e1540', NULL, 1, true),
-  ('cc3d56b6-d907-0007-fd32-c890c3bfefc6', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '8a9537a0-0219-0006-01a7-1778cb8c9b31', NULL, 1, true),
-  ('74e2461c-b64d-0007-477e-06e88ebf9518', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '96f78927-1d19-0006-b38f-dc3f61f4251d', 1, 1, true),
-  ('1b1ec10a-f647-0007-f305-f2f954d5966c', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '9046189c-6711-0006-f0c5-d30a2fb3076e', NULL, 1, true),
-  ('2819bc49-b646-0007-a097-f092fedbb4ae', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '45729472-c51e-0006-fe6f-0e753e8b8afb', NULL, 1, true),
-  ('48d0b281-08ee-0007-155f-f205e1646775', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '4e81c397-aef4-0006-5edf-a413084725ad', NULL, 1, true),
-  ('86000d32-06a4-0007-0999-be335e7609e9', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'a0369371-a33c-0006-38ae-b188c26a944d', NULL, 1, true),
-  ('94f85f69-fb19-0007-5edb-5970ee531d18', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'a003a024-0d8d-0006-b362-bd3ccb101be6', NULL, 1, true),
-  ('07d9f9ee-0835-0007-8bbd-63fb34337a9c', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '7f600291-3408-0006-c9fb-3becdd65d33e', NULL, 1, true),
-  ('296409a2-342a-0007-3e89-a3845f02d78f', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'aabf10b4-aed3-0006-a6be-0b0a9387a781', NULL, 1, true),
-  ('bf616a7c-fd1f-0007-e8a5-bf5afb6dfdf3', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'c0dccfef-274c-0006-3e8e-041705d89e6b', NULL, 1, true),
-  ('e8329413-40d4-0007-184b-54a80bfd2877', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '6b0da0e1-9b13-0006-fb5b-718214ecc9b5', NULL, 1, true),
-  ('d5d24f2f-17f6-0007-0c7f-f187ef2b051a', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '85dc854f-1a69-0006-4d8d-3c0edec106ad', NULL, 1, true),
-  ('61be213b-c479-0007-6c07-d9b21a542976', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '59badf67-b54a-0006-8b52-717225792ff0', 2, 1, true),
-  ('500f347b-80d6-0007-963b-c8369dab5254', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '1e23a983-d928-0006-0401-c2dcdd4c5031', NULL, 1, true),
-  ('2c7f12eb-5962-0007-cdb1-4911abfb4b46', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '3d8e5af9-d934-0006-2664-5e4954728710', 2, 1, true)
-ON CONFLICT (team_id, player_id) DO UPDATE SET
-  jersey_number = EXCLUDED.jersey_number,
-  roster_status_id = EXCLUDED.roster_status_id,
-  is_active = EXCLUDED.is_active;
-
--- ========================================
 -- Delmarva Thunder ROSTER
 -- ========================================
 INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
@@ -1978,6 +1940,44 @@ VALUES
   ('80649d56-38ec-0007-91af-b6ace603c7d5', '171f448b-97a3-0005-b875-35f9861c31b6', '3f58adda-b22f-0006-f20c-59992f115d09', NULL, 1, true),
   ('e991308b-0e8a-0007-02db-f3c128773240', '171f448b-97a3-0005-b875-35f9861c31b6', '0698dad4-90f8-0006-0b38-11232c0e77f4', NULL, 1, true),
   ('55dc4a44-0205-0007-07b8-37becfca6256', '171f448b-97a3-0005-b875-35f9861c31b6', 'd1b3c475-bf75-0006-6d20-a8d4ce9ce349', NULL, 1, true)
+ON CONFLICT (team_id, player_id) DO UPDATE SET
+  jersey_number = EXCLUDED.jersey_number,
+  roster_status_id = EXCLUDED.roster_status_id,
+  is_active = EXCLUDED.is_active;
+
+-- ========================================
+-- PW Nova ROSTER
+-- ========================================
+INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
+VALUES
+  ('68dbd65e-61ce-0007-1a11-cd0a64baee6c', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '55d1669d-900d-0006-5b25-e71fbd385c73', NULL, 1, true),
+  ('2bb41ca6-3e0f-0007-9886-99db8128c934', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'bde03f16-fc9e-0006-7f1f-07a163e91845', NULL, 1, true),
+  ('02dabe80-454a-0007-22e7-1b172e02f186', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'ba79f6c0-bcb7-0006-713d-a8c8dddac61b', NULL, 1, true),
+  ('4fdf5eea-cb17-0007-c207-1d7aa9279435', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '138b9956-acd0-0006-4107-074bd3b6dbef', NULL, 1, true),
+  ('1e31520e-e5c0-0007-6e9b-8d9738c57b9b', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '79cc1fc6-bc7e-0006-c036-109fa270d075', NULL, 1, true),
+  ('04263694-4809-0007-5318-ca87eb813fad', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '560f1dc3-425c-0006-415e-ffe391d03afa', NULL, 1, true),
+  ('edc6330a-5d66-0007-0972-ea7d720d7dc2', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'aa0e7838-9814-0006-aaaf-177c9b90771f', NULL, 1, true),
+  ('f460397f-278f-0007-fb1f-db35cd602089', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'e3cb0bf1-21f0-0006-00b6-55fe561e7371', NULL, 1, true),
+  ('ba56f06e-1780-0007-49fd-dcc0c08968df', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'ec9059d1-f21f-0006-1a51-67dbe179846f', NULL, 1, true),
+  ('224764bd-09e7-0007-e3d9-c14622c628d2', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'c4f5143c-3027-0006-389a-c34b7ed10779', NULL, 1, true),
+  ('b81a01a5-373a-0007-38c1-2cf0aeb941f8', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '1b7630a0-58b9-0006-0c92-653497774368', NULL, 1, true),
+  ('3c7f9d84-a676-0007-a2e7-b6b06cbc32fd', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'e84e4e0e-71bd-0006-6001-3df5c8c793c8', NULL, 1, true),
+  ('163ae1b5-b6f5-0007-9490-2697e4e246dc', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '8310d12a-836d-0006-fd98-a07a5a1e1540', NULL, 1, true),
+  ('cc3d56b6-d907-0007-fd32-c890c3bfefc6', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '8a9537a0-0219-0006-01a7-1778cb8c9b31', NULL, 1, true),
+  ('74e2461c-b64d-0007-477e-06e88ebf9518', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '96f78927-1d19-0006-b38f-dc3f61f4251d', 1, 1, true),
+  ('1b1ec10a-f647-0007-f305-f2f954d5966c', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '9046189c-6711-0006-f0c5-d30a2fb3076e', NULL, 1, true),
+  ('2819bc49-b646-0007-a097-f092fedbb4ae', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '45729472-c51e-0006-fe6f-0e753e8b8afb', NULL, 1, true),
+  ('48d0b281-08ee-0007-155f-f205e1646775', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '4e81c397-aef4-0006-5edf-a413084725ad', NULL, 1, true),
+  ('86000d32-06a4-0007-0999-be335e7609e9', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'a0369371-a33c-0006-38ae-b188c26a944d', NULL, 1, true),
+  ('94f85f69-fb19-0007-5edb-5970ee531d18', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'a003a024-0d8d-0006-b362-bd3ccb101be6', NULL, 1, true),
+  ('07d9f9ee-0835-0007-8bbd-63fb34337a9c', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '7f600291-3408-0006-c9fb-3becdd65d33e', NULL, 1, true),
+  ('296409a2-342a-0007-3e89-a3845f02d78f', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'aabf10b4-aed3-0006-a6be-0b0a9387a781', NULL, 1, true),
+  ('bf616a7c-fd1f-0007-e8a5-bf5afb6dfdf3', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'c0dccfef-274c-0006-3e8e-041705d89e6b', NULL, 1, true),
+  ('e8329413-40d4-0007-184b-54a80bfd2877', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '6b0da0e1-9b13-0006-fb5b-718214ecc9b5', NULL, 1, true),
+  ('d5d24f2f-17f6-0007-0c7f-f187ef2b051a', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '85dc854f-1a69-0006-4d8d-3c0edec106ad', NULL, 1, true),
+  ('61be213b-c479-0007-6c07-d9b21a542976', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '59badf67-b54a-0006-8b52-717225792ff0', 2, 1, true),
+  ('500f347b-80d6-0007-963b-c8369dab5254', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '1e23a983-d928-0006-0401-c2dcdd4c5031', NULL, 1, true),
+  ('2c7f12eb-5962-0007-cdb1-4911abfb4b46', '7425cb8d-f81d-0005-8a67-7aa5c9dd6023', '3d8e5af9-d934-0006-2664-5e4954728710', 2, 1, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   roster_status_id = EXCLUDED.roster_status_id,
@@ -2090,6 +2090,42 @@ ON CONFLICT (team_id, player_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
 
 -- ========================================
+-- Prima FC ROSTER
+-- ========================================
+INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
+VALUES
+  ('c008fd8f-4336-0007-4557-d53567a2153f', '07e8c5da-df90-0005-7ef3-b55105901be2', 'f15d6958-7484-0006-c037-657c85b1ae38', NULL, 1, true),
+  ('7cd87114-942c-0007-a2d3-e3c9da84fcd2', '07e8c5da-df90-0005-7ef3-b55105901be2', 'e60ac574-f2cd-0006-4b5d-d76ee6adc628', 7, 1, true),
+  ('30cf3ad1-24d9-0007-bd09-5e6549010d68', '07e8c5da-df90-0005-7ef3-b55105901be2', '0d0bc3b1-617c-0006-0ca4-ac355679760e', NULL, 1, true),
+  ('7c22baa3-428b-0007-3e6b-8509c328ae06', '07e8c5da-df90-0005-7ef3-b55105901be2', '61796fe0-4ef5-0006-40ae-e9d3f36a597f', NULL, 1, true),
+  ('d2d0484c-9fff-0007-9cd5-274a0a2f40b5', '07e8c5da-df90-0005-7ef3-b55105901be2', 'a82f72e6-c197-0006-abd2-2de08516908f', NULL, 1, true),
+  ('4ab2c2de-c281-0007-98aa-37499de9e36a', '07e8c5da-df90-0005-7ef3-b55105901be2', '788dde44-bc68-0006-3be2-86b1cddf70e1', NULL, 1, true),
+  ('4451013e-e1a6-0007-455f-9717e26f3023', '07e8c5da-df90-0005-7ef3-b55105901be2', '1ca12f32-d400-0006-7206-5f58c95d959d', NULL, 1, true),
+  ('21996222-9015-0007-794d-f5fff719dc1d', '07e8c5da-df90-0005-7ef3-b55105901be2', '3e8d7a95-b863-0006-b8db-9ea871cfe3d7', NULL, 1, true),
+  ('fbcd0a62-40b9-0007-a4b3-42ad6377321e', '07e8c5da-df90-0005-7ef3-b55105901be2', '3ff14c9b-20cc-0006-7a9b-5f7593a0c84e', 3, 1, true),
+  ('ccc71be3-a2fc-0007-27ee-547c5fe1cb5d', '07e8c5da-df90-0005-7ef3-b55105901be2', '5fe9912f-c785-0006-c7d1-538ccbf4ae91', NULL, 1, true),
+  ('c49fdfeb-4a41-0007-37f1-d1253fdba926', '07e8c5da-df90-0005-7ef3-b55105901be2', '9f15468d-3c73-0006-204f-d2263be1c97d', NULL, 1, true),
+  ('1078582f-30b5-0007-61a9-d5614205eb6a', '07e8c5da-df90-0005-7ef3-b55105901be2', '4c11f19d-a362-0006-0d43-df83659861dc', 6, 1, true),
+  ('cc319807-bbfd-0007-ebf3-5678226e41e2', '07e8c5da-df90-0005-7ef3-b55105901be2', '2ab8ee61-bd29-0006-23d7-7f56fd290ffb', NULL, 1, true),
+  ('9b55bbcc-dfaa-0007-4059-515c8c5079be', '07e8c5da-df90-0005-7ef3-b55105901be2', '5169e942-a093-0006-c028-bd204017359f', NULL, 1, true),
+  ('13103a42-83bd-0007-7d42-a1d67d6bf9ba', '07e8c5da-df90-0005-7ef3-b55105901be2', '0de960d5-64e9-0006-aa98-badd0aa017b4', 5, 1, true),
+  ('b49ed8fc-f520-0007-52be-884d43bb78ba', '07e8c5da-df90-0005-7ef3-b55105901be2', 'bcb4f1a9-6840-0006-74bf-a31fe146b7d8', 1, 1, true),
+  ('4928ca1f-6b4d-0007-ff90-40ae82ea077b', '07e8c5da-df90-0005-7ef3-b55105901be2', '3c66a94d-42e1-0006-a6f6-cce213a54dfb', NULL, 1, true),
+  ('fd75b963-433f-0007-387f-61d2d00f2876', '07e8c5da-df90-0005-7ef3-b55105901be2', '7644c73d-5a0b-0006-94c6-c6177a87a0d9', NULL, 1, true),
+  ('c045aaa6-905d-0007-feb8-7e1c0f729c96', '07e8c5da-df90-0005-7ef3-b55105901be2', 'e594e343-368c-0006-5996-dce06cd0dcfa', NULL, 1, true),
+  ('4dbbcf13-2f64-0007-d4b6-5c5f2435bd4a', '07e8c5da-df90-0005-7ef3-b55105901be2', 'ca6343cb-5d14-0006-4562-d5b64127dab7', 2, 1, true),
+  ('7fd4699e-a87f-0007-d946-48d32dc5b35d', '07e8c5da-df90-0005-7ef3-b55105901be2', '99c86369-da29-0006-9704-3d5552dcead7', NULL, 1, true),
+  ('85595f65-73eb-0007-6322-10f3298f98cf', '07e8c5da-df90-0005-7ef3-b55105901be2', '5a791d6c-7ff7-0006-4031-de562ad81dce', NULL, 1, true),
+  ('22b04d24-6492-0007-81b3-5f7dfbc155c2', '07e8c5da-df90-0005-7ef3-b55105901be2', '87673ffe-2b0b-0006-b73b-4abde057abe4', NULL, 1, true),
+  ('f7124584-8cac-0007-ab86-4279333944df', '07e8c5da-df90-0005-7ef3-b55105901be2', '22faa896-9be8-0006-9d24-3bda3579c08b', NULL, 1, true),
+  ('b74ba89f-2325-0007-09f0-ba820d24c38d', '07e8c5da-df90-0005-7ef3-b55105901be2', '43212e19-925a-0006-52b0-aca62ed0d5ff', NULL, 1, true),
+  ('9eb4b8c9-a9cb-0007-444c-f5c0337e9075', '07e8c5da-df90-0005-7ef3-b55105901be2', 'f7d36655-c443-0006-8ac5-78a0bbd5903d', NULL, 1, true)
+ON CONFLICT (team_id, player_id) DO UPDATE SET
+  jersey_number = EXCLUDED.jersey_number,
+  roster_status_id = EXCLUDED.roster_status_id,
+  is_active = EXCLUDED.is_active;
+
+-- ========================================
 -- Peachtree FC ROSTER
 -- ========================================
 INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
@@ -2122,42 +2158,6 @@ VALUES
   ('e7fba0ff-164e-0007-1ac1-bc7043f74c56', 'ec1718e1-142d-0005-ef5c-b49f0f144a3c', 'f9d63682-bffa-0006-eff6-72dbab0365f2', NULL, 1, true),
   ('37dfbf70-7ad3-0007-16cf-536767ab6c8b', 'ec1718e1-142d-0005-ef5c-b49f0f144a3c', '7477d2f4-761e-0006-72c0-df5c858a1210', NULL, 1, true),
   ('1942ec1c-4ed7-0007-958c-94ed1281b19f', 'ec1718e1-142d-0005-ef5c-b49f0f144a3c', '0e726fb2-55dd-0006-b617-d89d008da979', NULL, 1, true)
-ON CONFLICT (team_id, player_id) DO UPDATE SET
-  jersey_number = EXCLUDED.jersey_number,
-  roster_status_id = EXCLUDED.roster_status_id,
-  is_active = EXCLUDED.is_active;
-
--- ========================================
--- Prima FC ROSTER
--- ========================================
-INSERT INTO team_players (id, team_id, player_id, jersey_number, roster_status_id, is_active)
-VALUES
-  ('c008fd8f-4336-0007-4557-d53567a2153f', '07e8c5da-df90-0005-7ef3-b55105901be2', 'f15d6958-7484-0006-c037-657c85b1ae38', NULL, 1, true),
-  ('7cd87114-942c-0007-a2d3-e3c9da84fcd2', '07e8c5da-df90-0005-7ef3-b55105901be2', 'e60ac574-f2cd-0006-4b5d-d76ee6adc628', 7, 1, true),
-  ('30cf3ad1-24d9-0007-bd09-5e6549010d68', '07e8c5da-df90-0005-7ef3-b55105901be2', '0d0bc3b1-617c-0006-0ca4-ac355679760e', NULL, 1, true),
-  ('7c22baa3-428b-0007-3e6b-8509c328ae06', '07e8c5da-df90-0005-7ef3-b55105901be2', '61796fe0-4ef5-0006-40ae-e9d3f36a597f', NULL, 1, true),
-  ('d2d0484c-9fff-0007-9cd5-274a0a2f40b5', '07e8c5da-df90-0005-7ef3-b55105901be2', 'a82f72e6-c197-0006-abd2-2de08516908f', NULL, 1, true),
-  ('4ab2c2de-c281-0007-98aa-37499de9e36a', '07e8c5da-df90-0005-7ef3-b55105901be2', '788dde44-bc68-0006-3be2-86b1cddf70e1', NULL, 1, true),
-  ('4451013e-e1a6-0007-455f-9717e26f3023', '07e8c5da-df90-0005-7ef3-b55105901be2', '1ca12f32-d400-0006-7206-5f58c95d959d', NULL, 1, true),
-  ('21996222-9015-0007-794d-f5fff719dc1d', '07e8c5da-df90-0005-7ef3-b55105901be2', '3e8d7a95-b863-0006-b8db-9ea871cfe3d7', NULL, 1, true),
-  ('fbcd0a62-40b9-0007-a4b3-42ad6377321e', '07e8c5da-df90-0005-7ef3-b55105901be2', '3ff14c9b-20cc-0006-7a9b-5f7593a0c84e', 3, 1, true),
-  ('ccc71be3-a2fc-0007-27ee-547c5fe1cb5d', '07e8c5da-df90-0005-7ef3-b55105901be2', '5fe9912f-c785-0006-c7d1-538ccbf4ae91', NULL, 1, true),
-  ('c49fdfeb-4a41-0007-37f1-d1253fdba926', '07e8c5da-df90-0005-7ef3-b55105901be2', '9f15468d-3c73-0006-204f-d2263be1c97d', NULL, 1, true),
-  ('1078582f-30b5-0007-61a9-d5614205eb6a', '07e8c5da-df90-0005-7ef3-b55105901be2', '4c11f19d-a362-0006-0d43-df83659861dc', 6, 1, true),
-  ('cc319807-bbfd-0007-ebf3-5678226e41e2', '07e8c5da-df90-0005-7ef3-b55105901be2', '2ab8ee61-bd29-0006-23d7-7f56fd290ffb', NULL, 1, true),
-  ('9b55bbcc-dfaa-0007-4059-515c8c5079be', '07e8c5da-df90-0005-7ef3-b55105901be2', '5169e942-a093-0006-c028-bd204017359f', NULL, 1, true),
-  ('13103a42-83bd-0007-7d42-a1d67d6bf9ba', '07e8c5da-df90-0005-7ef3-b55105901be2', '0de960d5-64e9-0006-aa98-badd0aa017b4', 5, 1, true),
-  ('b49ed8fc-f520-0007-52be-884d43bb78ba', '07e8c5da-df90-0005-7ef3-b55105901be2', 'bcb4f1a9-6840-0006-74bf-a31fe146b7d8', 1, 1, true),
-  ('4928ca1f-6b4d-0007-ff90-40ae82ea077b', '07e8c5da-df90-0005-7ef3-b55105901be2', '3c66a94d-42e1-0006-a6f6-cce213a54dfb', NULL, 1, true),
-  ('fd75b963-433f-0007-387f-61d2d00f2876', '07e8c5da-df90-0005-7ef3-b55105901be2', '7644c73d-5a0b-0006-94c6-c6177a87a0d9', NULL, 1, true),
-  ('c045aaa6-905d-0007-feb8-7e1c0f729c96', '07e8c5da-df90-0005-7ef3-b55105901be2', 'e594e343-368c-0006-5996-dce06cd0dcfa', NULL, 1, true),
-  ('4dbbcf13-2f64-0007-d4b6-5c5f2435bd4a', '07e8c5da-df90-0005-7ef3-b55105901be2', 'ca6343cb-5d14-0006-4562-d5b64127dab7', 2, 1, true),
-  ('7fd4699e-a87f-0007-d946-48d32dc5b35d', '07e8c5da-df90-0005-7ef3-b55105901be2', '99c86369-da29-0006-9704-3d5552dcead7', NULL, 1, true),
-  ('85595f65-73eb-0007-6322-10f3298f98cf', '07e8c5da-df90-0005-7ef3-b55105901be2', '5a791d6c-7ff7-0006-4031-de562ad81dce', NULL, 1, true),
-  ('22b04d24-6492-0007-81b3-5f7dfbc155c2', '07e8c5da-df90-0005-7ef3-b55105901be2', '87673ffe-2b0b-0006-b73b-4abde057abe4', NULL, 1, true),
-  ('f7124584-8cac-0007-ab86-4279333944df', '07e8c5da-df90-0005-7ef3-b55105901be2', '22faa896-9be8-0006-9d24-3bda3579c08b', NULL, 1, true),
-  ('b74ba89f-2325-0007-09f0-ba820d24c38d', '07e8c5da-df90-0005-7ef3-b55105901be2', '43212e19-925a-0006-52b0-aca62ed0d5ff', NULL, 1, true),
-  ('9eb4b8c9-a9cb-0007-444c-f5c0337e9075', '07e8c5da-df90-0005-7ef3-b55105901be2', 'f7d36655-c443-0006-8ac5-78a0bbd5903d', NULL, 1, true)
 ON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number,
   roster_status_id = EXCLUDED.roster_status_id,

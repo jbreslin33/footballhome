@@ -1,7 +1,7 @@
 -- ========================================
 -- SPORT DIVISIONS
 -- ========================================
--- Generated: 2025-12-07T16:32:29.906Z
+-- Generated: 2025-12-07T21:45:47.665Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -302,14 +302,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('7425cb8d-f81d-0004-8a67-7aa5c9dd6023', '7425cb8d-f81d-0003-8a67-7aa5c9dd6023', '550e8400-e29b-41d4-a716-446655440101', 'PW Nova Soccer', 'PW Nova Soccer', 'pw-nova-soccer', true)
+VALUES ('171f448b-97a3-0004-b875-35f9861c31b6', '171f448b-97a3-0003-b875-35f9861c31b6', '550e8400-e29b-41d4-a716-446655440101', 'Delmarva Thunder Soccer', 'Delmarva Thunder Soccer', 'delmarva-thunder-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('171f448b-97a3-0004-b875-35f9861c31b6', '171f448b-97a3-0003-b875-35f9861c31b6', '550e8400-e29b-41d4-a716-446655440101', 'Delmarva Thunder Soccer', 'Delmarva Thunder Soccer', 'delmarva-thunder-soccer', true)
+VALUES ('7425cb8d-f81d-0004-8a67-7aa5c9dd6023', '7425cb8d-f81d-0003-8a67-7aa5c9dd6023', '550e8400-e29b-41d4-a716-446655440101', 'PW Nova Soccer', 'PW Nova Soccer', 'pw-nova-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
@@ -330,14 +330,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('ec1718e1-142d-0004-ef5c-b49f0f144a3c', 'ec1718e1-142d-0003-ef5c-b49f0f144a3c', '550e8400-e29b-41d4-a716-446655440101', 'Peachtree FC Soccer', 'Peachtree FC Soccer', 'peachtree-fc-soccer', true)
+VALUES ('07e8c5da-df90-0004-7ef3-b55105901be2', '07e8c5da-df90-0003-7ef3-b55105901be2', '550e8400-e29b-41d4-a716-446655440101', 'Prima FC Soccer', 'Prima FC Soccer', 'prima-fc-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('07e8c5da-df90-0004-7ef3-b55105901be2', '07e8c5da-df90-0003-7ef3-b55105901be2', '550e8400-e29b-41d4-a716-446655440101', 'Prima FC Soccer', 'Prima FC Soccer', 'prima-fc-soccer', true)
+VALUES ('ec1718e1-142d-0004-ef5c-b49f0f144a3c', 'ec1718e1-142d-0003-ef5c-b49f0f144a3c', '550e8400-e29b-41d4-a716-446655440101', 'Peachtree FC Soccer', 'Peachtree FC Soccer', 'peachtree-fc-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

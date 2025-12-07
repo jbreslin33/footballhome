@@ -20,6 +20,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 APSL_SCRAPE=false
+CASA_SCRAPE=false
 VENUE_SCRAPE=false
 TEST_DATA=false
 GROUPME_IMPORT=false
@@ -29,6 +30,9 @@ for arg in "$@"; do
     case $arg in
         --apsl)
             APSL_SCRAPE=true
+            ;;
+        --casa)
+            CASA_SCRAPE=true
             ;;
         --venues)
             VENUE_SCRAPE=true
@@ -45,15 +49,16 @@ for arg in "$@"; do
             echo "Usage:"
             echo "  ./dev.sh                       Full rebuild (no scraping)"
             echo "  ./dev.sh --apsl                Full rebuild + scrape APSL data"
+            echo "  ./dev.sh --casa                Full rebuild + scrape CASA rosters"
             echo "  ./dev.sh --venues              Full rebuild + scrape Google venues"
             echo "  ./dev.sh --test-data           Include test schedule data (spring 2026)"
             echo "  ./dev.sh --groupme             Import practices/RSVPs from GroupMe after rebuild"
-            echo "  ./dev.sh --apsl --test-data --groupme    Full rebuild with all data"
+            echo "  ./dev.sh --apsl --casa --test-data --groupme    Full rebuild with all data"
             exit 0
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --apsl, --venues, --test-data, --groupme, --help"
+            echo "Valid options: --apsl, --casa, --venues, --test-data, --groupme, --help"
             exit 1
             ;;
     esac
@@ -105,6 +110,17 @@ if [ "$VENUE_SCRAPE" = true ]; then
         echo -e "${GREEN}✓ Venue scraping complete${NC}"
     else
         echo -e "${YELLOW}⚠ Venue scraper not found, skipping${NC}"
+    fi
+    echo ""
+fi
+
+if [ "$CASA_SCRAPE" = true ]; then
+    echo -e "${YELLOW}📋 Step 1c: Scraping CASA rosters...${NC}"
+    if [ -f "database/scripts/casa-scraper/scrape-casa.js" ]; then
+        node database/scripts/casa-scraper/scrape-casa.js
+        echo -e "${GREEN}✓ CASA scraping complete${NC}"
+    else
+        echo -e "${YELLOW}⚠ CASA scraper not found, skipping${NC}"
     fi
     echo ""
 fi

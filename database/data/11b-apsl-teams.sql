@@ -1,7 +1,7 @@
 -- ========================================
 -- TEAMS
 -- ========================================
--- Generated: 2025-12-07T16:32:29.911Z
+-- Generated: 2025-12-07T21:45:47.668Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -344,7 +344,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'PW Nova', '7425cb8d-f81d-0004-8a67-7aa5c9dd6023', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/pw-nova.png')
+VALUES ('171f448b-97a3-0005-b875-35f9861c31b6', 'Delmarva Thunder', '171f448b-97a3-0004-b875-35f9861c31b6', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/delmarva-thunder.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -352,7 +352,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('171f448b-97a3-0005-b875-35f9861c31b6', 'Delmarva Thunder', '171f448b-97a3-0004-b875-35f9861c31b6', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/delmarva-thunder.png')
+VALUES ('7425cb8d-f81d-0005-8a67-7aa5c9dd6023', 'PW Nova', '7425cb8d-f81d-0004-8a67-7aa5c9dd6023', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/pw-nova.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -376,7 +376,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('ec1718e1-142d-0005-ef5c-b49f0f144a3c', 'Peachtree FC', 'ec1718e1-142d-0004-ef5c-b49f0f144a3c', '222b808e-5cee-0003-80b6-a4f6fa9f2917', '2024-2025', true, '/images/teams/logos/peachtree-fc.png')
+VALUES ('07e8c5da-df90-0005-7ef3-b55105901be2', 'Prima FC', '07e8c5da-df90-0004-7ef3-b55105901be2', '222b808e-5cee-0003-80b6-a4f6fa9f2917', '2024-2025', true, '/images/teams/logos/prima-fc.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -384,7 +384,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('07e8c5da-df90-0005-7ef3-b55105901be2', 'Prima FC', '07e8c5da-df90-0004-7ef3-b55105901be2', '222b808e-5cee-0003-80b6-a4f6fa9f2917', '2024-2025', true, '/images/teams/logos/prima-fc.png')
+VALUES ('ec1718e1-142d-0005-ef5c-b49f0f144a3c', 'Peachtree FC', 'ec1718e1-142d-0004-ef5c-b49f0f144a3c', '222b808e-5cee-0003-80b6-a4f6fa9f2917', '2024-2025', true, '/images/teams/logos/peachtree-fc.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,

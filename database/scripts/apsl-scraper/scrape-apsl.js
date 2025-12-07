@@ -1319,7 +1319,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/11-teams.sql', 'TEAMS', teamsSQL);
+  writeFile('data/11b-apsl-teams.sql', 'TEAMS', teamsSQL);
   
   // 7. USERS (write to separate APSL file, grouped by team)
   let usersSQL = `
@@ -1460,7 +1460,7 @@ ON CONFLICT (id) DO UPDATE SET
 `;
     }
   }
-  writeFile('data/14-rosters.sql', 'ROSTERS', rostersSQL);
+  writeFile('data/14b-apsl-rosters.sql', 'ROSTERS', rostersSQL);
   
   // 10. EVENTS (matches from fixtures)
   let eventsSQL = `
