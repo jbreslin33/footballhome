@@ -24,6 +24,7 @@ CASA_SCRAPE=false
 VENUE_SCRAPE=false
 TEST_DATA=false
 GROUPME_IMPORT=false
+FIND_ISSUES=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -43,6 +44,9 @@ for arg in "$@"; do
         --groupme)
             GROUPME_IMPORT=true
             ;;
+        --find-issues)
+            FIND_ISSUES=true
+            ;;
         --help|-h)
             echo "Football Home Development Script"
             echo ""
@@ -53,12 +57,13 @@ for arg in "$@"; do
             echo "  ./dev.sh --venues              Full rebuild + scrape Google venues"
             echo "  ./dev.sh --test-data           Include test schedule data (spring 2026)"
             echo "  ./dev.sh --groupme             Import practices/RSVPs from GroupMe after rebuild"
+            echo "  ./dev.sh --find-issues         Run data quality checks after rebuild"
             echo "  ./dev.sh --apsl --casa --test-data --groupme    Full rebuild with all data"
             exit 0
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --apsl, --casa, --venues, --test-data, --groupme, --help"
+            echo "Valid options: --apsl, --casa, --venues, --test-data, --groupme, --find-issues, --help"
             exit 1
             ;;
     esac
@@ -85,6 +90,9 @@ if [ "$TEST_DATA" = true ]; then
 fi
 if [ "$GROUPME_IMPORT" = true ]; then
     echo "  ✓ Import practices and RSVPs from GroupMe (Training Lighthouse)"
+fi
+if [ "$FIND_ISSUES" = true ]; then
+    echo "  ✓ Run data quality analysis after rebuild"
 fi
 echo ""
 
@@ -288,6 +296,26 @@ if [ "$GROUPME_IMPORT" = true ]; then
         echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
         echo "  Add to .env: GROUPME_ACCESS_TOKEN=your-token"
         echo "  Get token from: https://dev.groupme.com/"
+    fi
+    echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 7: DATA QUALITY ANALYSIS (optional)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ "$FIND_ISSUES" = true ]; then
+    echo -e "${YELLOW}🔍 Step 7: Running data quality analysis...${NC}"
+    if [ -f "database/scripts/find-duplicates.js" ]; then
+        node database/scripts/find-duplicates.js
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ Data quality analysis complete${NC}"
+            echo "  Check database/reports/ for detailed report"
+        else
+            echo -e "${YELLOW}⚠ Data quality analysis completed with issues${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠ Data quality script not found${NC}"
     fi
     echo ""
 fi

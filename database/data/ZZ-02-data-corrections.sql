@@ -1,0 +1,31 @@
+-- ========================================
+-- DATA CORRECTIONS AND FIXES
+-- ========================================
+-- Manual corrections for data quality issues
+-- Run after all data is loaded and user merges are complete
+--
+-- USAGE:
+-- 1. Find issues in the app or database
+-- 2. Add SQL fixes below
+-- 3. Rebuild: ./dev.sh --apsl --casa --groupme
+--
+-- COMMON FIXES:
+-- - Correct date of birth
+-- - Fix jersey numbers
+-- - Adjust team assignments
+-- - Add missing coach assignments
+-- - Fix player positions
+-- ========================================
+
+-- Example fixes (commented out):
+-- -- Fix wrong DOB for John Smith
+-- UPDATE users SET date_of_birth = '1995-06-15' WHERE first_name = 'John' AND last_name = 'Smith';
+--
+-- -- Fix jersey number
+-- UPDATE team_players SET jersey_number = 10 WHERE team_id = '...' AND player_id = (SELECT id FROM users WHERE first_name = 'Mike' AND last_name = 'Jones');
+--
+-- -- Add missing coach assignment
+-- INSERT INTO team_coaches (team_id, coach_id, is_active) VALUES ('team-uuid', 'coach-uuid', true) ON CONFLICT DO NOTHING;
+
+-- Add your fixes below:
+
