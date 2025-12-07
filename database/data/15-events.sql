@@ -1,7 +1,7 @@
 -- ========================================
 -- EVENTS (APSL MATCHES)
 -- ========================================
--- Generated: 2025-12-05T13:06:41.278Z
+-- Generated: 2025-12-07T01:38:09.995Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -2113,6 +2113,104 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
 VALUES (
+  '00caebff-8747-0010-9c75-6916fe711703',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Oaklyn United FC vs Medford Strikers',
+  '2025-09-07 18:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '2ecc44ff-67cf-0010-f00d-e7320fc98fd1',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'GAK vs Oaklyn United FC',
+  '2025-09-17 20:30:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '01a082b5-0bc4-0010-539c-7da180d9dfcd',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Vidas United FC vs Oaklyn United FC',
+  '2025-10-05 13:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'abf20dc2-816b-0010-7915-51d41fda152e',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Lighthouse 1893 SC vs Oaklyn United FC',
+  '2025-11-09 13:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'c5e2d5a6-7a7b-0010-f49d-11a1cd720c46',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Oaklyn United FC vs Jersey Shore Boca',
+  '2025-12-05 20:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '9da17937-c7b8-0010-3b52-4ab9e21db327',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Oaklyn United FC vs Sewell Old Boys FC',
+  '2025-12-07 19:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '44f2e6e9-55be-0010-2caf-49ea763bfaa0',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Philadelphia Soccer Club vs Oaklyn United FC',
+  '2025-12-14 14:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
   '83897176-e489-0010-12f8-8c21bf33be9a',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
@@ -2132,20 +2230,6 @@ VALUES (
   '550e8400-e29b-41d4-a716-446655440402',
   'Philadelphia Soccer Club vs Vidas United FC',
   '2025-09-21 18:00:00-04',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '01a082b5-0bc4-0010-539c-7da180d9dfcd',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Vidas United FC vs Oaklyn United FC',
-  '2025-10-05 13:00:00-04',
   120
 )
 ON CONFLICT (id) DO UPDATE SET
@@ -2272,90 +2356,6 @@ VALUES (
   '550e8400-e29b-41d4-a716-446655440402',
   'Philadelphia Soccer Club vs Sewell Old Boys FC',
   '2025-11-23 18:00:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '44f2e6e9-55be-0010-2caf-49ea763bfaa0',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Philadelphia Soccer Club vs Oaklyn United FC',
-  '2025-12-14 14:00:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '00caebff-8747-0010-9c75-6916fe711703',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Oaklyn United FC vs Medford Strikers',
-  '2025-09-07 18:00:00-04',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '2ecc44ff-67cf-0010-f00d-e7320fc98fd1',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'GAK vs Oaklyn United FC',
-  '2025-09-17 20:30:00-04',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  'abf20dc2-816b-0010-7915-51d41fda152e',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Lighthouse 1893 SC vs Oaklyn United FC',
-  '2025-11-09 13:00:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  'c5e2d5a6-7a7b-0010-f49d-11a1cd720c46',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Oaklyn United FC vs Jersey Shore Boca',
-  '2025-12-05 20:00:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '9da17937-c7b8-0010-3b52-4ab9e21db327',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Oaklyn United FC vs Sewell Old Boys FC',
-  '2025-12-07 19:00:00-05',
   120
 )
 ON CONFLICT (id) DO UPDATE SET
@@ -2617,95 +2617,25 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
 VALUES (
-  'b15a23d2-1ed4-0010-dc27-8095f2346b20',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'VA Marauders FC vs Wave FC',
-  '2025-09-21 17:00:00-04',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  '118e9309-abb6-0010-38c1-f9700950aa91',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Grove Soccer United vs Wave FC',
-  '2025-09-27 16:00:00-04',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  'e9e6c99a-4486-0010-c9fc-030176f22be8',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Wave FC vs Delmarva Thunder',
-  '2025-10-04 16:00:00-04',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  'f5db194e-8e6a-0010-ac6a-69b8533db876',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Wave FC vs PW Nova',
-  '2025-11-02 18:00:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  'ca468457-54e6-0010-9198-6a20f8e5ba2f',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Wave FC vs Grove Soccer United',
-  '2025-11-08 13:00:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
-  'ac2139dc-903b-0010-9791-ab97eddcfd61',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Wave FC vs VA Marauders FC',
-  '2025-11-22 15:00:00-05',
-  120
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
-VALUES (
   '4a7a181b-c4be-0010-3c7a-1fea9dfd83d7',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
   'VA Marauders FC vs PW Nova',
   '2025-09-14 20:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'b15a23d2-1ed4-0010-dc27-8095f2346b20',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'VA Marauders FC vs Wave FC',
+  '2025-09-21 17:00:00-04',
   120
 )
 ON CONFLICT (id) DO UPDATE SET
@@ -2771,11 +2701,81 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
 VALUES (
+  'ac2139dc-903b-0010-9791-ab97eddcfd61',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Wave FC vs VA Marauders FC',
+  '2025-11-22 15:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
   'ca3848e4-5a68-0010-feea-c570bebd6bc5',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
   'VA Marauders FC vs Delmarva Thunder',
   '2025-12-06 14:30:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  '118e9309-abb6-0010-38c1-f9700950aa91',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Grove Soccer United vs Wave FC',
+  '2025-09-27 16:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'e9e6c99a-4486-0010-c9fc-030176f22be8',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Wave FC vs Delmarva Thunder',
+  '2025-10-04 16:00:00-04',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'f5db194e-8e6a-0010-ac6a-69b8533db876',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Wave FC vs PW Nova',
+  '2025-11-02 18:00:00-05',
+  120
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO events (id, created_by, event_type_id, title, event_date, duration_minutes)
+VALUES (
+  'ca468457-54e6-0010-9198-6a20f8e5ba2f',
+  '77d77471-1250-47e0-81ab-d4626595d63c',
+  '550e8400-e29b-41d4-a716-446655440402',
+  'Wave FC vs Grove Soccer United',
+  '2025-11-08 13:00:00-05',
   120
 )
 ON CONFLICT (id) DO UPDATE SET

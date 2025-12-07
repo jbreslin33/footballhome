@@ -29,6 +29,19 @@ const { JSDOM } = require('jsdom');
 const fs = require('fs');
 const path = require('path');
 
+// Handle uncaught errors from network requests gracefully
+// This prevents the scraper from crashing on transient network errors
+process.on('uncaughtException', (err) => {
+  if (err.code === 'ECONNRESET' || err.syscall === 'read') {
+    console.error(`      ⚠️  Network error (will retry): ${err.message}`);
+    // Don't exit - let the retry logic handle it
+  } else {
+    // Re-throw other types of errors
+    console.error('Fatal error:', err);
+    process.exit(1);
+  }
+});
+
 // Configuration
 const BASE_URL = 'https://apslsoccer.com';
 const LEAGUE_URL = `${BASE_URL}/standings/`;

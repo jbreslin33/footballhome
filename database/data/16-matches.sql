@@ -1,7 +1,7 @@
 -- ========================================
 -- MATCHES (APSL)
 -- ========================================
--- Generated: 2025-12-05T13:06:41.281Z
+-- Generated: 2025-12-07T01:38:10.001Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -2262,9 +2262,9 @@ VALUES (
   'f11cc01a-e8d3-0005-74f0-b00c38923236',
   '550e8400-e29b-41d4-a716-446655440801',
   'APSL Regular Season',
-  'scheduled',
-  NULL,
-  NULL
+  'completed',
+  6,
+  0
 )
 ON CONFLICT (id) DO UPDATE SET
   competition_name = EXCLUDED.competition_name,
@@ -2563,6 +2563,125 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
 VALUES (
+  '00caebff-8747-0010-9c75-6916fe711703',
+  'c2402f6c-0036-0005-d453-d68637ee8277',
+  '77b6674f-d598-0005-fd48-227b9e088c41',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'completed',
+  4,
+  1
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  '2ecc44ff-67cf-0010-f00d-e7320fc98fd1',
+  'f11cc01a-e8d3-0005-74f0-b00c38923236',
+  'c2402f6c-0036-0005-d453-d68637ee8277',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'completed',
+  2,
+  0
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  '01a082b5-0bc4-0010-539c-7da180d9dfcd',
+  '3dd92f09-4a7d-0005-c554-60df95cfb846',
+  'c2402f6c-0036-0005-d453-d68637ee8277',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'completed',
+  0,
+  3
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  'abf20dc2-816b-0010-7915-51d41fda152e',
+  'd37eb44b-8e47-0005-9060-f0cbe96fe089',
+  'c2402f6c-0036-0005-d453-d68637ee8277',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'completed',
+  2,
+  1
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  'c5e2d5a6-7a7b-0010-f49d-11a1cd720c46',
+  'c2402f6c-0036-0005-d453-d68637ee8277',
+  '7288846b-402d-0005-9d60-70d5ffcc5588',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'completed',
+  2,
+  0
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  '9da17937-c7b8-0010-3b52-4ab9e21db327',
+  'c2402f6c-0036-0005-d453-d68637ee8277',
+  '50720c09-2e57-0005-da39-afc85228aaa9',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'scheduled',
+  NULL,
+  NULL
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  '44f2e6e9-55be-0010-2caf-49ea763bfaa0',
+  '907ece9f-5926-0005-cff6-7672dec05648',
+  'c2402f6c-0036-0005-d453-d68637ee8277',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'scheduled',
+  NULL,
+  NULL
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
   '83897176-e489-0010-12f8-8c21bf33be9a',
   '3dd92f09-4a7d-0005-c554-60df95cfb846',
   '50720c09-2e57-0005-da39-afc85228aaa9',
@@ -2588,23 +2707,6 @@ VALUES (
   'completed',
   1,
   1
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  '01a082b5-0bc4-0010-539c-7da180d9dfcd',
-  '3dd92f09-4a7d-0005-c554-60df95cfb846',
-  'c2402f6c-0036-0005-d453-d68637ee8277',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'completed',
-  3,
-  0
 )
 ON CONFLICT (id) DO UPDATE SET
   competition_name = EXCLUDED.competition_name,
@@ -2758,108 +2860,6 @@ VALUES (
   'completed',
   3,
   3
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  '44f2e6e9-55be-0010-2caf-49ea763bfaa0',
-  '907ece9f-5926-0005-cff6-7672dec05648',
-  'c2402f6c-0036-0005-d453-d68637ee8277',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  '00caebff-8747-0010-9c75-6916fe711703',
-  'c2402f6c-0036-0005-d453-d68637ee8277',
-  '77b6674f-d598-0005-fd48-227b9e088c41',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'completed',
-  4,
-  1
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  '2ecc44ff-67cf-0010-f00d-e7320fc98fd1',
-  'f11cc01a-e8d3-0005-74f0-b00c38923236',
-  'c2402f6c-0036-0005-d453-d68637ee8277',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'completed',
-  2,
-  0
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  'abf20dc2-816b-0010-7915-51d41fda152e',
-  'd37eb44b-8e47-0005-9060-f0cbe96fe089',
-  'c2402f6c-0036-0005-d453-d68637ee8277',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'completed',
-  2,
-  1
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  'c5e2d5a6-7a7b-0010-f49d-11a1cd720c46',
-  'c2402f6c-0036-0005-d453-d68637ee8277',
-  '7288846b-402d-0005-9d60-70d5ffcc5588',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  '9da17937-c7b8-0010-3b52-4ab9e21db327',
-  'c2402f6c-0036-0005-d453-d68637ee8277',
-  '50720c09-2e57-0005-da39-afc85228aaa9',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'scheduled',
-  NULL,
-  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   competition_name = EXCLUDED.competition_name,
@@ -3175,108 +3175,6 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
 VALUES (
-  'b15a23d2-1ed4-0010-dc27-8095f2346b20',
-  '8d88ffe1-06ae-0005-6f19-0e9432e55afa',
-  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'completed',
-  1,
-  0
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  '118e9309-abb6-0010-38c1-f9700950aa91',
-  'cf7f17f3-b83d-0005-856e-8a0b8da24008',
-  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'completed',
-  2,
-  1
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  'e9e6c99a-4486-0010-c9fc-030176f22be8',
-  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
-  '171f448b-97a3-0005-b875-35f9861c31b6',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'completed',
-  4,
-  1
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  'f5db194e-8e6a-0010-ac6a-69b8533db876',
-  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
-  '7425cb8d-f81d-0005-8a67-7aa5c9dd6023',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'completed',
-  10,
-  0
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  'ca468457-54e6-0010-9198-6a20f8e5ba2f',
-  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
-  'cf7f17f3-b83d-0005-856e-8a0b8da24008',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'completed',
-  5,
-  0
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
-  'ac2139dc-903b-0010-9791-ab97eddcfd61',
-  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
-  '8d88ffe1-06ae-0005-6f19-0e9432e55afa',
-  '550e8400-e29b-41d4-a716-446655440801',
-  'APSL Regular Season',
-  'completed',
-  1,
-  2
-)
-ON CONFLICT (id) DO UPDATE SET
-  competition_name = EXCLUDED.competition_name,
-  match_status = EXCLUDED.match_status,
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
-VALUES (
   '4a7a181b-c4be-0010-3c7a-1fea9dfd83d7',
   '8d88ffe1-06ae-0005-6f19-0e9432e55afa',
   '7425cb8d-f81d-0005-8a67-7aa5c9dd6023',
@@ -3284,6 +3182,23 @@ VALUES (
   'APSL Regular Season',
   'completed',
   5,
+  1
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  'b15a23d2-1ed4-0010-dc27-8095f2346b20',
+  '8d88ffe1-06ae-0005-6f19-0e9432e55afa',
+  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'completed',
+  0,
   1
 )
 ON CONFLICT (id) DO UPDATE SET
@@ -3362,14 +3277,99 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
 VALUES (
+  'ac2139dc-903b-0010-9791-ab97eddcfd61',
+  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
+  '8d88ffe1-06ae-0005-6f19-0e9432e55afa',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'completed',
+  2,
+  1
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
   'ca3848e4-5a68-0010-feea-c570bebd6bc5',
   '8d88ffe1-06ae-0005-6f19-0e9432e55afa',
   '171f448b-97a3-0005-b875-35f9861c31b6',
   '550e8400-e29b-41d4-a716-446655440801',
   'APSL Regular Season',
-  'scheduled',
-  NULL,
-  NULL
+  'completed',
+  4,
+  1
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  '118e9309-abb6-0010-38c1-f9700950aa91',
+  'cf7f17f3-b83d-0005-856e-8a0b8da24008',
+  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'completed',
+  2,
+  1
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  'e9e6c99a-4486-0010-c9fc-030176f22be8',
+  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
+  '171f448b-97a3-0005-b875-35f9861c31b6',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'completed',
+  4,
+  1
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  'f5db194e-8e6a-0010-ac6a-69b8533db876',
+  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
+  '7425cb8d-f81d-0005-8a67-7aa5c9dd6023',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'completed',
+  10,
+  0
+)
+ON CONFLICT (id) DO UPDATE SET
+  competition_name = EXCLUDED.competition_name,
+  match_status = EXCLUDED.match_status,
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score;
+
+INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status, home_team_score, away_team_score)
+VALUES (
+  'ca468457-54e6-0010-9198-6a20f8e5ba2f',
+  '5cb8a2b2-4ca8-0005-2d81-819249f89f0d',
+  'cf7f17f3-b83d-0005-856e-8a0b8da24008',
+  '550e8400-e29b-41d4-a716-446655440801',
+  'APSL Regular Season',
+  'completed',
+  5,
+  0
 )
 ON CONFLICT (id) DO UPDATE SET
   competition_name = EXCLUDED.competition_name,
