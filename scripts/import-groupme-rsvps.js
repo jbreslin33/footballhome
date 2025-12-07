@@ -96,12 +96,13 @@ async function importRSVPs() {
       for (const groupmeId of going) {
         totalRSVPs++;
         
-        // Find player by groupme_id (players.id = users.id)
+        // Find player by groupme external identity (players.id = users.id)
         const playerResult = await client.query(`
           SELECT p.id as player_id
-          FROM users u
+          FROM user_external_identities uei
+          JOIN users u ON uei.user_id = u.id
           JOIN players p ON u.id = p.id
-          WHERE u.groupme_id = $1
+          WHERE uei.provider = 'groupme' AND uei.external_id = $1
         `, [groupmeId]);
         
         if (playerResult.rows.length === 0) {
@@ -127,15 +128,16 @@ async function importRSVPs() {
       }
       
       // Process "not_going" RSVPs
-      for (const groupmeId of notGoing) {
+      for (const groupmeId of not_going) {
         totalRSVPs++;
         
-        // Find player by groupme_id (players.id = users.id)
+        // Find player by groupme external identity (players.id = users.id)
         const playerResult = await client.query(`
           SELECT p.id as player_id
-          FROM users u
+          FROM user_external_identities uei
+          JOIN users u ON uei.user_id = u.id
           JOIN players p ON u.id = p.id
-          WHERE u.groupme_id = $1
+          WHERE uei.provider = 'groupme' AND uei.external_id = $1
         `, [groupmeId]);
         
         if (playerResult.rows.length === 0) {

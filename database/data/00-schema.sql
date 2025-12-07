@@ -251,7 +251,6 @@ CREATE TABLE users (
     date_of_birth DATE,
     emergency_contact VARCHAR(100),
     emergency_phone VARCHAR(20),
-    groupme_id VARCHAR(50),                  -- GroupMe user ID for external integration
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -259,7 +258,25 @@ CREATE TABLE users (
 
 CREATE INDEX idx_users_last_first_name ON users(last_name, first_name);
 CREATE INDEX idx_users_first_name ON users(first_name);
-CREATE UNIQUE INDEX idx_users_groupme_id ON users(groupme_id) WHERE groupme_id IS NOT NULL;
+
+-- External identity mappings (GroupMe, APSL, CASA, etc.)
+CREATE TABLE user_external_identities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(50) NOT NULL,           -- 'groupme', 'apsl', 'casa', 'lighthouse'
+    external_id VARCHAR(255) NOT NULL,       -- Provider's user ID
+    external_username VARCHAR(255),          -- Display name from provider
+    external_data JSONB,                     -- Extra metadata from provider
+    verified_at TIMESTAMP,                   -- When this identity was verified
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(provider, external_id),           -- No duplicate external IDs per provider
+    UNIQUE(user_id, provider)                -- One identity per provider per user
+);
+
+CREATE INDEX idx_user_external_identities_user ON user_external_identities(user_id);
+CREATE INDEX idx_user_external_identities_provider ON user_external_identities(provider, external_id);
 
 -- ========================================
 -- USER ENTITY TABLES (Normalized)

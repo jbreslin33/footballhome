@@ -122,14 +122,15 @@ async function importAllUsers() {
         // 1. Find or Create User
         let userId = null;
 
-        // A. Check by GroupMe ID
+        // A. Check by GroupMe ID in external identities
         let userResult = await client.query(
-          `SELECT id FROM users WHERE groupme_id = $1`,
+          `SELECT user_id FROM user_external_identities 
+           WHERE provider = 'groupme' AND external_id = $1`,
           [gmId]
         );
 
         if (userResult.rows.length > 0) {
-          userId = userResult.rows[0].id;
+          userId = userResult.rows[0].user_id;
           stats.skipped++;
         } else {
           // B. Check by Name (Fuzzy)
@@ -146,19 +147,37 @@ async function importAllUsers() {
             // Found by Name -> Link GroupMe ID
             userId = userResult.rows[0].id;
             await client.query(
-              `UPDATE users SET groupme_id = $1, avatar_url = COALESCE(avatar_url, $2) WHERE id = $3`,
-              [gmId, avatar, userId]
+              `INSERT INTO user_external_identities (user_id, provider, external_id, external_username, external_data)
+               VALUES ($1, 'groupme', $2, $3, $4)
+               ON CONFLICT (user_id, provider) DO UPDATE SET 
+                 external_id = EXCLUDED.external_id,
+                 external_username = EXCLUDED.external_username,
+                 external_data = EXCLUDED.external_data,
+                 updated_at = CURRENT_TIMESTAMP`,
+              [userId, gmId, nickname, JSON.stringify({ avatar_url: avatar })]
+            );
+            // Also update avatar if not set
+            await client.query(
+              `UPDATE users SET avatar_url = COALESCE(avatar_url, $1) WHERE id = $2`,
+              [avatar, userId]
             );
             stats.updated++;
           } else {
             // C. Create New User
             const insertRes = await client.query(
-              `INSERT INTO users (first_name, last_name, preferred_name, groupme_id, avatar_url)
-               VALUES ($1, $2, $3, $4, $5)
+              `INSERT INTO users (first_name, last_name, preferred_name, avatar_url)
+               VALUES ($1, $2, $3, $4)
                RETURNING id`,
-              [first, last, nickname, gmId, avatar]
+              [first, last, nickname, avatar]
             );
             userId = insertRes.rows[0].id;
+            
+            // Link GroupMe identity
+            await client.query(
+              `INSERT INTO user_external_identities (user_id, provider, external_id, external_username, external_data)
+               VALUES ($1, 'groupme', $2, $3, $4)`,
+              [userId, gmId, nickname, JSON.stringify({ avatar_url: avatar })]
+            );
             
             // Create Player record
             await client.query(

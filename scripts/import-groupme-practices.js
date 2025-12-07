@@ -47,8 +47,11 @@ async function getAdminUser() {
 }
 
 async function getUserIdByGroupMeId(groupmeId) {
-  const res = await client.query("SELECT id FROM users WHERE groupme_id = $1", [groupmeId]);
-  return res.rows[0]?.id;
+  const res = await client.query(
+    "SELECT user_id FROM user_external_identities WHERE provider = 'groupme' AND external_id = $1", 
+    [groupmeId]
+  );
+  return res.rows[0]?.user_id;
 }
 
 async function ensurePlayerExists(userId) {

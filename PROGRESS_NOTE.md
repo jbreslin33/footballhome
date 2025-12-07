@@ -20,9 +20,10 @@ Successfully fixed the APSL scraper to handle network errors and generate proper
    - Better for database performance
 
 3. **COPY Format Issues:**
-   - Identified converter bug with special characters (parentheses in names)
-   - Decision: Use bulk INSERTs instead of COPY for now (still fast)
-   - Removed broken COPY files to prevent database load failures
+   - Fixed converter bug: row regex wasn't respecting quote boundaries
+   - Names with parentheses like `(Tony) Flores` were breaking row parsing
+   - Solution: Character-by-character parsing that skips over quoted content
+   - COPY files now generate correctly and load fast
 
 4. **Data Quality:**
    - Fixed invalid UUID for Old Timers team (`01d71me5...` → `01d71ee5...`)
@@ -32,7 +33,8 @@ Successfully fixed the APSL scraper to handle network errors and generate proper
 **Current State:**
 - ✅ All 3 teams visible in UI (Lighthouse 1893 SC, Boys Club, Old Timers)
 - ✅ Lighthouse 1893 SC has 122 players from APSL scraper
-- ⚠️  Boys Club and Old Timers have 0 players (need GroupMe roster import)
+- ✅ Boys Club has 64 players from GroupMe import
+- ✅ Old Timers has 63 players from GroupMe import
 
 ### 📋 ROADMAP: Multi-Team Practice Management
 
@@ -44,15 +46,15 @@ Successfully fixed the APSL scraper to handle network errors and generate proper
 
 **Solution Plan (in priority order):**
 
-**1. Fix GroupMe Team Mapping (5 min) - DO THIS FIRST**
-   - Update GroupMe import team IDs in scripts
-   - APSL Lighthouse group → `d37eb44b-8e47-0005-9060-f0cbe96fe089` ✓ (already correct)
-   - Boys Club group → `b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a`
-   - Old Timers group → `01d71ee5-01d7-0002-1ee5-01d71ee501d7`
-   - Run `dev.sh --groupme` to populate rosters
-   - **Result:** All 3 teams will have players
+**1. Fix GroupMe Team Mapping** ✅ COMPLETED
+   - Updated GroupMe import team IDs in `scripts/import-all-groupme-users.js`
+   - APSL Lighthouse group → `d37eb44b-8e47-0005-9060-f0cbe96fe089` ✓
+   - Boys Club group → `b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a` ✓
+   - Old Timers group → `01d71ee5-01d7-0002-1ee5-01d71ee501d7` ✓
+   - Ran `dev.sh --groupme` to populate rosters ✓
+   - **Result:** All 3 teams now have players (122 + 64 + 63 = 249 total)
 
-**2. Add practice_teams Junction Table (30 min)**
+**2. Add practice_teams Junction Table (30 min) - NEXT STEP**
    - Create migration: `practice_teams` table
      - Columns: `practice_id`, `team_id`, `is_primary`
      - PKs and FKs to practices and teams

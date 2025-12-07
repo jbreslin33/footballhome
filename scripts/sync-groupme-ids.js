@@ -133,10 +133,11 @@ async function syncGroupMeIds(groupId) {
         u.last_name, 
         u.preferred_name,
         u.email,
-        u.groupme_id
+        uei.external_id as groupme_id
       FROM users u
       JOIN players p ON u.id = p.id
       JOIN team_players tp ON p.id = tp.player_id
+      LEFT JOIN user_external_identities uei ON u.id = uei.user_id AND uei.provider = 'groupme'
       WHERE tp.team_id = $1 AND tp.is_active = true
       ORDER BY u.last_name, u.first_name
     `, [TEAM_ID]);
@@ -148,8 +149,10 @@ async function syncGroupMeIds(groupId) {
     let alreadySet = 0;
     
     // Get all groupme_ids already in use
-    const existingIds = await client.query('SELECT groupme_id FROM users WHERE groupme_id IS NOT NULL');
-    const usedGroupMeIds = new Set(existingIds.rows.map(row => row.groupme_id));
+    const existingIds = await client.query(
+      "SELECT external_id FROM user_external_identities WHERE provider = 'groupme'"
+    );
+    const usedGroupMeIds = new Set(existingIds.rows.map(row => row.external_id));
     
     for (const user of result.rows) {
       // Skip if already has groupme_id
@@ -190,10 +193,14 @@ async function syncGroupMeIds(groupId) {
         
         if (!DRY_RUN) {
           await client.query(`
-            UPDATE users 
-            SET groupme_id = $1, updated_at = NOW()
-            WHERE id = $2
-          `, [bestMatch.user_id, user.id]);
+            INSERT INTO user_external_identities (user_id, provider, external_id, external_username, external_data)
+            VALUES ($1, 'groupme', $2, $3, $4)
+            ON CONFLICT (user_id, provider) DO UPDATE SET
+              external_id = EXCLUDED.external_id,
+              external_username = EXCLUDED.external_username,
+              external_data = EXCLUDED.external_data,
+              updated_at = CURRENT_TIMESTAMP
+          `, [user.id, bestMatch.user_id, bestMatch.nickname || bestMatch.name, JSON.stringify({ avatar_url: bestMatch.image_url })]);
           
           usedGroupMeIds.add(bestMatch.user_id); // Mark as used
         } else {
@@ -224,8 +231,11 @@ async function syncGroupMeIds(groupId) {
     }
     
     if (skipped > 0) {
-      console.log('💡 Tip: For users with no match, manually set groupme_id:');
-      console.log('   UPDATE users SET groupme_id = \'<their_groupme_id>\' WHERE email = \'user@example.com\';\n');
+      console.log('💡 Tip: For users with no match, manually set external identity:');
+      console.log('   INSERT INTO user_external_identities (user_id, provider, external_id, external_username)');
+      console.log('   VALUES (\'<user_uuid>\', \'groupme\', \'<their_groupme_id>\', \'<nickname>\');');
+      console.log('   Or find user by email:');
+      console.log('   SELECT id FROM users WHERE email = \'user@example.com\';\n');
     }
     
   } catch (error) {
