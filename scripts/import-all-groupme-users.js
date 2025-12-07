@@ -25,17 +25,17 @@ const GROUP_MAPPINGS = [
   {
     name: 'APSL Lighthouse',
     groupMeId: '109785985',
-    dbTeamId: 'd37eb44b-8e47-0005-9060-f0cbe96fe089' // Same as Club ID for now
+    dbTeamId: 'd37eb44b-8e47-0005-9060-f0cbe96fe089' // Lighthouse 1893 SC (APSL)
   },
   {
     name: 'Lighthouse Boys Club (Liga 1)',
     groupMeId: '109786182',
-    dbTeamId: '0b9e8271-fb51-446a-af39-0d2ab69f9448'
+    dbTeamId: 'b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a' // Lighthouse Boys Club (CASA)
   },
   {
     name: 'Lighthouse Old Timers Club (Liga 2)',
     groupMeId: '109786278',
-    dbTeamId: '1a7a9174-1093-472e-8dfb-d1275836075f'
+    dbTeamId: '01d71ee5-01d7-0002-1ee5-01d71ee501d7' // Lighthouse Old Timers Club (CASA)
   }
 ];
 
