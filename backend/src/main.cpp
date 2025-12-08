@@ -13,6 +13,7 @@
 #include "controllers/AuthController.h"
 #include "controllers/TeamController.h"
 #include "controllers/EventController.h"
+#include "controllers/DivisionController.h"
 
 class HttpServer {
 private:
@@ -25,6 +26,7 @@ private:
     std::shared_ptr<AuthController> auth_controller_;
     std::shared_ptr<TeamController> team_controller_;
     std::shared_ptr<EventController> event_controller_;
+    std::shared_ptr<DivisionController> division_controller_;
 
 public:
     HttpServer(int port = 3001) : port_(port) {
@@ -32,6 +34,7 @@ public:
         auth_controller_ = std::make_shared<AuthController>();
         team_controller_ = std::make_shared<TeamController>();
         event_controller_ = std::make_shared<EventController>();
+        division_controller_ = std::make_shared<DivisionController>();
     }
     
     bool initialize() {
@@ -80,6 +83,7 @@ private:
         router_.useController("/api/auth", auth_controller_);
         router_.useController("/api/teams", team_controller_);
         router_.useController("/api/events", event_controller_);
+        router_.useController("/api", division_controller_);
         
         // Add basic health check endpoint
         router_.get("/health", [](const Request& request) {
