@@ -27,7 +27,8 @@ set(SOURCES
     src/controllers/AuthController.cpp
     src/controllers/TeamController.cpp
     src/controllers/EventController.cpp
-    src/controllers/DivisionController.cpp)
+    src/controllers/DivisionController.cpp
+    src/controllers/AvailabilityController.cpp)
 
 # Create executable
 add_executable(server ${SOURCES})
