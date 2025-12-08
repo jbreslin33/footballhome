@@ -19,7 +19,7 @@ const client = new Client({
   port: 5432,
   database: 'footballhome',
   user: 'footballhome_user',
-  password: 'footballhome_password'
+  password: 'footballhome_pass'
 });
 
 const REPORTS_DIR = path.join(__dirname, '..', 'reports');
