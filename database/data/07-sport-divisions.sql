@@ -1,7 +1,7 @@
 -- ========================================
 -- SPORT DIVISIONS
 -- ========================================
--- Generated: 2025-12-07T22:36:26.265Z
+-- Generated: 2025-12-08T02:14:20.201Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -288,14 +288,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('226c892a-a28d-0004-ad0a-f9435e13f4e2', '226c892a-a28d-0003-ad0a-f9435e13f4e2', '550e8400-e29b-41d4-a716-446655440101', 'Christos FC Soccer', 'Christos FC Soccer', 'christos-fc-soccer', true)
+VALUES ('d8e57bbb-92dd-0004-95c3-76a8d99bb683', 'd8e57bbb-92dd-0003-95c3-76a8d99bb683', '550e8400-e29b-41d4-a716-446655440101', 'PFA EPSL Soccer', 'PFA EPSL Soccer', 'pfa-epsl-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('d8e57bbb-92dd-0004-95c3-76a8d99bb683', 'd8e57bbb-92dd-0003-95c3-76a8d99bb683', '550e8400-e29b-41d4-a716-446655440101', 'PFA EPSL Soccer', 'PFA EPSL Soccer', 'pfa-epsl-soccer', true)
+VALUES ('226c892a-a28d-0004-ad0a-f9435e13f4e2', '226c892a-a28d-0003-ad0a-f9435e13f4e2', '550e8400-e29b-41d4-a716-446655440101', 'Christos FC Soccer', 'Christos FC Soccer', 'christos-fc-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

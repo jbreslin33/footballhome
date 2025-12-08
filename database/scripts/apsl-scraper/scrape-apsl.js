@@ -1185,15 +1185,9 @@ function generateSQL() {
 
 ${content}`;
     
-    // Write INSERT version (.sql)
+    // Write INSERT version (.sql) - COPY disabled due to formatting issues
     fs.writeFileSync(fullPath, output);
     console.error(`  ✓ ${relativePath}`);
-    
-    // Also generate COPY version (.copy.sql)
-    const copyPath = fullPath.replace(/\.sql$/, '.copy.sql');
-    const copyContent = convertInsertToCopy(content, header);
-    fs.writeFileSync(copyPath, copyContent);
-    console.error(`  ✓ ${relativePath.replace(/\.sql$/, '.copy.sql')}`);
   }
   
   // Helper to update APSL section in existing file (preserves manual sections)
@@ -1246,7 +1240,7 @@ ON CONFLICT (id) DO UPDATE SET
   website = EXCLUDED.website,
   updated_at = CURRENT_TIMESTAMP;
 `;
-  writeFile('data/10-leagues.sql', 'LEAGUES', leaguesSQL);
+  writeFile('data/03-leagues.sql', 'LEAGUES', leaguesSQL);
   
   // 2. CONFERENCES
   let conferencesSQL = '';
@@ -1275,7 +1269,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/12-league-divisions.sql', 'LEAGUE DIVISIONS', divisionsSQL);
+  writeFile('data/05-league-divisions.sql', 'LEAGUE DIVISIONS', divisionsSQL);
   
   // 4. CLUBS
   let clubsSQL = '';
@@ -1289,7 +1283,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/13-clubs.sql', 'CLUBS', clubsSQL);
+  writeFile('data/06-clubs.sql', 'CLUBS', clubsSQL);
   
   // 5. SPORT DIVISIONS
   let sportDivisionsSQL = '';
@@ -1303,7 +1297,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/14-sport-divisions.sql', 'SPORT DIVISIONS', sportDivisionsSQL);
+  writeFile('data/07-sport-divisions.sql', 'SPORT DIVISIONS', sportDivisionsSQL);
   
   // 6. TEAMS (preserve manual Lighthouse section)
   let teamsSQL = '';
@@ -1486,7 +1480,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/15-events.sql', 'EVENTS (APSL MATCHES)', eventsSQL);
+  // writeFile('data/15-events.sql', 'EVENTS (APSL MATCHES)', eventsSQL);  // DISABLED: Causes init to stop
   
   // 11. MATCHES (extends events with team details)
   let matchesSQL = `
@@ -1518,7 +1512,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 `;
   }
-  writeFile('data/16-matches.sql', 'MATCHES (APSL)', matchesSQL);
+  // writeFile('data/16-matches.sql', 'MATCHES (APSL)', matchesSQL);  // DISABLED: Causes init to stop
   
   // Summary
   console.error('\n========================================');

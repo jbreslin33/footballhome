@@ -1,7 +1,7 @@
 -- ========================================
 -- CLUBS
 -- ========================================
--- Generated: 2025-12-07T22:36:26.263Z
+-- Generated: 2025-12-08T02:14:20.201Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -288,14 +288,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('226c892a-a28d-0003-ad0a-f9435e13f4e2', 'Christos FC', 'Christos FC', 'christos-fc', true)
+VALUES ('d8e57bbb-92dd-0003-95c3-76a8d99bb683', 'PFA EPSL', 'PFA EPSL', 'pfa-epsl', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('d8e57bbb-92dd-0003-95c3-76a8d99bb683', 'PFA EPSL', 'PFA EPSL', 'pfa-epsl', true)
+VALUES ('226c892a-a28d-0003-ad0a-f9435e13f4e2', 'Christos FC', 'Christos FC', 'christos-fc', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

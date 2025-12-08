@@ -14,12 +14,12 @@ class LoginScreen extends Screen {
         <form id="login-form">
           <div class="form-group">
             <label for="username" class="form-label">Email</label>
-            <input type="email" id="username" name="username" class="form-input" required autocomplete="username">
+            <input type="email" id="username" name="username" class="form-input" required autocomplete="username" value="jbreslin@footballhome.org">
           </div>
           
           <div class="form-group">
             <label for="password" class="form-label">Password</label>
-            <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
+            <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password" value="1893Soccer!">
           </div>
           
           <button type="submit" class="btn btn-primary w-full">Login</button>

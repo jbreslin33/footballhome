@@ -1,7 +1,7 @@
 -- ========================================
 -- TEAMS
 -- ========================================
--- Generated: 2025-12-07T22:36:26.270Z
+-- Generated: 2025-12-08T02:14:20.202Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -328,7 +328,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('226c892a-a28d-0005-ad0a-f9435e13f4e2', 'Christos FC', '226c892a-a28d-0004-ad0a-f9435e13f4e2', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/christos-fc.png')
+VALUES ('d8e57bbb-92dd-0005-95c3-76a8d99bb683', 'PFA EPSL', 'd8e57bbb-92dd-0004-95c3-76a8d99bb683', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/pfa-epsl.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -336,7 +336,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('d8e57bbb-92dd-0005-95c3-76a8d99bb683', 'PFA EPSL', 'd8e57bbb-92dd-0004-95c3-76a8d99bb683', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/pfa-epsl.png')
+VALUES ('226c892a-a28d-0005-ad0a-f9435e13f4e2', 'Christos FC', '226c892a-a28d-0004-ad0a-f9435e13f4e2', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/christos-fc.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
