@@ -14,6 +14,11 @@ void DivisionController::registerRoutes(Router& router, const std::string& prefi
     router.get(prefix + "/divisions/:divisionId/players", [this](const Request& request) {
         return this->handleGetDivisionPlayers(request);
     });
+
+    // Update division player
+    router.put(prefix + "/divisions/:divisionId/players/:playerId", [this](const Request& request) {
+        return this->handleUpdateDivisionPlayer(request);
+    });
 }
 
 Response DivisionController::handleGetDivisionPlayers(const Request& request) {
@@ -136,6 +141,71 @@ std::string DivisionController::extractDivisionIdFromPath(const std::string& pat
         return matches[1].str();
     }
     return "";
+}
+
+std::string DivisionController::extractPlayerIdFromPath(const std::string& path) {
+    // Match UUID pattern: /players/{uuid}
+    std::regex pattern("/players/([a-f0-9-]{36})");
+    std::smatch matches;
+    if (std::regex_search(path, matches, pattern) && matches.size() > 1) {
+        return matches[1].str();
+    }
+    return "";
+}
+
+Response DivisionController::handleUpdateDivisionPlayer(const Request& request) {
+    try {
+        std::string divisionId = extractDivisionIdFromPath(request.getPath());
+        std::string playerId = extractPlayerIdFromPath(request.getPath());
+        
+        if (divisionId.empty() || playerId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid division ID or player ID"));
+        }
+        
+        std::string body = request.getBody();
+        
+        // Parse fields
+        std::string firstName, lastName, status, regNumber;
+        
+        std::regex fn_regex(R"rx("firstName"\s*:\s*"([^"]+)")rx");
+        std::smatch fn_match;
+        if (std::regex_search(body, fn_match, fn_regex)) firstName = fn_match[1].str();
+        
+        std::regex ln_regex(R"rx("lastName"\s*:\s*"([^"]+)")rx");
+        std::smatch ln_match;
+        if (std::regex_search(body, ln_match, ln_regex)) lastName = ln_match[1].str();
+        
+        std::regex st_regex(R"rx("status"\s*:\s*"([^"]+)")rx");
+        std::smatch st_match;
+        if (std::regex_search(body, st_match, st_regex)) status = st_match[1].str();
+        
+        std::regex rn_regex(R"rx("registrationNumber"\s*:\s*"([^"]+)")rx");
+        std::smatch rn_match;
+        if (std::regex_search(body, rn_match, rn_regex)) regNumber = rn_match[1].str();
+        
+        // Update User (Name)
+        if (!firstName.empty() && !lastName.empty()) {
+            std::string sql = "UPDATE users SET first_name = $1, last_name = $2, updated_at = NOW() WHERE id = $3";
+            db_->query(sql, {firstName, lastName, playerId});
+        }
+        
+        // Update Division Player (Status, Reg Number)
+        if (!status.empty()) {
+            std::string sql = "UPDATE division_players SET status = $1, updated_at = NOW() WHERE division_id = $2 AND player_id = $3";
+            db_->query(sql, {status, divisionId, playerId});
+        }
+        
+        if (!regNumber.empty()) {
+             std::string sql = "UPDATE division_players SET registration_number = $1, updated_at = NOW() WHERE division_id = $2 AND player_id = $3";
+            db_->query(sql, {regNumber, divisionId, playerId});
+        }
+        
+        return Response(HttpStatus::OK, createJSONResponse(true, "Player updated successfully"));
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error in handleUpdateDivisionPlayer: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Database error: ") + e.what()));
+    }
 }
 
 std::string DivisionController::createJSONResponse(bool success, const std::string& message, const std::string& data) {
