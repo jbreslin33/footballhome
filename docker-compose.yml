@@ -85,6 +85,9 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
+    volumes:
+      # Mount frontend files for live development (no rebuild needed)
+      - ./frontend:/usr/share/nginx/html:ro
     networks:
       - footballhome_network
     depends_on:
