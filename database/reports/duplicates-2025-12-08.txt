@@ -1,0 +1,260 @@
+========================================
+DATA QUALITY REPORT
+Generated: 2025-12-08T13:22:49.420Z
+========================================
+========================================
+SUMMARY
+========================================
+
+Total Users: 1948
+External Identities: 145
+Active Teams: 55
+Active Roster Entries: 2069
+Data Providers: 2
+
+External Identity Breakdown:
+  groupme: 86
+  casa: 59
+
+
+========================================
+DUPLICATE USER NAMES
+========================================
+
+Found 25 duplicate name(s):
+
+  Hassane Abdellaoui (2 times)
+    Sources: groupme, casa
+    User IDs: 30ce494f-868f-0006-f5a6-bb7294f48b55, 4e362fe4-c94a-4bb0-8d04-c71d911f34d3
+
+  Erwa Babiker (2 times)
+    Sources: manual, casa
+    User IDs: 52737162-6e42-0006-4a28-377d5fbdb22a, c8a38006-f598-4782-924d-1ff2dd8755c6
+
+  Victor Baidel (2 times)
+    Sources: casa, manual
+    User IDs: bdd1f7ea-a9bc-461e-b337-d6d748a670ef, 38a9c99e-c1b2-0006-f413-3b377a2f5e26
+
+  Oumar Barry (2 times)
+    Sources: casa, groupme
+    User IDs: cd8dddf7-ec47-44ec-8d34-c8a79c737c10, 3d97ea32-b214-0006-679a-d6489302db67
+
+  Aboubacar Bayo (2 times)
+    Sources: casa, groupme
+    User IDs: 05bea231-3b6a-493f-91f5-222873b68846, bc5ccf9c-ed6b-0006-aafc-ba7b0002a837
+
+  Logan Bersani (2 times)
+    Sources: casa, groupme
+    User IDs: aab7c4fe-fc9f-4604-9ce5-44f3cc5b6b71, f5dfe66e-8e08-0006-ff59-107bf2898b1a
+
+  James Breslin (2 times)
+    Sources: manual, casa
+    User IDs: 77d77471-1250-47e0-81ab-d4626595d63c, f37db8f2-d78a-4db3-9ec9-26e8142918a0
+
+  Luke Breslin (2 times)
+    Sources: casa, groupme
+    User IDs: 424d6fd4-93b0-484a-a874-7dfd3b6dc954, c56e0026-ce36-0006-a667-30493706f607
+
+  Kevin Davis (2 times)
+    Sources: manual, manual
+    User IDs: 5056c009-3e27-0006-bd36-a76da19227ad, b3652ce9-2860-0006-5640-e94c61724552
+
+  Abdoul Diallo (2 times)
+    Sources: casa, groupme
+    User IDs: b41cbd7e-03a1-400c-b2e3-24403055e77b, c0b8f774-97f0-0006-ad04-7c8af9350371
+
+  Abouya Gangue (2 times)
+    Sources: manual, casa
+    User IDs: ee690b3a-7840-0006-709a-c2bd3b274870, aad579fe-e591-437f-8e24-aeba93d642c8
+
+  Daniel Gonzalez (2 times)
+    Sources: manual, manual
+    User IDs: 67201bda-2955-0006-b71f-927618f5ae53, 0baccd7f-4b0a-0006-926d-dac754e8ffb6
+
+  John Gonzalez (2 times)
+    Sources: groupme, casa
+    User IDs: ce93b48a-1f6b-0006-e2c1-47799cfcfff5, 756f0f2d-075b-4506-b1ad-7fde37b3213d
+
+  Andy Hizdri (2 times)
+    Sources: casa, groupme
+    User IDs: 7bcb70cb-12d1-4603-beb6-3ea1748606b5, a0bcb0c0-a561-0006-6c6f-4cbe60070f91
+
+  Benjamin Jones (2 times)
+    Sources: manual, manual
+    User IDs: 55aa0a89-1333-0006-b9c3-e796842f5e4a, a26325bd-5481-0006-6b38-74140bd26764
+
+  Esnayder Josue (2 times)
+    Sources: groupme, casa
+    User IDs: 4d8fb2ee-241e-0006-98a8-9f87f7b4be5a, f3df623f-a070-4ff4-9a93-cc89b1aea66e
+
+  Majid Kawa (2 times)
+    Sources: manual, casa
+    User IDs: 70b36e4b-b5bd-0006-dd9c-f58dfcd5c239, b941c1cd-f3a0-4c3b-a5af-ad71362b6feb
+
+  Alexander Lara (2 times)
+    Sources: casa, groupme
+    User IDs: 43bc951f-706e-4a68-8079-8923ee1e49a5, 38e42fd0-2eb6-0006-fcc5-d4f0c871b852
+
+  Matt Leder (2 times)
+    Sources: manual, casa
+    User IDs: 22d21f30-49b6-0006-c153-13bcd11bd208, 4dcaf9f7-35f5-46ce-a69d-bc519ae42210
+
+  Sebastian Lopez (2 times)
+    Sources: manual, manual
+    User IDs: 270cc341-a114-0006-ec56-3a9fccb6a6bc, a77f656f-1780-0006-6237-8e4afac163fd
+
+  David Masi (2 times)
+    Sources: casa, groupme
+    User IDs: 9edc37f4-2eab-4f15-9998-5d0e58ec117c, d8d6f8fe-5812-0006-3abe-34da60c79cb6
+
+  Elmer Mendoza (2 times)
+    Sources: casa, manual
+    User IDs: 2953cdce-5f6a-42d8-9703-42392852e5b1, d1b23fe2-7c0b-0006-0827-31fca413a5d3
+
+  Babacar Ndiaye (2 times)
+    Sources: manual, casa
+    User IDs: 401bf4d5-8869-0006-947a-957f0b2ea1c9, fd293a98-b937-4532-adf8-d4ade83822b7
+
+  John Oladele (2 times)
+    Sources: casa, groupme
+    User IDs: f003deac-ebae-4e0d-8817-c8df2bd78c72, 2b59f3e5-efd7-0006-db76-62c2276703db
+
+  Jemirkel Ornaque (2 times)
+    Sources: groupme, casa
+    User IDs: f8cb832f-60ab-0006-4c2d-5eafd093e888, 1b72bfc8-a06a-462e-8b6f-4e887f2c5b37
+
+========================================
+CORRUPTED/INVALID NAMES
+========================================
+
+Found 14 corrupted name(s):
+
+  Manuel António Depina
+    Source: manual
+    User ID: ff2c7239-bf24-0006-f246-bb2a8f522ce8
+
+  Rocco D’Arcangelo
+    Source: manual
+    User ID: fac956dc-b3b0-0006-152c-eea9cd675ad5
+
+  Ruari Eamonn O’Rourke
+    Source: manual
+    User ID: 3b0d79af-38c8-0006-970a-2877cfc59131
+
+  Luís Felipe Silva
+    Source: manual
+    User ID: 6e02be28-fe46-0006-f2d2-378d8760f22e
+
+  Nicholas Fernández-Wolff
+    Source: manual
+    User ID: 80f07d6a-da37-0006-8270-8653355dc779
+
+  Majid Hamid⚽️
+    Source: groupme
+    User ID: b50cdb27-075e-4d20-b06c-b9ef1fa8d765
+
+  João Miranda
+    Source: manual
+    User ID: 02e633e0-a6f0-0006-2d5f-e6142c7d5ab0
+
+  Dylan Moreno🇨🇴
+    Source: groupme
+    User ID: 35d0d13e-d288-4882-a1b5-2ecf071e1278
+
+  Sebastian Nuñez
+    Source: manual
+    User ID: 121da025-6ba1-0006-3ac3-ab2bf02690e0
+
+  Stephen O’ Connell
+    Source: manual
+    User ID: a1d91af4-baf6-0006-21b8-e578411a9741
+
+  Jonatas Paulino da Silva Inácio
+    Source: manual
+    User ID: 1fcc7b93-56ab-0006-be90-7186bbe5b70e
+
+  Bility⚽️ Unknown
+    Source: groupme
+    User ID: 80e9b757-11cd-4696-b33f-fcdcde2a2234
+
+  MusaAbDelgadir⚽️⚽️ Unknown
+    Source: groupme
+    User ID: b0a32e41-efaf-4bf4-b83e-ab1888e1f021
+
+  Juan camilo Hernández
+    Source: manual
+    User ID: 80a6f9b6-f7fe-0006-0fa0-84a1e86ec589
+
+========================================
+DUPLICATE ROSTER ENTRIES
+========================================
+
+✓ No duplicate roster entries found
+
+========================================
+USERS WITHOUT EXTERNAL IDENTITIES
+========================================
+
+Found 20 user(s) without external identities (showing top 20):
+
+  Kesner (Jeff) Leon (DOB: unknown, Teams: 1)
+    User ID: 7b281ced-cfd9-0006-1869-fe06c0cc4d0e
+  Jose (Tony) Flores (DOB: unknown, Teams: 1)
+    User ID: fe568cfe-11cb-0006-3574-4e8e598c776e
+  Malcolm A Lewis (DOB: unknown, Teams: 1)
+    User ID: 37c885a2-0ab9-0006-b042-3436918a5912
+  Robert A Thomas (DOB: unknown, Teams: 1)
+    User ID: d69142ce-1550-0006-5cf7-b8a659857391
+  Olivier A. Momplaisir (DOB: unknown, Teams: 1)
+    User ID: e27e77a2-a2d8-0006-a353-bc685f147361
+  Keirol Aaron (DOB: unknown, Teams: 1)
+    User ID: 414f2572-fddf-0006-3a45-d6ee22d678c4
+  Mark Abbonizio (DOB: unknown, Teams: 1)
+    User ID: a9ba68f3-0f7f-0006-358d-fd63a7689123
+  Musa Abdelgadir (DOB: unknown, Teams: 1)
+    User ID: 01aca9b0-ae64-0006-e96d-7e69a00ffec4
+  Amar Abdelrazek (DOB: unknown, Teams: 1)
+    User ID: e7b6e3e7-4b6c-0006-c471-183c094b8b51
+  Mohamed Abdelrehman (DOB: unknown, Teams: 1)
+    User ID: ea38911e-019d-0006-81cf-bfc1c41cfcd0
+  Meysar Abdulkadir (DOB: unknown, Teams: 1)
+    User ID: 5f48257b-a7b5-0006-04ac-22c18c9e56b0
+  Adam Abdullahi (DOB: unknown, Teams: 1)
+    User ID: 5663ac0e-d6f3-0006-5a6b-7e4768d01481
+  Sergio Abelardy (DOB: unknown, Teams: 1)
+    User ID: ae04becd-a47b-0006-5a96-4c38531d03d4
+  Pablo Ablanedo Llaneza (DOB: unknown, Teams: 1)
+    User ID: ad95defb-0e84-0006-1f5d-01700a7f7d39
+  Geovany Acevedo (DOB: unknown, Teams: 1)
+    User ID: c6634ec4-3116-0006-97cb-10929f847d88
+  Hermanus Achterkamp (DOB: unknown, Teams: 1)
+    User ID: 301196cc-85f6-0006-46aa-3fdf9b6ca61f
+  Jonathan Adabi (DOB: unknown, Teams: 1)
+    User ID: 67c717f9-0e22-0006-a160-6f0b0af633ec
+  Matthais Adamek (DOB: unknown, Teams: 1)
+    User ID: 65464fd3-4a6e-0006-6f38-22d9d1881c9b
+  Eric Adamo (DOB: unknown, Teams: 1)
+    User ID: 9f528086-f1dc-0006-02d3-129c1a89f217
+  Zackeriah Aday-Nicholson (DOB: unknown, Teams: 1)
+    User ID: f15d6958-7484-0006-c037-657c85b1ae38
+
+========================================
+TEAMS WITH UNUSUAL ROSTER SIZES
+========================================
+
+Found 5 team(s) with unusual roster sizes:
+
+  Lighthouse 1893 SC: 117 players
+  Lighthouse Boys Club: 87 players
+  Lighthouse Old Timers Club: 77 players
+  Terminus FC: 58 players
+  NY Athletic Club: 52 players
+
+========================================
+NEXT STEPS
+========================================
+
+1. Review issues above
+2. Add fixes to database/data/ZZ-01-user-merges.sql
+3. Add corrections to database/data/ZZ-02-data-corrections.sql
+4. Rebuild: ./dev.sh --apsl --casa --groupme
