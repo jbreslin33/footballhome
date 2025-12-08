@@ -10,6 +10,9 @@ class App {
     this.screens = {
       login: new LoginScreen(this.navigation, this.auth),
       roleSelection: new RoleSelectionScreen(this.navigation, this.auth),
+      divisionMenu: new DivisionMenuScreen(this.navigation, this.auth),
+      divisionManagement: new DivisionManagementScreen(this.navigation, this.auth),
+      divisionRoster: new DivisionRosterScreen(this.navigation, this.auth),
       teamSelection: new TeamSelectionScreen(this.navigation, this.auth),
       teamDashboard: new TeamDashboardScreen(this.navigation, this.auth),
       rosterManagement: new RosterManagementScreen(this.navigation, this.auth),
@@ -33,6 +36,9 @@ class App {
     // Register all screens with the manager
     this.screenManager.register('login', this.screens.login);
     this.screenManager.register('role-selection', this.screens.roleSelection);
+    this.screenManager.register('division-menu', this.screens.divisionMenu);
+    this.screenManager.register('division-management', this.screens.divisionManagement);
+    this.screenManager.register('division-roster', this.screens.divisionRoster);
     this.screenManager.register('team-selection', this.screens.teamSelection);
     this.screenManager.register('team-dashboard', this.screens.teamDashboard);
     this.screenManager.register('roster-management', this.screens.rosterManagement);
