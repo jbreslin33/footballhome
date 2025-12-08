@@ -1,6 +1,6 @@
 ========================================
 DATA QUALITY REPORT
-Generated: 2025-12-08T19:10:10.883Z
+Generated: 2025-12-08T21:25:49.011Z
 ========================================
 ========================================
 SUMMARY
@@ -25,35 +25,35 @@ Found 25 duplicate name(s):
 
   Hassane Abdellaoui (2 times)
     Sources: groupme, casa
-    User IDs: 30ce494f-868f-0006-f5a6-bb7294f48b55, b3252535-a8cf-400d-8382-37fb5d381fe2
+    User IDs: 30ce494f-868f-0006-f5a6-bb7294f48b55, fb0c1c28-c9a0-4eea-bb4e-708ebb52514c
 
   Erwa Babiker (2 times)
     Sources: manual, casa
-    User IDs: 52737162-6e42-0006-4a28-377d5fbdb22a, 361ffdbe-89d6-4564-9db3-0af871035f28
+    User IDs: 52737162-6e42-0006-4a28-377d5fbdb22a, 9631d126-f625-476d-baf7-45ac27553c47
 
   Victor Baidel (2 times)
     Sources: casa, manual
-    User IDs: abd40611-4c39-4355-889e-d4be698f0e31, 38a9c99e-c1b2-0006-f413-3b377a2f5e26
+    User IDs: deeee325-d123-42b3-990d-631a8fc3ba23, 38a9c99e-c1b2-0006-f413-3b377a2f5e26
 
   Oumar Barry (2 times)
     Sources: casa, groupme
-    User IDs: 3768e19d-1d8b-47f5-af81-9a3b6e669a9c, 3d97ea32-b214-0006-679a-d6489302db67
+    User IDs: 41379df7-f2d9-4901-8bcc-9569dc434bb5, 3d97ea32-b214-0006-679a-d6489302db67
 
   Aboubacar Bayo (2 times)
     Sources: casa, groupme
-    User IDs: a678d3ff-ea0f-4040-a1f4-97e191a8dc62, bc5ccf9c-ed6b-0006-aafc-ba7b0002a837
+    User IDs: 6792ef4f-1a78-4ece-8922-f1fdcc13d617, bc5ccf9c-ed6b-0006-aafc-ba7b0002a837
 
   Logan Bersani (2 times)
     Sources: casa, groupme
-    User IDs: 4edf248e-63c2-4624-9bb0-bb1667e66dda, f5dfe66e-8e08-0006-ff59-107bf2898b1a
+    User IDs: b2347208-9f07-4cb0-bbb6-1890092c42e8, f5dfe66e-8e08-0006-ff59-107bf2898b1a
 
   James Breslin (2 times)
     Sources: manual, casa
-    User IDs: 77d77471-1250-47e0-81ab-d4626595d63c, 2f9e8810-d018-4c0a-8a16-3351730efe28
+    User IDs: 77d77471-1250-47e0-81ab-d4626595d63c, 3524419a-8874-4691-a7eb-8bec90eb137e
 
   Luke Breslin (2 times)
     Sources: casa, groupme
-    User IDs: b47c47ed-607e-48c2-93c5-548810f11b04, c56e0026-ce36-0006-a667-30493706f607
+    User IDs: 37a66fde-8f7d-4111-88c2-036dffdbaa16, c56e0026-ce36-0006-a667-30493706f607
 
   Kevin Davis (2 times)
     Sources: manual, manual
@@ -61,11 +61,11 @@ Found 25 duplicate name(s):
 
   Abdoul Diallo (2 times)
     Sources: casa, groupme
-    User IDs: 40d5e2b1-b6c6-464c-8b5e-a51e15e280f3, c0b8f774-97f0-0006-ad04-7c8af9350371
+    User IDs: 2eecf4e5-613f-4828-b42e-dae0fd8dca15, c0b8f774-97f0-0006-ad04-7c8af9350371
 
   Abouya Gangue (2 times)
     Sources: manual, casa
-    User IDs: ee690b3a-7840-0006-709a-c2bd3b274870, 03ec4038-011a-488d-843b-d27826a7e59a
+    User IDs: ee690b3a-7840-0006-709a-c2bd3b274870, 843314e1-c135-431c-b56b-ec86203426dc
 
   Daniel Gonzalez (2 times)
     Sources: manual, manual
@@ -73,11 +73,11 @@ Found 25 duplicate name(s):
 
   John Gonzalez (2 times)
     Sources: groupme, casa
-    User IDs: ce93b48a-1f6b-0006-e2c1-47799cfcfff5, 520c1a7a-de3c-40e5-b877-fee80eba3783
+    User IDs: ce93b48a-1f6b-0006-e2c1-47799cfcfff5, 1370225b-67b6-4f05-9c20-deec55312f97
 
   Andy Hizdri (2 times)
     Sources: casa, groupme
-    User IDs: cd0b6b19-8d1f-400f-a2b5-362ecbd3c333, a0bcb0c0-a561-0006-6c6f-4cbe60070f91
+    User IDs: f84c7cf9-3aea-4fab-bac1-a605ccacfc53, a0bcb0c0-a561-0006-6c6f-4cbe60070f91
 
   Benjamin Jones (2 times)
     Sources: manual, manual
@@ -85,19 +85,19 @@ Found 25 duplicate name(s):
 
   Esnayder Josue (2 times)
     Sources: groupme, casa
-    User IDs: 4d8fb2ee-241e-0006-98a8-9f87f7b4be5a, 776baf42-fb40-47e1-bab4-e50857ad098f
+    User IDs: 4d8fb2ee-241e-0006-98a8-9f87f7b4be5a, 0fe73e80-ac22-409a-ada5-66ff1ccd3eea
 
   Majid Kawa (2 times)
     Sources: manual, casa
-    User IDs: 70b36e4b-b5bd-0006-dd9c-f58dfcd5c239, e2febe2d-b74b-4dff-a014-a6145cd99724
+    User IDs: 70b36e4b-b5bd-0006-dd9c-f58dfcd5c239, 37ea7881-0bb1-4b22-b49a-2a8333e2cdbb
 
   Alexander Lara (2 times)
     Sources: casa, groupme
-    User IDs: 45f28ee6-2a0c-4684-bc28-0f6b88989530, 38e42fd0-2eb6-0006-fcc5-d4f0c871b852
+    User IDs: 482885be-f692-4fa3-be25-17f870c290a5, 38e42fd0-2eb6-0006-fcc5-d4f0c871b852
 
   Matt Leder (2 times)
     Sources: manual, casa
-    User IDs: 22d21f30-49b6-0006-c153-13bcd11bd208, 242ee666-fa35-49b5-81fa-56200c25ea90
+    User IDs: 22d21f30-49b6-0006-c153-13bcd11bd208, 75fa08f5-385c-4146-9024-593817529426
 
   Sebastian Lopez (2 times)
     Sources: manual, manual
@@ -105,23 +105,23 @@ Found 25 duplicate name(s):
 
   David Masi (2 times)
     Sources: casa, groupme
-    User IDs: cf03ff66-3426-4f5b-85f9-15f0b15f4412, d8d6f8fe-5812-0006-3abe-34da60c79cb6
+    User IDs: 53212e4a-f68b-4a42-8464-ef6159d7c7b2, d8d6f8fe-5812-0006-3abe-34da60c79cb6
 
   Elmer Mendoza (2 times)
     Sources: casa, manual
-    User IDs: c2246275-88d7-404e-9921-783de74d1db0, d1b23fe2-7c0b-0006-0827-31fca413a5d3
+    User IDs: 5c22612f-c054-4101-b85e-7be5403e551c, d1b23fe2-7c0b-0006-0827-31fca413a5d3
 
   Babacar Ndiaye (2 times)
     Sources: manual, casa
-    User IDs: 401bf4d5-8869-0006-947a-957f0b2ea1c9, 492509c2-fad0-4f79-8e75-6606343b2264
+    User IDs: 401bf4d5-8869-0006-947a-957f0b2ea1c9, 6ee18845-2c57-4385-a323-a500e5641504
 
   John Oladele (2 times)
     Sources: casa, groupme
-    User IDs: 689a8098-fd23-4467-8b39-848a4819e93a, 2b59f3e5-efd7-0006-db76-62c2276703db
+    User IDs: 3eeeac3f-c4e9-4e82-b1cf-6966f919bf1e, 2b59f3e5-efd7-0006-db76-62c2276703db
 
   Jemirkel Ornaque (2 times)
     Sources: groupme, casa
-    User IDs: f8cb832f-60ab-0006-4c2d-5eafd093e888, 5470ec87-3559-4a72-9284-7f26f4512cec
+    User IDs: f8cb832f-60ab-0006-4c2d-5eafd093e888, 9de23a35-b7a5-464e-95a4-75a320fd9de0
 
 ========================================
 CORRUPTED/INVALID NAMES
@@ -151,7 +151,7 @@ Found 14 corrupted name(s):
 
   Majid Hamid⚽️
     Source: groupme
-    User ID: 939bd6fd-5084-4ea0-9a38-860262c685c9
+    User ID: e7f82587-cfe5-442f-944b-c693e03f98cf
 
   João Miranda
     Source: manual
@@ -159,7 +159,7 @@ Found 14 corrupted name(s):
 
   Dylan Moreno🇨🇴
     Source: groupme
-    User ID: 5e19e98c-a9b4-40f4-b094-90324977e365
+    User ID: a7070916-ecd7-4117-adbb-5a19665565f6
 
   Sebastian Nuñez
     Source: manual
@@ -175,11 +175,11 @@ Found 14 corrupted name(s):
 
   Bility⚽️ Unknown
     Source: groupme
-    User ID: 60e0705a-f294-4213-abbf-895f830b570a
+    User ID: 8f9ff9c3-6e37-4be0-850a-a2ebf14e6023
 
   MusaAbDelgadir⚽️⚽️ Unknown
     Source: groupme
-    User ID: 1c1f5d68-2b59-4a8d-a0c3-bead9d5b6c21
+    User ID: 5337761b-0e75-4d02-8a03-beb6a0e8ac3c
 
   Juan camilo Hernández
     Source: manual
