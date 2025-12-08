@@ -292,7 +292,8 @@ std::string Team::getRosterStatuses() {
 
 bool Team::updateRosterMember(const std::string& team_id, const std::string& player_id,
                               const std::string& jersey_number, bool is_captain, bool is_vice_captain,
-                              const std::string& roster_status_id) {
+                              const std::string& roster_status_id,
+                              const std::string& first_name, const std::string& last_name) {
     try {
         // If setting this player as captain, first unset any existing captain
         if (is_captain) {
@@ -338,6 +339,13 @@ bool Team::updateRosterMember(const std::string& team_id, const std::string& pla
         std::cout << std::endl;
         
         executeQuery(sql_str, params);
+
+        // Update user name if provided
+        if (!first_name.empty() && !last_name.empty()) {
+            std::string user_sql = "UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3";
+            executeQuery(user_sql, {first_name, last_name, player_id});
+            std::cout << "✅ Updated user name: " << first_name << " " << last_name << std::endl;
+        }
         
         std::cout << "✅ Updated roster member: " << player_id << std::endl;
         return true;

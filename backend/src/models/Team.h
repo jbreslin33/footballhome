@@ -23,7 +23,8 @@ public:
     std::string getRosterStatuses();
     bool updateRosterMember(const std::string& team_id, const std::string& player_id, 
                             const std::string& jersey_number, bool is_captain, bool is_vice_captain,
-                            const std::string& roster_status_id = "");
+                            const std::string& roster_status_id = "",
+                            const std::string& first_name = "", const std::string& last_name = "");
     bool removeRosterMember(const std::string& team_id, const std::string& player_id);
     bool loadByUuid(const std::string& uuid);
     

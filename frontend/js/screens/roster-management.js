@@ -249,9 +249,31 @@ class RosterManagementScreen extends Screen {
         <p style="margin-bottom: var(--space-4); color: var(--color-text-secondary);">${player.name}</p>
         
         <div style="margin-bottom: var(--space-3);">
+          <label style="display: block; margin-bottom: var(--space-1); font-weight: bold;">First Name</label>
+          <input type="text" id="edit-first-name" value="${player.name.split(' ')[0] || ''}" 
+                 style="width: 100%; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: 4px; font-size: 1rem;">
+        </div>
+
+        <div style="margin-bottom: var(--space-3);">
+          <label style="display: block; margin-bottom: var(--space-1); font-weight: bold;">Last Name</label>
+          <input type="text" id="edit-last-name" value="${player.name.split(' ').slice(1).join(' ') || ''}" 
+                 style="width: 100%; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: 4px; font-size: 1rem;">
+        </div>
+
+        <div style="margin-bottom: var(--space-3);">
           <label style="display: block; margin-bottom: var(--space-1); font-weight: bold;">Jersey Number</label>
           <input type="number" id="edit-jersey" value="${player.jerseyNumber || ''}" min="1" max="99" 
                  style="width: 100%; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: 4px; font-size: 1rem;">
+        </div>
+        
+        <div style="margin-bottom: var(--space-3);">
+          <label style="display: block; margin-bottom: var(--space-1); font-weight: bold;">Status</label>
+          <select id="edit-status" style="width: 100%; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: 4px; font-size: 1rem;">
+            <option value="1" ${player.rosterStatusId === 1 ? 'selected' : ''}>Active Player</option>
+            <option value="2" ${player.rosterStatusId === 2 ? 'selected' : ''}>Inactive</option>
+            <option value="3" ${player.rosterStatusId === 3 ? 'selected' : ''}>Injured</option>
+            <option value="4" ${player.rosterStatusId === 4 ? 'selected' : ''}>Away</option>
+          </select>
         </div>
         
         <div style="margin-bottom: var(--space-3);">
@@ -277,8 +299,8 @@ class RosterManagementScreen extends Screen {
     
     document.body.appendChild(modal);
     
-    // Focus jersey input
-    modal.querySelector('#edit-jersey').focus();
+    // Focus first name input
+    modal.querySelector('#edit-first-name').focus();
     
     // Event handlers
     modal.querySelector('#edit-cancel').addEventListener('click', () => {
@@ -286,7 +308,10 @@ class RosterManagementScreen extends Screen {
     });
     
     modal.querySelector('#edit-save').addEventListener('click', async () => {
+      const firstName = modal.querySelector('#edit-first-name').value;
+      const lastName = modal.querySelector('#edit-last-name').value;
       const jerseyNumber = modal.querySelector('#edit-jersey').value;
+      const rosterStatusId = modal.querySelector('#edit-status').value;
       const isCaptain = modal.querySelector('#edit-captain').checked;
       const isViceCaptain = modal.querySelector('#edit-vice-captain').checked;
       
@@ -306,7 +331,10 @@ class RosterManagementScreen extends Screen {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           },
           body: JSON.stringify({
+            firstName: firstName,
+            lastName: lastName,
             jerseyNumber: jerseyNumber ? parseInt(jerseyNumber) : null,
+            rosterStatusId: rosterStatusId,
             isCaptain: isCaptain,
             isViceCaptain: isViceCaptain
           })

@@ -163,10 +163,27 @@ Response TeamController::handleUpdateRosterMember(const Request& request) {
         if (std::regex_search(body, vc_match, vc_regex)) {
             is_vice_captain = (vc_match[1].str() == "true");
         }
+
+        // Parse firstName
+        std::string first_name = "";
+        std::regex first_name_regex(R"rx("firstName"\s*:\s*"([^"]+)")rx");
+        std::smatch first_name_match;
+        if (std::regex_search(body, first_name_match, first_name_regex)) {
+            first_name = first_name_match[1].str();
+        }
+
+        // Parse lastName
+        std::string last_name = "";
+        std::regex last_name_regex(R"rx("lastName"\s*:\s*"([^"]+)")rx");
+        std::smatch last_name_match;
+        if (std::regex_search(body, last_name_match, last_name_regex)) {
+            last_name = last_name_match[1].str();
+        }
         
         // Update the roster entry
         bool success = team_model_->updateRosterMember(team_id, player_id, jersey_number, 
-                                                        is_captain, is_vice_captain, roster_status_id);
+                                                        is_captain, is_vice_captain, roster_status_id,
+                                                        first_name, last_name);
         
         if (success) {
             std::string json = createJSONResponse(true, "Roster member updated successfully");
