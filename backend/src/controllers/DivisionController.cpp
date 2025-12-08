@@ -77,9 +77,9 @@ Response DivisionController::handleGetDivisionPlayers(const Request& request) {
             first = false;
             
             playersJson << "{";
-            playersJson << "\"id\":" << row["id"].as<int>() << ",";
-            playersJson << "\"player_id\":" << row["player_id"].as<int>() << ",";
-            playersJson << "\"division_id\":" << row["division_id"].as<int>() << ",";
+            playersJson << "\"id\":\"" << row["id"].c_str() << "\",";
+            playersJson << "\"player_id\":\"" << row["player_id"].c_str() << "\",";
+            playersJson << "\"division_id\":\"" << row["division_id"].c_str() << "\",";
             playersJson << "\"status\":\"" << row["status"].c_str() << "\",";
             
             if (!row["registration_number"].is_null()) {
@@ -129,7 +129,8 @@ Response DivisionController::handleGetDivisionPlayers(const Request& request) {
 }
 
 std::string DivisionController::extractDivisionIdFromPath(const std::string& path) {
-    std::regex pattern("/divisions/(\\d+)");
+    // Match UUID pattern: /divisions/{uuid}
+    std::regex pattern("/divisions/([a-f0-9-]{36})");
     std::smatch matches;
     if (std::regex_search(path, matches, pattern) && matches.size() > 1) {
         return matches[1].str();
