@@ -14,7 +14,7 @@ class LoginScreen extends Screen {
         <form id="login-form">
           <div class="form-group">
             <label for="username" class="form-label">Email</label>
-            <input type="email" id="username" name="username" class="form-input" required autocomplete="username" value="jbreslin@footballhome.org">
+            <input type="email" id="username" name="username" class="form-input" required autocomplete="username" value="soccer@lighthouse1893.org">
           </div>
           
           <div class="form-group">
