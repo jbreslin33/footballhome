@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYER USERS
 -- ========================================
--- Generated: 2025-12-08T02:14:20.213Z
+-- Generated: 2025-12-08T17:05:28.179Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -938,6 +938,63 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 -- ========================================
+-- Central Park Rangers FC USERS
+-- ========================================
+INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
+VALUES
+  ('6400a53a-c0b1-0006-c2c1-f06107272338', 'Abdul', 'Karim Bah', '/images/players/headshots/6400a53a-c0b1-0006-c2c1-f06107272338.png', true),
+  ('4321140e-41f3-0006-2016-23c06cc59555', 'Ibrahima', 'Bah', '/images/players/headshots/4321140e-41f3-0006-2016-23c06cc59555.png', true),
+  ('8ce5236a-2665-0006-3ac1-a727e3ea8299', 'Matthew', 'Baringer', '/images/players/headshots/8ce5236a-2665-0006-3ac1-a727e3ea8299.png', true),
+  ('bdf66c42-99b7-0006-16bd-e883a6fa027e', 'Cesar', 'Buitrago', '/images/players/headshots/bdf66c42-99b7-0006-16bd-e883a6fa027e.png', true),
+  ('10482a67-b98b-0006-9b66-46c6956db769', 'Saul', 'Cardozo', '/images/players/headshots/10482a67-b98b-0006-9b66-46c6956db769.png', true),
+  ('ebf5c86e-f594-0006-ca66-af82c13adc03', 'Elhadj', 'Diallo', '/images/players/headshots/ebf5c86e-f594-0006-ca66-af82c13adc03.png', true),
+  ('299ea506-ab3f-0006-079e-bff363d76130', 'Youssouf', 'Diallo', '/images/players/headshots/299ea506-ab3f-0006-079e-bff363d76130.png', true),
+  ('4809998f-c160-0006-eadb-62d3159b9b84', 'Ighoghoe', 'Erediauwa', '/images/players/headshots/4809998f-c160-0006-eadb-62d3159b9b84.png', true),
+  ('4d9ea9ee-83b5-0006-8ddd-57830bd9de9c', 'Vincent', 'Galia', '/images/players/headshots/4d9ea9ee-83b5-0006-8ddd-57830bd9de9c.png', true),
+  ('97caf7ea-0c49-0006-48fb-474ee9b98fcf', 'Luis', 'Granados', '/images/players/headshots/97caf7ea-0c49-0006-48fb-474ee9b98fcf.png', true),
+  ('0d6325f7-952e-0006-a692-5239c5d09c23', 'Radouane', 'Guissi', '/images/players/headshots/0d6325f7-952e-0006-a692-5239c5d09c23.png', true),
+  ('59634929-83ef-0006-b2ee-558c0e43e7cd', 'Joseph', 'Kalilwa', '/images/players/headshots/59634929-83ef-0006-b2ee-558c0e43e7cd.png', true),
+  ('4263e408-4561-0006-a2d8-a906585e185c', 'Nicholas', 'King', '/images/players/headshots/4263e408-4561-0006-a2d8-a906585e185c.png', true),
+  ('1bbf283e-cdb6-0006-9829-8c556021cf5d', 'Jonathan', 'Lima', '/images/players/headshots/1bbf283e-cdb6-0006-9829-8c556021cf5d.png', true),
+  ('7d6d06ee-6694-0006-521c-6497d921ea56', 'Anyolo', 'Makatiani', '/images/players/headshots/7d6d06ee-6694-0006-521c-6497d921ea56.png', true),
+  ('e6c42fb3-bd7d-0006-7672-3d1915509a2e', 'Matthew', 'McDonnell', '/images/players/headshots/e6c42fb3-bd7d-0006-7672-3d1915509a2e.png', true),
+  ('19138c23-bd1a-0006-33bf-096185790ea3', 'Mohamad', 'Miri', '/images/players/headshots/19138c23-bd1a-0006-33bf-096185790ea3.png', true),
+  ('90e689e4-0c8a-0006-ea38-c85229492500', 'Eoghan', 'Morgan', '/images/players/headshots/90e689e4-0c8a-0006-ea38-c85229492500.png', true),
+  ('edf2fe1b-e561-0006-8856-a74938f2a735', 'Ezekiel', 'Omosanya', '/images/players/headshots/edf2fe1b-e561-0006-8856-a74938f2a735.png', true),
+  ('a0926711-47b9-0006-0b99-23e5c63844b6', 'Maynor', 'Palacios', '/images/players/headshots/a0926711-47b9-0006-0b99-23e5c63844b6.png', true),
+  ('1040a9c0-2d96-0006-72b9-a56a1ed8dd85', 'Justin', 'Peters', '/images/players/headshots/1040a9c0-2d96-0006-72b9-a56a1ed8dd85.png', true),
+  ('edcf9c94-9bf6-0006-62ec-cdfe9c2025dd', 'Alec', 'Pineda', '/images/players/headshots/edcf9c94-9bf6-0006-62ec-cdfe9c2025dd.png', true),
+  ('aacd35a9-423e-0006-6abd-b2ab45720773', 'Alejandro', 'Sanchez', '/images/players/headshots/aacd35a9-423e-0006-6abd-b2ab45720773.png', true),
+  ('1d8c2a48-325c-0006-fca1-96ba294a5d04', 'Jaidon', 'Selden', '/images/players/headshots/1d8c2a48-325c-0006-fca1-96ba294a5d04.png', true),
+  ('77314a44-b988-0006-9617-9e7a0e61fd66', 'James', 'Terpak', '/images/players/headshots/77314a44-b988-0006-9617-9e7a0e61fd66.png', true),
+  ('b5d17042-4464-0006-c762-ec4e66379275', 'Dominic', 'Tomety', '/images/players/headshots/b5d17042-4464-0006-c762-ec4e66379275.png', true),
+  ('913e8618-6262-0006-3674-3abdd9a89db4', 'Samuel', 'Urban', '/images/players/headshots/913e8618-6262-0006-3674-3abdd9a89db4.png', true),
+  ('f6ed8295-6ae4-0006-e301-49a4ef4f02fe', 'Christopher', 'Valentine', '/images/players/headshots/f6ed8295-6ae4-0006-e301-49a4ef4f02fe.png', true),
+  ('02071ec5-affd-0006-efc7-b35131388eb1', 'Marcial', 'Viveros', '/images/players/headshots/02071ec5-affd-0006-efc7-b35131388eb1.png', true),
+  ('6001a807-29e9-0006-7e2b-4e92d522ed9e', 'Timothy', 'Williams', '/images/players/headshots/6001a807-29e9-0006-7e2b-4e92d522ed9e.png', true),
+  ('0c2a8623-c3b7-0006-fbed-f2c04867e4a9', 'Weyimi', 'Agbeyegbe', '/images/players/headshots/0c2a8623-c3b7-0006-fbed-f2c04867e4a9.png', true),
+  ('f7d93c24-473a-0006-9a43-34971cec523a', 'Nicholas', 'Anderson', '/images/players/headshots/f7d93c24-473a-0006-9a43-34971cec523a.png', true),
+  ('bbd66182-b0af-0006-3499-7ed040eb3aca', 'Peter', 'Berry', '/images/players/headshots/bbd66182-b0af-0006-3499-7ed040eb3aca.png', true),
+  ('e6b295ec-3d53-0006-eaf4-0db3d7663e1e', 'Cameron', 'Bonfils', '/images/players/headshots/e6b295ec-3d53-0006-eaf4-0db3d7663e1e.png', true),
+  ('266b5c1f-ffac-0006-e203-ca3800df58f9', 'Theodore', 'Bushara', '/images/players/headshots/266b5c1f-ffac-0006-e203-ca3800df58f9.png', true),
+  ('874751e2-eda6-0006-9563-b52731fbd89e', 'Zachary', 'Gollin', '/images/players/headshots/874751e2-eda6-0006-9563-b52731fbd89e.png', true),
+  ('dac3dbb4-c206-0006-97b6-15e253b128e6', 'Arman', 'Karbassioon', '/images/players/headshots/dac3dbb4-c206-0006-97b6-15e253b128e6.png', true),
+  ('ca1d95af-79dc-0006-c41f-4240f243d1e0', 'Ben', 'Kogan', '/images/players/headshots/ca1d95af-79dc-0006-c41f-4240f243d1e0.png', true),
+  ('a7801a4e-8f4f-0006-f313-01f7fc81d0d0', 'Carlos', 'Mora', '/images/players/headshots/a7801a4e-8f4f-0006-f313-01f7fc81d0d0.png', true),
+  ('7fadfa95-3ec5-0006-b93d-b0842ac2fdc8', 'James', 'Rosiello', '/images/players/headshots/7fadfa95-3ec5-0006-b93d-b0842ac2fdc8.png', true),
+  ('d452a72e-511a-0006-0792-6d63151dd438', 'Al', 'Ameen Salako', '/images/players/headshots/d452a72e-511a-0006-0792-6d63151dd438.png', true),
+  ('8b16ca48-948f-0006-9963-6ecdbe9f4f8b', 'Anthony', 'Scimeca', '/images/players/headshots/8b16ca48-948f-0006-9963-6ecdbe9f4f8b.png', true),
+  ('f83444d3-3d7c-0006-774c-4e26e20c2a1d', 'Kellen', 'Sela', '/images/players/headshots/f83444d3-3d7c-0006-774c-4e26e20c2a1d.png', true),
+  ('52f84ecb-dbdc-0006-b743-97a47fa22a59', 'Bruno', 'Servisi', '/images/players/headshots/52f84ecb-dbdc-0006-b743-97a47fa22a59.png', true),
+  ('508b39c3-1168-0006-427d-fd04ab0e707f', 'Amaury', 'Van Bamten', '/images/players/headshots/508b39c3-1168-0006-427d-fd04ab0e707f.png', true),
+  ('64dcecf5-7b40-0006-13da-2d5717f2640b', 'Brendan', 'Zink', '/images/players/headshots/64dcecf5-7b40-0006-13da-2d5717f2640b.png', true)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
+  updated_at = CURRENT_TIMESTAMP;
+
+-- ========================================
 -- SC Vistula Garfield USERS
 -- ========================================
 INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
@@ -1059,63 +1116,6 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 -- ========================================
--- Central Park Rangers FC USERS
--- ========================================
-INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
-VALUES
-  ('6400a53a-c0b1-0006-c2c1-f06107272338', 'Abdul', 'Karim Bah', '/images/players/headshots/6400a53a-c0b1-0006-c2c1-f06107272338.png', true),
-  ('4321140e-41f3-0006-2016-23c06cc59555', 'Ibrahima', 'Bah', '/images/players/headshots/4321140e-41f3-0006-2016-23c06cc59555.png', true),
-  ('8ce5236a-2665-0006-3ac1-a727e3ea8299', 'Matthew', 'Baringer', '/images/players/headshots/8ce5236a-2665-0006-3ac1-a727e3ea8299.png', true),
-  ('bdf66c42-99b7-0006-16bd-e883a6fa027e', 'Cesar', 'Buitrago', '/images/players/headshots/bdf66c42-99b7-0006-16bd-e883a6fa027e.png', true),
-  ('10482a67-b98b-0006-9b66-46c6956db769', 'Saul', 'Cardozo', '/images/players/headshots/10482a67-b98b-0006-9b66-46c6956db769.png', true),
-  ('ebf5c86e-f594-0006-ca66-af82c13adc03', 'Elhadj', 'Diallo', '/images/players/headshots/ebf5c86e-f594-0006-ca66-af82c13adc03.png', true),
-  ('299ea506-ab3f-0006-079e-bff363d76130', 'Youssouf', 'Diallo', '/images/players/headshots/299ea506-ab3f-0006-079e-bff363d76130.png', true),
-  ('4809998f-c160-0006-eadb-62d3159b9b84', 'Ighoghoe', 'Erediauwa', '/images/players/headshots/4809998f-c160-0006-eadb-62d3159b9b84.png', true),
-  ('4d9ea9ee-83b5-0006-8ddd-57830bd9de9c', 'Vincent', 'Galia', '/images/players/headshots/4d9ea9ee-83b5-0006-8ddd-57830bd9de9c.png', true),
-  ('97caf7ea-0c49-0006-48fb-474ee9b98fcf', 'Luis', 'Granados', '/images/players/headshots/97caf7ea-0c49-0006-48fb-474ee9b98fcf.png', true),
-  ('0d6325f7-952e-0006-a692-5239c5d09c23', 'Radouane', 'Guissi', '/images/players/headshots/0d6325f7-952e-0006-a692-5239c5d09c23.png', true),
-  ('59634929-83ef-0006-b2ee-558c0e43e7cd', 'Joseph', 'Kalilwa', '/images/players/headshots/59634929-83ef-0006-b2ee-558c0e43e7cd.png', true),
-  ('4263e408-4561-0006-a2d8-a906585e185c', 'Nicholas', 'King', '/images/players/headshots/4263e408-4561-0006-a2d8-a906585e185c.png', true),
-  ('1bbf283e-cdb6-0006-9829-8c556021cf5d', 'Jonathan', 'Lima', '/images/players/headshots/1bbf283e-cdb6-0006-9829-8c556021cf5d.png', true),
-  ('7d6d06ee-6694-0006-521c-6497d921ea56', 'Anyolo', 'Makatiani', '/images/players/headshots/7d6d06ee-6694-0006-521c-6497d921ea56.png', true),
-  ('e6c42fb3-bd7d-0006-7672-3d1915509a2e', 'Matthew', 'McDonnell', '/images/players/headshots/e6c42fb3-bd7d-0006-7672-3d1915509a2e.png', true),
-  ('19138c23-bd1a-0006-33bf-096185790ea3', 'Mohamad', 'Miri', '/images/players/headshots/19138c23-bd1a-0006-33bf-096185790ea3.png', true),
-  ('90e689e4-0c8a-0006-ea38-c85229492500', 'Eoghan', 'Morgan', '/images/players/headshots/90e689e4-0c8a-0006-ea38-c85229492500.png', true),
-  ('edf2fe1b-e561-0006-8856-a74938f2a735', 'Ezekiel', 'Omosanya', '/images/players/headshots/edf2fe1b-e561-0006-8856-a74938f2a735.png', true),
-  ('a0926711-47b9-0006-0b99-23e5c63844b6', 'Maynor', 'Palacios', '/images/players/headshots/a0926711-47b9-0006-0b99-23e5c63844b6.png', true),
-  ('1040a9c0-2d96-0006-72b9-a56a1ed8dd85', 'Justin', 'Peters', '/images/players/headshots/1040a9c0-2d96-0006-72b9-a56a1ed8dd85.png', true),
-  ('edcf9c94-9bf6-0006-62ec-cdfe9c2025dd', 'Alec', 'Pineda', '/images/players/headshots/edcf9c94-9bf6-0006-62ec-cdfe9c2025dd.png', true),
-  ('aacd35a9-423e-0006-6abd-b2ab45720773', 'Alejandro', 'Sanchez', '/images/players/headshots/aacd35a9-423e-0006-6abd-b2ab45720773.png', true),
-  ('1d8c2a48-325c-0006-fca1-96ba294a5d04', 'Jaidon', 'Selden', '/images/players/headshots/1d8c2a48-325c-0006-fca1-96ba294a5d04.png', true),
-  ('77314a44-b988-0006-9617-9e7a0e61fd66', 'James', 'Terpak', '/images/players/headshots/77314a44-b988-0006-9617-9e7a0e61fd66.png', true),
-  ('b5d17042-4464-0006-c762-ec4e66379275', 'Dominic', 'Tomety', '/images/players/headshots/b5d17042-4464-0006-c762-ec4e66379275.png', true),
-  ('913e8618-6262-0006-3674-3abdd9a89db4', 'Samuel', 'Urban', '/images/players/headshots/913e8618-6262-0006-3674-3abdd9a89db4.png', true),
-  ('f6ed8295-6ae4-0006-e301-49a4ef4f02fe', 'Christopher', 'Valentine', '/images/players/headshots/f6ed8295-6ae4-0006-e301-49a4ef4f02fe.png', true),
-  ('02071ec5-affd-0006-efc7-b35131388eb1', 'Marcial', 'Viveros', '/images/players/headshots/02071ec5-affd-0006-efc7-b35131388eb1.png', true),
-  ('6001a807-29e9-0006-7e2b-4e92d522ed9e', 'Timothy', 'Williams', '/images/players/headshots/6001a807-29e9-0006-7e2b-4e92d522ed9e.png', true),
-  ('0c2a8623-c3b7-0006-fbed-f2c04867e4a9', 'Weyimi', 'Agbeyegbe', '/images/players/headshots/0c2a8623-c3b7-0006-fbed-f2c04867e4a9.png', true),
-  ('f7d93c24-473a-0006-9a43-34971cec523a', 'Nicholas', 'Anderson', '/images/players/headshots/f7d93c24-473a-0006-9a43-34971cec523a.png', true),
-  ('bbd66182-b0af-0006-3499-7ed040eb3aca', 'Peter', 'Berry', '/images/players/headshots/bbd66182-b0af-0006-3499-7ed040eb3aca.png', true),
-  ('e6b295ec-3d53-0006-eaf4-0db3d7663e1e', 'Cameron', 'Bonfils', '/images/players/headshots/e6b295ec-3d53-0006-eaf4-0db3d7663e1e.png', true),
-  ('266b5c1f-ffac-0006-e203-ca3800df58f9', 'Theodore', 'Bushara', '/images/players/headshots/266b5c1f-ffac-0006-e203-ca3800df58f9.png', true),
-  ('874751e2-eda6-0006-9563-b52731fbd89e', 'Zachary', 'Gollin', '/images/players/headshots/874751e2-eda6-0006-9563-b52731fbd89e.png', true),
-  ('dac3dbb4-c206-0006-97b6-15e253b128e6', 'Arman', 'Karbassioon', '/images/players/headshots/dac3dbb4-c206-0006-97b6-15e253b128e6.png', true),
-  ('ca1d95af-79dc-0006-c41f-4240f243d1e0', 'Ben', 'Kogan', '/images/players/headshots/ca1d95af-79dc-0006-c41f-4240f243d1e0.png', true),
-  ('a7801a4e-8f4f-0006-f313-01f7fc81d0d0', 'Carlos', 'Mora', '/images/players/headshots/a7801a4e-8f4f-0006-f313-01f7fc81d0d0.png', true),
-  ('7fadfa95-3ec5-0006-b93d-b0842ac2fdc8', 'James', 'Rosiello', '/images/players/headshots/7fadfa95-3ec5-0006-b93d-b0842ac2fdc8.png', true),
-  ('d452a72e-511a-0006-0792-6d63151dd438', 'Al', 'Ameen Salako', '/images/players/headshots/d452a72e-511a-0006-0792-6d63151dd438.png', true),
-  ('8b16ca48-948f-0006-9963-6ecdbe9f4f8b', 'Anthony', 'Scimeca', '/images/players/headshots/8b16ca48-948f-0006-9963-6ecdbe9f4f8b.png', true),
-  ('f83444d3-3d7c-0006-774c-4e26e20c2a1d', 'Kellen', 'Sela', '/images/players/headshots/f83444d3-3d7c-0006-774c-4e26e20c2a1d.png', true),
-  ('52f84ecb-dbdc-0006-b743-97a47fa22a59', 'Bruno', 'Servisi', '/images/players/headshots/52f84ecb-dbdc-0006-b743-97a47fa22a59.png', true),
-  ('508b39c3-1168-0006-427d-fd04ab0e707f', 'Amaury', 'Van Bamten', '/images/players/headshots/508b39c3-1168-0006-427d-fd04ab0e707f.png', true),
-  ('64dcecf5-7b40-0006-13da-2d5717f2640b', 'Brendan', 'Zink', '/images/players/headshots/64dcecf5-7b40-0006-13da-2d5717f2640b.png', true)
-ON CONFLICT (id) DO UPDATE SET
-  first_name = EXCLUDED.first_name,
-  last_name = EXCLUDED.last_name,
-  avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
-  updated_at = CURRENT_TIMESTAMP;
-
--- ========================================
 -- WC Predators USERS
 -- ========================================
 INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
@@ -1221,6 +1221,64 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 -- ========================================
+-- Oaklyn United FC USERS
+-- ========================================
+INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
+VALUES
+  ('71df8607-2764-0006-be4f-f62b9022a409', 'Osman', 'Barrie', '/images/players/headshots/71df8607-2764-0006-be4f-f62b9022a409.png', true),
+  ('5799be88-db80-0006-f9ef-3df307a698c3', 'Paul', 'Bechtelheimer', '/images/players/headshots/5799be88-db80-0006-f9ef-3df307a698c3.png', true),
+  ('cbd4f193-e8d8-0006-b980-4cce087170b4', 'Nathan', 'Biersbach', '/images/players/headshots/cbd4f193-e8d8-0006-b980-4cce087170b4.png', true),
+  ('78c995a8-6426-0006-330c-e738344e92fa', 'Brayden', 'Birnstiel', '/images/players/headshots/78c995a8-6426-0006-330c-e738344e92fa.png', true),
+  ('85f9b46e-9ec5-0006-998b-b595bfef6d83', 'Theo', 'Da Silva', '/images/players/headshots/85f9b46e-9ec5-0006-998b-b595bfef6d83.png', true),
+  ('35f70e2e-8c57-0006-5f5d-a7f450d84339', 'Kaelan', 'Debbage', '/images/players/headshots/35f70e2e-8c57-0006-5f5d-a7f450d84339.png', true),
+  ('d846eb32-8018-0006-f104-98587d54395d', 'Blake', 'Driehuis', '/images/players/headshots/d846eb32-8018-0006-f104-98587d54395d.png', true),
+  ('106939cb-a4c7-0006-03ac-8261cc90d806', 'Gavin', 'Faracchio', '/images/players/headshots/106939cb-a4c7-0006-03ac-8261cc90d806.png', true),
+  ('d39431ba-d80b-0006-a7d5-62fddc3a4727', 'Vincent', 'Guzzo', '/images/players/headshots/d39431ba-d80b-0006-a7d5-62fddc3a4727.png', true),
+  ('60a07d61-7b5e-0006-0b32-d3677eb2dcfc', 'Maxwell', 'Byrd Hawk', '/images/players/headshots/60a07d61-7b5e-0006-0b32-d3677eb2dcfc.png', true),
+  ('029f4f0c-02ac-0006-18e9-3c393b8d02d6', 'Austin', 'Johnson', '/images/players/headshots/029f4f0c-02ac-0006-18e9-3c393b8d02d6.png', true),
+  ('06afadb4-7733-0006-4d6d-191596b99910', 'Sincere', 'Kato', '/images/players/headshots/06afadb4-7733-0006-4d6d-191596b99910.png', true),
+  ('562059bc-79d0-0006-f3f2-b383e1e8ddf3', 'Muhammed', 'Ali Kol', '/images/players/headshots/562059bc-79d0-0006-f3f2-b383e1e8ddf3.png', true),
+  ('8ea1cdc4-0882-0006-5a0b-c3a308b287f2', 'Berlenz', 'Lumarque', '/images/players/headshots/8ea1cdc4-0882-0006-5a0b-c3a308b287f2.png', true),
+  ('0dfa7220-ee26-0006-829d-a9265ac259c3', 'Jason', 'Mancuso', '/images/players/headshots/0dfa7220-ee26-0006-829d-a9265ac259c3.png', true),
+  ('c22c0a10-052b-0006-ee1e-9ffac117ebea', 'Jade', 'Mesias', '/images/players/headshots/c22c0a10-052b-0006-ee1e-9ffac117ebea.png', true),
+  ('087614c9-1a73-0006-6752-2d671d4b0875', 'Tommy', 'Monaghan', '/images/players/headshots/087614c9-1a73-0006-6752-2d671d4b0875.png', true),
+  ('b7c66ebe-25a9-0006-9eaf-6715c42b61c2', 'Jeff', 'Morgan', '/images/players/headshots/b7c66ebe-25a9-0006-9eaf-6715c42b61c2.png', true),
+  ('03685128-c258-0006-7b3e-65e96d6cb14e', 'Jake', 'Mulinge', '/images/players/headshots/03685128-c258-0006-7b3e-65e96d6cb14e.png', true),
+  ('80b973f9-ae54-0006-2fab-9bf2c4583f2f', 'Joseph', 'Nguyen', '/images/players/headshots/80b973f9-ae54-0006-2fab-9bf2c4583f2f.png', true),
+  ('4628077e-71f7-0006-ca3d-a605d68ef562', 'Carter', 'Jack Norton', '/images/players/headshots/4628077e-71f7-0006-ca3d-a605d68ef562.png', true),
+  ('ae70b5a1-d1de-0006-48b1-ed3fd75f5c55', 'Matthew', 'Perrella', '/images/players/headshots/ae70b5a1-d1de-0006-48b1-ed3fd75f5c55.png', true),
+  ('33887c21-b9f2-0006-48cc-709e921e1141', 'Dylan', 'Pino', '/images/players/headshots/33887c21-b9f2-0006-48cc-709e921e1141.png', true),
+  ('31ce6bd2-40c1-0006-a3f0-0c57e0a14847', 'Samuel', 'Quaye', '/images/players/headshots/31ce6bd2-40c1-0006-a3f0-0c57e0a14847.png', true),
+  ('8a0a6f35-57d8-0006-ad2d-18b037714c72', 'Julito', 'Quintana', '/images/players/headshots/8a0a6f35-57d8-0006-ad2d-18b037714c72.png', true),
+  ('2c2c7d61-fde8-0006-1396-b9747a713457', 'Ethan', 'Romito', '/images/players/headshots/2c2c7d61-fde8-0006-1396-b9747a713457.png', true),
+  ('fdea7ec3-67b0-0006-2e92-7876591b7854', 'Ahmed', 'Saidi', '/images/players/headshots/fdea7ec3-67b0-0006-2e92-7876591b7854.png', true),
+  ('37805f1b-4f5a-0006-4490-ddfd2b9e4c74', 'Max', 'Schrader', '/images/players/headshots/37805f1b-4f5a-0006-4490-ddfd2b9e4c74.png', true),
+  ('d2509fe2-42ad-0006-bf78-24ba4885ea4c', 'Seth', 'Sidle', '/images/players/headshots/d2509fe2-42ad-0006-bf78-24ba4885ea4c.png', true),
+  ('85308641-904a-0006-265b-a8660dd49ced', 'Adam', 'Sternberger', '/images/players/headshots/85308641-904a-0006-265b-a8660dd49ced.png', true),
+  ('a02363ec-3315-0006-1d6e-e6943eee6ca5', 'Steven', 'Thompson', '/images/players/headshots/a02363ec-3315-0006-1d6e-e6943eee6ca5.png', true),
+  ('ee75d842-1ae6-0006-8c53-9d885fc74c26', 'Nico', 'Tramontana', '/images/players/headshots/ee75d842-1ae6-0006-8c53-9d885fc74c26.png', true),
+  ('431ef3ec-8889-0006-6e83-43fc844a16a3', 'John', 'Troiano', '/images/players/headshots/431ef3ec-8889-0006-6e83-43fc844a16a3.png', true),
+  ('32670b1a-3a0f-0006-b697-6cbdc80ba419', 'Noah', 'Blodget', '/images/players/headshots/32670b1a-3a0f-0006-b697-6cbdc80ba419.png', true),
+  ('70095c63-411d-0006-2f78-7aaae8d50f52', 'Aymery', 'Dago Dadie', '/images/players/headshots/70095c63-411d-0006-2f78-7aaae8d50f52.png', true),
+  ('1c6f3935-cb7c-0006-c8ac-8b8e98679203', 'Francesco', 'Fazzolari', '/images/players/headshots/1c6f3935-cb7c-0006-c8ac-8b8e98679203.png', true),
+  ('9d5dce99-7e66-0006-dcf4-6880c44244c1', 'Emin', 'Gunaydin', '/images/players/headshots/9d5dce99-7e66-0006-dcf4-6880c44244c1.png', true),
+  ('07f578ac-f462-0006-c49b-0d55f4461954', 'Rabah', 'Hameg', '/images/players/headshots/07f578ac-f462-0006-c49b-0d55f4461954.png', true),
+  ('54afd9f7-24cb-0006-63ff-ba2c3aaeb1a1', 'Amarghaan', 'Hasan', '/images/players/headshots/54afd9f7-24cb-0006-63ff-ba2c3aaeb1a1.png', true),
+  ('02cd6efc-7b96-0006-ca40-f23545453cb5', 'Anthony', 'Jenkins', '/images/players/headshots/02cd6efc-7b96-0006-ca40-f23545453cb5.png', true),
+  ('cba11569-a188-0006-23d1-4042202515a2', 'Alex', 'Lewis', '/images/players/headshots/cba11569-a188-0006-23d1-4042202515a2.png', true),
+  ('8fd618a2-11f9-0006-2185-cbd6708400e7', 'Lucien', 'Maslin', '/images/players/headshots/8fd618a2-11f9-0006-2185-cbd6708400e7.png', true),
+  ('5b5b0a37-666b-0006-681e-df64c0541f5d', 'Kevin', 'McCollick', '/images/players/headshots/5b5b0a37-666b-0006-681e-df64c0541f5d.png', true),
+  ('ee36a913-4506-0006-8fb1-25a7198f1db8', 'Matthew', 'Pastore', '/images/players/headshots/ee36a913-4506-0006-8fb1-25a7198f1db8.png', true),
+  ('2f2e2baa-d232-0006-c825-bbfa8314cd2a', 'Trinava', 'Roy', '/images/players/headshots/2f2e2baa-d232-0006-c825-bbfa8314cd2a.png', true),
+  ('f1fd3567-ef4f-0006-1529-4f842b97f6ec', 'Anthony', 'Sciotto', '/images/players/headshots/f1fd3567-ef4f-0006-1529-4f842b97f6ec.png', true),
+  ('9d86fae5-6620-0006-d19f-d6833d2a0027', 'Ethan', 'Spinnato', '/images/players/headshots/9d86fae5-6620-0006-d19f-d6833d2a0027.png', true)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
+  updated_at = CURRENT_TIMESTAMP;
+
+-- ========================================
 -- Real Central NJ Soccer USERS
 -- ========================================
 INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
@@ -1304,64 +1362,6 @@ VALUES
   ('287bd74a-b462-0006-448f-0174adcd134d', 'Andres', 'Velez', '/images/players/headshots/287bd74a-b462-0006-448f-0174adcd134d.png', true),
   ('30939ef1-3caf-0006-f5c3-842dc5a6597e', 'Seth', 'Walker', '/images/players/headshots/30939ef1-3caf-0006-f5c3-842dc5a6597e.png', true),
   ('7e36ec31-3ad0-0006-96c9-d37bd0f48623', 'John', 'Steven Warren', '/images/players/headshots/7e36ec31-3ad0-0006-96c9-d37bd0f48623.png', true)
-ON CONFLICT (id) DO UPDATE SET
-  first_name = EXCLUDED.first_name,
-  last_name = EXCLUDED.last_name,
-  avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
-  updated_at = CURRENT_TIMESTAMP;
-
--- ========================================
--- Oaklyn United FC USERS
--- ========================================
-INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
-VALUES
-  ('71df8607-2764-0006-be4f-f62b9022a409', 'Osman', 'Barrie', '/images/players/headshots/71df8607-2764-0006-be4f-f62b9022a409.png', true),
-  ('5799be88-db80-0006-f9ef-3df307a698c3', 'Paul', 'Bechtelheimer', '/images/players/headshots/5799be88-db80-0006-f9ef-3df307a698c3.png', true),
-  ('cbd4f193-e8d8-0006-b980-4cce087170b4', 'Nathan', 'Biersbach', '/images/players/headshots/cbd4f193-e8d8-0006-b980-4cce087170b4.png', true),
-  ('78c995a8-6426-0006-330c-e738344e92fa', 'Brayden', 'Birnstiel', '/images/players/headshots/78c995a8-6426-0006-330c-e738344e92fa.png', true),
-  ('85f9b46e-9ec5-0006-998b-b595bfef6d83', 'Theo', 'Da Silva', '/images/players/headshots/85f9b46e-9ec5-0006-998b-b595bfef6d83.png', true),
-  ('35f70e2e-8c57-0006-5f5d-a7f450d84339', 'Kaelan', 'Debbage', '/images/players/headshots/35f70e2e-8c57-0006-5f5d-a7f450d84339.png', true),
-  ('d846eb32-8018-0006-f104-98587d54395d', 'Blake', 'Driehuis', '/images/players/headshots/d846eb32-8018-0006-f104-98587d54395d.png', true),
-  ('106939cb-a4c7-0006-03ac-8261cc90d806', 'Gavin', 'Faracchio', '/images/players/headshots/106939cb-a4c7-0006-03ac-8261cc90d806.png', true),
-  ('d39431ba-d80b-0006-a7d5-62fddc3a4727', 'Vincent', 'Guzzo', '/images/players/headshots/d39431ba-d80b-0006-a7d5-62fddc3a4727.png', true),
-  ('60a07d61-7b5e-0006-0b32-d3677eb2dcfc', 'Maxwell', 'Byrd Hawk', '/images/players/headshots/60a07d61-7b5e-0006-0b32-d3677eb2dcfc.png', true),
-  ('029f4f0c-02ac-0006-18e9-3c393b8d02d6', 'Austin', 'Johnson', '/images/players/headshots/029f4f0c-02ac-0006-18e9-3c393b8d02d6.png', true),
-  ('06afadb4-7733-0006-4d6d-191596b99910', 'Sincere', 'Kato', '/images/players/headshots/06afadb4-7733-0006-4d6d-191596b99910.png', true),
-  ('562059bc-79d0-0006-f3f2-b383e1e8ddf3', 'Muhammed', 'Ali Kol', '/images/players/headshots/562059bc-79d0-0006-f3f2-b383e1e8ddf3.png', true),
-  ('8ea1cdc4-0882-0006-5a0b-c3a308b287f2', 'Berlenz', 'Lumarque', '/images/players/headshots/8ea1cdc4-0882-0006-5a0b-c3a308b287f2.png', true),
-  ('0dfa7220-ee26-0006-829d-a9265ac259c3', 'Jason', 'Mancuso', '/images/players/headshots/0dfa7220-ee26-0006-829d-a9265ac259c3.png', true),
-  ('c22c0a10-052b-0006-ee1e-9ffac117ebea', 'Jade', 'Mesias', '/images/players/headshots/c22c0a10-052b-0006-ee1e-9ffac117ebea.png', true),
-  ('087614c9-1a73-0006-6752-2d671d4b0875', 'Tommy', 'Monaghan', '/images/players/headshots/087614c9-1a73-0006-6752-2d671d4b0875.png', true),
-  ('b7c66ebe-25a9-0006-9eaf-6715c42b61c2', 'Jeff', 'Morgan', '/images/players/headshots/b7c66ebe-25a9-0006-9eaf-6715c42b61c2.png', true),
-  ('03685128-c258-0006-7b3e-65e96d6cb14e', 'Jake', 'Mulinge', '/images/players/headshots/03685128-c258-0006-7b3e-65e96d6cb14e.png', true),
-  ('80b973f9-ae54-0006-2fab-9bf2c4583f2f', 'Joseph', 'Nguyen', '/images/players/headshots/80b973f9-ae54-0006-2fab-9bf2c4583f2f.png', true),
-  ('4628077e-71f7-0006-ca3d-a605d68ef562', 'Carter', 'Jack Norton', '/images/players/headshots/4628077e-71f7-0006-ca3d-a605d68ef562.png', true),
-  ('ae70b5a1-d1de-0006-48b1-ed3fd75f5c55', 'Matthew', 'Perrella', '/images/players/headshots/ae70b5a1-d1de-0006-48b1-ed3fd75f5c55.png', true),
-  ('33887c21-b9f2-0006-48cc-709e921e1141', 'Dylan', 'Pino', '/images/players/headshots/33887c21-b9f2-0006-48cc-709e921e1141.png', true),
-  ('31ce6bd2-40c1-0006-a3f0-0c57e0a14847', 'Samuel', 'Quaye', '/images/players/headshots/31ce6bd2-40c1-0006-a3f0-0c57e0a14847.png', true),
-  ('8a0a6f35-57d8-0006-ad2d-18b037714c72', 'Julito', 'Quintana', '/images/players/headshots/8a0a6f35-57d8-0006-ad2d-18b037714c72.png', true),
-  ('2c2c7d61-fde8-0006-1396-b9747a713457', 'Ethan', 'Romito', '/images/players/headshots/2c2c7d61-fde8-0006-1396-b9747a713457.png', true),
-  ('fdea7ec3-67b0-0006-2e92-7876591b7854', 'Ahmed', 'Saidi', '/images/players/headshots/fdea7ec3-67b0-0006-2e92-7876591b7854.png', true),
-  ('37805f1b-4f5a-0006-4490-ddfd2b9e4c74', 'Max', 'Schrader', '/images/players/headshots/37805f1b-4f5a-0006-4490-ddfd2b9e4c74.png', true),
-  ('d2509fe2-42ad-0006-bf78-24ba4885ea4c', 'Seth', 'Sidle', '/images/players/headshots/d2509fe2-42ad-0006-bf78-24ba4885ea4c.png', true),
-  ('85308641-904a-0006-265b-a8660dd49ced', 'Adam', 'Sternberger', '/images/players/headshots/85308641-904a-0006-265b-a8660dd49ced.png', true),
-  ('a02363ec-3315-0006-1d6e-e6943eee6ca5', 'Steven', 'Thompson', '/images/players/headshots/a02363ec-3315-0006-1d6e-e6943eee6ca5.png', true),
-  ('ee75d842-1ae6-0006-8c53-9d885fc74c26', 'Nico', 'Tramontana', '/images/players/headshots/ee75d842-1ae6-0006-8c53-9d885fc74c26.png', true),
-  ('431ef3ec-8889-0006-6e83-43fc844a16a3', 'John', 'Troiano', '/images/players/headshots/431ef3ec-8889-0006-6e83-43fc844a16a3.png', true),
-  ('32670b1a-3a0f-0006-b697-6cbdc80ba419', 'Noah', 'Blodget', '/images/players/headshots/32670b1a-3a0f-0006-b697-6cbdc80ba419.png', true),
-  ('70095c63-411d-0006-2f78-7aaae8d50f52', 'Aymery', 'Dago Dadie', '/images/players/headshots/70095c63-411d-0006-2f78-7aaae8d50f52.png', true),
-  ('1c6f3935-cb7c-0006-c8ac-8b8e98679203', 'Francesco', 'Fazzolari', '/images/players/headshots/1c6f3935-cb7c-0006-c8ac-8b8e98679203.png', true),
-  ('9d5dce99-7e66-0006-dcf4-6880c44244c1', 'Emin', 'Gunaydin', '/images/players/headshots/9d5dce99-7e66-0006-dcf4-6880c44244c1.png', true),
-  ('07f578ac-f462-0006-c49b-0d55f4461954', 'Rabah', 'Hameg', '/images/players/headshots/07f578ac-f462-0006-c49b-0d55f4461954.png', true),
-  ('54afd9f7-24cb-0006-63ff-ba2c3aaeb1a1', 'Amarghaan', 'Hasan', '/images/players/headshots/54afd9f7-24cb-0006-63ff-ba2c3aaeb1a1.png', true),
-  ('02cd6efc-7b96-0006-ca40-f23545453cb5', 'Anthony', 'Jenkins', '/images/players/headshots/02cd6efc-7b96-0006-ca40-f23545453cb5.png', true),
-  ('cba11569-a188-0006-23d1-4042202515a2', 'Alex', 'Lewis', '/images/players/headshots/cba11569-a188-0006-23d1-4042202515a2.png', true),
-  ('8fd618a2-11f9-0006-2185-cbd6708400e7', 'Lucien', 'Maslin', '/images/players/headshots/8fd618a2-11f9-0006-2185-cbd6708400e7.png', true),
-  ('5b5b0a37-666b-0006-681e-df64c0541f5d', 'Kevin', 'McCollick', '/images/players/headshots/5b5b0a37-666b-0006-681e-df64c0541f5d.png', true),
-  ('ee36a913-4506-0006-8fb1-25a7198f1db8', 'Matthew', 'Pastore', '/images/players/headshots/ee36a913-4506-0006-8fb1-25a7198f1db8.png', true),
-  ('2f2e2baa-d232-0006-c825-bbfa8314cd2a', 'Trinava', 'Roy', '/images/players/headshots/2f2e2baa-d232-0006-c825-bbfa8314cd2a.png', true),
-  ('f1fd3567-ef4f-0006-1529-4f842b97f6ec', 'Anthony', 'Sciotto', '/images/players/headshots/f1fd3567-ef4f-0006-1529-4f842b97f6ec.png', true),
-  ('9d86fae5-6620-0006-d19f-d6833d2a0027', 'Ethan', 'Spinnato', '/images/players/headshots/9d86fae5-6620-0006-d19f-d6833d2a0027.png', true)
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
   last_name = EXCLUDED.last_name,
@@ -1825,6 +1825,43 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 -- ========================================
+-- PFA EPSL USERS
+-- ========================================
+INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
+VALUES
+  ('41672236-053b-0006-463b-fafde1f83fae', 'Kennison', 'Akuro', '/images/players/headshots/41672236-053b-0006-463b-fafde1f83fae.png', true),
+  ('ed7beb1e-57c6-0006-a964-c023ca33f018', 'Melvin', 'Asanji', '/images/players/headshots/ed7beb1e-57c6-0006-a964-c023ca33f018.png', true),
+  ('4cdb4fec-a108-0006-3024-21c1b0e93639', 'Brandon', 'Betts', '/images/players/headshots/4cdb4fec-a108-0006-3024-21c1b0e93639.png', true),
+  ('1e9c5a6b-2745-0006-0d37-2dedaf509ac5', 'Isaac', 'Carvajal', '/images/players/headshots/1e9c5a6b-2745-0006-0d37-2dedaf509ac5.png', true),
+  ('09f2e016-dfae-0006-66f5-fe5bb9d65608', 'Elido', 'Noel Chun Reyes', '/images/players/headshots/09f2e016-dfae-0006-66f5-fe5bb9d65608.png', true),
+  ('964640a2-b0cf-0006-4e8d-81e9aae27abd', 'Jenovic', 'Elumbu', '/images/players/headshots/964640a2-b0cf-0006-4e8d-81e9aae27abd.png', true),
+  ('d54ec81f-b9e7-0006-1d81-59496222bc4f', 'Anderson', 'Fernandez', '/images/players/headshots/d54ec81f-b9e7-0006-1d81-59496222bc4f.png', true),
+  ('a49747f8-58b4-0006-8041-226baa7079e7', 'Angello', 'Fernandez', '/images/players/headshots/a49747f8-58b4-0006-8041-226baa7079e7.png', true),
+  ('e0c00c53-343a-0006-26d7-66a07377ce63', 'Terry', 'Fon', '/images/players/headshots/e0c00c53-343a-0006-26d7-66a07377ce63.png', true),
+  ('84632a56-d3a0-0006-e06c-cd25e193c0ad', 'Eduardo', 'Fuentes', '/images/players/headshots/84632a56-d3a0-0006-e06c-cd25e193c0ad.png', true),
+  ('a78dba3d-3536-0006-8d37-50d5efe78a6c', 'Christian', 'Garavito', '/images/players/headshots/a78dba3d-3536-0006-8d37-50d5efe78a6c.png', true),
+  ('b4bf0347-1334-0006-5e3e-39d900d3586a', 'Thaddeus', 'Goddard', '/images/players/headshots/b4bf0347-1334-0006-5e3e-39d900d3586a.png', true),
+  ('685cc3fa-5ca9-0006-65da-2672fa97abb0', 'Alexis', 'Gonzalez Ayala', '/images/players/headshots/685cc3fa-5ca9-0006-65da-2672fa97abb0.png', true),
+  ('e1f2ff52-2f1e-0006-5751-60640491d25a', 'Chayton', 'Kuidlan', '/images/players/headshots/e1f2ff52-2f1e-0006-5751-60640491d25a.png', true),
+  ('60d1ae3b-be7e-0006-87eb-488dd99cd9ae', 'Tobias', 'Lane', '/images/players/headshots/60d1ae3b-be7e-0006-87eb-488dd99cd9ae.png', true),
+  ('7f6fe638-59cb-0006-bebe-1f409a3cdb5e', 'Jonathan', 'Lemus Morales', '/images/players/headshots/7f6fe638-59cb-0006-bebe-1f409a3cdb5e.png', true),
+  ('6fe26ee6-c0a5-0006-1027-eeb53062dbf3', 'Creasy', 'Lopez', '/images/players/headshots/6fe26ee6-c0a5-0006-1027-eeb53062dbf3.png', true),
+  ('2df93f06-45fc-0006-1abf-ce95b342a265', 'Lutho', 'Mlunguza', '/images/players/headshots/2df93f06-45fc-0006-1abf-ce95b342a265.png', true),
+  ('61d004c0-a7db-0006-70c5-ce75941d3c80', 'Toju', 'Okonedo', '/images/players/headshots/61d004c0-a7db-0006-70c5-ce75941d3c80.png', true),
+  ('91c7c07c-ddd4-0006-bb1d-ab37cffcd990', 'David', 'Pawlowski', '/images/players/headshots/91c7c07c-ddd4-0006-bb1d-ab37cffcd990.png', true),
+  ('d95fdaf2-6af8-0006-3428-4a34e9ac6d8e', 'Danny', 'Paz', '/images/players/headshots/d95fdaf2-6af8-0006-3428-4a34e9ac6d8e.png', true),
+  ('a2c3b15d-df06-0006-c45f-c7e1d63c8dd0', 'Brayan', 'Perez Mendez', '/images/players/headshots/a2c3b15d-df06-0006-c45f-c7e1d63c8dd0.png', true),
+  ('2194a34f-038b-0006-a754-3cb2806ed2ce', 'Bronson', 'Shepherd', '/images/players/headshots/2194a34f-038b-0006-a754-3cb2806ed2ce.png', true),
+  ('b1fe8bfd-cc5e-0006-7327-3b331cfbf6ca', 'Nicholas', 'Tziamouranis', '/images/players/headshots/b1fe8bfd-cc5e-0006-7327-3b331cfbf6ca.png', true),
+  ('06e0323c-007c-0006-25c3-983115664737', 'William', 'Villatoro Velasquez', '/images/players/headshots/06e0323c-007c-0006-25c3-983115664737.png', true),
+  ('f7594491-6bda-0006-bcd1-ce32af311366', 'Brian', 'Ware', '/images/players/headshots/f7594491-6bda-0006-bcd1-ce32af311366.png', true)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
+  updated_at = CURRENT_TIMESTAMP;
+
+-- ========================================
 -- Grove Soccer United USERS
 -- ========================================
 INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
@@ -1864,43 +1901,6 @@ VALUES
   ('34fa5e05-0285-0006-6072-68514344a498', 'Callum', 'Vellozzi', '/images/players/headshots/34fa5e05-0285-0006-6072-68514344a498.png', true),
   ('bb5ddd63-4504-0006-63a6-e06d34a35778', 'Chrisendo', 'Wentzel', '/images/players/headshots/bb5ddd63-4504-0006-63a6-e06d34a35778.png', true),
   ('92497df4-e9a9-0006-e063-27471ad9ef92', 'John', 'Williams', '/images/players/headshots/92497df4-e9a9-0006-e063-27471ad9ef92.png', true)
-ON CONFLICT (id) DO UPDATE SET
-  first_name = EXCLUDED.first_name,
-  last_name = EXCLUDED.last_name,
-  avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
-  updated_at = CURRENT_TIMESTAMP;
-
--- ========================================
--- PFA EPSL USERS
--- ========================================
-INSERT INTO users (id, first_name, last_name, avatar_url, is_active)
-VALUES
-  ('41672236-053b-0006-463b-fafde1f83fae', 'Kennison', 'Akuro', '/images/players/headshots/41672236-053b-0006-463b-fafde1f83fae.png', true),
-  ('ed7beb1e-57c6-0006-a964-c023ca33f018', 'Melvin', 'Asanji', '/images/players/headshots/ed7beb1e-57c6-0006-a964-c023ca33f018.png', true),
-  ('4cdb4fec-a108-0006-3024-21c1b0e93639', 'Brandon', 'Betts', '/images/players/headshots/4cdb4fec-a108-0006-3024-21c1b0e93639.png', true),
-  ('1e9c5a6b-2745-0006-0d37-2dedaf509ac5', 'Isaac', 'Carvajal', '/images/players/headshots/1e9c5a6b-2745-0006-0d37-2dedaf509ac5.png', true),
-  ('09f2e016-dfae-0006-66f5-fe5bb9d65608', 'Elido', 'Noel Chun Reyes', '/images/players/headshots/09f2e016-dfae-0006-66f5-fe5bb9d65608.png', true),
-  ('964640a2-b0cf-0006-4e8d-81e9aae27abd', 'Jenovic', 'Elumbu', '/images/players/headshots/964640a2-b0cf-0006-4e8d-81e9aae27abd.png', true),
-  ('d54ec81f-b9e7-0006-1d81-59496222bc4f', 'Anderson', 'Fernandez', '/images/players/headshots/d54ec81f-b9e7-0006-1d81-59496222bc4f.png', true),
-  ('a49747f8-58b4-0006-8041-226baa7079e7', 'Angello', 'Fernandez', '/images/players/headshots/a49747f8-58b4-0006-8041-226baa7079e7.png', true),
-  ('e0c00c53-343a-0006-26d7-66a07377ce63', 'Terry', 'Fon', '/images/players/headshots/e0c00c53-343a-0006-26d7-66a07377ce63.png', true),
-  ('84632a56-d3a0-0006-e06c-cd25e193c0ad', 'Eduardo', 'Fuentes', '/images/players/headshots/84632a56-d3a0-0006-e06c-cd25e193c0ad.png', true),
-  ('a78dba3d-3536-0006-8d37-50d5efe78a6c', 'Christian', 'Garavito', '/images/players/headshots/a78dba3d-3536-0006-8d37-50d5efe78a6c.png', true),
-  ('b4bf0347-1334-0006-5e3e-39d900d3586a', 'Thaddeus', 'Goddard', '/images/players/headshots/b4bf0347-1334-0006-5e3e-39d900d3586a.png', true),
-  ('685cc3fa-5ca9-0006-65da-2672fa97abb0', 'Alexis', 'Gonzalez Ayala', '/images/players/headshots/685cc3fa-5ca9-0006-65da-2672fa97abb0.png', true),
-  ('e1f2ff52-2f1e-0006-5751-60640491d25a', 'Chayton', 'Kuidlan', '/images/players/headshots/e1f2ff52-2f1e-0006-5751-60640491d25a.png', true),
-  ('60d1ae3b-be7e-0006-87eb-488dd99cd9ae', 'Tobias', 'Lane', '/images/players/headshots/60d1ae3b-be7e-0006-87eb-488dd99cd9ae.png', true),
-  ('7f6fe638-59cb-0006-bebe-1f409a3cdb5e', 'Jonathan', 'Lemus Morales', '/images/players/headshots/7f6fe638-59cb-0006-bebe-1f409a3cdb5e.png', true),
-  ('6fe26ee6-c0a5-0006-1027-eeb53062dbf3', 'Creasy', 'Lopez', '/images/players/headshots/6fe26ee6-c0a5-0006-1027-eeb53062dbf3.png', true),
-  ('2df93f06-45fc-0006-1abf-ce95b342a265', 'Lutho', 'Mlunguza', '/images/players/headshots/2df93f06-45fc-0006-1abf-ce95b342a265.png', true),
-  ('61d004c0-a7db-0006-70c5-ce75941d3c80', 'Toju', 'Okonedo', '/images/players/headshots/61d004c0-a7db-0006-70c5-ce75941d3c80.png', true),
-  ('91c7c07c-ddd4-0006-bb1d-ab37cffcd990', 'David', 'Pawlowski', '/images/players/headshots/91c7c07c-ddd4-0006-bb1d-ab37cffcd990.png', true),
-  ('d95fdaf2-6af8-0006-3428-4a34e9ac6d8e', 'Danny', 'Paz', '/images/players/headshots/d95fdaf2-6af8-0006-3428-4a34e9ac6d8e.png', true),
-  ('a2c3b15d-df06-0006-c45f-c7e1d63c8dd0', 'Brayan', 'Perez Mendez', '/images/players/headshots/a2c3b15d-df06-0006-c45f-c7e1d63c8dd0.png', true),
-  ('2194a34f-038b-0006-a754-3cb2806ed2ce', 'Bronson', 'Shepherd', '/images/players/headshots/2194a34f-038b-0006-a754-3cb2806ed2ce.png', true),
-  ('b1fe8bfd-cc5e-0006-7327-3b331cfbf6ca', 'Nicholas', 'Tziamouranis', '/images/players/headshots/b1fe8bfd-cc5e-0006-7327-3b331cfbf6ca.png', true),
-  ('06e0323c-007c-0006-25c3-983115664737', 'William', 'Villatoro Velasquez', '/images/players/headshots/06e0323c-007c-0006-25c3-983115664737.png', true),
-  ('f7594491-6bda-0006-bcd1-ce32af311366', 'Brian', 'Ware', '/images/players/headshots/f7594491-6bda-0006-bcd1-ce32af311366.png', true)
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
   last_name = EXCLUDED.last_name,

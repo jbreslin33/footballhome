@@ -1,7 +1,7 @@
 -- ========================================
 -- PLAYERS
 -- ========================================
--- Generated: 2025-12-08T02:14:20.217Z
+-- Generated: 2025-12-08T17:05:28.191Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -894,6 +894,61 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 -- ========================================
+-- Central Park Rangers FC PLAYERS
+-- ========================================
+INSERT INTO players (id, photo_url, notes)
+VALUES
+  ('6400a53a-c0b1-0006-c2c1-f06107272338', '/images/players/headshots/6400a53a-c0b1-0006-c2c1-f06107272338.png', 'APSL player - position: not specified'),
+  ('4321140e-41f3-0006-2016-23c06cc59555', '/images/players/headshots/4321140e-41f3-0006-2016-23c06cc59555.png', 'APSL player - position: not specified'),
+  ('8ce5236a-2665-0006-3ac1-a727e3ea8299', '/images/players/headshots/8ce5236a-2665-0006-3ac1-a727e3ea8299.png', 'APSL player - position: not specified'),
+  ('bdf66c42-99b7-0006-16bd-e883a6fa027e', '/images/players/headshots/bdf66c42-99b7-0006-16bd-e883a6fa027e.png', 'APSL player - position: not specified'),
+  ('10482a67-b98b-0006-9b66-46c6956db769', '/images/players/headshots/10482a67-b98b-0006-9b66-46c6956db769.png', 'APSL player - position: not specified'),
+  ('ebf5c86e-f594-0006-ca66-af82c13adc03', '/images/players/headshots/ebf5c86e-f594-0006-ca66-af82c13adc03.png', 'APSL player - position: not specified'),
+  ('299ea506-ab3f-0006-079e-bff363d76130', '/images/players/headshots/299ea506-ab3f-0006-079e-bff363d76130.png', 'APSL player - position: not specified'),
+  ('4809998f-c160-0006-eadb-62d3159b9b84', '/images/players/headshots/4809998f-c160-0006-eadb-62d3159b9b84.png', 'APSL player - position: not specified'),
+  ('4d9ea9ee-83b5-0006-8ddd-57830bd9de9c', '/images/players/headshots/4d9ea9ee-83b5-0006-8ddd-57830bd9de9c.png', 'APSL player - position: not specified'),
+  ('97caf7ea-0c49-0006-48fb-474ee9b98fcf', '/images/players/headshots/97caf7ea-0c49-0006-48fb-474ee9b98fcf.png', 'APSL player - position: not specified'),
+  ('0d6325f7-952e-0006-a692-5239c5d09c23', '/images/players/headshots/0d6325f7-952e-0006-a692-5239c5d09c23.png', 'APSL player - position: not specified'),
+  ('59634929-83ef-0006-b2ee-558c0e43e7cd', '/images/players/headshots/59634929-83ef-0006-b2ee-558c0e43e7cd.png', 'APSL player - position: not specified'),
+  ('4263e408-4561-0006-a2d8-a906585e185c', '/images/players/headshots/4263e408-4561-0006-a2d8-a906585e185c.png', 'APSL player - position: not specified'),
+  ('1bbf283e-cdb6-0006-9829-8c556021cf5d', '/images/players/headshots/1bbf283e-cdb6-0006-9829-8c556021cf5d.png', 'APSL player - position: not specified'),
+  ('7d6d06ee-6694-0006-521c-6497d921ea56', '/images/players/headshots/7d6d06ee-6694-0006-521c-6497d921ea56.png', 'APSL player - position: not specified'),
+  ('e6c42fb3-bd7d-0006-7672-3d1915509a2e', '/images/players/headshots/e6c42fb3-bd7d-0006-7672-3d1915509a2e.png', 'APSL player - position: not specified'),
+  ('19138c23-bd1a-0006-33bf-096185790ea3', '/images/players/headshots/19138c23-bd1a-0006-33bf-096185790ea3.png', 'APSL player - position: not specified'),
+  ('90e689e4-0c8a-0006-ea38-c85229492500', '/images/players/headshots/90e689e4-0c8a-0006-ea38-c85229492500.png', 'APSL player - position: not specified'),
+  ('edf2fe1b-e561-0006-8856-a74938f2a735', '/images/players/headshots/edf2fe1b-e561-0006-8856-a74938f2a735.png', 'APSL player - position: not specified'),
+  ('a0926711-47b9-0006-0b99-23e5c63844b6', '/images/players/headshots/a0926711-47b9-0006-0b99-23e5c63844b6.png', 'APSL player - position: not specified'),
+  ('1040a9c0-2d96-0006-72b9-a56a1ed8dd85', '/images/players/headshots/1040a9c0-2d96-0006-72b9-a56a1ed8dd85.png', 'APSL player - position: not specified'),
+  ('edcf9c94-9bf6-0006-62ec-cdfe9c2025dd', '/images/players/headshots/edcf9c94-9bf6-0006-62ec-cdfe9c2025dd.png', 'APSL player - position: not specified'),
+  ('aacd35a9-423e-0006-6abd-b2ab45720773', '/images/players/headshots/aacd35a9-423e-0006-6abd-b2ab45720773.png', 'APSL player - position: not specified'),
+  ('1d8c2a48-325c-0006-fca1-96ba294a5d04', '/images/players/headshots/1d8c2a48-325c-0006-fca1-96ba294a5d04.png', 'APSL player - position: not specified'),
+  ('77314a44-b988-0006-9617-9e7a0e61fd66', '/images/players/headshots/77314a44-b988-0006-9617-9e7a0e61fd66.png', 'APSL player - position: not specified'),
+  ('b5d17042-4464-0006-c762-ec4e66379275', '/images/players/headshots/b5d17042-4464-0006-c762-ec4e66379275.png', 'APSL player - position: not specified'),
+  ('913e8618-6262-0006-3674-3abdd9a89db4', '/images/players/headshots/913e8618-6262-0006-3674-3abdd9a89db4.png', 'APSL player - position: not specified'),
+  ('f6ed8295-6ae4-0006-e301-49a4ef4f02fe', '/images/players/headshots/f6ed8295-6ae4-0006-e301-49a4ef4f02fe.png', 'APSL player - position: not specified'),
+  ('02071ec5-affd-0006-efc7-b35131388eb1', '/images/players/headshots/02071ec5-affd-0006-efc7-b35131388eb1.png', 'APSL player - position: not specified'),
+  ('6001a807-29e9-0006-7e2b-4e92d522ed9e', '/images/players/headshots/6001a807-29e9-0006-7e2b-4e92d522ed9e.png', 'APSL player - position: not specified'),
+  ('0c2a8623-c3b7-0006-fbed-f2c04867e4a9', '/images/players/headshots/0c2a8623-c3b7-0006-fbed-f2c04867e4a9.png', 'APSL player - position: not specified'),
+  ('f7d93c24-473a-0006-9a43-34971cec523a', '/images/players/headshots/f7d93c24-473a-0006-9a43-34971cec523a.png', 'APSL player - position: not specified'),
+  ('bbd66182-b0af-0006-3499-7ed040eb3aca', '/images/players/headshots/bbd66182-b0af-0006-3499-7ed040eb3aca.png', 'APSL player - position: not specified'),
+  ('e6b295ec-3d53-0006-eaf4-0db3d7663e1e', '/images/players/headshots/e6b295ec-3d53-0006-eaf4-0db3d7663e1e.png', 'APSL player - position: not specified'),
+  ('266b5c1f-ffac-0006-e203-ca3800df58f9', '/images/players/headshots/266b5c1f-ffac-0006-e203-ca3800df58f9.png', 'APSL player - position: not specified'),
+  ('874751e2-eda6-0006-9563-b52731fbd89e', '/images/players/headshots/874751e2-eda6-0006-9563-b52731fbd89e.png', 'APSL player - position: not specified'),
+  ('dac3dbb4-c206-0006-97b6-15e253b128e6', '/images/players/headshots/dac3dbb4-c206-0006-97b6-15e253b128e6.png', 'APSL player - position: not specified'),
+  ('ca1d95af-79dc-0006-c41f-4240f243d1e0', '/images/players/headshots/ca1d95af-79dc-0006-c41f-4240f243d1e0.png', 'APSL player - position: not specified'),
+  ('a7801a4e-8f4f-0006-f313-01f7fc81d0d0', '/images/players/headshots/a7801a4e-8f4f-0006-f313-01f7fc81d0d0.png', 'APSL player - position: not specified'),
+  ('7fadfa95-3ec5-0006-b93d-b0842ac2fdc8', '/images/players/headshots/7fadfa95-3ec5-0006-b93d-b0842ac2fdc8.png', 'APSL player - position: not specified'),
+  ('d452a72e-511a-0006-0792-6d63151dd438', '/images/players/headshots/d452a72e-511a-0006-0792-6d63151dd438.png', 'APSL player - position: not specified'),
+  ('8b16ca48-948f-0006-9963-6ecdbe9f4f8b', '/images/players/headshots/8b16ca48-948f-0006-9963-6ecdbe9f4f8b.png', 'APSL player - position: not specified'),
+  ('f83444d3-3d7c-0006-774c-4e26e20c2a1d', '/images/players/headshots/f83444d3-3d7c-0006-774c-4e26e20c2a1d.png', 'APSL player - position: not specified'),
+  ('52f84ecb-dbdc-0006-b743-97a47fa22a59', '/images/players/headshots/52f84ecb-dbdc-0006-b743-97a47fa22a59.png', 'APSL player - position: not specified'),
+  ('508b39c3-1168-0006-427d-fd04ab0e707f', '/images/players/headshots/508b39c3-1168-0006-427d-fd04ab0e707f.png', 'APSL player - position: not specified'),
+  ('64dcecf5-7b40-0006-13da-2d5717f2640b', '/images/players/headshots/64dcecf5-7b40-0006-13da-2d5717f2640b.png', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  photo_url = EXCLUDED.photo_url,
+  notes = EXCLUDED.notes;
+
+-- ========================================
 -- SC Vistula Garfield PLAYERS
 -- ========================================
 INSERT INTO players (id, photo_url, notes)
@@ -1011,61 +1066,6 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 -- ========================================
--- Central Park Rangers FC PLAYERS
--- ========================================
-INSERT INTO players (id, photo_url, notes)
-VALUES
-  ('6400a53a-c0b1-0006-c2c1-f06107272338', '/images/players/headshots/6400a53a-c0b1-0006-c2c1-f06107272338.png', 'APSL player - position: not specified'),
-  ('4321140e-41f3-0006-2016-23c06cc59555', '/images/players/headshots/4321140e-41f3-0006-2016-23c06cc59555.png', 'APSL player - position: not specified'),
-  ('8ce5236a-2665-0006-3ac1-a727e3ea8299', '/images/players/headshots/8ce5236a-2665-0006-3ac1-a727e3ea8299.png', 'APSL player - position: not specified'),
-  ('bdf66c42-99b7-0006-16bd-e883a6fa027e', '/images/players/headshots/bdf66c42-99b7-0006-16bd-e883a6fa027e.png', 'APSL player - position: not specified'),
-  ('10482a67-b98b-0006-9b66-46c6956db769', '/images/players/headshots/10482a67-b98b-0006-9b66-46c6956db769.png', 'APSL player - position: not specified'),
-  ('ebf5c86e-f594-0006-ca66-af82c13adc03', '/images/players/headshots/ebf5c86e-f594-0006-ca66-af82c13adc03.png', 'APSL player - position: not specified'),
-  ('299ea506-ab3f-0006-079e-bff363d76130', '/images/players/headshots/299ea506-ab3f-0006-079e-bff363d76130.png', 'APSL player - position: not specified'),
-  ('4809998f-c160-0006-eadb-62d3159b9b84', '/images/players/headshots/4809998f-c160-0006-eadb-62d3159b9b84.png', 'APSL player - position: not specified'),
-  ('4d9ea9ee-83b5-0006-8ddd-57830bd9de9c', '/images/players/headshots/4d9ea9ee-83b5-0006-8ddd-57830bd9de9c.png', 'APSL player - position: not specified'),
-  ('97caf7ea-0c49-0006-48fb-474ee9b98fcf', '/images/players/headshots/97caf7ea-0c49-0006-48fb-474ee9b98fcf.png', 'APSL player - position: not specified'),
-  ('0d6325f7-952e-0006-a692-5239c5d09c23', '/images/players/headshots/0d6325f7-952e-0006-a692-5239c5d09c23.png', 'APSL player - position: not specified'),
-  ('59634929-83ef-0006-b2ee-558c0e43e7cd', '/images/players/headshots/59634929-83ef-0006-b2ee-558c0e43e7cd.png', 'APSL player - position: not specified'),
-  ('4263e408-4561-0006-a2d8-a906585e185c', '/images/players/headshots/4263e408-4561-0006-a2d8-a906585e185c.png', 'APSL player - position: not specified'),
-  ('1bbf283e-cdb6-0006-9829-8c556021cf5d', '/images/players/headshots/1bbf283e-cdb6-0006-9829-8c556021cf5d.png', 'APSL player - position: not specified'),
-  ('7d6d06ee-6694-0006-521c-6497d921ea56', '/images/players/headshots/7d6d06ee-6694-0006-521c-6497d921ea56.png', 'APSL player - position: not specified'),
-  ('e6c42fb3-bd7d-0006-7672-3d1915509a2e', '/images/players/headshots/e6c42fb3-bd7d-0006-7672-3d1915509a2e.png', 'APSL player - position: not specified'),
-  ('19138c23-bd1a-0006-33bf-096185790ea3', '/images/players/headshots/19138c23-bd1a-0006-33bf-096185790ea3.png', 'APSL player - position: not specified'),
-  ('90e689e4-0c8a-0006-ea38-c85229492500', '/images/players/headshots/90e689e4-0c8a-0006-ea38-c85229492500.png', 'APSL player - position: not specified'),
-  ('edf2fe1b-e561-0006-8856-a74938f2a735', '/images/players/headshots/edf2fe1b-e561-0006-8856-a74938f2a735.png', 'APSL player - position: not specified'),
-  ('a0926711-47b9-0006-0b99-23e5c63844b6', '/images/players/headshots/a0926711-47b9-0006-0b99-23e5c63844b6.png', 'APSL player - position: not specified'),
-  ('1040a9c0-2d96-0006-72b9-a56a1ed8dd85', '/images/players/headshots/1040a9c0-2d96-0006-72b9-a56a1ed8dd85.png', 'APSL player - position: not specified'),
-  ('edcf9c94-9bf6-0006-62ec-cdfe9c2025dd', '/images/players/headshots/edcf9c94-9bf6-0006-62ec-cdfe9c2025dd.png', 'APSL player - position: not specified'),
-  ('aacd35a9-423e-0006-6abd-b2ab45720773', '/images/players/headshots/aacd35a9-423e-0006-6abd-b2ab45720773.png', 'APSL player - position: not specified'),
-  ('1d8c2a48-325c-0006-fca1-96ba294a5d04', '/images/players/headshots/1d8c2a48-325c-0006-fca1-96ba294a5d04.png', 'APSL player - position: not specified'),
-  ('77314a44-b988-0006-9617-9e7a0e61fd66', '/images/players/headshots/77314a44-b988-0006-9617-9e7a0e61fd66.png', 'APSL player - position: not specified'),
-  ('b5d17042-4464-0006-c762-ec4e66379275', '/images/players/headshots/b5d17042-4464-0006-c762-ec4e66379275.png', 'APSL player - position: not specified'),
-  ('913e8618-6262-0006-3674-3abdd9a89db4', '/images/players/headshots/913e8618-6262-0006-3674-3abdd9a89db4.png', 'APSL player - position: not specified'),
-  ('f6ed8295-6ae4-0006-e301-49a4ef4f02fe', '/images/players/headshots/f6ed8295-6ae4-0006-e301-49a4ef4f02fe.png', 'APSL player - position: not specified'),
-  ('02071ec5-affd-0006-efc7-b35131388eb1', '/images/players/headshots/02071ec5-affd-0006-efc7-b35131388eb1.png', 'APSL player - position: not specified'),
-  ('6001a807-29e9-0006-7e2b-4e92d522ed9e', '/images/players/headshots/6001a807-29e9-0006-7e2b-4e92d522ed9e.png', 'APSL player - position: not specified'),
-  ('0c2a8623-c3b7-0006-fbed-f2c04867e4a9', '/images/players/headshots/0c2a8623-c3b7-0006-fbed-f2c04867e4a9.png', 'APSL player - position: not specified'),
-  ('f7d93c24-473a-0006-9a43-34971cec523a', '/images/players/headshots/f7d93c24-473a-0006-9a43-34971cec523a.png', 'APSL player - position: not specified'),
-  ('bbd66182-b0af-0006-3499-7ed040eb3aca', '/images/players/headshots/bbd66182-b0af-0006-3499-7ed040eb3aca.png', 'APSL player - position: not specified'),
-  ('e6b295ec-3d53-0006-eaf4-0db3d7663e1e', '/images/players/headshots/e6b295ec-3d53-0006-eaf4-0db3d7663e1e.png', 'APSL player - position: not specified'),
-  ('266b5c1f-ffac-0006-e203-ca3800df58f9', '/images/players/headshots/266b5c1f-ffac-0006-e203-ca3800df58f9.png', 'APSL player - position: not specified'),
-  ('874751e2-eda6-0006-9563-b52731fbd89e', '/images/players/headshots/874751e2-eda6-0006-9563-b52731fbd89e.png', 'APSL player - position: not specified'),
-  ('dac3dbb4-c206-0006-97b6-15e253b128e6', '/images/players/headshots/dac3dbb4-c206-0006-97b6-15e253b128e6.png', 'APSL player - position: not specified'),
-  ('ca1d95af-79dc-0006-c41f-4240f243d1e0', '/images/players/headshots/ca1d95af-79dc-0006-c41f-4240f243d1e0.png', 'APSL player - position: not specified'),
-  ('a7801a4e-8f4f-0006-f313-01f7fc81d0d0', '/images/players/headshots/a7801a4e-8f4f-0006-f313-01f7fc81d0d0.png', 'APSL player - position: not specified'),
-  ('7fadfa95-3ec5-0006-b93d-b0842ac2fdc8', '/images/players/headshots/7fadfa95-3ec5-0006-b93d-b0842ac2fdc8.png', 'APSL player - position: not specified'),
-  ('d452a72e-511a-0006-0792-6d63151dd438', '/images/players/headshots/d452a72e-511a-0006-0792-6d63151dd438.png', 'APSL player - position: not specified'),
-  ('8b16ca48-948f-0006-9963-6ecdbe9f4f8b', '/images/players/headshots/8b16ca48-948f-0006-9963-6ecdbe9f4f8b.png', 'APSL player - position: not specified'),
-  ('f83444d3-3d7c-0006-774c-4e26e20c2a1d', '/images/players/headshots/f83444d3-3d7c-0006-774c-4e26e20c2a1d.png', 'APSL player - position: not specified'),
-  ('52f84ecb-dbdc-0006-b743-97a47fa22a59', '/images/players/headshots/52f84ecb-dbdc-0006-b743-97a47fa22a59.png', 'APSL player - position: not specified'),
-  ('508b39c3-1168-0006-427d-fd04ab0e707f', '/images/players/headshots/508b39c3-1168-0006-427d-fd04ab0e707f.png', 'APSL player - position: not specified'),
-  ('64dcecf5-7b40-0006-13da-2d5717f2640b', '/images/players/headshots/64dcecf5-7b40-0006-13da-2d5717f2640b.png', 'APSL player - position: not specified')
-ON CONFLICT (id) DO UPDATE SET
-  photo_url = EXCLUDED.photo_url,
-  notes = EXCLUDED.notes;
-
--- ========================================
 -- WC Predators PLAYERS
 -- ========================================
 INSERT INTO players (id, photo_url, notes)
@@ -1167,6 +1167,62 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 -- ========================================
+-- Oaklyn United FC PLAYERS
+-- ========================================
+INSERT INTO players (id, photo_url, notes)
+VALUES
+  ('71df8607-2764-0006-be4f-f62b9022a409', '/images/players/headshots/71df8607-2764-0006-be4f-f62b9022a409.png', 'APSL player - position: not specified'),
+  ('5799be88-db80-0006-f9ef-3df307a698c3', '/images/players/headshots/5799be88-db80-0006-f9ef-3df307a698c3.png', 'APSL player - position: not specified'),
+  ('cbd4f193-e8d8-0006-b980-4cce087170b4', '/images/players/headshots/cbd4f193-e8d8-0006-b980-4cce087170b4.png', 'APSL player - position: not specified'),
+  ('78c995a8-6426-0006-330c-e738344e92fa', '/images/players/headshots/78c995a8-6426-0006-330c-e738344e92fa.png', 'APSL player - position: not specified'),
+  ('85f9b46e-9ec5-0006-998b-b595bfef6d83', '/images/players/headshots/85f9b46e-9ec5-0006-998b-b595bfef6d83.png', 'APSL player - position: not specified'),
+  ('35f70e2e-8c57-0006-5f5d-a7f450d84339', '/images/players/headshots/35f70e2e-8c57-0006-5f5d-a7f450d84339.png', 'APSL player - position: not specified'),
+  ('d846eb32-8018-0006-f104-98587d54395d', '/images/players/headshots/d846eb32-8018-0006-f104-98587d54395d.png', 'APSL player - position: not specified'),
+  ('106939cb-a4c7-0006-03ac-8261cc90d806', '/images/players/headshots/106939cb-a4c7-0006-03ac-8261cc90d806.png', 'APSL player - position: not specified'),
+  ('d39431ba-d80b-0006-a7d5-62fddc3a4727', '/images/players/headshots/d39431ba-d80b-0006-a7d5-62fddc3a4727.png', 'APSL player - position: not specified'),
+  ('60a07d61-7b5e-0006-0b32-d3677eb2dcfc', '/images/players/headshots/60a07d61-7b5e-0006-0b32-d3677eb2dcfc.png', 'APSL player - position: not specified'),
+  ('029f4f0c-02ac-0006-18e9-3c393b8d02d6', '/images/players/headshots/029f4f0c-02ac-0006-18e9-3c393b8d02d6.png', 'APSL player - position: not specified'),
+  ('06afadb4-7733-0006-4d6d-191596b99910', '/images/players/headshots/06afadb4-7733-0006-4d6d-191596b99910.png', 'APSL player - position: not specified'),
+  ('562059bc-79d0-0006-f3f2-b383e1e8ddf3', '/images/players/headshots/562059bc-79d0-0006-f3f2-b383e1e8ddf3.png', 'APSL player - position: not specified'),
+  ('8ea1cdc4-0882-0006-5a0b-c3a308b287f2', '/images/players/headshots/8ea1cdc4-0882-0006-5a0b-c3a308b287f2.png', 'APSL player - position: not specified'),
+  ('0dfa7220-ee26-0006-829d-a9265ac259c3', '/images/players/headshots/0dfa7220-ee26-0006-829d-a9265ac259c3.png', 'APSL player - position: not specified'),
+  ('c22c0a10-052b-0006-ee1e-9ffac117ebea', '/images/players/headshots/c22c0a10-052b-0006-ee1e-9ffac117ebea.png', 'APSL player - position: not specified'),
+  ('087614c9-1a73-0006-6752-2d671d4b0875', '/images/players/headshots/087614c9-1a73-0006-6752-2d671d4b0875.png', 'APSL player - position: not specified'),
+  ('b7c66ebe-25a9-0006-9eaf-6715c42b61c2', '/images/players/headshots/b7c66ebe-25a9-0006-9eaf-6715c42b61c2.png', 'APSL player - position: not specified'),
+  ('03685128-c258-0006-7b3e-65e96d6cb14e', '/images/players/headshots/03685128-c258-0006-7b3e-65e96d6cb14e.png', 'APSL player - position: not specified'),
+  ('80b973f9-ae54-0006-2fab-9bf2c4583f2f', '/images/players/headshots/80b973f9-ae54-0006-2fab-9bf2c4583f2f.png', 'APSL player - position: not specified'),
+  ('4628077e-71f7-0006-ca3d-a605d68ef562', '/images/players/headshots/4628077e-71f7-0006-ca3d-a605d68ef562.png', 'APSL player - position: not specified'),
+  ('ae70b5a1-d1de-0006-48b1-ed3fd75f5c55', '/images/players/headshots/ae70b5a1-d1de-0006-48b1-ed3fd75f5c55.png', 'APSL player - position: not specified'),
+  ('33887c21-b9f2-0006-48cc-709e921e1141', '/images/players/headshots/33887c21-b9f2-0006-48cc-709e921e1141.png', 'APSL player - position: not specified'),
+  ('31ce6bd2-40c1-0006-a3f0-0c57e0a14847', '/images/players/headshots/31ce6bd2-40c1-0006-a3f0-0c57e0a14847.png', 'APSL player - position: not specified'),
+  ('8a0a6f35-57d8-0006-ad2d-18b037714c72', '/images/players/headshots/8a0a6f35-57d8-0006-ad2d-18b037714c72.png', 'APSL player - position: not specified'),
+  ('2c2c7d61-fde8-0006-1396-b9747a713457', '/images/players/headshots/2c2c7d61-fde8-0006-1396-b9747a713457.png', 'APSL player - position: not specified'),
+  ('fdea7ec3-67b0-0006-2e92-7876591b7854', '/images/players/headshots/fdea7ec3-67b0-0006-2e92-7876591b7854.png', 'APSL player - position: not specified'),
+  ('37805f1b-4f5a-0006-4490-ddfd2b9e4c74', '/images/players/headshots/37805f1b-4f5a-0006-4490-ddfd2b9e4c74.png', 'APSL player - position: not specified'),
+  ('d2509fe2-42ad-0006-bf78-24ba4885ea4c', '/images/players/headshots/d2509fe2-42ad-0006-bf78-24ba4885ea4c.png', 'APSL player - position: not specified'),
+  ('85308641-904a-0006-265b-a8660dd49ced', '/images/players/headshots/85308641-904a-0006-265b-a8660dd49ced.png', 'APSL player - position: not specified'),
+  ('a02363ec-3315-0006-1d6e-e6943eee6ca5', '/images/players/headshots/a02363ec-3315-0006-1d6e-e6943eee6ca5.png', 'APSL player - position: not specified'),
+  ('ee75d842-1ae6-0006-8c53-9d885fc74c26', '/images/players/headshots/ee75d842-1ae6-0006-8c53-9d885fc74c26.png', 'APSL player - position: not specified'),
+  ('431ef3ec-8889-0006-6e83-43fc844a16a3', '/images/players/headshots/431ef3ec-8889-0006-6e83-43fc844a16a3.png', 'APSL player - position: not specified'),
+  ('32670b1a-3a0f-0006-b697-6cbdc80ba419', '/images/players/headshots/32670b1a-3a0f-0006-b697-6cbdc80ba419.png', 'APSL player - position: not specified'),
+  ('70095c63-411d-0006-2f78-7aaae8d50f52', '/images/players/headshots/70095c63-411d-0006-2f78-7aaae8d50f52.png', 'APSL player - position: not specified'),
+  ('1c6f3935-cb7c-0006-c8ac-8b8e98679203', '/images/players/headshots/1c6f3935-cb7c-0006-c8ac-8b8e98679203.png', 'APSL player - position: not specified'),
+  ('9d5dce99-7e66-0006-dcf4-6880c44244c1', '/images/players/headshots/9d5dce99-7e66-0006-dcf4-6880c44244c1.png', 'APSL player - position: not specified'),
+  ('07f578ac-f462-0006-c49b-0d55f4461954', '/images/players/headshots/07f578ac-f462-0006-c49b-0d55f4461954.png', 'APSL player - position: not specified'),
+  ('54afd9f7-24cb-0006-63ff-ba2c3aaeb1a1', '/images/players/headshots/54afd9f7-24cb-0006-63ff-ba2c3aaeb1a1.png', 'APSL player - position: not specified'),
+  ('02cd6efc-7b96-0006-ca40-f23545453cb5', '/images/players/headshots/02cd6efc-7b96-0006-ca40-f23545453cb5.png', 'APSL player - position: not specified'),
+  ('cba11569-a188-0006-23d1-4042202515a2', '/images/players/headshots/cba11569-a188-0006-23d1-4042202515a2.png', 'APSL player - position: not specified'),
+  ('8fd618a2-11f9-0006-2185-cbd6708400e7', '/images/players/headshots/8fd618a2-11f9-0006-2185-cbd6708400e7.png', 'APSL player - position: not specified'),
+  ('5b5b0a37-666b-0006-681e-df64c0541f5d', '/images/players/headshots/5b5b0a37-666b-0006-681e-df64c0541f5d.png', 'APSL player - position: not specified'),
+  ('ee36a913-4506-0006-8fb1-25a7198f1db8', '/images/players/headshots/ee36a913-4506-0006-8fb1-25a7198f1db8.png', 'APSL player - position: not specified'),
+  ('2f2e2baa-d232-0006-c825-bbfa8314cd2a', '/images/players/headshots/2f2e2baa-d232-0006-c825-bbfa8314cd2a.png', 'APSL player - position: not specified'),
+  ('f1fd3567-ef4f-0006-1529-4f842b97f6ec', '/images/players/headshots/f1fd3567-ef4f-0006-1529-4f842b97f6ec.png', 'APSL player - position: not specified'),
+  ('9d86fae5-6620-0006-d19f-d6833d2a0027', '/images/players/headshots/9d86fae5-6620-0006-d19f-d6833d2a0027.png', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  photo_url = EXCLUDED.photo_url,
+  notes = EXCLUDED.notes;
+
+-- ========================================
 -- Real Central NJ Soccer PLAYERS
 -- ========================================
 INSERT INTO players (id, photo_url, notes)
@@ -1248,62 +1304,6 @@ VALUES
   ('287bd74a-b462-0006-448f-0174adcd134d', '/images/players/headshots/287bd74a-b462-0006-448f-0174adcd134d.png', 'APSL player - position: not specified'),
   ('30939ef1-3caf-0006-f5c3-842dc5a6597e', '/images/players/headshots/30939ef1-3caf-0006-f5c3-842dc5a6597e.png', 'APSL player - position: not specified'),
   ('7e36ec31-3ad0-0006-96c9-d37bd0f48623', '/images/players/headshots/7e36ec31-3ad0-0006-96c9-d37bd0f48623.png', 'APSL player - position: not specified')
-ON CONFLICT (id) DO UPDATE SET
-  photo_url = EXCLUDED.photo_url,
-  notes = EXCLUDED.notes;
-
--- ========================================
--- Oaklyn United FC PLAYERS
--- ========================================
-INSERT INTO players (id, photo_url, notes)
-VALUES
-  ('71df8607-2764-0006-be4f-f62b9022a409', '/images/players/headshots/71df8607-2764-0006-be4f-f62b9022a409.png', 'APSL player - position: not specified'),
-  ('5799be88-db80-0006-f9ef-3df307a698c3', '/images/players/headshots/5799be88-db80-0006-f9ef-3df307a698c3.png', 'APSL player - position: not specified'),
-  ('cbd4f193-e8d8-0006-b980-4cce087170b4', '/images/players/headshots/cbd4f193-e8d8-0006-b980-4cce087170b4.png', 'APSL player - position: not specified'),
-  ('78c995a8-6426-0006-330c-e738344e92fa', '/images/players/headshots/78c995a8-6426-0006-330c-e738344e92fa.png', 'APSL player - position: not specified'),
-  ('85f9b46e-9ec5-0006-998b-b595bfef6d83', '/images/players/headshots/85f9b46e-9ec5-0006-998b-b595bfef6d83.png', 'APSL player - position: not specified'),
-  ('35f70e2e-8c57-0006-5f5d-a7f450d84339', '/images/players/headshots/35f70e2e-8c57-0006-5f5d-a7f450d84339.png', 'APSL player - position: not specified'),
-  ('d846eb32-8018-0006-f104-98587d54395d', '/images/players/headshots/d846eb32-8018-0006-f104-98587d54395d.png', 'APSL player - position: not specified'),
-  ('106939cb-a4c7-0006-03ac-8261cc90d806', '/images/players/headshots/106939cb-a4c7-0006-03ac-8261cc90d806.png', 'APSL player - position: not specified'),
-  ('d39431ba-d80b-0006-a7d5-62fddc3a4727', '/images/players/headshots/d39431ba-d80b-0006-a7d5-62fddc3a4727.png', 'APSL player - position: not specified'),
-  ('60a07d61-7b5e-0006-0b32-d3677eb2dcfc', '/images/players/headshots/60a07d61-7b5e-0006-0b32-d3677eb2dcfc.png', 'APSL player - position: not specified'),
-  ('029f4f0c-02ac-0006-18e9-3c393b8d02d6', '/images/players/headshots/029f4f0c-02ac-0006-18e9-3c393b8d02d6.png', 'APSL player - position: not specified'),
-  ('06afadb4-7733-0006-4d6d-191596b99910', '/images/players/headshots/06afadb4-7733-0006-4d6d-191596b99910.png', 'APSL player - position: not specified'),
-  ('562059bc-79d0-0006-f3f2-b383e1e8ddf3', '/images/players/headshots/562059bc-79d0-0006-f3f2-b383e1e8ddf3.png', 'APSL player - position: not specified'),
-  ('8ea1cdc4-0882-0006-5a0b-c3a308b287f2', '/images/players/headshots/8ea1cdc4-0882-0006-5a0b-c3a308b287f2.png', 'APSL player - position: not specified'),
-  ('0dfa7220-ee26-0006-829d-a9265ac259c3', '/images/players/headshots/0dfa7220-ee26-0006-829d-a9265ac259c3.png', 'APSL player - position: not specified'),
-  ('c22c0a10-052b-0006-ee1e-9ffac117ebea', '/images/players/headshots/c22c0a10-052b-0006-ee1e-9ffac117ebea.png', 'APSL player - position: not specified'),
-  ('087614c9-1a73-0006-6752-2d671d4b0875', '/images/players/headshots/087614c9-1a73-0006-6752-2d671d4b0875.png', 'APSL player - position: not specified'),
-  ('b7c66ebe-25a9-0006-9eaf-6715c42b61c2', '/images/players/headshots/b7c66ebe-25a9-0006-9eaf-6715c42b61c2.png', 'APSL player - position: not specified'),
-  ('03685128-c258-0006-7b3e-65e96d6cb14e', '/images/players/headshots/03685128-c258-0006-7b3e-65e96d6cb14e.png', 'APSL player - position: not specified'),
-  ('80b973f9-ae54-0006-2fab-9bf2c4583f2f', '/images/players/headshots/80b973f9-ae54-0006-2fab-9bf2c4583f2f.png', 'APSL player - position: not specified'),
-  ('4628077e-71f7-0006-ca3d-a605d68ef562', '/images/players/headshots/4628077e-71f7-0006-ca3d-a605d68ef562.png', 'APSL player - position: not specified'),
-  ('ae70b5a1-d1de-0006-48b1-ed3fd75f5c55', '/images/players/headshots/ae70b5a1-d1de-0006-48b1-ed3fd75f5c55.png', 'APSL player - position: not specified'),
-  ('33887c21-b9f2-0006-48cc-709e921e1141', '/images/players/headshots/33887c21-b9f2-0006-48cc-709e921e1141.png', 'APSL player - position: not specified'),
-  ('31ce6bd2-40c1-0006-a3f0-0c57e0a14847', '/images/players/headshots/31ce6bd2-40c1-0006-a3f0-0c57e0a14847.png', 'APSL player - position: not specified'),
-  ('8a0a6f35-57d8-0006-ad2d-18b037714c72', '/images/players/headshots/8a0a6f35-57d8-0006-ad2d-18b037714c72.png', 'APSL player - position: not specified'),
-  ('2c2c7d61-fde8-0006-1396-b9747a713457', '/images/players/headshots/2c2c7d61-fde8-0006-1396-b9747a713457.png', 'APSL player - position: not specified'),
-  ('fdea7ec3-67b0-0006-2e92-7876591b7854', '/images/players/headshots/fdea7ec3-67b0-0006-2e92-7876591b7854.png', 'APSL player - position: not specified'),
-  ('37805f1b-4f5a-0006-4490-ddfd2b9e4c74', '/images/players/headshots/37805f1b-4f5a-0006-4490-ddfd2b9e4c74.png', 'APSL player - position: not specified'),
-  ('d2509fe2-42ad-0006-bf78-24ba4885ea4c', '/images/players/headshots/d2509fe2-42ad-0006-bf78-24ba4885ea4c.png', 'APSL player - position: not specified'),
-  ('85308641-904a-0006-265b-a8660dd49ced', '/images/players/headshots/85308641-904a-0006-265b-a8660dd49ced.png', 'APSL player - position: not specified'),
-  ('a02363ec-3315-0006-1d6e-e6943eee6ca5', '/images/players/headshots/a02363ec-3315-0006-1d6e-e6943eee6ca5.png', 'APSL player - position: not specified'),
-  ('ee75d842-1ae6-0006-8c53-9d885fc74c26', '/images/players/headshots/ee75d842-1ae6-0006-8c53-9d885fc74c26.png', 'APSL player - position: not specified'),
-  ('431ef3ec-8889-0006-6e83-43fc844a16a3', '/images/players/headshots/431ef3ec-8889-0006-6e83-43fc844a16a3.png', 'APSL player - position: not specified'),
-  ('32670b1a-3a0f-0006-b697-6cbdc80ba419', '/images/players/headshots/32670b1a-3a0f-0006-b697-6cbdc80ba419.png', 'APSL player - position: not specified'),
-  ('70095c63-411d-0006-2f78-7aaae8d50f52', '/images/players/headshots/70095c63-411d-0006-2f78-7aaae8d50f52.png', 'APSL player - position: not specified'),
-  ('1c6f3935-cb7c-0006-c8ac-8b8e98679203', '/images/players/headshots/1c6f3935-cb7c-0006-c8ac-8b8e98679203.png', 'APSL player - position: not specified'),
-  ('9d5dce99-7e66-0006-dcf4-6880c44244c1', '/images/players/headshots/9d5dce99-7e66-0006-dcf4-6880c44244c1.png', 'APSL player - position: not specified'),
-  ('07f578ac-f462-0006-c49b-0d55f4461954', '/images/players/headshots/07f578ac-f462-0006-c49b-0d55f4461954.png', 'APSL player - position: not specified'),
-  ('54afd9f7-24cb-0006-63ff-ba2c3aaeb1a1', '/images/players/headshots/54afd9f7-24cb-0006-63ff-ba2c3aaeb1a1.png', 'APSL player - position: not specified'),
-  ('02cd6efc-7b96-0006-ca40-f23545453cb5', '/images/players/headshots/02cd6efc-7b96-0006-ca40-f23545453cb5.png', 'APSL player - position: not specified'),
-  ('cba11569-a188-0006-23d1-4042202515a2', '/images/players/headshots/cba11569-a188-0006-23d1-4042202515a2.png', 'APSL player - position: not specified'),
-  ('8fd618a2-11f9-0006-2185-cbd6708400e7', '/images/players/headshots/8fd618a2-11f9-0006-2185-cbd6708400e7.png', 'APSL player - position: not specified'),
-  ('5b5b0a37-666b-0006-681e-df64c0541f5d', '/images/players/headshots/5b5b0a37-666b-0006-681e-df64c0541f5d.png', 'APSL player - position: not specified'),
-  ('ee36a913-4506-0006-8fb1-25a7198f1db8', '/images/players/headshots/ee36a913-4506-0006-8fb1-25a7198f1db8.png', 'APSL player - position: not specified'),
-  ('2f2e2baa-d232-0006-c825-bbfa8314cd2a', '/images/players/headshots/2f2e2baa-d232-0006-c825-bbfa8314cd2a.png', 'APSL player - position: not specified'),
-  ('f1fd3567-ef4f-0006-1529-4f842b97f6ec', '/images/players/headshots/f1fd3567-ef4f-0006-1529-4f842b97f6ec.png', 'APSL player - position: not specified'),
-  ('9d86fae5-6620-0006-d19f-d6833d2a0027', '/images/players/headshots/9d86fae5-6620-0006-d19f-d6833d2a0027.png', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;
@@ -1745,6 +1745,41 @@ ON CONFLICT (id) DO UPDATE SET
   notes = EXCLUDED.notes;
 
 -- ========================================
+-- PFA EPSL PLAYERS
+-- ========================================
+INSERT INTO players (id, photo_url, notes)
+VALUES
+  ('41672236-053b-0006-463b-fafde1f83fae', '/images/players/headshots/41672236-053b-0006-463b-fafde1f83fae.png', 'APSL player - position: not specified'),
+  ('ed7beb1e-57c6-0006-a964-c023ca33f018', '/images/players/headshots/ed7beb1e-57c6-0006-a964-c023ca33f018.png', 'APSL player - position: not specified'),
+  ('4cdb4fec-a108-0006-3024-21c1b0e93639', '/images/players/headshots/4cdb4fec-a108-0006-3024-21c1b0e93639.png', 'APSL player - position: not specified'),
+  ('1e9c5a6b-2745-0006-0d37-2dedaf509ac5', '/images/players/headshots/1e9c5a6b-2745-0006-0d37-2dedaf509ac5.png', 'APSL player - position: not specified'),
+  ('09f2e016-dfae-0006-66f5-fe5bb9d65608', '/images/players/headshots/09f2e016-dfae-0006-66f5-fe5bb9d65608.png', 'APSL player - position: not specified'),
+  ('964640a2-b0cf-0006-4e8d-81e9aae27abd', '/images/players/headshots/964640a2-b0cf-0006-4e8d-81e9aae27abd.png', 'APSL player - position: not specified'),
+  ('d54ec81f-b9e7-0006-1d81-59496222bc4f', '/images/players/headshots/d54ec81f-b9e7-0006-1d81-59496222bc4f.png', 'APSL player - position: not specified'),
+  ('a49747f8-58b4-0006-8041-226baa7079e7', '/images/players/headshots/a49747f8-58b4-0006-8041-226baa7079e7.png', 'APSL player - position: not specified'),
+  ('e0c00c53-343a-0006-26d7-66a07377ce63', '/images/players/headshots/e0c00c53-343a-0006-26d7-66a07377ce63.png', 'APSL player - position: not specified'),
+  ('84632a56-d3a0-0006-e06c-cd25e193c0ad', '/images/players/headshots/84632a56-d3a0-0006-e06c-cd25e193c0ad.png', 'APSL player - position: not specified'),
+  ('a78dba3d-3536-0006-8d37-50d5efe78a6c', '/images/players/headshots/a78dba3d-3536-0006-8d37-50d5efe78a6c.png', 'APSL player - position: not specified'),
+  ('b4bf0347-1334-0006-5e3e-39d900d3586a', '/images/players/headshots/b4bf0347-1334-0006-5e3e-39d900d3586a.png', 'APSL player - position: not specified'),
+  ('685cc3fa-5ca9-0006-65da-2672fa97abb0', '/images/players/headshots/685cc3fa-5ca9-0006-65da-2672fa97abb0.png', 'APSL player - position: not specified'),
+  ('e1f2ff52-2f1e-0006-5751-60640491d25a', '/images/players/headshots/e1f2ff52-2f1e-0006-5751-60640491d25a.png', 'APSL player - position: not specified'),
+  ('60d1ae3b-be7e-0006-87eb-488dd99cd9ae', '/images/players/headshots/60d1ae3b-be7e-0006-87eb-488dd99cd9ae.png', 'APSL player - position: not specified'),
+  ('7f6fe638-59cb-0006-bebe-1f409a3cdb5e', '/images/players/headshots/7f6fe638-59cb-0006-bebe-1f409a3cdb5e.png', 'APSL player - position: not specified'),
+  ('6fe26ee6-c0a5-0006-1027-eeb53062dbf3', '/images/players/headshots/6fe26ee6-c0a5-0006-1027-eeb53062dbf3.png', 'APSL player - position: not specified'),
+  ('2df93f06-45fc-0006-1abf-ce95b342a265', '/images/players/headshots/2df93f06-45fc-0006-1abf-ce95b342a265.png', 'APSL player - position: not specified'),
+  ('61d004c0-a7db-0006-70c5-ce75941d3c80', '/images/players/headshots/61d004c0-a7db-0006-70c5-ce75941d3c80.png', 'APSL player - position: not specified'),
+  ('91c7c07c-ddd4-0006-bb1d-ab37cffcd990', '/images/players/headshots/91c7c07c-ddd4-0006-bb1d-ab37cffcd990.png', 'APSL player - position: not specified'),
+  ('d95fdaf2-6af8-0006-3428-4a34e9ac6d8e', '/images/players/headshots/d95fdaf2-6af8-0006-3428-4a34e9ac6d8e.png', 'APSL player - position: not specified'),
+  ('a2c3b15d-df06-0006-c45f-c7e1d63c8dd0', '/images/players/headshots/a2c3b15d-df06-0006-c45f-c7e1d63c8dd0.png', 'APSL player - position: not specified'),
+  ('2194a34f-038b-0006-a754-3cb2806ed2ce', '/images/players/headshots/2194a34f-038b-0006-a754-3cb2806ed2ce.png', 'APSL player - position: not specified'),
+  ('b1fe8bfd-cc5e-0006-7327-3b331cfbf6ca', '/images/players/headshots/b1fe8bfd-cc5e-0006-7327-3b331cfbf6ca.png', 'APSL player - position: not specified'),
+  ('06e0323c-007c-0006-25c3-983115664737', '/images/players/headshots/06e0323c-007c-0006-25c3-983115664737.png', 'APSL player - position: not specified'),
+  ('f7594491-6bda-0006-bcd1-ce32af311366', '/images/players/headshots/f7594491-6bda-0006-bcd1-ce32af311366.png', 'APSL player - position: not specified')
+ON CONFLICT (id) DO UPDATE SET
+  photo_url = EXCLUDED.photo_url,
+  notes = EXCLUDED.notes;
+
+-- ========================================
 -- Grove Soccer United PLAYERS
 -- ========================================
 INSERT INTO players (id, photo_url, notes)
@@ -1784,41 +1819,6 @@ VALUES
   ('34fa5e05-0285-0006-6072-68514344a498', '/images/players/headshots/34fa5e05-0285-0006-6072-68514344a498.png', 'APSL player - position: not specified'),
   ('bb5ddd63-4504-0006-63a6-e06d34a35778', '/images/players/headshots/bb5ddd63-4504-0006-63a6-e06d34a35778.png', 'APSL player - position: not specified'),
   ('92497df4-e9a9-0006-e063-27471ad9ef92', '/images/players/headshots/92497df4-e9a9-0006-e063-27471ad9ef92.png', 'APSL player - position: not specified')
-ON CONFLICT (id) DO UPDATE SET
-  photo_url = EXCLUDED.photo_url,
-  notes = EXCLUDED.notes;
-
--- ========================================
--- PFA EPSL PLAYERS
--- ========================================
-INSERT INTO players (id, photo_url, notes)
-VALUES
-  ('41672236-053b-0006-463b-fafde1f83fae', '/images/players/headshots/41672236-053b-0006-463b-fafde1f83fae.png', 'APSL player - position: not specified'),
-  ('ed7beb1e-57c6-0006-a964-c023ca33f018', '/images/players/headshots/ed7beb1e-57c6-0006-a964-c023ca33f018.png', 'APSL player - position: not specified'),
-  ('4cdb4fec-a108-0006-3024-21c1b0e93639', '/images/players/headshots/4cdb4fec-a108-0006-3024-21c1b0e93639.png', 'APSL player - position: not specified'),
-  ('1e9c5a6b-2745-0006-0d37-2dedaf509ac5', '/images/players/headshots/1e9c5a6b-2745-0006-0d37-2dedaf509ac5.png', 'APSL player - position: not specified'),
-  ('09f2e016-dfae-0006-66f5-fe5bb9d65608', '/images/players/headshots/09f2e016-dfae-0006-66f5-fe5bb9d65608.png', 'APSL player - position: not specified'),
-  ('964640a2-b0cf-0006-4e8d-81e9aae27abd', '/images/players/headshots/964640a2-b0cf-0006-4e8d-81e9aae27abd.png', 'APSL player - position: not specified'),
-  ('d54ec81f-b9e7-0006-1d81-59496222bc4f', '/images/players/headshots/d54ec81f-b9e7-0006-1d81-59496222bc4f.png', 'APSL player - position: not specified'),
-  ('a49747f8-58b4-0006-8041-226baa7079e7', '/images/players/headshots/a49747f8-58b4-0006-8041-226baa7079e7.png', 'APSL player - position: not specified'),
-  ('e0c00c53-343a-0006-26d7-66a07377ce63', '/images/players/headshots/e0c00c53-343a-0006-26d7-66a07377ce63.png', 'APSL player - position: not specified'),
-  ('84632a56-d3a0-0006-e06c-cd25e193c0ad', '/images/players/headshots/84632a56-d3a0-0006-e06c-cd25e193c0ad.png', 'APSL player - position: not specified'),
-  ('a78dba3d-3536-0006-8d37-50d5efe78a6c', '/images/players/headshots/a78dba3d-3536-0006-8d37-50d5efe78a6c.png', 'APSL player - position: not specified'),
-  ('b4bf0347-1334-0006-5e3e-39d900d3586a', '/images/players/headshots/b4bf0347-1334-0006-5e3e-39d900d3586a.png', 'APSL player - position: not specified'),
-  ('685cc3fa-5ca9-0006-65da-2672fa97abb0', '/images/players/headshots/685cc3fa-5ca9-0006-65da-2672fa97abb0.png', 'APSL player - position: not specified'),
-  ('e1f2ff52-2f1e-0006-5751-60640491d25a', '/images/players/headshots/e1f2ff52-2f1e-0006-5751-60640491d25a.png', 'APSL player - position: not specified'),
-  ('60d1ae3b-be7e-0006-87eb-488dd99cd9ae', '/images/players/headshots/60d1ae3b-be7e-0006-87eb-488dd99cd9ae.png', 'APSL player - position: not specified'),
-  ('7f6fe638-59cb-0006-bebe-1f409a3cdb5e', '/images/players/headshots/7f6fe638-59cb-0006-bebe-1f409a3cdb5e.png', 'APSL player - position: not specified'),
-  ('6fe26ee6-c0a5-0006-1027-eeb53062dbf3', '/images/players/headshots/6fe26ee6-c0a5-0006-1027-eeb53062dbf3.png', 'APSL player - position: not specified'),
-  ('2df93f06-45fc-0006-1abf-ce95b342a265', '/images/players/headshots/2df93f06-45fc-0006-1abf-ce95b342a265.png', 'APSL player - position: not specified'),
-  ('61d004c0-a7db-0006-70c5-ce75941d3c80', '/images/players/headshots/61d004c0-a7db-0006-70c5-ce75941d3c80.png', 'APSL player - position: not specified'),
-  ('91c7c07c-ddd4-0006-bb1d-ab37cffcd990', '/images/players/headshots/91c7c07c-ddd4-0006-bb1d-ab37cffcd990.png', 'APSL player - position: not specified'),
-  ('d95fdaf2-6af8-0006-3428-4a34e9ac6d8e', '/images/players/headshots/d95fdaf2-6af8-0006-3428-4a34e9ac6d8e.png', 'APSL player - position: not specified'),
-  ('a2c3b15d-df06-0006-c45f-c7e1d63c8dd0', '/images/players/headshots/a2c3b15d-df06-0006-c45f-c7e1d63c8dd0.png', 'APSL player - position: not specified'),
-  ('2194a34f-038b-0006-a754-3cb2806ed2ce', '/images/players/headshots/2194a34f-038b-0006-a754-3cb2806ed2ce.png', 'APSL player - position: not specified'),
-  ('b1fe8bfd-cc5e-0006-7327-3b331cfbf6ca', '/images/players/headshots/b1fe8bfd-cc5e-0006-7327-3b331cfbf6ca.png', 'APSL player - position: not specified'),
-  ('06e0323c-007c-0006-25c3-983115664737', '/images/players/headshots/06e0323c-007c-0006-25c3-983115664737.png', 'APSL player - position: not specified'),
-  ('f7594491-6bda-0006-bcd1-ce32af311366', '/images/players/headshots/f7594491-6bda-0006-bcd1-ce32af311366.png', 'APSL player - position: not specified')
 ON CONFLICT (id) DO UPDATE SET
   photo_url = EXCLUDED.photo_url,
   notes = EXCLUDED.notes;

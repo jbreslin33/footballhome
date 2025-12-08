@@ -1,7 +1,7 @@
 -- ========================================
 -- CLUBS
 -- ========================================
--- Generated: 2025-12-08T02:14:20.201Z
+-- Generated: 2025-12-08T17:05:28.172Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -155,6 +155,13 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
+VALUES ('48a40f97-9111-0003-2e29-709bd3953df2', 'Central Park Rangers FC', 'Central Park Rangers FC', 'central-park-rangers-fc', true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO clubs (id, name, display_name, slug, is_active)
 VALUES ('741624af-fbb6-0003-5186-2697c8c058e6', 'SC Vistula Garfield', 'SC Vistula Garfield', 'sc-vistula-garfield', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -163,13 +170,6 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
 VALUES ('7fd5026d-e9e6-0003-c04a-3c9bdf5901b6', 'NY Athletic Club', 'NY Athletic Club', 'ny-athletic-club', true)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  display_name = EXCLUDED.display_name,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('48a40f97-9111-0003-2e29-709bd3953df2', 'Central Park Rangers FC', 'Central Park Rangers FC', 'central-park-rangers-fc', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
@@ -190,6 +190,13 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
+VALUES ('c2402f6c-0036-0003-d453-d68637ee8277', 'Oaklyn United FC', 'Oaklyn United FC', 'oaklyn-united-fc', true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO clubs (id, name, display_name, slug, is_active)
 VALUES ('5d95682c-0ec8-0003-0728-deae7986a2e0', 'Real Central NJ Soccer', 'Real Central NJ Soccer', 'real-central-nj-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -198,13 +205,6 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
 VALUES ('294a08ff-4f18-0003-c42b-a5fb0d5f0896', 'Philadelphia Heritage SC', 'Philadelphia Heritage SC', 'philadelphia-heritage-sc', true)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  display_name = EXCLUDED.display_name,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('c2402f6c-0036-0003-d453-d68637ee8277', 'Oaklyn United FC', 'Oaklyn United FC', 'oaklyn-united-fc', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
@@ -281,14 +281,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('cf7f17f3-b83d-0003-856e-8a0b8da24008', 'Grove Soccer United', 'Grove Soccer United', 'grove-soccer-united', true)
+VALUES ('d8e57bbb-92dd-0003-95c3-76a8d99bb683', 'PFA EPSL', 'PFA EPSL', 'pfa-epsl', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('d8e57bbb-92dd-0003-95c3-76a8d99bb683', 'PFA EPSL', 'PFA EPSL', 'pfa-epsl', true)
+VALUES ('cf7f17f3-b83d-0003-856e-8a0b8da24008', 'Grove Soccer United', 'Grove Soccer United', 'grove-soccer-united', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

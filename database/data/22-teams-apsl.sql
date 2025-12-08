@@ -1,7 +1,7 @@
 -- ========================================
 -- TEAMS
 -- ========================================
--- Generated: 2025-12-08T02:14:20.202Z
+-- Generated: 2025-12-08T17:05:28.173Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -176,6 +176,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
+VALUES ('48a40f97-9111-0005-2e29-709bd3953df2', 'Central Park Rangers FC', '48a40f97-9111-0004-2e29-709bd3953df2', 'cce826c6-2327-0003-eaa3-795e1b4fe3d0', '2024-2025', true, '/images/teams/logos/central-park-rangers-fc.png')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  league_division_id = EXCLUDED.league_division_id,
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
 VALUES ('741624af-fbb6-0005-5186-2697c8c058e6', 'SC Vistula Garfield', '741624af-fbb6-0004-5186-2697c8c058e6', 'cce826c6-2327-0003-eaa3-795e1b4fe3d0', '2024-2025', true, '/images/teams/logos/sc-vistula-garfield.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -185,14 +193,6 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
 VALUES ('7fd5026d-e9e6-0005-c04a-3c9bdf5901b6', 'NY Athletic Club', '7fd5026d-e9e6-0004-c04a-3c9bdf5901b6', 'cce826c6-2327-0003-eaa3-795e1b4fe3d0', '2024-2025', true, '/images/teams/logos/ny-athletic-club.png')
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  league_division_id = EXCLUDED.league_division_id,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('48a40f97-9111-0005-2e29-709bd3953df2', 'Central Park Rangers FC', '48a40f97-9111-0004-2e29-709bd3953df2', 'cce826c6-2327-0003-eaa3-795e1b4fe3d0', '2024-2025', true, '/images/teams/logos/central-park-rangers-fc.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -216,6 +216,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
+VALUES ('c2402f6c-0036-0005-d453-d68637ee8277', 'Oaklyn United FC', 'c2402f6c-0036-0004-d453-d68637ee8277', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true, '/images/teams/logos/oaklyn-united-fc.png')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  league_division_id = EXCLUDED.league_division_id,
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
 VALUES ('5d95682c-0ec8-0005-0728-deae7986a2e0', 'Real Central NJ Soccer', '5d95682c-0ec8-0004-0728-deae7986a2e0', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true, '/images/teams/logos/real-central-nj-soccer.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -225,14 +233,6 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
 VALUES ('294a08ff-4f18-0005-c42b-a5fb0d5f0896', 'Philadelphia Heritage SC', '294a08ff-4f18-0004-c42b-a5fb0d5f0896', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true, '/images/teams/logos/philadelphia-heritage-sc.png')
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  league_division_id = EXCLUDED.league_division_id,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('c2402f6c-0036-0005-d453-d68637ee8277', 'Oaklyn United FC', 'c2402f6c-0036-0004-d453-d68637ee8277', '0e4dfe0a-4757-0003-dc8e-92734ef56a74', '2024-2025', true, '/images/teams/logos/oaklyn-united-fc.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -320,7 +320,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('cf7f17f3-b83d-0005-856e-8a0b8da24008', 'Grove Soccer United', 'cf7f17f3-b83d-0004-856e-8a0b8da24008', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/grove-soccer-united.png')
+VALUES ('d8e57bbb-92dd-0005-95c3-76a8d99bb683', 'PFA EPSL', 'd8e57bbb-92dd-0004-95c3-76a8d99bb683', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/pfa-epsl.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -328,7 +328,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('d8e57bbb-92dd-0005-95c3-76a8d99bb683', 'PFA EPSL', 'd8e57bbb-92dd-0004-95c3-76a8d99bb683', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/pfa-epsl.png')
+VALUES ('cf7f17f3-b83d-0005-856e-8a0b8da24008', 'Grove Soccer United', 'cf7f17f3-b83d-0004-856e-8a0b8da24008', '458151aa-915e-0003-2e19-a8b87de9b135', '2024-2025', true, '/images/teams/logos/grove-soccer-united.png')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
