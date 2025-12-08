@@ -43,24 +43,22 @@ Response DivisionController::handleGetDivisionPlayers(const Request& request) {
         if (status == "all") {
             query = "SELECT dp.id, dp.player_id, dp.division_id, dp.status, "
                    "dp.registration_number, dp.last_active_season, dp.created_at, dp.updated_at, "
-                   "p.first_name, p.last_name, p.date_of_birth, p.email, p.phone, "
-                   "u.id as user_id, u.email as user_email "
+                   "u.first_name, u.last_name, u.date_of_birth, u.email, u.phone "
                    "FROM division_players dp "
                    "JOIN players p ON dp.player_id = p.id "
-                   "LEFT JOIN users u ON p.user_id = u.id "
+                   "JOIN users u ON p.id = u.id "
                    "WHERE dp.division_id = $1 "
-                   "ORDER BY p.last_name, p.first_name";
+                   "ORDER BY u.last_name, u.first_name";
             params.push_back(divisionId);
         } else {
             query = "SELECT dp.id, dp.player_id, dp.division_id, dp.status, "
                    "dp.registration_number, dp.last_active_season, dp.created_at, dp.updated_at, "
-                   "p.first_name, p.last_name, p.date_of_birth, p.email, p.phone, "
-                   "u.id as user_id, u.email as user_email "
+                   "u.first_name, u.last_name, u.date_of_birth, u.email, u.phone "
                    "FROM division_players dp "
                    "JOIN players p ON dp.player_id = p.id "
-                   "LEFT JOIN users u ON p.user_id = u.id "
+                   "JOIN users u ON p.id = u.id "
                    "WHERE dp.division_id = $1 AND dp.status = $2 "
-                   "ORDER BY p.last_name, p.first_name";
+                   "ORDER BY u.last_name, u.first_name";
             params.push_back(divisionId);
             params.push_back(status);
         }
