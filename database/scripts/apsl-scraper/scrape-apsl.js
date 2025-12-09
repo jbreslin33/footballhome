@@ -3,25 +3,22 @@
 /**
  * APSL League Data Scraper
  * 
- * Scrapes American Premier Soccer League website for:
- * - All conferences
- * - All teams within each conference
- * - All player rosters for each team
+ * Scrapes American Premier Soccer League website for structure and/or rosters.
  * 
- * Generates SQL INSERT statements with ON CONFLICT DO UPDATE for idempotency.
- * Outputs to multiple files in standardized database structure:
- *   - leagues/01-leagues.sql
- *   - leagues/02-conferences.sql
- *   - leagues/03-divisions.sql
- *   - clubs/01-clubs.sql
- *   - clubs/02-divisions.sql
- *   - teams/02-apsl-teams.sql
- *   - users/02-apsl-users.sql
- *   - players/02-apsl-players.sql
- *   - rosters/01-rosters.sql
+ * MODES:
+ *   structure  - Scrape conferences/divisions/teams only (no rosters)
+ *   lighthouse - Scrape Lighthouse 1893 SC roster only (creates external_identities, not users)
+ *   (none)     - Full scrape (all teams + all rosters)
  * 
  * Usage:
+ *   node database/scripts/apsl-scraper/scrape-apsl.js structure
+ *   node database/scripts/apsl-scraper/scrape-apsl.js lighthouse
  *   node database/scripts/apsl-scraper/scrape-apsl.js
+ * 
+ * STAGED IMPORT PATTERN:
+ *   When mode='lighthouse', scraper creates user_external_identities with user_id=NULL
+ *   instead of creating users/players/team_players. Admin must manually link/merge
+ *   identities via Division Roster Management UI.
  */
 
 const https = require('https');
@@ -29,6 +26,8 @@ const { JSDOM } = require('jsdom');
 const fs = require('fs');
 const path = require('path');
 
+// Parse mode from command line argument
+const MODE = process.argv[2]; // 'structure', 'lighthouse', or undefined (full scrape)
 // Handle uncaught errors from network requests gracefully
 // This prevents the scraper from crashing on transient network errors
 process.on('uncaughtException', (err) => {
@@ -61,6 +60,7 @@ const players = new Map();
 const teamPlayers = new Map();
 const events = new Map();
 const matches = new Map();
+const externalIdentities = new Map(); // For lighthouse mode: user_external_identities
 
 // Event type IDs (from 01-core-lookups.sql)
 const MATCH_EVENT_TYPE_ID = '550e8400-e29b-41d4-a716-446655440402';
@@ -553,9 +553,23 @@ async function scrapeAPSL() {
             apsl_team_id: apslTeamId
           });
 
-          // Step 3: Scrape player roster for this team
-          console.error(`  Scraping roster for ${teamName}...`);
-          await scrapeTeamRoster(teamId, fullTeamUrl);
+          // Step 3: Scrape player roster for this team (conditional on mode)
+          if (MODE === 'structure') {
+            // Structure mode: skip roster scraping
+            console.error(`  Skipping roster (structure mode)`);
+          } else if (MODE === 'lighthouse') {
+            // Lighthouse mode: only scrape Lighthouse 1893 SC
+            if (teamName.toLowerCase().includes('lighthouse')) {
+              console.error(`  Scraping roster for ${teamName} (lighthouse mode)...`);
+              await scrapeTeamRoster(teamId, fullTeamUrl, teamName);
+            } else {
+              console.error(`  Skipping ${teamName} (not Lighthouse)`);
+            }
+          } else {
+            // Full scrape mode: scrape all teams
+            console.error(`  Scraping roster for ${teamName}...`);
+            await scrapeTeamRoster(teamId, fullTeamUrl, teamName);
+          }
         }
       }
 
@@ -571,7 +585,7 @@ async function scrapeAPSL() {
 }
 
 // Scrape individual team roster
-async function scrapeTeamRoster(teamId, teamUrl) {
+async function scrapeTeamRoster(teamId, teamUrl, teamName) {
   try {
     const html = await fetchHTML(teamUrl);
     if (html === null) {
@@ -742,49 +756,90 @@ async function scrapeTeamRoster(teamId, teamUrl) {
       const playerId = userId;
       const teamPlayerId = generateUUID('0007', teamId + userId);
 
-      // Store user (no email/password - only scraped data)
-      if (!users.has(userId)) {
-        // Download player headshot if available
-        let localPhotoPath = null;
-        if (photoUrl) {
-          try {
-            localPhotoPath = await downloadHeadshot(photoUrl, playerName, playerId);
-          } catch (err) {
-            console.error(`      ✗ Failed to download headshot for ${playerName}:`, err.message);
+      // MODE LOGIC: lighthouse vs full scrape
+      if (MODE === 'lighthouse') {
+        // Lighthouse mode: Create external_identities, NOT users/players/team_players
+        const externalId = generateUUID('0012', `apsl-${playerName}-${teamId}`);
+        
+        if (!externalIdentities.has(externalId)) {
+          // Download player headshot if available
+          let localPhotoPath = null;
+          if (photoUrl) {
+            try {
+              localPhotoPath = await downloadHeadshot(photoUrl, playerName, playerId);
+            } catch (err) {
+              console.error(`      ✗ Failed to download headshot for ${playerName}:`, err.message);
+            }
           }
+
+          externalIdentities.set(externalId, {
+            id: externalId,
+            provider: 'apsl',
+            external_id: `${teamId}-${playerName}`, // Composite key: teamId + playerName
+            external_username: playerName,
+            external_data: JSON.stringify({
+              first_name: firstName,
+              last_name: lastName,
+              team_id: teamId,
+              team_name: teamName,
+              jersey_number: jerseyNum ? parseInt(jerseyNum) : null,
+              position: position,
+              photo_url: localPhotoPath,
+              scraped_from: teamUrl,
+              scraped_at: new Date().toISOString()
+            }),
+            user_id: null // NOT linked to a user yet
+          });
+          playersAdded++;
+        }
+      } else {
+        // Full scrape mode: Create users/players/team_players (old behavior)
+        // Store user (no email/password - only scraped data)
+        if (!users.has(userId)) {
+          // Download player headshot if available
+          let localPhotoPath = null;
+          if (photoUrl) {
+            try {
+              localPhotoPath = await downloadHeadshot(photoUrl, playerName, playerId);
+            } catch (err) {
+              console.error(`      ✗ Failed to download headshot for ${playerName}:`, err.message);
+            }
+          }
+
+          users.set(userId, {
+            id: userId,
+            first_name: firstName,
+            last_name: lastName,
+            avatar_url: localPhotoPath
+          });
+
+          // Store player
+          players.set(playerId, {
+            id: playerId,
+            position: position,
+            photo_url: localPhotoPath
+          });
         }
 
-        users.set(userId, {
-          id: userId,
-          first_name: firstName,
-          last_name: lastName,
-          avatar_url: localPhotoPath
-        });
-
-        // Store player
-        players.set(playerId, {
-          id: playerId,
-          position: position,
-          photo_url: localPhotoPath
-        });
-      }
-
-      // Store team_player relationship
-      const tpKey = `${teamId}-${playerId}`;
-      if (!teamPlayers.has(tpKey)) {
-        teamPlayers.set(tpKey, {
-          id: teamPlayerId,
-          team_id: teamId,
-          player_id: playerId,
-          jersey_number: jerseyNum ? parseInt(jerseyNum) : null,
-          position: position
-        });
-        playersAdded++;
+        // Store team_player relationship
+        const tpKey = `${teamId}-${playerId}`;
+        if (!teamPlayers.has(tpKey)) {
+          teamPlayers.set(tpKey, {
+            id: teamPlayerId,
+            team_id: teamId,
+            player_id: playerId,
+            jersey_number: jerseyNum ? parseInt(jerseyNum) : null,
+            position: position
+          });
+          playersAdded++;
+        }
       }
     }
 
     // Log roster stats
-    let logMsg = `    Found ${playersAdded} players`;
+    let logMsg = MODE === 'lighthouse' 
+      ? `    Created ${playersAdded} external_identities`
+      : `    Found ${playersAdded} players`;
     if (reserveRosterCount > 0 || inactiveSkipped > 0) {
       const parts = [`${mainRosterCount} main`];
       if (reserveRosterCount > 0) parts.push(`${reserveRosterCount} reserve`);
@@ -1365,6 +1420,34 @@ ON CONFLICT (id) DO UPDATE SET
   }
   writeFile('data/08b-users-apsl.sql', 'PLAYER USERS', usersSQL);
   
+  // 7b. EXTERNAL IDENTITIES (lighthouse mode only)
+  if (MODE === 'lighthouse' && externalIdentities.size > 0) {
+    let externalIdentitiesSQL = `
+-- Note: External identities are NOT linked to users yet (user_id = NULL)
+-- Admin must manually link/merge via Division Roster Management UI
+
+`;
+    
+    // Generate bulk INSERT with multiple VALUES
+    externalIdentitiesSQL += `INSERT INTO user_external_identities (id, provider, external_id, external_username, external_data, user_id)\nVALUES\n`;
+    
+    const identities = Array.from(externalIdentities.values());
+    const valueRows = identities.map((identity, idx) => {
+      const comma = idx < identities.length - 1 ? ',' : '';
+      return `  (${sqlEscape(identity.id)}, ${sqlEscape(identity.provider)}, ${sqlEscape(identity.external_id)}, ${sqlEscape(identity.external_username)}, ${sqlEscape(identity.external_data)}, NULL)${comma}`;
+    }).join('\n');
+    
+    externalIdentitiesSQL += valueRows + '\n';
+    externalIdentitiesSQL += `ON CONFLICT (provider, external_id) DO UPDATE SET
+  external_username = EXCLUDED.external_username,
+  external_data = EXCLUDED.external_data,
+  updated_at = CURRENT_TIMESTAMP;
+
+`;
+    
+    writeFile('data/08c-external-identities-apsl.sql', 'EXTERNAL IDENTITIES (LIGHTHOUSE)', externalIdentitiesSQL);
+  }
+  
   // 8. PLAYERS (write to separate file, grouped by team)
   let playersSQL = `
 
@@ -1518,12 +1601,17 @@ ON CONFLICT (id) DO UPDATE SET
   console.error('\n========================================');
   console.error('SCRAPE SUMMARY');
   console.error('========================================');
+  console.error(`Mode: ${MODE || 'full scrape (all teams + rosters)'}`);
   console.error(`Conferences: ${conferences.size}`);
   console.error(`Divisions: ${divisions.size}`);
   console.error(`Clubs: ${clubs.size}`);
   console.error(`Teams: ${teams.size}`);
-  console.error(`Players: ${players.size}`);
-  console.error(`Total User Accounts: ${users.size}`);
+  if (MODE === 'lighthouse') {
+    console.error(`External Identities: ${externalIdentities.size}`);
+  } else {
+    console.error(`Players: ${players.size}`);
+    console.error(`Total User Accounts: ${users.size}`);
+  }
   console.error(`Matches: ${matches.size}`);
   console.error('========================================\n');
 }

@@ -2,11 +2,23 @@
 # Football Home - Development Script
 #
 # Usage:
-#   ./dev.sh                       # Full rebuild (no scraping)
-#   ./dev.sh --apsl                # Full rebuild + scrape APSL data
-#   ./dev.sh --venues              # Full rebuild + scrape Google venues
-#   ./dev.sh --test-data           # Include test schedule data (spring 2026)
-#   ./dev.sh --apsl --test-data    # Full rebuild + APSL + test schedule
+#   ./dev.sh                                      # Full rebuild (no scraping)
+#   ./dev.sh --apsl-structure                     # Scrape APSL structure (conferences/divisions/teams)
+#   ./dev.sh --apsl-players-lighthouse            # Scrape Lighthouse 1893 SC players only
+#   ./dev.sh --casa-lighthouse                    # Scrape Lighthouse Boys Club + Old Timers
+#   ./dev.sh --groupme-lighthouse                 # Import Training Lighthouse chat
+#   ./dev.sh --save                               # Export manual edits before rebuild
+#   ./dev.sh --replay-only                        # Fast rebuild from saved changes
+#
+# Typical Workflows:
+#   ./dev.sh --apsl-structure --apsl-players-lighthouse --casa-lighthouse --groupme-lighthouse --save
+#     → New season: Full structure + Lighthouse players
+#
+#   ./dev.sh --apsl-players-lighthouse --casa-lighthouse --groupme-lighthouse --save
+#     → Weekly update: Player data only (uses saved structure)
+#
+#   ./dev.sh --replay-only
+#     → Daily development: Fast rebuild from saved state (~10 seconds)
 
 set -e
 
@@ -19,10 +31,11 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-APSL_SCRAPE=false
-CASA_SCRAPE=false
+APSL_STRUCTURE=false
+APSL_PLAYERS_LIGHTHOUSE=false
+CASA_LIGHTHOUSE=false
 VENUE_SCRAPE=false
-GROUPME_IMPORT=false
+GROUPME_LIGHTHOUSE=false
 FIND_ISSUES=false
 SAVE_MANUAL=false
 REPLAY_ONLY=false
@@ -30,17 +43,20 @@ REPLAY_ONLY=false
 # Parse arguments
 for arg in "$@"; do
     case $arg in
-        --apsl)
-            APSL_SCRAPE=true
+        --apsl-structure)
+            APSL_STRUCTURE=true
             ;;
-        --casa)
-            CASA_SCRAPE=true
+        --apsl-players-lighthouse)
+            APSL_PLAYERS_LIGHTHOUSE=true
+            ;;
+        --casa-lighthouse)
+            CASA_LIGHTHOUSE=true
             ;;
         --venues)
             VENUE_SCRAPE=true
             ;;
-        --groupme)
-            GROUPME_IMPORT=true
+        --groupme-lighthouse)
+            GROUPME_LIGHTHOUSE=true
             ;;
         --find-issues)
             FIND_ISSUES=true
@@ -55,20 +71,34 @@ for arg in "$@"; do
             echo "Football Home Development Script"
             echo ""
             echo "Usage:"
-            echo "  ./dev.sh                       Full rebuild (no scraping)"
-            echo "  ./dev.sh --apsl                Full rebuild + scrape APSL data"
-            echo "  ./dev.sh --casa                Full rebuild + scrape CASA rosters"
-            echo "  ./dev.sh --venues              Full rebuild + scrape Google venues"
-            echo "  ./dev.sh --groupme             Import practices/RSVPs from GroupMe after rebuild"
-            echo "  ./dev.sh --find-issues         Run data quality checks after rebuild"
-            echo "  ./dev.sh --save                Save manual edits before rebuild"
-            echo "  ./dev.sh --replay-only         Fast rebuild from saved replay file (skip scraping)"
-            echo "  ./dev.sh --save --apsl --casa --groupme       Save edits + full rebuild with all data"
+            echo "  ./dev.sh                                   Full rebuild (uses saved SQL files)"
+            echo ""
+            echo "Scraping Flags:"
+            echo "  --apsl-structure                           Scrape APSL conferences/divisions/teams (run once per season)"
+            echo "  --apsl-players-lighthouse                  Scrape Lighthouse 1893 SC players only (weekly)"
+            echo "  --casa-lighthouse                          Scrape Lighthouse Boys Club + Old Timers (weekly)"
+            echo "  --groupme-lighthouse                       Import Training Lighthouse chat practices/RSVPs (weekly)"
+            echo "  --venues                                   Scrape Google Places venues (rarely needed)"
+            echo ""
+            echo "Workflow Flags:"
+            echo "  --save                                     Export manual edits before rebuild"
+            echo "  --replay-only                              Fast rebuild from saved changes (~10sec)"
+            echo "  --find-issues                              Run data quality analysis after rebuild"
+            echo ""
+            echo "Examples:"
+            echo "  ./dev.sh --apsl-structure --apsl-players-lighthouse --casa-lighthouse --groupme-lighthouse --save"
+            echo "    → New season: Full structure + Lighthouse players"
+            echo ""
+            echo "  ./dev.sh --apsl-players-lighthouse --casa-lighthouse --groupme-lighthouse --save"
+            echo "    → Weekly update: Player data only (uses saved structure)"
+            echo ""
+            echo "  ./dev.sh --replay-only"
+            echo "    → Daily development: Fast rebuild from saved state"
             exit 0
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --apsl, --casa, --venues, --groupme, --find-issues, --save, --replay-only, --help"
+            echo "Valid options: --apsl-structure, --apsl-players-lighthouse, --casa-lighthouse, --groupme-lighthouse, --venues, --find-issues, --save, --replay-only, --help"
             exit 1
             ;;
     esac
@@ -92,14 +122,20 @@ if [ "$REPLAY_ONLY" = false ]; then
     echo "  ✓ Clear Docker build cache"
     echo "  ✓ Rebuild all images (no cache)"
 fi
-if [ "$APSL_SCRAPE" = true ]; then
-    echo "  ✓ Scrape APSL data"
+if [ "$APSL_STRUCTURE" = true ]; then
+    echo "  ✓ Scrape APSL structure (conferences, divisions, teams)"
+fi
+if [ "$APSL_PLAYERS_LIGHTHOUSE" = true ]; then
+    echo "  ✓ Scrape Lighthouse 1893 SC players (APSL)"
+fi
+if [ "$CASA_LIGHTHOUSE" = true ]; then
+    echo "  ✓ Scrape Lighthouse Boys Club + Old Timers (CASA)"
 fi
 if [ "$VENUE_SCRAPE" = true ]; then
     echo "  ✓ Scrape Google venues"
 fi
-if [ "$GROUPME_IMPORT" = true ]; then
-    echo "  ✓ Import practices and RSVPs from GroupMe (Training Lighthouse)"
+if [ "$GROUPME_LIGHTHOUSE" = true ]; then
+    echo "  ✓ Import Training Lighthouse chat (practices/RSVPs)"
 fi
 if [ "$FIND_ISSUES" = true ]; then
     echo "  ✓ Run data quality analysis after rebuild"
@@ -134,37 +170,54 @@ fi
 if [ "$REPLAY_ONLY" = true ]; then
     echo -e "${YELLOW}⏭️  Skipping scrapers (replay-only mode)${NC}"
     echo ""
-elif [ "$APSL_SCRAPE" = true ]; then
-    echo -e "${YELLOW}📊 Step 1a: Scraping APSL...${NC}"
-    if [ -f "database/scripts/apsl-scraper/scrape-apsl.js" ]; then
-        node database/scripts/apsl-scraper/scrape-apsl.js
-        echo -e "${GREEN}✓ APSL scraping complete${NC}"
-    else
-        echo -e "${YELLOW}⚠ Scraper not found: database/scripts/apsl-scraper/scrape-apsl.js, skipping.${NC}"
+else
+    # APSL Structure (conferences, divisions, teams)
+    if [ "$APSL_STRUCTURE" = true ]; then
+        echo -e "${YELLOW}📊 Step 1a: Scraping APSL structure...${NC}"
+        if [ -f "database/scripts/apsl-scraper/scrape-apsl.js" ]; then
+            node database/scripts/apsl-scraper/scrape-apsl.js structure
+            echo -e "${GREEN}✓ APSL structure scraping complete${NC}"
+        else
+            echo -e "${YELLOW}⚠ Scraper not found: database/scripts/apsl-scraper/scrape-apsl.js, skipping.${NC}"
+        fi
+        echo ""
     fi
-    echo ""
-fi
 
-if [ "$VENUE_SCRAPE" = true ]; then
-    echo -e "${YELLOW}📍 Step 1b: Scraping Google Venues...${NC}"
-    if [ -f "database/scripts/venue-scraper/scrape-google-venues.js" ]; then
-        node database/scripts/venue-scraper/scrape-google-venues.js
-        echo -e "${GREEN}✓ Venue scraping complete${NC}"
-    else
-        echo -e "${YELLOW}⚠ Venue scraper not found, skipping${NC}"
+    # APSL Lighthouse Players
+    if [ "$APSL_PLAYERS_LIGHTHOUSE" = true ]; then
+        echo -e "${YELLOW}📊 Step 1b: Scraping Lighthouse 1893 SC players (APSL)...${NC}"
+        if [ -f "database/scripts/apsl-scraper/scrape-apsl.js" ]; then
+            node database/scripts/apsl-scraper/scrape-apsl.js lighthouse
+            echo -e "${GREEN}✓ Lighthouse APSL players scraping complete${NC}"
+        else
+            echo -e "${YELLOW}⚠ Scraper not found, skipping${NC}"
+        fi
+        echo ""
     fi
-    echo ""
-fi
 
-if [ "$CASA_SCRAPE" = true ]; then
-    echo -e "${YELLOW}📋 Step 1c: Scraping CASA rosters...${NC}"
-    if [ -f "database/scripts/casa-scraper/scrape-casa.js" ]; then
-        node database/scripts/casa-scraper/scrape-casa.js
-        echo -e "${GREEN}✓ CASA scraping complete${NC}"
-    else
-        echo -e "${YELLOW}⚠ CASA scraper not found, skipping${NC}"
+    # CASA Lighthouse Teams
+    if [ "$CASA_LIGHTHOUSE" = true ]; then
+        echo -e "${YELLOW}📋 Step 1c: Scraping Lighthouse teams (CASA)...${NC}"
+        if [ -f "database/scripts/casa-scraper/scrape-casa.js" ]; then
+            node database/scripts/casa-scraper/scrape-casa.js lighthouse
+            echo -e "${GREEN}✓ Lighthouse CASA teams scraping complete${NC}"
+        else
+            echo -e "${YELLOW}⚠ CASA scraper not found, skipping${NC}"
+        fi
+        echo ""
     fi
-    echo ""
+
+    # Venue Scraping
+    if [ "$VENUE_SCRAPE" = true ]; then
+        echo -e "${YELLOW}📍 Step 1d: Scraping Google Venues...${NC}"
+        if [ -f "database/scripts/venue-scraper/scrape-google-venues.js" ]; then
+            node database/scripts/venue-scraper/scrape-google-venues.js
+            echo -e "${GREEN}✓ Venue scraping complete${NC}"
+        else
+            echo -e "${YELLOW}⚠ Venue scraper not found, skipping${NC}"
+        fi
+        echo ""
+    fi
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -301,11 +354,11 @@ echo -e "${GREEN}✓ pg_cron configured${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 7: IMPORT GROUPME RSVPs (if requested)
+# STEP 7: IMPORT GROUPME DATA (Training Lighthouse)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-if [ "$GROUPME_IMPORT" = true ]; then
-    echo -e "${YELLOW}📱 Step 7: Importing GroupMe data...${NC}"
+if [ "$GROUPME_LIGHTHOUSE" = true ]; then
+    echo -e "${YELLOW}📱 Step 7: Importing Training Lighthouse GroupMe data...${NC}"
     
     # Check if .env has GroupMe token
     if grep -q "GROUPME_ACCESS_TOKEN=" .env 2>/dev/null; then
@@ -347,11 +400,11 @@ if [ "$GROUPME_IMPORT" = true ]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 7: DATA QUALITY ANALYSIS (optional)
+# STEP 8: DATA QUALITY ANALYSIS (optional)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 if [ "$FIND_ISSUES" = true ]; then
-    echo -e "${YELLOW}🔍 Step 7: Running data quality analysis...${NC}"
+    echo -e "${YELLOW}🔍 Step 8: Running data quality analysis...${NC}"
     if [ -f "database/scripts/find-duplicates.js" ]; then
         node database/scripts/find-duplicates.js
         if [ $? -eq 0 ]; then
@@ -378,4 +431,4 @@ echo "Frontend:  http://localhost:3000"
 echo "Backend:   http://localhost:3001"
 echo "pgAdmin:   http://localhost:5050"
 echo ""
-echo "Login: jbreslin@footballhome.org / 1893Soccer!"
+echo "Login: soccer@lighthouse1893.org / 1893Soccer!"
