@@ -24,6 +24,7 @@ CASA_SCRAPE=false
 VENUE_SCRAPE=false
 GROUPME_IMPORT=false
 FIND_ISSUES=false
+SAVE_MANUAL=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -43,6 +44,9 @@ for arg in "$@"; do
         --find-issues)
             FIND_ISSUES=true
             ;;
+        --save)
+            SAVE_MANUAL=true
+            ;;
         --help|-h)
             echo "Football Home Development Script"
             echo ""
@@ -53,7 +57,8 @@ for arg in "$@"; do
             echo "  ./dev.sh --venues              Full rebuild + scrape Google venues"
             echo "  ./dev.sh --groupme             Import practices/RSVPs from GroupMe after rebuild"
             echo "  ./dev.sh --find-issues         Run data quality checks after rebuild"
-            echo "  ./dev.sh --apsl --casa --groupme              Full rebuild with all data"
+            echo "  ./dev.sh --save                Save manual edits before rebuild"
+            echo "  ./dev.sh --save --apsl --casa --groupme       Save edits + full rebuild with all data"
             exit 0
             ;;
         *)
@@ -71,6 +76,9 @@ echo ""
 
 # Show plan
 echo -e "${YELLOW}📋 Plan:${NC}"
+if [ "$SAVE_MANUAL" = true ]; then
+    echo "  ✓ Save manual edits from running database (if available)"
+fi
 echo "  ✓ Delete all containers and volumes"
 echo "  ✓ Clear Docker build cache"
 echo "  ✓ Rebuild all images (no cache)"
@@ -87,6 +95,27 @@ if [ "$FIND_ISSUES" = true ]; then
     echo "  ✓ Run data quality analysis after rebuild"
 fi
 echo ""
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 0: SAVE MANUAL EDITS (before wiping database)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ "$SAVE_MANUAL" = true ]; then
+    echo -e "${YELLOW}💾 Step 0: Saving manual edits from running database...${NC}"
+    
+    # Check if database container is running
+    if docker compose ps | grep -q "footballhome_db.*running"; then
+        if [ -f "scripts/save-manual-edits.js" ]; then
+            node scripts/save-manual-edits.js
+            echo -e "${GREEN}✓ Manual edits saved to database/data/99-manual-roster-edits.sql${NC}"
+        else
+            echo -e "${YELLOW}⚠ Save script not found: scripts/save-manual-edits.js${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠ Database not running, skipping save (no data to preserve)${NC}"
+    fi
+    echo ""
+fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 1: SCRAPE (if requested)
