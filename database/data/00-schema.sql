@@ -259,24 +259,23 @@ CREATE TABLE users (
 CREATE INDEX idx_users_last_first_name ON users(last_name, first_name);
 CREATE INDEX idx_users_first_name ON users(first_name);
 
--- External identity mappings (GroupMe, APSL, CASA, etc.)
+-- External identity tracking (staged import pattern)
+-- Scrapers create identities with user_id=NULL, then admin manually links/merges via UI
 CREATE TABLE user_external_identities (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    provider VARCHAR(50) NOT NULL,           -- 'groupme', 'apsl', 'casa', 'lighthouse'
-    external_id VARCHAR(255) NOT NULL,       -- Provider's user ID
-    external_username VARCHAR(255),          -- Display name from provider
-    external_data JSONB,                     -- Extra metadata from provider
-    verified_at TIMESTAMP,                   -- When this identity was verified
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
+    provider VARCHAR(50) NOT NULL,           -- 'apsl', 'casa', 'groupme'
+    external_id VARCHAR(255) NOT NULL,       -- ID from external system
+    external_username VARCHAR(255),          -- Display name from external system
+    external_data JSONB,                     -- Raw data from external system (jersey, position, etc)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    UNIQUE(provider, external_id),           -- No duplicate external IDs per provider
-    UNIQUE(user_id, provider)                -- One identity per provider per user
+    UNIQUE(provider, external_id)            -- No duplicate external IDs per provider
 );
 
-CREATE INDEX idx_user_external_identities_user ON user_external_identities(user_id);
-CREATE INDEX idx_user_external_identities_provider ON user_external_identities(provider, external_id);
+CREATE INDEX idx_user_external_identities_user_id ON user_external_identities(user_id);
+CREATE INDEX idx_user_external_identities_unlinked ON user_external_identities(provider, external_id) WHERE user_id IS NULL;
 
 -- ========================================
 -- USER ENTITY TABLES (Normalized)
@@ -971,7 +970,7 @@ CREATE TABLE magic_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     token VARCHAR(255) UNIQUE NOT NULL,
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
     expires_at TIMESTAMP NOT NULL,
     used_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1187,7 +1186,7 @@ CREATE TABLE notification_types (
 -- User notification preferences (many-to-many with notification types)
 CREATE TABLE user_notification_preferences (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
     notification_type_id UUID NOT NULL REFERENCES notification_types(id) ON DELETE CASCADE,
     email_enabled BOOLEAN DEFAULT true,        -- Send via email
     sms_enabled BOOLEAN DEFAULT false,         -- Send via SMS  
@@ -1245,7 +1244,7 @@ CREATE TABLE recurring_event_instances (
 -- Notification log (audit trail of sent notifications)
 CREATE TABLE notification_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
     notification_type_id UUID NOT NULL REFERENCES notification_types(id),
     event_id UUID REFERENCES events(id) ON DELETE SET NULL, -- Related event (if applicable)
     delivery_method VARCHAR(20) NOT NULL,      -- 'email', 'sms', 'push'
@@ -1263,7 +1262,7 @@ CREATE TABLE notification_log (
 -- Session management (for better security)
 CREATE TABLE user_sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
     session_token VARCHAR(255) UNIQUE NOT NULL,
     refresh_token VARCHAR(255) UNIQUE,
     ip_address INET,                          -- Client IP address
@@ -1452,7 +1451,7 @@ ON CONFLICT (admin_id, permission_id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS login_history (
     id SERIAL PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
     login_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ip_address VARCHAR(45),  -- IPv6 can be up to 45 chars
     user_agent TEXT,
