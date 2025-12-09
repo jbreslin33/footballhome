@@ -2,9 +2,65 @@
 
 ## Overview
 
-This system preserves manual data changes (made via the frontend) across database rebuilds by exporting them to SQL files that get replayed during initialization.
+This system **automatically tracks ALL database changes** made via the frontend using database triggers. Every INSERT/UPDATE/DELETE is logged with replay SQL that can be re-applied on rebuild.
+
+## Two-Tier Approach
+
+### 🔴 **Tier 1: Automatic Audit Log (RECOMMENDED)**
+**Trigger-based real-time tracking** - Every change is automatically captured
+
+- **File**: `database/data/98-audit-replay.sql`
+- **Source**: `change_log` table (populated by triggers)
+- **Updates**: Automatically on every database change
+- **Export**: `node scripts/export-audit-log.js`
+
+### 🔵 **Tier 2: Manual Snapshot (Backup)**
+**Point-in-time state capture** - Full database snapshot
+
+- **File**: `database/data/99-manual-roster-edits.sql`
+- **Source**: Direct queries of current state
+- **Updates**: Manual via script
+- **Export**: `node scripts/save-manual-edits.js`
 
 ## How It Works
+
+### Automatic Tracking (Audit Log)
+
+1. **Database triggers** installed on all user-editable tables:
+   - `users` - Name corrections
+   - `team_players` - Roster assignments
+   - `division_players` - Registration numbers
+   - `practices` - Manual practice entries
+   - `practice_attendances` - RSVPs
+   - `team_coaches` - Coach assignments
+   - `events`, `matches` - Score updates
+   - `user_external_identities` - GroupMe linking
+
+2. **Every change automatically creates a log entry**:
+   ```sql
+   -- Trigger fires on UPDATE
+   UPDATE users SET first_name = 'John' WHERE id = '...';
+   
+   -- Automatically logged to change_log table:
+   {
+     table_name: 'users',
+     operation: 'UPDATE',
+     old_values: {"first_name": "Jon", "last_name": "Smith"},
+     new_values: {"first_name": "John", "last_name": "Smith"},
+     replay_sql: "UPDATE users SET first_name = 'John' WHERE id = '...';"
+   }
+   ```
+
+3. **Export to SQL file**:
+   ```bash
+   node scripts/export-audit-log.js
+   # Creates database/data/98-audit-replay.sql
+   ```
+
+4. **Replay on rebuild**:
+   - File loads after scraped data (98-prefix)
+   - All your changes automatically re-applied
+   - Idempotent (safe to run multiple times)
 
 ### 1. File Structure (Numbered Ranges)
 
@@ -45,35 +101,51 @@ database/data/
 
 ### 3. Workflow
 
-#### Option A: Manual Save (Recommended)
+#### ✅ Recommended: Use --save flag (exports BOTH audit log + snapshot)
 
 ```bash
-# Before making changes that could be lost
-node scripts/save-manual-edits.js
+# Make changes in the frontend throughout the week...
 
-# This creates/updates:
-# - database/data/99-manual-roster-edits.sql (complete snapshot)
-```
-
-#### Option B: Automatic Save on Rebuild
-
-```bash
-# Save current edits, then rebuild with fresh scraped data
+# Before rebuilding, export all changes:
 ./dev.sh --save --apsl --casa --groupme
 
 # This will:
-# 1. Connect to running database
-# 2. Export all manual edits to 99-manual-roster-edits.sql
+# 1. Export audit log → 98-audit-replay.sql (tracked changes)
+# 2. Export snapshot → 99-manual-roster-edits.sql (full state backup)
 # 3. Scrape fresh data from APSL/CASA
-# 4. Destroy and rebuild database
-# 5. Load: scraped data → then your manual edits
+# 4. Destroy and rebuild database  
+# 5. Load: scraped data → audit replay → snapshot
 ```
 
-#### Option C: Just Save (No Rebuild)
+#### Manual Export (without rebuild)
 
 ```bash
-# Save current state without rebuilding
-./dev.sh --save
+# Export audit log only (tracked changes)
+node scripts/export-audit-log.js
+
+# Export snapshot only (full state)
+node scripts/save-manual-edits.js
+
+# Export both
+node scripts/export-audit-log.js && node scripts/save-manual-edits.js
+```
+
+#### View What Changed
+
+```bash
+# See recent changes in database
+docker exec footballhome_db psql -U footballhome_user -d footballhome \\
+  -c "SELECT * FROM recent_changes LIMIT 20;"
+
+# See changes by table
+docker exec footballhome_db psql -U footballhome_user -d footballhome \\
+  -c "SELECT * FROM changes_by_table;"
+
+# Export last 7 days only
+node scripts/export-audit-log.js --last 7
+
+# Export since specific date
+node scripts/export-audit-log.js --since 2025-12-01
 ```
 
 ### 4. When to Use
