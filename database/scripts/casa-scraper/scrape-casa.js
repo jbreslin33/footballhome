@@ -3,17 +3,27 @@
  * CASA Roster Scraper
  * 
  * Scrapes official CASA Liga 1 and Liga 2 rosters from published Google Sheets
- * - Extracts player data (name, DOB, headshots)
- * - Downloads and stores headshot images locally
- * - Generates SQL for users, external identities, and team rosters
  * 
- * Usage: node scrape-casa.js
+ * MODES:
+ *   lighthouse - Scrape Lighthouse Boys Club + Old Timers only (creates external_identities, not users)
+ *   (none)     - Full scrape (creates users directly, old behavior)
+ * 
+ * Usage:
+ *   node scrape-casa.js lighthouse
+ *   node scrape-casa.js
+ * 
+ * STAGED IMPORT PATTERN:
+ *   When mode='lighthouse', scraper creates user_external_identities with user_id=NULL
+ *   instead of creating users. Admin must manually link/merge via Division Roster Management UI.
  */
 
 const https = require('https');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+
+// Parse mode from command line argument
+const MODE = process.argv[2]; // 'lighthouse' or undefined (full scrape)
 
 // Configuration
 const LIGA1_BOYS_CLUB_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmsWzjTsLR81d-eQTLDM4EnaqzqUOy5OcWLy1Lna1NYVFY7gOj0nZAQdIk99e99g/pub?gid=480494399&output=csv';
@@ -168,37 +178,59 @@ async function parseRoster(csvContent, teamId, teamName) {
     // When they add image URLs to sheets, we'll extract them
     const headshotPath = null;
     
-    // Create user
-    users.push({
-      id: playerId,
-      firstName: firstName,
-      lastName: lastName,
-      dob: dob || null,
-      avatarUrl: headshotPath,
-      jerseyNum: jerseyNum || null
-    });
-    
-    // Create external identity for CASA
-    externalIdentities.push({
-      userId: playerId,
-      provider: 'casa',
-      externalId: `${teamName.toLowerCase().replace(/\s+/g, '-')}-${firstName.toLowerCase()}-${lastName.toLowerCase()}`,
-      externalUsername: `${firstName} ${lastName}`,
-      externalData: {
-        team: teamName,
-        date_of_birth: dob,
-        date_added: dateAdded,
-        jersey_number: jerseyNum,
-        headshot_note: headshotNote
-      }
-    });
-    
-    // Add to team roster
-    teamRosters.push({
-      teamId: teamId,
-      playerId: playerId,
-      jerseyNum: jerseyNum || null
-    });
+    // MODE LOGIC: lighthouse vs full scrape
+    if (MODE === 'lighthouse') {
+      // Lighthouse mode: Create external_identities with user_id=NULL, NOT users
+      externalIdentities.push({
+        userId: null, // NOT linked to a user yet
+        provider: 'casa',
+        externalId: `${teamName.toLowerCase().replace(/\s+/g, '-')}-${firstName.toLowerCase()}-${lastName.toLowerCase()}`,
+        externalUsername: `${firstName} ${lastName}`,
+        externalData: {
+          first_name: firstName,
+          last_name: lastName,
+          team_id: teamId,
+          team_name: teamName,
+          date_of_birth: dob,
+          date_added: dateAdded,
+          jersey_number: jerseyNum,
+          headshot_note: headshotNote,
+          scraped_at: new Date().toISOString()
+        }
+      });
+    } else {
+      // Full scrape mode: Create users (old behavior)
+      users.push({
+        id: playerId,
+        firstName: firstName,
+        lastName: lastName,
+        dob: dob || null,
+        avatarUrl: headshotPath,
+        jerseyNum: jerseyNum || null
+      });
+      
+      // Create external identity linked to user
+      externalIdentities.push({
+        userId: playerId,
+        provider: 'casa',
+        externalId: `${teamName.toLowerCase().replace(/\s+/g, '-')}-${firstName.toLowerCase()}-${lastName.toLowerCase()}`,
+        externalUsername: `${firstName} ${lastName}`,
+        externalData: {
+          team: teamName,
+          date_of_birth: dob,
+          date_added: dateAdded,
+          jersey_number: jerseyNum,
+          headshot_note: headshotNote
+        }
+      });
+      
+      // Add to team roster
+      teamRosters.push({
+        teamId: teamId,
+        playerId: playerId,
+        jerseyNum: jerseyNum || null
+      });
+    }
   }
   
   console.error(`  ✓ Processed ${playerCount} players`);
@@ -209,8 +241,43 @@ async function parseRoster(csvContent, teamId, teamName) {
 function generateSQL() {
   console.error('\n📝 Writing SQL files...');
   
-  // Users SQL
-  let usersSQL = `-- ========================================
+  if (MODE === 'lighthouse') {
+    // Lighthouse mode: Only generate external_identities SQL
+    let identitiesSQL = `-- ========================================
+-- CASA EXTERNAL IDENTITIES (Lighthouse Boys Club + Old Timers)
+-- ========================================
+-- Generated: ${new Date().toISOString()}
+-- Source: CASA Google Sheets
+-- AUTO-GENERATED - DO NOT EDIT MANUALLY
+-- Run scraper to regenerate: node database/scripts/casa-scraper/scrape-casa.js lighthouse
+-- ========================================
+
+-- Note: External identities are NOT linked to users yet (user_id = NULL)
+-- Admin must manually link/merge via Division Roster Management UI
+
+INSERT INTO user_external_identities (provider, external_id, external_username, external_data, user_id) VALUES\n`;
+    
+    const identityValues = externalIdentities.map(ei => {
+      const username = ei.externalUsername.replace(/'/g, "''");
+      const data = JSON.stringify(ei.externalData).replace(/'/g, "''");
+      return `  ('${ei.provider}', '${ei.externalId}', '${username}', '${data}'::jsonb, NULL)`;
+    });
+    
+    identitiesSQL += identityValues.join(',\n');
+    identitiesSQL += `\nON CONFLICT (provider, external_id) DO UPDATE SET
+  external_username = EXCLUDED.external_username,
+  external_data = EXCLUDED.external_data,
+  updated_at = CURRENT_TIMESTAMP;
+
+`;
+    
+    const identitiesFile = path.join(DATA_DIR, '21-external-identities-casa.sql');
+    fs.writeFileSync(identitiesFile, identitiesSQL);
+    console.error(`  ✓ ${identitiesFile}`);
+    
+  } else {
+    // Full scrape mode: Generate users, identities, players, and rosters SQL
+    let usersSQL = `-- ========================================
 -- CASA USERS (Liga 1 Boys Club + Liga 2 Old Timers)
 -- ========================================
 -- Generated: ${new Date().toISOString()}
@@ -221,18 +288,18 @@ function generateSQL() {
 
 `;
 
-  const userValues = users.map(u => {
-    const firstName = u.firstName.replace(/'/g, "''");
-    const lastName = u.lastName.replace(/'/g, "''");
-    const avatarUrl = u.avatarUrl ? `'${u.avatarUrl}'` : 'NULL';
-    const dob = u.dob ? `'${u.dob}'` : 'NULL';
-    
-    return `  ('${u.id}', '${firstName}', '${lastName}', ${avatarUrl}, ${dob}, true)`;
-  });
+    const userValues = users.map(u => {
+      const firstName = u.firstName.replace(/'/g, "''");
+      const lastName = u.lastName.replace(/'/g, "''");
+      const avatarUrl = u.avatarUrl ? `'${u.avatarUrl}'` : 'NULL';
+      const dob = u.dob ? `'${u.dob}'` : 'NULL';
+      
+      return `  ('${u.id}', '${firstName}', '${lastName}', ${avatarUrl}, ${dob}, true)`;
+    });
 
-  usersSQL += `INSERT INTO users (id, first_name, last_name, avatar_url, date_of_birth, is_active) VALUES\n`;
-  usersSQL += userValues.join(',\n');
-  usersSQL += `\nON CONFLICT (id) DO UPDATE SET
+    usersSQL += `INSERT INTO users (id, first_name, last_name, avatar_url, date_of_birth, is_active) VALUES\n`;
+    usersSQL += userValues.join(',\n');
+    usersSQL += `\nON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
   last_name = EXCLUDED.last_name,
   avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
@@ -241,18 +308,18 @@ function generateSQL() {
 
 `;
 
-  // External identities SQL
-  let identitiesSQL = `-- External identities for CASA players
+    // External identities SQL
+    let identitiesSQL = `-- External identities for CASA players
 INSERT INTO user_external_identities (user_id, provider, external_id, external_username, external_data) VALUES\n`;
-  
-  const identityValues = externalIdentities.map(ei => {
-    const username = ei.externalUsername.replace(/'/g, "''");
-    const data = JSON.stringify(ei.externalData).replace(/'/g, "''");
-    return `  ('${ei.userId}', '${ei.provider}', '${ei.externalId}', '${username}', '${data}'::jsonb)`;
-  });
-  
-  identitiesSQL += identityValues.join(',\n');
-  identitiesSQL += `\nON CONFLICT (user_id, provider) DO UPDATE SET
+    
+    const identityValues = externalIdentities.map(ei => {
+      const username = ei.externalUsername.replace(/'/g, "''");
+      const data = JSON.stringify(ei.externalData).replace(/'/g, "''");
+      return `  ('${ei.userId}', '${ei.provider}', '${ei.externalId}', '${username}', '${data}'::jsonb)`;
+    });
+    
+    identitiesSQL += identityValues.join(',\n');
+    identitiesSQL += `\nON CONFLICT (user_id, provider) DO UPDATE SET
   external_id = EXCLUDED.external_id,
   external_username = EXCLUDED.external_username,
   external_data = EXCLUDED.external_data,
@@ -260,45 +327,46 @@ INSERT INTO user_external_identities (user_id, provider, external_id, external_u
 
 `;
 
-  usersSQL += identitiesSQL;
+    usersSQL += identitiesSQL;
 
-  // Players SQL (ensure player records exist)
-  usersSQL += `-- Ensure player records exist for all CASA users
+    // Players SQL (ensure player records exist)
+    usersSQL += `-- Ensure player records exist for all CASA users
 INSERT INTO players (id) VALUES\n`;
-  usersSQL += users.map(u => `  ('${u.id}')`).join(',\n');
-  usersSQL += `\nON CONFLICT (id) DO NOTHING;
+    usersSQL += users.map(u => `  ('${u.id}')`).join(',\n');
+    usersSQL += `\nON CONFLICT (id) DO NOTHING;
 
 `;
 
-  // Rosters SQL
-  let rostersSQL = `-- ========================================
+    // Rosters SQL
+    let rostersSQL = `-- ========================================
 -- CASA TEAM ROSTERS
 -- ========================================
 
 `;
 
-  const rosterValues = teamRosters.map(r => {
-    const jersey = r.jerseyNum ? `${r.jerseyNum}` : 'NULL';
-    return `  ('${r.teamId}', '${r.playerId}', 1, ${jersey})`;
-  });
+    const rosterValues = teamRosters.map(r => {
+      const jersey = r.jerseyNum ? `${r.jerseyNum}` : 'NULL';
+      return `  ('${r.teamId}', '${r.playerId}', 1, ${jersey})`;
+    });
 
-  rostersSQL += `INSERT INTO team_players (team_id, player_id, roster_status_id, jersey_number) VALUES\n`;
-  rostersSQL += rosterValues.join(',\n');
-  rostersSQL += `\nON CONFLICT (team_id, player_id) DO UPDATE SET
+    rostersSQL += `INSERT INTO team_players (team_id, player_id, roster_status_id, jersey_number) VALUES\n`;
+    rostersSQL += rosterValues.join(',\n');
+    rostersSQL += `\nON CONFLICT (team_id, player_id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, team_players.jersey_number),
   is_active = true;
 
 `;
 
-  // Write files
-  const usersFile = path.join(DATA_DIR, '21-users-casa.sql');
-  const rostersFile = path.join(DATA_DIR, '31-rosters-casa.sql');
-  
-  fs.writeFileSync(usersFile, usersSQL);
-  fs.writeFileSync(rostersFile, rostersSQL);
-  
-  console.error(`  ✓ ${usersFile}`);
-  console.error(`  ✓ ${rostersFile}`);
+    // Write files
+    const usersFile = path.join(DATA_DIR, '21-users-casa.sql');
+    const rostersFile = path.join(DATA_DIR, '31-rosters-casa.sql');
+    
+    fs.writeFileSync(usersFile, usersSQL);
+    fs.writeFileSync(rostersFile, rostersSQL);
+    
+    console.error(`  ✓ ${usersFile}`);
+    console.error(`  ✓ ${rostersFile}`);
+  }
 }
 
 // Main execution
@@ -321,9 +389,14 @@ async function main() {
     console.error('\n========================================');
     console.error('SUMMARY');
     console.error('========================================');
-    console.error(`Total Users: ${users.length}`);
-    console.error(`External Identities: ${externalIdentities.length}`);
-    console.error(`Team Roster Entries: ${teamRosters.length}`);
+    console.error(`Mode: ${MODE || 'full scrape (creates users)'}`);
+    if (MODE === 'lighthouse') {
+      console.error(`External Identities: ${externalIdentities.length}`);
+    } else {
+      console.error(`Total Users: ${users.length}`);
+      console.error(`External Identities: ${externalIdentities.length}`);
+      console.error(`Team Roster Entries: ${teamRosters.length}`);
+    }
     console.error('========================================\n');
     
     console.error('✓ Scraping complete!\n');

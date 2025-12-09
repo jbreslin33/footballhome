@@ -367,7 +367,7 @@ if [ "$GROUPME_LIGHTHOUSE" = true ]; then
         # Step 7a: Import/Sync GroupMe Users
         if [ -f "scripts/import-all-groupme-users.js" ]; then
             echo "  Importing users from all GroupMe groups..."
-            node scripts/import-all-groupme-users.js 2>&1 | sed 's/^/  /'
+            node scripts/import-all-groupme-users.js lighthouse 2>&1 | sed 's/^/  /'
             
             if [ $? -eq 0 ]; then
                 echo -e "${GREEN}✓ GroupMe users imported & synced${NC}"
