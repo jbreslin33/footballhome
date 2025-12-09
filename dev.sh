@@ -101,27 +101,18 @@ echo ""
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 if [ "$SAVE_MANUAL" = true ]; then
-    echo -e "${YELLOW}💾 Step 0: Saving manual edits from running database...${NC}"
+    echo -e "${YELLOW}💾 Step 0: Exporting tracked changes from running database...${NC}"
     
     # Check if database container is running
     if docker compose ps | grep -q "footballhome_db.*running"; then
-        # Export audit log (all changes tracked by triggers)
         if [ -f "scripts/export-audit-log.js" ]; then
-            echo "  📋 Exporting audit log (automatic change tracking)..."
             node scripts/export-audit-log.js
+            echo -e "${GREEN}✓ Audit log exported to database/data/98-audit-replay.sql${NC}"
+        else
+            echo -e "${YELLOW}⚠ Export script not found: scripts/export-audit-log.js${NC}"
         fi
-        
-        # Also run snapshot backup (comprehensive state capture)
-        if [ -f "scripts/save-manual-edits.js" ]; then
-            echo "  📸 Creating snapshot backup (full state)..."
-            node scripts/save-manual-edits.js
-        fi
-        
-        echo -e "${GREEN}✓ Manual edits saved:${NC}"
-        echo -e "  - database/data/98-audit-replay.sql (tracked changes)"
-        echo -e "  - database/data/99-manual-roster-edits.sql (full snapshot)"
     else
-        echo -e "${YELLOW}⚠ Database not running, skipping save (no data to preserve)${NC}"
+        echo -e "${YELLOW}⚠ Database not running, skipping export (no data to preserve)${NC}"
     fi
     echo ""
 fi
