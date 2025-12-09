@@ -1666,3 +1666,173 @@ CREATE TABLE attendance_cron_log (
 );
 
 COMMENT ON TABLE attendance_cron_log IS 'Log of attendance auto-creation cron job runs';
+
+-- ========================================
+-- CLUB/DIVISION PLAYER REGISTRY
+-- ========================================
+CREATE TABLE division_players (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    division_id UUID NOT NULL REFERENCES sport_divisions(id) ON DELETE CASCADE,
+    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    registration_date DATE DEFAULT CURRENT_DATE,
+    registration_number VARCHAR(50),
+    last_active_season VARCHAR(20),
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(division_id, player_id)
+);
+
+CREATE TABLE division_players_history (
+    id SERIAL PRIMARY KEY,
+    division_player_id UUID NOT NULL REFERENCES division_players(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL,
+    changed_by_user_id UUID REFERENCES users(id),
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT
+);
+
+CREATE INDEX idx_division_players_division ON division_players(division_id);
+CREATE INDEX idx_division_players_player ON division_players(player_id);
+CREATE INDEX idx_division_players_status ON division_players(status) WHERE status = 'active';
+CREATE INDEX idx_division_players_history_player ON division_players_history(division_player_id, changed_at DESC);
+
+COMMENT ON TABLE division_players IS 'Master roster of players belonging to a sport division, independent of team membership';
+
+-- =====================================================
+-- Player Availability Tracking System
+-- =====================================================
+CREATE TABLE player_medical_status (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'healthy',
+    injury_type VARCHAR(100),
+    severity VARCHAR(20),
+    available_for_practices BOOLEAN NOT NULL DEFAULT true,
+    available_for_games BOOLEAN NOT NULL DEFAULT true,
+    injury_date DATE,
+    expected_return_date DATE,
+    actual_return_date DATE,
+    medical_clearance_required BOOLEAN DEFAULT false,
+    medical_clearance_date DATE,
+    medical_provider VARCHAR(200),
+    affects_all_teams BOOLEAN DEFAULT true,
+    team_id UUID REFERENCES teams(id),
+    notes TEXT,
+    treatment_plan TEXT,
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP,
+    resolved_by UUID REFERENCES users(id),
+    CONSTRAINT medical_status_values CHECK (status IN ('healthy', 'injured', 'recovering', 'ill', 'concussion_protocol')),
+    CONSTRAINT severity_values CHECK (severity IN ('minor', 'moderate', 'severe') OR severity IS NULL),
+    CONSTRAINT team_scope_valid CHECK ((affects_all_teams = true AND team_id IS NULL) OR (affects_all_teams = false AND team_id IS NOT NULL))
+);
+
+CREATE TABLE player_academic_status (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'eligible',
+    gpa DECIMAL(3,2),
+    required_gpa DECIMAL(3,2),
+    credits_enrolled INTEGER,
+    required_credits INTEGER,
+    available_for_practices BOOLEAN NOT NULL DEFAULT true,
+    available_for_games BOOLEAN NOT NULL DEFAULT true,
+    status_start_date DATE NOT NULL,
+    status_end_date DATE,
+    review_date DATE,
+    affects_all_teams BOOLEAN DEFAULT true,
+    team_id UUID REFERENCES teams(id),
+    academic_term VARCHAR(50),
+    school_name VARCHAR(200),
+    notes TEXT,
+    improvement_plan TEXT,
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP,
+    resolved_by UUID REFERENCES users(id),
+    CONSTRAINT academic_status_values CHECK (status IN ('eligible', 'ineligible', 'probation', 'restricted')),
+    CONSTRAINT academic_team_scope_valid CHECK ((affects_all_teams = true AND team_id IS NULL) OR (affects_all_teams = false AND team_id IS NOT NULL))
+);
+
+CREATE TABLE player_medical_status_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    medical_status_id UUID NOT NULL REFERENCES player_medical_status(id) ON DELETE CASCADE,
+    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    field_changed VARCHAR(50) NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    changed_by UUID NOT NULL REFERENCES users(id),
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reason TEXT
+);
+
+CREATE TABLE player_academic_status_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    academic_status_id UUID NOT NULL REFERENCES player_academic_status(id) ON DELETE CASCADE,
+    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    field_changed VARCHAR(50) NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    changed_by UUID NOT NULL REFERENCES users(id),
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reason TEXT
+);
+
+CREATE INDEX idx_medical_status_player ON player_medical_status(player_id);
+CREATE INDEX idx_medical_status_active ON player_medical_status(player_id) WHERE resolved_at IS NULL;
+CREATE INDEX idx_medical_status_team ON player_medical_status(team_id) WHERE team_id IS NOT NULL;
+CREATE INDEX idx_academic_status_player ON player_academic_status(player_id);
+CREATE INDEX idx_academic_status_active ON player_academic_status(player_id) WHERE resolved_at IS NULL;
+CREATE INDEX idx_academic_status_team ON player_academic_status(team_id) WHERE team_id IS NOT NULL;
+CREATE INDEX idx_medical_history_status ON player_medical_status_history(medical_status_id);
+CREATE INDEX idx_academic_history_status ON player_academic_status_history(academic_status_id);
+
+-- ========================================
+-- PRACTICE TEAMS JUNCTION TABLE
+-- ========================================
+CREATE TABLE IF NOT EXISTS practice_teams (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    practice_id UUID NOT NULL REFERENCES practices(id) ON DELETE CASCADE,
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    is_primary BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(practice_id, team_id)
+);
+
+CREATE INDEX idx_practice_teams_practice ON practice_teams(practice_id);
+CREATE INDEX idx_practice_teams_team ON practice_teams(team_id);
+
+CREATE OR REPLACE FUNCTION sync_practice_teams()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        INSERT INTO practice_teams (practice_id, team_id, is_primary)
+        VALUES (NEW.id, NEW.team_id, true)
+        ON CONFLICT (practice_id, team_id) DO NOTHING;
+    ELSIF (TG_OP = 'UPDATE' AND OLD.team_id != NEW.team_id) THEN
+        DELETE FROM practice_teams 
+        WHERE practice_id = OLD.id AND team_id = OLD.team_id AND is_primary = true;
+        INSERT INTO practice_teams (practice_id, team_id, is_primary)
+        VALUES (NEW.id, NEW.team_id, true)
+        ON CONFLICT (practice_id, team_id) 
+        DO UPDATE SET is_primary = true;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_sync_practice_teams ON practices;
+CREATE TRIGGER trg_sync_practice_teams
+AFTER INSERT OR UPDATE OF team_id ON practices
+FOR EACH ROW
+EXECUTE FUNCTION sync_practice_teams();
+
+INSERT INTO practice_teams (practice_id, team_id, is_primary)
+SELECT id, team_id, true
+FROM practices
+ON CONFLICT DO NOTHING;

@@ -32,7 +32,7 @@ for (let i = 0; i < args.length; i++) {
 Export Audit Log to Replay SQL
 
 Usage:
-  node scripts/export-audit-log.js                    Export all changes since init
+  node scripts/export-audit-log.js                    Export post-init changes only (is_init=false)
   node scripts/export-audit-log.js --since 2025-12-01 Export changes since date
   node scripts/export-audit-log.js --last 7           Export last 7 days
   node scripts/export-audit-log.js --help             Show this help
@@ -71,6 +71,9 @@ async function exportAuditLog() {
         } else if (sinceDate) {
             whereClause += " AND changed_at >= $1::TIMESTAMPTZ";
             params.push(sinceDate);
+        } else {
+            // Default: only export post-init changes (manual edits)
+            whereClause += " AND is_init = false";
         }
 
         // Query the change log

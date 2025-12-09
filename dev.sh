@@ -25,6 +25,7 @@ VENUE_SCRAPE=false
 GROUPME_IMPORT=false
 FIND_ISSUES=false
 SAVE_MANUAL=false
+REPLAY_ONLY=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -47,6 +48,9 @@ for arg in "$@"; do
         --save)
             SAVE_MANUAL=true
             ;;
+        --replay-only)
+            REPLAY_ONLY=true
+            ;;
         --help|-h)
             echo "Football Home Development Script"
             echo ""
@@ -58,12 +62,13 @@ for arg in "$@"; do
             echo "  ./dev.sh --groupme             Import practices/RSVPs from GroupMe after rebuild"
             echo "  ./dev.sh --find-issues         Run data quality checks after rebuild"
             echo "  ./dev.sh --save                Save manual edits before rebuild"
+            echo "  ./dev.sh --replay-only         Fast rebuild from saved replay file (skip scraping)"
             echo "  ./dev.sh --save --apsl --casa --groupme       Save edits + full rebuild with all data"
             exit 0
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --apsl, --casa, --venues, --groupme, --find-issues, --help"
+            echo "Valid options: --apsl, --casa, --venues, --groupme, --find-issues, --save, --replay-only, --help"
             exit 1
             ;;
     esac
@@ -76,12 +81,17 @@ echo ""
 
 # Show plan
 echo -e "${YELLOW}📋 Plan:${NC}"
-if [ "$SAVE_MANUAL" = true ]; then
+if [ "$REPLAY_ONLY" = true ]; then
+    echo "  ✓ Fast rebuild from saved replay file (98-audit-replay.sql)"
+    echo "  ✓ Skip scraping, skip Docker rebuild, just restore database"
+elif [ "$SAVE_MANUAL" = true ]; then
     echo "  ✓ Save manual edits from running database (if available)"
 fi
-echo "  ✓ Delete all containers and volumes"
-echo "  ✓ Clear Docker build cache"
-echo "  ✓ Rebuild all images (no cache)"
+if [ "$REPLAY_ONLY" = false ]; then
+    echo "  ✓ Delete all containers and volumes"
+    echo "  ✓ Clear Docker build cache"
+    echo "  ✓ Rebuild all images (no cache)"
+fi
 if [ "$APSL_SCRAPE" = true ]; then
     echo "  ✓ Scrape APSL data"
 fi
@@ -118,10 +128,13 @@ if [ "$SAVE_MANUAL" = true ]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 1: SCRAPE (if requested)
+# STEP 1: SCRAPE (if requested, skip if replay-only)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-if [ "$APSL_SCRAPE" = true ]; then
+if [ "$REPLAY_ONLY" = true ]; then
+    echo -e "${YELLOW}⏭️  Skipping scrapers (replay-only mode)${NC}"
+    echo ""
+elif [ "$APSL_SCRAPE" = true ]; then
     echo -e "${YELLOW}📊 Step 1a: Scraping APSL...${NC}"
     if [ -f "database/scripts/apsl-scraper/scrape-apsl.js" ]; then
         node database/scripts/apsl-scraper/scrape-apsl.js
@@ -173,23 +186,35 @@ if [ "$TEST_DATA" = true ]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 2: CLEAN EVERYTHING
+# STEP 2: CLEAN EVERYTHING (skip Docker rebuild in replay-only)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-echo -e "${YELLOW}🧹 Step 2: Cleaning up...${NC}"
-docker compose down -v 2>/dev/null || true
-docker builder prune -af 2>/dev/null || true
-echo -e "${GREEN}✓ Cleanup complete${NC}"
-echo ""
+if [ "$REPLAY_ONLY" = true ]; then
+    echo -e "${YELLOW}🧹 Step 2: Wiping database only (keeping Docker images)...${NC}"
+    docker compose down -v 2>/dev/null || true
+    echo -e "${GREEN}✓ Database wiped${NC}"
+    echo ""
+else
+    echo -e "${YELLOW}🧹 Step 2: Cleaning up...${NC}"
+    docker compose down -v 2>/dev/null || true
+    docker builder prune -af 2>/dev/null || true
+    echo -e "${GREEN}✓ Cleanup complete${NC}"
+    echo ""
+fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 3: BUILD
+# STEP 3: BUILD (skip in replay-only)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-echo -e "${YELLOW}🔨 Step 3: Building images (no cache)...${NC}"
-docker compose build --no-cache
-echo -e "${GREEN}✓ Build complete${NC}"
-echo ""
+if [ "$REPLAY_ONLY" = false ]; then
+    echo -e "${YELLOW}🔨 Step 3: Building images (no cache)...${NC}"
+    docker compose build --no-cache
+    echo -e "${GREEN}✓ Build complete${NC}"
+    echo ""
+else
+    echo -e "${YELLOW}⏭️  Step 3: Skipping Docker build (replay-only mode)${NC}"
+    echo ""
+fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 4: START

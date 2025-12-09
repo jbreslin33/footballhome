@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS change_log (
     changed_by UUID,  -- user_id if available from session
     changed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     replay_sql TEXT,  -- Generated SQL to replay this change
-    source TEXT DEFAULT 'app'  -- 'app', 'api', 'manual', 'import'
+    source TEXT DEFAULT 'app',  -- 'app', 'api', 'manual', 'import'
+    is_init BOOLEAN DEFAULT true  -- true during init, false after 99-init-complete.sql runs
 );
 
 CREATE INDEX IF NOT EXISTS idx_change_log_table ON change_log(table_name);
@@ -189,11 +190,12 @@ CREATE TRIGGER audit_practices
     EXECUTE FUNCTION log_change_with_replay();
 
 -- Practice Attendances (RSVPs)
-DROP TRIGGER IF EXISTS audit_practice_attendances ON practice_attendances;
-CREATE TRIGGER audit_practice_attendances
-    AFTER INSERT OR UPDATE OR DELETE ON practice_attendances
-    FOR EACH ROW
-    EXECUTE FUNCTION log_change_with_replay();
+-- NOTE: practice_attendances table doesn't exist yet, trigger disabled
+-- DROP TRIGGER IF EXISTS audit_practice_attendances ON practice_attendances;
+-- CREATE TRIGGER audit_practice_attendances
+--     AFTER INSERT OR UPDATE OR DELETE ON practice_attendances
+--     FOR EACH ROW
+--     EXECUTE FUNCTION log_change_with_replay();
 
 -- Team Coaches (assignments)
 DROP TRIGGER IF EXISTS audit_team_coaches ON team_coaches;
@@ -235,7 +237,7 @@ SELECT
     operation,
     changed_at,
     replay_sql,
-    new_values->>'first_name' || ' ' || new_values->>'last_name' as user_name,
+    COALESCE(new_values->>'first_name', '') || ' ' || COALESCE(new_values->>'last_name', '') as user_name,
     new_values->>'jersey_number' as jersey,
     source
 FROM change_log

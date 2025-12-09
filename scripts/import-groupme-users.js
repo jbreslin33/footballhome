@@ -111,9 +111,11 @@ async function importUsers() {
         const cleanName = nickname.replace(/[\u{1F600}-\u{1F6FF}]/gu, '').trim();
         const { first: cFirst, last: cLast } = splitName(cleanName);
 
+        // Exclude users that already have email addresses (manually created admins/coaches)
         userResult = await client.query(
           `SELECT id FROM users 
-           WHERE LOWER(first_name) = LOWER($1) AND LOWER(last_name) = LOWER($2)`,
+           WHERE LOWER(first_name) = LOWER($1) AND LOWER(last_name) = LOWER($2)
+           AND email IS NULL`,
           [cFirst, cLast]
         );
 
