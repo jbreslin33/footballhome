@@ -1,6 +1,58 @@
 # Football Home - Object-Oriented Architecture Progress
 
-## 🎯 Current Status (Dec 6, 2025 - Latest)
+## 🎯 Current Status (Dec 10, 2025 - Latest)
+**Staged Import Pattern Implementation** 🚧 IN PROGRESS
+
+### 🔄 NEW ARCHITECTURE: External Identity Management
+**Problem:** Multiple data sources (APSL, CASA, GroupMe) created duplicate users automatically, causing chaos.
+
+**Solution:** Staged Import Pattern
+- Scrapers now create `user_external_identities` with `user_id=NULL` (unlinked)
+- Admin manually links/merges/creates users via UI
+- Prevents automatic duplicates
+- Gives control over who becomes a user
+
+**Schema Changes Completed:**
+- ✅ `user_external_identities` table with nullable `user_id`
+- ✅ Indexes for unlinked identities lookup
+- ✅ Admin user email changed to `soccer@lighthouse1893.org`
+
+**Scraper Updates Completed:**
+- ✅ APSL scraper modes: `structure`, `lighthouse`, `full`
+- ✅ CASA scraper modes: `lighthouse`, `full`
+- ✅ GroupMe import modes: `lighthouse`, `full`
+- ✅ dev.sh flags: `--apsl-structure`, `--apsl-players-lighthouse`, `--casa-lighthouse`, `--groupme-lighthouse`
+
+**Current Data State (after rebuild):**
+- ~201 external_identities (56 APSL + 59 CASA + 86 GroupMe)
+- 1 admin user (soccer@lighthouse1893.org)
+- 1 team (Lighthouse 1893 SC from APSL)
+- All external_identities have user_id=NULL (unlinked)
+
+**NEXT STEPS:**
+1. ✅ Verify rebuild completed successfully
+2. 🔜 Build Division Roster Management UI:
+   - List all unlinked external_identities grouped by provider
+   - View details (JSONB data: jersey, position, etc)
+   - Actions: Create User, Link to Existing, Merge Duplicates, Delete
+3. 🔜 Build Backend API endpoints:
+   - GET /api/external-identities (filter by provider, unlinked)
+   - POST /api/external-identities/:id/create-user
+   - POST /api/external-identities/:id/link
+   - POST /api/external-identities/merge
+4. 🔜 Update navigation to new "Manage Identities" screen
+
+**Files Modified:**
+- `database/data/00-schema.sql` - Fixed user_external_identities table, admin email
+- `database/scripts/apsl-scraper/scrape-apsl.js` - Added lighthouse mode
+- `database/scripts/casa-scraper/scrape-casa.js` - Added lighthouse mode
+- `scripts/import-all-groupme-users.js` - Added lighthouse mode
+- `dev.sh` - New flags for granular scraper control
+- Deleted old files: `21-users-casa.sql`, `23-teams-casa.sql`, `31-rosters-casa.sql`
+
+---
+
+## 🎯 Previous Status (Dec 6, 2025)
 **APSL Scraper + Multi-Team Roster Design** ✅
 
 ### 🚀 APSL Scraper Now Working!

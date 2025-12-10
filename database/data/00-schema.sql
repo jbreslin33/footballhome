@@ -1380,7 +1380,7 @@ COMMENT ON VIEW venues_google_mapping IS 'Venue data with Google Places standard
 INSERT INTO users (id, email, first_name, last_name, password_hash, is_active)
 VALUES (
     '77d77471-1250-47e0-81ab-d4626595d63c',
-    'jbreslin@footballhome.org',
+    'soccer@lighthouse1893.org',
     'James',
     'Breslin',
     crypt('1893Soccer!', gen_salt('bf')),
