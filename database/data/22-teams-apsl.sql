@@ -1,7 +1,7 @@
 -- ========================================
 -- TEAMS
 -- ========================================
--- Generated: 2025-12-11T13:47:59.248Z
+-- Generated: 2025-12-11T19:17:01.986Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -9,14 +9,6 @@
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
 VALUES ('093a47d2-4a1d-0005-6ab0-93e9e96847d7', 'Falcons FC', '093a47d2-4a1d-0004-6ab0-93e9e96847d7', '282679d6-baa5-0003-cac6-a8ec79406f30', '2024-2025', true, NULL)
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  league_division_id = EXCLUDED.league_division_id,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('2a1d62b2-aa71-0005-a6eb-1657e21800bf', 'Praia Kapital', '2a1d62b2-aa71-0004-a6eb-1657e21800bf', '282679d6-baa5-0003-cac6-a8ec79406f30', '2024-2025', true, NULL)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -32,7 +24,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
-VALUES ('a9f395bc-b644-0005-057d-97f0afc4ca9c', 'Sete Setembro USA', 'a9f395bc-b644-0004-057d-97f0afc4ca9c', '282679d6-baa5-0003-cac6-a8ec79406f30', '2024-2025', true, NULL)
+VALUES ('2a1d62b2-aa71-0005-a6eb-1657e21800bf', 'Praia Kapital', '2a1d62b2-aa71-0004-a6eb-1657e21800bf', '282679d6-baa5-0003-cac6-a8ec79406f30', '2024-2025', true, NULL)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,
@@ -65,6 +57,22 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
 VALUES ('b8ec25f4-b6b4-0005-ce33-0da183347d70', 'Fitchburg FC', 'b8ec25f4-b6b4-0004-ce33-0da183347d70', '282679d6-baa5-0003-cac6-a8ec79406f30', '2024-2025', true, NULL)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  league_division_id = EXCLUDED.league_division_id,
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
+VALUES ('a9f395bc-b644-0005-057d-97f0afc4ca9c', 'Sete Setembro USA', 'a9f395bc-b644-0004-057d-97f0afc4ca9c', '282679d6-baa5-0003-cac6-a8ec79406f30', '2024-2025', true, NULL)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  league_division_id = EXCLUDED.league_division_id,
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO teams (id, name, division_id, league_division_id, season, is_active, logo_url)
+VALUES ('146b59a9-f1e5-0005-222d-8a966f83da24', 'Somerville United FC', '146b59a9-f1e5-0004-222d-8a966f83da24', '282679d6-baa5-0003-cac6-a8ec79406f30', '2024-2025', true, NULL)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   league_division_id = EXCLUDED.league_division_id,

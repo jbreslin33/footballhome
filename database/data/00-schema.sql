@@ -96,6 +96,22 @@ CREATE TABLE home_away_statuses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- External apps/platforms lookup table
+CREATE TABLE external_apps (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) UNIQUE NOT NULL,         -- 'groupme', 'teamsnap', 'sportsengine', 'whatsapp'
+    display_name VARCHAR(100) NOT NULL,        -- 'GroupMe', 'TeamSnap', 'SportsEngine'
+    app_type VARCHAR(50) NOT NULL,             -- 'messaging', 'scheduling', 'roster_management', 'multi'
+    base_url VARCHAR(500),                     -- API base URL or app URL
+    scraper_path VARCHAR(500),                 -- Path to scraper script (e.g., 'scripts/import-groupme-*.js')
+    requires_auth BOOLEAN DEFAULT false,       -- Does this app need authentication?
+    auth_type VARCHAR(50),                     -- 'token', 'oauth', 'api_key', 'none'
+    documentation_url VARCHAR(500),            -- Link to API docs or setup guide
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT valid_app_type CHECK (app_type IN ('messaging', 'scheduling', 'roster_management', 'multi'))
+);
+
 -- Player positions lookup table (sport-specific)
 CREATE TABLE positions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -238,6 +254,28 @@ CREATE TABLE teams (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Team external apps junction table (links teams to external platforms they use)
+CREATE TABLE team_external_apps (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    sport_division_id UUID REFERENCES sport_divisions(id) ON DELETE CASCADE, -- For division-wide apps (training chats)
+    external_app_id UUID NOT NULL REFERENCES external_apps(id),
+    external_group_id VARCHAR(255),            -- GroupMe group ID, TeamSnap team ID, etc.
+    external_group_name VARCHAR(255),          -- Human-readable name from external system
+    config JSONB,                              -- App-specific config (can store auth tokens, settings)
+    is_active BOOLEAN DEFAULT true,            -- Can disable without deleting
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(team_id, external_app_id, external_group_id),
+    UNIQUE(sport_division_id, external_app_id, external_group_id),
+    CONSTRAINT team_or_division CHECK ((team_id IS NOT NULL AND sport_division_id IS NULL) OR (team_id IS NULL AND sport_division_id IS NOT NULL))
+);
+
+CREATE INDEX idx_team_external_apps_team ON team_external_apps(team_id);
+CREATE INDEX idx_team_external_apps_division ON team_external_apps(sport_division_id);
+CREATE INDEX idx_team_external_apps_app ON team_external_apps(external_app_id);
+CREATE INDEX idx_team_external_apps_active ON team_external_apps(is_active) WHERE is_active = true;
+
 -- Users table (no direct role reference - uses junction table)
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -264,12 +302,14 @@ CREATE INDEX idx_users_first_name ON users(first_name);
 CREATE TABLE user_external_identities (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
-    provider VARCHAR(50) NOT NULL,           -- 'apsl', 'casa', 'groupme'
+    external_app_id UUID REFERENCES external_apps(id),    -- Which external app/platform
+    provider VARCHAR(50) NOT NULL,           -- 'apsl', 'casa', 'groupme' (kept for backward compatibility)
     external_id VARCHAR(255) NOT NULL,       -- ID from external system
     external_username VARCHAR(255),          -- Display name from external system
     
     -- Context fields for easier filtering/merging
     team_id UUID REFERENCES teams(id) ON DELETE SET NULL, -- Which team they belong to in external system
+    sport_division_id UUID REFERENCES sport_divisions(id) ON DELETE SET NULL, -- For training chats (all teams in division)
     first_name VARCHAR(100),                 -- Parsed first name
     last_name VARCHAR(100),                  -- Parsed last name
     email VARCHAR(255),                      -- Email if available (for auto-matching)
@@ -282,7 +322,9 @@ CREATE TABLE user_external_identities (
 );
 
 CREATE INDEX idx_user_external_identities_user_id ON user_external_identities(user_id);
+CREATE INDEX idx_user_external_identities_external_app ON user_external_identities(external_app_id);
 CREATE INDEX idx_user_external_identities_team_id ON user_external_identities(team_id);
+CREATE INDEX idx_user_external_identities_sport_division_id ON user_external_identities(sport_division_id);
 CREATE INDEX idx_user_external_identities_unlinked ON user_external_identities(provider, external_id) WHERE user_id IS NULL;
 
 -- ========================================
