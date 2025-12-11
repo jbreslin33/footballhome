@@ -1,49 +1,37 @@
 -- ========================================
--- MANUAL TEAM COACHES
+-- AUTO-ASSIGN TEAM COACHES
 -- ========================================
--- Manually managed coach assignments (not from scraper)
+-- Dynamically assigns James Breslin as Head Coach to ALL Lighthouse teams
+-- This runs after all scrapers (APSL, CASA) have populated the teams table.
 
--- Assign James Breslin as coach to Lighthouse 1893 SC (APSL team)
-INSERT INTO team_coaches (id, team_id, coach_id, coach_role, is_primary, is_active)
-VALUES (
-    '00000001-0000-0000-0000-000000000001',
-    'd37eb44b-8e47-0005-9060-f0cbe96fe089',  -- Lighthouse 1893 SC (APSL scraped UUID)
-    '77d77471-1250-47e0-81ab-d4626595d63c',  -- James Breslin (soccer@lighthouse1893.org)
-    'Head Coach',
-    true,
-    true
-)
-ON CONFLICT (team_id, coach_id) DO UPDATE SET
-    coach_role = EXCLUDED.coach_role,
-    is_primary = EXCLUDED.is_primary,
-    is_active = EXCLUDED.is_active;
-
--- Assign James Breslin as coach to Lighthouse Boys Club (CASA Liga 1)
-INSERT INTO team_coaches (id, team_id, coach_id, coach_role, is_primary, is_active)
-VALUES (
-    '00000002-0000-0000-0000-000000000002',
-    'b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a',  -- Lighthouse Boys Club
-    '77d77471-1250-47e0-81ab-d4626595d63c',  -- James Breslin (soccer@lighthouse1893.org)
-    'Head Coach',
-    true,
-    true
-)
-ON CONFLICT (team_id, coach_id) DO UPDATE SET
-    coach_role = EXCLUDED.coach_role,
-    is_primary = EXCLUDED.is_primary,
-    is_active = EXCLUDED.is_active;
-
--- Assign James Breslin as coach to Lighthouse Old Timers Club (CASA Liga 2)
-INSERT INTO team_coaches (id, team_id, coach_id, coach_role, is_primary, is_active)
-VALUES (
-    '00000003-0000-0000-0000-000000000003',
-    '01d71ee5-01d7-0002-1ee5-01d71ee501d7',  -- Lighthouse Old Timers Club
-    '77d77471-1250-47e0-81ab-d4626595d63c',  -- James Breslin (soccer@lighthouse1893.org)
-    'Head Coach',
-    true,
-    true
-)
-ON CONFLICT (team_id, coach_id) DO UPDATE SET
-    coach_role = EXCLUDED.coach_role,
-    is_primary = EXCLUDED.is_primary,
-    is_active = EXCLUDED.is_active;
+/*
+DO $$
+DECLARE
+    admin_user_id UUID := '77d77471-1250-47e0-81ab-d4626595d63c'; -- James Breslin
+    team_record RECORD;
+BEGIN
+    -- Loop through all teams containing 'Lighthouse' (case-insensitive)
+    FOR team_record IN 
+        SELECT id, name 
+        FROM teams 
+        WHERE name ILIKE '%Lighthouse%'
+    LOOP
+        -- Insert coach assignment if it doesn't exist
+        INSERT INTO team_coaches (id, team_id, coach_id, coach_role, is_primary, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'coach-' || team_record.id || '-' || admin_user_id), -- Deterministic UUID
+            team_record.id,
+            admin_user_id,
+            'Head Coach',
+            true,
+            true
+        )
+        ON CONFLICT (team_id, coach_id) DO UPDATE SET
+            coach_role = 'Head Coach',
+            is_primary = true,
+            is_active = true;
+            
+        RAISE NOTICE 'Assigned James Breslin as Head Coach for %', team_record.name;
+    END LOOP;
+END $$;
+*/

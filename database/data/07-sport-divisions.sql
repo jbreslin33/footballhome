@@ -1,7 +1,7 @@
 -- ========================================
 -- SPORT DIVISIONS
 -- ========================================
--- Generated: 2025-12-09T15:13:19.497Z
+-- Generated: 2025-12-11T13:47:59.248Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -211,14 +211,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('3dd92f09-4a7d-0004-c554-60df95cfb846', '3dd92f09-4a7d-0003-c554-60df95cfb846', '550e8400-e29b-41d4-a716-446655440101', 'Vidas United FC Soccer', 'Vidas United FC Soccer', 'vidas-united-fc-soccer', true)
+VALUES ('907ece9f-5926-0004-cff6-7672dec05648', '907ece9f-5926-0003-cff6-7672dec05648', '550e8400-e29b-41d4-a716-446655440101', 'Philadelphia Soccer Club Soccer', 'Philadelphia Soccer Club Soccer', 'philadelphia-soccer-club-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, is_active)
-VALUES ('907ece9f-5926-0004-cff6-7672dec05648', '907ece9f-5926-0003-cff6-7672dec05648', '550e8400-e29b-41d4-a716-446655440101', 'Philadelphia Soccer Club Soccer', 'Philadelphia Soccer Club Soccer', 'philadelphia-soccer-club-soccer', true)
+VALUES ('3dd92f09-4a7d-0004-c554-60df95cfb846', '3dd92f09-4a7d-0003-c554-60df95cfb846', '550e8400-e29b-41d4-a716-446655440101', 'Vidas United FC Soccer', 'Vidas United FC Soccer', 'vidas-united-fc-soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

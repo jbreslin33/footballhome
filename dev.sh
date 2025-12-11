@@ -6,16 +6,17 @@
 #   ./dev.sh --apsl-structure                     # Scrape APSL structure (conferences/divisions/teams)
 #   ./dev.sh --apsl-players-lighthouse            # Scrape Lighthouse 1893 SC players only
 #   ./dev.sh --casa-lighthouse                    # Scrape Lighthouse Boys Club + Old Timers
-#   ./dev.sh --groupme-lighthouse                 # Import Training Lighthouse chat
+#   ./dev.sh --groupme-users                      # Sync GroupMe users to external_identities
+#   ./dev.sh --groupme-schedule                   # Import practices/games from GroupMe
 #   ./dev.sh --save                               # Export manual edits before rebuild
 #   ./dev.sh --replay-only                        # Fast rebuild from saved changes
 #
 # Typical Workflows:
-#   ./dev.sh --apsl-structure --apsl-players-lighthouse --casa-lighthouse --groupme-lighthouse --save
-#     → New season: Full structure + Lighthouse players
+#   ./dev.sh --apsl-structure --apsl-players-lighthouse --casa-lighthouse --groupme-users --groupme-schedule --save
+#     → New season: Full structure + Lighthouse players + GroupMe sync
 #
-#   ./dev.sh --apsl-players-lighthouse --casa-lighthouse --groupme-lighthouse --save
-#     → Weekly update: Player data only (uses saved structure)
+#   ./dev.sh --apsl-players-lighthouse --casa-lighthouse --groupme-users --groupme-schedule --save
+#     → Weekly update: Player data + GroupMe sync (uses saved structure)
 #
 #   ./dev.sh --replay-only
 #     → Daily development: Fast rebuild from saved state (~10 seconds)
@@ -31,35 +32,53 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-APSL_STRUCTURE=false
-APSL_PLAYERS_LIGHTHOUSE=false
-CASA_LIGHTHOUSE=false
+APSL_SCRAPE_MODE=""
+CASA_SCRAPE_MODE=""
 VENUE_SCRAPE=false
-GROUPME_LIGHTHOUSE=false
-FIND_ISSUES=false
+GROUPME_USERS=false
+GROUPME_SCHEDULE=false
 SAVE_MANUAL=false
 REPLAY_ONLY=false
 
 # Parse arguments
 for arg in "$@"; do
     case $arg in
-        --apsl-structure)
-            APSL_STRUCTURE=true
+        --apsl|--apsl-players)
+            APSL_SCRAPE_MODE="full"
             ;;
-        --apsl-players-lighthouse)
-            APSL_PLAYERS_LIGHTHOUSE=true
+        --apsl-structure)
+            # Only set if not already set to a more inclusive mode
+            if [ "$APSL_SCRAPE_MODE" != "full" ] && [ "$APSL_SCRAPE_MODE" != "lighthouse" ]; then
+                APSL_SCRAPE_MODE="structure"
+            fi
+            ;;
+        --apsl-players-lighthouse|--apsl-lighthouse)
+            # Only set if not already set to full
+            if [ "$APSL_SCRAPE_MODE" != "full" ]; then
+                APSL_SCRAPE_MODE="lighthouse"
+            fi
+            ;;
+        --casa-structure)
+            if [ "$CASA_SCRAPE_MODE" != "full" ] && [ "$CASA_SCRAPE_MODE" != "lighthouse" ]; then
+                CASA_SCRAPE_MODE="structure"
+            fi
             ;;
         --casa-lighthouse)
-            CASA_LIGHTHOUSE=true
+            CASA_SCRAPE_MODE="lighthouse"
             ;;
         --venues)
             VENUE_SCRAPE=true
             ;;
-        --groupme-lighthouse)
-            GROUPME_LIGHTHOUSE=true
+        --groupme-users)
+            GROUPME_USERS=true
             ;;
-        --find-issues)
-            FIND_ISSUES=true
+        --groupme-schedule)
+            GROUPME_SCHEDULE=true
+            ;;
+        --groupme-lighthouse)
+            # Legacy flag - enable both for backward compatibility
+            GROUPME_USERS=true
+            GROUPME_SCHEDULE=true
             ;;
         --save)
             SAVE_MANUAL=true
@@ -74,23 +93,30 @@ for arg in "$@"; do
             echo "  ./dev.sh                                   Full rebuild (uses saved SQL files)"
             echo ""
             echo "Scraping Flags:"
-            echo "  --apsl-structure                           Scrape APSL conferences/divisions/teams (run once per season)"
-            echo "  --apsl-players-lighthouse                  Scrape Lighthouse 1893 SC players only (weekly)"
+            echo "  --apsl                                     Full APSL scrape (structure + all players)"
+            echo "  --apsl-structure                           Scrape APSL structure only (conferences/divisions/teams)"
+            echo "  --apsl-players                             Alias for --apsl (Full scrape)"
+            echo "  --apsl-lighthouse                          Scrape Lighthouse 1893 SC players only (plus structure)"
+            echo "  --apsl-players-lighthouse                  Alias for --apsl-lighthouse"
+            echo "  --casa-structure                           Scrape CASA structure (Liga 1 & 2 teams/standings/schedule)"
             echo "  --casa-lighthouse                          Scrape Lighthouse Boys Club + Old Timers (weekly)"
-            echo "  --groupme-lighthouse                       Import Training Lighthouse chat practices/RSVPs (weekly)"
             echo "  --venues                                   Scrape Google Places venues (rarely needed)"
+            echo ""
+            echo "GroupMe Flags:"
+            echo "  --groupme-users                            Sync GroupMe users to external_identities (weekly)"
+            echo "  --groupme-schedule                         Import practices/games/RSVPs from GroupMe (weekly)"
+            echo "  --groupme-lighthouse                       Legacy: enables both --groupme-users and --groupme-schedule"
             echo ""
             echo "Workflow Flags:"
             echo "  --save                                     Export manual edits before rebuild"
             echo "  --replay-only                              Fast rebuild from saved changes (~10sec)"
-            echo "  --find-issues                              Run data quality analysis after rebuild"
             echo ""
             echo "Examples:"
-            echo "  ./dev.sh --apsl-structure --apsl-players-lighthouse --casa-lighthouse --groupme-lighthouse --save"
-            echo "    → New season: Full structure + Lighthouse players"
+            echo "  ./dev.sh --apsl --casa-lighthouse --groupme-users --groupme-schedule --save"
+            echo "    → New season: Full structure + All players + GroupMe sync"
             echo ""
-            echo "  ./dev.sh --apsl-players-lighthouse --casa-lighthouse --groupme-lighthouse --save"
-            echo "    → Weekly update: Player data only (uses saved structure)"
+            echo "  ./dev.sh --apsl-players-lighthouse --casa-lighthouse --groupme-users --groupme-schedule --save"
+            echo "    → Weekly update: Lighthouse Player data + GroupMe sync"
             echo ""
             echo "  ./dev.sh --replay-only"
             echo "    → Daily development: Fast rebuild from saved state"
@@ -98,7 +124,7 @@ for arg in "$@"; do
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --apsl-structure, --apsl-players-lighthouse, --casa-lighthouse, --groupme-lighthouse, --venues, --find-issues, --save, --replay-only, --help"
+            echo "Valid options: --apsl, --apsl-structure, --apsl-players, --apsl-lighthouse, --apsl-players-lighthouse, --casa-structure, --casa-lighthouse, --groupme-users, --groupme-schedule, --groupme-lighthouse, --venues, --save, --replay-only, --help"
             exit 1
             ;;
     esac
@@ -122,23 +148,20 @@ if [ "$REPLAY_ONLY" = false ]; then
     echo "  ✓ Clear Docker build cache"
     echo "  ✓ Rebuild all images (no cache)"
 fi
-if [ "$APSL_STRUCTURE" = true ]; then
-    echo "  ✓ Scrape APSL structure (conferences, divisions, teams)"
+if [ -n "$APSL_SCRAPE_MODE" ]; then
+    echo "  ✓ Scrape APSL (Mode: $APSL_SCRAPE_MODE)"
 fi
-if [ "$APSL_PLAYERS_LIGHTHOUSE" = true ]; then
-    echo "  ✓ Scrape Lighthouse 1893 SC players (APSL)"
-fi
-if [ "$CASA_LIGHTHOUSE" = true ]; then
-    echo "  ✓ Scrape Lighthouse Boys Club + Old Timers (CASA)"
+if [ -n "$CASA_SCRAPE_MODE" ]; then
+    echo "  ✓ Scrape CASA (Mode: $CASA_SCRAPE_MODE)"
 fi
 if [ "$VENUE_SCRAPE" = true ]; then
     echo "  ✓ Scrape Google venues"
 fi
-if [ "$GROUPME_LIGHTHOUSE" = true ]; then
-    echo "  ✓ Import Training Lighthouse chat (practices/RSVPs)"
+if [ "$GROUPME_USERS" = true ]; then
+    echo "  ✓ Sync GroupMe users to external_identities"
 fi
-if [ "$FIND_ISSUES" = true ]; then
-    echo "  ✓ Run data quality analysis after rebuild"
+if [ "$GROUPME_SCHEDULE" = true ]; then
+    echo "  ✓ Import practices/games/RSVPs from GroupMe"
 fi
 echo ""
 
@@ -171,36 +194,26 @@ if [ "$REPLAY_ONLY" = true ]; then
     echo -e "${YELLOW}⏭️  Skipping scrapers (replay-only mode)${NC}"
     echo ""
 else
-    # APSL Structure (conferences, divisions, teams)
-    if [ "$APSL_STRUCTURE" = true ]; then
-        echo -e "${YELLOW}📊 Step 1a: Scraping APSL structure...${NC}"
+    # APSL Scraping (Single execution based on mode)
+    if [ -n "$APSL_SCRAPE_MODE" ]; then
+        echo -e "${YELLOW}📊 Step 1a: Scraping APSL (Mode: $APSL_SCRAPE_MODE)...${NC}"
         if [ -f "database/scripts/apsl-scraper/scrape-apsl.js" ]; then
-            node database/scripts/apsl-scraper/scrape-apsl.js structure
-            echo -e "${GREEN}✓ APSL structure scraping complete${NC}"
+            # Pass 'full' explicitly if mode is full, or the specific mode
+            # The JS script treats anything other than 'structure' or 'lighthouse' as full
+            node database/scripts/apsl-scraper/scrape-apsl.js "$APSL_SCRAPE_MODE"
+            echo -e "${GREEN}✓ APSL scraping complete ($APSL_SCRAPE_MODE)${NC}"
         else
             echo -e "${YELLOW}⚠ Scraper not found: database/scripts/apsl-scraper/scrape-apsl.js, skipping.${NC}"
         fi
         echo ""
     fi
 
-    # APSL Lighthouse Players
-    if [ "$APSL_PLAYERS_LIGHTHOUSE" = true ]; then
-        echo -e "${YELLOW}📊 Step 1b: Scraping Lighthouse 1893 SC players (APSL)...${NC}"
-        if [ -f "database/scripts/apsl-scraper/scrape-apsl.js" ]; then
-            node database/scripts/apsl-scraper/scrape-apsl.js lighthouse
-            echo -e "${GREEN}✓ Lighthouse APSL players scraping complete${NC}"
-        else
-            echo -e "${YELLOW}⚠ Scraper not found, skipping${NC}"
-        fi
-        echo ""
-    fi
-
-    # CASA Lighthouse Teams
-    if [ "$CASA_LIGHTHOUSE" = true ]; then
-        echo -e "${YELLOW}📋 Step 1c: Scraping Lighthouse teams (CASA)...${NC}"
+    # CASA Scraping (Single execution based on mode)
+    if [ -n "$CASA_SCRAPE_MODE" ]; then
+        echo -e "${YELLOW}📋 Step 1c: Scraping CASA (Mode: $CASA_SCRAPE_MODE)...${NC}"
         if [ -f "database/scripts/casa-scraper/scrape-casa.js" ]; then
-            node database/scripts/casa-scraper/scrape-casa.js lighthouse
-            echo -e "${GREEN}✓ Lighthouse CASA teams scraping complete${NC}"
+            node database/scripts/casa-scraper/scrape-casa.js "$CASA_SCRAPE_MODE"
+            echo -e "${GREEN}✓ CASA scraping complete ($CASA_SCRAPE_MODE)${NC}"
         else
             echo -e "${YELLOW}⚠ CASA scraper not found, skipping${NC}"
         fi
@@ -354,42 +367,25 @@ echo -e "${GREEN}✓ pg_cron configured${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 7: IMPORT GROUPME DATA (Training Lighthouse)
+# STEP 7: SYNC GROUPME USERS TO EXTERNAL_IDENTITIES
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-if [ "$GROUPME_LIGHTHOUSE" = true ]; then
-    echo -e "${YELLOW}📱 Step 7: Importing Training Lighthouse GroupMe data...${NC}"
+if [ "$GROUPME_USERS" = true ]; then
+    echo -e "${YELLOW}👥 Step 7a: Syncing GroupMe users to external_identities...${NC}"
     
     # Check if .env has GroupMe token
     if grep -q "GROUPME_ACCESS_TOKEN=" .env 2>/dev/null; then
-        GROUPME_GROUP_ID="108640377"  # Training Lighthouse chat
-        
-        # Step 7a: Import/Sync GroupMe Users
         if [ -f "scripts/import-all-groupme-users.js" ]; then
             echo "  Importing users from all GroupMe groups..."
             node scripts/import-all-groupme-users.js lighthouse 2>&1 | sed 's/^/  /'
             
             if [ $? -eq 0 ]; then
-                echo -e "${GREEN}✓ GroupMe users imported & synced${NC}"
+                echo -e "${GREEN}✓ GroupMe users synced to external_identities${NC}"
             else
-                echo -e "${YELLOW}⚠ GroupMe user import completed with warnings${NC}"
+                echo -e "${YELLOW}⚠ GroupMe user sync completed with warnings${NC}"
             fi
         else
-            echo -e "${YELLOW}⚠ GroupMe user import script not found${NC}"
-        fi
-        
-        # Step 7b: Import practices and RSVPs
-        if [ -f "scripts/import-groupme-practices.js" ]; then
-            echo "  Importing practices and RSVPs from GroupMe..."
-            node scripts/import-groupme-practices.js $GROUPME_GROUP_ID 2>&1 | sed 's/^/  /'
-            
-            if [ $? -eq 0 ]; then
-                echo -e "${GREEN}✓ GroupMe practices & RSVPs imported${NC}"
-            else
-                echo -e "${YELLOW}⚠ GroupMe import completed with warnings${NC}"
-            fi
-        else
-            echo -e "${YELLOW}⚠ GroupMe import script not found${NC}"
+            echo -e "${YELLOW}⚠ GroupMe user sync script not found${NC}"
         fi
     else
         echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
@@ -400,21 +396,32 @@ if [ "$GROUPME_LIGHTHOUSE" = true ]; then
 fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 8: DATA QUALITY ANALYSIS (optional)
+# STEP 7B: IMPORT GROUPME SCHEDULE (PRACTICES/GAMES/RSVPS)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-if [ "$FIND_ISSUES" = true ]; then
-    echo -e "${YELLOW}🔍 Step 8: Running data quality analysis...${NC}"
-    if [ -f "database/scripts/find-duplicates.js" ]; then
-        node database/scripts/find-duplicates.js
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✓ Data quality analysis complete${NC}"
-            echo "  Check database/reports/ for detailed report"
+if [ "$GROUPME_SCHEDULE" = true ]; then
+    echo -e "${YELLOW}📅 Step 7b: Importing GroupMe schedule (practices/games/RSVPs)...${NC}"
+    
+    # Check if .env has GroupMe token
+    if grep -q "GROUPME_ACCESS_TOKEN=" .env 2>/dev/null; then
+        GROUPME_GROUP_ID="108640377"  # Training Lighthouse chat
+        
+        if [ -f "scripts/import-groupme-practices.js" ]; then
+            echo "  Importing practices/games and RSVPs from GroupMe..."
+            node scripts/import-groupme-practices.js $GROUPME_GROUP_ID 2>&1 | sed 's/^/  /'
+            
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✓ GroupMe schedule & RSVPs imported${NC}"
+            else
+                echo -e "${YELLOW}⚠ GroupMe schedule import completed with warnings${NC}"
+            fi
         else
-            echo -e "${YELLOW}⚠ Data quality analysis completed with issues${NC}"
+            echo -e "${YELLOW}⚠ GroupMe schedule import script not found${NC}"
         fi
     else
-        echo -e "${YELLOW}⚠ Data quality script not found${NC}"
+        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
+        echo "  Add to .env: GROUPME_ACCESS_TOKEN=your-token"
+        echo "  Get token from: https://dev.groupme.com/"
     fi
     echo ""
 fi

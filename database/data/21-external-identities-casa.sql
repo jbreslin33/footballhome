@@ -1,77 +1,3625 @@
 -- ========================================
--- CASA EXTERNAL IDENTITIES (Lighthouse Boys Club + Old Timers)
+-- CASA LIGHTHOUSE ROSTERS
 -- ========================================
--- Generated: 2025-12-09T17:59:51.201Z
--- Source: CASA Google Sheets
--- AUTO-GENERATED - DO NOT EDIT MANUALLY
--- Run scraper to regenerate: node database/scripts/casa-scraper/scrape-casa.js lighthouse
+-- Generated: 2025-12-11T13:48:43.915Z
+-- Source: Google Sheets
 -- ========================================
 
--- Note: External identities are NOT linked to users yet (user_id = NULL)
--- Admin must manually link/merge via Division Roster Management UI
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-1-omar';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
-INSERT INTO user_external_identities (provider, external_id, external_username, external_data, user_id) VALUES
-  ('casa', 'lighthouse-boys-club-omar-alzubair', 'Omar Alzubair', '{"first_name":"Omar","last_name":"Alzubair","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"05/20/2000","date_added":"9/26/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.291Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-erwa-babiker', 'Erwa Babiker', '{"first_name":"Erwa","last_name":"Babiker","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"01/01/1996","date_added":"10/30/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.292Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-victor-baidel', 'Victor Baidel', '{"first_name":"Victor","last_name":"Baidel","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"09/09/2004","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.293Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-oumar-barry', 'Oumar Barry', '{"first_name":"Oumar","last_name":"Barry","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"10/17/2003","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.293Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-aboubacar-bayo', 'Aboubacar Bayo', '{"first_name":"Aboubacar","last_name":"Bayo","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"05/29/2006","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.293Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-luke-breslin', 'Luke Breslin', '{"first_name":"Luke","last_name":"Breslin","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"08/17/2005","date_added":"9/19/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.293Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-luis-de jesus', 'Luis De Jesus', '{"first_name":"Luis","last_name":"De Jesus","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"04/16/2007","date_added":"9/26/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.293Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-abdoul-diallo', 'Abdoul Diallo', '{"first_name":"Abdoul","last_name":"Diallo","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"06/11/2006","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.293Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-abouya-gangue', 'Abouya Gangue', '{"first_name":"Abouya","last_name":"Gangue","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"10/14/2003","date_added":"10/10/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.293Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-edwin-garcia', 'Edwin Garcia', '{"first_name":"Edwin","last_name":"Garcia","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"02/19/2006","date_added":"9/26/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.293Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-miles-henry', 'Miles Henry', '{"first_name":"Miles","last_name":"Henry","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"06/20/2000","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.293Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-andy-hizdri', 'Andy Hizdri', '{"first_name":"Andy","last_name":"Hizdri","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"02/09/2005","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.293Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-arif-hossain', 'Arif Hossain', '{"first_name":"Arif","last_name":"Hossain","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"12/31/2003","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.294Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-zuhab-imran', 'Zuhab Imran', '{"first_name":"Zuhab","last_name":"Imran","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"10/26/2006","date_added":"9/19/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.294Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-esnayder-josue', 'Esnayder Josue', '{"first_name":"Esnayder","last_name":"Josue","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"04/05/1998","date_added":"11/14/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.294Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-majid-kawa', 'Majid Kawa', '{"first_name":"Majid","last_name":"Kawa","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"12/08/2001","date_added":"11/7/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.294Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-alexander-lara', 'Alexander Lara', '{"first_name":"Alexander","last_name":"Lara","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"08/14/1997","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-matt-leder', 'Matt Leder', '{"first_name":"Matt","last_name":"Leder","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"06/15/1999","date_added":"9/26/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-valentino-martinez', 'Valentino Martinez', '{"first_name":"Valentino","last_name":"Martinez","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"10/18/2002","date_added":"10/30/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-david-masi', 'David Masi', '{"first_name":"David","last_name":"Masi","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"07/07/2002","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-elmer-mendoza', 'Elmer Mendoza', '{"first_name":"Elmer","last_name":"Mendoza","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"08/04/2003","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-dylan-moreno', 'Dylan Moreno', '{"first_name":"Dylan","last_name":"Moreno","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"02/18/2005","date_added":"9/19/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-babacar-ndiaye', 'Babacar Ndiaye', '{"first_name":"Babacar","last_name":"Ndiaye","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"02/28/2005","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-zion-nwalipenja', 'Zion Nwalipenja', '{"first_name":"Zion","last_name":"Nwalipenja","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"01/07/2005","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-john-oladele', 'John Oladele', '{"first_name":"John","last_name":"Oladele","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"06/30/2000","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-jemirkel-ornaque', 'Jemirkel Ornaque', '{"first_name":"Jemirkel","last_name":"Ornaque","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"08/05/1995","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-joe-riccitelli', 'Joe Riccitelli', '{"first_name":"Joe","last_name":"Riccitelli","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"09/12/2002","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-caleb-rojas', 'Caleb Rojas', '{"first_name":"Caleb","last_name":"Rojas","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"12/03/2001","date_added":"11/3/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-ali-salah', 'Ali Salah', '{"first_name":"Ali","last_name":"Salah","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"03/10/2007","date_added":"9/19/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-boys-club-daniel-salmanca', 'Daniel Salmanca', '{"first_name":"Daniel","last_name":"Salmanca","team_id":"b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a","team_name":"Lighthouse Boys Club","date_of_birth":"07/12/2007","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:48.295Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-hassane-abdellaoui', 'Hassane Abdellaoui', '{"first_name":"Hassane","last_name":"Abdellaoui","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"07/30/1999","date_added":"10/10/2025","jersey_number":"","headshot_note":"PLAYER SHOULD BRING ID UNTIL HEADSHOT IS ADDED","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-logan-bersani', 'Logan Bersani', '{"first_name":"Logan","last_name":"Bersani","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"06/18/1998","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-amer-bleik', 'Amer Bleik', '{"first_name":"Amer","last_name":"Bleik","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"12/05/1998","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-james-breslin', 'James Breslin', '{"first_name":"James","last_name":"Breslin","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"07/24/1972","date_added":"11/1/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-birru-golden', 'Birru Golden', '{"first_name":"Birru","last_name":"Golden","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"04/16/1989","date_added":"10/10/2025","jersey_number":"","headshot_note":"PLAYER SHOULD BRING ID UNTIL HEADSHOT IS ADDED","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-furkan-elmas', 'Furkan Elmas', '{"first_name":"Furkan","last_name":"Elmas","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"02/22/1997","date_added":"10/10/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-john-gonzalez', 'John Gonzalez', '{"first_name":"John","last_name":"Gonzalez","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"01/01/2000","date_added":"9/19/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-john-heiler', 'John Heiler', '{"first_name":"John","last_name":"Heiler","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"08/05/1979","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-justin-katz', 'Justin Katz', '{"first_name":"Justin","last_name":"Katz","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"03/27/1998","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-brian-kenny', 'Brian Kenny', '{"first_name":"Brian","last_name":"Kenny","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"09/16/1993","date_added":"9/19/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-ladeuix-07/28/1993', 'Ladeuix 07/28/1993', '{"first_name":"Ladeuix","last_name":"07/28/1993","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"","date_added":"","headshot_note":"10/10/2025","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-sam-lipsey', 'Sam Lipsey', '{"first_name":"Sam","last_name":"Lipsey","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"09/20/1998","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-juan cruz-llambias', 'Juan Cruz Llambias', '{"first_name":"Juan Cruz","last_name":"Llambias","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"08/26/1997","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-sean-mcconnel', 'Sean McConnel', '{"first_name":"Sean","last_name":"McConnel","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"09/04/1995","date_added":"9/19/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-antonio-moral', 'Antonio Moral', '{"first_name":"Antonio","last_name":"Moral","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"11/09/1998","date_added":"9/26/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-manuel-morales', 'Manuel Morales', '{"first_name":"Manuel","last_name":"Morales","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"09/25/1977","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-kevin-nguyen', 'Kevin Nguyen', '{"first_name":"Kevin","last_name":"Nguyen","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"05/09/1996","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.199Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-musa-osman', 'Musa Osman', '{"first_name":"Musa","last_name":"Osman","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"07/01/2005","date_added":"9/26/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-marcelo-osorio-soto', 'Marcelo Osorio-Soto', '{"first_name":"Marcelo","last_name":"Osorio-Soto","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"11/14/1991","date_added":"","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-fabian-padilla', 'Fabian Padilla', '{"first_name":"Fabian","last_name":"Padilla","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"11/01/1995","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-ruben-piazzesi', 'Ruben Piazzesi', '{"first_name":"Ruben","last_name":"Piazzesi","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"08/01/1997","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-joshua-rosato', 'Joshua Rosato', '{"first_name":"Joshua","last_name":"Rosato","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"11/04/1996","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-anuar-santos', 'Anuar Santos', '{"first_name":"Anuar","last_name":"Santos","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"12/31/1999","date_added":"10/10/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-anthony-sagustume', 'Anthony Sagustume', '{"first_name":"Anthony","last_name":"Sagustume","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"07/10/1995","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-yakup-serce', 'Yakup Serce', '{"first_name":"Yakup","last_name":"Serce","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"10/27/1998","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-christopher-solis', 'Christopher Solis', '{"first_name":"Christopher","last_name":"Solis","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"10/21/2005","date_added":"9/11/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-juan-vizcaino', 'Juan Vizcaino', '{"first_name":"Juan","last_name":"Vizcaino","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"12/02/1995","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-tom-diguilio', 'Tom Diguilio', '{"first_name":"Tom","last_name":"Diguilio","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"11/17/1976","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL),
-  ('casa', 'lighthouse-old-timers-club-leo-santa', 'Leo Santa', '{"first_name":"Leo","last_name":"Santa","team_id":"01d71ee5-01d7-0002-1ee5-01d71ee501d7","team_name":"Lighthouse Old Timers Club","date_of_birth":"12/12/1977","date_added":"9/13/2025","jersey_number":"","headshot_note":"","scraped_at":"2025-12-09T17:59:51.200Z"}'::jsonb, NULL)
-ON CONFLICT (provider, external_id) DO UPDATE SET
-  external_username = EXCLUDED.external_username,
-  external_data = EXCLUDED.external_data,
-  updated_at = CURRENT_TIMESTAMP;
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '1', 'Omar', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '1 Omar',
+        v_user_id, -- Linked to the user we just created/found
+        '1',
+        'Omar',
+        v_team_id,
+        '{"jersey_number":"Alzubair","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-2-erwa';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '2', 'Erwa', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '2 Erwa',
+        v_user_id, -- Linked to the user we just created/found
+        '2',
+        'Erwa',
+        v_team_id,
+        '{"jersey_number":"Babiker","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-3-victor';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '3', 'Victor', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '3 Victor',
+        v_user_id, -- Linked to the user we just created/found
+        '3',
+        'Victor',
+        v_team_id,
+        '{"jersey_number":"Baidel","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-4-oumar';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '4', 'Oumar', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '4 Oumar',
+        v_user_id, -- Linked to the user we just created/found
+        '4',
+        'Oumar',
+        v_team_id,
+        '{"jersey_number":"Barry","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-5-aboubacar';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '5', 'Aboubacar', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '5 Aboubacar',
+        v_user_id, -- Linked to the user we just created/found
+        '5',
+        'Aboubacar',
+        v_team_id,
+        '{"jersey_number":"Bayo","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-6-luke';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '6', 'Luke', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '6 Luke',
+        v_user_id, -- Linked to the user we just created/found
+        '6',
+        'Luke',
+        v_team_id,
+        '{"jersey_number":"Breslin","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-7-luis';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '7', 'Luis', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '7 Luis',
+        v_user_id, -- Linked to the user we just created/found
+        '7',
+        'Luis',
+        v_team_id,
+        '{"jersey_number":"De Jesus","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-8-abdoul';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '8', 'Abdoul', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '8 Abdoul',
+        v_user_id, -- Linked to the user we just created/found
+        '8',
+        'Abdoul',
+        v_team_id,
+        '{"jersey_number":"Diallo","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-9-abouya';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '9', 'Abouya', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '9 Abouya',
+        v_user_id, -- Linked to the user we just created/found
+        '9',
+        'Abouya',
+        v_team_id,
+        '{"jersey_number":"Gangue","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-10-edwin';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '10', 'Edwin', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '10 Edwin',
+        v_user_id, -- Linked to the user we just created/found
+        '10',
+        'Edwin',
+        v_team_id,
+        '{"jersey_number":"Garcia","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-11-miles';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '11', 'Miles', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '11 Miles',
+        v_user_id, -- Linked to the user we just created/found
+        '11',
+        'Miles',
+        v_team_id,
+        '{"jersey_number":"Henry","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-12-andy';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '12', 'Andy', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '12 Andy',
+        v_user_id, -- Linked to the user we just created/found
+        '12',
+        'Andy',
+        v_team_id,
+        '{"jersey_number":"Hizdri","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-13-arif';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '13', 'Arif', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '13 Arif',
+        v_user_id, -- Linked to the user we just created/found
+        '13',
+        'Arif',
+        v_team_id,
+        '{"jersey_number":"Hossain","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-14-zuhab';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '14', 'Zuhab', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '14 Zuhab',
+        v_user_id, -- Linked to the user we just created/found
+        '14',
+        'Zuhab',
+        v_team_id,
+        '{"jersey_number":"Imran","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-15-esnayder';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '15', 'Esnayder', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '15 Esnayder',
+        v_user_id, -- Linked to the user we just created/found
+        '15',
+        'Esnayder',
+        v_team_id,
+        '{"jersey_number":"Josue","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-16-majid';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '16', 'Majid', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '16 Majid',
+        v_user_id, -- Linked to the user we just created/found
+        '16',
+        'Majid',
+        v_team_id,
+        '{"jersey_number":"Kawa","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-17-alexander';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '17', 'Alexander', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '17 Alexander',
+        v_user_id, -- Linked to the user we just created/found
+        '17',
+        'Alexander',
+        v_team_id,
+        '{"jersey_number":"Lara","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-18-matt';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '18', 'Matt', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '18 Matt',
+        v_user_id, -- Linked to the user we just created/found
+        '18',
+        'Matt',
+        v_team_id,
+        '{"jersey_number":"Leder","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-19-valentino';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '19', 'Valentino', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '19 Valentino',
+        v_user_id, -- Linked to the user we just created/found
+        '19',
+        'Valentino',
+        v_team_id,
+        '{"jersey_number":"Martinez","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-20-david';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '20', 'David', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '20 David',
+        v_user_id, -- Linked to the user we just created/found
+        '20',
+        'David',
+        v_team_id,
+        '{"jersey_number":"Masi","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-21-elmer';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '21', 'Elmer', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '21 Elmer',
+        v_user_id, -- Linked to the user we just created/found
+        '21',
+        'Elmer',
+        v_team_id,
+        '{"jersey_number":"Mendoza","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-22-dylan';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '22', 'Dylan', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '22 Dylan',
+        v_user_id, -- Linked to the user we just created/found
+        '22',
+        'Dylan',
+        v_team_id,
+        '{"jersey_number":"Moreno","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-23-babacar';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '23', 'Babacar', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '23 Babacar',
+        v_user_id, -- Linked to the user we just created/found
+        '23',
+        'Babacar',
+        v_team_id,
+        '{"jersey_number":"Ndiaye","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-24-zion';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '24', 'Zion', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '24 Zion',
+        v_user_id, -- Linked to the user we just created/found
+        '24',
+        'Zion',
+        v_team_id,
+        '{"jersey_number":"Nwalipenja","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-25-john';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '25', 'John', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '25 John',
+        v_user_id, -- Linked to the user we just created/found
+        '25',
+        'John',
+        v_team_id,
+        '{"jersey_number":"Oladele","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-26-jemirkel';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '26', 'Jemirkel', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '26 Jemirkel',
+        v_user_id, -- Linked to the user we just created/found
+        '26',
+        'Jemirkel',
+        v_team_id,
+        '{"jersey_number":"Ornaque","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-27-joe';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '27', 'Joe', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '27 Joe',
+        v_user_id, -- Linked to the user we just created/found
+        '27',
+        'Joe',
+        v_team_id,
+        '{"jersey_number":"Riccitelli","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-28-caleb';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '28', 'Caleb', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '28 Caleb',
+        v_user_id, -- Linked to the user we just created/found
+        '28',
+        'Caleb',
+        v_team_id,
+        '{"jersey_number":"Rojas","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-29-ali';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '29', 'Ali', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '29 Ali',
+        v_user_id, -- Linked to the user we just created/found
+        '29',
+        'Ali',
+        v_team_id,
+        '{"jersey_number":"Salah","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-1-hassane';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '1', 'Hassane', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '1 Hassane',
+        v_user_id, -- Linked to the user we just created/found
+        '1',
+        'Hassane',
+        v_team_id,
+        '{"jersey_number":"Abdellaoui","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-2-logan';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '2', 'Logan', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '2 Logan',
+        v_user_id, -- Linked to the user we just created/found
+        '2',
+        'Logan',
+        v_team_id,
+        '{"jersey_number":"Bersani","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-7-john';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '7', 'John', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '7 John',
+        v_user_id, -- Linked to the user we just created/found
+        '7',
+        'John',
+        v_team_id,
+        '{"jersey_number":"Gonzalez","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-8-john';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '8', 'John', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '8 John',
+        v_user_id, -- Linked to the user we just created/found
+        '8',
+        'John',
+        v_team_id,
+        '{"jersey_number":"Heiler","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-9-justin';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '9', 'Justin', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '9 Justin',
+        v_user_id, -- Linked to the user we just created/found
+        '9',
+        'Justin',
+        v_team_id,
+        '{"jersey_number":"Katz","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-10-brian';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '10', 'Brian', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '10 Brian',
+        v_user_id, -- Linked to the user we just created/found
+        '10',
+        'Brian',
+        v_team_id,
+        '{"jersey_number":"Kenny","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-11-joaquin';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '11', '"Joaquin', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NULL,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '11 "Joaquin',
+        v_user_id, -- Linked to the user we just created/found
+        '11',
+        '"Joaquin',
+        v_team_id,
+        '{"position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers--ladeuix';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '"', 'Ladeuix', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            7,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '" Ladeuix',
+        v_user_id, -- Linked to the user we just created/found
+        '"',
+        'Ladeuix',
+        v_team_id,
+        '{"jersey_number":"07/28/1993","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-12-sam';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '12', 'Sam', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '12 Sam',
+        v_user_id, -- Linked to the user we just created/found
+        '12',
+        'Sam',
+        v_team_id,
+        '{"jersey_number":"Lipsey","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-13-juan-cruz';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '13', 'Juan Cruz', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '13 Juan Cruz',
+        v_user_id, -- Linked to the user we just created/found
+        '13',
+        'Juan Cruz',
+        v_team_id,
+        '{"jersey_number":"Llambias","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-14-sean';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '14', 'Sean', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '14 Sean',
+        v_user_id, -- Linked to the user we just created/found
+        '14',
+        'Sean',
+        v_team_id,
+        '{"jersey_number":"McConnel","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-15-antonio';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '15', 'Antonio', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '15 Antonio',
+        v_user_id, -- Linked to the user we just created/found
+        '15',
+        'Antonio',
+        v_team_id,
+        '{"jersey_number":"Moral","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-16-manuel';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '16', 'Manuel', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '16 Manuel',
+        v_user_id, -- Linked to the user we just created/found
+        '16',
+        'Manuel',
+        v_team_id,
+        '{"jersey_number":"Morales","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-17-kevin';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '17', 'Kevin', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '17 Kevin',
+        v_user_id, -- Linked to the user we just created/found
+        '17',
+        'Kevin',
+        v_team_id,
+        '{"jersey_number":"Nguyen","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-19-marcelo';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '19', 'Marcelo', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '19 Marcelo',
+        v_user_id, -- Linked to the user we just created/found
+        '19',
+        'Marcelo',
+        v_team_id,
+        '{"jersey_number":"Osorio-Soto","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-20-fabian';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '20', 'Fabian', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '20 Fabian',
+        v_user_id, -- Linked to the user we just created/found
+        '20',
+        'Fabian',
+        v_team_id,
+        '{"jersey_number":"Padilla","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-21-ruben';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '21', 'Ruben', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '21 Ruben',
+        v_user_id, -- Linked to the user we just created/found
+        '21',
+        'Ruben',
+        v_team_id,
+        '{"jersey_number":"Piazzesi","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-22-joshua';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '22', 'Joshua', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '22 Joshua',
+        v_user_id, -- Linked to the user we just created/found
+        '22',
+        'Joshua',
+        v_team_id,
+        '{"jersey_number":"Rosato","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-23-anuar';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '23', 'Anuar', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '23 Anuar',
+        v_user_id, -- Linked to the user we just created/found
+        '23',
+        'Anuar',
+        v_team_id,
+        '{"jersey_number":"Santos","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-24-anthony';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '24', 'Anthony', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '24 Anthony',
+        v_user_id, -- Linked to the user we just created/found
+        '24',
+        'Anthony',
+        v_team_id,
+        '{"jersey_number":"Sagustume","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-25-yakup';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '25', 'Yakup', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '25 Yakup',
+        v_user_id, -- Linked to the user we just created/found
+        '25',
+        'Yakup',
+        v_team_id,
+        '{"jersey_number":"Serce","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-26-christopher';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '26', 'Christopher', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '26 Christopher',
+        v_user_id, -- Linked to the user we just created/found
+        '26',
+        'Christopher',
+        v_team_id,
+        '{"jersey_number":"Solis","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-27-juan';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '27', 'Juan', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '27 Juan',
+        v_user_id, -- Linked to the user we just created/found
+        '27',
+        'Juan',
+        v_team_id,
+        '{"jersey_number":"Vizcaino","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-28-tom';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '28', 'Tom', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '28 Tom',
+        v_user_id, -- Linked to the user we just created/found
+        '28',
+        'Tom',
+        v_team_id,
+        '{"jersey_number":"Diguilio","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := NULL;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-29-leo';
+BEGIN
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '29', 'Leo', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NaN,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '29 Leo',
+        v_user_id, -- Linked to the user we just created/found
+        '29',
+        'Leo',
+        v_team_id,
+        '{"jersey_number":"Santa","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
 

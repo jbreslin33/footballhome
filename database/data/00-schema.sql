@@ -267,6 +267,13 @@ CREATE TABLE user_external_identities (
     provider VARCHAR(50) NOT NULL,           -- 'apsl', 'casa', 'groupme'
     external_id VARCHAR(255) NOT NULL,       -- ID from external system
     external_username VARCHAR(255),          -- Display name from external system
+    
+    -- Context fields for easier filtering/merging
+    team_id UUID REFERENCES teams(id) ON DELETE SET NULL, -- Which team they belong to in external system
+    first_name VARCHAR(100),                 -- Parsed first name
+    last_name VARCHAR(100),                  -- Parsed last name
+    email VARCHAR(255),                      -- Email if available (for auto-matching)
+    
     external_data JSONB,                     -- Raw data from external system (jersey, position, etc)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -275,6 +282,7 @@ CREATE TABLE user_external_identities (
 );
 
 CREATE INDEX idx_user_external_identities_user_id ON user_external_identities(user_id);
+CREATE INDEX idx_user_external_identities_team_id ON user_external_identities(team_id);
 CREATE INDEX idx_user_external_identities_unlinked ON user_external_identities(provider, external_id) WHERE user_id IS NULL;
 
 -- ========================================

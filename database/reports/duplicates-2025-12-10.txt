@@ -1,0 +1,59 @@
+========================================
+DATA QUALITY REPORT
+Generated: 2025-12-10T17:23:59.826Z
+========================================
+========================================
+SUMMARY
+========================================
+
+Total Users: 1
+External Identities: 86
+Active Teams: 0
+Active Roster Entries: 0
+Data Providers: 1
+
+External Identity Breakdown:
+  groupme: 86
+
+
+========================================
+DUPLICATE USER NAMES
+========================================
+
+✓ No duplicate names found
+
+========================================
+CORRUPTED/INVALID NAMES
+========================================
+
+✓ No corrupted names found
+
+========================================
+DUPLICATE ROSTER ENTRIES
+========================================
+
+✓ No duplicate roster entries found
+
+========================================
+USERS WITHOUT EXTERNAL IDENTITIES
+========================================
+
+Found 1 user(s) without external identities (showing top 20):
+
+  James Breslin (DOB: unknown, Teams: 0)
+    User ID: 77d77471-1250-47e0-81ab-d4626595d63c
+
+========================================
+TEAMS WITH UNUSUAL ROSTER SIZES
+========================================
+
+✓ All team roster sizes look reasonable
+
+========================================
+NEXT STEPS
+========================================
+
+1. Review issues above
+2. Add fixes to database/data/ZZ-01-user-merges.sql
+3. Add corrections to database/data/ZZ-02-data-corrections.sql
+4. Rebuild: ./dev.sh --apsl --casa --groupme
