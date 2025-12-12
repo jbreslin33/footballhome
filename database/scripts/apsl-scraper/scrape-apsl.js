@@ -7,18 +7,20 @@
  * 
  * MODES:
  *   structure  - Scrape conferences/divisions/teams only (no rosters)
- *   lighthouse - Scrape Lighthouse 1893 SC roster only (creates external_identities, not users)
- *   (none)     - Full scrape (all teams + all rosters)
+ *   lighthouse - Scrape Lighthouse 1893 SC roster only (creates users/players/team_players/external_identities)
+ *   (none)     - Full scrape (all teams + all rosters, creates users/players/team_players/external_identities)
  * 
  * Usage:
  *   node database/scripts/apsl-scraper/scrape-apsl.js structure
  *   node database/scripts/apsl-scraper/scrape-apsl.js lighthouse
  *   node database/scripts/apsl-scraper/scrape-apsl.js
  * 
- * STAGED IMPORT PATTERN:
- *   When mode='lighthouse', scraper creates user_external_identities with user_id=NULL
- *   instead of creating users/players/team_players. Admin must manually link/merge
- *   identities via Division Roster Management UI.
+ * DATA CREATION:
+ *   All modes (except structure) create:
+ *   - users (with duplicate detection by first+last name)
+ *   - players (extends users)
+ *   - team_players (roster assignments)
+ *   - user_external_identities (for reference/tracking)
  */
 
 const https = require('https');
@@ -755,91 +757,73 @@ async function scrapeTeamRoster(teamId, teamUrl, teamName) {
       const userId = generateUUID('0006', playerName + teamId);
       const playerId = userId;
       const teamPlayerId = generateUUID('0007', teamId + userId);
+      const externalId = generateUUID('0012', `apsl-${playerName}-${teamId}`);
 
-      // MODE LOGIC: lighthouse vs full scrape
-      if (MODE === 'lighthouse') {
-        // Lighthouse mode: Create external_identities, NOT users/players/team_players
-        const externalId = generateUUID('0012', `apsl-${playerName}-${teamId}`);
-        
-        if (!externalIdentities.has(externalId)) {
-          // Download player headshot if available
-          let localPhotoPath = null;
-          if (photoUrl) {
-            try {
-              localPhotoPath = await downloadHeadshot(photoUrl, playerName, playerId);
-            } catch (err) {
-              console.error(`      ✗ Failed to download headshot for ${playerName}:`, err.message);
-            }
-          }
-
-          externalIdentities.set(externalId, {
-            id: externalId,
-            provider: 'apsl',
-            external_id: `${teamId}-${playerName}`, // Composite key: teamId + playerName
-            external_username: playerName,
-            external_data: JSON.stringify({
-              first_name: firstName,
-              last_name: lastName,
-              team_id: teamId,
-              team_name: teamName,
-              jersey_number: jerseyNum ? parseInt(jerseyNum) : null,
-              position: position,
-              photo_url: localPhotoPath,
-              scraped_from: teamUrl,
-              scraped_at: new Date().toISOString()
-            }),
-            user_id: null // NOT linked to a user yet
-          });
-          playersAdded++;
+      // Download player headshot if available
+      let localPhotoPath = null;
+      if (photoUrl) {
+        try {
+          localPhotoPath = await downloadHeadshot(photoUrl, playerName, playerId);
+        } catch (err) {
+          console.error(`      ✗ Failed to download headshot for ${playerName}:`, err.message);
         }
-      } else {
-        // Full scrape mode: Create users/players/team_players (old behavior)
-        // Store user (no email/password - only scraped data)
-        if (!users.has(userId)) {
-          // Download player headshot if available
-          let localPhotoPath = null;
-          if (photoUrl) {
-            try {
-              localPhotoPath = await downloadHeadshot(photoUrl, playerName, playerId);
-            } catch (err) {
-              console.error(`      ✗ Failed to download headshot for ${playerName}:`, err.message);
-            }
-          }
+      }
 
-          users.set(userId, {
-            id: userId,
+      // 1. Create/update user (with duplicate detection)
+      if (!users.has(userId)) {
+        users.set(userId, {
+          id: userId,
+          first_name: firstName,
+          last_name: lastName,
+          avatar_url: localPhotoPath
+        });
+
+        // 2. Create player entity
+        players.set(playerId, {
+          id: playerId,
+          position: position,
+          photo_url: localPhotoPath
+        });
+      }
+
+      // 3. Create team_player relationship
+      const tpKey = `${teamId}-${playerId}`;
+      if (!teamPlayers.has(tpKey)) {
+        teamPlayers.set(tpKey, {
+          id: teamPlayerId,
+          team_id: teamId,
+          player_id: playerId,
+          jersey_number: jerseyNum ? parseInt(jerseyNum) : null,
+          position: position
+        });
+        playersAdded++;
+      }
+
+      // 4. Create external_identity for tracking/reference
+      if (!externalIdentities.has(externalId)) {
+        externalIdentities.set(externalId, {
+          id: externalId,
+          provider: 'apsl',
+          external_id: `${teamId}-${playerName}`, // Composite key: teamId + playerName
+          external_username: playerName,
+          external_data: JSON.stringify({
             first_name: firstName,
             last_name: lastName,
-            avatar_url: localPhotoPath
-          });
-
-          // Store player
-          players.set(playerId, {
-            id: playerId,
-            position: position,
-            photo_url: localPhotoPath
-          });
-        }
-
-        // Store team_player relationship
-        const tpKey = `${teamId}-${playerId}`;
-        if (!teamPlayers.has(tpKey)) {
-          teamPlayers.set(tpKey, {
-            id: teamPlayerId,
             team_id: teamId,
-            player_id: playerId,
+            team_name: teamName,
             jersey_number: jerseyNum ? parseInt(jerseyNum) : null,
-            position: position
-          });
-          playersAdded++;
-        }
+            position: position,
+            photo_url: localPhotoPath,
+            scraped_from: teamUrl,
+            scraped_at: new Date().toISOString()
+          }),
+          user_id: userId // Link to the user we just created
+        });
       }
     }
 
     // Log roster stats
-    let logMsg = MODE === 'lighthouse' 
-      ? `    Created ${playersAdded} external_identities`
-      : `    Found ${playersAdded} players`;
+    let logMsg = `    Created ${playersAdded} players/users/external_identities`;
     if (reserveRosterCount > 0 || inactiveSkipped > 0) {
       const parts = [`${mainRosterCount} main`];
       if (reserveRosterCount > 0) parts.push(`${reserveRosterCount} reserve`);
@@ -1420,11 +1404,11 @@ ON CONFLICT (id) DO UPDATE SET
   }
   writeFile('data/08b-users-apsl.sql', 'PLAYER USERS', usersSQL);
   
-  // 7b. EXTERNAL IDENTITIES (lighthouse mode only)
-  if (MODE === 'lighthouse' && externalIdentities.size > 0) {
+  // 7b. EXTERNAL IDENTITIES (always created for tracking/reference)
+  if (externalIdentities.size > 0) {
     let externalIdentitiesSQL = `
--- Note: External identities are NOT linked to users yet (user_id = NULL)
--- Admin must manually link/merge via Division Roster Management UI
+-- Note: External identities are linked to users (user_id set)
+-- Used for tracking data source and enabling future reconciliation
 
 `;
     
@@ -1434,18 +1418,20 @@ ON CONFLICT (id) DO UPDATE SET
     const identities = Array.from(externalIdentities.values());
     const valueRows = identities.map((identity, idx) => {
       const comma = idx < identities.length - 1 ? ',' : '';
-      return `  (${sqlEscape(identity.id)}, ${sqlEscape(identity.provider)}, ${sqlEscape(identity.external_id)}, ${sqlEscape(identity.external_username)}, ${sqlEscape(identity.external_data)}, NULL)${comma}`;
+      const userIdValue = identity.user_id ? sqlEscape(identity.user_id) : 'NULL';
+      return `  (${sqlEscape(identity.id)}, ${sqlEscape(identity.provider)}, ${sqlEscape(identity.external_id)}, ${sqlEscape(identity.external_username)}, ${sqlEscape(identity.external_data)}, ${userIdValue})${comma}`;
     }).join('\n');
     
     externalIdentitiesSQL += valueRows + '\n';
     externalIdentitiesSQL += `ON CONFLICT (provider, external_id) DO UPDATE SET
   external_username = EXCLUDED.external_username,
   external_data = EXCLUDED.external_data,
+  user_id = EXCLUDED.user_id,
   updated_at = CURRENT_TIMESTAMP;
 
 `;
     
-    writeFile('data/08c-external-identities-apsl.sql', 'EXTERNAL IDENTITIES (LIGHTHOUSE)', externalIdentitiesSQL);
+    writeFile('data/08c-external-identities-apsl.sql', 'EXTERNAL IDENTITIES', externalIdentitiesSQL);
   }
   
   // 8. PLAYERS (write to separate file, grouped by team)
@@ -1606,11 +1592,11 @@ ON CONFLICT (id) DO UPDATE SET
   console.error(`Divisions: ${divisions.size}`);
   console.error(`Clubs: ${clubs.size}`);
   console.error(`Teams: ${teams.size}`);
-  if (MODE === 'lighthouse') {
-    console.error(`External Identities: ${externalIdentities.size}`);
-  } else {
+  if (MODE !== 'structure') {
     console.error(`Players: ${players.size}`);
     console.error(`Total User Accounts: ${users.size}`);
+    console.error(`Team Players: ${teamPlayers.size}`);
+    console.error(`External Identities: ${externalIdentities.size}`);
   }
   console.error(`Matches: ${matches.size}`);
   console.error('========================================\n');
