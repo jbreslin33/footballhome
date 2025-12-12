@@ -4,7 +4,6 @@
 -- Dynamically assigns James Breslin as Head Coach to ALL Lighthouse teams
 -- This runs after all scrapers (APSL, CASA) have populated the teams table.
 
-/*
 DO $$
 DECLARE
     admin_user_id UUID := '77d77471-1250-47e0-81ab-d4626595d63c'; -- James Breslin
@@ -34,4 +33,3 @@ BEGIN
         RAISE NOTICE 'Assigned James Breslin as Head Coach for %', team_record.name;
     END LOOP;
 END $$;
-*/
