@@ -791,8 +791,10 @@ CREATE TABLE events (
     duration_minutes INTEGER,                   -- Will default from event_type if null
     cancelled BOOLEAN DEFAULT false,
     cancellation_reason TEXT,
+    external_event_id VARCHAR(255),             -- ID from external system (GroupMe, TeamSnap, etc.)
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(external_event_id)                   -- Prevent duplicate imports
 );
 
 -- Practices table (extends events for training/practice sessions)

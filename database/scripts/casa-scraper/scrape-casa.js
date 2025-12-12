@@ -525,20 +525,20 @@ END $$;
     if (MODE === 'structure' || MODE === 'full') {
       await scrapeStructure();
     }
+    
+    // FALLBACK: Ensure Lighthouse teams exist BEFORE scraping rosters (so team IDs are available)
+    if (teams.size === 0 && (MODE === 'lighthouse' || MODE === 'full')) {
+        console.log('⚠ Structure scrape skipped or failed. Injecting fallback Lighthouse teams...');
+        ensureFallbackTeams();
+        generateStructureSQL();
+    }
+    
     if (MODE === 'lighthouse' || MODE === 'full') {
       await scrapeLighthouseRosters();
     }
     
     // Note: Coach assignments are now handled dynamically by database/data/53-team-coaches.sql
     // This ensures all Lighthouse teams (APSL or CASA) are linked to the admin user automatically.
-
-    // FALLBACK: If structure scrape failed (0 teams), ensure Lighthouse teams exist so rosters can be linked
-    if (teams.size === 0 && (MODE === 'lighthouse' || MODE === 'full')) {
-        console.log('⚠ Structure scrape failed or skipped. Injecting fallback Lighthouse teams...');
-        ensureFallbackTeams();
-        // Regenerate structure SQL with these fallback teams
-        generateStructureSQL();
-    }
 
   } catch (err) {
     console.error('Fatal error:', err);

@@ -1,14 +1,14 @@
 -- ========================================
 -- CASA LIGHTHOUSE ROSTERS
 -- ========================================
--- Generated: 2025-12-12T14:54:10.766Z
+-- Generated: 2025-12-12T17:51:05.901Z
 -- Source: Google Sheets
 -- ========================================
 
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-1-omar';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -32,7 +32,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -75,7 +75,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-2-erwa';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -99,7 +99,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -142,7 +142,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-3-victor';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -166,7 +166,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -209,7 +209,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-4-oumar';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -233,7 +233,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -276,7 +276,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-5-aboubacar';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -300,7 +300,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -343,7 +343,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-6-luke';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -367,7 +367,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -410,7 +410,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-7-luis';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -434,7 +434,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -477,7 +477,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-8-abdoul';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -501,7 +501,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -544,7 +544,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-9-abouya';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -568,7 +568,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -611,7 +611,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-10-edwin';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -635,7 +635,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -678,7 +678,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-11-miles';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -702,7 +702,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -745,7 +745,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-12-andy';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -769,7 +769,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -812,7 +812,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-13-arif';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -836,7 +836,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -879,7 +879,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-14-zuhab';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -903,7 +903,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -946,7 +946,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-15-esnayder';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -970,7 +970,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1013,7 +1013,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-16-majid';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1037,7 +1037,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1080,7 +1080,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-17-alexander';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1104,7 +1104,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1147,7 +1147,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-18-matt';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1171,7 +1171,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1214,7 +1214,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-19-valentino';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1238,7 +1238,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1281,7 +1281,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-20-david';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1305,7 +1305,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1348,7 +1348,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-21-elmer';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1372,7 +1372,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1415,7 +1415,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-22-dylan';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1439,7 +1439,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1482,7 +1482,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-23-babacar';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1506,7 +1506,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1549,7 +1549,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-24-zion';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1573,7 +1573,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1616,7 +1616,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-25-john';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1640,7 +1640,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1683,7 +1683,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-26-jemirkel';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1707,7 +1707,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1750,7 +1750,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-27-joe';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1774,7 +1774,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1817,7 +1817,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-28-caleb';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1841,7 +1841,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1884,7 +1884,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-29-ali';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1908,7 +1908,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1951,7 +1951,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-1-hassane';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -1975,7 +1975,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2018,7 +2018,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-2-logan';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2042,7 +2042,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2085,7 +2085,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-7-john';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2109,7 +2109,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2152,7 +2152,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-8-john';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2176,7 +2176,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2219,7 +2219,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-9-justin';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2243,7 +2243,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2286,7 +2286,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-10-brian';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2310,7 +2310,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2353,7 +2353,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-11-joaquin';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2420,7 +2420,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers--ladeuix';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2487,7 +2487,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-12-sam';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2511,7 +2511,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2554,7 +2554,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-13-juan-cruz';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2578,7 +2578,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2621,7 +2621,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-14-sean';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2645,7 +2645,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2688,7 +2688,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-15-antonio';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2712,7 +2712,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2755,7 +2755,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-16-manuel';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2779,7 +2779,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2822,7 +2822,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-17-kevin';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2846,7 +2846,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2889,7 +2889,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-19-marcelo';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2913,7 +2913,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2956,7 +2956,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-20-fabian';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -2980,7 +2980,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3023,7 +3023,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-21-ruben';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -3047,7 +3047,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3090,7 +3090,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-22-joshua';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -3114,7 +3114,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3157,7 +3157,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-23-anuar';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -3181,7 +3181,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3224,7 +3224,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-24-anthony';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -3248,7 +3248,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3291,7 +3291,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-25-yakup';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -3315,7 +3315,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3358,7 +3358,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-26-christopher';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -3382,7 +3382,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3425,7 +3425,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-27-juan';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -3449,7 +3449,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3492,7 +3492,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-28-tom';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -3516,7 +3516,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3559,7 +3559,7 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := NULL;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-29-leo';
 BEGIN
     -- 1. Generate deterministic User ID
@@ -3583,7 +3583,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NaN,
+            NULL,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
