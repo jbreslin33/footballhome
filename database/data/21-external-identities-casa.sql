@@ -1,7 +1,7 @@
 -- ========================================
 -- CASA LIGHTHOUSE ROSTERS
 -- ========================================
--- Generated: 2025-12-12T17:51:05.901Z
+-- Generated: 2025-12-13T19:25:26.799Z
 -- Source: Google Sheets
 -- ========================================
 
@@ -32,7 +32,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -99,7 +99,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -166,7 +166,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -233,7 +233,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -300,7 +300,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -367,7 +367,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -434,7 +434,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -501,7 +501,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -568,7 +568,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -635,7 +635,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -702,7 +702,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -769,7 +769,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -836,7 +836,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -903,7 +903,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -970,7 +970,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1037,7 +1037,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1104,7 +1104,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1171,7 +1171,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1238,7 +1238,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1305,7 +1305,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1372,7 +1372,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1439,7 +1439,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1506,7 +1506,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1573,7 +1573,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1640,7 +1640,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1707,7 +1707,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1774,7 +1774,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1841,7 +1841,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1908,7 +1908,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -1975,7 +1975,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2042,7 +2042,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2109,7 +2109,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2176,7 +2176,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2243,7 +2243,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2310,7 +2310,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2511,7 +2511,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2578,7 +2578,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2645,7 +2645,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2712,7 +2712,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2779,7 +2779,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2846,7 +2846,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2913,7 +2913,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -2980,7 +2980,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3047,7 +3047,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3114,7 +3114,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3181,7 +3181,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3248,7 +3248,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3315,7 +3315,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3382,7 +3382,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3449,7 +3449,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3516,7 +3516,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
@@ -3583,7 +3583,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            NULL,
+            NaN,
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET

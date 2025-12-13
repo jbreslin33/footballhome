@@ -466,7 +466,7 @@ BEGIN
             v_team_id,
             v_user_id,
             1, -- Active
-            ${identity.jersey_number ? parseInt(identity.jersey_number) : 'NULL'},
+            ${identity.jersey_number && !isNaN(parseInt(identity.jersey_number)) ? parseInt(identity.jersey_number) : 'NULL'},
             true
         )
         ON CONFLICT (team_id, player_id) DO UPDATE SET
