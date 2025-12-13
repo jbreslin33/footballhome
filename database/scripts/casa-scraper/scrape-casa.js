@@ -407,13 +407,13 @@ ON CONFLICT (id) DO NOTHING;\n`;
 VALUES (${sqlEscape(team.id)}, ${sqlEscape(team.name)}, ${sqlEscape(team.division_id)}, ${sqlEscape(team.league_division_id)}, '2024-2025', true)
 ON CONFLICT (id) DO NOTHING;\n`;
   }
-  writeFile('22-teams-casa.sql', 'CASA TEAMS', teamSQL);
+  writeFile('21-teams-casa.sql', 'CASA TEAMS', teamSQL);
 }
 
 function generateRosterSQL() {
   console.log('Generating Roster SQL...');
   
-  const fullPath = path.join(BASE_DIR, 'data', '21-external-identities-casa.sql');
+  const fullPath = path.join(BASE_DIR, 'data', '23-external-identities-casa.sql');
   let sql = `-- ========================================
 -- CASA LIGHTHOUSE ROSTERS
 -- ========================================
@@ -510,7 +510,7 @@ END $$;
   }
   
   fs.writeFileSync(fullPath, sql);
-  console.log(`  ✓ 21-external-identities-casa.sql`);
+  console.log(`  ✓ 23-external-identities-casa.sql`);
 }
 
 // Main execution
