@@ -3,11 +3,16 @@ class DivisionSelectionScreen extends Screen {
   render() {
     const div = document.createElement('div');
     div.className = 'screen screen-division-selection';
+    
+    // Get user's club from auth context
+    const user = this.auth.getUser();
+    const clubName = user?.club_name || 'Your Club';
+    
     div.innerHTML = `
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>⚽ Select Division</h1>
-        <p class="subtitle">Which division would you like to manage?</p>
+        <p class="subtitle">Select a division in ${clubName}</p>
       </div>
       
       <div style="padding: var(--space-4);">
@@ -69,9 +74,6 @@ class DivisionSelectionScreen extends Screen {
         return;
       }
       
-      // Show club name in header
-      this.find('#division-name-subtitle').textContent = `Select a division in ${clubName}`;
-      
       this.renderList('#division-list', divisions,
         d => `
           <button class="btn btn-lg btn-primary division-option" 
@@ -86,14 +88,6 @@ class DivisionSelectionScreen extends Screen {
         `,
         '<div class="empty-state"><p>No divisions available</p></div>'
       );
-    }, error => {
-      listContainer.innerHTML = `
-        <div class="empty-state">
-          <p>⚠️ Failed to load divisions</p>
-          <p class="text-muted">Please try again</p>
-          <button class="btn btn-primary" onclick="location.reload()">Reload</button>
-        </div>
-      `;
     });
   }
 }
