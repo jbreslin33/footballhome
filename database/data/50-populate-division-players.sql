@@ -13,6 +13,10 @@
 -- - Uses DISTINCT to prevent duplicates at query level
 -- - Preserves 'active' status over 'inactive' on conflict
 -- - Automatically handles new leagues and clubs as they're added
+-- - Idempotent: Safe to run multiple times (ON CONFLICT prevents duplicates)
+
+-- NOTE: Some records may already be in division_players from external_identities
+-- This query ensures completeness and consistency across all sources
 
 -- Populate division_players for ALL clubs (all leagues)
 -- This finds all players on any team and adds them to their division roster
@@ -47,17 +51,15 @@ SELECT
     COUNT(*) FILTER (WHERE status = 'inactive') as inactive_players
 FROM division_players;
 
--- Breakdown by league (for visibility)
+-- Breakdown by club/division (for visibility)
 SELECT 
-    'Players by League' as report_section,
-    l.display_name as league,
+    'Players by Club/Division' as report_section,
+    c.display_name as club,
+    sd.display_name as division,
     COUNT(DISTINCT dp.player_id) as total_players,
     COUNT(DISTINCT dp.player_id) FILTER (WHERE dp.status = 'active') as active_players
 FROM division_players dp
 JOIN sport_divisions sd ON dp.division_id = sd.id
 JOIN clubs c ON sd.club_id = c.id
-JOIN league_divisions ld ON c.id = ld.id OR sd.club_id = c.id  -- Connect to league
-LEFT JOIN league_conferences lc ON sd.club_id = lc.id  -- Try alternative path
-LEFT JOIN leagues l ON lc.league_id = l.id
-GROUP BY l.id, l.display_name
-ORDER BY l.display_name;
+GROUP BY c.id, c.display_name, sd.id, sd.display_name
+ORDER BY c.display_name, sd.display_name;
