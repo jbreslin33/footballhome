@@ -1,0 +1,17 @@
+-- ========================================
+-- CASA EXTERNAL IDENTITIES
+-- ========================================
+-- PLACEHOLDER: Waiting for CASA user integration
+-- Status: AUTO-GENERATED (once CASA scraper is built)
+--
+-- This file will link CASA users to external IDs
+-- (GroupMe, CASA portal, etc.)
+
+-- Example structure (will be generated):
+-- INSERT INTO external_identities (id, user_id, provider, provider_user_id, username, last_synced_at)
+-- VALUES
+--   ('casa-ext-id-1', 'casa-user-id-1', 'groupme', 'groupme-id-123', 'casa.player1', CURRENT_TIMESTAMP),
+--   ...
+-- ON CONFLICT (provider, provider_user_id) DO UPDATE SET
+--   username = EXCLUDED.username,
+--   last_synced_at = CURRENT_TIMESTAMP;

@@ -142,16 +142,12 @@ For users who play in multiple leagues:
 - [x] Rename `07-sport-divisions.sql` → `07-sport-divisions-apsl.sql`
 - [x] Update dev.sh/scraper references to new names
 
-### Phase 2: Fix Division Player Population ✅ COMPLETE
-- [x] Update `50-populate-division-players.sql` to be generic
-- [x] Remove hardcoded Lighthouse WHERE clause
-- [x] Add league breakdown reporting
-- [x] Document automatic league handling
-
-### Phase 3: Add CASA Players When Available
-- [ ] Create `24-players-casa.sql` (mirror of `-apsl.sql`)
-- [ ] Create `30-rosters-casa.sql` (mirror of `-apsl.sql`)
-- [ ] Update dev.sh to scrape/load CASA players
+### Phase 3: Add CASA Player File Structure ✅ COMPLETE
+- [x] Create `24-players-casa.sql` (placeholder with structure)
+- [x] Create `30-rosters-casa.sql` (placeholder with structure)
+- [x] Create `08b-users-casa.sql` (placeholder with structure)
+- [x] Create `08c-external-identities-casa.sql` (placeholder with structure)
+- [x] Document how scrapers will auto-populate these files
 
 ### Phase 4: User Association Improvement
 - [ ] Document how to link same user across leagues
