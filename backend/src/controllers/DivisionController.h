@@ -12,6 +12,7 @@ public:
     void registerRoutes(Router& router, const std::string& prefix) override;
 
 private:
+    Response handleGetDivisions(const Request& request);
     Response handleGetDivisionPlayers(const Request& request);
     Response handleUpdateDivisionPlayer(const Request& request);
     

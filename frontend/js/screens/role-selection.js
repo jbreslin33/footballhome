@@ -51,13 +51,9 @@ class RoleSelectionScreen extends Screen {
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
     if (role === 'coach' || role === 'player') {
-      // For now, hardcode Lighthouse 1893 SC division UUID
-      // TODO: Add proper division selection screen
-      const division = { id: 'd37eb44b-8e47-0004-9060-f0cbe96fe089', name: 'Lighthouse 1893 SC' };
-      this.navigation.context.division = division;
-      
-      // Go to division menu which splits between team and division management
-      this.navigation.goTo('division-menu', { role: role, division: division });
+      // Navigate to division selection screen to let user choose division
+      this.navigation.context.role = role;
+      this.navigation.goTo('division-selection', { role: role });
     } else if (role === 'parent') {
       // Future: parent flow
       this.handleError(new Error('Parent role not yet implemented'), 'role-selection');

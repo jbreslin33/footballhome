@@ -10,6 +10,11 @@ DivisionController::DivisionController() {
 void DivisionController::registerRoutes(Router& router, const std::string& prefix) {
     std::cout << "Registering division routes with prefix: " << prefix << std::endl;
     
+    // Get all divisions
+    router.get(prefix + "/divisions", [this](const Request& request) {
+        return this->handleGetDivisions(request);
+    });
+    
     // Get division players
     router.get(prefix + "/divisions/:divisionId/players", [this](const Request& request) {
         return this->handleGetDivisionPlayers(request);
@@ -19,6 +24,48 @@ void DivisionController::registerRoutes(Router& router, const std::string& prefi
     router.put(prefix + "/divisions/:divisionId/players/:playerId", [this](const Request& request) {
         return this->handleUpdateDivisionPlayer(request);
     });
+}
+
+Response DivisionController::handleGetDivisions(const Request& request) {
+    std::cout << "=== handleGetDivisions ===" << std::endl;
+    
+    try {
+        // Query to get all divisions with their league info
+        std::string query = 
+            "SELECT sd.id, sd.display_name, l.display_name as league_name "
+            "FROM sport_divisions sd "
+            "JOIN clubs c ON sd.club_id = c.id "
+            "JOIN leagues l ON c.league_id = l.id "
+            "ORDER BY l.display_name, sd.display_name";
+        
+        pqxx::result result = db_->query(query);
+        
+        std::cout << "Found " << result.size() << " divisions" << std::endl;
+        
+        // Build JSON array of divisions
+        std::ostringstream divisionsJson;
+        divisionsJson << "[";
+        
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) divisionsJson << ",";
+            first = false;
+            
+            divisionsJson << "{";
+            divisionsJson << "\"id\":\"" << row["id"].c_str() << "\",";
+            divisionsJson << "\"display_name\":\"" << row["display_name"].c_str() << "\",";
+            divisionsJson << "\"league_name\":\"" << row["league_name"].c_str() << "\"";
+            divisionsJson << "}";
+        }
+        
+        divisionsJson << "]";
+        
+        return Response(HttpStatus::OK, createJSONResponse(true, "Divisions retrieved successfully", divisionsJson.str()));
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error in handleGetDivisions: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Database error: ") + e.what()));
+    }
 }
 
 Response DivisionController::handleGetDivisionPlayers(const Request& request) {
