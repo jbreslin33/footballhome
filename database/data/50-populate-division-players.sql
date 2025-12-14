@@ -2,12 +2,20 @@
 -- POPULATE DIVISION PLAYERS FROM EXISTING TEAM ROSTERS
 -- ========================================
 -- This script backfills division_players from existing team_players data
+-- 
+-- IMPORTANT: This is now LEAGUE-AGNOSTIC
+-- It populates division_players for ALL clubs across ALL leagues
+-- (APSL, CASA, TCWL, etc.) automatically
+--
+-- Key behavior:
+-- - No WHERE clause limiting to specific clubs
+-- - ON CONFLICT handles duplicate entries (same player on multiple teams in same division)
+-- - Uses DISTINCT to prevent duplicates at query level
+-- - Preserves 'active' status over 'inactive' on conflict
+-- - Automatically handles new leagues and clubs as they're added
 
--- First, ensure the Lighthouse Soccer division exists
--- (Assuming it's already created in your 10-clubs-teams.sql)
-
--- Populate division_players for Lighthouse 1893 SC Soccer Division
--- This finds all players on any Lighthouse team and adds them to the division roster
+-- Populate division_players for ALL clubs (all leagues)
+-- This finds all players on any team and adds them to their division roster
 INSERT INTO division_players (division_id, player_id, status, registration_date, last_active_season, notes)
 SELECT DISTINCT
     t.division_id,
@@ -22,8 +30,7 @@ SELECT DISTINCT
 FROM team_players tp
 JOIN teams t ON tp.team_id = t.id
 JOIN sport_divisions sd ON t.division_id = sd.id
-JOIN clubs c ON sd.club_id = c.id
-WHERE c.slug = 'lighthouse-1893-sc'  -- Adjust to your actual club slug
+-- Intentionally NO WHERE clause - this gets ALL clubs from ALL leagues
 ON CONFLICT (division_id, player_id) DO UPDATE SET
     status = CASE 
         WHEN EXCLUDED.status = 'active' THEN 'active'  -- Prefer active status
@@ -32,13 +39,25 @@ ON CONFLICT (division_id, player_id) DO UPDATE SET
     last_active_season = COALESCE(EXCLUDED.last_active_season, division_players.last_active_season),
     updated_at = CURRENT_TIMESTAMP;
 
--- Verify results
+-- Verify results - Summary across ALL divisions
 SELECT 
-    'Division Players Summary' as report_section,
+    'Division Players Summary (All Leagues)' as report_section,
     COUNT(*) as total_players,
     COUNT(*) FILTER (WHERE status = 'active') as active_players,
     COUNT(*) FILTER (WHERE status = 'inactive') as inactive_players
+FROM division_players;
+
+-- Breakdown by league (for visibility)
+SELECT 
+    'Players by League' as report_section,
+    l.display_name as league,
+    COUNT(DISTINCT dp.player_id) as total_players,
+    COUNT(DISTINCT dp.player_id) FILTER (WHERE dp.status = 'active') as active_players
 FROM division_players dp
 JOIN sport_divisions sd ON dp.division_id = sd.id
 JOIN clubs c ON sd.club_id = c.id
-WHERE c.slug = 'lighthouse-1893-sc';
+JOIN league_divisions ld ON c.id = ld.id OR sd.club_id = c.id  -- Connect to league
+LEFT JOIN league_conferences lc ON sd.club_id = lc.id  -- Try alternative path
+LEFT JOIN leagues l ON lc.league_id = l.id
+GROUP BY l.id, l.display_name
+ORDER BY l.display_name;

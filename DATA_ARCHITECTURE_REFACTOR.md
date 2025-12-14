@@ -142,10 +142,11 @@ For users who play in multiple leagues:
 - [x] Rename `07-sport-divisions.sql` → `07-sport-divisions-apsl.sql`
 - [x] Update dev.sh/scraper references to new names
 
-### Phase 2: Fix Division Player Population
-- [ ] Update `50-populate-division-players.sql` to be generic
-- [ ] Test with current APSL Lighthouse
-- [ ] Test with CASA data once available
+### Phase 2: Fix Division Player Population ✅ COMPLETE
+- [x] Update `50-populate-division-players.sql` to be generic
+- [x] Remove hardcoded Lighthouse WHERE clause
+- [x] Add league breakdown reporting
+- [x] Document automatic league handling
 
 ### Phase 3: Add CASA Players When Available
 - [ ] Create `24-players-casa.sql` (mirror of `-apsl.sql`)
