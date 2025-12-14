@@ -15,6 +15,11 @@ void DivisionController::registerRoutes(Router& router, const std::string& prefi
         return this->handleGetDivisions(request);
     });
     
+    // Get divisions for a specific club
+    router.get(prefix + "/clubs/:clubId/divisions", [this](const Request& request) {
+        return this->handleGetClubDivisions(request);
+    });
+    
     // Get division players
     router.get(prefix + "/divisions/:divisionId/players", [this](const Request& request) {
         return this->handleGetDivisionPlayers(request);
@@ -63,6 +68,64 @@ Response DivisionController::handleGetDivisions(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "Error in handleGetDivisions: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Database error: ") + e.what()));
+    }
+}
+
+Response DivisionController::handleGetClubDivisions(const Request& request) {
+    std::cout << "=== handleGetClubDivisions ===" << std::endl;
+    std::cout << "Path: " << request.getPath() << std::endl;
+    
+    try {
+        // Extract club_id from path
+        std::string path = request.getPath();
+        std::string clubId;
+        
+        // Match /clubs/{uuid}/divisions
+        std::regex pattern("/clubs/([a-f0-9-]{36})/divisions");
+        std::smatch matches;
+        if (std::regex_search(path, matches, pattern) && matches.size() > 1) {
+            clubId = matches[1].str();
+        }
+        
+        if (clubId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid club ID"));
+        }
+        
+        std::cout << "Club ID: " << clubId << std::endl;
+        
+        // Query to get all divisions for a specific club
+        std::string query = 
+            "SELECT sd.id, sd.display_name "
+            "FROM sport_divisions sd "
+            "WHERE sd.club_id = $1 "
+            "ORDER BY sd.display_name";
+        
+        pqxx::result result = db_->query(query, {clubId});
+        
+        std::cout << "Found " << result.size() << " divisions for club" << std::endl;
+        
+        // Build JSON array of divisions
+        std::ostringstream divisionsJson;
+        divisionsJson << "[";
+        
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) divisionsJson << ",";
+            first = false;
+            
+            divisionsJson << "{";
+            divisionsJson << "\"id\":\"" << row["id"].c_str() << "\",";
+            divisionsJson << "\"display_name\":\"" << row["display_name"].c_str() << "\"";
+            divisionsJson << "}";
+        }
+        
+        divisionsJson << "]";
+        
+        return Response(HttpStatus::OK, createJSONResponse(true, "Divisions retrieved successfully", divisionsJson.str()));
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error in handleGetClubDivisions: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Database error: ") + e.what()));
     }
 }

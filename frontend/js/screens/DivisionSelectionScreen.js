@@ -49,14 +49,28 @@ class DivisionSelectionScreen extends Screen {
     const listContainer = this.find('#division-list');
     listContainer.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading divisions...</p></div>';
     
-    // Fetch all divisions
-    this.safeFetch('/api/divisions', response => {
+    // Get user's club from auth context
+    const user = this.auth.getUser();
+    const clubId = user?.club_id;
+    const clubName = user?.club_name;
+    
+    if (!clubId) {
+      listContainer.innerHTML = '<div class="empty-state"><p>No club associated with your account</p></div>';
+      return;
+    }
+    
+    // Fetch divisions for this club only
+    const endpoint = `/api/clubs/${clubId}/divisions`;
+    this.safeFetch(endpoint, response => {
       const divisions = response.data || [];
       
       if (divisions.length === 0) {
-        listContainer.innerHTML = '<div class="empty-state"><p>No divisions found</p></div>';
+        listContainer.innerHTML = '<div class="empty-state"><p>No divisions found for ' + clubName + '</p></div>';
         return;
       }
+      
+      // Show club name in header
+      this.find('#division-name-subtitle').textContent = `Select a division in ${clubName}`;
       
       this.renderList('#division-list', divisions,
         d => `
@@ -66,7 +80,7 @@ class DivisionSelectionScreen extends Screen {
                   style="width: 100%; text-align: left; margin-bottom: var(--space-2); padding: var(--space-3);">
             <h3 style="margin: 0; font-size: 1.2rem;">${d.display_name || d.name}</h3>
             <p style="margin: var(--space-1) 0 0 0; opacity: 0.8; font-size: 0.9rem;">
-              ${d.club_name ? `Club: ${d.club_name}` : 'Select to manage'}
+              Select to manage
             </p>
           </button>
         `,

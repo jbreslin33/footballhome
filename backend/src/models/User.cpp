@@ -64,10 +64,13 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
     std::cout << "🔍 authenticateUser called for: " << email << std::endl;
     
     try {
-        // Query database for user by email with admin info
-        std::string sql = "SELECT u.id, u.email, u.first_name, u.last_name, u.preferred_name, u.password_hash, a.admin_level "
+        // Query database for user by email with admin info and club info
+        std::string sql = "SELECT u.id, u.email, u.first_name, u.last_name, u.preferred_name, u.password_hash, a.admin_level, "
+                         "ca.club_id, c.display_name as club_name "
                          "FROM users u "
                          "LEFT JOIN admins a ON u.id = a.id "
+                         "LEFT JOIN club_admins ca ON u.id = ca.admin_id AND ca.is_active = true "
+                         "LEFT JOIN clubs c ON ca.club_id = c.id "
                          "WHERE u.email = $1 "
                          "LIMIT 1";
         
@@ -90,6 +93,9 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
                 userData.name = userData.first_name + " " + userData.last_name; // Computed for compatibility
                 // Check if user is an admin, otherwise default to "user"
                 userData.role = row["admin_level"].is_null() ? "user" : row["admin_level"].as<std::string>();
+                // Get club info if user is a club admin
+                userData.club_id = row["club_id"].is_null() ? "" : row["club_id"].as<std::string>();
+                userData.club_name = row["club_name"].is_null() ? "" : row["club_name"].as<std::string>();
                 
                 std::cout << "✅ Authentication successful for: " << email << std::endl;
             } else {

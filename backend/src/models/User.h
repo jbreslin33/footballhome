@@ -10,6 +10,8 @@ struct UserData {
     std::string preferred_name;
     std::string name; // Computed: first_name + " " + last_name (for backward compatibility)
     std::string role;
+    std::string club_id;
+    std::string club_name;
     bool valid = false;
 };
 

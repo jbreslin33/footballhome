@@ -183,6 +183,10 @@ std::string AuthController::createJSONResponse(bool success, const std::string& 
             json << "\"preferred_name\":\"" << userData.preferred_name << "\",";
         }
         json << "\"role\":\"" << userData.role << "\"";
+        if (!userData.club_id.empty()) {
+            json << ",\"club_id\":\"" << userData.club_id << "\",";
+            json << "\"club_name\":\"" << userData.club_name << "\"";
+        }
         json << "},";
         json << "\"token\":\"" << generateJWT(userData) << "\"";
         json << "}";

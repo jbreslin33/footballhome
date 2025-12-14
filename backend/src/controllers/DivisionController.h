@@ -13,6 +13,7 @@ public:
 
 private:
     Response handleGetDivisions(const Request& request);
+    Response handleGetClubDivisions(const Request& request);
     Response handleGetDivisionPlayers(const Request& request);
     Response handleUpdateDivisionPlayer(const Request& request);
     
