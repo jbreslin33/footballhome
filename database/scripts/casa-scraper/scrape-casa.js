@@ -443,8 +443,13 @@ function generateRosterSQL() {
 DECLARE
     v_user_id UUID;
     v_team_id UUID := ${teamId ? sqlEscape(teamId) : 'NULL'};
+    v_division_id UUID;
     v_external_id VARCHAR := ${sqlEscape(externalId)};
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -472,6 +477,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)

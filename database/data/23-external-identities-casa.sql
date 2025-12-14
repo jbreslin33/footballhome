@@ -1,7 +1,7 @@
 -- ========================================
 -- CASA LIGHTHOUSE ROSTERS
 -- ========================================
--- Generated: 2025-12-13T19:56:02.526Z
+-- Generated: 2025-12-14T00:23:54.739Z
 -- Source: Google Sheets
 -- ========================================
 
@@ -9,8 +9,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-1-omar';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -38,6 +43,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -76,8 +94,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-2-erwa';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -105,6 +128,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -143,8 +179,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-3-victor';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -172,6 +213,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -210,8 +264,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-4-oumar';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -239,6 +298,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -277,8 +349,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-5-aboubacar';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -306,6 +383,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -344,8 +434,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-6-luke';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -373,6 +468,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -411,8 +519,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-7-luis';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -440,6 +553,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -478,8 +604,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-8-abdoul';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -507,6 +638,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -545,8 +689,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-9-abouya';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -574,6 +723,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -612,8 +774,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-10-edwin';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -641,6 +808,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -679,8 +859,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-11-miles';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -708,6 +893,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -746,8 +944,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-12-andy';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -775,6 +978,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -813,8 +1029,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-13-arif';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -842,6 +1063,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -880,8 +1114,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-14-zuhab';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -909,6 +1148,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -947,8 +1199,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-15-esnayder';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -976,6 +1233,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1014,8 +1284,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-16-majid';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1043,6 +1318,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1081,8 +1369,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-17-alexander';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1110,6 +1403,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1148,8 +1454,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-18-matt';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1177,6 +1488,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1215,8 +1539,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-19-valentino';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1244,6 +1573,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1282,8 +1624,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-20-david';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1311,6 +1658,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1349,8 +1709,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-21-elmer';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1378,6 +1743,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1416,8 +1794,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-22-dylan';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1445,6 +1828,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1483,8 +1879,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-23-babacar';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1512,6 +1913,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1550,8 +1964,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-24-zion';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1579,6 +1998,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1617,8 +2049,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-25-john';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1646,6 +2083,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1684,8 +2134,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-26-jemirkel';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1713,6 +2168,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1751,8 +2219,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-27-joe';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1780,6 +2253,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1818,8 +2304,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-28-caleb';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1847,6 +2338,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1885,8 +2389,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-boys-club-29-ali';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1914,6 +2423,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -1952,8 +2474,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-1-hassane';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -1981,6 +2508,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2019,8 +2559,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-2-logan';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2048,6 +2593,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2086,8 +2644,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-7-john';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2115,6 +2678,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2153,8 +2729,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-8-john';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2182,6 +2763,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2220,8 +2814,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-9-justin';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2249,6 +2848,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2287,8 +2899,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-10-brian';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2316,6 +2933,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2354,8 +2984,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-11-joaquin';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2383,6 +3018,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2421,8 +3069,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers--ladeuix';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2450,6 +3103,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2488,8 +3154,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-12-sam';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2517,6 +3188,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2555,8 +3239,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-13-juan-cruz';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2584,6 +3273,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2622,8 +3324,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-14-sean';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2651,6 +3358,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2689,8 +3409,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-15-antonio';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2718,6 +3443,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2756,8 +3494,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-16-manuel';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2785,6 +3528,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2823,8 +3579,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-17-kevin';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2852,6 +3613,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2890,8 +3664,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-19-marcelo';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2919,6 +3698,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -2957,8 +3749,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-20-fabian';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -2986,6 +3783,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -3024,8 +3834,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-21-ruben';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -3053,6 +3868,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -3091,8 +3919,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-22-joshua';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -3120,6 +3953,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -3158,8 +4004,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-23-anuar';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -3187,6 +4038,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -3225,8 +4089,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-24-anthony';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -3254,6 +4123,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -3292,8 +4174,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-25-yakup';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -3321,6 +4208,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -3359,8 +4259,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-26-christopher';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -3388,6 +4293,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -3426,8 +4344,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-27-juan';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -3455,6 +4378,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -3493,8 +4429,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-28-tom';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -3522,6 +4463,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
@@ -3560,8 +4514,13 @@ DO $$
 DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
     v_external_id VARCHAR := 'casa-lighthouse-old-timers-29-leo';
 BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
     -- 1. Generate deterministic User ID
     v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
 
@@ -3589,6 +4548,19 @@ BEGIN
         ON CONFLICT (team_id, player_id) DO UPDATE SET
             jersey_number = EXCLUDED.jersey_number,
             is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
 
     -- 5. Create External Identity (Linked to User)
