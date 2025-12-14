@@ -6,6 +6,8 @@
 -- Data persists across rebuilds
 
 -- soccer@lighthouse1893.org (James Breslin) as admin for Lighthouse 1893 SC
+-- Note: This is the unified Lighthouse 1893 club (d37eb44b-8e47-0003-9060-f0cbe96fe089)
+-- which contains the sport division with teams: Lighthouse 1893 SC (APSL), Boys Club (CASA), Old Timers (CASA)
 INSERT INTO club_admins (id, club_id, admin_id, admin_role, is_primary, is_active)
 VALUES (
     'db836e6f-1250-47e0-81ab-d4626595d63c',
