@@ -355,7 +355,6 @@ function generateStructureSQL() {
     const sql = `-- ========================================
 -- ${header}
 -- ========================================
--- Generated: ${new Date().toISOString()}
 -- Source: CASA Website
 -- ========================================
 
@@ -417,7 +416,6 @@ function generateRosterSQL() {
   let sql = `-- ========================================
 -- CASA LIGHTHOUSE ROSTERS
 -- ========================================
--- Generated: ${new Date().toISOString()}
 -- Source: Google Sheets
 -- ========================================
 

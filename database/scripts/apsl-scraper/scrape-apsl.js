@@ -424,7 +424,6 @@ async function scrapeAPSL() {
   console.log('-- ========================================');
   console.log('-- APSL LEAGUE DATA (AUTO-GENERATED)');
   console.log('-- ========================================');
-  console.log('-- Generated: ' + new Date().toISOString());
   console.log('-- Source: ' + LEAGUE_URL);
   console.log('-- Includes: Conferences, Divisions, Teams, Players');
   console.log('--');
@@ -1017,7 +1016,6 @@ function convertInsertToCopy(sqlContent, header) {
   const copyHeader = `-- ========================================
 -- ${header}
 -- ========================================
--- Generated: ${new Date().toISOString()}
 -- Source: ${LEAGUE_URL}
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -1216,7 +1214,6 @@ function generateSQL() {
     const output = `-- ========================================
 -- ${header}
 -- ========================================
--- Generated: ${new Date().toISOString()}
 -- Source: ${LEAGUE_URL}
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -1256,7 +1253,6 @@ ${content}`;
     const apslSection = `-- ========================================
 -- ${header}
 -- ========================================
--- Generated: ${new Date().toISOString()}
 -- Source: ${LEAGUE_URL}
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
