@@ -30,13 +30,12 @@ Response DivisionController::handleGetDivisions(const Request& request) {
     std::cout << "=== handleGetDivisions ===" << std::endl;
     
     try {
-        // Query to get all divisions with their league info
+        // Query to get all sport divisions
         std::string query = 
-            "SELECT sd.id, sd.display_name, l.display_name as league_name "
+            "SELECT sd.id, sd.display_name, c.display_name as club_name "
             "FROM sport_divisions sd "
             "JOIN clubs c ON sd.club_id = c.id "
-            "JOIN leagues l ON c.league_id = l.id "
-            "ORDER BY l.display_name, sd.display_name";
+            "ORDER BY c.display_name, sd.display_name";
         
         pqxx::result result = db_->query(query);
         
@@ -54,7 +53,7 @@ Response DivisionController::handleGetDivisions(const Request& request) {
             divisionsJson << "{";
             divisionsJson << "\"id\":\"" << row["id"].c_str() << "\",";
             divisionsJson << "\"display_name\":\"" << row["display_name"].c_str() << "\",";
-            divisionsJson << "\"league_name\":\"" << row["league_name"].c_str() << "\"";
+            divisionsJson << "\"club_name\":\"" << row["club_name"].c_str() << "\"";
             divisionsJson << "}";
         }
         

@@ -66,7 +66,7 @@ class DivisionSelectionScreen extends Screen {
                   style="width: 100%; text-align: left; margin-bottom: var(--space-2); padding: var(--space-3);">
             <h3 style="margin: 0; font-size: 1.2rem;">${d.display_name || d.name}</h3>
             <p style="margin: var(--space-1) 0 0 0; opacity: 0.8; font-size: 0.9rem;">
-              ${d.league_name ? `League: ${d.league_name}` : 'Select to manage'}
+              ${d.club_name ? `Club: ${d.club_name}` : 'Select to manage'}
             </p>
           </button>
         `,
