@@ -12,11 +12,12 @@
 
 ## 🔧 Development Workflow
 - **Primary Control Script**: Always use `./dev.sh` for builds and lifecycle management.
-  - **Full Rebuild**: `./dev.sh` (destroys containers/volumes).
-  - **Quick Restart**: `./dev.sh --quick` (restarts services, keeps DB).
-  - **Data Scraping**: `./dev.sh --apsl` (scrapes league data), `./dev.sh --venues`.
-  - **Debugging**: `./dev.sh --verbose` for shell tracing and slow SQL logs.
-- **Database Changes**: To modify schema, add a new numbered SQL file in `database/data/` and run a full rebuild (`./dev.sh`).
+  - **Full Rebuild**: `./dev.sh` (destroys containers/volumes, cleans caches, rebuilds from scratch).
+  - **NOTE**: No quick restart option exists. All rebuilds are full rebuilds.
+- **Database Changes**: 
+  - **Persistent Data**: Add a new numbered SQL file in `database/data/` (e.g., `75-club-admins.sql`). Data inserted here persists across full rebuilds.
+  - **Schema Changes**: Add to appropriate numbered file, then run full rebuild (`./dev.sh`).
+  - **Alphabetical Execution**: SQL files in `database/data/` are executed alphabetically by init scripts.
 
 ## 📝 Coding Conventions
 ### Frontend (Vanilla JS)
@@ -40,3 +41,37 @@
 - `frontend/js/app.js`: Frontend bootstrap and screen registration.
 - `backend/src/main.cpp`: Backend server setup and route registration.
 - `backend/src/core/Router.cpp`: Custom routing logic.
+
+## 👥 User & Club Architecture
+
+### User-Club Relationship
+- Users are associated with clubs via the `club_admins` table
+- Foreign key: `club_admins.admin_id` → `admins.id` (NOT users.id)
+- When a user logs in:
+  1. Query `users` table for email/password
+  2. LEFT JOIN to `admins` table (some users may not be admins)
+  3. LEFT JOIN to `club_admins` table to get `club_id` and club name
+  4. Return club info in login response so frontend knows which club the user belongs to
+
+### Club Hierarchy
+- Club (e.g., "Lighthouse 1893 SC")
+  - Can have multiple Sport Divisions (e.g., "1893 SC Soccer", "Boys Club", "Old Timers")
+  - Each Sport Division has multiple Teams
+  - Each Team has multiple Players
+
+### Database Tables
+- `users`: id, email, password_hash, first_name, last_name, is_active, etc.
+- `admins`: id, admin_level, notes
+- `club_admins`: id, club_id, admin_id, admin_role, is_primary, is_active
+- `clubs`: id, display_name, slug, is_active
+- `sport_divisions`: id, club_id, display_name
+- `teams`: id, sport_division_id, display_name
+- `team_players`: team_id, player_id, jersey_number
+- `division_players`: Aggregated view of all players in a division (via division_teams.sql views)
+
+### Persistent Data Initialization
+- Manual users added to `50-users-manual.sql`
+- Admin role assignment in `51-admins.sql`
+- Coach info in `52-coaches.sql`
+- Club admin associations in `75-club-admins.sql`
+- All persist across full rebuilds via SQL init scripts
