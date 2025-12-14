@@ -44,6 +44,38 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# ============================================================
+# DOCKER AVAILABILITY CHECK (early exit if docker not accessible)
+# ============================================================
+if ! docker ps &> /dev/null 2>&1; then
+    # Try with sudo as fallback
+    if ! sudo docker ps &> /dev/null 2>&1; then
+        echo -e "${RED}Error: Docker is not accessible${NC}"
+        echo ""
+        echo "Docker is required to run this application."
+        echo ""
+        echo "Possible solutions:"
+        echo "  1. Make sure Docker is installed:"
+        echo "     ./setup.sh"
+        echo ""
+        echo "  2. If Docker is installed, you may need to log out and back in:"
+        echo "     Docker group permissions take effect after login"
+        echo "     Quick fix: exec su -l \$USER"
+        echo ""
+        echo "  3. Check Docker status:"
+        echo "     sudo systemctl status docker"
+        echo ""
+        exit 1
+    fi
+    # Docker needs sudo, set alias for all docker commands
+    DOCKER="sudo docker"
+    DOCKER_COMPOSE="sudo docker compose"
+else
+    # Docker works without sudo
+    DOCKER="docker"
+    DOCKER_COMPOSE="docker compose"
+fi
+
 APSL_SCRAPE_MODE=""
 APSL_SCHEDULE=false
 CASA_SCRAPE_MODE=""
@@ -260,7 +292,7 @@ if [ "$SAVE_MANUAL" = true ]; then
     echo -e "${YELLOW}💾 Step 0: Exporting tracked changes from running database...${NC}"
     
     # Check if database container is running
-    if docker compose ps | grep -q "footballhome_db.*running"; then
+    if $DOCKER_COMPOSE ps | grep -q "footballhome_db.*running"; then
         if [ -f "scripts/export-audit-log.js" ]; then
             node scripts/export-audit-log.js
             echo -e "${GREEN}✓ Audit log exported to database/data/98-audit-replay.sql${NC}"
@@ -343,12 +375,12 @@ fi
 
 if [ "$REPLAY_ONLY" = true ]; then
     echo -e "${YELLOW}🧹 Step 2: Wiping database only (keeping Docker images)...${NC}"
-    docker compose down -v 2>/dev/null || true
+    $DOCKER_COMPOSE down -v 2>/dev/null || true
     echo -e "${GREEN}✓ Database wiped${NC}"
     echo ""
 else
     echo -e "${YELLOW}🧹 Step 2: Cleaning up...${NC}"
-    docker compose down -v 2>/dev/null || true
+    $DOCKER_COMPOSE down -v 2>/dev/null || true
     docker builder prune -af 2>/dev/null || true
     echo -e "${GREEN}✓ Cleanup complete${NC}"
     echo ""
@@ -360,7 +392,7 @@ fi
 
 if [ "$REPLAY_ONLY" = false ]; then
     echo -e "${YELLOW}🔨 Step 3: Building images (no cache)...${NC}"
-    docker compose build --no-cache
+    $DOCKER_COMPOSE build --no-cache
     echo -e "${GREEN}✓ Build complete${NC}"
     echo ""
 else
@@ -373,12 +405,12 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 echo -e "${YELLOW}🚀 Step 4: Starting containers...${NC}"
-docker compose up -d
+$DOCKER_COMPOSE up -d
 
 # Wait for containers to be fully running
 echo -n "  Waiting for containers to initialize"
 for i in $(seq 1 30); do
-    RUNNING=$(docker compose ps --status running -q 2>/dev/null | wc -l)
+    RUNNING=$($DOCKER_COMPOSE ps --status running -q 2>/dev/null | wc -l)
     if [ "$RUNNING" -ge 3 ]; then
         echo -e " ${GREEN}✓${NC}"
         break
@@ -399,13 +431,13 @@ echo -e "${YELLOW}⏳ Step 5: Waiting for services...${NC}"
 # Wait for database to be healthy first
 echo -n "  Database: "
 for i in $(seq 1 60); do
-    if docker compose exec -T db pg_isready -U footballhome > /dev/null 2>&1; then
+    if $DOCKER_COMPOSE exec -T db pg_isready -U footballhome > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Ready (${i}s)${NC}"
         break
     fi
     if [ "$i" -eq 60 ]; then
         echo -e "${RED}✗ Timeout after 60s${NC}"
-        docker compose logs db | tail -20
+        $DOCKER_COMPOSE logs db | tail -20
         exit 1
     fi
     sleep 1
@@ -423,7 +455,7 @@ for i in $(seq 1 240); do
         echo ""
         echo "Check logs:"
         echo "  docker compose logs backend"
-        docker compose logs backend | tail -30
+        $DOCKER_COMPOSE logs backend | tail -30
         exit 1
     fi
     sleep 1
@@ -448,7 +480,7 @@ echo ""
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 echo -e "${YELLOW}⏰ Step 6: Setting up pg_cron...${NC}"
-docker compose exec -T db bash /docker-entrypoint-initdb.d/ZZ-pg-cron-setup.sh 2>/dev/null || true
+$DOCKER_COMPOSE exec -T db bash /docker-entrypoint-initdb.d/ZZ-pg-cron-setup.sh 2>/dev/null || true
 echo -e "${GREEN}✓ pg_cron configured${NC}"
 echo ""
 
