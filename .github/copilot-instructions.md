@@ -13,11 +13,32 @@
 ## 🔧 Development Workflow
 - **Primary Control Script**: Always use `./dev.sh` for builds and lifecycle management.
   - **Full Rebuild**: `./dev.sh` (destroys containers/volumes, cleans caches, rebuilds from scratch).
+  - **Refresh Data**: `./dev.sh --refresh` (re-scrapes all data: APSL + CASA + GroupMe, updates SQL files, then rebuilds).
   - **NOTE**: No quick restart option exists. All rebuilds are full rebuilds.
 - **Database Changes**: 
   - **Persistent Data**: Add a new numbered SQL file in `database/data/` (e.g., `75-club-admins.sql`). Data inserted here persists across full rebuilds.
   - **Schema Changes**: Add to appropriate numbered file, then run full rebuild (`./dev.sh`).
   - **Alphabetical Execution**: SQL files in `database/data/` are executed alphabetically by init scripts.
+
+## 🔄 Data Scraping Architecture (OOP)
+- **Scrapers**: Object-oriented Node.js scrapers in `database/scripts/`
+  - Base classes: `Scraper`, `DataFetcher`, `HtmlParser`
+  - Services: `IdGenerator`, `SqlGenerator`, `DuplicateDetector`
+  - Models: `League`, `Team`, `Player`, `Match`, `Venue`
+- **Scraper Implementations**:
+  - `ApslScraper`: APSL league (apslsoccer.com) - ✅ Working
+  - `CasaScraper`: CASA league (casasoccerleagues.com + Google Sheets) - 🔄 Needs parsing implementation
+  - `GroupMeScraper`: 4 chat implementations (Training, APSL, Boys Club, Old Timers) - ⚠️ Untested
+  - `VenueScraper`: Google Places API - ⚠️ Untested
+- **Workflow**: 
+  1. Scrapers generate SQL files in `database/data/` (committed to git for reproducibility)
+  2. `./dev.sh` loads SQL files during database initialization
+  3. Use `./dev.sh --refresh` to re-scrape and update SQL files
+  4. Use specific flags for selective scraping: `--apsl`, `--casa`, `--lighthouse`, `--groupme`
+- **Parsing Pattern**: When implementing new parsers, recover old scraper logic from git history if needed:
+  - Old scrapers in commit `4e50246^` (before OOP migration)
+  - Port working HTML parsing logic to OOP parser classes
+  - Test with real data using team filters: `--team "Lighthouse"`
 
 ## 📝 Coding Conventions
 ### Frontend (Vanilla JS)
