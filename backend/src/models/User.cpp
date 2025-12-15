@@ -65,10 +65,11 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
     
     try {
         // Query database for user by email with admin info and club info
-        std::string sql = "SELECT u.id, u.email, u.first_name, u.last_name, u.preferred_name, u.password_hash, a.admin_level, "
+        std::string sql = "SELECT u.id, u.email, u.first_name, u.last_name, u.preferred_name, u.password_hash, al.name as admin_level, "
                          "ca.club_id, c.display_name as club_name "
                          "FROM users u "
                          "LEFT JOIN admins a ON u.id = a.id "
+                         "LEFT JOIN admin_levels al ON a.admin_level_id = al.id "
                          "LEFT JOIN club_admins ca ON a.id = ca.admin_id AND ca.is_active = true "
                          "LEFT JOIN clubs c ON ca.club_id = c.id "
                          "WHERE u.email = $1 "
@@ -238,8 +239,9 @@ std::string User::getUserRoles(const std::string& user_id) {
         
         // Check if user is an admin (system, league, club, etc.)
         std::string admin_sql = 
-            "SELECT a.admin_level "
+            "SELECT al.name as admin_level "
             "FROM admins a "
+            "LEFT JOIN admin_levels al ON a.admin_level_id = al.id "
             "WHERE a.id = $1";
         
         pqxx::result admin_result = executeQuery(admin_sql, {user_id});
@@ -248,7 +250,7 @@ std::string User::getUserRoles(const std::string& user_id) {
             if (hasRoles) json << ",";
             json << "{";
             json << "\"type\":\"admin\",";
-            json << "\"adminLevel\":\"" << row["admin_level"].as<std::string>() << "\",";
+            json << "\"adminLevel\":\"" << (row["admin_level"].is_null() ? "none" : row["admin_level"].as<std::string>()) << "\",";
             json << "\"teamId\":null,";
             json << "\"teamName\":\"System Administration\",";
             json << "\"clubName\":\"Football Home\"";

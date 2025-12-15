@@ -1075,7 +1075,7 @@ CREATE INDEX idx_coaches_license ON coaches(coaching_license);
 CREATE INDEX idx_referees_grade ON referees(referee_grade);
 CREATE INDEX idx_medical_staff_role ON medical_staff(role_type);
 CREATE INDEX idx_managers_type ON managers(manager_type);
-CREATE INDEX idx_admins_level ON admins(admin_level);
+CREATE INDEX idx_admins_level ON admins(admin_level_id);
 
 -- Admin permissions indexes
 CREATE INDEX idx_admin_permissions_admin ON admin_permissions(admin_id);
