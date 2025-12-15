@@ -1,34 +1,64 @@
 #!/bin/bash
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Football Home - Development Script
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
+# OOP SCRAPER ARCHITECTURE:
+#   All scrapers use database/scripts/index.js with unified OOP base classes:
+#   - ApslScraper       → APSL league (apslsoccer.com)
+#   - CasaScraper       → CASA league (casasoccerleagues.com + Google Sheets)
+#   - GroupMeScraper    → 4 chat implementations (Training, APSL, Boys Club, Old Timers)
+#   - VenueScraper      → Google Places API
+#
+#   Benefits: Reusable components, consistent SQL output, team filters, mode support
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Usage:
 #   ./dev.sh                                      # Full rebuild (no scraping)
-#   ./dev.sh --apsl                               # Full APSL scrape (all teams + rosters)
-#   ./dev.sh --apsl-structure                     # APSL structure only (conferences/divisions/teams)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Aggregate Flags (Convenience):
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#   ./dev.sh --lighthouse                         # All Lighthouse data (APSL/CASA + GroupMe: 4 chats)
+#   ./dev.sh --apsl                               # All APSL data (structure + all teams + rosters + schedules)
+#   ./dev.sh --casa                               # All CASA data (structure + all teams + rosters + schedules)
+#   ./dev.sh --groupme                            # All GroupMe data (4 chats: Training, APSL, Boys Club, Old Timers)
+#
+# APSL Flags:
+#   ./dev.sh --apsl-structure                     # APSL structure only (conferences/divisions, no teams)
+#   ./dev.sh --apsl-teams                         # APSL teams (conferences/divisions/teams, no rosters)
 #   ./dev.sh --apsl-players-lighthouse            # APSL Lighthouse 1893 SC roster only (creates Users/Players)
+#   ./dev.sh --apsl-players                       # APSL all teams + all rosters (creates Users/Players for all)
+#   ./dev.sh --apsl-schedule-lighthouse           # APSL Lighthouse 1893 SC game schedule only
 #   ./dev.sh --apsl-schedule                      # APSL game schedules for all teams
-#   ./dev.sh --casa                               # Full CASA scrape (all teams + rosters)
+#
+# CASA Flags:
 #   ./dev.sh --casa-structure                     # CASA structure only (teams/standings)
 #   ./dev.sh --casa-players-lighthouse            # CASA Lighthouse teams only (creates Users/Players)
-#   ./dev.sh --groupme-training-lighthouse-external  # Training chat → external_identities (division context)
-#   ./dev.sh --groupme-training-lighthouse-schedule  # Training chat schedule
-#   ./dev.sh --groupme-training-lighthouse-rsvps  # Training chat RSVPs
-#   ./dev.sh --groupme-boys-club-external         # Boys Club chat → external_identities
-#   ./dev.sh --groupme-boys-club-schedule         # Boys Club Liga 1 game schedule
-#   ./dev.sh --groupme-boys-club-rsvps            # Boys Club game RSVPs
-#   ./dev.sh --groupme-old-timers-external        # Old Timers chat → external_identities
-#   ./dev.sh --groupme-old-timers-schedule        # Old Timers Liga 2 game schedule
-#   ./dev.sh --groupme-old-timers-rsvps           # Old Timers game RSVPs
+#
+# GroupMe Flags:
+#   ./dev.sh --groupme-apsl-external              # APSL Lighthouse chat → external_identities
+#   ./dev.sh --groupme-apsl-schedule              # APSL Lighthouse chat: schedule
+#   ./dev.sh --groupme-apsl-rsvps                 # APSL Lighthouse chat: RSVPs
+#   ./dev.sh --groupme-training-lighthouse-external  # Training Lighthouse chat → external_identities (division context)
+#   ./dev.sh --groupme-training-lighthouse-schedule  # Training Lighthouse chat: schedule
+#   ./dev.sh --groupme-training-lighthouse-rsvps  # Training Lighthouse chat: RSVPs
+#   ./dev.sh --groupme-boys-club-external         # Lighthouse Boys Club Liga 1 chat → external_identities
+#   ./dev.sh --groupme-boys-club-schedule         # Lighthouse Boys Club Liga 1 game schedule
+#   ./dev.sh --groupme-boys-club-rsvps            # Lighthouse Boys Club Liga 1 game RSVPs
+#   ./dev.sh --groupme-old-timers-external        # Lighthouse Old Timers Club Liga 2 chat → external_identities
+#   ./dev.sh --groupme-old-timers-schedule        # Lighthouse Old Timers Club Liga 2 game schedule
+#   ./dev.sh --groupme-old-timers-rsvps           # Lighthouse Old Timers Club Liga 2 game RSVPs
 #   ./dev.sh --venues                             # Scrape Google Places venues
 #   ./dev.sh --save                               # Export manual edits before rebuild
 #   ./dev.sh --replay-only                        # Fast rebuild from saved changes
 #
 # Typical Workflows:
-#   ./dev.sh --apsl --casa --save
-#     → New season: Full APSL + CASA scrape
+#   ./dev.sh --lighthouse
+#     → Lighthouse update: Structure + rosters + schedules + GroupMe for all 3 teams
 #
-#   ./dev.sh --apsl-players-lighthouse --casa-players-lighthouse --groupme-training-lighthouse-external --groupme-training-lighthouse-schedule --save
-#     → Weekly update: Lighthouse rosters + Training chat sync
+#   ./dev.sh --apsl --casa
+#     → New season: Full APSL + CASA scrape (all teams)
 #
 #   ./dev.sh --replay-only
 #     → Daily development: Fast rebuild from saved state (~10 seconds)
@@ -80,7 +110,9 @@ APSL_SCRAPE_MODE=""
 APSL_SCHEDULE=false
 CASA_SCRAPE_MODE=""
 VENUE_SCRAPE=false
+GROUPME_APSL_EXTERNAL=false
 GROUPME_APSL_SCHEDULE=false
+GROUPME_APSL_RSVPS=false
 GROUPME_TRAINING_LIGHTHOUSE_EXTERNAL=false
 GROUPME_TRAINING_LIGHTHOUSE_SCHEDULE=false
 GROUPME_TRAINING_LIGHTHOUSE_RSVPS=false
@@ -96,26 +128,80 @@ REPLAY_ONLY=false
 # Parse arguments
 for arg in "$@"; do
     case $arg in
-        --apsl|--apsl-players)
-            # APSL scraper treats undefined as full, but we set empty string to trigger full scrape
-            APSL_SCRAPE_MODE="FULL"
-            ;;
-        --apsl-structure)
-            # Only set if not already set to a more inclusive mode
-            if [ "$APSL_SCRAPE_MODE" != "FULL" ] && [ "$APSL_SCRAPE_MODE" != "lighthouse" ]; then
-                APSL_SCRAPE_MODE="structure"
-            fi
-            ;;
-        --apsl-players-lighthouse|--apsl-lighthouse)
-            # Only set if not already set to full
+        --lighthouse)
+            # Convenience flag: All Lighthouse data (structure + rosters + GroupMe)
+            APSL_SCRAPE_MODE="structure"
+            APSL_SCHEDULE=true
             if [ "$APSL_SCRAPE_MODE" != "FULL" ]; then
                 APSL_SCRAPE_MODE="lighthouse"
             fi
+            CASA_SCRAPE_MODE="structure"
+            if [ "$CASA_SCRAPE_MODE" != "full" ]; then
+                CASA_SCRAPE_MODE="lighthouse"
+            fi
+            GROUPME_TRAINING_LIGHTHOUSE_EXTERNAL=true
+            GROUPME_TRAINING_LIGHTHOUSE_SCHEDULE=true
+            GROUPME_TRAINING_LIGHTHOUSE_RSVPS=true
+            GROUPME_BOYS_CLUB_EXTERNAL=true
+            GROUPME_BOYS_CLUB_SCHEDULE=true
+            GROUPME_BOYS_CLUB_RSVPS=true
+            GROUPME_OLD_TIMERS_EXTERNAL=true
+            GROUPME_OLD_TIMERS_SCHEDULE=true
+            GROUPME_OLD_TIMERS_RSVPS=true
+            ;;
+        --groupme)
+            # All GroupMe data for all Lighthouse chats
+            GROUPME_APSL_EXTERNAL=true
+            GROUPME_APSL_SCHEDULE=true
+            GROUPME_APSL_RSVPS=true
+            GROUPME_TRAINING_LIGHTHOUSE_EXTERNAL=true
+            GROUPME_TRAINING_LIGHTHOUSE_SCHEDULE=true
+            GROUPME_TRAINING_LIGHTHOUSE_RSVPS=true
+            GROUPME_BOYS_CLUB_EXTERNAL=true
+            GROUPME_BOYS_CLUB_SCHEDULE=true
+            GROUPME_BOYS_CLUB_RSVPS=true
+            GROUPME_OLD_TIMERS_EXTERNAL=true
+            GROUPME_OLD_TIMERS_SCHEDULE=true
+            GROUPME_OLD_TIMERS_RSVPS=true
+            ;;
+        --apsl)
+            # Full APSL scrape: all teams + rosters + schedules
+            APSL_SCRAPE_MODE="players"
+            APSL_SCHEDULE=true
+            ;;
+        --apsl-players)
+            # All teams + all rosters (no schedule)
+            if [ "$APSL_SCRAPE_MODE" != "players" ]; then
+                APSL_SCRAPE_MODE="players"
+            fi
+            ;;
+        --apsl-structure)
+            # Only set if not already set to a more inclusive mode
+            if [ "$APSL_SCRAPE_MODE" != "players" ] && [ "$APSL_SCRAPE_MODE" != "lighthouse" ] && [ "$APSL_SCRAPE_MODE" != "teams" ]; then
+                APSL_SCRAPE_MODE="structure"
+            fi
+            ;;
+        --apsl-teams)
+            # Only set if not already set to a more inclusive mode
+            if [ "$APSL_SCRAPE_MODE" != "players" ] && [ "$APSL_SCRAPE_MODE" != "lighthouse" ]; then
+                APSL_SCRAPE_MODE="teams"
+            fi
+            ;;
+        --apsl-players-lighthouse|--apsl-lighthouse)
+            # Only set if not already set to players mode
+            if [ "$APSL_SCRAPE_MODE" != "players" ]; then
+                APSL_SCRAPE_MODE="lighthouse"
+            fi
+            ;;
+        --apsl-schedule-lighthouse)
+            APSL_SCHEDULE=true
+            APSL_SCHEDULE_MODE="lighthouse"
             ;;
         --apsl-schedule)
             APSL_SCHEDULE=true
             ;;
         --casa|--casa-players)
+            # Full CASA scrape (all teams + rosters)
             CASA_SCRAPE_MODE="full"
             ;;
         --casa-structure)
@@ -132,8 +218,14 @@ for arg in "$@"; do
         --venues)
             VENUE_SCRAPE=true
             ;;
+        --groupme-apsl-external)
+            GROUPME_APSL_EXTERNAL=true
+            ;;
         --groupme-apsl-schedule)
             GROUPME_APSL_SCHEDULE=true
+            ;;
+        --groupme-apsl-rsvps)
+            GROUPME_APSL_RSVPS=true
             ;;
         --groupme-training-lighthouse-external)
             GROUPME_TRAINING_LIGHTHOUSE_EXTERNAL=true
@@ -174,30 +266,40 @@ for arg in "$@"; do
             echo "Usage:"
             echo "  ./dev.sh                                   Full rebuild (uses saved SQL files)"
             echo ""
-            echo "Scraping Flags:"
-            echo "  --apsl                                     Full APSL scrape (structure + all team rosters)"
-            echo "  --apsl-structure                           Scrape APSL structure only (conferences/divisions/teams)"
-            echo "  --apsl-players                             Alias for --apsl (Full scrape)"
-            echo "  --apsl-lighthouse                          Scrape Lighthouse 1893 SC roster (creates Users/Players/TeamPlayers)"
-            echo "  --apsl-players-lighthouse                  Alias for --apsl-lighthouse"
+            echo "Aggregate Flags (Convenience):"
+            echo "  --lighthouse                               All Lighthouse data (APSL/CASA structure + rosters + schedules + GroupMe)"
+            echo "  --apsl                                     All APSL data (structure + all teams + rosters + schedules)"
+            echo "  --casa                                     All CASA data (structure + all teams + rosters)"
+            echo "  --groupme                                  All GroupMe data (all 3 Lighthouse team chats)"
+            echo ""
+            echo "APSL Scraping Flags:"
+            echo "  --apsl-structure                           Scrape APSL structure only (conferences/divisions, no teams)"
+            echo "  --apsl-teams                               Scrape APSL teams (conferences/divisions/teams, no rosters)"
+            echo "  --apsl-players-lighthouse                  Scrape Lighthouse 1893 SC roster only"
+            echo "  --apsl-players                             Scrape all teams + all rosters (creates Users/Players)"
+            echo "  --apsl-schedule-lighthouse                 Scrape Lighthouse 1893 SC game schedule only"
             echo "  --apsl-schedule                            Scrape APSL game schedules for all teams"
-            echo "  --casa                                     Full CASA scrape (structure + all team rosters)"
-            echo "  --casa-players                             Alias for --casa (Full scrape)"
+            echo ""
+            echo "CASA Scraping Flags:"
             echo "  --casa-structure                           Scrape CASA structure (Liga 1 & 2 teams/standings/schedule)"
-            echo "  --casa-players-lighthouse                  Scrape Lighthouse Boys Club + Old Timers rosters (creates Users/Players/TeamPlayers)"
+            echo "  --casa-players-lighthouse                  Scrape Lighthouse Boys Club Liga 1 + Old Timers Club Liga 2 rosters"
+            echo ""
+            echo "Other Scraping:"
             echo "  --venues                                   Scrape Google Places venues (rarely needed)"
             echo ""
-            echo "GroupMe Flags (by chat):"
-            echo "  --groupme-apsl-schedule                    APSL Lighthouse 1893 SC chat: schedule"
-            echo "  --groupme-training-lighthouse-external     Training chat: users → external_identities (division context)"
-            echo "  --groupme-training-lighthouse-schedule     Training chat: practices/events schedule"
-            echo "  --groupme-training-lighthouse-rsvps        Training chat: RSVPs for trainings"
-            echo "  --groupme-boys-club-external               Boys Club Liga 1 chat: users → external_identities"
-            echo "  --groupme-boys-club-schedule               Boys Club Liga 1 chat: game schedule"
-            echo "  --groupme-boys-club-rsvps                  Boys Club Liga 1 chat: game RSVPs"
-            echo "  --groupme-old-timers-external              Old Timers Liga 2 chat: users → external_identities"
-            echo "  --groupme-old-timers-schedule              Old Timers Liga 2 chat: game schedule"
-            echo "  --groupme-old-timers-rsvps                 Old Timers Liga 2 chat: game RSVPs"
+            echo "GroupMe Flags:"
+            echo "  --groupme-apsl-external                    APSL Lighthouse: users → external_identities"
+            echo "  --groupme-apsl-schedule                    APSL Lighthouse: schedule"
+            echo "  --groupme-apsl-rsvps                       APSL Lighthouse: game RSVPs"
+            echo "  --groupme-training-lighthouse-external     Training Lighthouse: users → external_identities (division context)"
+            echo "  --groupme-training-lighthouse-schedule     Training Lighthouse: practices/events schedule"
+            echo "  --groupme-training-lighthouse-rsvps        Training Lighthouse: RSVPs for trainings"
+            echo "  --groupme-boys-club-external               Lighthouse Boys Club Liga 1: users → external_identities"
+            echo "  --groupme-boys-club-schedule               Lighthouse Boys Club Liga 1: game schedule"
+            echo "  --groupme-boys-club-rsvps                  Lighthouse Boys Club Liga 1: game RSVPs"
+            echo "  --groupme-old-timers-external              Lighthouse Old Timers Club Liga 2: users → external_identities"
+            echo "  --groupme-old-timers-schedule              Lighthouse Old Timers Club Liga 2: game schedule"
+            echo "  --groupme-old-timers-rsvps                 Lighthouse Old Timers Club Liga 2: game RSVPs"
             echo ""
             echo "Workflow Flags:"
             echo "  --save                                     Export manual edits before rebuild"
@@ -216,7 +318,7 @@ for arg in "$@"; do
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --apsl, --apsl-structure, --apsl-players, --apsl-lighthouse, --apsl-players-lighthouse, --apsl-schedule, --casa, --casa-players, --casa-structure, --casa-players-lighthouse, --groupme-apsl-schedule, --groupme-training-lighthouse-external, --groupme-training-lighthouse-schedule, --groupme-training-lighthouse-rsvps, --groupme-boys-club-external, --groupme-boys-club-schedule, --groupme-boys-club-rsvps, --groupme-old-timers-external, --groupme-old-timers-schedule, --groupme-old-timers-rsvps, --venues, --save, --replay-only, --help"
+            echo "Valid options: --lighthouse, --apsl, --apsl-structure, --apsl-teams, --apsl-players, --apsl-lighthouse, --apsl-players-lighthouse, --apsl-schedule-lighthouse, --apsl-schedule, --casa, --casa-players, --casa-structure, --casa-players-lighthouse, --groupme, --groupme-apsl-external, --groupme-apsl-schedule, --groupme-apsl-rsvps, --groupme-training-lighthouse-external, --groupme-training-lighthouse-schedule, --groupme-training-lighthouse-rsvps, --groupme-boys-club-external, --groupme-boys-club-schedule, --groupme-boys-club-rsvps, --groupme-old-timers-external, --groupme-old-timers-schedule, --groupme-old-timers-rsvps, --venues, --save, --replay-only, --help"
             exit 1
             ;;
     esac
@@ -252,11 +354,17 @@ fi
 if [ "$VENUE_SCRAPE" = true ]; then
     echo "  ✓ Scrape Google venues"
 fi
+if [ "$GROUPME_APSL_EXTERNAL" = true ]; then
+    echo "  ✓ GroupMe: APSL Lighthouse users → external_identities"
+fi
 if [ "$GROUPME_APSL_SCHEDULE" = true ]; then
     echo "  ✓ GroupMe: APSL Lighthouse schedule"
 fi
+if [ "$GROUPME_APSL_RSVPS" = true ]; then
+    echo "  ✓ GroupMe: APSL Lighthouse RSVPs"
+fi
 if [ "$GROUPME_TRAINING_LIGHTHOUSE_EXTERNAL" = true ]; then
-    echo "  ✓ GroupMe: Training chat users → external_identities"
+    echo "  ✓ GroupMe: Training Lighthouse users → external_identities"
 fi
 if [ "$GROUPME_TRAINING_LIGHTHOUSE_SCHEDULE" = true ]; then
     echo "  ✓ GroupMe: Training chat schedule"
@@ -265,22 +373,22 @@ if [ "$GROUPME_TRAINING_LIGHTHOUSE_RSVPS" = true ]; then
     echo "  ✓ GroupMe: Training chat RSVPs"
 fi
 if [ "$GROUPME_BOYS_CLUB_EXTERNAL" = true ]; then
-    echo "  ✓ GroupMe: Boys Club users → external_identities"
+    echo "  ✓ GroupMe: Lighthouse Boys Club Liga 1 users → external_identities"
 fi
 if [ "$GROUPME_BOYS_CLUB_SCHEDULE" = true ]; then
-    echo "  ✓ GroupMe: Boys Club schedule"
+    echo "  ✓ GroupMe: Lighthouse Boys Club Liga 1 schedule"
 fi
 if [ "$GROUPME_BOYS_CLUB_RSVPS" = true ]; then
-    echo "  ✓ GroupMe: Boys Club RSVPs"
+    echo "  ✓ GroupMe: Lighthouse Boys Club Liga 1 RSVPs"
 fi
 if [ "$GROUPME_OLD_TIMERS_EXTERNAL" = true ]; then
-    echo "  ✓ GroupMe: Old Timers users → external_identities"
+    echo "  ✓ GroupMe: Lighthouse Old Timers Club Liga 2 users → external_identities"
 fi
 if [ "$GROUPME_OLD_TIMERS_SCHEDULE" = true ]; then
-    echo "  ✓ GroupMe: Old Timers schedule"
+    echo "  ✓ GroupMe: Lighthouse Old Timers Club Liga 2 schedule"
 fi
 if [ "$GROUPME_OLD_TIMERS_RSVPS" = true ]; then
-    echo "  ✓ GroupMe: Old Timers RSVPs"
+    echo "  ✓ GroupMe: Lighthouse Old Timers Club Liga 2 RSVPs"
 fi
 echo ""
 
@@ -313,58 +421,72 @@ if [ "$REPLAY_ONLY" = true ]; then
     echo -e "${YELLOW}⏭️  Skipping scrapers (replay-only mode)${NC}"
     echo ""
 else
-    # APSL Scraping (Single execution based on mode)
+    # ──────────────────────────────────────────────────────────────────
+    # APSL League Scraping (OOP)
+    # ──────────────────────────────────────────────────────────────────
     if [ -n "$APSL_SCRAPE_MODE" ]; then
         echo -e "${YELLOW}📊 Step 1a: Scraping APSL (Mode: $APSL_SCRAPE_MODE)...${NC}"
-        if [ -f "database/scripts/apsl-scraper/scrape-apsl.js" ]; then
-            # APSL scraper treats undefined as full scrape
-            # Pass empty string for full, or specific mode for structure/lighthouse
-            if [ "$APSL_SCRAPE_MODE" = "FULL" ]; then
-                node database/scripts/apsl-scraper/scrape-apsl.js
-                echo -e "${GREEN}✓ APSL scraping complete (full)${NC}"
-            else
-                node database/scripts/apsl-scraper/scrape-apsl.js "$APSL_SCRAPE_MODE"
-                echo -e "${GREEN}✓ APSL scraping complete ($APSL_SCRAPE_MODE)${NC}"
-            fi
-        else
-            echo -e "${YELLOW}⚠ Scraper not found: database/scripts/apsl-scraper/scrape-apsl.js, skipping.${NC}"
+        
+        # Convert mode to lowercase for OOP CLI
+        MODE_LOWER=$(echo "$APSL_SCRAPE_MODE" | tr '[:upper:]' '[:lower:]')
+        
+        # Build command with options
+        CMD="node database/scripts/index.js apsl $MODE_LOWER"
+        
+        # Add --schedules if requested
+        if [ "$APSL_SCHEDULE" = true ]; then
+            CMD="$CMD --schedules"
         fi
+        
+        # Add --team filter if lighthouse mode
+        if [ "$APSL_SCRAPE_MODE" = "LIGHTHOUSE" ]; then
+            CMD="$CMD --team Lighthouse"
+        fi
+        
+        echo "  Running: $CMD"
+        $CMD
+        echo -e "${GREEN}✓ APSL scraping complete ($APSL_SCRAPE_MODE)${NC}"
         echo ""
     fi
 
-    # APSL Schedule Scraping
-    if [ "$APSL_SCHEDULE" = true ]; then
-        echo -e "${YELLOW}📅 Step 1a-schedule: Scraping APSL game schedules...${NC}"
-        if [ -f "database/scripts/apsl-scraper/scrape-apsl-schedule.js" ]; then
-            node database/scripts/apsl-scraper/scrape-apsl-schedule.js
-            echo -e "${GREEN}✓ APSL schedules scraped${NC}"
-        else
-            echo -e "${YELLOW}⚠ Script not found: database/scripts/apsl-scraper/scrape-apsl-schedule.js${NC}"
-        fi
-        echo ""
-    fi
-
-    # CASA Scraping (Single execution based on mode)
+    # ──────────────────────────────────────────────────────────────────
+    # CASA League Scraping (OOP)
+    # ──────────────────────────────────────────────────────────────────
     if [ -n "$CASA_SCRAPE_MODE" ]; then
         echo -e "${YELLOW}📋 Step 1b: Scraping CASA (Mode: $CASA_SCRAPE_MODE)...${NC}"
-        if [ -f "database/scripts/casa-scraper/scrape-casa.js" ]; then
-            node database/scripts/casa-scraper/scrape-casa.js "$CASA_SCRAPE_MODE"
-            echo -e "${GREEN}✓ CASA scraping complete ($CASA_SCRAPE_MODE)${NC}"
-        else
-            echo -e "${YELLOW}⚠ CASA scraper not found, skipping${NC}"
+        
+        # Convert mode to lowercase for OOP CLI
+        MODE_LOWER=$(echo "$CASA_SCRAPE_MODE" | tr '[:upper:]' '[:lower:]')
+        
+        # Build command with options
+        CMD="node database/scripts/index.js casa $MODE_LOWER"
+        
+        # Always include schedules for CASA (has calendar data)
+        CMD="$CMD --schedules"
+        
+        # Add --team filter if lighthouse mode
+        if [ "$CASA_SCRAPE_MODE" = "LIGHTHOUSE" ]; then
+            CMD="$CMD --team Lighthouse"
         fi
+        
+        echo "  Running: $CMD"
+        $CMD
+        echo -e "${GREEN}✓ CASA scraping complete ($CASA_SCRAPE_MODE)${NC}"
         echo ""
     fi
 
-    # Venue Scraping
+    # ──────────────────────────────────────────────────────────────────
+    # Google Places Venue Scraping (OOP)
+    # ──────────────────────────────────────────────────────────────────
     if [ "$VENUE_SCRAPE" = true ]; then
-        echo -e "${YELLOW}📍 Step 1c: Scraping Google Venues...${NC}"
-        if [ -f "database/scripts/venue-scraper/scrape-google-venues.js" ]; then
-            node database/scripts/venue-scraper/scrape-google-venues.js
-            echo -e "${GREEN}✓ Venue scraping complete${NC}"
-        else
-            echo -e "${YELLOW}⚠ Venue scraper not found, skipping${NC}"
-        fi
+        echo -e "${YELLOW}📍 Step 1c: Scraping Google Places Venues...${NC}"
+        
+        # Philadelphia area default
+        CMD="node database/scripts/index.js venues full --location 39.9526,-75.1652 --radius 50000"
+        
+        echo "  Running: $CMD"
+        $CMD
+        echo -e "${GREEN}✓ Venue scraping complete${NC}"
         echo ""
     fi
 fi
@@ -405,19 +527,31 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 echo -e "${YELLOW}🚀 Step 4: Starting containers...${NC}"
-$DOCKER_COMPOSE up -d
 
-# Wait for containers to be fully running
-echo -n "  Waiting for containers to initialize"
-for i in $(seq 1 30); do
-    RUNNING=$($DOCKER_COMPOSE ps --status running -q 2>/dev/null | wc -l)
-    if [ "$RUNNING" -ge 3 ]; then
-        echo -e " ${GREEN}✓${NC}"
-        break
+# Start database first
+echo -n "  Starting database"
+$DOCKER_COMPOSE up -d db
+for i in $(seq 1 120); do
+    if [ "$($DOCKER_COMPOSE ps db --status running -q 2>/dev/null | wc -l)" -eq 1 ]; then
+        DB_HEALTH=$($DOCKER_COMPOSE ps db --format json 2>/dev/null | grep -o '"Health":"[^"]*"' | cut -d'"' -f4 || echo "starting")
+        if [ "$DB_HEALTH" = "healthy" ]; then
+            echo -e " ${GREEN}✓ Healthy (${i}s)${NC}"
+            break
+        fi
     fi
     echo -n "."
     sleep 1
+    if [ "$i" -eq 120 ]; then
+        echo -e " ${RED}✗ Timeout${NC}"
+        $DOCKER_COMPOSE logs db | tail -20
+        exit 1
+    fi
 done
+
+# Start remaining services
+echo -n "  Starting remaining services"
+$DOCKER_COMPOSE up -d
+echo -e " ${GREEN}✓${NC}"
 
 echo -e "${GREEN}✓ Containers started${NC}"
 echo ""
@@ -494,80 +628,52 @@ if grep -q "GROUPME_ACCESS_TOKEN=" .env 2>/dev/null; then
     GROUPME_TOKEN_EXISTS=true
 fi
 
-# APSL Lighthouse 1893 SC Chat - Schedule only
-if [ "$GROUPME_APSL_SCHEDULE" = true ]; then
-    echo -e "${YELLOW}📅 Step 7a: APSL Lighthouse chat - Schedule...${NC}"
+# ──────────────────────────────────────────────────────────────────
+# APSL Lighthouse Chat (OOP) - Group ID: 109785985
+# ──────────────────────────────────────────────────────────────────
+if [ "$GROUPME_APSL_EXTERNAL" = true ] || [ "$GROUPME_APSL_SCHEDULE" = true ] || [ "$GROUPME_APSL_RSVPS" = true ]; then
+    echo -e "${YELLOW}💬 Step 7a: APSL Lighthouse Chat...${NC}"
     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
-        echo "  TODO: Implement APSL Lighthouse schedule import"
-        echo -e "${YELLOW}⚠ Not yet implemented${NC}"
+        # Single command imports users, schedule, and RSVPs
+        CMD="node database/scripts/index.js groupme-apsl full"
+        echo "  Running: $CMD"
+        $CMD
+        echo -e "${GREEN}✓ APSL Lighthouse chat imported (users, schedule, RSVPs)${NC}"
     else
         echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
     fi
     echo ""
 fi
 
-# Training Lighthouse Chat - External Identities (division context, no team)
-if [ "$GROUPME_TRAINING_LIGHTHOUSE_EXTERNAL" = true ]; then
-    echo -e "${YELLOW}👥 Step 7b: Training Lighthouse chat - Users to external_identities...${NC}"
+# ──────────────────────────────────────────────────────────────────
+# Training Lighthouse Chat (OOP) - Group ID: 108640377
+# Division-wide training (all Lighthouse 1893 SC teams)
+# ──────────────────────────────────────────────────────────────────
+if [ "$GROUPME_TRAINING_LIGHTHOUSE_EXTERNAL" = true ] || [ "$GROUPME_TRAINING_LIGHTHOUSE_SCHEDULE" = true ] || [ "$GROUPME_TRAINING_LIGHTHOUSE_RSVPS" = true ]; then
+    echo -e "${YELLOW}💬 Step 7b: Training Lighthouse Chat...${NC}"
     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
-        if [ -f "scripts/import-groupme-training-users.js" ]; then
-            echo "  Importing users with division context (Lighthouse 1893 SC)..."
-            node scripts/import-groupme-training-users.js 2>&1 | sed 's/^/  /'
-            [ $? -eq 0 ] && echo -e "${GREEN}✓ Training users synced${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
-        else
-            echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-training-users.js${NC}"
-        fi
+        # Single command imports users, schedule, and RSVPs
+        CMD="node database/scripts/index.js groupme-training full"
+        echo "  Running: $CMD"
+        $CMD
+        echo -e "${GREEN}✓ Training Lighthouse chat imported (users, schedule, RSVPs)${NC}"
     else
         echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
     fi
     echo ""
 fi
 
-# Training Lighthouse Chat - Schedule
-if [ "$GROUPME_TRAINING_LIGHTHOUSE_SCHEDULE" = true ]; then
-    echo -e "${YELLOW}📅 Step 7c: Training Lighthouse chat - Schedule...${NC}"
+# ──────────────────────────────────────────────────────────────────
+# Lighthouse Boys Club Liga 1 Chat (OOP) - Group ID: 109786182
+# ──────────────────────────────────────────────────────────────────
+if [ "$GROUPME_BOYS_CLUB_EXTERNAL" = true ] || [ "$GROUPME_BOYS_CLUB_SCHEDULE" = true ] || [ "$GROUPME_BOYS_CLUB_RSVPS" = true ]; then
+    echo -e "${YELLOW}💬 Step 7c: Lighthouse Boys Club Liga 1 Chat...${NC}"
     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
-        if [ -f "scripts/import-groupme-training-schedule.js" ]; then
-            echo "  Importing training practices/events..."
-            node scripts/import-groupme-training-schedule.js 2>&1 | sed 's/^/  /'
-            [ $? -eq 0 ] && echo -e "${GREEN}✓ Training schedule imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
-        else
-            echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-training-schedule.js${NC}"
-        fi
-    else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
-    fi
-    echo ""
-fi
-
-# Training Lighthouse Chat - RSVPs
-if [ "$GROUPME_TRAINING_LIGHTHOUSE_RSVPS" = true ]; then
-    echo -e "${YELLOW}✅ Step 7d: Training Lighthouse chat - RSVPs...${NC}"
-    if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
-        if [ -f "scripts/import-groupme-training-rsvps.js" ]; then
-            echo "  Importing training RSVPs..."
-            node scripts/import-groupme-training-rsvps.js 2>&1 | sed 's/^/  /'
-            [ $? -eq 0 ] && echo -e "${GREEN}✓ Training RSVPs imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
-        else
-            echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-training-rsvps.js${NC}"
-        fi
-    else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
-    fi
-    echo ""
-fi
-
-# Lighthouse Boys Club Liga 1 Chat - External Identities
-if [ "$GROUPME_BOYS_CLUB_EXTERNAL" = true ]; then
-    echo -e "${YELLOW}👥 Step 7e: Boys Club Liga 1 chat - Users to external_identities...${NC}"
-    if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
-        if [ -f "scripts/import-groupme-boys-club-users.js" ]; then
-            echo "  Importing Boys Club users with team context..."
-            node scripts/import-groupme-boys-club-users.js 2>&1 | sed 's/^/  /'
-            [ $? -eq 0 ] && echo -e "${GREEN}✓ Boys Club users synced${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
-        else
-            echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-boys-club-users.js${NC}"
-        fi
+        # Single command imports users, schedule, and RSVPs
+        CMD="node database/scripts/index.js groupme-boys-club full"
+        echo "  Running: $CMD"
+        $CMD
+        echo -e "${GREEN}✓ Lighthouse Boys Club Liga 1 chat imported (users, schedule, RSVPs)${NC}"
     else
         echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
     fi
@@ -576,12 +682,12 @@ fi
 
 # Lighthouse Boys Club Liga 1 Chat - Schedule
 if [ "$GROUPME_BOYS_CLUB_SCHEDULE" = true ]; then
-    echo -e "${YELLOW}📅 Step 7e: Boys Club Liga 1 chat - Schedule...${NC}"
+    echo -e "${YELLOW}📅 Step 7e: Lighthouse Boys Club Liga 1 - Schedule...${NC}"
     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
         if [ -f "scripts/import-groupme-boys-club-schedule.js" ]; then
-            echo "  Importing Boys Club game schedule..."
-            node scripts/import-groupme-boys-club-schedule.js 2>&1 | sed 's/^/  /'
-            [ $? -eq 0 ] && echo -e "${GREEN}✓ Boys Club schedule imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
+            echo "  Importing Lighthouse Boys Club Liga 1 game schedule..."
+            node scripts/import-groupme-boys-club-schedule.js
+            [ $? -eq 0 ] && echo -e "${GREEN}✓ Lighthouse Boys Club Liga 1 schedule imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
         else
             echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-boys-club-schedule.js${NC}"
         fi
@@ -593,12 +699,12 @@ fi
 
 # Lighthouse Boys Club Liga 1 Chat - RSVPs
 if [ "$GROUPME_BOYS_CLUB_RSVPS" = true ]; then
-    echo -e "${YELLOW}✅ Step 7f: Boys Club Liga 1 chat - RSVPs...${NC}"
+    echo -e "${YELLOW}✅ Step 7f: Lighthouse Boys Club Liga 1 - RSVPs...${NC}"
     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
         if [ -f "scripts/import-groupme-boys-club-rsvps.js" ]; then
-            echo "  Importing Boys Club game RSVPs..."
+            echo "  Importing Lighthouse Boys Club Liga 1 game RSVPs..."
             node scripts/import-groupme-boys-club-rsvps.js 2>&1 | sed 's/^/  /'
-            [ $? -eq 0 ] && echo -e "${GREEN}✓ Boys Club RSVPs imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
+            [ $? -eq 0 ] && echo -e "${GREEN}✓ Lighthouse Boys Club Liga 1 RSVPs imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
         else
             echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-boys-club-rsvps.js${NC}"
         fi
@@ -608,51 +714,17 @@ if [ "$GROUPME_BOYS_CLUB_RSVPS" = true ]; then
     echo ""
 fi
 
-# Lighthouse Old Timers Liga 2 Chat - External Identities
-if [ "$GROUPME_OLD_TIMERS_EXTERNAL" = true ]; then
-    echo -e "${YELLOW}👥 Step 7g: Old Timers Liga 2 chat - Users to external_identities...${NC}"
+# ──────────────────────────────────────────────────────────────────
+# Lighthouse Old Timers Club Liga 2 Chat (OOP) - Group ID: 109786278
+# ──────────────────────────────────────────────────────────────────
+if [ "$GROUPME_OLD_TIMERS_EXTERNAL" = true ] || [ "$GROUPME_OLD_TIMERS_SCHEDULE" = true ] || [ "$GROUPME_OLD_TIMERS_RSVPS" = true ]; then
+    echo -e "${YELLOW}💬 Step 7d: Lighthouse Old Timers Club Liga 2 Chat...${NC}"
     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
-        if [ -f "scripts/import-groupme-old-timers-users.js" ]; then
-            echo "  Importing Old Timers users with team context..."
-            node scripts/import-groupme-old-timers-users.js 2>&1 | sed 's/^/  /'
-            [ $? -eq 0 ] && echo -e "${GREEN}✓ Old Timers users synced${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
-        else
-            echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-old-timers-users.js${NC}"
-        fi
-    else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
-    fi
-    echo ""
-fi
-
-# Lighthouse Old Timers Liga 2 Chat - Schedule
-if [ "$GROUPME_OLD_TIMERS_SCHEDULE" = true ]; then
-    echo -e "${YELLOW}📅 Step 7g: Old Timers Liga 2 chat - Schedule...${NC}"
-    if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
-        if [ -f "scripts/import-groupme-old-timers-schedule.js" ]; then
-            echo "  Importing Old Timers game schedule..."
-            node scripts/import-groupme-old-timers-schedule.js 2>&1 | sed 's/^/  /'
-            [ $? -eq 0 ] && echo -e "${GREEN}✓ Old Timers schedule imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
-        else
-            echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-old-timers-schedule.js${NC}"
-        fi
-    else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
-    fi
-    echo ""
-fi
-
-# Lighthouse Old Timers Liga 2 Chat - RSVPs
-if [ "$GROUPME_OLD_TIMERS_RSVPS" = true ]; then
-    echo -e "${YELLOW}✅ Step 7h: Old Timers Liga 2 chat - RSVPs...${NC}"
-    if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
-        if [ -f "scripts/import-groupme-old-timers-rsvps.js" ]; then
-            echo "  Importing Old Timers game RSVPs..."
-            node scripts/import-groupme-old-timers-rsvps.js 2>&1 | sed 's/^/  /'
-            [ $? -eq 0 ] && echo -e "${GREEN}✓ Old Timers RSVPs imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
-        else
-            echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-old-timers-rsvps.js${NC}"
-        fi
+        # Single command imports users, schedule, and RSVPs
+        CMD="node database/scripts/index.js groupme-old-timers full"
+        echo "  Running: $CMD"
+        $CMD
+        echo -e "${GREEN}✓ Lighthouse Old Timers Club Liga 2 chat imported (users, schedule, RSVPs)${NC}"
     else
         echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
     fi

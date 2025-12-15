@@ -6,17 +6,21 @@
  * Scrapes American Premier Soccer League website for structure and/or rosters.
  * 
  * MODES:
- *   structure  - Scrape conferences/divisions/teams only (no rosters)
+ *   structure  - Scrape conferences/divisions only (no teams, no rosters)
+ *   teams      - Scrape conferences/divisions/teams (no rosters)
  *   lighthouse - Scrape Lighthouse 1893 SC roster only (creates users/players/team_players/external_identities)
- *   (none)     - Full scrape (all teams + all rosters, creates users/players/team_players/external_identities)
+ *   players    - Scrape all teams + all rosters (creates users/players/team_players/external_identities)
+ *   (none)     - Same as 'players' mode (backward compatibility)
  * 
  * Usage:
  *   node database/scripts/apsl-scraper/scrape-apsl.js structure
+ *   node database/scripts/apsl-scraper/scrape-apsl.js teams
  *   node database/scripts/apsl-scraper/scrape-apsl.js lighthouse
+ *   node database/scripts/apsl-scraper/scrape-apsl.js players
  *   node database/scripts/apsl-scraper/scrape-apsl.js
  * 
  * DATA CREATION:
- *   All modes (except structure) create:
+ *   Modes that create roster data (lighthouse, players, none):
  *   - users (with duplicate detection by first+last name)
  *   - players (extends users)
  *   - team_players (roster assignments)
@@ -544,20 +548,25 @@ async function scrapeAPSL() {
             });
           }
 
-          // Store team
-          teams.set(teamId, {
-            id: teamId,
-            name: teamName,
-            division_id: sportDivId,
-            league_division_id: divId,
-            team_url: fullTeamUrl,
-            apsl_team_id: apslTeamId
-          });
+          // Store team (skip in structure mode)
+          if (MODE !== 'structure') {
+            teams.set(teamId, {
+              id: teamId,
+              name: teamName,
+              division_id: sportDivId,
+              league_division_id: divId,
+              team_url: fullTeamUrl,
+              apsl_team_id: apslTeamId
+            });
+          }
 
           // Step 3: Scrape player roster for this team (conditional on mode)
           if (MODE === 'structure') {
-            // Structure mode: skip roster scraping
-            console.error(`  Skipping roster (structure mode)`);
+            // Structure mode: skip teams and rosters entirely
+            console.error(`  Skipping team (structure mode)`);
+          } else if (MODE === 'teams') {
+            // Teams mode: add team but skip roster scraping
+            console.error(`  Added team ${teamName} (no roster)`);
           } else if (MODE === 'lighthouse') {
             // Lighthouse mode: only scrape Lighthouse 1893 SC
             if (teamName.toLowerCase().includes('lighthouse')) {
@@ -567,7 +576,7 @@ async function scrapeAPSL() {
               console.error(`  Skipping ${teamName} (not Lighthouse)`);
             }
           } else {
-            // Full scrape mode: scrape all teams
+            // Players mode (or full scrape): scrape all teams
             console.error(`  Scraping roster for ${teamName}...`);
             await scrapeTeamRoster(teamId, fullTeamUrl, teamName);
           }

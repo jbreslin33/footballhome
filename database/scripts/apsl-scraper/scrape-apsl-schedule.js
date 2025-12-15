@@ -3,11 +3,16 @@
 /**
  * APSL Schedule Scraper
  * 
- * Scrapes game schedules for all APSL teams and generates SQL insert statements.
+ * Scrapes game schedules for APSL teams and generates SQL insert statements.
  * This does NOT scrape rosters - only schedules/matches.
+ * 
+ * MODES:
+ *   (none)     - Scrape all team schedules
+ *   lighthouse - Scrape Lighthouse 1893 SC schedule only
  * 
  * Usage:
  *   node database/scripts/apsl-scraper/scrape-apsl-schedule.js
+ *   node database/scripts/apsl-scraper/scrape-apsl-schedule.js lighthouse
  * 
  * Output: database/data/25-schedule-apsl.sql
  */
@@ -16,6 +21,9 @@ const https = require('https');
 const { JSDOM } = require('jsdom');
 const fs = require('fs');
 const path = require('path');
+
+// Parse mode from command line argument
+const MODE = process.argv[2]; // 'lighthouse' or undefined (all teams)
 
 const BASE_URL = 'https://apslsoccer.com';
 const LEAGUE_URL = `${BASE_URL}/standings/`;
@@ -142,9 +150,14 @@ async function scrapeSchedules() {
     
     console.log(`   Found ${teams.size} teams\n`);
     
-    // Step 2: Scrape each team's schedule
+    // Step 2: Scrape each team's schedule (filter by mode if specified)
     console.log('📅 Scraping team schedules...');
     for (const team of teams) {
+      // If lighthouse mode, only scrape Lighthouse 1893 SC
+      if (MODE === 'lighthouse' && !team.name.toLowerCase().includes('lighthouse')) {
+        console.log(`   ⊘ Skipping ${team.name} (not Lighthouse)`);
+        continue;
+      }
       await scrapeTeamSchedule(team.url, team.name);
     }
     

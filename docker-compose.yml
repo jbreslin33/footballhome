@@ -22,9 +22,10 @@ services:
       - footballhome_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U footballhome_user -d footballhome"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 30
+      start_period: 120s
     # Required for pg_cron and enable verbose logging
     command: >
       postgres

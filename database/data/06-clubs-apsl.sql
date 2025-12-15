@@ -1,7 +1,6 @@
 -- ========================================
 -- CLUBS
 -- ========================================
--- Generated: 2025-12-14T00:22:17.012Z
 -- Source: https://apslsoccer.com/standings/
 -- AUTO-GENERATED - DO NOT EDIT MANUALLY
 -- Run scraper to regenerate: node database/scripts/apsl-scraper/scrape-apsl.js
@@ -127,14 +126,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('77717fe0-fb4f-0003-cef3-260a0c447980', 'Leros SC', 'Leros SC', 'leros-sc', true)
+VALUES ('68b50f22-dddc-0003-06ca-622f3a3a0ea4', 'Doxa FCW', 'Doxa FCW', 'doxa-fcw', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('68b50f22-dddc-0003-06ca-622f3a3a0ea4', 'Doxa FCW', 'Doxa FCW', 'doxa-fcw', true)
+VALUES ('77717fe0-fb4f-0003-cef3-260a0c447980', 'Leros SC', 'Leros SC', 'leros-sc', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
@@ -330,14 +329,14 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('55bd7a24-ba77-0003-81a4-2f5bfb50c614', 'Majestic SC', 'Majestic SC', 'majestic-sc', true)
+VALUES ('07e8c5da-df90-0003-7ef3-b55105901be2', 'Prima FC', 'Prima FC', 'prima-fc', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
   updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO clubs (id, name, display_name, slug, is_active)
-VALUES ('07e8c5da-df90-0003-7ef3-b55105901be2', 'Prima FC', 'Prima FC', 'prima-fc', true)
+VALUES ('55bd7a24-ba77-0003-81a4-2f5bfb50c614', 'Majestic SC', 'Majestic SC', 'majestic-sc', true)
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,

@@ -1,7 +1,6 @@
 -- ========================================
 -- CASA LIGHTHOUSE ROSTERS
 -- ========================================
--- Generated: 2025-12-14T00:23:54.739Z
 -- Source: Google Sheets
 -- ========================================
 
@@ -45,13 +44,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -70,7 +79,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Alzubair","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -120,13 +129,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -145,7 +164,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Babiker","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -160,7 +179,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-3-victor';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-3-hassane';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -171,7 +190,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '3', 'Victor', true)
+    VALUES (v_user_id, '3', 'Hassane', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -195,13 +214,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -213,14 +242,99 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '3 Victor',
+        '3 Hassane',
         v_user_id, -- Linked to the user we just created/found
         '3',
+        'Hassane',
+        v_team_id,
+        '{"jersey_number":"Abdellaoui","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
+    v_division_id UUID;
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-4-victor';
+BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '4', 'Victor', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NULL,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '4 Victor',
+        v_user_id, -- Linked to the user we just created/found
+        '4',
         'Victor',
         v_team_id,
         '{"jersey_number":"Baidel","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -235,7 +349,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-4-oumar';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-5-oumar';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -246,7 +360,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '4', 'Oumar', true)
+    VALUES (v_user_id, '5', 'Oumar', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -270,13 +384,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -288,14 +412,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '4 Oumar',
+        '5 Oumar',
         v_user_id, -- Linked to the user we just created/found
-        '4',
+        '5',
         'Oumar',
         v_team_id,
         '{"jersey_number":"Barry","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -310,7 +434,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-5-aboubacar';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-6-aboubacar';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -321,7 +445,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '5', 'Aboubacar', true)
+    VALUES (v_user_id, '6', 'Aboubacar', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -345,13 +469,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -363,14 +497,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '5 Aboubacar',
+        '6 Aboubacar',
         v_user_id, -- Linked to the user we just created/found
-        '5',
+        '6',
         'Aboubacar',
         v_team_id,
         '{"jersey_number":"Bayo","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -385,7 +519,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-6-luke';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-7-luke';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -396,7 +530,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '6', 'Luke', true)
+    VALUES (v_user_id, '7', 'Luke', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -420,13 +554,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -438,14 +582,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '6 Luke',
+        '7 Luke',
         v_user_id, -- Linked to the user we just created/found
-        '6',
+        '7',
         'Luke',
         v_team_id,
         '{"jersey_number":"Breslin","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -460,7 +604,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-7-luis';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-8-luis';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -471,7 +615,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '7', 'Luis', true)
+    VALUES (v_user_id, '8', 'Luis', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -495,13 +639,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -513,14 +667,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '7 Luis',
+        '8 Luis',
         v_user_id, -- Linked to the user we just created/found
-        '7',
+        '8',
         'Luis',
         v_team_id,
         '{"jersey_number":"De Jesus","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -535,7 +689,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-8-abdoul';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-9-abdoul';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -546,7 +700,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '8', 'Abdoul', true)
+    VALUES (v_user_id, '9', 'Abdoul', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -570,13 +724,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -588,14 +752,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '8 Abdoul',
+        '9 Abdoul',
         v_user_id, -- Linked to the user we just created/found
-        '8',
+        '9',
         'Abdoul',
         v_team_id,
         '{"jersey_number":"Diallo","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -610,7 +774,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-9-abouya';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-10-abouya';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -621,7 +785,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '9', 'Abouya', true)
+    VALUES (v_user_id, '10', 'Abouya', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -645,13 +809,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -663,14 +837,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '9 Abouya',
+        '10 Abouya',
         v_user_id, -- Linked to the user we just created/found
-        '9',
+        '10',
         'Abouya',
         v_team_id,
         '{"jersey_number":"Gangue","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -685,7 +859,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-10-edwin';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-11-edwin';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -696,7 +870,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '10', 'Edwin', true)
+    VALUES (v_user_id, '11', 'Edwin', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -720,13 +894,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -738,14 +922,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '10 Edwin',
+        '11 Edwin',
         v_user_id, -- Linked to the user we just created/found
-        '10',
+        '11',
         'Edwin',
         v_team_id,
         '{"jersey_number":"Garcia","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -760,7 +944,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-11-miles';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-12-miles';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -771,7 +955,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '11', 'Miles', true)
+    VALUES (v_user_id, '12', 'Miles', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -795,13 +979,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -813,14 +1007,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '11 Miles',
+        '12 Miles',
         v_user_id, -- Linked to the user we just created/found
-        '11',
+        '12',
         'Miles',
         v_team_id,
         '{"jersey_number":"Henry","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -835,7 +1029,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-12-andy';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-13-andy';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -846,7 +1040,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '12', 'Andy', true)
+    VALUES (v_user_id, '13', 'Andy', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -870,13 +1064,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -888,14 +1092,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '12 Andy',
+        '13 Andy',
         v_user_id, -- Linked to the user we just created/found
-        '12',
+        '13',
         'Andy',
         v_team_id,
         '{"jersey_number":"Hizdri","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -910,7 +1114,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-13-arif';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-14-arif';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -921,7 +1125,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '13', 'Arif', true)
+    VALUES (v_user_id, '14', 'Arif', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -945,13 +1149,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -963,14 +1177,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '13 Arif',
+        '14 Arif',
         v_user_id, -- Linked to the user we just created/found
-        '13',
+        '14',
         'Arif',
         v_team_id,
         '{"jersey_number":"Hossain","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -985,7 +1199,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-14-zuhab';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-15-zuhab';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -996,7 +1210,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '14', 'Zuhab', true)
+    VALUES (v_user_id, '15', 'Zuhab', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -1020,13 +1234,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1038,14 +1262,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '14 Zuhab',
+        '15 Zuhab',
         v_user_id, -- Linked to the user we just created/found
-        '14',
+        '15',
         'Zuhab',
         v_team_id,
         '{"jersey_number":"Imran","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1060,7 +1284,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-15-esnayder';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-16-esnayder';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -1071,7 +1295,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '15', 'Esnayder', true)
+    VALUES (v_user_id, '16', 'Esnayder', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -1095,13 +1319,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1113,14 +1347,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '15 Esnayder',
+        '16 Esnayder',
         v_user_id, -- Linked to the user we just created/found
-        '15',
+        '16',
         'Esnayder',
         v_team_id,
         '{"jersey_number":"Josue","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1135,7 +1369,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-16-majid';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-17-majid';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -1146,7 +1380,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '16', 'Majid', true)
+    VALUES (v_user_id, '17', 'Majid', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -1170,13 +1404,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1188,14 +1432,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '16 Majid',
+        '17 Majid',
         v_user_id, -- Linked to the user we just created/found
-        '16',
+        '17',
         'Majid',
         v_team_id,
         '{"jersey_number":"Kawa","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1210,7 +1454,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-17-alexander';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-18-alexander';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -1221,7 +1465,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '17', 'Alexander', true)
+    VALUES (v_user_id, '18', 'Alexander', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -1245,13 +1489,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1263,89 +1517,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '17 Alexander',
+        '18 Alexander',
         v_user_id, -- Linked to the user we just created/found
-        '17',
+        '18',
         'Alexander',
         v_team_id,
         '{"jersey_number":"Lara","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
-        user_id = EXCLUDED.user_id,
-        external_username = EXCLUDED.external_username,
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        team_id = EXCLUDED.team_id,
-        external_data = EXCLUDED.external_data,
-        updated_at = CURRENT_TIMESTAMP;
-END $$;
-
-DO $$
-DECLARE
-    v_user_id UUID;
-    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
-    v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-boys-club-18-matt';
-BEGIN
-    -- Get division_id from team if team exists
-    IF v_team_id IS NOT NULL THEN
-        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
-    END IF;
-    -- 1. Generate deterministic User ID
-    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
-
-    -- 2. Create User (Stub)
-    INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '18', 'Matt', true)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 3. Create Player Profile
-    INSERT INTO players (id)
-    VALUES (v_user_id)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 4. Create Team Player (Roster Entry) if team exists
-    IF v_team_id IS NOT NULL THEN
-        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
-            v_team_id,
-            v_user_id,
-            1, -- Active
-            NULL,
-            true
-        )
-        ON CONFLICT (team_id, player_id) DO UPDATE SET
-            jersey_number = EXCLUDED.jersey_number,
-            is_active = true;
-    END IF;
-
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
-
-    -- 5. Create External Identity (Linked to User)
-    INSERT INTO user_external_identities (
-        id, 
-        provider_id, 
-        external_id, 
-        external_username, 
-        user_id,
-        first_name, 
-        last_name, 
-        team_id, 
-        external_data
-    ) VALUES (
-        uuid_generate_v5(uuid_ns_url(), v_external_id),
-        'casa',
-        v_external_id,
-        '18 Matt',
-        v_user_id, -- Linked to the user we just created/found
-        '18',
-        'Matt',
-        v_team_id,
-        '{"jersey_number":"Leder","position":null,"team_name":"Lighthouse Boys Club"}'
-    )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1395,13 +1574,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1420,7 +1609,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Martinez","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1470,13 +1659,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1495,7 +1694,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Masi","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1545,13 +1744,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1570,7 +1779,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Mendoza","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1620,13 +1829,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1645,7 +1864,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Moreno","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1695,13 +1914,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1720,7 +1949,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Ndiaye","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1770,13 +1999,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1795,7 +2034,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Nwalipenja","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1845,13 +2084,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1870,7 +2119,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Oladele","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1920,13 +2169,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -1945,7 +2204,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Ornaque","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1995,13 +2254,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2020,7 +2289,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Riccitelli","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2070,13 +2339,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2095,7 +2374,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Rojas","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2145,13 +2424,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2170,7 +2459,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Salah","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2183,9 +2472,9 @@ END $$;
 DO $$
 DECLARE
     v_user_id UUID;
-    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_team_id UUID := '04b164cd-4e35-4302-84b0-60e2a5e71500';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-old-timers-1-hassane';
+    v_external_id VARCHAR := 'casa-lighthouse-boys-club-30-daniel';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -2196,7 +2485,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '1', 'Hassane', true)
+    VALUES (v_user_id, '30', 'Daniel', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -2220,13 +2509,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2238,89 +2537,184 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '1 Hassane',
+        '30 Daniel',
+        v_user_id, -- Linked to the user we just created/found
+        '30',
+        'Daniel',
+        v_team_id,
+        '{"jersey_number":"Salmanca","position":null,"team_name":"Lighthouse Boys Club"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-1-logan';
+BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '1', 'Logan', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NULL,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '1 Logan',
         v_user_id, -- Linked to the user we just created/found
         '1',
-        'Hassane',
-        v_team_id,
-        '{"jersey_number":"Abdellaoui","position":null,"team_name":"Lighthouse Old Timers"}'
-    )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
-        user_id = EXCLUDED.user_id,
-        external_username = EXCLUDED.external_username,
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        team_id = EXCLUDED.team_id,
-        external_data = EXCLUDED.external_data,
-        updated_at = CURRENT_TIMESTAMP;
-END $$;
-
-DO $$
-DECLARE
-    v_user_id UUID;
-    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
-    v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-old-timers-2-logan';
-BEGIN
-    -- Get division_id from team if team exists
-    IF v_team_id IS NOT NULL THEN
-        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
-    END IF;
-    -- 1. Generate deterministic User ID
-    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
-
-    -- 2. Create User (Stub)
-    INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '2', 'Logan', true)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 3. Create Player Profile
-    INSERT INTO players (id)
-    VALUES (v_user_id)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 4. Create Team Player (Roster Entry) if team exists
-    IF v_team_id IS NOT NULL THEN
-        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
-            v_team_id,
-            v_user_id,
-            1, -- Active
-            NULL,
-            true
-        )
-        ON CONFLICT (team_id, player_id) DO UPDATE SET
-            jersey_number = EXCLUDED.jersey_number,
-            is_active = true;
-    END IF;
-
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
-
-    -- 5. Create External Identity (Linked to User)
-    INSERT INTO user_external_identities (
-        id, 
-        provider_id, 
-        external_id, 
-        external_username, 
-        user_id,
-        first_name, 
-        last_name, 
-        team_id, 
-        external_data
-    ) VALUES (
-        uuid_generate_v5(uuid_ns_url(), v_external_id),
-        'casa',
-        v_external_id,
-        '2 Logan',
-        v_user_id, -- Linked to the user we just created/found
-        '2',
         'Logan',
         v_team_id,
         '{"jersey_number":"Bersani","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-6-birru';
+BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '6', 'Birru', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NULL,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '6 Birru',
+        v_user_id, -- Linked to the user we just created/found
+        '6',
+        'Birru',
+        v_team_id,
+        '{"jersey_number":"Golden","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2370,13 +2764,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2395,7 +2799,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Gonzalez","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2445,13 +2849,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2470,7 +2884,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Heiler","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2520,13 +2934,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2545,7 +2969,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Katz","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2595,13 +3019,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2620,7 +3054,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Kenny","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2646,7 +3080,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, 'Joaquin', 'Ladeuix', true)
+    VALUES (v_user_id, '11', '"Joaquin', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -2670,13 +3104,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2688,14 +3132,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        'Joaquin Ladeuix',
+        '11 "Joaquin',
         v_user_id, -- Linked to the user we just created/found
-        'Joaquin',
-        'Ladeuix',
+        '11',
+        '"Joaquin',
         v_team_id,
         '{"position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2745,13 +3189,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2770,7 +3224,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"07/28/1993","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2820,13 +3274,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2845,7 +3309,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Lipsey","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2895,13 +3359,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2920,7 +3394,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Llambias","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2970,13 +3444,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -2995,7 +3479,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"McConnel","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3045,13 +3529,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -3070,7 +3564,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Moral","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3120,13 +3614,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -3145,7 +3649,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Morales","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3160,7 +3664,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-old-timers-17-kevin';
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-18-musa';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -3171,7 +3675,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '17', 'Kevin', true)
+    VALUES (v_user_id, '18', 'Musa', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -3195,13 +3699,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -3213,14 +3727,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '17 Kevin',
+        '18 Musa',
         v_user_id, -- Linked to the user we just created/found
-        '17',
-        'Kevin',
+        '18',
+        'Musa',
         v_team_id,
-        '{"jersey_number":"Nguyen","position":null,"team_name":"Lighthouse Old Timers"}'
+        '{"jersey_number":"Osman","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3270,13 +3784,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -3295,7 +3819,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Osorio-Soto","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3345,13 +3869,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -3370,7 +3904,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Padilla","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3420,13 +3954,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -3445,7 +3989,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Piazzesi","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3495,13 +4039,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -3520,7 +4074,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Rosato","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3535,7 +4089,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-old-timers-23-anuar';
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-23-anthony';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -3546,7 +4100,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '23', 'Anuar', true)
+    VALUES (v_user_id, '23', 'Anthony', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -3570,13 +4124,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -3588,89 +4152,14 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '23 Anuar',
+        '23 Anthony',
         v_user_id, -- Linked to the user we just created/found
         '23',
-        'Anuar',
-        v_team_id,
-        '{"jersey_number":"Santos","position":null,"team_name":"Lighthouse Old Timers"}'
-    )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
-        user_id = EXCLUDED.user_id,
-        external_username = EXCLUDED.external_username,
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        team_id = EXCLUDED.team_id,
-        external_data = EXCLUDED.external_data,
-        updated_at = CURRENT_TIMESTAMP;
-END $$;
-
-DO $$
-DECLARE
-    v_user_id UUID;
-    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
-    v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-old-timers-24-anthony';
-BEGIN
-    -- Get division_id from team if team exists
-    IF v_team_id IS NOT NULL THEN
-        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
-    END IF;
-    -- 1. Generate deterministic User ID
-    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
-
-    -- 2. Create User (Stub)
-    INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '24', 'Anthony', true)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 3. Create Player Profile
-    INSERT INTO players (id)
-    VALUES (v_user_id)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 4. Create Team Player (Roster Entry) if team exists
-    IF v_team_id IS NOT NULL THEN
-        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
-            v_team_id,
-            v_user_id,
-            1, -- Active
-            NULL,
-            true
-        )
-        ON CONFLICT (team_id, player_id) DO UPDATE SET
-            jersey_number = EXCLUDED.jersey_number,
-            is_active = true;
-    END IF;
-
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
-
-    -- 5. Create External Identity (Linked to User)
-    INSERT INTO user_external_identities (
-        id, 
-        provider_id, 
-        external_id, 
-        external_username, 
-        user_id,
-        first_name, 
-        last_name, 
-        team_id, 
-        external_data
-    ) VALUES (
-        uuid_generate_v5(uuid_ns_url(), v_external_id),
-        'casa',
-        v_external_id,
-        '24 Anthony',
-        v_user_id, -- Linked to the user we just created/found
-        '24',
         'Anthony',
         v_team_id,
         '{"jersey_number":"Sagustume","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3685,7 +4174,7 @@ DECLARE
     v_user_id UUID;
     v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
     v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-old-timers-25-yakup';
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-24-leo';
 BEGIN
     -- Get division_id from team if team exists
     IF v_team_id IS NOT NULL THEN
@@ -3696,7 +4185,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '25', 'Yakup', true)
+    VALUES (v_user_id, '24', 'Leo', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -3720,88 +4209,23 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
-
-    -- 5. Create External Identity (Linked to User)
-    INSERT INTO user_external_identities (
-        id, 
-        provider_id, 
-        external_id, 
-        external_username, 
-        user_id,
-        first_name, 
-        last_name, 
-        team_id, 
-        external_data
-    ) VALUES (
-        uuid_generate_v5(uuid_ns_url(), v_external_id),
-        'casa',
-        v_external_id,
-        '25 Yakup',
-        v_user_id, -- Linked to the user we just created/found
-        '25',
-        'Yakup',
-        v_team_id,
-        '{"jersey_number":"Serce","position":null,"team_name":"Lighthouse Old Timers"}'
-    )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
-        user_id = EXCLUDED.user_id,
-        external_username = EXCLUDED.external_username,
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        team_id = EXCLUDED.team_id,
-        external_data = EXCLUDED.external_data,
-        updated_at = CURRENT_TIMESTAMP;
-END $$;
-
-DO $$
-DECLARE
-    v_user_id UUID;
-    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
-    v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-old-timers-26-christopher';
-BEGIN
-    -- Get division_id from team if team exists
-    IF v_team_id IS NOT NULL THEN
-        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
-    END IF;
-    -- 1. Generate deterministic User ID
-    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
-
-    -- 2. Create User (Stub)
-    INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '26', 'Christopher', true)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 3. Create Player Profile
-    INSERT INTO players (id)
-    VALUES (v_user_id)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 4. Create Team Player (Roster Entry) if team exists
-    IF v_team_id IS NOT NULL THEN
-        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
         VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
-            v_team_id,
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
             v_user_id,
-            1, -- Active
-            NULL,
-            true
+            'active'
         )
-        ON CONFLICT (team_id, player_id) DO UPDATE SET
-            jersey_number = EXCLUDED.jersey_number,
-            is_active = true;
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
     END IF;
-
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider_id, 
+        provider, 
         external_id, 
         external_username, 
         user_id,
@@ -3813,239 +4237,354 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '26 Christopher',
+        '24 Leo',
         v_user_id, -- Linked to the user we just created/found
-        '26',
-        'Christopher',
-        v_team_id,
-        '{"jersey_number":"Solis","position":null,"team_name":"Lighthouse Old Timers"}'
-    )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
-        user_id = EXCLUDED.user_id,
-        external_username = EXCLUDED.external_username,
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        team_id = EXCLUDED.team_id,
-        external_data = EXCLUDED.external_data,
-        updated_at = CURRENT_TIMESTAMP;
-END $$;
-
-DO $$
-DECLARE
-    v_user_id UUID;
-    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
-    v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-old-timers-27-juan';
-BEGIN
-    -- Get division_id from team if team exists
-    IF v_team_id IS NOT NULL THEN
-        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
-    END IF;
-    -- 1. Generate deterministic User ID
-    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
-
-    -- 2. Create User (Stub)
-    INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '27', 'Juan', true)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 3. Create Player Profile
-    INSERT INTO players (id)
-    VALUES (v_user_id)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 4. Create Team Player (Roster Entry) if team exists
-    IF v_team_id IS NOT NULL THEN
-        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
-            v_team_id,
-            v_user_id,
-            1, -- Active
-            NULL,
-            true
-        )
-        ON CONFLICT (team_id, player_id) DO UPDATE SET
-            jersey_number = EXCLUDED.jersey_number,
-            is_active = true;
-    END IF;
-
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
-
-    -- 5. Create External Identity (Linked to User)
-    INSERT INTO user_external_identities (
-        id, 
-        provider_id, 
-        external_id, 
-        external_username, 
-        user_id,
-        first_name, 
-        last_name, 
-        team_id, 
-        external_data
-    ) VALUES (
-        uuid_generate_v5(uuid_ns_url(), v_external_id),
-        'casa',
-        v_external_id,
-        '27 Juan',
-        v_user_id, -- Linked to the user we just created/found
-        '27',
-        'Juan',
-        v_team_id,
-        '{"jersey_number":"Vizcaino","position":null,"team_name":"Lighthouse Old Timers"}'
-    )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
-        user_id = EXCLUDED.user_id,
-        external_username = EXCLUDED.external_username,
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        team_id = EXCLUDED.team_id,
-        external_data = EXCLUDED.external_data,
-        updated_at = CURRENT_TIMESTAMP;
-END $$;
-
-DO $$
-DECLARE
-    v_user_id UUID;
-    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
-    v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-old-timers-28-tom';
-BEGIN
-    -- Get division_id from team if team exists
-    IF v_team_id IS NOT NULL THEN
-        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
-    END IF;
-    -- 1. Generate deterministic User ID
-    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
-
-    -- 2. Create User (Stub)
-    INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '28', 'Tom', true)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 3. Create Player Profile
-    INSERT INTO players (id)
-    VALUES (v_user_id)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 4. Create Team Player (Roster Entry) if team exists
-    IF v_team_id IS NOT NULL THEN
-        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
-            v_team_id,
-            v_user_id,
-            1, -- Active
-            NULL,
-            true
-        )
-        ON CONFLICT (team_id, player_id) DO UPDATE SET
-            jersey_number = EXCLUDED.jersey_number,
-            is_active = true;
-    END IF;
-
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
-
-    -- 5. Create External Identity (Linked to User)
-    INSERT INTO user_external_identities (
-        id, 
-        provider_id, 
-        external_id, 
-        external_username, 
-        user_id,
-        first_name, 
-        last_name, 
-        team_id, 
-        external_data
-    ) VALUES (
-        uuid_generate_v5(uuid_ns_url(), v_external_id),
-        'casa',
-        v_external_id,
-        '28 Tom',
-        v_user_id, -- Linked to the user we just created/found
-        '28',
-        'Tom',
-        v_team_id,
-        '{"jersey_number":"Diguilio","position":null,"team_name":"Lighthouse Old Timers"}'
-    )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
-        user_id = EXCLUDED.user_id,
-        external_username = EXCLUDED.external_username,
-        first_name = EXCLUDED.first_name,
-        last_name = EXCLUDED.last_name,
-        team_id = EXCLUDED.team_id,
-        external_data = EXCLUDED.external_data,
-        updated_at = CURRENT_TIMESTAMP;
-END $$;
-
-DO $$
-DECLARE
-    v_user_id UUID;
-    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
-    v_division_id UUID;
-    v_external_id VARCHAR := 'casa-lighthouse-old-timers-29-leo';
-BEGIN
-    -- Get division_id from team if team exists
-    IF v_team_id IS NOT NULL THEN
-        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
-    END IF;
-    -- 1. Generate deterministic User ID
-    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
-
-    -- 2. Create User (Stub)
-    INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '29', 'Leo', true)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 3. Create Player Profile
-    INSERT INTO players (id)
-    VALUES (v_user_id)
-    ON CONFLICT (id) DO NOTHING;
-
-    -- 4. Create Team Player (Roster Entry) if team exists
-    IF v_team_id IS NOT NULL THEN
-        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
-            v_team_id,
-            v_user_id,
-            1, -- Active
-            NULL,
-            true
-        )
-        ON CONFLICT (team_id, player_id) DO UPDATE SET
-            jersey_number = EXCLUDED.jersey_number,
-            is_active = true;
-    END IF;
-
-    -- 4b. Division roster integration removed - division_players table no longer exists
-    -- Players are now inferred from team_players
-
-    -- 5. Create External Identity (Linked to User)
-    INSERT INTO user_external_identities (
-        id, 
-        provider_id, 
-        external_id, 
-        external_username, 
-        user_id,
-        first_name, 
-        last_name, 
-        team_id, 
-        external_data
-    ) VALUES (
-        uuid_generate_v5(uuid_ns_url(), v_external_id),
-        'casa',
-        v_external_id,
-        '29 Leo',
-        v_user_id, -- Linked to the user we just created/found
-        '29',
+        '24',
         'Leo',
         v_team_id,
         '{"jersey_number":"Santa","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider_id, external_id) DO UPDATE SET
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-25-anuar';
+BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '25', 'Anuar', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NULL,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '25 Anuar',
+        v_user_id, -- Linked to the user we just created/found
+        '25',
+        'Anuar',
+        v_team_id,
+        '{"jersey_number":"Santos","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-26-yakup';
+BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '26', 'Yakup', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NULL,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '26 Yakup',
+        v_user_id, -- Linked to the user we just created/found
+        '26',
+        'Yakup',
+        v_team_id,
+        '{"jersey_number":"Serce","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-27-christopher';
+BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '27', 'Christopher', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NULL,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '27 Christopher',
+        v_user_id, -- Linked to the user we just created/found
+        '27',
+        'Christopher',
+        v_team_id,
+        '{"jersey_number":"Solis","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        external_username = EXCLUDED.external_username,
+        first_name = EXCLUDED.first_name,
+        last_name = EXCLUDED.last_name,
+        team_id = EXCLUDED.team_id,
+        external_data = EXCLUDED.external_data,
+        updated_at = CURRENT_TIMESTAMP;
+END $$;
+
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_team_id UUID := '449ef257-2d8f-43c0-8ae1-6374894d17f1';
+    v_division_id UUID;
+    v_external_id VARCHAR := 'casa-lighthouse-old-timers-28-juan';
+BEGIN
+    -- Get division_id from team if team exists
+    IF v_team_id IS NOT NULL THEN
+        SELECT division_id INTO v_division_id FROM teams WHERE id = v_team_id;
+    END IF;
+    -- 1. Generate deterministic User ID
+    v_user_id := uuid_generate_v5(uuid_ns_url(), 'user-' || v_external_id);
+
+    -- 2. Create User (Stub)
+    INSERT INTO users (id, first_name, last_name, is_active)
+    VALUES (v_user_id, '28', 'Juan', true)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 3. Create Player Profile
+    INSERT INTO players (id)
+    VALUES (v_user_id)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create Team Player (Roster Entry) if team exists
+    IF v_team_id IS NOT NULL THEN
+        INSERT INTO team_players (id, team_id, player_id, roster_status_id, jersey_number, is_active)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'tp-' || v_team_id || '-' || v_user_id),
+            v_team_id,
+            v_user_id,
+            1, -- Active
+            NULL,
+            true
+        )
+        ON CONFLICT (team_id, player_id) DO UPDATE SET
+            jersey_number = EXCLUDED.jersey_number,
+            is_active = true;
+    END IF;
+
+    -- 4b. Also add to Division Roster (for division-level rostering)
+    IF v_division_id IS NOT NULL THEN
+        INSERT INTO division_players (id, division_id, player_id, status)
+        VALUES (
+            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
+            v_division_id,
+            v_user_id,
+            'active'
+        )
+        ON CONFLICT (division_id, player_id) DO UPDATE SET
+            status = 'active';
+    END IF;
+
+    -- 5. Create External Identity (Linked to User)
+    INSERT INTO user_external_identities (
+        id, 
+        provider, 
+        external_id, 
+        external_username, 
+        user_id,
+        first_name, 
+        last_name, 
+        team_id, 
+        external_data
+    ) VALUES (
+        uuid_generate_v5(uuid_ns_url(), v_external_id),
+        'casa',
+        v_external_id,
+        '28 Juan',
+        v_user_id, -- Linked to the user we just created/found
+        '28',
+        'Juan',
+        v_team_id,
+        '{"jersey_number":"Vizcaino","position":null,"team_name":"Lighthouse Old Timers"}'
+    )
+    ON CONFLICT (provider, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
