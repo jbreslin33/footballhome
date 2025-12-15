@@ -82,7 +82,8 @@ DECLARE
     v_player UUID;
     v_coach UUID;
 BEGIN
-    SELECT player_id INTO v_player FROM division_players WHERE status = 'active' LIMIT 1 OFFSET 15;
+    -- Get a sample active player from team_players (division_players table was removed)
+    SELECT DISTINCT tp.player_id INTO v_player FROM team_players tp WHERE tp.is_active = true LIMIT 1 OFFSET 15;
     SELECT id INTO v_coach FROM users LIMIT 1;
     
     IF v_player IS NOT NULL THEN

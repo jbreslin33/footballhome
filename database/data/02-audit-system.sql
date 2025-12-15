@@ -175,12 +175,12 @@ CREATE TRIGGER audit_team_players
     FOR EACH ROW
     EXECUTE FUNCTION log_change_with_replay();
 
--- Division Players (registration numbers)
-DROP TRIGGER IF EXISTS audit_division_players ON division_players;
-CREATE TRIGGER audit_division_players
-    AFTER INSERT OR UPDATE OR DELETE ON division_players
-    FOR EACH ROW
-    EXECUTE FUNCTION log_change_with_replay();
+-- Division Players (registration numbers) - table removed, players now inferred from team_players
+-- DROP TRIGGER IF EXISTS audit_division_players ON division_players;
+-- CREATE TRIGGER audit_division_players
+--     AFTER INSERT OR UPDATE OR DELETE ON division_players
+--     FOR EACH ROW
+--     EXECUTE FUNCTION log_change_with_replay();
 
 -- Practices (manual entries)
 DROP TRIGGER IF EXISTS audit_practices ON practices;

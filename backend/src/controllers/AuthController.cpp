@@ -355,14 +355,14 @@ Response AuthController::handleCoachTeams(const Request& request) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
         }
         
-        std::string sql = "SELECT DISTINCT t.id, t.display_name, t.name, COUNT(tp.player_id) as player_count "
+        std::string sql = "SELECT DISTINCT t.id, t.name, COUNT(tp.player_id) as player_count "
                          "FROM coaches co "
                          "JOIN team_coaches tc ON co.id = tc.coach_id "
                          "JOIN teams t ON tc.team_id = t.id "
                          "LEFT JOIN team_players tp ON t.id = tp.team_id "
                          "WHERE co.user_id = $1 "
-                         "GROUP BY t.id, t.display_name, t.name "
-                         "ORDER BY t.display_name";
+                         "GROUP BY t.id, t.name "
+                         "ORDER BY t.name";
         
         pqxx::result result = db_->query(sql, {user_id});
         
@@ -373,7 +373,7 @@ Response AuthController::handleCoachTeams(const Request& request) {
             if (!first) teams_json << ",";
             first = false;
             teams_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
-                      << "\"display_name\":\"" << row["display_name"].as<std::string>() << "\","
+                      << "\"display_name\":\"" << row["name"].as<std::string>() << "\","
                       << "\"name\":\"" << row["name"].as<std::string>() << "\","
                       << "\"player_count\":" << row["player_count"].as<int>() << "}";
         }
@@ -396,13 +396,13 @@ Response AuthController::handlePlayerTeams(const Request& request) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
         }
         
-        std::string sql = "SELECT DISTINCT t.id, t.display_name, t.name, sd.display_name as division_name "
+        std::string sql = "SELECT DISTINCT t.id, t.name, sd.display_name as division_name "
                          "FROM team_players tp "
                          "JOIN teams t ON tp.team_id = t.id "
                          "JOIN sport_divisions sd ON t.division_id = sd.id "
                          "JOIN players p ON tp.player_id = p.id "
                          "WHERE p.id = $1 "
-                         "ORDER BY t.display_name";
+                         "ORDER BY t.name";
         
         pqxx::result result = db_->query(sql, {user_id});
         
@@ -413,7 +413,7 @@ Response AuthController::handlePlayerTeams(const Request& request) {
             if (!first) teams_json << ",";
             first = false;
             teams_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
-                      << "\"display_name\":\"" << row["display_name"].as<std::string>() << "\","
+                      << "\"display_name\":\"" << row["name"].as<std::string>() << "\","
                       << "\"name\":\"" << row["name"].as<std::string>() << "\","
                       << "\"division_name\":\"" << row["division_name"].as<std::string>() << "\"}";
         }
@@ -461,19 +461,19 @@ Response AuthController::handleAdminContexts(const Request& request) {
         }
         
         // Get teams the user administers (team-level admins)
-        std::string team_sql = "SELECT DISTINCT t.id, t.display_name, 'team' as type "
+        std::string team_sql = "SELECT DISTINCT t.id, t.name, 'team' as type "
                               "FROM teams t "
                               "JOIN team_coaches tc ON t.id = tc.team_id "
                               "JOIN coaches co ON tc.coach_id = co.id "
-                              "WHERE co.user_id = $1 AND tc.coach_role IN ('head_coach', 'team_manager') "
-                              "ORDER BY t.display_name";
+                              "WHERE co.id = $1 AND tc.coach_role IN ('head_coach', 'team_manager') "
+                              "ORDER BY t.name";
         
         pqxx::result team_result = db_->query(team_sql, {user_id});
         for (auto row : team_result) {
             if (!first) contexts_json << ",";
             first = false;
             contexts_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
-                         << "\"display_name\":\"" << row["display_name"].as<std::string>() << "\","
+                         << "\"display_name\":\"" << row["name"].as<std::string>() << "\","
                          << "\"type\":\"team\"}";
         }
         

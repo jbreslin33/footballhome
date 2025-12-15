@@ -45,18 +45,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -130,18 +120,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -215,18 +195,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -300,18 +270,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -385,18 +345,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -470,18 +420,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -555,18 +495,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -640,18 +570,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -725,18 +645,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -810,18 +720,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -895,18 +795,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -980,18 +870,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -1065,18 +945,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -1150,18 +1020,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -1235,18 +1095,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -1320,18 +1170,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -1405,18 +1245,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -1490,18 +1320,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -1575,18 +1395,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -1660,18 +1470,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -1745,18 +1545,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -1830,18 +1620,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -1915,18 +1695,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2000,18 +1770,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2085,18 +1845,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2170,18 +1920,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2255,18 +1995,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2340,18 +2070,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2425,18 +2145,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2510,18 +2220,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2595,18 +2295,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2680,18 +2370,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2765,18 +2445,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2850,18 +2520,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -2935,18 +2595,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3020,18 +2670,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3105,18 +2745,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3190,18 +2820,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3275,18 +2895,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3360,18 +2970,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3445,18 +3045,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3530,18 +3120,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3615,18 +3195,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3700,18 +3270,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3785,18 +3345,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3870,18 +3420,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -3955,18 +3495,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -4040,18 +3570,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -4125,18 +3645,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -4210,18 +3720,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -4295,18 +3795,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -4380,18 +3870,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -4465,18 +3945,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
@@ -4550,18 +4020,8 @@ BEGIN
             is_active = true;
     END IF;
 
-    -- 4b. Also add to Division Roster (for division-level rostering)
-    IF v_division_id IS NOT NULL THEN
-        INSERT INTO division_players (id, division_id, player_id, status)
-        VALUES (
-            uuid_generate_v5(uuid_ns_url(), 'dp-' || v_division_id || '-' || v_user_id),
-            v_division_id,
-            v_user_id,
-            'active'
-        )
-        ON CONFLICT (division_id, player_id) DO UPDATE SET
-            status = 'active';
-    END IF;
+    -- 4b. Division roster integration removed - division_players table no longer exists
+    -- Players are now inferred from team_players
 
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
