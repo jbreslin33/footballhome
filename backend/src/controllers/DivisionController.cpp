@@ -3,6 +3,31 @@
 #include <sstream>
 #include <regex>
 
+// Helper function to escape JSON strings
+static std::string escapeJson(const std::string& input) {
+    std::string output;
+    for (char c : input) {
+        switch (c) {
+            case '"':  output += "\\\""; break;
+            case '\\': output += "\\\\"; break;
+            case '\b': output += "\\b"; break;
+            case '\f': output += "\\f"; break;
+            case '\n': output += "\\n"; break;
+            case '\r': output += "\\r"; break;
+            case '\t': output += "\\t"; break;
+            default:
+                if (c < 0x20) {
+                    output += "\\u00";
+                    output += "0123456789abcdef"[c >> 4];
+                    output += "0123456789abcdef"[c & 0x0f];
+                } else {
+                    output += c;
+                }
+        }
+    }
+    return output;
+}
+
 DivisionController::DivisionController() {
     db_ = Database::getInstance();
 }
@@ -199,40 +224,40 @@ Response DivisionController::handleGetDivisionPlayers(const Request& request) {
             first = false;
             
             playersJson << "{";
-            playersJson << "\"id\":\"" << row["id"].c_str() << "\",";
-            playersJson << "\"player_id\":\"" << row["player_id"].c_str() << "\",";
-            playersJson << "\"division_id\":\"" << row["division_id"].c_str() << "\",";
-            playersJson << "\"status\":\"" << row["status"].c_str() << "\",";
+            playersJson << "\"id\":\"" << escapeJson(row["id"].c_str()) << "\",";
+            playersJson << "\"player_id\":\"" << escapeJson(row["player_id"].c_str()) << "\",";
+            playersJson << "\"division_id\":\"" << escapeJson(row["division_id"].c_str()) << "\",";
+            playersJson << "\"status\":\"" << escapeJson(row["status"].c_str()) << "\",";
             
             if (!row["registration_number"].is_null()) {
-                playersJson << "\"registration_number\":\"" << row["registration_number"].c_str() << "\",";
+                playersJson << "\"registration_number\":\"" << escapeJson(row["registration_number"].c_str()) << "\",";
             } else {
                 playersJson << "\"registration_number\":null,";
             }
             
             if (!row["last_active_season"].is_null()) {
-                playersJson << "\"last_active_season\":\"" << row["last_active_season"].c_str() << "\",";
+                playersJson << "\"last_active_season\":\"" << escapeJson(row["last_active_season"].c_str()) << "\",";
             } else {
                 playersJson << "\"last_active_season\":null,";
             }
             
-            playersJson << "\"first_name\":\"" << row["first_name"].c_str() << "\",";
-            playersJson << "\"last_name\":\"" << row["last_name"].c_str() << "\",";
+            playersJson << "\"first_name\":\"" << escapeJson(row["first_name"].c_str()) << "\",";
+            playersJson << "\"last_name\":\"" << escapeJson(row["last_name"].c_str()) << "\",";
             
             if (!row["date_of_birth"].is_null()) {
-                playersJson << "\"date_of_birth\":\"" << row["date_of_birth"].c_str() << "\",";
+                playersJson << "\"date_of_birth\":\"" << escapeJson(row["date_of_birth"].c_str()) << "\",";
             } else {
                 playersJson << "\"date_of_birth\":null,";
             }
             
             if (!row["email"].is_null()) {
-                playersJson << "\"email\":\"" << row["email"].c_str() << "\",";
+                playersJson << "\"email\":\"" << escapeJson(row["email"].c_str()) << "\",";
             } else {
                 playersJson << "\"email\":null,";
             }
             
             if (!row["phone"].is_null()) {
-                playersJson << "\"phone\":\"" << row["phone"].c_str() << "\"";
+                playersJson << "\"phone\":\"" << escapeJson(row["phone"].c_str()) << "\"";
             } else {
                 playersJson << "\"phone\":null";
             }
