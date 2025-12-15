@@ -96,6 +96,23 @@ CREATE TABLE home_away_statuses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- External data providers lookup table (data sources like APSL, CASA, GroupMe, etc)
+CREATE TABLE external_providers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(50) UNIQUE NOT NULL,          -- 'apsl', 'casa', 'groupme'
+    display_name VARCHAR(100) NOT NULL,        -- 'APSL', 'CASA', 'GroupMe'
+    description TEXT,                          -- 'Amateur Premier Soccer League', 'Youth soccer league', etc.
+    data_type VARCHAR(50) NOT NULL,            -- 'roster', 'messaging', 'scheduling', 'multi'
+    base_url VARCHAR(500),                     -- API base URL or app URL
+    scraper_path VARCHAR(500),                 -- Path to scraper script
+    requires_auth BOOLEAN DEFAULT false,       -- Does this source need authentication?
+    auth_type VARCHAR(50),                     -- 'token', 'oauth', 'api_key', 'none'
+    documentation_url VARCHAR(500),            -- Link to API docs or setup guide
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- External apps/platforms lookup table
 CREATE TABLE external_apps (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -302,8 +319,8 @@ CREATE INDEX idx_users_first_name ON users(first_name);
 CREATE TABLE user_external_identities (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
-    external_app_id UUID REFERENCES external_apps(id),    -- Which external app/platform
-    provider VARCHAR(50) NOT NULL,           -- 'apsl', 'casa', 'groupme' (kept for backward compatibility)
+    provider_id UUID NOT NULL REFERENCES external_providers(id), -- Which external provider
+    external_app_id UUID REFERENCES external_apps(id),    -- Which external app/platform (optional, for multi-provider apps)
     external_id VARCHAR(255) NOT NULL,       -- ID from external system
     external_username VARCHAR(255),          -- Display name from external system
     
@@ -318,14 +335,16 @@ CREATE TABLE user_external_identities (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    UNIQUE(provider, external_id)            -- No duplicate external IDs per provider
+    -- Composite unique: provider + external_id (same person can have IDs on multiple platforms)
+    UNIQUE(provider_id, external_id)
 );
 
 CREATE INDEX idx_user_external_identities_user_id ON user_external_identities(user_id);
+CREATE INDEX idx_user_external_identities_provider ON user_external_identities(provider_id);
 CREATE INDEX idx_user_external_identities_external_app ON user_external_identities(external_app_id);
 CREATE INDEX idx_user_external_identities_team_id ON user_external_identities(team_id);
 CREATE INDEX idx_user_external_identities_sport_division_id ON user_external_identities(sport_division_id);
-CREATE INDEX idx_user_external_identities_unlinked ON user_external_identities(provider, external_id) WHERE user_id IS NULL;
+CREATE INDEX idx_user_external_identities_unlinked ON user_external_identities(provider_id, external_id) WHERE user_id IS NULL;
 
 -- ========================================
 -- USER ENTITY TABLES (Normalized)
@@ -1126,6 +1145,12 @@ CREATE INDEX idx_venues_business_status ON venues(business_status);
 CREATE INDEX idx_venues_phone ON venues(phone) WHERE phone IS NOT NULL;
 
 -- Insert lookup data
+
+-- External Providers (data sources)
+INSERT INTO external_providers (id, name, display_name, description, data_type, is_active) VALUES
+('550e8400-e29b-41d4-a716-446655440a01', 'apsl', 'APSL', 'Amateur Premier Soccer League', 'roster', true),
+('550e8400-e29b-41d4-a716-446655440a02', 'casa', 'CASA', 'Community Amateur Soccer Association youth leagues', 'roster', true),
+('550e8400-e29b-41d4-a716-446655440a03', 'groupme', 'GroupMe', 'Group messaging platform', 'messaging', true);
 
 -- Sports
 INSERT INTO sports (id, name, display_name, default_event_duration, typical_team_size) VALUES 
