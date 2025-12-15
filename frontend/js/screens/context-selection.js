@@ -95,7 +95,7 @@ class ContextSelectionScreen extends Screen {
     const listContainer = this.find('#context-list');
     
     // Get clubs and teams the user administers
-    const endpoint = '/api/admin/contexts';
+    const endpoint = '/api/auth/admin/contexts';
     this.safeFetch(endpoint, response => {
       const contexts = response.data || [];
       
@@ -128,7 +128,7 @@ class ContextSelectionScreen extends Screen {
     const listContainer = this.find('#context-list');
     
     // Get teams the user coaches
-    const endpoint = '/api/coach/teams';
+    const endpoint = '/api/auth/coach/teams';
     this.safeFetch(endpoint, response => {
       const teams = response.data || [];
       
@@ -159,7 +159,7 @@ class ContextSelectionScreen extends Screen {
     const listContainer = this.find('#context-list');
     
     // Get teams the user is on
-    const endpoint = '/api/player/teams';
+    const endpoint = '/api/auth/player/teams';
     this.safeFetch(endpoint, response => {
       const teams = response.data || [];
       
