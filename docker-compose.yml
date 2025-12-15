@@ -2,7 +2,7 @@ services:
   # PostgreSQL Database with pg_cron for scheduled jobs
   db:
     build:
-      context: ./docker/postgres
+      context: ./.docker/postgres
       dockerfile: Dockerfile
     container_name: footballhome_db
     restart: unless-stopped
