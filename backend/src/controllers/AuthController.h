@@ -1,11 +1,13 @@
 #pragma once
 #include "../core/Controller.h"
 #include "../models/User.h"
+#include "../database/Database.h"
 #include <memory>
 
 class AuthController : public Controller {
 private:
     std::unique_ptr<User> user_model_;
+    Database* db_;
 
 public:
     AuthController();

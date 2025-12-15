@@ -4,6 +4,7 @@
 
 AuthController::AuthController() {
     user_model_ = std::make_unique<User>();
+    db_ = Database::getInstance();
 }
 
 void AuthController::registerRoutes(Router& router, const std::string& prefix) {
