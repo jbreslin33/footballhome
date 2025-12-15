@@ -53,7 +53,7 @@ services:
       # Persistent pgAdmin data
       - pgadmin_data:/var/lib/pgadmin
       # Pre-configure database connection
-      - ./docker/pgadmin-servers.json:/pgadmin4/servers.json:ro
+      - ./.docker/pgadmin-servers.json:/pgadmin4/servers.json:ro
     networks:
       - footballhome_network
     depends_on:
