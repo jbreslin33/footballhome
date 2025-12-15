@@ -1,4 +1,4 @@
-// RoleSelectionScreen - Choose which role to use (for now: Coach only)
+// RoleSelectionScreen - Choose which role to use (Coach, Player, Admin)
 class RoleSelectionScreen extends Screen {
   render() {
     const div = document.createElement('div');
@@ -15,13 +15,27 @@ class RoleSelectionScreen extends Screen {
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
         <button class="btn btn-lg btn-primary" data-role="coach" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🏈</span>
-          <span style="flex: 1; text-align: left;">Coach</span>
+          <span style="font-size: 2rem;">🏆</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Coach</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Manage your teams</div>
+          </div>
         </button>
         
         <button class="btn btn-lg btn-primary" data-role="player" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">👟</span>
-          <span style="flex: 1; text-align: left;">Player</span>
+          <span style="font-size: 2rem;">👤</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Player</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">View your info & availability</div>
+          </div>
+        </button>
+        
+        <button class="btn btn-lg btn-primary" data-role="admin" style="display: flex; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">👨‍💼</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">Admin</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">Manage clubs & teams</div>
+          </div>
         </button>
         
         <button class="btn btn-text logout-btn" style="margin-top: var(--space-4);">Logout</button>
@@ -50,13 +64,11 @@ class RoleSelectionScreen extends Screen {
   
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
-    if (role === 'coach' || role === 'player') {
-      // Navigate to division selection screen to let user choose division
+    if (role === 'coach' || role === 'player' || role === 'admin') {
       this.navigation.context.role = role;
-      this.navigation.goTo('division-selection', { role: role });
-    } else if (role === 'parent') {
-      // Future: parent flow
-      this.handleError(new Error('Parent role not yet implemented'), 'role-selection');
+      this.navigation.goTo('context-selection', { role: role });
+    } else {
+      this.handleError(new Error('Unknown role: ' + role), 'role-selection');
     }
   }
   

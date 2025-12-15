@@ -10,6 +10,7 @@ class App {
     this.screens = {
       login: new LoginScreen(this.navigation, this.auth),
       roleSelection: new RoleSelectionScreen(this.navigation, this.auth),
+      contextSelection: new ContextSelectionScreen(this.navigation, this.auth),
       divisionSelection: new DivisionSelectionScreen(this.navigation, this.auth),
       divisionMenu: new DivisionMenuScreen(this.navigation, this.auth),
       divisionManagement: new DivisionManagementScreen(this.navigation, this.auth),
@@ -37,6 +38,7 @@ class App {
     // Register all screens with the manager
     this.screenManager.register('login', this.screens.login);
     this.screenManager.register('role-selection', this.screens.roleSelection);
+    this.screenManager.register('context-selection', this.screens.contextSelection);
     this.screenManager.register('division-selection', this.screens.divisionSelection);
     this.screenManager.register('division-menu', this.screens.divisionMenu);
     this.screenManager.register('division-management', this.screens.divisionManagement);
@@ -70,8 +72,8 @@ class App {
     if (this.auth.isLoggedIn()) {
       console.log('User already logged in:', this.auth.getUser());
       this.navigation.context.user = this.auth.getUser();
-      // Resume session - go to team selection
-      this.navigation.goTo('team-selection');
+      // Resume session - go to role selection
+      this.navigation.goTo('role-selection');
     } else {
       console.log('No active session, showing login');
       this.navigation.goTo('login');

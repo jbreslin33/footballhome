@@ -69,7 +69,7 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
                          "ca.club_id, c.display_name as club_name "
                          "FROM users u "
                          "LEFT JOIN admins a ON u.id = a.id "
-                         "LEFT JOIN club_admins ca ON u.id = ca.admin_id AND ca.is_active = true "
+                         "LEFT JOIN club_admins ca ON a.id = ca.admin_id AND ca.is_active = true "
                          "LEFT JOIN clubs c ON ca.club_id = c.id "
                          "WHERE u.email = $1 "
                          "LIMIT 1";
