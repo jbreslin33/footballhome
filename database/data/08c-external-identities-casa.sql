@@ -8,10 +8,10 @@
 -- (GroupMe, CASA portal, etc.)
 
 -- Example structure (will be generated):
--- INSERT INTO external_identities (id, user_id, provider, provider_user_id, username, last_synced_at)
+-- INSERT INTO external_identities (id, user_id, provider_id, provider_user_id, username, last_synced_at)
 -- VALUES
 --   ('casa-ext-id-1', 'casa-user-id-1', 'groupme', 'groupme-id-123', 'casa.player1', CURRENT_TIMESTAMP),
 --   ...
--- ON CONFLICT (provider, provider_user_id) DO UPDATE SET
+-- ON CONFLICT (provider_id, provider_user_id) DO UPDATE SET
 --   username = EXCLUDED.username,
 --   last_synced_at = CURRENT_TIMESTAMP;

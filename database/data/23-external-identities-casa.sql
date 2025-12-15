@@ -51,7 +51,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -70,7 +70,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Alzubair","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -126,7 +126,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -145,7 +145,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Babiker","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -201,7 +201,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -220,7 +220,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Baidel","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -276,7 +276,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -295,7 +295,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Barry","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -351,7 +351,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -370,7 +370,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Bayo","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -426,7 +426,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -445,7 +445,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Breslin","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -501,7 +501,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -520,7 +520,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"De Jesus","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -576,7 +576,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -595,7 +595,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Diallo","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -651,7 +651,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -670,7 +670,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Gangue","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -726,7 +726,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -745,7 +745,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Garcia","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -801,7 +801,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -820,7 +820,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Henry","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -876,7 +876,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -895,7 +895,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Hizdri","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -951,7 +951,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -970,7 +970,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Hossain","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1026,7 +1026,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1045,7 +1045,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Imran","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1101,7 +1101,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1120,7 +1120,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Josue","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1176,7 +1176,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1195,7 +1195,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Kawa","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1251,7 +1251,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1270,7 +1270,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Lara","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1326,7 +1326,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1345,7 +1345,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Leder","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1401,7 +1401,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1420,7 +1420,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Martinez","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1476,7 +1476,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1495,7 +1495,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Masi","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1551,7 +1551,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1570,7 +1570,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Mendoza","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1626,7 +1626,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1645,7 +1645,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Moreno","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1701,7 +1701,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1720,7 +1720,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Ndiaye","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1776,7 +1776,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1795,7 +1795,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Nwalipenja","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1851,7 +1851,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1870,7 +1870,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Oladele","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -1926,7 +1926,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -1945,7 +1945,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Ornaque","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2001,7 +2001,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2020,7 +2020,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Riccitelli","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2076,7 +2076,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2095,7 +2095,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Rojas","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2151,7 +2151,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2170,7 +2170,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Salah","position":null,"team_name":"Lighthouse Boys Club"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2226,7 +2226,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2245,7 +2245,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Abdellaoui","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2301,7 +2301,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2320,7 +2320,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Bersani","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2376,7 +2376,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2395,7 +2395,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Gonzalez","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2451,7 +2451,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2470,7 +2470,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Heiler","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2526,7 +2526,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2545,7 +2545,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Katz","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2601,7 +2601,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2620,7 +2620,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Kenny","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2676,7 +2676,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2695,7 +2695,7 @@ BEGIN
         v_team_id,
         '{"position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2751,7 +2751,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2770,7 +2770,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"07/28/1993","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2826,7 +2826,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2845,7 +2845,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Lipsey","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2901,7 +2901,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2920,7 +2920,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Llambias","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -2976,7 +2976,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -2995,7 +2995,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"McConnel","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3051,7 +3051,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3070,7 +3070,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Moral","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3126,7 +3126,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3145,7 +3145,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Morales","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3201,7 +3201,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3220,7 +3220,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Nguyen","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3276,7 +3276,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3295,7 +3295,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Osorio-Soto","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3351,7 +3351,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3370,7 +3370,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Padilla","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3426,7 +3426,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3445,7 +3445,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Piazzesi","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3501,7 +3501,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3520,7 +3520,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Rosato","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3576,7 +3576,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3595,7 +3595,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Santos","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3651,7 +3651,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3670,7 +3670,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Sagustume","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3726,7 +3726,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3745,7 +3745,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Serce","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3801,7 +3801,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3820,7 +3820,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Solis","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3876,7 +3876,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3895,7 +3895,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Vizcaino","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -3951,7 +3951,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -3970,7 +3970,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Diguilio","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
@@ -4026,7 +4026,7 @@ BEGIN
     -- 5. Create External Identity (Linked to User)
     INSERT INTO user_external_identities (
         id, 
-        provider, 
+        provider_id, 
         external_id, 
         external_username, 
         user_id,
@@ -4045,7 +4045,7 @@ BEGIN
         v_team_id,
         '{"jersey_number":"Santa","position":null,"team_name":"Lighthouse Old Timers"}'
     )
-    ON CONFLICT (provider, external_id) DO UPDATE SET
+    ON CONFLICT (provider_id, external_id) DO UPDATE SET
         user_id = EXCLUDED.user_id,
         external_username = EXCLUDED.external_username,
         first_name = EXCLUDED.first_name,
