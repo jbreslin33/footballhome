@@ -1721,35 +1721,8 @@ COMMENT ON TABLE attendance_cron_log IS 'Log of attendance auto-creation cron jo
 -- ========================================
 -- CLUB/DIVISION PLAYER REGISTRY
 -- ========================================
-CREATE TABLE division_players (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    division_id UUID NOT NULL REFERENCES sport_divisions(id) ON DELETE CASCADE,
-    player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL DEFAULT 'active',
-    registration_date DATE DEFAULT CURRENT_DATE,
-    registration_number VARCHAR(50),
-    last_active_season VARCHAR(20),
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(division_id, player_id)
-);
-
-CREATE TABLE division_players_history (
-    id SERIAL PRIMARY KEY,
-    division_player_id UUID NOT NULL REFERENCES division_players(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL,
-    changed_by_user_id UUID REFERENCES users(id),
-    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT
-);
-
-CREATE INDEX idx_division_players_division ON division_players(division_id);
-CREATE INDEX idx_division_players_player ON division_players(player_id);
-CREATE INDEX idx_division_players_status ON division_players(status) WHERE status = 'active';
-CREATE INDEX idx_division_players_history_player ON division_players_history(division_player_id, changed_at DESC);
-
-COMMENT ON TABLE division_players IS 'Master roster of players belonging to a sport division, independent of team membership';
+-- division_players table removed - players are now inferred from team memberships
+-- Dynamic aggregation from team_players is used in API queries instead
 
 -- =====================================================
 -- Player Availability Tracking System

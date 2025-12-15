@@ -130,13 +130,11 @@ SELECT
     (SELECT COUNT(*) FROM player_academic_status a 
      WHERE a.player_id = p.id AND a.resolved_at IS NULL AND a.status != 'eligible') as academic_issues_count,
     
-    -- Division status
-    dp.status as division_status
+    'active'::VARCHAR(20) as division_status
     
 FROM players p
 JOIN users u ON p.id = u.id
-LEFT JOIN division_players dp ON p.id = dp.player_id
-WHERE dp.status = 'active'
+WHERE u.is_active = true
 ORDER BY u.last_name, u.first_name;
 
 -- Team-specific availability view

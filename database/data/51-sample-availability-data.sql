@@ -13,10 +13,10 @@ DECLARE
     v_player3 UUID;
     v_coach UUID;
 BEGIN
-    -- Get some random active players
-    SELECT player_id INTO v_player1 FROM division_players WHERE status = 'active' LIMIT 1 OFFSET 0;
-    SELECT player_id INTO v_player2 FROM division_players WHERE status = 'active' LIMIT 1 OFFSET 5;
-    SELECT player_id INTO v_player3 FROM division_players WHERE status = 'active' LIMIT 1 OFFSET 10;
+    -- Get some random active players from team_players instead
+    SELECT tp.player_id INTO v_player1 FROM team_players tp JOIN players p ON tp.player_id = p.id LIMIT 1 OFFSET 0;
+    SELECT tp.player_id INTO v_player2 FROM team_players tp JOIN players p ON tp.player_id = p.id LIMIT 1 OFFSET 5;
+    SELECT tp.player_id INTO v_player3 FROM team_players tp JOIN players p ON tp.player_id = p.id LIMIT 1 OFFSET 10;
     
     -- Get a coach user (first user will be coach)
     SELECT id INTO v_coach FROM users LIMIT 1;

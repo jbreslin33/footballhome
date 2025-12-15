@@ -155,23 +155,31 @@ Response DivisionController::handleGetDivisionPlayers(const Request& request) {
         std::vector<std::string> params;
         
         if (status == "all") {
-            query = "SELECT dp.id, dp.player_id, dp.division_id, dp.status, "
-                   "dp.registration_number, dp.last_active_season, dp.created_at, dp.updated_at, "
+            query = "SELECT DISTINCT "
+                   "gen_random_uuid() as id, tp.player_id, $1::uuid as division_id, 'active' as status, "
+                   "null::varchar as registration_number, '2024-2025' as last_active_season, "
+                   "CURRENT_TIMESTAMP as created_at, CURRENT_TIMESTAMP as updated_at, "
                    "u.first_name, u.last_name, u.date_of_birth, u.email, u.phone "
-                   "FROM division_players dp "
-                   "JOIN players p ON dp.player_id = p.id "
+                   "FROM sport_divisions sd "
+                   "JOIN teams t ON sd.id = t.division_id "
+                   "JOIN team_players tp ON t.id = tp.team_id "
+                   "JOIN players p ON tp.player_id = p.id "
                    "JOIN users u ON p.id = u.id "
-                   "WHERE dp.division_id = $1 "
+                   "WHERE sd.id = $1 "
                    "ORDER BY u.last_name, u.first_name";
             params.push_back(divisionId);
         } else {
-            query = "SELECT dp.id, dp.player_id, dp.division_id, dp.status, "
-                   "dp.registration_number, dp.last_active_season, dp.created_at, dp.updated_at, "
+            query = "SELECT DISTINCT "
+                   "gen_random_uuid() as id, tp.player_id, $1::uuid as division_id, 'active' as status, "
+                   "null::varchar as registration_number, '2024-2025' as last_active_season, "
+                   "CURRENT_TIMESTAMP as created_at, CURRENT_TIMESTAMP as updated_at, "
                    "u.first_name, u.last_name, u.date_of_birth, u.email, u.phone "
-                   "FROM division_players dp "
-                   "JOIN players p ON dp.player_id = p.id "
+                   "FROM sport_divisions sd "
+                   "JOIN teams t ON sd.id = t.division_id "
+                   "JOIN team_players tp ON t.id = tp.team_id "
+                   "JOIN players p ON tp.player_id = p.id "
                    "JOIN users u ON p.id = u.id "
-                   "WHERE dp.division_id = $1 AND dp.status = $2 "
+                   "WHERE sd.id = $1 AND 'active' = $2 "
                    "ORDER BY u.last_name, u.first_name";
             params.push_back(divisionId);
             params.push_back(status);
@@ -274,7 +282,7 @@ Response DivisionController::handleUpdateDivisionPlayer(const Request& request) 
         std::string body = request.getBody();
         
         // Parse fields
-        std::string firstName, lastName, status, regNumber;
+        std::string firstName, lastName;
         
         std::regex fn_regex(R"rx("firstName"\s*:\s*"([^"]+)")rx");
         std::smatch fn_match;
@@ -284,29 +292,10 @@ Response DivisionController::handleUpdateDivisionPlayer(const Request& request) 
         std::smatch ln_match;
         if (std::regex_search(body, ln_match, ln_regex)) lastName = ln_match[1].str();
         
-        std::regex st_regex(R"rx("status"\s*:\s*"([^"]+)")rx");
-        std::smatch st_match;
-        if (std::regex_search(body, st_match, st_regex)) status = st_match[1].str();
-        
-        std::regex rn_regex(R"rx("registrationNumber"\s*:\s*"([^"]+)")rx");
-        std::smatch rn_match;
-        if (std::regex_search(body, rn_match, rn_regex)) regNumber = rn_match[1].str();
-        
         // Update User (Name)
         if (!firstName.empty() && !lastName.empty()) {
             std::string sql = "UPDATE users SET first_name = $1, last_name = $2, updated_at = NOW() WHERE id = $3";
             db_->query(sql, {firstName, lastName, playerId});
-        }
-        
-        // Update Division Player (Status, Reg Number)
-        if (!status.empty()) {
-            std::string sql = "UPDATE division_players SET status = $1, updated_at = NOW() WHERE division_id = $2 AND player_id = $3";
-            db_->query(sql, {status, divisionId, playerId});
-        }
-        
-        if (!regNumber.empty()) {
-             std::string sql = "UPDATE division_players SET registration_number = $1, updated_at = NOW() WHERE division_id = $2 AND player_id = $3";
-            db_->query(sql, {regNumber, divisionId, playerId});
         }
         
         return Response(HttpStatus::OK, createJSONResponse(true, "Player updated successfully"));
