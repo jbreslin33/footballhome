@@ -96,6 +96,16 @@ CREATE TABLE home_away_statuses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Admin levels lookup table
+CREATE TABLE admin_levels (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(50) UNIQUE NOT NULL,          -- 'system', 'league', 'club', 'team'
+    display_name VARCHAR(100) NOT NULL,        -- 'System Administrator', 'League Administrator', 'Club Administrator', 'Team Administrator'
+    description TEXT,                          -- Additional context
+    sort_order INTEGER DEFAULT 0,             -- For display ordering
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- External data providers lookup table (data sources like APSL, CASA, GroupMe, etc)
 CREATE TABLE external_providers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -458,7 +468,7 @@ CREATE TABLE spectators (
 -- Admins (administrative users at various organizational levels)
 CREATE TABLE admins (
     id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    admin_level VARCHAR(50),                 -- 'system', 'league', 'club', 'team'
+    admin_level_id UUID NOT NULL REFERENCES admin_levels(id),
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

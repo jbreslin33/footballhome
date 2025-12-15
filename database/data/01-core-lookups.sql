@@ -72,6 +72,14 @@ INSERT INTO home_away_statuses (id, name, display_name, description, sort_order)
 ('550e8400-e29b-41d4-a716-446655440803', 'neutral', 'Neutral Venue', 'Event at a neutral/shared venue', 3)
 ON CONFLICT (id) DO NOTHING;
 
+-- Admin levels (organizational hierarchy)
+INSERT INTO admin_levels (id, name, display_name, description, sort_order) VALUES 
+('550e8400-e29b-41d4-a716-446655440810', 'system', 'System Administrator', 'Full system access - manages all clubs, divisions, and users', 1),
+('550e8400-e29b-41d4-a716-446655440811', 'league', 'League Administrator', 'Manages a specific league and its divisions', 2),
+('550e8400-e29b-41d4-a716-446655440812', 'club', 'Club Administrator', 'Manages a specific club and its sport divisions', 3),
+('550e8400-e29b-41d4-a716-446655440813', 'team', 'Team Administrator', 'Manages a specific team and its roster', 4)
+ON CONFLICT (id) DO NOTHING;
+
 -- Event types for soccer
 INSERT INTO event_types (id, sport_id, name, display_name, category, default_duration, requires_opponent) VALUES 
 ('550e8400-e29b-41d4-a716-446655440401', '550e8400-e29b-41d4-a716-446655440101', 'training', 'Training Session', 'practice', 90, false),
