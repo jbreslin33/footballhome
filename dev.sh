@@ -14,11 +14,13 @@
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Usage:
-#   ./dev.sh                                      # Full rebuild (no scraping)
+#   ./dev.sh                                      # Full rebuild (uses committed SQL files, no scraping)
+#   ./dev.sh --refresh                            # Re-scrape all data, update SQL files, then rebuild
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Aggregate Flags (Convenience):
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#   ./dev.sh --refresh                            # Re-scrape ALL data: APSL + CASA + GroupMe (excludes venues)
 #   ./dev.sh --lighthouse                         # All Lighthouse data (APSL/CASA + GroupMe: 4 chats)
 #   ./dev.sh --apsl                               # All APSL data (structure + all teams + rosters + schedules)
 #   ./dev.sh --casa                               # All CASA data (structure + all teams + rosters + schedules)
@@ -54,14 +56,20 @@
 #   ./dev.sh --replay-only                        # Fast rebuild from saved changes
 #
 # Typical Workflows:
+#   ./dev.sh
+#     → Daily development: Fast rebuild using committed SQL files
+#
+#   ./dev.sh --refresh
+#     → Weekly update: Re-scrape all leagues + GroupMe, update SQL files, rebuild
+#
 #   ./dev.sh --lighthouse
-#     → Lighthouse update: Structure + rosters + schedules + GroupMe for all 3 teams
+#     → Lighthouse update: Re-scrape structure + rosters + schedules + GroupMe for 4 teams
 #
 #   ./dev.sh --apsl --casa
 #     → New season: Full APSL + CASA scrape (all teams)
 #
 #   ./dev.sh --replay-only
-#     → Daily development: Fast rebuild from saved state (~10 seconds)
+#     → Quick rebuild: Fast rebuild from saved state (~10 seconds)
 
 set -e
 
@@ -254,6 +262,24 @@ for arg in "$@"; do
         --groupme-old-timers-rsvps)
             GROUPME_OLD_TIMERS_RSVPS=true
             ;;
+        --refresh)
+            # Refresh all scraped data (APSL + CASA + GroupMe, excludes venues)
+            APSL_SCRAPE_MODE="players"
+            APSL_SCHEDULE=true
+            CASA_SCRAPE_MODE="full"
+            GROUPME_APSL_EXTERNAL=true
+            GROUPME_APSL_SCHEDULE=true
+            GROUPME_APSL_RSVPS=true
+            GROUPME_TRAINING_LIGHTHOUSE_EXTERNAL=true
+            GROUPME_TRAINING_LIGHTHOUSE_SCHEDULE=true
+            GROUPME_TRAINING_LIGHTHOUSE_RSVPS=true
+            GROUPME_BOYS_CLUB_EXTERNAL=true
+            GROUPME_BOYS_CLUB_SCHEDULE=true
+            GROUPME_BOYS_CLUB_RSVPS=true
+            GROUPME_OLD_TIMERS_EXTERNAL=true
+            GROUPME_OLD_TIMERS_SCHEDULE=true
+            GROUPME_OLD_TIMERS_RSVPS=true
+            ;;
         --save)
             SAVE_MANUAL=true
             ;;
@@ -264,13 +290,15 @@ for arg in "$@"; do
             echo "Football Home Development Script"
             echo ""
             echo "Usage:"
-            echo "  ./dev.sh                                   Full rebuild (uses saved SQL files)"
+            echo "  ./dev.sh                                   Full rebuild (uses committed SQL files, no scraping)"
+            echo "  ./dev.sh --refresh                         Re-scrape all data, update SQL files, then rebuild"
             echo ""
             echo "Aggregate Flags (Convenience):"
+            echo "  --refresh                                  Re-scrape ALL: APSL + CASA + GroupMe (excludes venues)"
             echo "  --lighthouse                               All Lighthouse data (APSL/CASA structure + rosters + schedules + GroupMe)"
             echo "  --apsl                                     All APSL data (structure + all teams + rosters + schedules)"
             echo "  --casa                                     All CASA data (structure + all teams + rosters)"
-            echo "  --groupme                                  All GroupMe data (all 3 Lighthouse team chats)"
+            echo "  --groupme                                  All GroupMe data (all 4 Lighthouse chats)"
             echo ""
             echo "APSL Scraping Flags:"
             echo "  --apsl-structure                           Scrape APSL structure only (conferences/divisions, no teams)"

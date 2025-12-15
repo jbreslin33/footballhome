@@ -9,40 +9,47 @@ class ApslHtmlParser extends HtmlParser {
    * Parse standings page to extract conferences and divisions
    */
   parseStandingsStructure() {
-    const structure = {
-      conferences: [],
-      divisions: []
-    };
-
-    // APSL-specific: Find conference sections
-    const conferenceSections = this.querySelectorAll('.conference-section');
+    const conferenceData = [];
     
-    conferenceSections.forEach(section => {
-      const conferenceName = this.cleanText(
-        section.querySelector('.conference-title')?.textContent || ''
-      );
+    // APSL format: Divs with text like "2025/2026 - Conference Name"
+    const allDivs = this.querySelectorAll('div');
+    
+    for (const div of allDivs) {
+      const text = div.textContent.trim();
       
-      if (conferenceName) {
-        structure.conferences.push({ name: conferenceName });
+      // Look for "2025/2026 - Conference Name" pattern
+      const confMatch = text.match(/^(\d{4}\/\d{4})\s*-\s*(.+?)\s+Conference\s*$/);
+      
+      if (confMatch) {
+        const season = confMatch[1];
+        const confName = confMatch[2].trim() + ' Conference';
         
-        // Find divisions within this conference
-        const divisionTables = section.querySelectorAll('.standings-table');
-        divisionTables.forEach(table => {
-          const divisionName = this.cleanText(
-            table.querySelector('.division-title')?.textContent || ''
-          );
-          
-          if (divisionName) {
-            structure.divisions.push({
-              name: divisionName,
-              conference: conferenceName
-            });
+        // Find the standings table following this div
+        // It's usually in the next sibling element
+        let currentElement = div.parentElement;
+        let table = null;
+        
+        // Look for table in next few siblings
+        let attempts = 0;
+        while (currentElement && !table && attempts < 5) {
+          currentElement = currentElement.nextElementSibling;
+          if (currentElement) {
+            table = currentElement.querySelector('table');
           }
-        });
+          attempts++;
+        }
+        
+        if (table) {
+          conferenceData.push({
+            name: confName,
+            season: season,
+            table: table
+          });
+        }
       }
-    });
-
-    return structure;
+    }
+    
+    return conferenceData;
   }
 
   /**
@@ -50,23 +57,64 @@ class ApslHtmlParser extends HtmlParser {
    */
   parseRoster() {
     const players = [];
-    const rows = this.querySelectorAll('table.roster-table tbody tr');
-
-    for (const row of rows) {
-      const cells = row.querySelectorAll('td');
-      if (cells.length < 3) continue;
-
-      const jersey = cells[0]?.textContent.trim();
-      const name = cells[1]?.textContent.trim();
-      const position = cells[2]?.textContent.trim();
-
-      if (name) {
-        players.push({
-          jersey_number: jersey || null,
-          name: name,
-          position: position || null
-        });
+    
+    // APSL uses table.TableRoster for rosters
+    const rosterTables = this.querySelectorAll('table.TableRoster');
+    let allPlayerRows = [];
+    
+    // Try main roster table
+    for (const table of rosterTables) {
+      const rows = Array.from(table.querySelectorAll('tr'));
+      allPlayerRows = allPlayerRows.concat(rows.filter(r => r.textContent.includes('added:')));
+    }
+    
+    // Fallback: search all tables for roster data
+    if (allPlayerRows.length === 0) {
+      const allTables = this.querySelectorAll('table');
+      for (const table of allTables) {
+        if (table.textContent.includes('added:')) {
+          const rows = Array.from(table.querySelectorAll('tr'));
+          allPlayerRows = rows.filter(r => r.textContent.includes('added:'));
+          break;
+        }
       }
+    }
+    
+    // Parse each player row
+    for (const row of allPlayerRows) {
+      const cells = row.querySelectorAll('td');
+      if (cells.length < 2) continue;
+
+      // APSL roster structure:
+      // Cell 0: Photo
+      // Cell 1: Player name in a div + "added:" date
+      // Cell 2: Jersey number
+      
+      // Extract player photo
+      const photoImg = cells[0]?.querySelector('img');
+      let photoUrl = null;
+      if (photoImg) {
+        const src = photoImg.getAttribute('src');
+        if (src && src.includes('/mediacontent/')) {
+          photoUrl = src.startsWith('http') ? src : 'https://app.teampass.com' + src;
+        }
+      }
+      
+      // Get player name from div with specific styling
+      const nameDiv = cells[1]?.querySelector('div[style*="font-size:12px"]');
+      const playerName = nameDiv?.textContent.trim();
+      
+      // Get jersey number
+      const jerseyNum = cells[2]?.textContent.trim() || null;
+      
+      if (!playerName || playerName.toLowerCase() === 'player') continue;
+
+      players.push({
+        name: playerName,
+        jersey_number: jerseyNum,
+        position: null, // APSL doesn't provide positions
+        photo_url: photoUrl
+      });
     }
 
     return players;
@@ -77,26 +125,51 @@ class ApslHtmlParser extends HtmlParser {
    */
   parseSchedule() {
     const matches = [];
-    const rows = this.querySelectorAll('table.schedule-table tbody tr');
-
+    
+    // Find the Match Schedule table (has "Date & Time" header)
+    const tables = this.querySelectorAll('table.Table');
+    let scheduleTable = null;
+    
+    for (const table of tables) {
+      const header = table.querySelector('th');
+      if (header?.textContent.includes('Date & Time')) {
+        scheduleTable = table;
+        break;
+      }
+    }
+    
+    if (!scheduleTable) {
+      return matches;
+    }
+    
+    // Process each row
+    const rows = scheduleTable.querySelectorAll('tr.TableRow0, tr.TableRow1');
+    
     for (const row of rows) {
       const cells = row.querySelectorAll('td');
-      if (cells.length < 4) continue;
-
+      if (cells.length < 3) continue;
+      
+      // Cell 0: Date & Time (e.g., "Sunday, Sep 07 - 4:30 PM")
+      // Cell 1: Opponent
+      // Cell 2: Location/Venue
+      
       const dateText = cells[0]?.textContent.trim();
       const opponent = cells[1]?.textContent.trim();
       const location = cells[2]?.textContent.trim();
-      const result = cells[3]?.textContent.trim();
+      
+      if (!dateText || !opponent) continue;
+      
+      // Determine if home or away
+      const isHome = location?.toLowerCase().includes('home') || 
+                     !location?.toLowerCase().includes('@');
 
-      if (dateText && opponent) {
-        matches.push({
-          date: this.parseDate(dateText),
-          opponent: opponent,
-          location: location || null,
-          result: result || null,
-          isHome: location?.toLowerCase().includes('home')
-        });
-      }
+      matches.push({
+        date: this.parseDate(dateText),
+        opponent: opponent,
+        location: location || null,
+        result: null,
+        isHome: isHome
+      });
     }
 
     return matches;

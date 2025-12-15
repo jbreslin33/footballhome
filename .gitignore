@@ -45,4 +45,7 @@ frontend/images/players/headshots/*.jpeg
 # Node.js dependencies
 node_modules/
 package-lock.json
+
+# Environment and credentials
 .env
+.groupme-cookies.json

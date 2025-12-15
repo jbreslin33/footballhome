@@ -36,6 +36,9 @@ class ApslScraper extends Scraper {
     
     // Authentication
     this.authCookies = '';
+    
+    // Conference data cache (with tables for team extraction)
+    this.conferences = new Map();
   }
 
   async initialize() {
@@ -85,22 +88,26 @@ class ApslScraper extends Scraper {
     const html = await this.fetcher.fetch(`${this.baseUrl}/standings/`);
     this.parser.parse(html);
     
-    // Parse structure
-    const structure = this.parser.parseStandingsStructure();
+    // Parse structure (returns array of conference data with tables)
+    const conferenceData = this.parser.parseStandingsStructure();
     
-    this.log(`   Found ${structure.conferences.length} conferences`);
-    this.log(`   Found ${structure.divisions.length} divisions`);
+    this.log(`   Found ${conferenceData.length} conferences`);
     
     // Create conference and division entities
-    for (const conf of structure.conferences) {
-      const confId = IdGenerator.fromComponents('apsl', 'conference', conf.name);
-      // Store conference (TODO: create Conference model)
+    // APSL: Each conference is also treated as a division
+    for (const confData of conferenceData) {
+      const confName = confData.name;
+      const confId = IdGenerator.fromComponents('apsl', 'conference', confName);
+      
+      // Store conference data for team extraction
+      this.conferences.set(confId, {
+        id: confId,
+        name: confName,
+        season: confData.season,
+        table: confData.table
+      });
     }
     
-    for (const div of structure.divisions) {
-      const divId = IdGenerator.fromComponents('apsl', 'division', div.name);
-      // Store division (TODO: create Division model)
-    }
   }
 
   async fetchTeams() {
