@@ -30,6 +30,18 @@ void AuthController::registerRoutes(Router& router, const std::string& prefix) {
     router.get(prefix + "/user/teams", [this](const Request& request) {
         return this->handleUserTeams(request);
     });
+    
+    router.get(prefix + "/coach/teams", [this](const Request& request) {
+        return this->handleCoachTeams(request);
+    });
+    
+    router.get(prefix + "/player/teams", [this](const Request& request) {
+        return this->handlePlayerTeams(request);
+    });
+    
+    router.get(prefix + "/admin/contexts", [this](const Request& request) {
+        return this->handleAdminContexts(request);
+    });
 }
 
 Response AuthController::handleLogin(const Request& request) {
@@ -331,6 +343,147 @@ Response AuthController::handleUserTeams(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ AuthController::handleUserTeams error: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve teams");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response AuthController::handleCoachTeams(const Request& request) {
+    try {
+        std::string user_id = extractUserIdFromToken(request);
+        if (user_id.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
+        }
+        
+        std::string sql = "SELECT DISTINCT t.id, t.display_name, t.name, COUNT(tp.player_id) as player_count "
+                         "FROM coaches co "
+                         "JOIN team_coaches tc ON co.id = tc.coach_id "
+                         "JOIN teams t ON tc.team_id = t.id "
+                         "LEFT JOIN team_players tp ON t.id = tp.team_id "
+                         "WHERE co.user_id = $1 "
+                         "GROUP BY t.id, t.display_name, t.name "
+                         "ORDER BY t.display_name";
+        
+        pqxx::result result = db_->query(sql, {user_id});
+        
+        std::ostringstream teams_json;
+        teams_json << "[";
+        bool first = true;
+        for (auto row : result) {
+            if (!first) teams_json << ",";
+            first = false;
+            teams_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
+                      << "\"display_name\":\"" << row["display_name"].as<std::string>() << "\","
+                      << "\"name\":\"" << row["name"].as<std::string>() << "\","
+                      << "\"player_count\":" << row["player_count"].as<int>() << "}";
+        }
+        teams_json << "]";
+        
+        std::string json = createJSONResponse(true, "Coach teams retrieved successfully", teams_json.str());
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ AuthController::handleCoachTeams error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve coach teams");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response AuthController::handlePlayerTeams(const Request& request) {
+    try {
+        std::string user_id = extractUserIdFromToken(request);
+        if (user_id.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
+        }
+        
+        std::string sql = "SELECT DISTINCT t.id, t.display_name, t.name, sd.display_name as division_name "
+                         "FROM team_players tp "
+                         "JOIN teams t ON tp.team_id = t.id "
+                         "JOIN sport_divisions sd ON t.division_id = sd.id "
+                         "JOIN players p ON tp.player_id = p.id "
+                         "WHERE p.id = $1 "
+                         "ORDER BY t.display_name";
+        
+        pqxx::result result = db_->query(sql, {user_id});
+        
+        std::ostringstream teams_json;
+        teams_json << "[";
+        bool first = true;
+        for (auto row : result) {
+            if (!first) teams_json << ",";
+            first = false;
+            teams_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
+                      << "\"display_name\":\"" << row["display_name"].as<std::string>() << "\","
+                      << "\"name\":\"" << row["name"].as<std::string>() << "\","
+                      << "\"division_name\":\"" << row["division_name"].as<std::string>() << "\"}";
+        }
+        teams_json << "]";
+        
+        std::string json = createJSONResponse(true, "Player teams retrieved successfully", teams_json.str());
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ AuthController::handlePlayerTeams error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve player teams");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response AuthController::handleAdminContexts(const Request& request) {
+    try {
+        std::string user_id = extractUserIdFromToken(request);
+        if (user_id.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
+        }
+        
+        std::ostringstream contexts_json;
+        contexts_json << "[";
+        bool first = true;
+        
+        // Get clubs the user administers
+        std::string club_sql = "SELECT DISTINCT c.id, c.display_name, 'club' as type, COUNT(DISTINCT t.id) as team_count "
+                              "FROM clubs c "
+                              "JOIN club_admins ca ON c.id = ca.club_id "
+                              "JOIN admins a ON ca.admin_id = a.id "
+                              "LEFT JOIN sport_divisions sd ON c.id = sd.club_id "
+                              "LEFT JOIN teams t ON sd.id = t.division_id "
+                              "WHERE a.id = $1 AND ca.is_active = true "
+                              "GROUP BY c.id, c.display_name";
+        
+        pqxx::result club_result = db_->query(club_sql, {user_id});
+        for (auto row : club_result) {
+            if (!first) contexts_json << ",";
+            first = false;
+            contexts_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
+                         << "\"display_name\":\"" << row["display_name"].as<std::string>() << "\","
+                         << "\"type\":\"club\","
+                         << "\"team_count\":" << row["team_count"].as<int>() << "}";
+        }
+        
+        // Get teams the user administers (team-level admins)
+        std::string team_sql = "SELECT DISTINCT t.id, t.display_name, 'team' as type "
+                              "FROM teams t "
+                              "JOIN team_coaches tc ON t.id = tc.team_id "
+                              "JOIN coaches co ON tc.coach_id = co.id "
+                              "WHERE co.user_id = $1 AND tc.coach_role IN ('head_coach', 'team_manager') "
+                              "ORDER BY t.display_name";
+        
+        pqxx::result team_result = db_->query(team_sql, {user_id});
+        for (auto row : team_result) {
+            if (!first) contexts_json << ",";
+            first = false;
+            contexts_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
+                         << "\"display_name\":\"" << row["display_name"].as<std::string>() << "\","
+                         << "\"type\":\"team\"}";
+        }
+        
+        contexts_json << "]";
+        
+        std::string json = createJSONResponse(true, "Admin contexts retrieved successfully", contexts_json.str());
+        return Response(HttpStatus::OK, json);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ AuthController::handleAdminContexts error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve admin contexts");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }
