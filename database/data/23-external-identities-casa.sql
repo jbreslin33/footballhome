@@ -2646,7 +2646,7 @@ BEGIN
 
     -- 2. Create User (Stub)
     INSERT INTO users (id, first_name, last_name, is_active)
-    VALUES (v_user_id, '11', '"Joaquin', true)
+    VALUES (v_user_id, 'Joaquin', 'Ladeuix', true)
     ON CONFLICT (id) DO NOTHING;
 
     -- 3. Create Player Profile
@@ -2688,10 +2688,10 @@ BEGIN
         uuid_generate_v5(uuid_ns_url(), v_external_id),
         'casa',
         v_external_id,
-        '11 "Joaquin',
+        'Joaquin Ladeuix',
         v_user_id, -- Linked to the user we just created/found
-        '11',
-        '"Joaquin',
+        'Joaquin',
+        'Ladeuix',
         v_team_id,
         '{"position":null,"team_name":"Lighthouse Old Timers"}'
     )
