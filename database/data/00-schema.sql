@@ -1477,15 +1477,6 @@ ON CONFLICT (email) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
     updated_at = CURRENT_TIMESTAMP;
 
--- Create admin entity for this user
-INSERT INTO admins (id, admin_level, notes)
-VALUES (
-    '77d77471-1250-47e0-81ab-d4626595d63c',
-    'system',
-    'System administrator with full access'
-)
-ON CONFLICT (id) DO NOTHING;
-
 -- Grant all permissions to system admin via junction table
 INSERT INTO admin_permissions (admin_id, permission_id)
 SELECT 
