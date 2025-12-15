@@ -1477,15 +1477,6 @@ ON CONFLICT (email) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
     updated_at = CURRENT_TIMESTAMP;
 
--- Grant all permissions to system admin via junction table
-INSERT INTO admin_permissions (admin_id, permission_id)
-SELECT 
-    '77d77471-1250-47e0-81ab-d4626595d63c',
-    id
-FROM permissions
-WHERE is_system_permission = true
-ON CONFLICT (admin_id, permission_id) DO NOTHING;
-
 -- ========================================
 -- APSL LEAGUE DATA (AUTO-LOADED)
 -- ========================================
