@@ -198,44 +198,46 @@ class CasaScraper extends Scraper {
           continue;
         }
         
-        const clubId = IdGenerator.fromComponents('casa', 'club', teamName);
-        const sportDivId = IdGenerator.fromComponents('casa', 'sportdiv', teamName);
-        const teamId = IdGenerator.fromComponents('casa', 'team', teamName);
+        // Generate consistent IDs based on normalized name (not league-specific)
+        const normalizedName = teamName.trim();
+        const clubId = IdGenerator.fromComponents('club', normalizedName);
+        const sportDivId = IdGenerator.fromComponents('sportdiv', normalizedName);
+        const teamId = IdGenerator.fromComponents('casa', 'team', normalizedName, divisionName);
         
-        // Create club
+        // Create club (reuse if already exists from another league)
         if (!this.data.clubs.has(clubId)) {
           const club = new Club({
             id: clubId,
-            name: teamName,
-            display_name: teamName,
-            slug: this.slugify(teamName)
+            name: normalizedName,
+            display_name: normalizedName,
+            slug: this.slugify(normalizedName)
           });
           this.data.clubs.set(clubId, club);
         }
         
-        // Create sport division
+        // Create sport division (reuse if already exists from another league)
         if (!this.data.sportDivisions.has(sportDivId)) {
           const sportDiv = new SportDivision({
             id: sportDivId,
             club_id: clubId,
             sport_id: this.sportId,
-            name: teamName,
-            display_name: teamName,
-            slug: this.slugify(teamName)
+            name: `${normalizedName} Soccer`,
+            display_name: `${normalizedName} Soccer`,
+            slug: this.slugify(normalizedName)
           });
           this.data.sportDivisions.set(sportDivId, sportDiv);
         }
         
-        // Create team
+        // Create team (each team is unique per league division)
         const team = new Team({
           id: teamId,
-          name: teamName,
+          name: normalizedName,
           sport_division_id: sportDivId,
           league_division_id: divisionId
         });
         
         this.data.teams.set(teamId, team);
-        this.log(`   ✓ ${teamName}`);
+        this.log(`   ✓ ${normalizedName}`);
       }
       
     } catch (error) {

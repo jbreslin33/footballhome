@@ -5,6 +5,8 @@ const IdGenerator = require('../services/IdGenerator');
 const SqlGenerator = require('../services/SqlGenerator');
 const DuplicateDetector = require('../services/DuplicateDetector');
 const League = require('../models/League');
+const Club = require('../models/Club');
+const SportDivision = require('../models/SportDivision');
 const Team = require('../models/Team');
 const Player = require('../models/Player');
 const Match = require('../models/Match');
@@ -122,16 +124,46 @@ class ApslScraper extends Scraper {
         continue;
       }
       
+      // Generate consistent IDs based on normalized name (not league-specific)
+      const normalizedName = teamData.name.trim();
+      const clubId = IdGenerator.fromComponents('club', normalizedName);
+      const sportDivId = IdGenerator.fromComponents('sportdiv', normalizedName);
       const teamId = IdGenerator.fromComponents('apsl', 'team', teamData.apsl_team_id);
+      
+      // Create club (reuse if already exists from another league)
+      if (!this.data.clubs.has(clubId)) {
+        const club = new Club({
+          id: clubId,
+          name: normalizedName,
+          display_name: normalizedName,
+          slug: this.slugify(normalizedName)
+        });
+        this.data.clubs.set(clubId, club);
+      }
+      
+      // Create sport division (reuse if already exists from another league)
+      if (!this.data.sportDivisions.has(sportDivId)) {
+        const sportDiv = new SportDivision({
+          id: sportDivId,
+          club_id: clubId,
+          sport_id: this.sportId,
+          name: `${normalizedName} Soccer`,
+          display_name: `${normalizedName} Soccer`,
+          slug: this.slugify(normalizedName)
+        });
+        this.data.sportDivisions.set(sportDivId, sportDiv);
+      }
+      
       const team = new Team({
         id: teamId,
-        name: teamData.name,
-        sport_division_id: 'TBD', // Set after parsing structure
+        name: normalizedName,
+        sport_division_id: sportDivId,
+        league_division_id: null, // APSL doesn't use league divisions
         apsl_team_id: teamData.apsl_team_id
       });
       
       this.data.teams.set(teamId, team);
-      this.log(`   ✓ ${teamData.name}`);
+      this.log(`   ✓ ${normalizedName}`);
     }
   }
 
@@ -244,6 +276,22 @@ class ApslScraper extends Scraper {
         }
       },
       {
+        filename: '06-clubs-apsl.sql',
+        data: this.data.clubs,
+        options: {
+          title: 'APSL Clubs',
+          useInserts: true
+        }
+      },
+      {
+        filename: '07-sport-divisions-apsl.sql',
+        data: this.data.sportDivisions,
+        options: {
+          title: 'APSL Sport Divisions',
+          useInserts: true
+        }
+      },
+      {
         filename: '22-teams-apsl.sql',
         data: this.data.teams,
         options: {
@@ -276,6 +324,15 @@ class ApslScraper extends Scraper {
 
   async cleanup() {
     this.parser.destroy();
+  }
+
+  slugify(text) {
+    return text.toString().toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w\-]+/g, '')
+      .replace(/\-\-+/g, '-')
+      .replace(/^-+/, '')
+      .replace(/-+$/, '');
   }
 }
 
