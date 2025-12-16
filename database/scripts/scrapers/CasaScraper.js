@@ -50,10 +50,18 @@ class CasaScraper extends Scraper {
   async initialize() {
     this.log('Initializing CASA scraper...');
     
-    // Launch Puppeteer
+    // Launch Puppeteer with macOS-friendly settings
     this.browser = await puppeteer.launch({
-      headless: "new",
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ]
     });
     
     // Create conference and divisions
@@ -90,18 +98,17 @@ class CasaScraper extends Scraper {
   }
 
   async fetchData() {
-    // Fetch structure (teams and schedule)
-    if (this.shouldScrapeTeams()) {
-      await this.fetchLiga1Teams();
-      await this.fetchLiga2Teams();
-      
-      if (this.shouldScrapeSchedules()) {
-        await this.fetchLiga1Schedule();
-        await this.fetchLiga2Schedule();
-      }
+    // Always fetch team structure (structure mode includes teams)
+    await this.fetchLiga1Teams();
+    await this.fetchLiga2Teams();
+    
+    // Fetch schedules if requested
+    if (this.shouldScrapeSchedules()) {
+      await this.fetchLiga1Schedule();
+      await this.fetchLiga2Schedule();
     }
     
-    // Fetch rosters from Google Sheets
+    // Fetch rosters from Google Sheets only in players/full mode
     if (this.shouldScrapePlayers()) {
       await this.fetchRosters();
     }
@@ -121,34 +128,61 @@ class CasaScraper extends Scraper {
     const page = await this.browser.newPage();
     
     try {
-      await page.goto(url, { waitUntil: 'networkidle2' });
+      this.log(`   Navigating to ${url}...`);
+      await page.goto(url, { 
+        waitUntil: 'networkidle2',
+        timeout: 60000 
+      });
       
-      // Wait for table
-      try {
-        await page.waitForSelector('table tbody tr', { timeout: 10000 });
-      } catch (e) {
-        this.logWarning(`Timeout waiting for ${divisionName} table`);
+      // Wait for iframe to load
+      this.log(`   Waiting for iframe content...`);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Find the frame with standings data
+      const frames = page.frames();
+      let standingsFrame = null;
+      
+      for (const frame of frames) {
+        const url = frame.url();
+        if (url.includes('sportsengine.com') && url.includes('standings')) {
+          standingsFrame = frame;
+          break;
+        }
       }
       
-      // Extract team names from standings table
-      const teamNames = await page.evaluate(() => {
+      if (!standingsFrame) {
+        this.logWarning(`No standings iframe found for ${divisionName}`);
+        return;
+      }
+      
+      this.log(`   Found standings iframe`);
+      
+      // Extract team names from standings table in iframe
+      const teamNames = await standingsFrame.evaluate(() => {
         const data = [];
         const rows = document.querySelectorAll('table tbody tr');
+        
         rows.forEach(row => {
-          const cells = row.querySelectorAll('td');
-          if (cells.length > 0) {
-            let name = cells[0].textContent.trim();
-            // If first cell is a number, team name is in second cell
-            if (/^\d+$/.test(name) && cells.length > 1) {
-              name = cells[1].textContent.trim();
-            }
-            if (name && name !== 'Team' && name.length > 2) {
-              data.push(name);
+          // Get the row's text content and parse it
+          const text = row.innerText || row.textContent;
+          const parts = text.split(/\s{2,}|\t/).map(p => p.trim()).filter(p => p);
+          
+          // Format is: rank teamName pts w l d gp gf ga gd
+          // Team name is typically the second element (after rank number)
+          if (parts.length >= 2) {
+            const rank = parts[0];
+            const teamName = parts[1];
+            
+            // If first part is a number (rank), second part is team name
+            if (/^\d+$/.test(rank) && teamName && teamName.length > 2) {
+              data.push(teamName);
             }
           }
         });
         return data;
       });
+      
+      this.log(`   Extracted ${teamNames.length} team names`);
       
       for (const teamName of teamNames) {
         if (!this.matchesTeamFilter(teamName)) {
@@ -215,30 +249,47 @@ class CasaScraper extends Scraper {
     const page = await this.browser.newPage();
     
     try {
-      await page.goto(url, { waitUntil: 'networkidle2' });
+      this.log(`   Navigating to schedule...`);
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
       
-      try {
-        await page.waitForSelector('table tbody tr', { timeout: 10000 });
-      } catch (e) {
-        this.logWarning(`Timeout waiting for ${divisionName} schedule table`);
+      // Wait for iframe to load
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Find the frame with schedule data
+      const frames = page.frames();
+      let scheduleFrame = null;
+      
+      for (const frame of frames) {
+        const frameUrl = frame.url();
+        if (frameUrl.includes('sportsengine.com') && frameUrl.includes('schedule')) {
+          scheduleFrame = frame;
+          break;
+        }
       }
       
-      // Extract match data
-      const rowsData = await page.evaluate(() => {
-        const rawRows = [];
-        const rows = document.querySelectorAll('table tbody tr');
-        rows.forEach(row => {
-          const cells = row.querySelectorAll('td');
-          const rowData = [];
-          cells.forEach(cell => rowData.push(cell.textContent.trim()));
-          if (rowData.length > 0) rawRows.push(rowData);
+      if (!scheduleFrame) {
+        this.logWarning(`No schedule iframe found for ${divisionName}`);
+        return;
+      }
+      
+      this.log(`   Found schedule iframe`);
+      
+      // Extract match data from iframe
+      const rawRows = await scheduleFrame.evaluate(() => {
+        const rows = [];
+        const tableRows = document.querySelectorAll('table tbody tr');
+        tableRows.forEach(row => {
+          const text = row.innerText || row.textContent;
+          if (text && text.trim()) {
+            rows.push(text.trim());
+          }
         });
-        return rawRows;
+        return rows;
       });
       
       // Parse matches
       let matchCount = 0;
-      for (const rowData of rowsData) {
+      for (const rowData of rawRows) {
         const match = this.parseMatchRow(rowData, divisionName);
         if (match) {
           this.data.matches.set(match.event_id, match);
