@@ -6,71 +6,72 @@ const SqlGenerator = require('../services/SqlGenerator');
  */
 class Match {
   constructor(data) {
-    // Event data
+    // Event data (matching events table schema)
     this.event_id = data.event_id || data.id;
-    this.name = data.name;
+    this.title = data.title || data.name;  // Schema uses 'title' not 'name'
     this.event_type_id = data.event_type_id;
-    this.start_time = data.start_time;
-    this.end_time = data.end_time;
+    this.event_date = data.event_date || data.start_time;  // Schema uses 'event_date' not 'start_time'
+    this.duration_minutes = data.duration_minutes || null;  // Schema uses duration not end_time
     this.venue_id = data.venue_id || null;
-    this.location_name = data.location_name || null;
+    this.description = data.description || null;
     this.created_by = data.created_by;
-    this.source_app_id = data.source_app_id;
-    this.external_source = data.external_source || null;
     this.external_event_id = data.external_event_id || null;
-    this.is_active = data.is_active !== false;
+    this.cancelled = data.cancelled || false;
+    this.cancellation_reason = data.cancellation_reason || null;
     this.created_at = data.created_at || new Date().toISOString();
     this.updated_at = data.updated_at || new Date().toISOString();
     
-    // Match-specific data
+    // Match-specific data (matching matches table schema)
     this.home_team_id = data.home_team_id;
     this.away_team_id = data.away_team_id;
-    this.home_score = data.home_score || null;
-    this.away_score = data.away_score || null;
-    this.status = data.status || 'scheduled';
-    this.match_notes = data.match_notes || null;
+    this.home_away_status_id = data.home_away_status_id || '550e8400-e29b-41d4-a716-446655440801';  // Default to 'home'
+    this.home_team_score = data.home_team_score || data.home_score || null;  // Schema uses 'home_team_score'
+    this.away_team_score = data.away_team_score || data.away_score || null;  // Schema uses 'away_team_score'
+    this.match_status = data.match_status || data.status || 'scheduled';  // Schema uses 'match_status'
+    this.competition_name = data.competition_name || null;
+    this.competition_round = data.competition_round || null;
   }
 
   toEventSQL() {
-    return `INSERT INTO events (id, name, event_type_id, start_time, end_time, venue_id, location_name, created_by, source_app_id, external_source, external_event_id, is_active, created_at, updated_at)
+    return `INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
 VALUES (
   ${SqlGenerator.escape(this.event_id)},
-  ${SqlGenerator.escape(this.name)},
-  ${SqlGenerator.escape(this.event_type_id)},
-  ${SqlGenerator.escape(this.start_time)},
-  ${SqlGenerator.escape(this.end_time)},
-  ${SqlGenerator.escape(this.venue_id)},
-  ${SqlGenerator.escape(this.location_name)},
   ${SqlGenerator.escape(this.created_by)},
-  ${SqlGenerator.escape(this.source_app_id)},
-  ${SqlGenerator.escape(this.external_source)},
+  ${SqlGenerator.escape(this.event_type_id)},
+  ${SqlGenerator.escape(this.title)},
+  ${SqlGenerator.escape(this.description)},
+  ${SqlGenerator.escape(this.event_date)},
+  ${SqlGenerator.escape(this.venue_id)},
+  ${SqlGenerator.escape(this.duration_minutes)},
+  ${SqlGenerator.escape(this.cancelled)},
+  ${SqlGenerator.escape(this.cancellation_reason)},
   ${SqlGenerator.escape(this.external_event_id)},
-  ${SqlGenerator.escape(this.is_active)},
   ${SqlGenerator.escape(this.created_at)},
   ${SqlGenerator.escape(this.updated_at)}
 )
 ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  start_time = EXCLUDED.start_time,
-  end_time = EXCLUDED.end_time,
+  title = EXCLUDED.title,
+  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;`;
   }
 
   toMatchSQL() {
-    return `INSERT INTO matches (event_id, home_team_id, away_team_id, home_score, away_score, status, notes)
+    return `INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
 VALUES (
   ${SqlGenerator.escape(this.event_id)},
   ${SqlGenerator.escape(this.home_team_id)},
   ${SqlGenerator.escape(this.away_team_id)},
-  ${SqlGenerator.escape(this.home_score)},
-  ${SqlGenerator.escape(this.away_score)},
-  ${SqlGenerator.escape(this.status)},
-  ${SqlGenerator.escape(this.match_notes)}
+  ${SqlGenerator.escape(this.home_away_status_id)},
+  ${SqlGenerator.escape(this.home_team_score)},
+  ${SqlGenerator.escape(this.away_team_score)},
+  ${SqlGenerator.escape(this.match_status)},
+  ${SqlGenerator.escape(this.competition_name)},
+  ${SqlGenerator.escape(this.competition_round)}
 )
-ON CONFLICT (event_id) DO UPDATE SET
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  status = EXCLUDED.status;`;
+ON CONFLICT (id) DO UPDATE SET
+  home_team_score = EXCLUDED.home_team_score,
+  away_team_score = EXCLUDED.away_team_score,
+  match_status = EXCLUDED.match_status;`;
   }
 
   toSQL() {

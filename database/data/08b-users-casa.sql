@@ -1,5 +1,5 @@
 -- CASA Players (Users)
--- Generated at: 2025-12-16T13:44:58.347Z
+-- Generated at: 2025-12-16T14:04:23.150Z
 
 INSERT INTO users (id, first_name, last_name, email, phone, is_active, created_at, updated_at)
 VALUES (
@@ -9,8 +9,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -29,8 +29,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -44,8 +44,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -64,8 +64,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -79,8 +79,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -99,8 +99,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -114,8 +114,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -134,8 +134,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -149,8 +149,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -169,8 +169,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -184,8 +184,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -204,8 +204,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -219,8 +219,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -239,8 +239,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -254,8 +254,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -274,8 +274,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -289,8 +289,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -309,8 +309,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -324,8 +324,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -344,8 +344,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -359,8 +359,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -379,8 +379,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -394,8 +394,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -414,8 +414,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -429,8 +429,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -449,8 +449,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -464,8 +464,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -484,8 +484,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -499,8 +499,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -519,8 +519,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -534,8 +534,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -554,8 +554,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -569,8 +569,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -589,8 +589,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -604,8 +604,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -624,8 +624,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -639,8 +639,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -659,8 +659,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -674,8 +674,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -694,8 +694,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -709,8 +709,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -729,8 +729,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -744,8 +744,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -764,8 +764,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -779,8 +779,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -799,8 +799,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -814,8 +814,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -834,8 +834,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -849,8 +849,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -869,8 +869,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -884,8 +884,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -904,8 +904,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.305Z',
-  '2025-12-16T13:44:30.305Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -919,8 +919,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.306Z',
-  '2025-12-16T13:44:30.306Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -939,8 +939,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.306Z',
-  '2025-12-16T13:44:30.306Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -954,8 +954,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.306Z',
-  '2025-12-16T13:44:30.306Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -974,8 +974,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.306Z',
-  '2025-12-16T13:44:30.306Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -989,8 +989,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.306Z',
-  '2025-12-16T13:44:30.306Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1009,8 +1009,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:30.306Z',
-  '2025-12-16T13:44:30.306Z'
+  '2025-12-16T14:03:55.858Z',
+  '2025-12-16T14:03:55.858Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1024,8 +1024,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.540Z',
+  '2025-12-16T14:03:58.540Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1044,8 +1044,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.540Z',
+  '2025-12-16T14:03:58.540Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1059,8 +1059,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.540Z',
+  '2025-12-16T14:03:58.540Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1079,8 +1079,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.540Z',
+  '2025-12-16T14:03:58.540Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1094,8 +1094,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.540Z',
+  '2025-12-16T14:03:58.540Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1114,8 +1114,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.540Z',
+  '2025-12-16T14:03:58.540Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1129,8 +1129,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1149,8 +1149,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1164,8 +1164,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1184,8 +1184,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1199,8 +1199,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1219,8 +1219,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.624Z',
-  '2025-12-16T13:44:32.624Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1234,8 +1234,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1254,8 +1254,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1269,8 +1269,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1289,8 +1289,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1304,8 +1304,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1324,8 +1324,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1339,8 +1339,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1359,8 +1359,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1374,8 +1374,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1394,8 +1394,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1409,8 +1409,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1429,8 +1429,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1444,8 +1444,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1464,8 +1464,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1479,8 +1479,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1499,8 +1499,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1514,8 +1514,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1534,8 +1534,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1549,8 +1549,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1569,8 +1569,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1584,8 +1584,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1604,8 +1604,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1619,8 +1619,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1639,8 +1639,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1654,8 +1654,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1674,8 +1674,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1689,8 +1689,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1709,8 +1709,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1724,8 +1724,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1744,8 +1744,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1759,8 +1759,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1779,8 +1779,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1794,8 +1794,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1814,8 +1814,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1829,8 +1829,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1849,8 +1849,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1864,8 +1864,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1884,8 +1884,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1899,8 +1899,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1919,8 +1919,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1934,8 +1934,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1954,8 +1954,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -1969,8 +1969,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1989,8 +1989,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2004,8 +2004,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2024,8 +2024,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:32.625Z',
-  '2025-12-16T13:44:32.625Z'
+  '2025-12-16T14:03:58.541Z',
+  '2025-12-16T14:03:58.541Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2039,8 +2039,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.389Z',
+  '2025-12-16T14:04:00.389Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2059,8 +2059,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.389Z',
+  '2025-12-16T14:04:00.389Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2074,8 +2074,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2094,8 +2094,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2109,8 +2109,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2129,8 +2129,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2144,8 +2144,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2164,8 +2164,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2179,8 +2179,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2199,8 +2199,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2214,8 +2214,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2234,8 +2234,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2249,8 +2249,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2269,8 +2269,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2284,8 +2284,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2304,8 +2304,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2319,8 +2319,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2339,8 +2339,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2354,8 +2354,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2374,8 +2374,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2389,8 +2389,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2409,8 +2409,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2424,8 +2424,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2444,8 +2444,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2459,8 +2459,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2479,8 +2479,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2494,8 +2494,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2514,8 +2514,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2529,8 +2529,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2549,8 +2549,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2564,8 +2564,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2584,8 +2584,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2599,8 +2599,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2619,8 +2619,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2634,8 +2634,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2654,8 +2654,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2669,8 +2669,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2689,8 +2689,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2704,8 +2704,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2724,8 +2724,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2739,8 +2739,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2759,8 +2759,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2774,8 +2774,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2794,8 +2794,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2809,8 +2809,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2829,8 +2829,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2844,8 +2844,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2864,8 +2864,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2879,8 +2879,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2899,8 +2899,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2914,8 +2914,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2934,8 +2934,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2949,8 +2949,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2969,8 +2969,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -2984,8 +2984,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3004,8 +3004,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:34.255Z',
-  '2025-12-16T13:44:34.255Z'
+  '2025-12-16T14:04:00.390Z',
+  '2025-12-16T14:04:00.390Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3019,8 +3019,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3039,8 +3039,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3054,8 +3054,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3074,8 +3074,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3089,8 +3089,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3109,8 +3109,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3124,8 +3124,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3144,8 +3144,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3159,8 +3159,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3179,8 +3179,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3194,8 +3194,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3214,8 +3214,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3229,8 +3229,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3249,8 +3249,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3264,8 +3264,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3284,8 +3284,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3299,8 +3299,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3319,8 +3319,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3334,8 +3334,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3354,8 +3354,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3369,8 +3369,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3389,8 +3389,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3404,8 +3404,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3424,8 +3424,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3439,8 +3439,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3459,8 +3459,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.111Z',
-  '2025-12-16T13:44:36.111Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3474,8 +3474,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3494,8 +3494,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3509,8 +3509,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3529,8 +3529,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3544,8 +3544,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3564,8 +3564,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3579,8 +3579,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3599,8 +3599,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3614,8 +3614,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3634,8 +3634,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3649,8 +3649,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3669,8 +3669,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3684,8 +3684,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3704,8 +3704,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3719,8 +3719,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3739,8 +3739,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3754,8 +3754,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3774,8 +3774,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3789,8 +3789,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3809,8 +3809,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3824,8 +3824,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3844,8 +3844,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3859,8 +3859,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3879,8 +3879,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3894,8 +3894,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3914,8 +3914,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3929,8 +3929,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3949,8 +3949,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3964,8 +3964,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3984,8 +3984,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -3999,8 +3999,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4019,8 +4019,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4034,8 +4034,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4054,8 +4054,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:36.112Z',
-  '2025-12-16T13:44:36.112Z'
+  '2025-12-16T14:04:02.305Z',
+  '2025-12-16T14:04:02.305Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4069,8 +4069,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.174Z',
+  '2025-12-16T14:04:04.174Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4089,8 +4089,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.174Z',
+  '2025-12-16T14:04:04.174Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4104,8 +4104,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4124,8 +4124,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4139,8 +4139,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4159,8 +4159,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4174,8 +4174,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4194,8 +4194,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4209,8 +4209,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4229,8 +4229,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4244,8 +4244,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4264,8 +4264,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4279,8 +4279,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4299,8 +4299,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4314,8 +4314,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4334,8 +4334,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4349,8 +4349,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4369,8 +4369,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4384,8 +4384,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4404,8 +4404,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4419,8 +4419,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4439,8 +4439,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4454,8 +4454,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4474,8 +4474,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4489,8 +4489,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4509,8 +4509,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4524,8 +4524,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4544,8 +4544,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4559,8 +4559,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4579,8 +4579,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4594,8 +4594,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4614,8 +4614,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4629,8 +4629,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4649,8 +4649,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4664,8 +4664,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4684,8 +4684,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4699,8 +4699,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4719,8 +4719,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4734,8 +4734,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4754,8 +4754,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4769,8 +4769,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4789,8 +4789,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4804,8 +4804,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4824,8 +4824,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4839,8 +4839,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4859,8 +4859,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4874,8 +4874,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4894,8 +4894,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:38.268Z',
-  '2025-12-16T13:44:38.268Z'
+  '2025-12-16T14:04:04.175Z',
+  '2025-12-16T14:04:04.175Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4909,8 +4909,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4929,8 +4929,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4944,8 +4944,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4964,8 +4964,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -4979,8 +4979,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4999,8 +4999,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5014,8 +5014,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5034,8 +5034,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5049,8 +5049,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5069,8 +5069,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5084,8 +5084,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5104,8 +5104,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5119,8 +5119,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5139,8 +5139,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5154,8 +5154,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5174,8 +5174,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5189,8 +5189,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5209,8 +5209,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5224,8 +5224,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5244,8 +5244,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5259,8 +5259,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5279,8 +5279,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5294,8 +5294,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5314,8 +5314,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5329,8 +5329,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5349,8 +5349,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5364,8 +5364,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5384,8 +5384,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5399,8 +5399,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5419,8 +5419,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5434,8 +5434,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5454,8 +5454,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5469,8 +5469,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5489,8 +5489,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5504,8 +5504,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5524,8 +5524,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5539,8 +5539,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5559,8 +5559,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5574,8 +5574,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5594,8 +5594,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5609,8 +5609,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5629,8 +5629,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5644,8 +5644,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5664,8 +5664,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5679,8 +5679,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5699,8 +5699,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5714,8 +5714,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5734,8 +5734,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5749,8 +5749,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5769,8 +5769,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5784,8 +5784,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5804,8 +5804,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:40.211Z',
-  '2025-12-16T13:44:40.211Z'
+  '2025-12-16T14:04:06.076Z',
+  '2025-12-16T14:04:06.076Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5819,8 +5819,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5839,8 +5839,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5854,8 +5854,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5874,8 +5874,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5889,8 +5889,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5909,8 +5909,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5924,8 +5924,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5944,8 +5944,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5959,8 +5959,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5979,8 +5979,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -5994,8 +5994,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6014,8 +6014,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6029,8 +6029,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6049,8 +6049,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6064,8 +6064,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6084,8 +6084,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6099,8 +6099,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6119,8 +6119,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6134,8 +6134,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6154,8 +6154,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6169,8 +6169,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6189,8 +6189,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6204,8 +6204,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6224,8 +6224,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6239,8 +6239,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6259,8 +6259,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6274,8 +6274,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6294,8 +6294,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6309,8 +6309,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6329,8 +6329,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:42.146Z',
-  '2025-12-16T13:44:42.146Z'
+  '2025-12-16T14:04:08.242Z',
+  '2025-12-16T14:04:08.242Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6344,8 +6344,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6364,8 +6364,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6379,8 +6379,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6399,8 +6399,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6414,8 +6414,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6434,8 +6434,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6449,8 +6449,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6469,8 +6469,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6484,8 +6484,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6504,8 +6504,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6519,8 +6519,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6539,8 +6539,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6554,8 +6554,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6574,8 +6574,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6589,8 +6589,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6609,8 +6609,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6624,8 +6624,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6644,8 +6644,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6659,8 +6659,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6679,8 +6679,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6694,8 +6694,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6714,8 +6714,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6729,8 +6729,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6749,8 +6749,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6764,8 +6764,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6784,8 +6784,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6799,8 +6799,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6819,8 +6819,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6834,8 +6834,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6854,8 +6854,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6869,8 +6869,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6889,8 +6889,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6904,8 +6904,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6924,8 +6924,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6939,8 +6939,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6959,8 +6959,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -6974,8 +6974,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6994,8 +6994,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.099Z',
-  '2025-12-16T13:44:44.099Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7009,8 +7009,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7029,8 +7029,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7044,8 +7044,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7064,8 +7064,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7079,8 +7079,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7099,8 +7099,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7114,8 +7114,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7134,8 +7134,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7149,8 +7149,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7169,8 +7169,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7184,8 +7184,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7204,8 +7204,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7219,8 +7219,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7239,8 +7239,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7254,8 +7254,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7274,8 +7274,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7289,8 +7289,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7309,8 +7309,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7324,8 +7324,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7344,8 +7344,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:44.100Z',
-  '2025-12-16T13:44:44.100Z'
+  '2025-12-16T14:04:10.346Z',
+  '2025-12-16T14:04:10.346Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7359,8 +7359,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7379,8 +7379,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7394,8 +7394,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7414,8 +7414,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7429,8 +7429,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7449,8 +7449,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7464,8 +7464,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7484,8 +7484,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7499,8 +7499,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7519,8 +7519,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7534,8 +7534,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7554,8 +7554,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7569,8 +7569,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7589,8 +7589,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7604,8 +7604,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7624,8 +7624,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.037Z',
-  '2025-12-16T13:44:46.037Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7639,8 +7639,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7659,8 +7659,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7674,8 +7674,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7694,8 +7694,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7709,8 +7709,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7729,8 +7729,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7744,8 +7744,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7764,8 +7764,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7779,8 +7779,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7799,8 +7799,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7814,8 +7814,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7834,8 +7834,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7849,8 +7849,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7869,8 +7869,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7884,8 +7884,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7904,8 +7904,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7919,8 +7919,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7939,8 +7939,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7954,8 +7954,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7974,8 +7974,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -7989,8 +7989,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8009,8 +8009,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8024,8 +8024,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8044,8 +8044,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8059,8 +8059,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8079,8 +8079,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8094,8 +8094,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8114,8 +8114,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8129,8 +8129,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8149,8 +8149,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8164,8 +8164,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8184,8 +8184,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.941Z',
+  '2025-12-16T14:04:11.941Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8199,8 +8199,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8219,8 +8219,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8234,8 +8234,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8254,8 +8254,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8269,8 +8269,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8289,8 +8289,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8304,8 +8304,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8324,8 +8324,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8339,8 +8339,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8359,8 +8359,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8374,8 +8374,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8394,8 +8394,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8409,8 +8409,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8429,8 +8429,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:46.038Z',
-  '2025-12-16T13:44:46.038Z'
+  '2025-12-16T14:04:11.942Z',
+  '2025-12-16T14:04:11.942Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8444,8 +8444,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8464,8 +8464,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8479,8 +8479,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8499,8 +8499,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8514,8 +8514,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8534,8 +8534,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8549,8 +8549,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8569,8 +8569,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8584,8 +8584,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8604,8 +8604,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8619,8 +8619,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8639,8 +8639,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8654,8 +8654,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8674,8 +8674,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8689,8 +8689,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8709,8 +8709,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8724,8 +8724,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8744,8 +8744,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8759,8 +8759,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8779,8 +8779,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8794,8 +8794,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8814,8 +8814,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8829,8 +8829,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8849,8 +8849,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8864,8 +8864,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8884,8 +8884,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8899,8 +8899,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8919,8 +8919,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8934,8 +8934,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8954,8 +8954,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -8969,8 +8969,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -8989,8 +8989,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9004,8 +9004,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9024,8 +9024,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9039,8 +9039,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9059,8 +9059,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:50.254Z',
-  '2025-12-16T13:44:50.254Z'
+  '2025-12-16T14:04:16.764Z',
+  '2025-12-16T14:04:16.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9074,8 +9074,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.747Z',
+  '2025-12-16T14:04:18.747Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9094,8 +9094,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.747Z',
+  '2025-12-16T14:04:18.747Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9109,8 +9109,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.747Z',
+  '2025-12-16T14:04:18.747Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9129,8 +9129,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.747Z',
+  '2025-12-16T14:04:18.747Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9144,8 +9144,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.747Z',
+  '2025-12-16T14:04:18.747Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9164,8 +9164,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.747Z',
+  '2025-12-16T14:04:18.747Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9179,8 +9179,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9199,8 +9199,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9214,8 +9214,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9234,8 +9234,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9249,8 +9249,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9269,8 +9269,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9284,8 +9284,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9304,8 +9304,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9319,8 +9319,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9339,8 +9339,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9354,8 +9354,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9374,8 +9374,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9389,8 +9389,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9409,8 +9409,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9424,8 +9424,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9444,8 +9444,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9459,8 +9459,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9479,8 +9479,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9494,8 +9494,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9514,8 +9514,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9529,8 +9529,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9549,8 +9549,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9564,8 +9564,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9584,8 +9584,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9599,8 +9599,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9619,8 +9619,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9634,8 +9634,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9654,8 +9654,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9669,8 +9669,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9689,8 +9689,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9704,8 +9704,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9724,8 +9724,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9739,8 +9739,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9759,8 +9759,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9774,8 +9774,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9794,8 +9794,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9809,8 +9809,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9829,8 +9829,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9844,8 +9844,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9864,8 +9864,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9879,8 +9879,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9899,8 +9899,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9914,8 +9914,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9934,8 +9934,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9949,8 +9949,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -9969,8 +9969,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -9984,8 +9984,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10004,8 +10004,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10019,8 +10019,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10039,8 +10039,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:52.299Z',
-  '2025-12-16T13:44:52.299Z'
+  '2025-12-16T14:04:18.748Z',
+  '2025-12-16T14:04:18.748Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10054,8 +10054,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:56.271Z',
-  '2025-12-16T13:44:56.271Z'
+  '2025-12-16T14:04:21.066Z',
+  '2025-12-16T14:04:21.066Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10074,8 +10074,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:56.271Z',
-  '2025-12-16T13:44:56.271Z'
+  '2025-12-16T14:04:21.066Z',
+  '2025-12-16T14:04:21.066Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10089,8 +10089,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:56.271Z',
-  '2025-12-16T13:44:56.271Z'
+  '2025-12-16T14:04:21.067Z',
+  '2025-12-16T14:04:21.067Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10109,8 +10109,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:56.271Z',
-  '2025-12-16T13:44:56.271Z'
+  '2025-12-16T14:04:21.067Z',
+  '2025-12-16T14:04:21.067Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10124,8 +10124,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:56.271Z',
-  '2025-12-16T13:44:56.271Z'
+  '2025-12-16T14:04:21.067Z',
+  '2025-12-16T14:04:21.067Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10144,8 +10144,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:56.271Z',
-  '2025-12-16T13:44:56.271Z'
+  '2025-12-16T14:04:21.067Z',
+  '2025-12-16T14:04:21.067Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10159,8 +10159,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:56.271Z',
-  '2025-12-16T13:44:56.271Z'
+  '2025-12-16T14:04:21.067Z',
+  '2025-12-16T14:04:21.067Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10179,8 +10179,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:56.271Z',
-  '2025-12-16T13:44:56.271Z'
+  '2025-12-16T14:04:21.067Z',
+  '2025-12-16T14:04:21.067Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10194,8 +10194,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:56.271Z',
-  '2025-12-16T13:44:56.271Z'
+  '2025-12-16T14:04:21.067Z',
+  '2025-12-16T14:04:21.067Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10214,8 +10214,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:56.271Z',
-  '2025-12-16T13:44:56.271Z'
+  '2025-12-16T14:04:21.067Z',
+  '2025-12-16T14:04:21.067Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10229,8 +10229,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10249,8 +10249,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10264,8 +10264,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10284,8 +10284,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10299,8 +10299,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10319,8 +10319,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10334,8 +10334,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10354,8 +10354,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10369,8 +10369,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10389,8 +10389,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10404,8 +10404,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10424,8 +10424,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10439,8 +10439,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10459,8 +10459,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10474,8 +10474,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10494,8 +10494,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10509,8 +10509,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10529,8 +10529,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10544,8 +10544,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10564,8 +10564,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10579,8 +10579,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10599,8 +10599,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.333Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10614,8 +10614,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10634,8 +10634,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.333Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10649,8 +10649,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10669,8 +10669,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10684,8 +10684,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10704,8 +10704,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10719,8 +10719,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10739,8 +10739,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10754,8 +10754,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10774,8 +10774,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10789,8 +10789,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10809,8 +10809,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10824,8 +10824,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10844,8 +10844,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10859,8 +10859,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10879,8 +10879,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10894,8 +10894,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10914,8 +10914,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10929,8 +10929,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10949,8 +10949,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10964,8 +10964,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -10984,8 +10984,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -10999,8 +10999,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -11019,8 +11019,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
@@ -11034,8 +11034,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -11054,8 +11054,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T13:44:58.334Z',
-  '2025-12-16T13:44:58.334Z'
+  '2025-12-16T14:04:23.139Z',
+  '2025-12-16T14:04:23.139Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   jersey_number = COALESCE(EXCLUDED.jersey_number, players.jersey_number),
