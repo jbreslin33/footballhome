@@ -844,8 +844,8 @@ CREATE TABLE practices (
 -- Matches table (extends events for competitive games)
 CREATE TABLE matches (
     id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
-    home_team_id UUID NOT NULL REFERENCES teams(id),
-    away_team_id UUID NOT NULL REFERENCES teams(id),
+    home_team_id UUID REFERENCES teams(id),
+    away_team_id UUID REFERENCES teams(id),
     home_away_status_id UUID NOT NULL REFERENCES home_away_statuses(id),
     competition_name VARCHAR(100),             -- 'Premier League', 'Cup Final'
     competition_round VARCHAR(50),             -- 'Quarter Final', 'Group Stage'
@@ -862,7 +862,8 @@ CREATE TABLE matches (
     red_cards INTEGER DEFAULT 0,
     kick_off_time TIME,                       -- Actual kick-off time
     full_time_time TIME,                      -- When match ended
-    CONSTRAINT different_teams CHECK (home_team_id != away_team_id)
+    CONSTRAINT different_teams CHECK (home_team_id IS NULL OR away_team_id IS NULL OR home_team_id != away_team_id),
+    CONSTRAINT at_least_one_team CHECK (home_team_id IS NOT NULL OR away_team_id IS NOT NULL)
 );
 
 -- ========================================
