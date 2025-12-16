@@ -1,11 +1,11 @@
 -- CASA Teams
--- Generated at: 2025-12-16T16:00:55.059Z
+-- Generated at: 2025-12-16T17:15:28.075Z
 
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '0000611f-ee9e-4288-8d0e-d3250a6b7aac',
+  '1ae28486-6def-431e-8d1c-4af9ea56a3fd',
   'Adé United FC',
-  '58049ce0-2df3-4c6f-8791-bac03a5a5280',
+  'e682b07d-a81a-4a9c-85b3-a9f6b4d22403',
   '9f708557-d2bf-4192-82f5-9ea58a3978cc',
   NULL,
   NULL,
@@ -15,8 +15,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:49.245Z',
-  '2025-12-16T15:59:49.245Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -25,9 +25,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  'c6d0a80d-bbd1-4506-83ed-271f6efab6d7',
+  '3bf9c8b4-1edf-42d6-8b8f-63d248c1ea92',
   'Oaklyn United FC II',
-  '89d12bd6-4687-499a-84b8-bd15cfc76bb5',
+  'd0f58266-b474-4d1f-8221-7e47736867a0',
   '9f708557-d2bf-4192-82f5-9ea58a3978cc',
   NULL,
   NULL,
@@ -37,8 +37,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:49.245Z',
-  '2025-12-16T15:59:49.245Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -47,9 +47,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '54833b52-b5f9-4ed2-8b65-ce99d5d3aeb3',
+  '986cc709-88f7-4923-8404-ec24350a0bcd',
   'Philadelphia Sierra Stars',
-  '107cd7a3-447e-460e-85c9-39257a4008c4',
+  'f35b58d7-6586-40f4-8ac9-da0fe8c02126',
   '9f708557-d2bf-4192-82f5-9ea58a3978cc',
   NULL,
   NULL,
@@ -59,8 +59,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -69,9 +69,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '2cc098cc-4723-4cbe-8892-4013b8d8da6a',
+  '79571455-9a4b-4e3e-8a40-bc5fefa21a1c',
   'Persepolis FC',
-  'b8d87d7b-5a29-498d-8009-0cf1e159ea2c',
+  'c32fbb43-2070-416b-80ff-9b24228e95d6',
   '9f708557-d2bf-4192-82f5-9ea58a3978cc',
   NULL,
   NULL,
@@ -81,8 +81,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -91,9 +91,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '973cfd4d-e110-40f6-8bd4-8a730f7e5ca6',
+  '7b5fcaec-c079-4132-8087-de29ad6ff2db',
   'Phoenix SCM',
-  'a8c80a9c-f5e4-41a6-868c-ce862fc01d47',
+  '99af25a0-d197-414b-89fe-6839d8de852b',
   '9f708557-d2bf-4192-82f5-9ea58a3978cc',
   NULL,
   NULL,
@@ -103,8 +103,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -113,9 +113,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '1d7fc937-ae4c-4084-8a53-ad1f6df662a2',
+  '62f6fce0-9646-4dc4-802b-fbd4bf066b0e',
   'Philly BlackStars',
-  'd36abbb8-b496-4f48-885f-feac11f869a7',
+  'e301f3dd-ebc7-49c0-8039-3638a4c45294',
   '9f708557-d2bf-4192-82f5-9ea58a3978cc',
   NULL,
   NULL,
@@ -125,8 +125,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -135,9 +135,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '6c9e49e0-1101-40bb-83fd-0f4a45f59d80',
+  '7bf6867b-ae73-42ee-82dc-ce4b3502b828',
   'Illyrians FC',
-  '4162a632-99d8-4c8e-8d8a-99d5c886f29d',
+  '6a033594-743d-4150-8c28-0b19dce38563',
   '9f708557-d2bf-4192-82f5-9ea58a3978cc',
   NULL,
   NULL,
@@ -147,8 +147,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -157,9 +157,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '0ba654a6-3f06-4b64-8ff4-d988bc8aed4d',
+  'de13b049-e584-4672-84e3-a24668a88c57',
   'Lighthouse Boys Club',
-  '53fc92be-bae0-45dc-8e68-a2d3cb6b81e7',
+  '105ab0d0-6d89-4e8b-8c4b-ce637c610e1c',
   '9f708557-d2bf-4192-82f5-9ea58a3978cc',
   NULL,
   NULL,
@@ -169,8 +169,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -179,9 +179,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '6d10865d-cebf-47df-8be4-91941848efd9',
+  '003dd334-88bf-4682-857f-b0571daa11ac',
   'Persepolis United FC II',
-  '8513743c-672a-4985-8103-575f958fb132',
+  '0e55b2d6-1109-472d-8bb3-a15b1c53ef7a',
   'bfa1da60-e9cf-4677-80ad-3c98a240f75f',
   NULL,
   NULL,
@@ -191,8 +191,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:57.267Z',
-  '2025-12-16T15:59:57.267Z'
+  '2025-12-16T17:14:35.213Z',
+  '2025-12-16T17:14:35.213Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -201,9 +201,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '866dd3f1-efde-4c39-86a2-413c32fce962',
+  'b8dcec03-3f55-44cc-838a-d50739f9b342',
   'Phoenix SCR',
-  'b551aad3-5b40-4fa4-897f-da9302a02ff4',
+  '56c8c4d4-a468-4c91-8dfd-89078e05a424',
   'bfa1da60-e9cf-4677-80ad-3c98a240f75f',
   NULL,
   NULL,
@@ -213,8 +213,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:57.268Z',
-  '2025-12-16T15:59:57.268Z'
+  '2025-12-16T17:14:35.213Z',
+  '2025-12-16T17:14:35.213Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -223,9 +223,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '32c5507a-28d4-425d-8e9e-2a8021d8d47c',
+  '089b437b-dcc8-4004-8136-0b2efeec1a5e',
   'Philadelphia SC II',
-  '5952c361-acd9-4e76-8837-58cea99937f1',
+  '0e98871f-efed-42f2-8610-33a88dfffa24',
   'bfa1da60-e9cf-4677-80ad-3c98a240f75f',
   NULL,
   NULL,
@@ -235,8 +235,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:57.268Z',
-  '2025-12-16T15:59:57.268Z'
+  '2025-12-16T17:14:35.213Z',
+  '2025-12-16T17:14:35.213Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -245,9 +245,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '40b68e65-765b-4ed3-88d8-5629903f1060',
+  'cbb53b2c-26ce-488f-8c6f-3c589fadddbe',
   'Lighthouse Old Timers Club',
-  '65cce3c8-1964-4832-8929-9047ad2a7ab2',
+  '6362c82a-4383-4d2f-8ecc-8b0e87ab1788',
   'bfa1da60-e9cf-4677-80ad-3c98a240f75f',
   NULL,
   NULL,
@@ -257,8 +257,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:57.268Z',
-  '2025-12-16T15:59:57.268Z'
+  '2025-12-16T17:14:35.213Z',
+  '2025-12-16T17:14:35.213Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -267,9 +267,9 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  'a8da746e-cc91-487f-8c51-11514cd9ccdb',
+  'ff392ab7-84c1-4113-8e15-5e9c15eee3cb',
   'Club de Futbol Armada',
-  '3f74a3bc-8b77-4ad7-814e-d9e6041169fe',
+  '92dfb780-1b14-4127-855b-2abedb3fc592',
   'bfa1da60-e9cf-4677-80ad-3c98a240f75f',
   NULL,
   NULL,
@@ -279,8 +279,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:59:57.268Z',
-  '2025-12-16T15:59:57.268Z'
+  '2025-12-16T17:14:35.213Z',
+  '2025-12-16T17:14:35.213Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,

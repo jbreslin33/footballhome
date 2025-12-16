@@ -1,5 +1,5 @@
 -- APSL League
--- Generated at: 2025-12-16T15:59:40.891Z
+-- Generated at: 2025-12-16T17:14:18.557Z
 
 INSERT INTO leagues (id, name, display_name, sport_id, season, description, logo_url, website, contact_email, contact_phone, is_active, created_at, updated_at)
 VALUES (
@@ -14,8 +14,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-16T15:58:12.712Z',
-  '2025-12-16T15:58:12.712Z'
+  '2025-12-16T17:12:49.189Z',
+  '2025-12-16T17:12:49.189Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,

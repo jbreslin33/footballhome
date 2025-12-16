@@ -1,9 +1,9 @@
 -- CASA Clubs
--- Generated at: 2025-12-16T16:00:55.057Z
+-- Generated at: 2025-12-16T17:15:28.073Z
 
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  'a3c030a1-81c5-4c4e-8150-c90b89d50d66',
+  'd4919747-10b7-480b-8992-daaa784d5a13',
   'Adé United FC',
   'Adé United FC',
   'ad-united-fc',
@@ -20,8 +20,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:49.244Z',
-  '2025-12-16T15:59:49.245Z'
+  '2025-12-16T17:14:27.349Z',
+  '2025-12-16T17:14:27.351Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -43,7 +43,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  'aaee9b96-1eb7-4edf-851d-fe7e9ab764cf',
+  '7020080f-095e-487e-8989-f484f640900d',
   'Oaklyn United FC II',
   'Oaklyn United FC II',
   'oaklyn-united-fc-ii',
@@ -60,8 +60,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:49.245Z',
-  '2025-12-16T15:59:49.245Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -83,7 +83,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  'ae3183e0-c581-40a9-8a86-dcd387c002a2',
+  '5846de6d-db0a-411f-877d-d5434ce689f8',
   'Philadelphia Sierra Stars',
   'Philadelphia Sierra Stars',
   'philadelphia-sierra-stars',
@@ -100,8 +100,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -123,7 +123,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  '0c584a6b-5a57-4e40-8211-085f97a0c955',
+  '45166977-281d-4a83-8e36-1d73e13cafe5',
   'Persepolis FC',
   'Persepolis FC',
   'persepolis-fc',
@@ -140,8 +140,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -163,7 +163,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  '866a4f40-6218-43d5-8f54-c02a3c0c682e',
+  '6ea90c99-a637-4811-865f-ed0441331bb2',
   'Phoenix SCM',
   'Phoenix SCM',
   'phoenix-scm',
@@ -180,8 +180,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -203,7 +203,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  'a4f93014-00f2-4d18-8087-5c6923c6618a',
+  '48158d16-cbd1-4236-8f8e-c0b5524a171f',
   'Philly BlackStars',
   'Philly BlackStars',
   'philly-blackstars',
@@ -220,8 +220,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -243,7 +243,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  '7201fb67-e47a-4943-8695-b61dba13b32e',
+  '35a3bcbd-7397-47ee-836e-61e8f79a7f9f',
   'Illyrians FC',
   'Illyrians FC',
   'illyrians-fc',
@@ -260,8 +260,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -283,7 +283,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  'f3d0358a-871e-4246-8872-edcacb3ecb0d',
+  '555c3845-32c1-4d0f-8408-a73af2d063f1',
   'Lighthouse Boys Club',
   'Lighthouse Boys Club',
   'lighthouse-boys-club',
@@ -300,8 +300,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:49.246Z',
-  '2025-12-16T15:59:49.246Z'
+  '2025-12-16T17:14:27.352Z',
+  '2025-12-16T17:14:27.352Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -323,7 +323,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  '4aae8682-ae06-447d-8429-b5ba1ce98225',
+  'd4dd8adc-da97-4fd1-8813-df055df744db',
   'Persepolis United FC II',
   'Persepolis United FC II',
   'persepolis-united-fc-ii',
@@ -340,8 +340,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:57.267Z',
-  '2025-12-16T15:59:57.267Z'
+  '2025-12-16T17:14:35.213Z',
+  '2025-12-16T17:14:35.213Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -363,7 +363,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  '2b169aae-5fab-47da-849d-5cffcc568a85',
+  'd4c522c8-5fd7-4f1f-8492-d17235f5ad06',
   'Phoenix SCR',
   'Phoenix SCR',
   'phoenix-scr',
@@ -380,8 +380,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:57.267Z',
-  '2025-12-16T15:59:57.267Z'
+  '2025-12-16T17:14:35.213Z',
+  '2025-12-16T17:14:35.213Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -403,7 +403,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  'f82c71f4-4ef8-4280-858a-dc20faf05761',
+  '35e7bde5-fe74-4e1b-8ebc-279fc2c1bfe2',
   'Philadelphia SC II',
   'Philadelphia SC II',
   'philadelphia-sc-ii',
@@ -420,8 +420,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:57.268Z',
-  '2025-12-16T15:59:57.268Z'
+  '2025-12-16T17:14:35.213Z',
+  '2025-12-16T17:14:35.213Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -443,7 +443,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  'e9478fd5-433f-41d0-80ef-7a10145c9587',
+  '0cbce3a7-0e0b-45a6-8233-ee4eac102978',
   'Lighthouse Old Timers Club',
   'Lighthouse Old Timers Club',
   'lighthouse-old-timers-club',
@@ -460,8 +460,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:57.268Z',
-  '2025-12-16T15:59:57.268Z'
+  '2025-12-16T17:14:35.213Z',
+  '2025-12-16T17:14:35.213Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -483,7 +483,7 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
-  '69d1dd77-ad38-489c-840c-6eab211e87f0',
+  '5aa3d6f5-68d5-4218-8e49-566b6485639d',
   'Club de Futbol Armada',
   'Club de Futbol Armada',
   'club-de-futbol-armada',
@@ -500,8 +500,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-16T15:59:57.268Z',
-  '2025-12-16T15:59:57.268Z'
+  '2025-12-16T17:14:35.213Z',
+  '2025-12-16T17:14:35.213Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
