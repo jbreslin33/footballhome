@@ -7,10 +7,11 @@ const Team = require('../models/Team');
 const Player = require('../models/Player');
 const Match = require('../models/Match');
 const puppeteer = require('puppeteer');
+require('dotenv').config();
 
 /**
  * CASA League Scraper
- * Scrapes CASA Soccer League using Puppeteer for dynamic content + Google Sheets for rosters
+ * Scrapes CASA Soccer League using Puppeteer for standings and published Google Sheets HTML for rosters
  */
 class CasaScraper extends Scraper {
   constructor(mode = 'full', options = {}) {
@@ -32,10 +33,16 @@ class CasaScraper extends Scraper {
       liga2Schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9096430'
     };
     
-    // Google Sheets roster CSVs
-    this.rosterUrls = {
-      liga1: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmsWzjTsLR81d-eQTLDM4EnaqzqUOy5OcWLy1Lna1NYVFY7gOj0nZAQdIk99e99g/pub?gid=480494399&output=csv',
-      liga2: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQsDtR6AQPgThg1105AinjkLqHMaWgQfCFJuWqfEtadH41k5OSKYZ2Hqb0N-CnO2Q/pub?gid=310279135&output=csv'
+    // Published Google Sheets HTML URLs for rosters
+    this.rosterSheets = {
+      liga1: {
+        url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmsWzjTsLR81d-eQTLDM4EnaqzqUOy5OcWLy1Lna1NYVFY7gOj0nZAQdIk99e99g/pubhtml',
+        name: 'Philadelphia CASA Select Liga 1'
+      },
+      liga2: {
+        url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQsDtR6AQPgThg1105AinjkLqHMaWgQfCFJuWqfEtadH41k5OSKYZ2Hqb0N-CnO2Q/pubhtml',
+        name: 'Philadelphia CASA Select Liga 2'
+      }
     };
     
     // Services
@@ -130,8 +137,7 @@ class CasaScraper extends Scraper {
     try {
       this.log(`   Navigating to ${url}...`);
       await page.goto(url, { 
-        waitUntil: 'networkidle2',
-        timeout: 60000 
+        waitUntil: 'networkidle2'
       });
       
       // Wait for iframe to load
@@ -250,7 +256,7 @@ class CasaScraper extends Scraper {
     
     try {
       this.log(`   Navigating to schedule...`);
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+      await page.goto(url, { waitUntil: 'networkidle2' });
       
       // Wait for iframe to load
       await new Promise(resolve => setTimeout(resolve, 3000));
@@ -354,59 +360,215 @@ class CasaScraper extends Scraper {
   }
 
   async fetchRosters() {
-    this.log('\n👥 Fetching rosters from Google Sheets...');
+    this.log('👥 Fetching rosters from published Google Sheets...');
     
-    // Liga 1 roster
-    await this.fetchRosterFromCsv(this.rosterUrls.liga1, 'Liga 1');
+    // Fetch Liga 1 rosters (each tab = one team)
+    await this.fetchRostersFromPublishedSheet(
+      this.rosterSheets.liga1.url,
+      this.rosterSheets.liga1.name,
+      '9f708557-d2bf-4192-82f5-9ea58a3978cc' // Liga 1 division ID
+    );
     
-    // Liga 2 roster
-    await this.fetchRosterFromCsv(this.rosterUrls.liga2, 'Liga 2');
+    // Fetch Liga 2 rosters (each tab = one team)
+    await this.fetchRostersFromPublishedSheet(
+      this.rosterSheets.liga2.url,
+      this.rosterSheets.liga2.name,
+      'a8e19668-3cc0-4283-93e6-0fb69b4a4d33' // Liga 2 division ID
+    );
   }
 
-  async fetchRosterFromCsv(url, divisionName) {
+  async fetchRostersFromPublishedSheet(url, sheetName, divisionId) {
     try {
-      const rows = await this.csvFetcher.fetch(url);
+      this.log(`   Loading ${sheetName}...`);
       
-      if (rows.length === 0) {
-        this.logWarning(`No data in ${divisionName} roster CSV`);
-        return;
-      }
+      const page = await this.browser.newPage();
+      await page.goto(url, { waitUntil: 'networkidle2' });
       
-      // Skip header row
-      const dataRows = rows.slice(1);
-      
-      for (const row of dataRows) {
-        // Typical columns: First Name, Last Name, Jersey #, Position, etc.
-        const firstName = row[0]?.trim();
-        const lastName = row[1]?.trim();
-        const jerseyNumber = row[2]?.trim();
-        const position = row[3]?.trim();
+      // Extract tab data from JavaScript (items.push({name: "...", pageUrl: "...", gid: "..."}))
+      const tabs = await page.evaluate(() => {
+        // Parse the JavaScript items array from the page source
+        const scriptText = document.body.parentElement.innerHTML;
+        const itemsMatch = scriptText.match(/items\.push\({[^}]+}\);/g);
+        if (!itemsMatch) return [];
         
-        if (!firstName || !lastName) continue;
+        const tabs = [];
+        for (const match of itemsMatch) {
+          const nameMatch = match.match(/name:\s*"([^"]+)"/);
+          const urlMatch = match.match(/pageUrl:\s*"([^"]+)"/);
+          const gidMatch = match.match(/gid:\s*"([^"]+)"/);
+          
+          if (nameMatch && urlMatch && gidMatch) {
+            tabs.push({
+              name: nameMatch[1],
+              url: urlMatch[1].replace(/\\/g, ''),
+              gid: gidMatch[1]
+            });
+          }
+        }
+        return tabs;
+      });
+      
+      this.log(`   Found ${tabs.length} tabs in ${sheetName}`);
+      
+      // Process each tab
+      for (const tab of tabs) {
+        const teamName = tab.name;
         
-        // Check for duplicates
-        if (this.duplicateDetector.isDuplicate('player', { firstName, lastName }, ['firstName', 'lastName'])) {
+        // Skip template/hidden sheets
+        if (teamName.toLowerCase().includes('template')) {
           continue;
         }
         
-        const playerId = IdGenerator.fromComponents('player', firstName, lastName);
-        const player = new Player({
-          id: playerId,
-          first_name: firstName,
-          last_name: lastName,
-          jersey_number: jerseyNumber || null,
-          position: position || null
+        this.log(`      Processing ${teamName}...`);
+        
+        // Navigate to the tab's direct URL
+        await page.goto(tab.url, { waitUntil: 'networkidle2' });
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait for content to load
+        
+        // Find the team in our data (with fuzzy matching)
+        let teamId = null;
+        const normalizedTabName = this.normalizeTeamName(teamName);
+        
+        for (const [id, team] of this.data.teams.entries()) {
+          const normalizedTeamName = this.normalizeTeamName(team.name);
+          
+          // Exact match
+          if (normalizedTeamName === normalizedTabName) {
+            teamId = id;
+            break;
+          }
+          
+          // Partial match (either name contains the other)
+          if (normalizedTeamName.includes(normalizedTabName) || normalizedTabName.includes(normalizedTeamName)) {
+            teamId = id;
+            break;
+          }
+        }
+        
+        if (!teamId) {
+          this.logWarning(`      Team "${teamName}" not found in standings data (normalized: "${normalizedTabName}"), skipping roster`);
+          continue;
+        }
+        
+        // Extract headers and player data from table
+        const tableData = await page.$$eval('table tbody tr', rows => {
+          if (rows.length === 0) return { headers: [], players: [] };
+          
+          // Find the header row (contains "First Name" and "Last Name")
+          let headerRowIndex = -1;
+          let headers = [];
+          
+          for (let i = 0; i < rows.length; i++) {
+            const cells = Array.from(rows[i].querySelectorAll('td')).map(cell => cell.textContent.trim());
+            const text = cells.join(' ').toLowerCase();
+            if (text.includes('first name') && text.includes('last name')) {
+              headerRowIndex = i;
+              headers = cells.map(c => c.toLowerCase());
+              break;
+            }
+          }
+          
+          if (headerRowIndex === -1) return { headers: [], players: [] };
+          
+          // Extract player rows (everything after header row)
+          const players = [];
+          for (let i = headerRowIndex + 1; i < rows.length; i++) {
+            const cells = Array.from(rows[i].querySelectorAll('td')).map(cell => cell.textContent.trim());
+            if (cells.length > 0 && cells.some(c => c !== '')) {
+              players.push({ raw: cells });
+            }
+          }
+          
+          return { headers, players };
         });
         
-        this.data.players.set(playerId, player);
-        this.duplicateDetector.markSeen('player', { firstName, lastName }, ['firstName', 'lastName']);
+        const headers = tableData.headers;
+        const players = tableData.players;
+        
+        if (players.length === 0) {
+          this.logWarning(`      No players in ${teamName}`);
+          continue;
+        }
+        
+        // Parse players
+        let playerCount = 0;
+        for (const playerData of players) {
+          const cells = playerData.raw;
+          
+          // Map cells to fields using header names
+          const firstName = this.getCellValue(cells, headers, ['first name', 'firstname', 'first', 'name']);
+          const lastName = this.getCellValue(cells, headers, ['last name', 'lastname', 'last', 'surname']);
+          const jerseyNumber = this.getCellValue(cells, headers, ['jersey', 'jersey number', 'number', '#']);
+          const position = this.getCellValue(cells, headers, ['position', 'pos']);
+          
+          if (!firstName || !lastName) continue;
+          
+          // Check for duplicates
+          if (this.duplicateDetector.isDuplicate('player', { firstName, lastName }, ['firstName', 'lastName'])) {
+            continue;
+          }
+          
+          const playerId = IdGenerator.fromComponents('player', firstName, lastName);
+          const player = new Player({
+            id: playerId,
+            first_name: firstName,
+            last_name: lastName,
+            jersey_number: jerseyNumber || null,
+            position: position || null
+          });
+          
+          this.data.players.set(playerId, player);
+          this.duplicateDetector.markSeen('player', { firstName, lastName }, ['firstName', 'lastName']);
+          playerCount++;
+        }
+        
+        this.log(`      ✓ ${teamName}: ${playerCount} players`);
       }
       
-      this.log(`   ${divisionName}: ${dataRows.length} players`);
+      await page.close();
       
     } catch (error) {
-      this.logError(`Failed to fetch ${divisionName} roster`, error);
+      this.logError(`Failed to fetch rosters from ${sheetName}`, error);
     }
+  }
+  
+  // Helper to get cell value by trying multiple column names (case-insensitive)
+  getCellValue(cells, headers, possibleNames) {
+    for (const name of possibleNames) {
+      const index = headers.findIndex(h => h === name);
+      if (index !== -1 && cells[index]) {
+        return cells[index].trim();
+      }
+    }
+    return null;
+  }
+
+  // Normalize team names for matching (remove accents, special characters, standardize)
+  normalizeTeamName(name) {
+    let normalized = name
+      .toLowerCase()
+      .normalize('NFD') // Decompose accented characters
+      .replace(/[\u0300-\u036f]/g, ''); // Remove diacritics
+    
+    // Expand common abbreviations BEFORE removing suffixes
+    normalized = normalized
+      .replace(/\bphila\b/g, 'philadelphia')
+      .replace(/\bphl\b/g, 'philadelphia')
+      .replace(/\bphilly\b/g, 'philadelphia')
+      .replace(/\bcf\b/g, 'club de futbol')
+      .replace(/\bpsc\b/g, 'philadelphia');
+    
+    // Remove common team suffixes and variations (multiple passes)
+    const suffixes = ['fc', 'sc', 'united', 'ii', 'i', 'club', 'scm', 'scr', 'de futbol', 'soccer'];
+    for (const suffix of suffixes) {
+      normalized = normalized.replace(new RegExp(`\\s+${suffix}\\b`, 'gi'), '');
+    }
+    
+    // Remove spaces between words for compound names
+    normalized = normalized
+      .replace(/black\s+stars/g, 'blackstars');
+    
+    return normalized.replace(/\s+/g, ' ').trim();
   }
 
   async transformData() {
@@ -478,7 +640,9 @@ class CasaScraper extends Scraper {
 
   async cleanup() {
     if (this.browser) {
+      this.log('Closing browser...');
       await this.browser.close();
+      this.log('Browser closed');
     }
   }
 

@@ -96,6 +96,9 @@ async function main() {
     // Run the scraper
     await instance.scrape();
     
+    // Explicitly exit after successful scrape (Puppeteer can keep event loop alive)
+    process.exit(0);
+    
   } catch (error) {
     console.error('\n❌ Fatal error:', error.message);
     console.error(error.stack);
