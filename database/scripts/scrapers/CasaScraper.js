@@ -258,8 +258,9 @@ class CasaScraper extends Scraper {
       this.log(`   Navigating to schedule...`);
       await page.goto(url, { waitUntil: 'networkidle2' });
       
-      // Wait for iframe to load
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Wait longer for iframe content to load (schedule loads slower than standings)
+      this.log(`   Waiting for iframe content to load...`);
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       // Find the frame with schedule data
       const frames = page.frames();
@@ -278,25 +279,129 @@ class CasaScraper extends Scraper {
         return;
       }
       
-      this.log(`   Found schedule iframe`);
+      this.log(`   Found schedule iframe: ${scheduleFrame.url()}`);
       
-      // Extract match data from iframe
-      const rawRows = await scheduleFrame.evaluate(() => {
-        const rows = [];
-        const tableRows = document.querySelectorAll('table tbody tr');
-        tableRows.forEach(row => {
-          const text = row.innerText || row.textContent;
-          if (text && text.trim()) {
-            rows.push(text.trim());
-          }
-        });
-        return rows;
+      // Check what's actually in the iframe without waiting for table
+      const frameContent = await scheduleFrame.evaluate(() => {
+        const html = document.body.innerHTML;
+        const text = document.body.innerText || document.body.textContent;
+        
+        return {
+          htmlLength: html.length,
+          textLength: text.length,
+          textPreview: text.substring(0, 500),
+          htmlPreview: html.substring(0, 1000),
+          hasTable: document.querySelectorAll('table').length > 0,
+          hasDivs: document.querySelectorAll('div').length,
+          hasSchedule: text.toLowerCase().includes('schedule'),
+          hasNoGames: text.toLowerCase().includes('no games') || text.toLowerCase().includes('no matches')
+        };
       });
+      
+      this.log(`   Iframe content: ${frameContent.textLength} chars, ${frameContent.hasDivs} divs, table=${frameContent.hasTable}`);
+      
+      if (frameContent.hasNoGames) {
+        this.logWarning(`Schedule appears empty (no games published)`);
+        return;
+      }
+      
+      // Schedule uses div-based structure, not tables
+      // Extract match data from divs (different from standings approach)
+      const matchData = await scheduleFrame.evaluate(() => {
+        const data = [];
+        
+        // Get all text content and split by newlines
+        const text = document.body.innerText || document.body.textContent;
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+        
+        // Parse matches - looking for date pattern followed by teams
+        let currentDate = '';
+        let currentTime = '';
+        let i = 0;
+        
+        while (i < lines.length) {
+          const line = lines[i];
+          
+          // Check if this is a date line (e.g., "Sun Nov 9", "Mon Dec 15")
+          if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+[A-Z][a-z]+\s+\d{1,2}$/.test(line)) {
+            currentDate = line;
+            i++;
+            
+            // Next line is usually the time
+            if (i < lines.length && /\d{1,2}:\d{2}\s+(AM|PM|EST|EDT)/.test(lines[i])) {
+              currentTime = lines[i];
+              i++;
+            }
+            
+            // Skip "FINAL", "SCHEDULED", etc status lines
+            while (i < lines.length && /^(FINAL|SCHEDULED|POSTPONED|CANCELLED)$/.test(lines[i])) {
+              i++;
+            }
+            
+            // Next two non-empty lines should be team names
+            let homeTeam = '';
+            let awayTeam = '';
+            let score = '';
+            
+            // Get home team (skip lines with just parentheses/records)
+            while (i < lines.length) {
+              if (lines[i] && !lines[i].match(/^\([0-9\s\-]+\)$/) && !lines[i].match(/^\d+\s*-\s*\d+$/)) {
+                homeTeam = lines[i];
+                i++;
+                break;
+              }
+              i++;
+            }
+            
+            // Skip record in parentheses
+            if (i < lines.length && lines[i].match(/^\([0-9\s\-]+\)$/)) {
+              i++;
+            }
+            
+            // Get score if present
+            if (i < lines.length && lines[i].match(/^\d+\s*-\s*\d+$/)) {
+              score = lines[i];
+              i++;
+            }
+            
+            // Skip "Game recap" or similar
+            if (i < lines.length && lines[i].toLowerCase().includes('recap')) {
+              i++;
+            }
+            
+            // Get away team
+            while (i < lines.length) {
+              if (lines[i] && !lines[i].match(/^\([0-9\s\-]+\)$/) && !lines[i].match(/^\d+\s*-\s*\d+$/)) {
+                awayTeam = lines[i];
+                i++;
+                break;
+              }
+              i++;
+            }
+            
+            if (homeTeam && awayTeam && currentDate) {
+              data.push({
+                date: currentDate,
+                time: currentTime,
+                homeTeam: homeTeam,
+                awayTeam: awayTeam,
+                score: score
+              });
+            }
+          } else {
+            i++;
+          }
+        }
+        
+        return data;
+      });
+      
+      this.log(`   Extracted ${matchData.length} matches from schedule`);
       
       // Parse matches
       let matchCount = 0;
-      for (const rowData of rawRows) {
-        const match = this.parseMatchRow(rowData, divisionName);
+      for (const matchInfo of matchData) {
+        const match = this.parseMatchFromDiv(matchInfo, divisionName);
         if (match) {
           this.data.matches.set(match.event_id, match);
           matchCount++;
@@ -312,27 +417,113 @@ class CasaScraper extends Scraper {
     }
   }
 
-  parseMatchRow(rowData, divisionName) {
+  parseMatchFromDiv(matchInfo, divisionName) {
+    // matchInfo: { date, time, homeTeam, awayTeam, score }
+    const { date, time, homeTeam, awayTeam, score } = matchInfo;
+    
+    if (!date || !homeTeam || !awayTeam) {
+      return null;
+    }
+    
+    // Find matching teams using normalization
+    const teamNames = Array.from(this.data.teams.values()).map(t => t.name);
+    
+    const findTeam = (name) => {
+      return teamNames.find(teamName => {
+        const normalized1 = this.normalizeTeamName(teamName);
+        const normalized2 = this.normalizeTeamName(name);
+        return normalized1 === normalized2 || 
+               normalized1.includes(normalized2) || 
+               normalized2.includes(normalized1);
+      });
+    };
+    
+    const matchedHome = findTeam(homeTeam);
+    const matchedAway = findTeam(awayTeam);
+    
+    if (!matchedHome || !matchedAway) {
+      this.logWarning(`Could not match teams: "${homeTeam}" vs "${awayTeam}"`);
+      return null;
+    }
+    
+    // Find team IDs
+    const homeTeamObj = Array.from(this.data.teams.values()).find(t => t.name === matchedHome);
+    const awayTeamObj = Array.from(this.data.teams.values()).find(t => t.name === matchedAway);
+    
+    if (!homeTeamObj || !awayTeamObj) {
+      return null;
+    }
+    
+    // Parse date and time into a timestamp
+    const eventDateTime = time ? `${date} ${time}` : date;
+    
+    const eventId = IdGenerator.fromComponents('casa', 'match', date, matchedHome, matchedAway);
+    
+    return new Match({
+      event_id: eventId,
+      name: `${matchedHome} vs ${matchedAway}`,
+      event_type_id: '550e8400-e29b-41d4-a716-446655440402', // MATCH_EVENT_TYPE_ID
+      start_time: eventDateTime,
+      home_team_id: homeTeamObj.id,
+      away_team_id: awayTeamObj.id,
+      created_by: '77d77471-1250-47e0-81ab-d4626595d63c',
+      source_app_id: '550e8400-e29b-41d4-a716-446655440311',
+      external_source: 'casa'
+    });
+  }
+
+  parseMatchRow(parts, divisionName) {
+    // parts is an array: [Date, Home Team, Away Team, Time, Location...]
+    // We need at least date, home team, and away team
+    if (!parts || parts.length < 3) {
+      return null;
+    }
+    
     let dateText = '';
     let homeText = '';
     let awayText = '';
+    let timeText = '';
     
-    // Find team names and date in row
-    for (const text of rowData) {
-      // Check if it's a team name
-      const isTeam = Array.from(this.data.teams.values()).some(t => t.name === text);
-      if (isTeam) {
-        if (!homeText) homeText = text;
-        else if (!awayText) awayText = text;
+    // Find date (MM/DD or MM-DD format)
+    for (const part of parts) {
+      if (!dateText && /\d{1,2}[\/-]\d{1,2}/.test(part)) {
+        dateText = part;
+        break;
+      }
+    }
+    
+    // Find team names - check against our known teams
+    const teamNames = Array.from(this.data.teams.values()).map(t => t.name);
+    
+    for (const part of parts) {
+      // Skip if this is the date
+      if (part === dateText) continue;
+      
+      // Check if this matches any team name (exact or partial match)
+      const matchedTeam = teamNames.find(name => {
+        const normalized1 = this.normalizeTeamName(name);
+        const normalized2 = this.normalizeTeamName(part);
+        return normalized1 === normalized2 || 
+               normalized1.includes(normalized2) || 
+               normalized2.includes(normalized1);
+      });
+      
+      if (matchedTeam) {
+        if (!homeText) {
+          homeText = matchedTeam;
+        } else if (!awayText && matchedTeam !== homeText) {
+          awayText = matchedTeam;
+        }
       }
       
-      // Check if it's a date (MM/DD or MM-DD format)
-      if (!dateText && /\d{1,2}[\/-]\d{1,2}/.test(text)) {
-        dateText = text;
+      // Check for time (HH:MM AM/PM format)
+      if (!timeText && /\d{1,2}:\d{2}\s*(AM|PM|am|pm)?/.test(part)) {
+        timeText = part;
       }
     }
     
     if (!dateText || !homeText || !awayText) {
+      this.logWarning(`Could not parse match row: ${parts.join(' | ')}`);
       return null;
     }
     
@@ -341,7 +532,14 @@ class CasaScraper extends Scraper {
     const awayTeam = Array.from(this.data.teams.values()).find(t => t.name === awayText);
     
     if (!homeTeam || !awayTeam) {
+      this.logWarning(`Could not find teams: ${homeText} vs ${awayText}`);
       return null;
+    }
+    
+    // Parse date and time
+    let eventDateTime = dateText;
+    if (timeText) {
+      eventDateTime = `${dateText} ${timeText}`;
     }
     
     const eventId = IdGenerator.fromComponents('casa', 'match', dateText, homeText, awayText);
@@ -350,7 +548,7 @@ class CasaScraper extends Scraper {
       event_id: eventId,
       name: `${homeText} vs ${awayText}`,
       event_type_id: '550e8400-e29b-41d4-a716-446655440402', // MATCH_EVENT_TYPE_ID
-      start_time: dateText,
+      start_time: eventDateTime,
       home_team_id: homeTeam.id,
       away_team_id: awayTeam.id,
       created_by: '77d77471-1250-47e0-81ab-d4626595d63c',
