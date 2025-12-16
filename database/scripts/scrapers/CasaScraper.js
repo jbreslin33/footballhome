@@ -3,6 +3,8 @@ const CsvFetcher = require('../fetchers/CsvFetcher');
 const IdGenerator = require('../services/IdGenerator');
 const SqlGenerator = require('../services/SqlGenerator');
 const DuplicateDetector = require('../services/DuplicateDetector');
+const Club = require('../models/Club');
+const SportDivision = require('../models/SportDivision');
 const Team = require('../models/Team');
 const Player = require('../models/Player');
 const Match = require('../models/Match');
@@ -202,17 +204,18 @@ class CasaScraper extends Scraper {
         
         // Create club
         if (!this.data.clubs.has(clubId)) {
-          this.data.clubs.set(clubId, {
+          const club = new Club({
             id: clubId,
             name: teamName,
             display_name: teamName,
             slug: this.slugify(teamName)
           });
+          this.data.clubs.set(clubId, club);
         }
         
         // Create sport division
         if (!this.data.sportDivisions.has(sportDivId)) {
-          this.data.sportDivisions.set(sportDivId, {
+          const sportDiv = new SportDivision({
             id: sportDivId,
             club_id: clubId,
             sport_id: this.sportId,
@@ -220,6 +223,7 @@ class CasaScraper extends Scraper {
             display_name: teamName,
             slug: this.slugify(teamName)
           });
+          this.data.sportDivisions.set(sportDivId, sportDiv);
         }
         
         // Create team

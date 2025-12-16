@@ -3,40 +3,38 @@ const SqlGenerator = require('../services/SqlGenerator');
 /**
  * League Model
  * Represents a sports league (e.g., APSL, CASA)
+ * Schema: id, name, display_name, sport_id, season, description, logo_url, website, contact_email, contact_phone, is_active, created_at, updated_at
  */
 class League {
   constructor(data) {
     this.id = data.id;
     this.name = data.name;
     this.display_name = data.display_name || data.name;
-    this.slug = data.slug || this.generateSlug(data.name);
     this.sport_id = data.sport_id;
-    this.country = data.country || 'United States';
-    this.region = data.region || null;
-    this.level = data.level || null;
+    this.season = data.season || null;
+    this.description = data.description || null;
+    this.logo_url = data.logo_url || null;
+    this.website = data.website || null;
+    this.contact_email = data.contact_email || null;
+    this.contact_phone = data.contact_phone || null;
     this.is_active = data.is_active !== false;
     this.created_at = data.created_at || new Date().toISOString();
     this.updated_at = data.updated_at || new Date().toISOString();
   }
 
-  generateSlug(name) {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
-  }
-
   toSQL() {
-    return `INSERT INTO leagues (id, name, display_name, slug, sport_id, country, region, level, is_active, created_at, updated_at)
+    return `INSERT INTO leagues (id, name, display_name, sport_id, season, description, logo_url, website, contact_email, contact_phone, is_active, created_at, updated_at)
 VALUES (
   ${SqlGenerator.escape(this.id)},
   ${SqlGenerator.escape(this.name)},
   ${SqlGenerator.escape(this.display_name)},
-  ${SqlGenerator.escape(this.slug)},
   ${SqlGenerator.escape(this.sport_id)},
-  ${SqlGenerator.escape(this.country)},
-  ${SqlGenerator.escape(this.region)},
-  ${SqlGenerator.escape(this.level)},
+  ${SqlGenerator.escape(this.season)},
+  ${SqlGenerator.escape(this.description)},
+  ${SqlGenerator.escape(this.logo_url)},
+  ${SqlGenerator.escape(this.website)},
+  ${SqlGenerator.escape(this.contact_email)},
+  ${SqlGenerator.escape(this.contact_phone)},
   ${SqlGenerator.escape(this.is_active)},
   ${SqlGenerator.escape(this.created_at)},
   ${SqlGenerator.escape(this.updated_at)}
@@ -44,7 +42,13 @@ VALUES (
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
-  slug = EXCLUDED.slug,
+  season = EXCLUDED.season,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  is_active = EXCLUDED.is_active,
   updated_at = EXCLUDED.updated_at;`;
   }
 }

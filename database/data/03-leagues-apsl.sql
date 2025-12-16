@@ -1,22 +1,30 @@
 -- APSL League
--- Generated at: 2025-12-15T19:22:54.648Z
+-- Generated at: 2025-12-16T15:59:40.891Z
 
-INSERT INTO leagues (id, name, display_name, slug, sport_id, country, region, level, is_active, created_at, updated_at)
+INSERT INTO leagues (id, name, display_name, sport_id, season, description, logo_url, website, contact_email, contact_phone, is_active, created_at, updated_at)
 VALUES (
   '00000000-0000-0000-0001-000000000001',
   'APSL',
   'American Premier Soccer League',
-  'apsl',
   '550e8400-e29b-41d4-a716-446655440101',
-  'United States',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
   NULL,
   NULL,
   true,
-  '2025-12-15T19:20:37.128Z',
-  '2025-12-15T19:20:37.128Z'
+  '2025-12-16T15:58:12.712Z',
+  '2025-12-16T15:58:12.712Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   display_name = EXCLUDED.display_name,
-  slug = EXCLUDED.slug,
+  season = EXCLUDED.season,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  is_active = EXCLUDED.is_active,
   updated_at = EXCLUDED.updated_at;
