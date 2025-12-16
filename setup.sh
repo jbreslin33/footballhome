@@ -23,12 +23,6 @@ echo -e "${BLUE}Football Home - First-Time Setup${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
-# Check if running with sudo/root access
-if [ "$OS_TYPE" == "Linux" ] && [ "$EUID" -ne 0 ]; then
-    print_status "Requesting sudo access for package installation..."
-    sudo -v
-fi
-
 # Function to print status messages
 print_status() {
     echo -e "${BLUE}→${NC} $1"
@@ -49,13 +43,30 @@ print_error() {
 # Check if running on macOS or Linux
 OS_TYPE=$(uname -s)
 
+# Request sudo access early for Linux systems
+if [ "$OS_TYPE" == "Linux" ] && [ "$EUID" -ne 0 ]; then
+    print_status "Requesting sudo access for package installation..."
+    sudo -v
+fi
+
 # ============================================================
 # Step 0: Install curl if missing (needed for Docker install)
 # ============================================================
-if [ "$OS_TYPE" == "Linux" ] && ! command -v curl &> /dev/null; then
+if ! command -v curl &> /dev/null; then
     print_status "Installing curl (required for Docker installation)..."
-    sudo apt-get update > /dev/null 2>&1
-    sudo apt-get install -y curl > /dev/null 2>&1
+    
+    if [ "$OS_TYPE" == "Linux" ]; then
+        sudo apt-get update > /dev/null 2>&1
+        sudo apt-get install -y curl > /dev/null 2>&1
+    elif [ "$OS_TYPE" == "Darwin" ]; then
+        # curl should be pre-installed on macOS, but just in case
+        if ! command -v brew &> /dev/null; then
+            print_error "curl not found and Homebrew not available"
+            print_error "Please install Homebrew from: https://brew.sh"
+            exit 1
+        fi
+        brew install curl
+    fi
     print_success "curl installed"
 fi
 
@@ -81,9 +92,50 @@ if ! command -v docker &> /dev/null; then
         sudo systemctl start docker || true
         sudo systemctl enable docker || true
     elif [ "$OS_TYPE" == "Darwin" ]; then
-        print_error "Docker Desktop must be installed manually on macOS"
-        echo "Visit: https://docs.docker.com/desktop/install/mac-install/"
-        exit 1
+        if ! command -v brew &> /dev/null; then
+            print_error "Homebrew is required to install Docker Desktop"
+            echo ""
+            echo "Please install Homebrew first:"
+            echo "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+            echo ""
+            echo "Then re-run this setup script, or install Docker Desktop manually:"
+            echo "  https://docs.docker.com/desktop/install/mac-install/"
+            exit 1
+        fi
+        
+        print_status "Installing Docker Desktop via Homebrew..."
+        brew install --cask docker
+        
+        print_success "Docker Desktop installed"
+        print_warning "Please start Docker Desktop from Applications and wait for it to finish starting"
+        print_warning "Then re-run this setup script to continue"
+        echo ""
+        echo "Starting Docker Desktop now..."
+        open -a Docker
+        echo ""
+        echo "Waiting for Docker to start (this may take a minute)..."
+        
+        # Wait for Docker daemon to be ready (max 60 seconds)
+        for i in {1..60}; do
+            if docker ps &> /dev/null; then
+                print_success "Docker is now running!"
+                break
+            fi
+            sleep 1
+            echo -n "."
+        done
+        echo ""
+        
+        if ! docker ps &> /dev/null; then
+            print_warning "Docker Desktop is installed but not yet running"
+            echo ""
+            echo "Please:"
+            echo "  1. Make sure Docker Desktop has finished starting"
+            echo "  2. Accept any permission prompts"
+            echo "  3. Re-run this setup script"
+            echo ""
+            exit 1
+        fi
     else
         print_error "Unsupported operating system: $OS_TYPE"
         exit 1
@@ -105,9 +157,9 @@ if ! docker compose version &> /dev/null && ! command -v docker-compose &> /dev/
         sudo apt-get update
         sudo apt-get install -y docker-compose-plugin
     elif [ "$OS_TYPE" == "Darwin" ]; then
-        print_warning "Docker Compose should come with Docker Desktop"
-        print_error "Please reinstall Docker Desktop from https://docs.docker.com/desktop/install/mac-install/"
-        exit 1
+        print_status "Installing Docker Compose via Homebrew..."
+        brew install docker-compose
+        print_success "Docker Compose installed"
     fi
 else
     print_success "Docker Compose is installed"
@@ -127,11 +179,26 @@ if ! command -v node &> /dev/null; then
         sudo apt-get install -y nodejs
     elif [ "$OS_TYPE" == "Darwin" ]; then
         if ! command -v brew &> /dev/null; then
-            print_error "Homebrew not found. Please install from: https://brew.sh"
+            print_error "Homebrew not found"
+            echo ""
+            echo "Please install Homebrew first:"
+            echo "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+            echo ""
+            echo "Or visit: https://brew.sh"
             exit 1
         fi
         print_status "Installing Node.js via Homebrew..."
         brew install node@20
+        # Add node@20 to PATH if needed
+        if [[ ":$PATH:" != *":/opt/homebrew/opt/node@20/bin:"* ]] && [[ ":$PATH:" != *":/usr/local/opt/node@20/bin:"* ]]; then
+            if [ -d "/opt/homebrew/opt/node@20/bin" ]; then
+                echo 'export PATH="/opt/homebrew/opt/node@20/bin:$PATH"' >> ~/.zshrc
+                export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
+            elif [ -d "/usr/local/opt/node@20/bin" ]; then
+                echo 'export PATH="/usr/local/opt/node@20/bin:$PATH"' >> ~/.zshrc
+                export PATH="/usr/local/opt/node@20/bin:$PATH"
+            fi
+        fi
     fi
     print_success "Node.js installed: $(node --version)"
 else
@@ -195,22 +262,37 @@ fi
 # ============================================================
 print_status "Verifying Docker daemon..."
 
-# Try docker command (with sudo if needed)
+# Try docker command (with sudo if needed on Linux)
 DOCKER_CMD="docker"
 if ! docker ps &> /dev/null 2>&1; then
-    # If docker fails without sudo, try with sudo
-    if sudo docker ps &> /dev/null 2>&1; then
-        DOCKER_CMD="sudo docker"
-        print_warning "Docker requires sudo - permissions may need adjustment after login"
-    else
+    if [ "$OS_TYPE" == "Linux" ]; then
+        # If docker fails without sudo on Linux, try with sudo
+        if sudo docker ps &> /dev/null 2>&1; then
+            DOCKER_CMD="sudo docker"
+            print_warning "Docker requires sudo - permissions may need adjustment after login"
+        else
+            print_error "Docker daemon is not responding"
+            echo ""
+            echo "Try restarting Docker:"
+            echo "  sudo systemctl restart docker"
+            exit 1
+        fi
+    elif [ "$OS_TYPE" == "Darwin" ]; then
         print_error "Docker daemon is not responding"
         echo ""
-        echo "Try restarting Docker:"
-        echo "  sudo systemctl restart docker"
+        echo "Please ensure Docker Desktop is running:"
+        echo "  1. Open Docker Desktop from Applications"
+        echo "  2. Wait for Docker to fully start"
+        echo "  3. Re-run this setup script"
+        echo ""
         exit 1
     fi
 else
-    print_success "Docker is accessible without sudo"
+    if [ "$OS_TYPE" == "Linux" ]; then
+        print_success "Docker is accessible without sudo"
+    else
+        print_success "Docker is accessible"
+    fi
 fi
 
 print_success "Docker daemon is running and accessible"
