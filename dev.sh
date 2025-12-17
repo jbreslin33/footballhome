@@ -14,8 +14,8 @@
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Usage:
-#   ./dev.sh                                      # Full rebuild (uses committed SQL files, no scraping)
-#   ./dev.sh --refresh                            # Re-scrape all data, update SQL files, then rebuild
+#   ./dev.sh                                      # FULL REBUILD: Delete volumes/cache, rebuild from committed SQL files (no scraping)
+#   ./dev.sh --refresh                            # FULL REBUILD + Re-scrape all data, update SQL files, then rebuild
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Aggregate Flags (Convenience):
@@ -53,23 +53,19 @@
 #   ./dev.sh --groupme-old-timers-rsvps           # Lighthouse Old Timers Club Liga 2 game RSVPs
 #   ./dev.sh --venues                             # Scrape Google Places venues
 #   ./dev.sh --save                               # Export manual edits before rebuild
-#   ./dev.sh --replay-only                        # Fast rebuild from saved changes
 #
 # Typical Workflows:
 #   ./dev.sh
-#     → Daily development: Fast rebuild using committed SQL files
+#     → Daily development: Full rebuild (wipes DB, loads all SQL files from scratch)
 #
 #   ./dev.sh --refresh
-#     → Weekly update: Re-scrape all leagues + GroupMe, update SQL files, rebuild
+#     → Weekly update: Re-scrape all leagues + GroupMe, update SQL files, full rebuild
 #
 #   ./dev.sh --lighthouse
 #     → Lighthouse update: Re-scrape structure + rosters + schedules + GroupMe for 4 teams
 #
 #   ./dev.sh --apsl --casa
 #     → New season: Full APSL + CASA scrape (all teams)
-#
-#   ./dev.sh --replay-only
-#     → Quick rebuild: Fast rebuild from saved state (~10 seconds)
 
 set -e
 
@@ -131,7 +127,6 @@ GROUPME_OLD_TIMERS_EXTERNAL=false
 GROUPME_OLD_TIMERS_SCHEDULE=false
 GROUPME_OLD_TIMERS_RSVPS=false
 SAVE_MANUAL=false
-REPLAY_ONLY=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -283,9 +278,6 @@ for arg in "$@"; do
         --save)
             SAVE_MANUAL=true
             ;;
-        --replay-only)
-            REPLAY_ONLY=true
-            ;;
         --help|-h)
             echo "Football Home Development Script"
             echo ""
@@ -331,7 +323,6 @@ for arg in "$@"; do
             echo ""
             echo "Workflow Flags:"
             echo "  --save                                     Export manual edits before rebuild"
-            echo "  --replay-only                              Fast rebuild from saved changes (~10sec)"
             echo ""
             echo "Examples:"
             echo "  ./dev.sh --apsl --casa --save"
@@ -339,14 +330,11 @@ for arg in "$@"; do
             echo ""
             echo "  ./dev.sh --apsl-players-lighthouse --casa-players-lighthouse --groupme-training-lighthouse-external --groupme-training-lighthouse-schedule --save"
             echo "    → Weekly update: Lighthouse rosters + Training chat sync"
-            echo ""
-            echo "  ./dev.sh --replay-only"
-            echo "    → Daily development: Fast rebuild from saved state"
             exit 0
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --lighthouse, --apsl, --apsl-structure, --apsl-teams, --apsl-players, --apsl-lighthouse, --apsl-players-lighthouse, --apsl-schedule-lighthouse, --apsl-schedule, --casa, --casa-players, --casa-structure, --casa-players-lighthouse, --groupme, --groupme-apsl-external, --groupme-apsl-schedule, --groupme-apsl-rsvps, --groupme-training-lighthouse-external, --groupme-training-lighthouse-schedule, --groupme-training-lighthouse-rsvps, --groupme-boys-club-external, --groupme-boys-club-schedule, --groupme-boys-club-rsvps, --groupme-old-timers-external, --groupme-old-timers-schedule, --groupme-old-timers-rsvps, --venues, --save, --replay-only, --help"
+            echo "Valid options: --lighthouse, --apsl, --apsl-structure, --apsl-teams, --apsl-players, --apsl-lighthouse, --apsl-players-lighthouse, --apsl-schedule-lighthouse, --apsl-schedule, --casa, --casa-players, --casa-structure, --casa-players-lighthouse, --groupme, --groupme-apsl-external, --groupme-apsl-schedule, --groupme-apsl-rsvps, --groupme-training-lighthouse-external, --groupme-training-lighthouse-schedule, --groupme-training-lighthouse-rsvps, --groupme-boys-club-external, --groupme-boys-club-schedule, --groupme-boys-club-rsvps, --groupme-old-timers-external, --groupme-old-timers-schedule, --groupme-old-timers-rsvps, --venues, --save, --help"
             exit 1
             ;;
     esac
@@ -359,17 +347,13 @@ echo ""
 
 # Show plan
 echo -e "${YELLOW}📋 Plan:${NC}"
-if [ "$REPLAY_ONLY" = true ]; then
-    echo "  ✓ Fast rebuild from saved replay file (98-audit-replay.sql)"
-    echo "  ✓ Skip scraping, skip Docker rebuild, just restore database"
-elif [ "$SAVE_MANUAL" = true ]; then
+if [ "$SAVE_MANUAL" = true ]; then
     echo "  ✓ Save manual edits from running database (if available)"
 fi
-if [ "$REPLAY_ONLY" = false ]; then
-    echo "  ✓ Delete all containers and volumes"
-    echo "  ✓ Clear Docker build cache"
-    echo "  ✓ Rebuild all images (no cache)"
-fi
+echo "  ✓ Delete all containers and volumes (fresh database)"
+echo "  ✓ Clear Docker build cache"
+echo "  ✓ Rebuild all images (no cache)"
+echo "  ✓ All database init scripts will run (including admin data)"
 if [ -n "$APSL_SCRAPE_MODE" ]; then
     echo "  ✓ Scrape APSL (Mode: $APSL_SCRAPE_MODE)"
 fi
@@ -448,13 +432,8 @@ echo -e "${YELLOW}📦 Installing npm dependencies...${NC}"
 npm install --silent
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 1: SCRAPE (if requested, skip if replay-only)
+# STEP 1: SCRAPE (if requested)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-if [ "$REPLAY_ONLY" = true ]; then
-    echo -e "${YELLOW}⏭️  Skipping scrapers (replay-only mode)${NC}"
-    echo ""
-else
     # ──────────────────────────────────────────────────────────────────
     # APSL League Scraping (OOP)
     # ──────────────────────────────────────────────────────────────────
@@ -523,38 +502,29 @@ else
         echo -e "${GREEN}✓ Venue scraping complete${NC}"
         echo ""
     fi
-fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 2: CLEAN EVERYTHING (skip Docker rebuild in replay-only)
+# STEP 2: CLEAN EVERYTHING (ALWAYS - ensures fresh database on every run)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-if [ "$REPLAY_ONLY" = true ]; then
-    echo -e "${YELLOW}🧹 Step 2: Wiping database only (keeping Docker images)...${NC}"
-    $DOCKER_COMPOSE down -v 2>/dev/null || true
-    echo -e "${GREEN}✓ Database wiped${NC}"
-    echo ""
-else
-    echo -e "${YELLOW}🧹 Step 2: Cleaning up...${NC}"
-    $DOCKER_COMPOSE down -v 2>/dev/null || true
-    docker builder prune -af 2>/dev/null || true
-    echo -e "${GREEN}✓ Cleanup complete${NC}"
-    echo ""
-fi
+# ALWAYS do full cleanup: delete containers, volumes, and build cache
+# This ensures database init scripts (like 51-admins.sql, 75-club-admins.sql) run every time
+echo -e "${YELLOW}🧹 Step 2: Full cleanup (containers, volumes, build cache)...${NC}"
+echo "  ✓ Stopping and removing containers and volumes..."
+$DOCKER_COMPOSE down -v 2>/dev/null || true
+echo "  ✓ Clearing Docker build cache..."
+$DOCKER builder prune -af 2>/dev/null || true
+echo -e "${GREEN}✓ Cleanup complete (fresh start guaranteed)${NC}"
+echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 3: BUILD (skip in replay-only)
+# STEP 3: BUILD (ALWAYS)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-if [ "$REPLAY_ONLY" = false ]; then
-    echo -e "${YELLOW}🔨 Step 3: Building images (no cache)...${NC}"
-    $DOCKER_COMPOSE build --no-cache
-    echo -e "${GREEN}✓ Build complete${NC}"
-    echo ""
-else
-    echo -e "${YELLOW}⏭️  Step 3: Skipping Docker build (replay-only mode)${NC}"
-    echo ""
-fi
+echo -e "${YELLOW}🔨 Step 3: Building images (no cache)...${NC}"
+$DOCKER_COMPOSE build --no-cache
+echo -e "${GREEN}✓ Build complete${NC}"
+echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 4: START
