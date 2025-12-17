@@ -1,5 +1,5 @@
 -- CASA Clubs
--- Generated at: 2025-12-17T14:48:09.501Z
+-- Generated at: 2025-12-17T15:25:10.755Z
 
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
@@ -20,8 +20,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:53.279Z',
-  '2025-12-17T14:46:53.279Z'
+  '2025-12-17T15:24:12.885Z',
+  '2025-12-17T15:24:12.886Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -60,8 +60,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:53.280Z',
-  '2025-12-17T14:46:53.280Z'
+  '2025-12-17T15:24:12.886Z',
+  '2025-12-17T15:24:12.886Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -100,8 +100,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:53.281Z',
-  '2025-12-17T14:46:53.281Z'
+  '2025-12-17T15:24:12.886Z',
+  '2025-12-17T15:24:12.886Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -140,8 +140,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:53.281Z',
-  '2025-12-17T14:46:53.281Z'
+  '2025-12-17T15:24:12.887Z',
+  '2025-12-17T15:24:12.887Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -180,8 +180,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:53.282Z',
-  '2025-12-17T14:46:53.282Z'
+  '2025-12-17T15:24:12.887Z',
+  '2025-12-17T15:24:12.887Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -220,8 +220,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:53.282Z',
-  '2025-12-17T14:46:53.283Z'
+  '2025-12-17T15:24:12.887Z',
+  '2025-12-17T15:24:12.887Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -260,8 +260,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:53.283Z',
-  '2025-12-17T14:46:53.283Z'
+  '2025-12-17T15:24:12.887Z',
+  '2025-12-17T15:24:12.887Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -300,8 +300,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:53.283Z',
-  '2025-12-17T14:46:53.283Z'
+  '2025-12-17T15:24:12.887Z',
+  '2025-12-17T15:24:12.887Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -340,8 +340,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:59.397Z',
-  '2025-12-17T14:46:59.397Z'
+  '2025-12-17T15:24:19.056Z',
+  '2025-12-17T15:24:19.056Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -380,8 +380,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:59.397Z',
-  '2025-12-17T14:46:59.397Z'
+  '2025-12-17T15:24:19.056Z',
+  '2025-12-17T15:24:19.056Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -420,8 +420,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:59.397Z',
-  '2025-12-17T14:46:59.397Z'
+  '2025-12-17T15:24:19.056Z',
+  '2025-12-17T15:24:19.056Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -460,8 +460,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:59.397Z',
-  '2025-12-17T14:46:59.397Z'
+  '2025-12-17T15:24:19.056Z',
+  '2025-12-17T15:24:19.056Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -500,8 +500,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T14:46:59.397Z',
-  '2025-12-17T14:46:59.397Z'
+  '2025-12-17T15:24:19.056Z',
+  '2025-12-17T15:24:19.056Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
