@@ -38,6 +38,7 @@ void SqlFileLogger::initializeTableMap() {
     table_file_map_["matches"] = "30";
     table_file_map_["events"] = "30";
     table_file_map_["event_rsvps"] = "30";
+    table_file_map_["event_attendance"] = "30";
 }
 
 std::string SqlFileLogger::getFileSuffix() {

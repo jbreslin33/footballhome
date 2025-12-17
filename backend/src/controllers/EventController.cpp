@@ -1,4 +1,6 @@
 #include "EventController.h"
+#include "../database/SqlFileLogger.h"
+#include "../database/SqlBuilder.h"
 #include <sstream>
 #include <regex>
 #include <ctime>
@@ -1413,6 +1415,17 @@ Response EventController::handleUpdateAttendance(const Request& request) {
         if (result.empty()) {
             return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Attendance record not found"));
         }
+        
+        // Log to ##u or ##p file
+        std::map<std::string, std::string> columns = {
+            {"status_id", std::to_string(status_id)},
+            {"notes", notes}
+        };
+        if (!updated_by.empty()) {
+            columns["updated_by"] = updated_by;
+        }
+        std::string upsert_sql = SqlBuilder::buildUpsert("event_attendance", attendance_id, columns);
+        SqlFileLogger::log("event_attendance", upsert_sql);
         
         std::cout << "✅ Attendance updated: " << attendance_id << std::endl;
         
