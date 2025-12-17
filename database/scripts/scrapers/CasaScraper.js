@@ -802,6 +802,8 @@ class CasaScraper extends Scraper {
         data: this.data.conferences,
         options: {
           title: 'CASA Conferences',
+          tableName: 'league_conferences',
+          columns: ['id', 'league_id', 'name', 'display_name', 'slug', 'description', 'contact_email', 'contact_phone', 'is_active'],
           useInserts: true
         }
       },
@@ -810,6 +812,8 @@ class CasaScraper extends Scraper {
         data: this.data.divisions,
         options: {
           title: 'CASA League Divisions',
+          tableName: 'league_divisions',
+          columns: ['id', 'conference_id', 'name', 'display_name', 'slug', 'tier', 'hierarchy_group', 'skill_level', 'age_group', 'description', 'is_active'],
           useInserts: true
         }
       },

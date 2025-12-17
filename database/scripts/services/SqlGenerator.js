@@ -32,9 +32,14 @@ class SqlGenerator {
     // Generate SQL for each entity
     if (this.useInserts || options.useInserts) {
       // Traditional INSERT statements
-      for (const entity of entities) {
-        if (entity.toSQL) {
-          lines.push(entity.toSQL());
+      if (entities.length > 0 && options.tableName) {
+        lines.push(...this.generateInsertStatements(options.tableName, entities, options));
+      } else {
+        // Fallback to entity.toSQL() if no table name specified (legacy behavior)
+        for (const entity of entities) {
+          if (entity.toSQL) {
+            lines.push(entity.toSQL());
+          }
         }
       }
     } else {
@@ -54,6 +59,42 @@ class SqlGenerator {
       count: entities.length,
       size: Buffer.byteLength(lines.join('\n'), 'utf8')
     };
+  }
+
+  /**
+   * Generate INSERT statements with ON CONFLICT
+   */
+  generateInsertStatements(tableName, entities, options = {}) {
+    const lines = [];
+    const columns = options.columns || this.inferColumns(entities[0]);
+    const conflictColumn = options.conflictColumn || 'id';
+
+    // INSERT INTO statement
+    lines.push(`INSERT INTO ${tableName} (${columns.join(', ')})`);
+    lines.push('VALUES');
+
+    // Generate VALUES rows
+    const valueRows = entities.map(entity => {
+      if (entity.toSQL) {
+        return `  ${entity.toSQL()}`;
+      }
+      // Fallback: generate from entity properties
+      const values = columns.map(col => SqlGenerator.escape(entity[col]));
+      return `  (${values.join(', ')})`;
+    });
+
+    lines.push(valueRows.join(',\n'));
+
+    // ON CONFLICT clause
+    lines.push(`ON CONFLICT (${conflictColumn}) DO UPDATE SET`);
+    const updateClauses = columns
+      .filter(col => col !== conflictColumn && col !== 'created_at')
+      .map(col => `  ${col} = EXCLUDED.${col}`);
+    lines.push(updateClauses.join(',\n'));
+    lines.push(';');
+    lines.push('');
+
+    return lines;
   }
 
   /**
