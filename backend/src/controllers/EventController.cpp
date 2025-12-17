@@ -194,6 +194,18 @@ Response EventController::handleCreateEvent(const Request& request) {
         
         std::string inserted_event_id = event_result[0][0].c_str();
         
+        // Log event to ##u/##p file
+        std::map<std::string, std::string> event_columns;
+        event_columns["created_by"] = created_by;
+        event_columns["event_type_id"] = event_type_id;
+        event_columns["title"] = title;
+        if (!notes.empty()) event_columns["description"] = notes;
+        event_columns["event_date"] = event_datetime;
+        if (!venue_id.empty()) event_columns["venue_id"] = venue_id;
+        event_columns["duration_minutes"] = std::to_string(duration);
+        std::string event_upsert = SqlBuilder::buildUpsert("events", inserted_event_id, event_columns, "id");
+        SqlFileLogger::log("events", event_upsert);
+        
         // Insert into practices table (extends events)
         std::ostringstream practice_query;
         practice_query << "INSERT INTO practices (id, team_id, notes) ";
@@ -206,6 +218,13 @@ Response EventController::handleCreateEvent(const Request& request) {
         std::cout << "📊 Practice query: " << practice_query.str() << std::endl;
         
         db_->query(practice_query.str());
+        
+        // Log practice to ##u/##p file
+        std::map<std::string, std::string> practice_columns;
+        practice_columns["team_id"] = team_id;
+        if (!notes.empty()) practice_columns["notes"] = notes;
+        std::string practice_upsert = SqlBuilder::buildUpsert("practices", inserted_event_id, practice_columns, "id");
+        SqlFileLogger::log("events", practice_upsert);
         
         std::cout << "✅ Event created successfully: " << inserted_event_id << std::endl;
         
@@ -527,6 +546,18 @@ Response EventController::handleCreateMatch(const Request& request) {
         
         std::string inserted_event_id = event_result[0][0].c_str();
         
+        // Log event to ##u/##p file
+        std::map<std::string, std::string> event_columns;
+        event_columns["created_by"] = created_by;
+        event_columns["event_type_id"] = event_type_id;
+        event_columns["title"] = title;
+        if (!notes.empty()) event_columns["description"] = notes;
+        event_columns["event_date"] = event_datetime;
+        if (!venue_id.empty()) event_columns["venue_id"] = venue_id;
+        event_columns["duration_minutes"] = "120";
+        std::string event_upsert = SqlBuilder::buildUpsert("events", inserted_event_id, event_columns, "id");
+        SqlFileLogger::log("events", event_upsert);
+        
         // Insert into matches table (extends events)
         std::ostringstream match_query;
         match_query << "INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, competition_name, match_status) ";
@@ -542,6 +573,16 @@ Response EventController::handleCreateMatch(const Request& request) {
         std::cout << "📊 Match query: " << match_query.str() << std::endl;
         
         db_->query(match_query.str());
+        
+        // Log match to ##u/##p file
+        std::map<std::string, std::string> match_columns;
+        match_columns["home_team_id"] = home_team_id;
+        match_columns["away_team_id"] = away_team_id;
+        match_columns["home_away_status_id"] = home_away_status_id;
+        if (!competition_name.empty()) match_columns["competition_name"] = competition_name;
+        match_columns["match_status"] = match_status.empty() ? "scheduled" : match_status;
+        std::string match_upsert = SqlBuilder::buildUpsert("matches", inserted_event_id, match_columns, "id");
+        SqlFileLogger::log("matches", match_upsert);
         
         std::ostringstream result_json;
         result_json << "{\"id\":\"" << inserted_event_id << "\"}";
@@ -666,6 +707,15 @@ Response EventController::handleUpdateMatch(const Request& request) {
         
         db_->query(event_update.str());
         
+        // Log event update to ##u/##p file
+        std::map<std::string, std::string> event_columns;
+        event_columns["title"] = title;
+        event_columns["event_date"] = date + " " + start_time + ":00";
+        if (!venue_id.empty()) event_columns["venue_id"] = venue_id;
+        if (!notes.empty()) event_columns["description"] = notes;
+        std::string event_upsert = SqlBuilder::buildUpsert("events", match_id, event_columns, "id");
+        SqlFileLogger::log("events", event_upsert);
+        
         // Update matches table
         std::ostringstream match_update;
         match_update << "UPDATE matches SET ";
@@ -684,6 +734,17 @@ Response EventController::handleUpdateMatch(const Request& request) {
         match_update << " WHERE id = '" << match_id << "'";
         
         db_->query(match_update.str());
+        
+        // Log match update to ##u/##p file
+        std::map<std::string, std::string> match_columns;
+        match_columns["home_team_id"] = home_team_id;
+        match_columns["away_team_id"] = away_team_id;
+        if (!competition_name.empty()) match_columns["competition_name"] = competition_name;
+        match_columns["match_status"] = match_status.empty() ? "scheduled" : match_status;
+        if (!home_team_score.empty()) match_columns["home_team_score"] = home_team_score;
+        if (!away_team_score.empty()) match_columns["away_team_score"] = away_team_score;
+        std::string match_upsert = SqlBuilder::buildUpsert("matches", match_id, match_columns, "id");
+        SqlFileLogger::log("matches", match_upsert);
         
         std::string json = createJSONResponse(true, "Match updated successfully");
         return Response(HttpStatus::OK, json);
@@ -882,6 +943,15 @@ Response EventController::handleUpdateEvent(const Request& request) {
         
         pqxx::result result = db_->query(query.str());
         
+        // Log event update to ##u/##p file
+        std::map<std::string, std::string> event_columns;
+        if (!title.empty()) event_columns["title"] = title;
+        event_columns["event_date"] = event_datetime;
+        event_columns["duration_minutes"] = std::to_string(duration);
+        if (!venue_id.empty()) event_columns["venue_id"] = venue_id;
+        std::string event_upsert = SqlBuilder::buildUpsert("events", event_id, event_columns, "id");
+        SqlFileLogger::log("events", event_upsert);
+        
         // Update practices table notes
         std::ostringstream practice_query;
         practice_query << "UPDATE practices SET ";
@@ -889,6 +959,14 @@ Response EventController::handleUpdateEvent(const Request& request) {
         practice_query << "WHERE id = '" << event_id << "'";
         
         db_->query(practice_query.str());
+        
+        // Log practice update to ##u/##p file
+        if (!notes.empty()) {
+            std::map<std::string, std::string> practice_columns;
+            practice_columns["notes"] = notes;
+            std::string practice_upsert = SqlBuilder::buildUpsert("practices", event_id, practice_columns, "id");
+            SqlFileLogger::log("events", practice_upsert);
+        }
         
         std::cout << "✅ Event updated successfully: " << event_id << std::endl;
         
@@ -1124,9 +1202,21 @@ Response EventController::handleCreateRSVP(const Request& request) {
         // Always INSERT into history table (append-only, no updates)
         // Use database uuid_generate_v4() for reliable UUID generation
         std::string insert_query = "INSERT INTO " + table_name + " (id, event_id, " + id_column + ", rsvp_status_id, changed_by, change_source_id, notes, changed_at) "
-                                   "VALUES (uuid_generate_v4(), $1, $2, $3, $4, (SELECT id FROM rsvp_change_sources WHERE name = 'app'), $5, CURRENT_TIMESTAMP)";
-        db_->query(insert_query, {event_id, user_id, rsvp_status_id, user_id, notes});
+                                   "VALUES (uuid_generate_v4(), $1, $2, $3, $4, (SELECT id FROM rsvp_change_sources WHERE name = 'app'), $5, CURRENT_TIMESTAMP) RETURNING id";
+        pqxx::result rsvp_result = db_->query(insert_query, {event_id, user_id, rsvp_status_id, user_id, notes});
+        std::string rsvp_id = rsvp_result[0][0].c_str();
         std::cout << "✅ " << role_type << " RSVP recorded in history" << std::endl;
+        
+        // Log RSVP to ##u/##p file
+        std::map<std::string, std::string> rsvp_columns;
+        rsvp_columns["event_id"] = event_id;
+        rsvp_columns[id_column] = user_id;
+        rsvp_columns["rsvp_status_id"] = rsvp_status_id;
+        rsvp_columns["changed_by"] = user_id;
+        rsvp_columns["change_source_id"] = "(SELECT id FROM rsvp_change_sources WHERE name = 'app')";
+        if (!notes.empty()) rsvp_columns["notes"] = notes;
+        std::string rsvp_upsert = SqlBuilder::buildUpsert(table_name, rsvp_id, rsvp_columns, "id");
+        SqlFileLogger::log("event_rsvps", rsvp_upsert);
         
         std::string data = "{\"event_id\": \"" + event_id + "\", \"user_id\": \"" + user_id + "\", \"role_type\": \"" + role_type + "\", \"status\": \"" + status + "\"}";
         return Response(HttpStatus::OK, createJSONResponse(true, "RSVP saved successfully", data));
@@ -1565,6 +1655,14 @@ Response EventController::handleUpdateGameRoster(const Request& request) {
                 db_->query(insertQuery, {matchId, playerId, addedBy});
             }
             addedCount++;
+            
+            // Log match roster to ##u/##p file
+            std::map<std::string, std::string> roster_columns;
+            roster_columns["player_id"] = playerId;
+            if (!addedBy.empty()) roster_columns["added_by"] = addedBy;
+            std::string roster_upsert = SqlBuilder::buildUpsert("match_rosters", 
+                matchId + "',player_id='" + playerId, roster_columns, "match_id, player_id");
+            SqlFileLogger::log("matches", roster_upsert);
         }
         
         std::cout << "✅ Game roster updated: " << addedCount << " players" << std::endl;

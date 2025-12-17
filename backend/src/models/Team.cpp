@@ -1,4 +1,6 @@
 #include "Team.h"
+#include "../database/SqlFileLogger.h"
+#include "../database/SqlBuilder.h"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -339,12 +341,29 @@ bool Team::updateRosterMember(const std::string& team_id, const std::string& pla
         std::cout << std::endl;
         
         executeQuery(sql_str, params);
+        
+        // Log to ##u/##p file
+        std::map<std::string, std::string> tp_columns;
+        if (!jersey_number.empty()) tp_columns["jersey_number"] = jersey_number;
+        if (!roster_status_id.empty()) tp_columns["roster_status_id"] = roster_status_id;
+        tp_columns["is_captain"] = is_captain ? "true" : "false";
+        tp_columns["is_vice_captain"] = is_vice_captain ? "true" : "false";
+        std::string tp_upsert = SqlBuilder::buildUpsert("team_players", 
+            team_id + "',player_id='" + player_id, tp_columns, "team_id, player_id");
+        SqlFileLogger::log("team_players", tp_upsert);
 
         // Update user name if provided
         if (!first_name.empty() && !last_name.empty()) {
             std::string user_sql = "UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3";
             executeQuery(user_sql, {first_name, last_name, player_id});
             std::cout << "✅ Updated user name: " << first_name << " " << last_name << std::endl;
+            
+            // Log to ##u/##p file
+            std::map<std::string, std::string> user_columns;
+            user_columns["first_name"] = first_name;
+            user_columns["last_name"] = last_name;
+            std::string user_upsert = SqlBuilder::buildUpsert("users", player_id, user_columns, "id");
+            SqlFileLogger::log("users", user_upsert);
         }
         
         std::cout << "✅ Updated roster member: " << player_id << std::endl;

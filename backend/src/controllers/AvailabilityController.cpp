@@ -1,4 +1,6 @@
 #include "AvailabilityController.h"
+#include "../database/SqlFileLogger.h"
+#include "../database/SqlBuilder.h"
 #include <iostream>
 #include <sstream>
 #include <regex>
@@ -147,6 +149,21 @@ Response AvailabilityController::createMedicalStatus(const Request& req) {
         pqxx::result result = db_->query(query, {playerId, userId});
         
         std::string newId = result[0]["id"].c_str();
+        
+        // Log medical status to ##u/##p file
+        std::map<std::string, std::string> columns;
+        columns["player_id"] = playerId;
+        columns["status"] = "injured";
+        columns["injury_type"] = "ankle_sprain";
+        columns["severity"] = "minor";
+        columns["available_for_practices"] = "true";
+        columns["available_for_games"] = "false";
+        columns["affects_all_teams"] = "true";
+        columns["notes"] = "Created via API";
+        columns["created_by"] = userId;
+        std::string upsert = SqlBuilder::buildUpsert("player_medical_status", newId, columns, "id");
+        SqlFileLogger::log("player_medical_status", upsert);
+        
         return Response(HttpStatus::OK, "{\"id\":\"" + newId + "\",\"message\":\"Medical status created\"}");
         
     } catch (const std::exception& e) {
@@ -174,6 +191,12 @@ Response AvailabilityController::resolveMedicalStatus(const Request& req) {
         )";
         
         db_->query(query, {statusId, userId});
+        
+        // Log medical status resolution to ##u/##p file
+        std::map<std::string, std::string> columns;
+        columns["resolved_by"] = userId;
+        std::string upsert = SqlBuilder::buildUpsert("player_medical_status", statusId, columns, "id");
+        SqlFileLogger::log("player_medical_status", upsert);
         
         return Response(HttpStatus::OK, "{\"message\":\"Medical status resolved\"}");
         
@@ -273,6 +296,22 @@ Response AvailabilityController::createAcademicStatus(const Request& req) {
         pqxx::result result = db_->query(query, {playerId, userId});
         
         std::string newId = result[0]["id"].c_str();
+        
+        // Log academic status to ##u/##p file
+        std::map<std::string, std::string> columns;
+        columns["player_id"] = playerId;
+        columns["status"] = "probation";
+        columns["gpa"] = "2.3";
+        columns["required_gpa"] = "2.5";
+        columns["available_for_practices"] = "true";
+        columns["available_for_games"] = "false";
+        columns["academic_term"] = "Fall 2025";
+        columns["affects_all_teams"] = "true";
+        columns["notes"] = "Created via API";
+        columns["created_by"] = userId;
+        std::string upsert = SqlBuilder::buildUpsert("player_academic_status", newId, columns, "id");
+        SqlFileLogger::log("player_academic_status", upsert);
+        
         return Response(HttpStatus::OK, "{\"id\":\"" + newId + "\",\"message\":\"Academic status created\"}");
         
     } catch (const std::exception& e) {
@@ -300,6 +339,12 @@ Response AvailabilityController::resolveAcademicStatus(const Request& req) {
         )";
         
         db_->query(query, {statusId, userId});
+        
+        // Log academic status resolution to ##u/##p file
+        std::map<std::string, std::string> columns;
+        columns["resolved_by"] = userId;
+        std::string upsert = SqlBuilder::buildUpsert("player_academic_status", statusId, columns, "id");
+        SqlFileLogger::log("player_academic_status", upsert);
         
         return Response(HttpStatus::OK, "{\"message\":\"Academic status resolved\"}");
         

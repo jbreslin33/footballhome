@@ -37,8 +37,15 @@ void SqlFileLogger::initializeTableMap() {
     table_file_map_["team_coaches"] = "25";
     table_file_map_["matches"] = "30";
     table_file_map_["events"] = "30";
+    table_file_map_["practices"] = "30";
     table_file_map_["event_rsvps"] = "30";
     table_file_map_["event_attendance"] = "30";
+    table_file_map_["match_rosters"] = "30";
+    table_file_map_["player_rsvp_history"] = "30";
+    table_file_map_["coach_rsvp_history"] = "30";
+    table_file_map_["parent_rsvp_history"] = "30";
+    table_file_map_["player_medical_status"] = "22";
+    table_file_map_["player_academic_status"] = "22";
 }
 
 std::string SqlFileLogger::getFileSuffix() {
