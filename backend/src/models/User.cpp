@@ -189,7 +189,7 @@ std::string User::getUserRoles(const std::string& user_id) {
             "  c.name as club_name "
             "FROM team_players tp "
             "JOIN teams t ON tp.team_id = t.id "
-            "JOIN sport_divisions sd ON t.division_id = sd.id "
+            "JOIN sport_divisions sd ON t.sport_division_id = sd.id "
             "JOIN clubs c ON sd.club_id = c.id "
             "WHERE tp.player_id = $1 AND tp.is_active = true";
         
@@ -218,7 +218,7 @@ std::string User::getUserRoles(const std::string& user_id) {
             "  c.name as club_name "
             "FROM team_coaches tc "
             "JOIN teams t ON tc.team_id = t.id "
-            "JOIN sport_divisions sd ON t.division_id = sd.id "
+            "JOIN sport_divisions sd ON t.sport_division_id = sd.id "
             "JOIN clubs c ON sd.club_id = c.id "
             "WHERE tc.coach_id = $1 AND tc.is_active = true";
         

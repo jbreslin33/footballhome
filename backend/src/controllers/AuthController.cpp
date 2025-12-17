@@ -399,7 +399,7 @@ Response AuthController::handlePlayerTeams(const Request& request) {
         std::string sql = "SELECT DISTINCT t.id, t.name, sd.display_name as division_name "
                          "FROM team_players tp "
                          "JOIN teams t ON tp.team_id = t.id "
-                         "JOIN sport_divisions sd ON t.division_id = sd.id "
+                         "JOIN sport_divisions sd ON t.sport_division_id = sd.id "
                          "JOIN players p ON tp.player_id = p.id "
                          "WHERE p.id = $1 "
                          "ORDER BY t.name";
@@ -446,7 +446,7 @@ Response AuthController::handleAdminContexts(const Request& request) {
                               "JOIN club_admins ca ON c.id = ca.club_id "
                               "JOIN admins a ON ca.admin_id = a.id "
                               "LEFT JOIN sport_divisions sd ON c.id = sd.club_id "
-                              "LEFT JOIN teams t ON sd.id = t.division_id "
+                              "LEFT JOIN teams t ON sd.id = t.sport_division_id "
                               "WHERE a.id = $1 AND ca.is_active = true "
                               "GROUP BY c.id, c.display_name";
         
