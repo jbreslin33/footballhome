@@ -2,9 +2,9 @@
 -- MANUAL ADMINS
 -- ========================================
 -- Manually managed admins with role assignments using normalized admin_levels lookup table
+-- NOTE: Authentication credentials (email/password) are set in 50m-auth-credentials.sql
 
--- Assign James Breslin as club admin (club level administrator)
--- ID from CASA scraped roster (Old Timers team)
+-- James Breslin - Club Administrator
 INSERT INTO admins (id, admin_level_id, notes)
 VALUES (
     '311ee799-a6a1-450f-8bad-5140a021c92b',
