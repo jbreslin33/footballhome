@@ -29,23 +29,63 @@ class CasaScraper extends Scraper {
     this.leagueId = '00000000-0000-0000-0001-000000000002';
     this.sportId = '550e8400-e29b-41d4-a716-446655440101';
     
-    // CASA URLs
-    this.urls = {
-      liga1Standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9090889',
-      liga1Schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090889',
-      liga2Standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9096430',
-      liga2Schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9096430'
-    };
-    
-    // Published Google Sheets HTML URLs for rosters
-    this.rosterSheets = {
-      liga1: {
-        url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmsWzjTsLR81d-eQTLDM4EnaqzqUOy5OcWLy1Lna1NYVFY7gOj0nZAQdIk99e99g/pubhtml',
-        name: 'Philadelphia CASA Select Liga 1'
+    // CASA Conferences Configuration
+    // Each conference can have multiple divisions (ligas)
+    this.conferences = {
+      philadelphia: {
+        name: 'Philadelphia',
+        divisions: {
+          liga1: {
+            name: 'Liga 1',
+            tier: 1,
+            standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9090889',
+            schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090889',
+            rosterSheet: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmsWzjTsLR81d-eQTLDM4EnaqzqUOy5OcWLy1Lna1NYVFY7gOj0nZAQdIk99e99g/pubhtml'
+          },
+          liga2: {
+            name: 'Liga 2',
+            tier: 2,
+            standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9096430',
+            schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9096430',
+            rosterSheet: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQsDtR6AQPgThg1105AinjkLqHMaWgQfCFJuWqfEtadH41k5OSKYZ2Hqb0N-CnO2Q/pubhtml'
+          }
+        }
       },
-      liga2: {
-        url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQsDtR6AQPgThg1105AinjkLqHMaWgQfCFJuWqfEtadH41k5OSKYZ2Hqb0N-CnO2Q/pubhtml',
-        name: 'Philadelphia CASA Select Liga 2'
+      boston: {
+        name: 'Boston',
+        divisions: {
+          liga1: {
+            name: 'Liga 1',
+            tier: 1,
+            standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9090891',
+            schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090891',
+            rosterSheet: 'https://docs.google.com/spreadsheets/d/1OnHnhrSRA3Wp2eCs_9-dJhDBlVhSEoobFDGTYvQTfvE/export?format=html'
+          }
+        }
+      },
+      lancaster: {
+        name: 'Lancaster',
+        divisions: {
+          liga1: {
+            name: 'Liga 1',
+            tier: 1,
+            standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9090893',
+            schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090893',
+            rosterSheet: 'https://docs.google.com/spreadsheets/d/1alzJMAccMT5IIBQ_YOAp6FMbADnfC77dxRMZtceMau4/export?format=html'
+          }
+        }
+      },
+      centralNJ: {
+        name: 'Central NJ',
+        divisions: {
+          liga1: {
+            name: 'Liga 1',
+            tier: 1,
+            standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9124981',
+            schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9124981',
+            rosterSheet: 'https://docs.google.com/spreadsheets/d/1tStu09AvdhBJtYLXl49R-oa5XgFYDo9j/export?format=html'
+          }
+        }
       }
     };
     
@@ -75,64 +115,68 @@ class CasaScraper extends Scraper {
       ]
     });
     
-    // Create conference and divisions
-    const confId = IdGenerator.fromComponents('casa', 'conference', 'CASA Conference');
-    this.data.conferences.set(confId, new LeagueConference({
-      id: confId,
-      league_id: this.leagueId,
-      name: 'CASA Conference',
-      display_name: 'CASA Conference',
-      slug: 'casa-conference'
-    }));
+    // Create conferences and divisions from configuration
+    this.divisionIds = {};
     
-    const liga1Id = IdGenerator.fromComponents('casa', 'division', 'Liga 1');
-    this.data.divisions.set(liga1Id, new LeagueDivision({
-      id: liga1Id,
-      conference_id: confId,
-      name: 'Liga 1',
-      display_name: 'Liga 1',
-      slug: 'liga-1',
-      tier: 1
-    }));
-    
-    const liga2Id = IdGenerator.fromComponents('casa', 'division', 'Liga 2');
-    this.data.divisions.set(liga2Id, new LeagueDivision({
-      id: liga2Id,
-      conference_id: confId,
-      name: 'Liga 2',
-      display_name: 'Liga 2',
-      slug: 'liga-2',
-      tier: 2
-    }));
-    
-    this.divisionIds = { liga1Id, liga2Id };
+    for (const [confKey, confData] of Object.entries(this.conferences)) {
+      // Create conference
+      const confId = IdGenerator.fromComponents('casa', 'conference', confData.name);
+      this.data.conferences.set(confId, new LeagueConference({
+        id: confId,
+        league_id: this.leagueId,
+        name: confData.name,
+        display_name: confData.name,
+        slug: confData.name.toLowerCase().replace(/\s+/g, '-')
+      }));
+      
+      this.log(`Created conference: ${confData.name} (${confId})`);
+      
+      // Create divisions for this conference
+      for (const [divKey, divData] of Object.entries(confData.divisions)) {
+        const divId = IdGenerator.fromComponents('casa', 'division', `${confData.name} ${divData.name}`);
+        this.data.divisions.set(divId, new LeagueDivision({
+          id: divId,
+          conference_id: confId,
+          name: divData.name,
+          display_name: `${confData.name} ${divData.name}`,
+          slug: `${confData.name.toLowerCase().replace(/\s+/g, '-')}-${divData.name.toLowerCase().replace(/\s+/g, '-')}`,
+          tier: divData.tier
+        }));
+        
+        // Store division ID for later reference
+        this.divisionIds[`${confKey}_${divKey}`] = divId;
+        
+        this.log(`  Created division: ${confData.name} ${divData.name} (${divId})`);
+      }
+    }
   }
 
   async fetchData() {
-    // Always fetch team structure (structure mode includes teams)
-    await this.fetchLiga1Teams();
-    await this.fetchLiga2Teams();
-    
-    // Fetch schedules if requested
-    if (this.shouldScrapeSchedules()) {
-      await this.fetchLiga1Schedule();
-      await this.fetchLiga2Schedule();
+    // Loop through all conferences and divisions
+    for (const [confKey, confData] of Object.entries(this.conferences)) {
+      this.log(`\n📍 Processing ${confData.name} Conference...`);
+      
+      for (const [divKey, divData] of Object.entries(confData.divisions)) {
+        const divisionId = this.divisionIds[`${confKey}_${divKey}`];
+        const divisionName = `${confData.name} ${divData.name}`;
+        
+        // Always fetch team structure (structure mode includes teams)
+        this.log(`\n⚽ Fetching ${divisionName} teams...`);
+        await this.fetchTeamsFromStandings(divData.standings, divisionId, divisionName);
+        
+        // Fetch schedules if requested
+        if (this.shouldScrapeSchedules()) {
+          this.log(`\n📅 Fetching ${divisionName} schedule...`);
+          await this.fetchSchedule(divData.schedule, divisionName);
+        }
+        
+        // Fetch rosters from Google Sheets only in players/full mode
+        if (this.shouldScrapePlayers() && divData.rosterSheet) {
+          this.log(`\n👥 Fetching ${divisionName} rosters...`);
+          await this.fetchRostersFromPublishedSheet(divData.rosterSheet, divisionName, divisionId);
+        }
+      }
     }
-    
-    // Fetch rosters from Google Sheets only in players/full mode
-    if (this.shouldScrapePlayers()) {
-      await this.fetchRosters();
-    }
-  }
-
-  async fetchLiga1Teams() {
-    this.log('\n⚽ Fetching Liga 1 teams...');
-    await this.fetchTeamsFromStandings(this.urls.liga1Standings, this.divisionIds.liga1Id, 'Liga 1');
-  }
-
-  async fetchLiga2Teams() {
-    this.log('\n⚽ Fetching Liga 2 teams...');
-    await this.fetchTeamsFromStandings(this.urls.liga2Standings, this.divisionIds.liga2Id, 'Liga 2');
   }
 
   async fetchTeamsFromStandings(url, divisionId, divisionName) {
@@ -247,16 +291,6 @@ class CasaScraper extends Scraper {
     } finally {
       await page.close();
     }
-  }
-
-  async fetchLiga1Schedule() {
-    this.log('\n📅 Fetching Liga 1 schedule...');
-    await this.fetchSchedule(this.urls.liga1Schedule, 'Liga 1');
-  }
-
-  async fetchLiga2Schedule() {
-    this.log('\n📅 Fetching Liga 2 schedule...');
-    await this.fetchSchedule(this.urls.liga2Schedule, 'Liga 2');
   }
 
   async fetchSchedule(url, divisionName) {
@@ -563,24 +597,6 @@ class CasaScraper extends Scraper {
       source_app_id: '550e8400-e29b-41d4-a716-446655440311',
       external_source: 'casa'
     });
-  }
-
-  async fetchRosters() {
-    this.log('👥 Fetching rosters from published Google Sheets...');
-    
-    // Fetch Liga 1 rosters (each tab = one team)
-    await this.fetchRostersFromPublishedSheet(
-      this.rosterSheets.liga1.url,
-      this.rosterSheets.liga1.name,
-      '9f708557-d2bf-4192-82f5-9ea58a3978cc' // Liga 1 division ID
-    );
-    
-    // Fetch Liga 2 rosters (each tab = one team)
-    await this.fetchRostersFromPublishedSheet(
-      this.rosterSheets.liga2.url,
-      this.rosterSheets.liga2.name,
-      'a8e19668-3cc0-4283-93e6-0fb69b4a4d33' // Liga 2 division ID
-    );
   }
 
   async fetchRostersFromPublishedSheet(url, sheetName, divisionId) {
