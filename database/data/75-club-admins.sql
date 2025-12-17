@@ -5,14 +5,14 @@
 -- This file is maintained manually and version controlled
 -- Data persists across rebuilds
 
--- soccer@lighthouse1893.org (James Breslin) as admin for Lighthouse 1893 SC
--- Note: Using the APSL Lighthouse 1893 SC club (235a623c-7368-4c4e-8984-d42da5a47abf)
--- which is the main adult competitive team
+-- James Breslin as admin for Lighthouse 1893 SC
+-- James ID from CASA scraped roster (Old Timers team): 311ee799-a6a1-450f-8bad-5140a021c92b
+-- Club ID from APSL: 235a623c-7368-4c4e-8984-d42da5a47abf (main adult competitive team)
 INSERT INTO club_admins (id, club_id, admin_id, admin_role, is_primary, is_active)
 VALUES (
     'db836e6f-1250-47e0-81ab-d4626595d63c',
     '235a623c-7368-4c4e-8984-d42da5a47abf',
-    '77d77471-1250-47e0-81ab-d4626595d63c',
+    '311ee799-a6a1-450f-8bad-5140a021c92b',
     'club_manager',
     true,
     true

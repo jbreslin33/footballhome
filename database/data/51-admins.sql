@@ -3,10 +3,11 @@
 -- ========================================
 -- Manually managed admins with role assignments using normalized admin_levels lookup table
 
--- Assign soccer@lighthouse1893.org as club admin (club level administrator)
+-- Assign James Breslin as club admin (club level administrator)
+-- ID from CASA scraped roster (Old Timers team)
 INSERT INTO admins (id, admin_level_id, notes)
 VALUES (
-    '77d77471-1250-47e0-81ab-d4626595d63c',
+    '311ee799-a6a1-450f-8bad-5140a021c92b',
     '550e8400-e29b-41d4-a716-446655440812',
     'Club administrator for Lighthouse 1893 SC with full club management access'
 )
