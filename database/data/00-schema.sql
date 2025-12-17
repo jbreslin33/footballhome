@@ -267,7 +267,7 @@ CREATE TABLE sport_divisions (
 CREATE TABLE teams (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
-    division_id UUID NOT NULL REFERENCES sport_divisions(id),
+    sport_division_id UUID NOT NULL REFERENCES sport_divisions(id),
     league_division_id UUID REFERENCES league_divisions(id), -- Optional league division membership
     season VARCHAR(20),
     age_group VARCHAR(50),                      -- U12, U15, Adult, etc.
@@ -1124,7 +1124,7 @@ CREATE INDEX idx_team_admins_admin ON team_admins(admin_id);
 
 CREATE INDEX idx_permission_categories_name ON permission_categories(name);
 CREATE INDEX idx_permissions_category ON permissions(permission_category_id);
-CREATE INDEX idx_teams_division ON teams(division_id);
+CREATE INDEX idx_teams_sport_division ON teams(sport_division_id);
 CREATE INDEX idx_teams_league_division ON teams(league_division_id);
 CREATE INDEX idx_league_conferences_league ON league_conferences(league_id);
 CREATE INDEX idx_league_conferences_slug ON league_conferences(slug);

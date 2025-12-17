@@ -1,5 +1,5 @@
 -- CASA Match Schedule
--- Generated at: 2025-12-16T19:19:35.613Z
+-- Generated at: 2025-12-17T13:06:45.376Z
 
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
 VALUES (
@@ -14,8 +14,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-16T19:18:52.172Z',
-  '2025-12-16T19:18:52.172Z'
+  '2025-12-17T13:06:04.328Z',
+  '2025-12-17T13:06:04.328Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -51,8 +51,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-16T19:19:00.077Z',
-  '2025-12-16T19:19:00.077Z'
+  '2025-12-17T13:06:12.374Z',
+  '2025-12-17T13:06:12.374Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -88,8 +88,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-16T19:18:52.172Z',
-  '2025-12-16T19:18:52.172Z'
+  '2025-12-17T13:06:04.328Z',
+  '2025-12-17T13:06:04.328Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -125,8 +125,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-16T19:19:00.078Z',
-  '2025-12-16T19:19:00.078Z'
+  '2025-12-17T13:06:12.374Z',
+  '2025-12-17T13:06:12.374Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -162,8 +162,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-16T19:19:00.077Z',
-  '2025-12-16T19:19:00.077Z'
+  '2025-12-17T13:06:12.374Z',
+  '2025-12-17T13:06:12.374Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -199,8 +199,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-16T19:19:00.077Z',
-  '2025-12-16T19:19:00.077Z'
+  '2025-12-17T13:06:12.374Z',
+  '2025-12-17T13:06:12.374Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -236,8 +236,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-16T19:19:00.078Z',
-  '2025-12-16T19:19:00.078Z'
+  '2025-12-17T13:06:12.374Z',
+  '2025-12-17T13:06:12.374Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -273,8 +273,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-16T19:19:00.078Z',
-  '2025-12-16T19:19:00.078Z'
+  '2025-12-17T13:06:12.374Z',
+  '2025-12-17T13:06:12.374Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -299,10 +299,10 @@ ON CONFLICT (id) DO UPDATE SET
   match_status = EXCLUDED.match_status;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
 VALUES (
-  '2e7ef834-0565-4dc2-8789-f2a99acc4821',
+  '76dd00e8-6606-4127-8802-d60971ad0e68',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
-  'Lighthouse Old Timers Club vs Persepolis FC',
+  'Adé United FC vs Adé United FC',
   NULL,
   'Sun Oct 12 2:45 PM EDT - 4:30 PM EDT',
   NULL,
@@ -310,8 +310,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-16T19:19:00.079Z',
-  '2025-12-16T19:19:00.079Z'
+  '2025-12-17T13:06:12.374Z',
+  '2025-12-17T13:06:12.374Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -320,9 +320,9 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
 VALUES (
-  '2e7ef834-0565-4dc2-8789-f2a99acc4821',
-  'cbb53b2c-26ce-488f-8c6f-3c589fadddbe',
-  '79571455-9a4b-4e3e-8a40-bc5fefa21a1c',
+  '76dd00e8-6606-4127-8802-d60971ad0e68',
+  '1ae28486-6def-431e-8d1c-4af9ea56a3fd',
+  '1ae28486-6def-431e-8d1c-4af9ea56a3fd',
   '550e8400-e29b-41d4-a716-446655440801',
   NULL,
   NULL,

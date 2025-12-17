@@ -3,13 +3,14 @@ const SqlGenerator = require('../services/SqlGenerator');
 /**
  * Team Model
  * Represents a sports team
- * Schema: id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active
+ * Schema: id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active
  */
 class Team {
   constructor(data) {
     this.id = data.id;
     this.name = data.name;
-    this.division_id = data.division_id || data.sport_division_id; // Accept both names
+    // Accept both sport_division_id (new) and division_id (legacy) for backward compatibility
+    this.sport_division_id = data.sport_division_id || data.division_id;
     this.league_division_id = data.league_division_id || null;
     this.season = data.season || null;
     this.age_group = data.age_group || null;
@@ -29,11 +30,11 @@ class Team {
   }
 
   toSQL() {
-    return `INSERT INTO teams (id, name, division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+    return `INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
   ${SqlGenerator.escape(this.id)},
   ${SqlGenerator.escape(this.name)},
-  ${SqlGenerator.escape(this.division_id)},
+  ${SqlGenerator.escape(this.sport_division_id)},
   ${SqlGenerator.escape(this.league_division_id)},
   ${SqlGenerator.escape(this.season)},
   ${SqlGenerator.escape(this.age_group)},

@@ -8,6 +8,8 @@ const SportDivision = require('../models/SportDivision');
 const Team = require('../models/Team');
 const Player = require('../models/Player');
 const Match = require('../models/Match');
+const LeagueConference = require('../models/LeagueConference');
+const LeagueDivision = require('../models/LeagueDivision');
 const puppeteer = require('puppeteer');
 require('dotenv').config();
 
@@ -75,33 +77,33 @@ class CasaScraper extends Scraper {
     
     // Create conference and divisions
     const confId = IdGenerator.fromComponents('casa', 'conference', 'CASA Conference');
-    this.data.conferences.set(confId, {
+    this.data.conferences.set(confId, new LeagueConference({
       id: confId,
       league_id: this.leagueId,
       name: 'CASA Conference',
       display_name: 'CASA Conference',
       slug: 'casa-conference'
-    });
+    }));
     
     const liga1Id = IdGenerator.fromComponents('casa', 'division', 'Liga 1');
-    this.data.divisions.set(liga1Id, {
+    this.data.divisions.set(liga1Id, new LeagueDivision({
       id: liga1Id,
       conference_id: confId,
       name: 'Liga 1',
       display_name: 'Liga 1',
       slug: 'liga-1',
       tier: 1
-    });
+    }));
     
     const liga2Id = IdGenerator.fromComponents('casa', 'division', 'Liga 2');
-    this.data.divisions.set(liga2Id, {
+    this.data.divisions.set(liga2Id, new LeagueDivision({
       id: liga2Id,
       conference_id: confId,
       name: 'Liga 2',
       display_name: 'Liga 2',
       slug: 'liga-2',
       tier: 2
-    });
+    }));
     
     this.divisionIds = { liga1Id, liga2Id };
   }
@@ -795,6 +797,22 @@ class CasaScraper extends Scraper {
     this.log('\n💾 Generating SQL output...');
     
     const results = await this.sqlGenerator.generateMultiple([
+      {
+        filename: '04-conferences-casa.sql',
+        data: this.data.conferences,
+        options: {
+          title: 'CASA Conferences',
+          useInserts: true
+        }
+      },
+      {
+        filename: '05-league-divisions-casa.sql',
+        data: this.data.divisions,
+        options: {
+          title: 'CASA League Divisions',
+          useInserts: true
+        }
+      },
       {
         filename: '06-clubs-casa.sql',
         data: this.data.clubs,
