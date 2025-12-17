@@ -10,6 +10,7 @@
 #include "core/Request.h"
 #include "core/Response.h"
 #include "database/Database.h"
+#include "database/SqlFileLogger.h"
 #include "controllers/AuthController.h"
 #include "controllers/TeamController.h"
 #include "controllers/EventController.h"
@@ -42,6 +43,9 @@ public:
     
     bool initialize() {
         std::cout << "🚀 Football Home Server Starting..." << std::endl;
+        
+        // Initialize SQL file logger
+        SqlFileLogger::initialize();
         
         // Initialize database
         if (!db_->connect()) {

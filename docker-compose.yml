@@ -71,8 +71,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: footballhome_pass
+      ENVIRONMENT: ${ENVIRONMENT:-dev}  # dev or production
     ports:
       - "3001:3001"
+    volumes:
+      # Mount database/data for writing ##u/##p files
+      - ./database/data:/app/database/data
     networks:
       - footballhome_network
     depends_on:

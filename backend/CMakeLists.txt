@@ -22,6 +22,8 @@ set(SOURCES
     src/core/Controller.cpp
     src/database/Database.cpp
     src/database/Model.cpp
+    src/database/SqlFileLogger.cpp
+    src/database/SqlBuilder.cpp
     src/models/User.cpp
     src/models/Team.cpp
     src/controllers/AuthController.cpp
