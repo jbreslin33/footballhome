@@ -354,20 +354,20 @@ class ApslScraper extends Scraper {
         }
       },
       {
-        filename: '25a-schedule-apsl.sql',
-        data: this.data.matches,
-        options: {
-          title: 'APSL Match Schedule',
-          useInserts: true
-        }
-      },
-      {
-        filename: '26a-team-coaches-apsl.sql',
+        filename: '25a-team-coaches-apsl.sql',
         data: this.data.teamCoaches,
         options: {
           title: 'APSL Team Coaches',
           tableName: 'team_coaches',
           columns: ['team_id', 'coach_id', 'coach_role', 'is_primary', 'is_active', 'joined_at', 'left_at', 'notes'],
+          useInserts: true
+        }
+      },
+      {
+        filename: '30a-schedule-apsl.sql',
+        data: this.data.matches,
+        options: {
+          title: 'APSL Match Schedule',
           useInserts: true
         }
       }   useInserts: true

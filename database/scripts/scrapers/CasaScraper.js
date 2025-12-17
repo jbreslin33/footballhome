@@ -925,20 +925,20 @@ class CasaScraper extends Scraper {
         }
       },
       {
-        filename: '25b-schedule-casa.sql',
-        data: this.data.matches,
-        options: {
-          title: 'CASA Match Schedule',
-          useInserts: true
-        }
-      },
-      {
-        filename: '26b-team-coaches-casa.sql',
+        filename: '25b-team-coaches-casa.sql',
         data: this.data.teamCoaches,
         options: {
           title: 'CASA Team Coaches',
           tableName: 'team_coaches',
           columns: ['team_id', 'coach_id', 'coach_role', 'is_primary', 'is_active', 'joined_at', 'left_at', 'notes'],
+          useInserts: true
+        }
+      },
+      {
+        filename: '30b-schedule-casa.sql',
+        data: this.data.matches,
+        options: {
+          title: 'CASA Match Schedule',
           useInserts: true
         }
       }
