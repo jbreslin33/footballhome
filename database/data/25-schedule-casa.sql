@@ -1,5 +1,5 @@
 -- CASA Match Schedule
--- Generated at: 2025-12-17T13:42:55.797Z
+-- Generated at: 2025-12-17T14:21:49.232Z
 
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
 VALUES (
@@ -14,8 +14,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-17T13:42:13.063Z',
-  '2025-12-17T13:42:13.063Z'
+  '2025-12-17T14:21:02.699Z',
+  '2025-12-17T14:21:02.699Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -51,8 +51,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-17T13:42:20.932Z',
-  '2025-12-17T13:42:20.932Z'
+  '2025-12-17T14:21:10.567Z',
+  '2025-12-17T14:21:10.567Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -88,8 +88,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-17T13:42:13.063Z',
-  '2025-12-17T13:42:13.063Z'
+  '2025-12-17T14:21:02.700Z',
+  '2025-12-17T14:21:02.700Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -125,8 +125,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-17T13:42:20.932Z',
-  '2025-12-17T13:42:20.932Z'
+  '2025-12-17T14:21:10.567Z',
+  '2025-12-17T14:21:10.567Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -162,8 +162,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-17T13:42:20.932Z',
-  '2025-12-17T13:42:20.932Z'
+  '2025-12-17T14:21:10.567Z',
+  '2025-12-17T14:21:10.567Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -199,8 +199,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-17T13:42:20.932Z',
-  '2025-12-17T13:42:20.932Z'
+  '2025-12-17T14:21:10.567Z',
+  '2025-12-17T14:21:10.567Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -236,8 +236,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-17T13:42:20.932Z',
-  '2025-12-17T13:42:20.932Z'
+  '2025-12-17T14:21:10.567Z',
+  '2025-12-17T14:21:10.567Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -273,8 +273,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-17T13:42:20.932Z',
-  '2025-12-17T13:42:20.932Z'
+  '2025-12-17T14:21:10.568Z',
+  '2025-12-17T14:21:10.568Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
@@ -310,8 +310,8 @@ VALUES (
   false,
   NULL,
   NULL,
-  '2025-12-17T13:42:20.933Z',
-  '2025-12-17T13:42:20.933Z'
+  '2025-12-17T14:21:10.568Z',
+  '2025-12-17T14:21:10.568Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
