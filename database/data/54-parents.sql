@@ -1,0 +1,17 @@
+-- ========================================
+-- PARENTS
+-- ========================================
+-- Parent associations with players
+-- Step 3: Add parent accounts and link to their children
+-- ========================================
+
+-- No parents configured yet
+-- 
+-- USAGE:
+-- 1. User must exist (from scraped roster or 50-users-manual.sql)
+-- 2. Add parent role:
+--    INSERT INTO parents (id, relationship_type, emergency_contact, notes)
+--    VALUES ('user-id', 'Father', true, 'Emergency contact');
+-- 3. Link to player:
+--    INSERT INTO player_parents (player_id, parent_id, relationship_type, is_primary_contact, is_emergency_contact)
+--    VALUES ('player-id', 'parent-id', 'Father', true, true);

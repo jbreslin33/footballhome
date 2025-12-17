@@ -1,0 +1,14 @@
+-- ========================================
+-- SPORT ADMINS
+-- ========================================
+-- Sport division administrators (manage specific sport divisions within a club)
+-- Step 3: Add sport division level administrators
+-- ========================================
+
+-- No sport admins configured yet
+--
+-- USAGE:
+-- 1. User must exist (from scraped roster or 50-users-manual.sql)
+-- 2. Promote to sport admin:
+--    INSERT INTO sport_admins (id, sport_division_id, admin_role, permissions, notes)
+--    VALUES ('user-id', 'sport-division-id', 'Sport Division Manager', '{}', 'Manages Boys Club division');
