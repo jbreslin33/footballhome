@@ -842,7 +842,7 @@ class CasaScraper extends Scraper {
         options: {
           title: 'CASA League Divisions',
           tableName: 'league_divisions',
-          columns: ['id', 'conference_id', 'name', 'display_name', 'slug', 'tier', 'hierarchy_group', 'skill_level', 'age_group', 'description', 'is_active'],
+          columns: ['id', 'conference_id', 'name', 'display_name', 'slug', 'tier', 'hierarchy_group', 'skill_level', 'age_group', 'description', 'max_teams', 'promotion_eligible', 'relegation_eligible', 'is_active'],
           useInserts: true
         }
       },
