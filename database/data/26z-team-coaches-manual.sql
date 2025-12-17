@@ -1,0 +1,16 @@
+-- ========================================
+-- MANUAL TEAM COACHES
+-- ========================================
+-- Use this file to manually assign coaches to teams
+-- ========================================
+
+-- Example:
+-- INSERT INTO team_coaches (team_id, coach_id, coach_role, is_primary, is_active)
+-- VALUES (
+--   'team-uuid',
+--   'coach-uuid',
+--   'head_coach',  -- 'head_coach', 'assistant_coach', 'goalkeeper_coach', 'fitness_coach'
+--   true,
+--   true
+-- )
+-- ON CONFLICT (team_id, coach_id) DO NOTHING;

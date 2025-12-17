@@ -1,5 +1,5 @@
 -- CASA Clubs
--- Generated at: 2025-12-17T15:54:44.355Z
+-- Generated at: 2025-12-17T18:01:25.955Z
 
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
 VALUES (
@@ -20,8 +20,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:42.316Z',
-  '2025-12-17T15:53:42.316Z'
+  '2025-12-17T18:01:02.078Z',
+  '2025-12-17T18:01:02.079Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -60,8 +60,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:42.317Z',
-  '2025-12-17T15:53:42.317Z'
+  '2025-12-17T18:01:02.079Z',
+  '2025-12-17T18:01:02.079Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -100,8 +100,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:42.318Z',
-  '2025-12-17T15:53:42.318Z'
+  '2025-12-17T18:01:02.080Z',
+  '2025-12-17T18:01:02.080Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -140,8 +140,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:42.318Z',
-  '2025-12-17T15:53:42.318Z'
+  '2025-12-17T18:01:02.080Z',
+  '2025-12-17T18:01:02.080Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -180,8 +180,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:42.318Z',
-  '2025-12-17T15:53:42.318Z'
+  '2025-12-17T18:01:02.080Z',
+  '2025-12-17T18:01:02.080Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -220,8 +220,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:42.318Z',
-  '2025-12-17T15:53:42.318Z'
+  '2025-12-17T18:01:02.080Z',
+  '2025-12-17T18:01:02.080Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -260,8 +260,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:42.319Z',
-  '2025-12-17T15:53:42.319Z'
+  '2025-12-17T18:01:02.080Z',
+  '2025-12-17T18:01:02.080Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -300,8 +300,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:42.319Z',
-  '2025-12-17T15:53:42.319Z'
+  '2025-12-17T18:01:02.080Z',
+  '2025-12-17T18:01:02.080Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -340,8 +340,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:48.426Z',
-  '2025-12-17T15:53:48.426Z'
+  '2025-12-17T18:01:08.112Z',
+  '2025-12-17T18:01:08.112Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -380,8 +380,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:48.427Z',
-  '2025-12-17T15:53:48.427Z'
+  '2025-12-17T18:01:08.112Z',
+  '2025-12-17T18:01:08.112Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -420,8 +420,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:48.427Z',
-  '2025-12-17T15:53:48.427Z'
+  '2025-12-17T18:01:08.112Z',
+  '2025-12-17T18:01:08.112Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -460,8 +460,8 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:48.427Z',
-  '2025-12-17T15:53:48.427Z'
+  '2025-12-17T18:01:08.112Z',
+  '2025-12-17T18:01:08.112Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -500,8 +500,848 @@ VALUES (
   NULL,
   'USA',
   true,
-  '2025-12-17T15:53:48.427Z',
-  '2025-12-17T15:53:48.427Z'
+  '2025-12-17T18:01:08.113Z',
+  '2025-12-17T18:01:08.113Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '76670ffd-987c-41c2-8d37-0a7a08258864',
+  'South Shore FC',
+  'South Shore FC',
+  'south-shore-fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:14.022Z',
+  '2025-12-17T18:01:14.022Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '2cf80496-5976-42f9-8db5-85c2119d7b28',
+  'Jaguars United FC',
+  'Jaguars United FC',
+  'jaguars-united-fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:14.023Z',
+  '2025-12-17T18:01:14.023Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  'd31a3bfc-b0fd-4ac6-8bd1-26f78823e2c6',
+  'Strictly Nos Fc',
+  'Strictly Nos Fc',
+  'strictly-nos-fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:14.023Z',
+  '2025-12-17T18:01:14.023Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '77b1938b-8847-423c-862f-460065a57755',
+  'BCFC All Stars',
+  'BCFC All Stars',
+  'bcfc-all-stars',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:14.023Z',
+  '2025-12-17T18:01:14.023Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '32313bee-73f7-4409-8c23-0af984caf69c',
+  'Flatley FC',
+  'Flatley FC',
+  'flatley-fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:14.023Z',
+  '2025-12-17T18:01:14.023Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '8e3aa175-c61e-4f1f-8a76-b3865aeef3a1',
+  'Gambeta FC',
+  'Gambeta FC',
+  'gambeta-fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:14.023Z',
+  '2025-12-17T18:01:14.023Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '6275e5bc-5378-4749-8242-097f28b8ee4f',
+  'Kutztown Men''s Soccer',
+  'Kutztown Men''s Soccer',
+  'kutztown-mens-soccer',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:20.000Z',
+  '2025-12-17T18:01:20.000Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '64b8ac68-e58b-4774-88ae-f38661d6ed95',
+  'Alloy Soccer Club Reserves',
+  'Alloy Soccer Club Reserves',
+  'alloy-soccer-club-reserves',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:20.000Z',
+  '2025-12-17T18:01:20.000Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '17667562-e396-4caa-8823-e738418ba859',
+  'Keystone Elite',
+  'Keystone Elite',
+  'keystone-elite',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:20.000Z',
+  '2025-12-17T18:01:20.000Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  'c519762b-41e8-422f-8037-2d539f0c6019',
+  'F&M FC',
+  'F&M FC',
+  'fm-fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:20.000Z',
+  '2025-12-17T18:01:20.000Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  'bb989b3a-3b07-4364-89f7-5b82c90c946f',
+  'Lancaster City FC',
+  'Lancaster City FC',
+  'lancaster-city-fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:20.001Z',
+  '2025-12-17T18:01:20.001Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  'a856fcc9-fee6-4a8f-831b-80cb2c5143a6',
+  'Alaso FC',
+  'Alaso FC',
+  'alaso-fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:25.932Z',
+  '2025-12-17T18:01:25.932Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  'f4f8adda-8933-40c6-8617-e62e7450057f',
+  'FeelsGood FC',
+  'FeelsGood FC',
+  'feelsgood-fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:25.932Z',
+  '2025-12-17T18:01:25.932Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  'd78fa7b3-dd60-4ff7-8f13-8964a9b1b140',
+  'Rondo Football Club',
+  'Rondo Football Club',
+  'rondo-football-club',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:25.932Z',
+  '2025-12-17T18:01:25.932Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  'dbfa4c4a-296a-4785-8c4e-4a59730d1bbb',
+  'Jersey Shore Boca Reserves',
+  'Jersey Shore Boca Reserves',
+  'jersey-shore-boca-reserves',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:25.932Z',
+  '2025-12-17T18:01:25.932Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '488b6ec6-4dde-4947-8481-11a025226660',
+  'Monmouth Light FC',
+  'Monmouth Light FC',
+  'monmouth-light-fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:25.932Z',
+  '2025-12-17T18:01:25.932Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '723f8c18-918c-49f3-8d28-86b4d8546c17',
+  'Milan Football Club',
+  'Milan Football Club',
+  'milan-football-club',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:25.932Z',
+  '2025-12-17T18:01:25.932Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '280f03c6-3da1-465e-8556-6692a1c3e747',
+  'Princeton International FC',
+  'Princeton International FC',
+  'princeton-international-fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:25.932Z',
+  '2025-12-17T18:01:25.932Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '111c0b0e-5f2d-4107-8de8-2b36b676ce15',
+  'MFC Stars',
+  'MFC Stars',
+  'mfc-stars',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:25.932Z',
+  '2025-12-17T18:01:25.932Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '4aed7032-ce11-496f-8b0b-33016acfe67a',
+  'Real Central NJ II',
+  'Real Central NJ II',
+  'real-central-nj-ii',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:25.932Z',
+  '2025-12-17T18:01:25.932Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  display_name = EXCLUDED.display_name,
+  slug = EXCLUDED.slug,
+  parent_club_id = EXCLUDED.parent_club_id,
+  description = EXCLUDED.description,
+  logo_url = EXCLUDED.logo_url,
+  website = EXCLUDED.website,
+  founded_year = EXCLUDED.founded_year,
+  contact_email = EXCLUDED.contact_email,
+  contact_phone = EXCLUDED.contact_phone,
+  address = EXCLUDED.address,
+  city = EXCLUDED.city,
+  state = EXCLUDED.state,
+  postal_code = EXCLUDED.postal_code,
+  country = EXCLUDED.country,
+  is_active = EXCLUDED.is_active,
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+VALUES (
+  '5ee52cb7-d376-404c-85b3-9a1dae4423fd',
+  'Jersey Shore Hounds',
+  'Jersey Shore Hounds',
+  'jersey-shore-hounds',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  'USA',
+  true,
+  '2025-12-17T18:01:25.932Z',
+  '2025-12-17T18:01:25.932Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,

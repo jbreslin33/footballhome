@@ -10,6 +10,8 @@ const SportDivision = require('../models/SportDivision');
 const Team = require('../models/Team');
 const Player = require('../models/Player');
 const TeamPlayer = require('../models/TeamPlayer');
+const Coach = require('../models/Coach');
+const TeamCoach = require('../models/TeamCoach');
 const Match = require('../models/Match');
 
 /**
@@ -331,8 +333,6 @@ class ApslScraper extends Scraper {
         options: {
           title: 'APSL Teams',
           useInserts: true
-        }
-      },
       {
         filename: '23a-team-players-apsl.sql',
         data: this.data.teamPlayers,
@@ -344,11 +344,33 @@ class ApslScraper extends Scraper {
         }
       },
       {
+        filename: '24a-coaches-apsl.sql',
+        data: this.data.coaches,
+        options: {
+          title: 'APSL Coaches',
+          tableName: 'coaches',
+          columns: ['id', 'coaching_license', 'license_expiry', 'years_experience', 'certifications', 'specializations', 'bio'],
+          useInserts: true
+        }
+      },
+      {
         filename: '25a-schedule-apsl.sql',
         data: this.data.matches,
         options: {
           title: 'APSL Match Schedule',
           useInserts: true
+        }
+      },
+      {
+        filename: '26a-team-coaches-apsl.sql',
+        data: this.data.teamCoaches,
+        options: {
+          title: 'APSL Team Coaches',
+          tableName: 'team_coaches',
+          columns: ['team_id', 'coach_id', 'coach_role', 'is_primary', 'is_active', 'joined_at', 'left_at', 'notes'],
+          useInserts: true
+        }
+      }   useInserts: true
         }
       }
     ]);

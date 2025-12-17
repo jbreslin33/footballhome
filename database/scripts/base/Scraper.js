@@ -19,6 +19,8 @@ class Scraper {
       users: new Map(),
       players: new Map(),
       teamPlayers: new Map(),
+      coaches: new Map(),
+      teamCoaches: new Map(),
       events: new Map(),
       matches: new Map(),
       externalIdentities: new Map()

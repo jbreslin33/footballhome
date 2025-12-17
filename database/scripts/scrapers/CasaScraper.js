@@ -8,6 +8,8 @@ const SportDivision = require('../models/SportDivision');
 const Team = require('../models/Team');
 const Player = require('../models/Player');
 const TeamPlayer = require('../models/TeamPlayer');
+const Coach = require('../models/Coach');
+const TeamCoach = require('../models/TeamCoach');
 const Match = require('../models/Match');
 const LeagueConference = require('../models/LeagueConference');
 const LeagueDivision = require('../models/LeagueDivision');
@@ -913,10 +915,30 @@ class CasaScraper extends Scraper {
         }
       },
       {
+        filename: '24b-coaches-casa.sql',
+        data: this.data.coaches,
+        options: {
+          title: 'CASA Coaches',
+          tableName: 'coaches',
+          columns: ['id', 'coaching_license', 'license_expiry', 'years_experience', 'certifications', 'specializations', 'bio'],
+          useInserts: true
+        }
+      },
+      {
         filename: '25b-schedule-casa.sql',
         data: this.data.matches,
         options: {
           title: 'CASA Match Schedule',
+          useInserts: true
+        }
+      },
+      {
+        filename: '26b-team-coaches-casa.sql',
+        data: this.data.teamCoaches,
+        options: {
+          title: 'CASA Team Coaches',
+          tableName: 'team_coaches',
+          columns: ['team_id', 'coach_id', 'coach_role', 'is_primary', 'is_active', 'joined_at', 'left_at', 'notes'],
           useInserts: true
         }
       }
