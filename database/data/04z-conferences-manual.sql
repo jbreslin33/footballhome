@@ -1,0 +1,2 @@
+-- Manual Conference Additions
+-- Add conferences not in scraped data

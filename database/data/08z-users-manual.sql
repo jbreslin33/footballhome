@@ -1,0 +1,2 @@
+-- Manual User Additions
+-- Add users not in scraped rosters (admins, coaches, parents, etc.)
