@@ -1,5 +1,5 @@
 -- CASA Players (Users)
--- Generated at: 2025-12-17T13:30:51.939Z
+-- Generated at: 2025-12-17T13:42:55.793Z
 
 INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
 VALUES (
@@ -10,8 +10,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -31,8 +31,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -52,8 +52,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -73,8 +73,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -94,8 +94,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -115,8 +115,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -136,8 +136,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -157,8 +157,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -178,8 +178,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -199,8 +199,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -220,8 +220,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -241,8 +241,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -262,8 +262,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -283,8 +283,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -304,8 +304,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -325,8 +325,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -346,8 +346,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -367,8 +367,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -388,8 +388,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -409,8 +409,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -430,8 +430,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -451,8 +451,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -472,8 +472,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -493,8 +493,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -514,8 +514,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -535,8 +535,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -556,8 +556,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -577,8 +577,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -598,8 +598,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -619,8 +619,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -640,8 +640,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -661,8 +661,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -682,8 +682,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -703,8 +703,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -724,8 +724,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -745,8 +745,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -766,8 +766,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -787,8 +787,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -808,8 +808,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -829,8 +829,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -850,8 +850,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -871,8 +871,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -892,8 +892,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -913,8 +913,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -934,8 +934,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -955,8 +955,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -976,8 +976,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -997,8 +997,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1018,8 +1018,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1039,8 +1039,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1060,8 +1060,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1081,8 +1081,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1102,8 +1102,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1123,8 +1123,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1144,8 +1144,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1165,8 +1165,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1186,8 +1186,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1207,8 +1207,5762 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:20.643Z',
-  '2025-12-17T13:30:20.643Z'
+  '2025-12-17T13:42:25.719Z',
+  '2025-12-17T13:42:25.719Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '22de3793-f177-4a82-890b-e72fa5cdc264',
+  'Djalilou',
+  'Adam-Djobo',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '22de3793-f177-4a82-890b-e72fa5cdc264',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'ac00beeb-4f5d-4128-8670-8dfc40c55bff',
+  'Luke',
+  'Archibald',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'ac00beeb-4f5d-4128-8670-8dfc40c55bff',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '1cb5dcbb-e342-4d14-8200-a0ed88630fda',
+  'Paul',
+  'Bechtelheimer',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '1cb5dcbb-e342-4d14-8200-a0ed88630fda',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'd79fea20-28b9-47e8-8e9c-47de2c337679',
+  'Noah',
+  'Blodget',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'd79fea20-28b9-47e8-8e9c-47de2c337679',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '676332b0-9f03-4d52-8955-46e133a33d03',
+  'Gonazalo',
+  'Chiang',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '676332b0-9f03-4d52-8955-46e133a33d03',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '1f119800-0f8c-40fa-889a-67248e311379',
+  'Brandon',
+  'Da Silva',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '1f119800-0f8c-40fa-889a-67248e311379',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'ecd1b0fa-b46e-478e-8979-00db1647fe19',
+  'Brandon',
+  'DeAngelo',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'ecd1b0fa-b46e-478e-8979-00db1647fe19',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '80e074c4-b993-4a2f-8998-9722bad0a37e',
+  'Khadim',
+  'Drame',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '80e074c4-b993-4a2f-8998-9722bad0a37e',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '025c6f43-2d55-44f1-89fa-b1623643100a',
+  'Giovanni',
+  'Fareri',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '025c6f43-2d55-44f1-89fa-b1623643100a',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '97eee5fb-e0ba-4f1a-85c8-0353ed9c875d',
+  'Emin',
+  'Gunaydin',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '97eee5fb-e0ba-4f1a-85c8-0353ed9c875d',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '9cb0cb82-68fd-4459-893c-cf710b642885',
+  'Vincent',
+  'Guzzo',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '9cb0cb82-68fd-4459-893c-cf710b642885',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '1fc0c7f1-c848-497e-8070-32d095d5697f',
+  'Rabah',
+  'Hameg',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '1fc0c7f1-c848-497e-8070-32d095d5697f',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'b9c8a53f-e851-485a-837a-f6258d0635ca',
+  'Armaghaan',
+  'Hasan',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'b9c8a53f-e851-485a-837a-f6258d0635ca',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '67438239-0447-47d5-84a1-0c28135038a3',
+  'Dimas',
+  'Hernandez',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '67438239-0447-47d5-84a1-0c28135038a3',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '88fe0546-d54f-48a7-8d8a-5aea543e1ba3',
+  'Patrick',
+  'Jellig',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '88fe0546-d54f-48a7-8d8a-5aea543e1ba3',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '9df8e5d3-6958-41b5-821d-3c6adad2212a',
+  'Sincere',
+  'Kato',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '9df8e5d3-6958-41b5-821d-3c6adad2212a',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '1789d463-ae1f-4579-82a4-5e85490db8f8',
+  'Aiden',
+  'Kenney',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '1789d463-ae1f-4579-82a4-5e85490db8f8',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'e8164485-b972-4146-89ee-6ab7e59d764b',
+  'Cooper',
+  'Lang',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'e8164485-b972-4146-89ee-6ab7e59d764b',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'd8060aac-2024-42ae-8ec5-f4700fdead92',
+  'Alex',
+  'Lewis',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'd8060aac-2024-42ae-8ec5-f4700fdead92',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '0ab159e8-7010-44e9-8528-1e2114a355ae',
+  'Lucien',
+  'Maslin',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '0ab159e8-7010-44e9-8528-1e2114a355ae',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '3f440b57-b81e-4179-889f-8488b40ebac3',
+  'Dayvon',
+  'Mbu',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '3f440b57-b81e-4179-889f-8488b40ebac3',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '661e2b62-7378-4dc4-8dee-e34deaacf845',
+  'Kevin',
+  'Munive',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '661e2b62-7378-4dc4-8dee-e34deaacf845',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'e8b6d7b5-82da-4c6c-82f4-28b8bd44e53e',
+  'Kevin',
+  'Nava',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'e8b6d7b5-82da-4c6c-82f4-28b8bd44e53e',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'b5d56cb0-e929-4a2b-84a5-ee75f1fb2e3d',
+  'Matthew',
+  'Pastore',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'b5d56cb0-e929-4a2b-84a5-ee75f1fb2e3d',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '3155d429-be62-4075-8fc0-1e375413a3fc',
+  'Ethan',
+  'Romito',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '3155d429-be62-4075-8fc0-1e375413a3fc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'cf064cb3-ff12-4a32-83b2-44c31a790b3e',
+  'Ahmed',
+  'Saidi',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'cf064cb3-ff12-4a32-83b2-44c31a790b3e',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '5345e70f-549f-4223-8788-311bc40e2da1',
+  'Dashan',
+  'Santiago',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '5345e70f-549f-4223-8788-311bc40e2da1',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '5e87c655-9e61-470f-88ab-1b9ebae9f496',
+  'Ethan',
+  'Spinatto',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '5e87c655-9e61-470f-88ab-1b9ebae9f496',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.324Z',
+  '2025-12-17T13:42:27.324Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '3c0be90a-5e99-42cd-87f6-a626522b0a60',
+  'Travis',
+  'Spotts',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:27.325Z',
+  '2025-12-17T13:42:27.325Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '3c0be90a-5e99-42cd-87f6-a626522b0a60',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:27.325Z',
+  '2025-12-17T13:42:27.325Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '85e9b52a-2e28-4c53-80ff-f287e39b5491',
+  'Issac',
+  'Agyapong',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '85e9b52a-2e28-4c53-80ff-f287e39b5491',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '96b5a18d-82b0-44d8-8a73-5e0b1a0a16ed',
+  'Abdul Razak',
+  'Alhassan',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '96b5a18d-82b0-44d8-8a73-5e0b1a0a16ed',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '9a0de768-1a8c-4080-84f0-f6a30ad6f731',
+  'Hassan',
+  'Bah',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '9a0de768-1a8c-4080-84f0-f6a30ad6f731',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '4fa9f4d5-6804-4435-8d5e-89be5522cb96',
+  'Abu',
+  'Bangura',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '4fa9f4d5-6804-4435-8d5e-89be5522cb96',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'd1058ddf-886e-4d7a-8bd7-05e655140d93',
+  'Mustapha',
+  'Bangura',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'd1058ddf-886e-4d7a-8bd7-05e655140d93',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'aa9d6e7e-8c1d-4eea-88e5-c9289c9407c8',
+  'Abubakarr',
+  'Bangura',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'aa9d6e7e-8c1d-4eea-88e5-c9289c9407c8',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '92a28554-cced-490d-8911-cba08a7990a2',
+  'Demba',
+  'Camara',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '92a28554-cced-490d-8911-cba08a7990a2',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '9bf6ac74-c633-4124-8047-a463da73b9fd',
+  'Cephas',
+  'Forson',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '9bf6ac74-c633-4124-8047-a463da73b9fd',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'a2b74af2-4c56-451f-8b01-09b795b865da',
+  'Richardo',
+  'Gaye',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'a2b74af2-4c56-451f-8b01-09b795b865da',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'f2b7e3df-fb09-42a7-8fc0-1af1340f9105',
+  'John',
+  'Gwah',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'f2b7e3df-fb09-42a7-8fc0-1af1340f9105',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'c0c38883-42ea-40fd-8117-3cb04d29afa1',
+  'Abraham',
+  'Kamara',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'c0c38883-42ea-40fd-8117-3cb04d29afa1',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'e49ecedd-5e84-4528-881a-e49f95c01258',
+  'Francis',
+  'Kamara',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'e49ecedd-5e84-4528-881a-e49f95c01258',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '9c554e81-da84-4697-8241-c73460908cd9',
+  'Mohamed',
+  'Kamara',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '9c554e81-da84-4697-8241-c73460908cd9',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'a11e11f7-892b-4e93-89cd-8edaeff417cd',
+  'Alpha',
+  'Kanu',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'a11e11f7-892b-4e93-89cd-8edaeff417cd',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '0d6ac403-cc8b-4bbf-8cb2-a634826894f2',
+  'Nyakeh',
+  'Kiawoh',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '0d6ac403-cc8b-4bbf-8cb2-a634826894f2',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '83f6ab8a-1137-4163-8379-8118d8799181',
+  'Sory',
+  'Konneh',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '83f6ab8a-1137-4163-8379-8118d8799181',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'f86af086-1e64-4b06-873b-06a98e057bae',
+  'Idrissa',
+  'Konobundor',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'f86af086-1e64-4b06-873b-06a98e057bae',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '6d8410b5-1a1d-42dd-81d6-b504268b3d24',
+  'Yayah',
+  'Koroma',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '6d8410b5-1a1d-42dd-81d6-b504268b3d24',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '8ec67b71-f988-4b15-8b33-5ef6dd3e8df5',
+  'Alpha',
+  'Koroma',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '8ec67b71-f988-4b15-8b33-5ef6dd3e8df5',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'af1f2eb6-68b8-474e-814e-4904b24e1c12',
+  'Moses',
+  'Kpalu',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'af1f2eb6-68b8-474e-814e-4904b24e1c12',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '35a534c2-5d2d-4f3b-854d-a1ebf8449423',
+  'Foday',
+  'Kuyateh',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '35a534c2-5d2d-4f3b-854d-a1ebf8449423',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '784fcf71-8723-415d-8cb4-a5a53090b3cb',
+  'Badamasie',
+  'Mujtabah',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '784fcf71-8723-415d-8cb4-a5a53090b3cb',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'd0cf5f01-a363-442e-81a3-9eacac7632cb',
+  'Benedict',
+  'Olaloye',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'd0cf5f01-a363-442e-81a3-9eacac7632cb',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'ddd91285-7040-49c4-88df-b0748b07c050',
+  'Emmanuel',
+  'Onwubiko',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'ddd91285-7040-49c4-88df-b0748b07c050',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '7ad2ed12-ffe7-450d-8dee-637d4869c08c',
+  'Samuel',
+  'Sandi',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '7ad2ed12-ffe7-450d-8dee-637d4869c08c',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '7cba575d-1567-4091-8293-1b9bebc08932',
+  'Alim',
+  'Sesay',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '7cba575d-1567-4091-8293-1b9bebc08932',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '33475488-a9f0-4b1f-8d06-ef083b4ac8dc',
+  'Abdul',
+  'Sesay',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '33475488-a9f0-4b1f-8d06-ef083b4ac8dc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '7ca786e4-09ce-4883-861e-3bbdd74160bd',
+  'Favor',
+  'WeahJr ***** SUSPENDED FOR 1ST GAME OF SPRING SEASON ******',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '7ca786e4-09ce-4883-861e-3bbdd74160bd',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:29.788Z',
+  '2025-12-17T13:42:29.788Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '98697ac1-7ae6-491a-8eb3-a61b8d2ed2ed',
+  'Omar',
+  'Alzubair',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '98697ac1-7ae6-491a-8eb3-a61b8d2ed2ed',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '9cbae92e-dc47-4652-8625-5290c0ccbc57',
+  'Erwa',
+  'Babiker',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '9cbae92e-dc47-4652-8625-5290c0ccbc57',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '6e1e3d62-c553-44cc-8905-1b7c665ef762',
+  'Hassane',
+  'Abdellaoui',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '6e1e3d62-c553-44cc-8905-1b7c665ef762',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'e2e46159-130e-406e-8a0d-3bc935044130',
+  'Victor',
+  'Baidel',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'e2e46159-130e-406e-8a0d-3bc935044130',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '431f3f43-d8e9-491b-83c7-9dcd1ab3fd35',
+  'Oumar',
+  'Barry',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '431f3f43-d8e9-491b-83c7-9dcd1ab3fd35',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '8ac027a3-00d2-48da-849a-70cbdc08b5bd',
+  'Aboubacar',
+  'Bayo',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '8ac027a3-00d2-48da-849a-70cbdc08b5bd',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'ecd247ec-ddc4-4b5d-8b92-631d4a4f68e7',
+  'Luke',
+  'Breslin',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'ecd247ec-ddc4-4b5d-8b92-631d4a4f68e7',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '493d10b8-aca1-4c7a-87f7-554ab8d04d51',
+  'Luis',
+  'De Jesus',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '493d10b8-aca1-4c7a-87f7-554ab8d04d51',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '873a9102-6772-4dda-8fb3-b00cdc29384b',
+  'Abdoul',
+  'Diallo',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '873a9102-6772-4dda-8fb3-b00cdc29384b',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'f7b9044a-df0a-4a43-8e51-c26e4180a0e1',
+  'Abouya',
+  'Gangue',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'f7b9044a-df0a-4a43-8e51-c26e4180a0e1',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '9978b53a-e8ce-4056-87c8-5cabf2c2a7dc',
+  'Edwin',
+  'Garcia',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '9978b53a-e8ce-4056-87c8-5cabf2c2a7dc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '2190af99-00b9-416f-8066-3812512c60e8',
+  'Miles',
+  'Henry',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '2190af99-00b9-416f-8066-3812512c60e8',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'c3af604a-8ee6-404d-820d-655b75c2b3e2',
+  'Andy',
+  'Hizdri',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'c3af604a-8ee6-404d-820d-655b75c2b3e2',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.682Z',
+  '2025-12-17T13:42:31.682Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '251135ad-d4f8-4c6a-896f-0fc474ee0684',
+  'Arif',
+  'Hossain',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '251135ad-d4f8-4c6a-896f-0fc474ee0684',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '868dd702-b538-4f5c-8a18-8877acd8f6ed',
+  'Zuhab',
+  'Imran',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '868dd702-b538-4f5c-8a18-8877acd8f6ed',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '5a3a94d3-8f8f-46f5-8a4d-18f144d68c38',
+  'Esnayder',
+  'Josue',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '5a3a94d3-8f8f-46f5-8a4d-18f144d68c38',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'f97f58e8-6a44-4b15-83be-c668409c4259',
+  'Majid',
+  'Kawa',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'f97f58e8-6a44-4b15-83be-c668409c4259',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'fd39d786-7e2b-4ccf-803e-f9a159dd852b',
+  'Alexander',
+  'Lara',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'fd39d786-7e2b-4ccf-803e-f9a159dd852b',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '6498eba0-d590-422c-84c9-518b001833bd',
+  'Valentino',
+  'Martinez',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '6498eba0-d590-422c-84c9-518b001833bd',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '8a9ecdab-e7bc-43bf-81c6-bd91031531b3',
+  'David',
+  'Masi',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '8a9ecdab-e7bc-43bf-81c6-bd91031531b3',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '7343bb6e-d617-4e05-8979-5bd0591ba7df',
+  'Elmer',
+  'Mendoza',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '7343bb6e-d617-4e05-8979-5bd0591ba7df',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'a31a0457-d65e-4971-86db-8b5be010db6f',
+  'Dylan',
+  'Moreno',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'a31a0457-d65e-4971-86db-8b5be010db6f',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '3974ce27-33ce-4677-81f7-780fbe569c5d',
+  'Babacar',
+  'Ndiaye',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '3974ce27-33ce-4677-81f7-780fbe569c5d',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '71d9a1ed-95e2-4cc9-841d-62c3bb071b8b',
+  'Zion',
+  'Nwalipenja',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '71d9a1ed-95e2-4cc9-841d-62c3bb071b8b',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'dc21338b-e04c-420f-88b0-139d7e594a97',
+  'John',
+  'Oladele',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'dc21338b-e04c-420f-88b0-139d7e594a97',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '62430967-3b59-43ea-8df8-6fe5170afa91',
+  'Jemirkel',
+  'Ornaque',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '62430967-3b59-43ea-8df8-6fe5170afa91',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'b9b87e0a-e7ba-47ad-8254-a6f3a2c681f9',
+  'Joe',
+  'Riccitelli',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'b9b87e0a-e7ba-47ad-8254-a6f3a2c681f9',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '943e70b6-19d1-4a6f-8c08-34fc2d0e5b64',
+  'Caleb',
+  'Rojas',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '943e70b6-19d1-4a6f-8c08-34fc2d0e5b64',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'b852da3b-ef3d-4a36-80dd-7460ad307717',
+  'Ali',
+  'Salah',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'b852da3b-ef3d-4a36-80dd-7460ad307717',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '873eb321-2598-4dfa-8220-ba5fec641a5a',
+  'Daniel',
+  'Salmanca',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '873eb321-2598-4dfa-8220-ba5fec641a5a',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:31.683Z',
+  '2025-12-17T13:42:31.683Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'fb0083d0-ad60-4e43-83b8-c0d1f3dbb15c',
+  'Eljo',
+  'Agolli',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'fb0083d0-ad60-4e43-83b8-c0d1f3dbb15c',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '454ab322-9ae7-4d61-8516-a1f567e86553',
+  'Carlos',
+  'Aroche',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '454ab322-9ae7-4d61-8516-a1f567e86553',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '5250b980-d9f7-4939-81af-dd179cf89a40',
+  'Jayden',
+  'Barragan',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '5250b980-d9f7-4939-81af-dd179cf89a40',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'ea874825-f9f9-4299-82c6-66f2b7eaf5ad',
+  'Christian',
+  'Cardenas',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'ea874825-f9f9-4299-82c6-66f2b7eaf5ad',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '442540f6-33cc-4591-8f21-6da75b7c7a78',
+  'Ermal',
+  'Caushi',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '442540f6-33cc-4591-8f21-6da75b7c7a78',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '15cbc2d7-7a15-4be0-80f8-54314c7ad9bc',
+  'Ilir',
+  'Cepani',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '15cbc2d7-7a15-4be0-80f8-54314c7ad9bc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '17a25e3f-a028-4916-8209-8fbfa615d7ad',
+  'Alexandre',
+  'De Souza Jr',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '17a25e3f-a028-4916-8209-8fbfa615d7ad',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'c5a4a3fd-ce04-4925-8fa6-e5aa01c14220',
+  'Klevisi',
+  'Dervishi',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'c5a4a3fd-ce04-4925-8fa6-e5aa01c14220',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '5a732944-f969-4ca0-8c89-b40caf7af8f9',
+  'Sidiki',
+  'Fofana',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '5a732944-f969-4ca0-8c89-b40caf7af8f9',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'a4fe6e71-3d2c-4654-8fe3-ce71b3ab5206',
+  'Evlad',
+  'Fonda',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'a4fe6e71-3d2c-4654-8fe3-ce71b3ab5206',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '51ace01d-ab8e-4d9b-8567-f4d87560b286',
+  'Zakaria',
+  'Gueddar',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '51ace01d-ab8e-4d9b-8567-f4d87560b286',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'd1d0e68b-3dbe-42d0-8baf-86a696aaeeb6',
+  'Gavin',
+  'Hagen',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'd1d0e68b-3dbe-42d0-8baf-86a696aaeeb6',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '21274459-6654-41e8-82d8-b32c73102f23',
+  'Mario',
+  'Kureta',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '21274459-6654-41e8-82d8-b32c73102f23',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'd5fe8726-c05b-4cf1-87ed-04f3e2f1ccb3',
+  'Olen',
+  'Laze',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'd5fe8726-c05b-4cf1-87ed-04f3e2f1ccb3',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.968Z',
+  '2025-12-17T13:42:33.968Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'deeaa786-003f-4299-8018-33808f498b40',
+  'Mario',
+  'Morina',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'deeaa786-003f-4299-8018-33808f498b40',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'aa0a7e48-3259-4227-8e8a-711be50cfe62',
+  'Ramadan',
+  'Nazeraj',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'aa0a7e48-3259-4227-8e8a-711be50cfe62',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '7e3a7d37-132e-42a9-8a41-30b0b75ee2c6',
+  'Youssef',
+  'Omer',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '7e3a7d37-132e-42a9-8a41-30b0b75ee2c6',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'a60db8df-2d82-4327-850c-761e492cbad9',
+  'Eldion',
+  'Pajollari',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'a60db8df-2d82-4327-850c-761e492cbad9',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'a1e19cc6-2abe-4386-84a9-73f8bed44558',
+  'Albion',
+  'Pajollari',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'a1e19cc6-2abe-4386-84a9-73f8bed44558',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'be3108ec-2a56-4853-8db2-53d6f75b8cc5',
+  'Elsion',
+  'Pajollari',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'be3108ec-2a56-4853-8db2-53d6f75b8cc5',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'fd589512-f690-42e2-8443-23a940c38d8f',
+  'Brahim',
+  'Saouid',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'fd589512-f690-42e2-8443-23a940c38d8f',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'adf29e72-0daa-4437-8e44-ad87f6ff4927',
+  'Temur',
+  'Temirov',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'adf29e72-0daa-4437-8e44-ad87f6ff4927',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '82058e18-e758-4948-8c06-80e977840885',
+  'Achilles',
+  'Triantafyllos',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '82058e18-e758-4948-8c06-80e977840885',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'f8d2bf69-a476-4818-833a-e7e247b5962d',
+  'Brendan',
+  'Werner',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'f8d2bf69-a476-4818-833a-e7e247b5962d',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:33.969Z',
+  '2025-12-17T13:42:33.969Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '061c3308-3730-45e5-8fcf-826051179ffe',
+  'Myles',
+  'Addy',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.671Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '061c3308-3730-45e5-8fcf-826051179ffe',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.671Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'c018c1e5-2e51-4e6a-8de7-f55d1e900c10',
+  'Charles',
+  'Afful',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.671Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'c018c1e5-2e51-4e6a-8de7-f55d1e900c10',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.671Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '326afaa9-78f2-4afd-8bfe-54fcd609011f',
+  'Ahmed',
+  'Ali',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.671Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '326afaa9-78f2-4afd-8bfe-54fcd609011f',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.671Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'ef6d0c30-eb76-4251-8e58-3de020279496',
+  'Fred',
+  'Amadi',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.671Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'ef6d0c30-eb76-4251-8e58-3de020279496',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.671Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '162f1e75-5065-4f4e-8e43-ceebf7c591a8',
+  'Edmond',
+  'Ansah',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.671Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '162f1e75-5065-4f4e-8e43-ceebf7c591a8',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.671Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '76051a95-fd1a-45b2-8076-06ab0035d387',
+  'Joe',
+  'Attakora',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '76051a95-fd1a-45b2-8076-06ab0035d387',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.671Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '3192b8de-99fd-41d7-8afa-940bc2d9838c',
+  'Henry',
+  'Ayi',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '3192b8de-99fd-41d7-8afa-940bc2d9838c',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '3f57543c-5184-474b-88fd-462b9e64eb69',
+  'Christian',
+  'Bamba',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '3f57543c-5184-474b-88fd-462b9e64eb69',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'f6ac5fbd-5447-4c0d-89c6-489a2f69c4d7',
+  'Al hassane',
+  'Belemou',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'f6ac5fbd-5447-4c0d-89c6-489a2f69c4d7',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'b6c5d8d9-be03-484c-8091-32cd3f67054c',
+  'Prince',
+  'Boafo',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'b6c5d8d9-be03-484c-8091-32cd3f67054c',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'abd8a564-c00a-43b9-8a60-ca05657c6a67',
+  'Bartels',
+  'Danquah',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'abd8a564-c00a-43b9-8a60-ca05657c6a67',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '1d59b36a-f02f-48bf-8ece-dc8c464c3f93',
+  'Michael',
+  'Danquah',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '1d59b36a-f02f-48bf-8ece-dc8c464c3f93',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '5b130380-9930-477e-86e1-72f0cc7d5281',
+  'Joshua',
+  'Deets',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '5b130380-9930-477e-86e1-72f0cc7d5281',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '03a74d64-5ff1-48ab-85dc-18ad932d1415',
+  'NATHAN',
+  'ELIZER',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '03a74d64-5ff1-48ab-85dc-18ad932d1415',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '1c8acb18-1c6f-40aa-813f-d401f8996d57',
+  'Rosier',
+  'Joseph',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '1c8acb18-1c6f-40aa-813f-d401f8996d57',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'a2a2f066-173e-4a9e-8a0e-1861fe3bcac4',
+  'Bernard',
+  'Kyei-Mensah',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'a2a2f066-173e-4a9e-8a0e-1861fe3bcac4',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'bfcb61c2-bf30-4b60-85a4-b40200ea6390',
+  'Imoro',
+  'latif',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'bfcb61c2-bf30-4b60-85a4-b40200ea6390',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '362f7ad5-8ac3-4efc-8a96-df444175abfc',
+  'Stephen',
+  'Lindsay',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '362f7ad5-8ac3-4efc-8a96-df444175abfc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '5ddef5ee-0da3-446a-84a3-03ff715066bc',
+  'Kingsley',
+  'Oppong',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '5ddef5ee-0da3-446a-84a3-03ff715066bc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'a9c87566-f437-4882-86b1-b1196a99ca59',
+  'Richard',
+  'Sarpong',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'a9c87566-f437-4882-86b1-b1196a99ca59',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '834f7bf8-66cd-4aaf-8035-86dc4cd0c01e',
+  'Kwaku',
+  'Sarpong',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '834f7bf8-66cd-4aaf-8035-86dc4cd0c01e',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'bd48686b-9bc1-41b6-8e0f-89770c2c5a35',
+  'Jonathan',
+  'Seya',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'bd48686b-9bc1-41b6-8e0f-89770c2c5a35',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '0cec89c0-56ea-4404-8d71-2a0ea2fb54dc',
+  'Kwamina',
+  'Thompson',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '0cec89c0-56ea-4404-8d71-2a0ea2fb54dc',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  '50b54c77-049f-4deb-85a0-22dbdd0c52b2',
+  'Patrick',
+  'Tierney',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  '50b54c77-049f-4deb-85a0-22dbdd0c52b2',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'afba9fe3-7a10-4598-81bf-ad5d02bb979b',
+  'Sebastian',
+  'Tilley',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'afba9fe3-7a10-4598-81bf-ad5d02bb979b',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
+  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
+  dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
+  player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
+  notes = COALESCE(EXCLUDED.notes, players.notes),
+  updated_at = EXCLUDED.updated_at;
+INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+VALUES (
+  'fd6088ee-512e-4983-8fd7-825a87468090',
+  'Swallah',
+  'Yussif',
+  NULL,
+  NULL,
+  NULL,
+  true,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
+)
+ON CONFLICT (id) DO UPDATE SET
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  email = COALESCE(EXCLUDED.email, users.email),
+  phone = COALESCE(EXCLUDED.phone, users.phone),
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
+  updated_at = EXCLUDED.updated_at;
+
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+VALUES (
+  'fd6088ee-512e-4983-8fd7-825a87468090',
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  '2025-12-17T13:42:35.672Z',
+  '2025-12-17T13:42:35.672Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1228,8 +6982,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.487Z',
-  '2025-12-17T13:30:32.487Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1249,8 +7003,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.487Z',
-  '2025-12-17T13:30:32.487Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1270,8 +7024,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1291,8 +7045,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1312,8 +7066,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1333,8 +7087,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1354,8 +7108,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1375,8 +7129,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1396,8 +7150,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1417,8 +7171,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1438,8 +7192,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1459,8 +7213,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1480,8 +7234,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1501,8 +7255,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1522,8 +7276,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1543,8 +7297,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1564,8 +7318,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1585,8 +7339,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1606,8 +7360,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1627,8 +7381,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1648,8 +7402,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1669,8 +7423,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1690,8 +7444,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1711,8 +7465,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1732,8 +7486,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1753,8 +7507,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1774,8 +7528,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1795,8 +7549,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1816,8 +7570,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1837,8 +7591,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:32.488Z',
-  '2025-12-17T13:30:32.488Z'
+  '2025-12-17T13:42:37.539Z',
+  '2025-12-17T13:42:37.539Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1858,8 +7612,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.430Z',
+  '2025-12-17T13:42:39.430Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1879,8 +7633,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.430Z',
+  '2025-12-17T13:42:39.430Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1900,8 +7654,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.430Z',
+  '2025-12-17T13:42:39.430Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1921,8 +7675,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.430Z',
+  '2025-12-17T13:42:39.430Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1942,8 +7696,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -1963,8 +7717,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1984,8 +7738,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2005,8 +7759,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2026,8 +7780,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2047,8 +7801,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2068,8 +7822,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2089,8 +7843,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2110,8 +7864,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2131,8 +7885,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2152,8 +7906,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2173,8 +7927,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2194,8 +7948,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2215,8 +7969,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2236,8 +7990,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2257,8 +8011,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2278,8 +8032,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2299,8 +8053,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2320,8 +8074,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2341,8 +8095,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2362,8 +8116,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2383,8 +8137,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2404,8 +8158,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2425,8 +8179,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2446,8 +8200,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2467,8 +8221,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2488,8 +8242,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2509,8 +8263,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2530,8 +8284,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2551,8 +8305,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2572,8 +8326,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2593,8 +8347,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2614,8 +8368,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2635,8 +8389,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2656,8 +8410,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2677,8 +8431,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2698,8 +8452,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2719,8 +8473,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2740,8 +8494,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2761,8 +8515,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2782,8 +8536,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2803,8 +8557,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2824,8 +8578,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2845,8 +8599,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2866,8 +8620,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2887,8 +8641,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2908,8 +8662,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2929,8 +8683,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2950,8 +8704,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -2971,8 +8725,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2992,8 +8746,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3013,8 +8767,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3034,8 +8788,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3055,8 +8809,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:35.024Z',
-  '2025-12-17T13:30:35.024Z'
+  '2025-12-17T13:42:39.431Z',
+  '2025-12-17T13:42:39.431Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3076,8 +8830,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3097,8 +8851,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3118,8 +8872,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3139,8 +8893,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3160,8 +8914,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3181,8 +8935,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3202,8 +8956,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3223,8 +8977,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3244,8 +8998,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3265,8 +9019,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3286,8 +9040,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3307,8 +9061,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3328,8 +9082,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3349,8 +9103,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3370,8 +9124,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3391,8 +9145,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3412,8 +9166,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3433,8 +9187,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3454,8 +9208,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3475,8 +9229,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3496,8 +9250,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3517,8 +9271,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3538,8 +9292,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3559,8 +9313,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3580,8 +9334,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3601,8 +9355,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3622,8 +9376,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3643,8 +9397,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3664,8 +9418,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3685,8 +9439,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3706,8 +9460,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3727,8 +9481,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3748,8 +9502,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3769,8 +9523,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3790,8 +9544,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3811,8 +9565,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3832,8 +9586,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3853,8 +9607,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3874,8 +9628,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3895,8 +9649,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3916,8 +9670,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3937,8 +9691,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3958,8 +9712,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -3979,8 +9733,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4000,8 +9754,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4021,8 +9775,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4042,8 +9796,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4063,8 +9817,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4084,8 +9838,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4105,8 +9859,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.664Z',
-  '2025-12-17T13:30:36.664Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4126,8 +9880,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4147,8 +9901,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4168,8 +9922,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4189,8 +9943,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4210,8 +9964,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4231,8 +9985,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4252,8 +10006,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4273,8 +10027,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4294,8 +10048,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4315,8 +10069,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4336,8 +10090,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4357,8 +10111,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:36.665Z',
-  '2025-12-17T13:30:36.665Z'
+  '2025-12-17T13:42:41.287Z',
+  '2025-12-17T13:42:41.287Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4378,8 +10132,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4399,8 +10153,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4420,8 +10174,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4441,8 +10195,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4462,8 +10216,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4483,8 +10237,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4504,8 +10258,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4525,8 +10279,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4546,8 +10300,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4567,8 +10321,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4588,8 +10342,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4609,8 +10363,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4630,8 +10384,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4651,8 +10405,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4672,8 +10426,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4693,8 +10447,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4714,8 +10468,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4735,8 +10489,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4756,8 +10510,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4777,8 +10531,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4798,8 +10552,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4819,8 +10573,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4840,8 +10594,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4861,8 +10615,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4882,8 +10636,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4903,8 +10657,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4924,8 +10678,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4945,8 +10699,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4966,8 +10720,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -4987,8 +10741,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5008,8 +10762,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5029,8 +10783,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5050,8 +10804,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5071,8 +10825,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5092,8 +10846,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5113,8 +10867,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:42.006Z',
-  '2025-12-17T13:30:42.006Z'
+  '2025-12-17T13:42:47.908Z',
+  '2025-12-17T13:42:47.908Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5134,8 +10888,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5155,8 +10909,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5176,8 +10930,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5197,8 +10951,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5218,8 +10972,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5239,8 +10993,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5260,8 +11014,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5281,8 +11035,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5302,8 +11056,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5323,8 +11077,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5344,8 +11098,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5365,8 +11119,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5386,8 +11140,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5407,8 +11161,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5428,8 +11182,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5449,8 +11203,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5470,8 +11224,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5491,8 +11245,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5512,8 +11266,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5533,8 +11287,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5554,8 +11308,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5575,8 +11329,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5596,8 +11350,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5617,8 +11371,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5638,8 +11392,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5659,8 +11413,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5680,8 +11434,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5701,8 +11455,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5722,8 +11476,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5743,8 +11497,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5764,8 +11518,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5785,8 +11539,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5806,8 +11560,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5827,8 +11581,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5848,8 +11602,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5869,8 +11623,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5890,8 +11644,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5911,8 +11665,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5932,8 +11686,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5953,8 +11707,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5974,8 +11728,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -5995,8 +11749,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6016,8 +11770,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6037,8 +11791,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6058,8 +11812,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6079,8 +11833,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6100,8 +11854,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6121,8 +11875,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6142,8 +11896,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6163,8 +11917,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6184,8 +11938,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6205,8 +11959,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6226,8 +11980,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6247,8 +12001,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6268,8 +12022,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6289,8 +12043,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:46.372Z',
-  '2025-12-17T13:30:46.372Z'
+  '2025-12-17T13:42:49.558Z',
+  '2025-12-17T13:42:49.558Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6310,8 +12064,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:48.446Z',
-  '2025-12-17T13:30:48.446Z'
+  '2025-12-17T13:42:53.812Z',
+  '2025-12-17T13:42:53.812Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6331,8 +12085,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:48.446Z',
-  '2025-12-17T13:30:48.446Z'
+  '2025-12-17T13:42:53.812Z',
+  '2025-12-17T13:42:53.812Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6352,8 +12106,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:48.446Z',
-  '2025-12-17T13:30:48.446Z'
+  '2025-12-17T13:42:53.812Z',
+  '2025-12-17T13:42:53.812Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6373,8 +12127,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:48.446Z',
-  '2025-12-17T13:30:48.446Z'
+  '2025-12-17T13:42:53.812Z',
+  '2025-12-17T13:42:53.812Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6394,8 +12148,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:48.446Z',
-  '2025-12-17T13:30:48.446Z'
+  '2025-12-17T13:42:53.812Z',
+  '2025-12-17T13:42:53.812Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6415,8 +12169,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:48.446Z',
-  '2025-12-17T13:30:48.446Z'
+  '2025-12-17T13:42:53.812Z',
+  '2025-12-17T13:42:53.812Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6436,8 +12190,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:48.446Z',
-  '2025-12-17T13:30:48.446Z'
+  '2025-12-17T13:42:53.812Z',
+  '2025-12-17T13:42:53.812Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6457,8 +12211,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:48.446Z',
-  '2025-12-17T13:30:48.446Z'
+  '2025-12-17T13:42:53.812Z',
+  '2025-12-17T13:42:53.812Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6478,8 +12232,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:48.446Z',
-  '2025-12-17T13:30:48.446Z'
+  '2025-12-17T13:42:53.812Z',
+  '2025-12-17T13:42:53.812Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6499,8 +12253,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:48.446Z',
-  '2025-12-17T13:30:48.446Z'
+  '2025-12-17T13:42:53.812Z',
+  '2025-12-17T13:42:53.812Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6520,8 +12274,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6541,8 +12295,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6562,8 +12316,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6583,8 +12337,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6604,8 +12358,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6625,8 +12379,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6646,8 +12400,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6667,8 +12421,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6688,8 +12442,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6709,8 +12463,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6730,8 +12484,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6751,8 +12505,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6772,8 +12526,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6793,8 +12547,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6814,8 +12568,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6835,8 +12589,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6856,8 +12610,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6877,8 +12631,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6898,8 +12652,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6919,8 +12673,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6940,8 +12694,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -6961,8 +12715,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6982,8 +12736,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7003,8 +12757,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7024,8 +12778,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7045,8 +12799,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7066,8 +12820,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7087,8 +12841,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7108,8 +12862,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7129,8 +12883,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7150,8 +12904,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7171,8 +12925,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7192,8 +12946,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7213,8 +12967,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7234,8 +12988,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7255,8 +13009,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7276,8 +13030,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7297,8 +13051,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7318,8 +13072,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7339,8 +13093,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7360,8 +13114,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7381,8 +13135,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7402,8 +13156,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7423,8 +13177,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7444,8 +13198,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7465,8 +13219,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7486,8 +13240,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
@@ -7507,8 +13261,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T13:30:51.914Z',
-  '2025-12-17T13:30:51.914Z'
+  '2025-12-17T13:42:55.765Z',
+  '2025-12-17T13:42:55.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
