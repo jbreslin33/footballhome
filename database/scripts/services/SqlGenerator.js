@@ -30,7 +30,10 @@ class SqlGenerator {
     lines.push('');
 
     // Generate SQL for each entity
-    if (this.useInserts || options.useInserts) {
+    if (options.customSQL) {
+      // Use custom SQL generator function
+      lines.push(options.customSQL(entities));
+    } else if (this.useInserts || options.useInserts) {
       // Traditional INSERT statements
       if (entities.length > 0 && options.tableName) {
         lines.push(...this.generateInsertStatements(options.tableName, entities, options));

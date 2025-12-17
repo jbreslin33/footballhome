@@ -9,6 +9,7 @@ const Club = require('../models/Club');
 const SportDivision = require('../models/SportDivision');
 const Team = require('../models/Team');
 const Player = require('../models/Player');
+const TeamPlayer = require('../models/TeamPlayer');
 const Match = require('../models/Match');
 
 /**
@@ -195,15 +196,21 @@ class ApslScraper extends Scraper {
             id: playerId,
             first_name: first,
             last_name: last,
-            jersey_number: playerData.jersey_number,
             position: playerData.position
           });
           
           this.data.players.set(playerId, player);
           this.duplicateDetector.markSeen('player', { first, last }, ['first', 'last']);
           
-          // Create team_player association
-          // TODO: Add to teamPlayers map
+          // Create team-player association
+          const teamPlayerKey = `${teamId}_${playerId}`;
+          const teamPlayer = new TeamPlayer({
+            team_id: teamId,
+            player_id: playerId,
+            jersey_number: playerData.jersey_number || null,
+            is_active: true
+          });
+          this.data.teamPlayers.set(teamPlayerKey, teamPlayer);
         }
       } catch (error) {
         this.logError(`Failed to fetch roster for ${team.name}`, error);
@@ -285,6 +292,40 @@ class ApslScraper extends Scraper {
         }
       },
       {
+        filename: '08a-users-apsl.sql',
+        data: this.data.players,
+        options: {
+          title: 'APSL Users',
+          tableName: 'users',
+          columns: ['id', 'first_name', 'last_name', 'email', 'phone', 'date_of_birth', 'is_active', 'created_at', 'updated_at'],
+          useInserts: true,
+          customSQL: (players) => {
+            const lines = [];
+            for (const player of players) {
+              lines.push(player.toUserSQL());
+            }
+            return lines.join('\n\n');
+          }
+        }
+      },
+      {
+        filename: '08b-players-apsl.sql',
+        data: this.data.players,
+        options: {
+          title: 'APSL Players',
+          tableName: 'players',
+          columns: ['id', 'preferred_position_id', 'photo_url', 'height_cm', 'weight_kg', 'dominant_foot', 'player_rating', 'notes', 'created_at', 'updated_at'],
+          useInserts: true,
+          customSQL: (players) => {
+            const lines = [];
+            for (const player of players) {
+              lines.push(player.toPlayerSQL());
+            }
+            return lines.join('\n\n');
+          }
+        }
+      },
+      {
         filename: '22-teams-apsl.sql',
         data: this.data.teams,
         options: {
@@ -293,10 +334,12 @@ class ApslScraper extends Scraper {
         }
       },
       {
-        filename: '08b-users-apsl.sql',
-        data: this.data.players,
+        filename: '23-team-players-apsl.sql',
+        data: this.data.teamPlayers,
         options: {
-          title: 'APSL Players (Users)',
+          title: 'APSL Team Rosters',
+          tableName: 'team_players',
+          columns: ['team_id', 'player_id', 'jersey_number', 'is_active', 'joined_date', 'left_date', 'notes'],
           useInserts: true
         }
       },

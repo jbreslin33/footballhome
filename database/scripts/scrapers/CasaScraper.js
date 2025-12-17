@@ -7,6 +7,7 @@ const Club = require('../models/Club');
 const SportDivision = require('../models/SportDivision');
 const Team = require('../models/Team');
 const Player = require('../models/Player');
+const TeamPlayer = require('../models/TeamPlayer');
 const Match = require('../models/Match');
 const LeagueConference = require('../models/LeagueConference');
 const LeagueDivision = require('../models/LeagueDivision');
@@ -735,12 +736,22 @@ class CasaScraper extends Scraper {
             id: playerId,
             first_name: firstName,
             last_name: lastName,
-            jersey_number: jerseyNumber || null,
             position: position || null
           });
           
           this.data.players.set(playerId, player);
           this.duplicateDetector.markSeen('player', { firstName, lastName }, ['firstName', 'lastName']);
+          
+          // Create team-player association
+          const teamPlayerKey = `${teamId}_${playerId}`;
+          const teamPlayer = new TeamPlayer({
+            team_id: teamId,
+            player_id: playerId,
+            jersey_number: jerseyNumber || null,
+            is_active: true
+          });
+          this.data.teamPlayers.set(teamPlayerKey, teamPlayer);
+          
           playerCount++;
         }
         
@@ -850,6 +861,40 @@ class CasaScraper extends Scraper {
         }
       },
       {
+        filename: '08a-users-casa.sql',
+        data: this.data.players,
+        options: {
+          title: 'CASA Users',
+          tableName: 'users',
+          columns: ['id', 'first_name', 'last_name', 'email', 'phone', 'date_of_birth', 'is_active', 'created_at', 'updated_at'],
+          useInserts: true,
+          customSQL: (players) => {
+            const lines = [];
+            for (const player of players) {
+              lines.push(player.toUserSQL());
+            }
+            return lines.join('\n\n');
+          }
+        }
+      },
+      {
+        filename: '08b-players-casa.sql',
+        data: this.data.players,
+        options: {
+          title: 'CASA Players',
+          tableName: 'players',
+          columns: ['id', 'preferred_position_id', 'photo_url', 'height_cm', 'weight_kg', 'dominant_foot', 'player_rating', 'notes', 'created_at', 'updated_at'],
+          useInserts: true,
+          customSQL: (players) => {
+            const lines = [];
+            for (const player of players) {
+              lines.push(player.toPlayerSQL());
+            }
+            return lines.join('\n\n');
+          }
+        }
+      },
+      {
         filename: '22-teams-casa.sql',
         data: this.data.teams,
         options: {
@@ -858,10 +903,12 @@ class CasaScraper extends Scraper {
         }
       },
       {
-        filename: '08b-users-casa.sql',
-        data: this.data.players,
+        filename: '23-team-players-casa.sql',
+        data: this.data.teamPlayers,
         options: {
-          title: 'CASA Players (Users)',
+          title: 'CASA Team Rosters',
+          tableName: 'team_players',
+          columns: ['team_id', 'player_id', 'jersey_number', 'is_active', 'joined_date', 'left_date', 'notes'],
           useInserts: true
         }
       },
