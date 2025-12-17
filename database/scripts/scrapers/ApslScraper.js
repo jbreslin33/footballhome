@@ -333,6 +333,8 @@ class ApslScraper extends Scraper {
         options: {
           title: 'APSL Teams',
           useInserts: true
+        }
+      },
       {
         filename: '23a-team-players-apsl.sql',
         data: this.data.teamPlayers,
@@ -369,8 +371,6 @@ class ApslScraper extends Scraper {
         options: {
           title: 'APSL Match Schedule',
           useInserts: true
-        }
-      }   useInserts: true
         }
       }
     ]);
