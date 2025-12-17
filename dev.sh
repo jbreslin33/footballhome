@@ -15,12 +15,12 @@
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Usage:
 #   ./dev.sh                                      # FULL REBUILD: Delete volumes/cache, rebuild from committed SQL files (no scraping)
-#   ./dev.sh --refresh                            # FULL REBUILD + Re-scrape all data, update SQL files, then rebuild
+#   ./dev.sh --apsl --casa                        # Re-scrape APSL + CASA, then rebuild
+#   ./dev.sh --lighthouse                         # Re-scrape Lighthouse teams + GroupMe, then rebuild
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Aggregate Flags (Convenience):
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#   ./dev.sh --refresh                            # Re-scrape ALL data: APSL + CASA + GroupMe (excludes venues)
 #   ./dev.sh --lighthouse                         # All Lighthouse data (APSL/CASA + GroupMe: 4 chats)
 #   ./dev.sh --apsl                               # All APSL data (structure + all teams + rosters + schedules)
 #   ./dev.sh --casa                               # All CASA data (structure + all teams + rosters + schedules)
@@ -57,9 +57,6 @@
 # Typical Workflows:
 #   ./dev.sh
 #     → Daily development: Full rebuild (wipes DB, loads all SQL files from scratch)
-#
-#   ./dev.sh --refresh
-#     → Weekly update: Re-scrape all leagues + GroupMe, update SQL files, full rebuild
 #
 #   ./dev.sh --lighthouse
 #     → Lighthouse update: Re-scrape structure + rosters + schedules + GroupMe for 4 teams
@@ -127,6 +124,9 @@ GROUPME_OLD_TIMERS_EXTERNAL=false
 GROUPME_OLD_TIMERS_SCHEDULE=false
 GROUPME_OLD_TIMERS_RSVPS=false
 SAVE_MANUAL=false
+ENVIRONMENT="dev"
+WIPE_U=false
+WIPE_P=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -257,36 +257,35 @@ for arg in "$@"; do
         --groupme-old-timers-rsvps)
             GROUPME_OLD_TIMERS_RSVPS=true
             ;;
-        --refresh)
-            # Refresh all scraped data (APSL + CASA + GroupMe, excludes venues)
-            APSL_SCRAPE_MODE="players"
-            APSL_SCHEDULE=true
-            CASA_SCRAPE_MODE="full"
-            GROUPME_APSL_EXTERNAL=true
-            GROUPME_APSL_SCHEDULE=true
-            GROUPME_APSL_RSVPS=true
-            GROUPME_TRAINING_LIGHTHOUSE_EXTERNAL=true
-            GROUPME_TRAINING_LIGHTHOUSE_SCHEDULE=true
-            GROUPME_TRAINING_LIGHTHOUSE_RSVPS=true
-            GROUPME_BOYS_CLUB_EXTERNAL=true
-            GROUPME_BOYS_CLUB_SCHEDULE=true
-            GROUPME_BOYS_CLUB_RSVPS=true
-            GROUPME_OLD_TIMERS_EXTERNAL=true
-            GROUPME_OLD_TIMERS_SCHEDULE=true
-            GROUPME_OLD_TIMERS_RSVPS=true
-            ;;
         --save)
             SAVE_MANUAL=true
+            ;;
+        --production)
+            ENVIRONMENT="production"
+            ;;
+        --wipe-u)
+            WIPE_U=true
+            ;;
+        --wipe-p)
+            WIPE_P=true
             ;;
         --help|-h)
             echo "Football Home Development Script"
             echo ""
             echo "Usage:"
-            echo "  ./dev.sh                                   Full rebuild (uses committed SQL files, no scraping)"
-            echo "  ./dev.sh --refresh                         Re-scrape all data, update SQL files, then rebuild"
+            echo "  ./dev.sh                                   Full rebuild (dev mode, loads ##u files)"
+            echo "  ./dev.sh --production                      Full rebuild (production mode, loads ##p files)"
+            echo "  ./dev.sh --wipe-u                          Wipe dev app data before rebuild"
+            echo "  ./dev.sh --wipe-p                          Wipe production app data before rebuild"
+            echo "  ./dev.sh --apsl --casa                     Re-scrape all leagues, then rebuild"
+            echo "  ./dev.sh --lighthouse                      Re-scrape Lighthouse teams + GroupMe, then rebuild"
+            echo ""
+            echo "Environment Flags:"
+            echo "  --production                               Build in production mode (loads ##p files instead of ##u)"
+            echo "  --wipe-u                                   Delete all ##u-*-app.sql files (dev data) before rebuild"
+            echo "  --wipe-p                                   Delete all ##p-*-app.sql files (production data) before rebuild"
             echo ""
             echo "Aggregate Flags (Convenience):"
-            echo "  --refresh                                  Re-scrape ALL: APSL + CASA + GroupMe (excludes venues)"
             echo "  --lighthouse                               All Lighthouse data (APSL/CASA structure + rosters + schedules + GroupMe)"
             echo "  --apsl                                     All APSL data (structure + all teams + rosters + schedules)"
             echo "  --casa                                     All CASA data (structure + all teams + rosters)"
@@ -518,6 +517,32 @@ echo -e "${GREEN}✓ Cleanup complete (fresh start guaranteed)${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# STEP 2.5: WIPE APP DATA (if requested)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ "$WIPE_U" = true ]; then
+    echo -e "${YELLOW}🗑️  Wiping dev app data (##u files)...${NC}"
+    rm -f database/data/*u-*-app.sql
+    # Recreate empty placeholders
+    for num in 08 21 22 23 24 25 30; do
+        cat > "database/data/${num}u-"*"-app.sql" 2>/dev/null || true
+    done
+    echo -e "${GREEN}✓ Dev app data wiped${NC}"
+    echo ""
+fi
+
+if [ "$WIPE_P" = true ]; then
+    echo -e "${YELLOW}🗑️  Wiping production app data (##p files)...${NC}"
+    rm -f database/data/*p-*-app.sql
+    # Recreate empty placeholders
+    for num in 08 21 22 23 24 25 30; do
+        cat > "database/data/${num}p-"*"-app.sql" 2>/dev/null || true
+    done
+    echo -e "${GREEN}✓ Production app data wiped${NC}"
+    echo ""
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 3: BUILD (ALWAYS)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -530,7 +555,10 @@ echo ""
 # STEP 4: START
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-echo -e "${YELLOW}🚀 Step 4: Starting containers...${NC}"
+# Export ENVIRONMENT for docker-compose
+export ENVIRONMENT
+
+echo -e "${YELLOW}🚀 Step 4: Starting containers (Environment: $ENVIRONMENT)...${NC}"
 
 # Start database first
 echo -n "  Starting database"

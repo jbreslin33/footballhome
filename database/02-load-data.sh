@@ -1,36 +1,31 @@
 #!/bin/bash
-# Load all SQL data files in dependency order
+# Load all SQL data files in alphabetical order
+# Conditionally loads u/p files based on ENVIRONMENT variable
 
 set -e
 
 echo "Loading data files..."
+echo "Environment: ${ENVIRONMENT:-dev}"
 
-# Define load order based on foreign key dependencies
-FOLDERS=(
-    "seed-data"
-    "venues"
-    "leagues"
-    "conferences"
-    "league-divisions"
-    "sport-divisions"
-    "clubs"
-    "users"
-    "admins"
-    "coaches"
-    "teams"
-    "team-coaches"
-    "players"
-    "rosters"
-)
-
-for folder in "${FOLDERS[@]}"; do
-    if [ -d "/data/$folder" ]; then
-        for file in /data/$folder/*.sql; do
-            if [ -f "$file" ]; then
-                echo "  Loading: $file"
-                psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$file"
-            fi
-        done
+# Get all SQL files in alphabetical order
+for file in /docker-entrypoint-initdb.d/*.sql; do
+    if [ -f "$file" ]; then
+        filename=$(basename "$file")
+        
+        # Skip u files if in production
+        if [[ $filename =~ u-.*-app\.sql ]] && [[ "${ENVIRONMENT:-dev}" == "production" ]]; then
+            echo "  Skipping (dev only): $filename"
+            continue
+        fi
+        
+        # Skip p files if in dev
+        if [[ $filename =~ p-.*-app\.sql ]] && [[ "${ENVIRONMENT:-dev}" == "dev" ]]; then
+            echo "  Skipping (production only): $filename"
+            continue
+        fi
+        
+        echo "  Loading: $filename"
+        psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f "$file"
     fi
 done
 

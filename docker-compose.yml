@@ -11,12 +11,14 @@ services:
       POSTGRES_USER: footballhome_user
       POSTGRES_PASSWORD: footballhome_pass
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      ENVIRONMENT: ${ENVIRONMENT:-dev}  # dev or production
     ports:
-      - "5432:5432"
     volumes:
-      # Mount data folder - PostgreSQL runs *.sql files alphabetically
+      # Mount data folder - custom script conditionally loads u/p files
       - ./database/data:/docker-entrypoint-initdb.d:ro
+      - ./database/02-load-data.sh:/docker-entrypoint-initdb.d/01-load-data.sh:ro
       # Persistent data storage
+      - db_data:/var/lib/postgresql/data
       - db_data:/var/lib/postgresql/data
     networks:
       - footballhome_network
