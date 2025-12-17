@@ -1,5 +1,5 @@
 -- CASA Sport Divisions
--- Generated at: 2025-12-17T15:41:55.797Z
+-- Generated at: 2025-12-17T15:54:44.355Z
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
@@ -14,8 +14,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:40:54.353Z',
-  '2025-12-17T15:40:54.353Z'
+  '2025-12-17T15:53:42.316Z',
+  '2025-12-17T15:53:42.316Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -39,8 +39,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:40:54.354Z',
-  '2025-12-17T15:40:54.354Z'
+  '2025-12-17T15:53:42.317Z',
+  '2025-12-17T15:53:42.317Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -64,8 +64,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:40:54.354Z',
-  '2025-12-17T15:40:54.354Z'
+  '2025-12-17T15:53:42.318Z',
+  '2025-12-17T15:53:42.318Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -89,8 +89,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:40:54.354Z',
-  '2025-12-17T15:40:54.354Z'
+  '2025-12-17T15:53:42.318Z',
+  '2025-12-17T15:53:42.318Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -114,8 +114,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:40:54.354Z',
-  '2025-12-17T15:40:54.354Z'
+  '2025-12-17T15:53:42.318Z',
+  '2025-12-17T15:53:42.318Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -139,8 +139,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:40:54.354Z',
-  '2025-12-17T15:40:54.354Z'
+  '2025-12-17T15:53:42.318Z',
+  '2025-12-17T15:53:42.318Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -164,8 +164,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:40:54.354Z',
-  '2025-12-17T15:40:54.354Z'
+  '2025-12-17T15:53:42.319Z',
+  '2025-12-17T15:53:42.319Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -189,8 +189,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:40:54.355Z',
-  '2025-12-17T15:40:54.355Z'
+  '2025-12-17T15:53:42.319Z',
+  '2025-12-17T15:53:42.319Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -214,8 +214,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:41:01.915Z',
-  '2025-12-17T15:41:01.915Z'
+  '2025-12-17T15:53:48.426Z',
+  '2025-12-17T15:53:48.426Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -239,8 +239,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:41:01.915Z',
-  '2025-12-17T15:41:01.915Z'
+  '2025-12-17T15:53:48.427Z',
+  '2025-12-17T15:53:48.427Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -264,8 +264,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:41:01.915Z',
-  '2025-12-17T15:41:01.915Z'
+  '2025-12-17T15:53:48.427Z',
+  '2025-12-17T15:53:48.427Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -289,8 +289,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:41:01.915Z',
-  '2025-12-17T15:41:01.915Z'
+  '2025-12-17T15:53:48.427Z',
+  '2025-12-17T15:53:48.427Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
@@ -314,8 +314,8 @@ VALUES (
   NULL,
   NULL,
   true,
-  '2025-12-17T15:41:01.915Z',
-  '2025-12-17T15:41:01.915Z'
+  '2025-12-17T15:53:48.427Z',
+  '2025-12-17T15:53:48.427Z'
 )
 ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   name = EXCLUDED.name,
