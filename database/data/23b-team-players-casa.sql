@@ -1,7 +1,7 @@
 -- CASA Team Rosters
--- Generated at: 2025-12-17T23:37:09.741Z
+-- Generated at: 2025-12-17T23:45:56.060Z
 
-INSERT INTO team_players (team_id, player_id, jersey_number, is_active, joined_date, left_date, notes)
+INSERT INTO team_players (team_id, player_id, jersey_number, is_active, joined_at, left_at, notes)
 VALUES
   ('da9e701d-7752-495a-8145-fe967b40c0d3', 'e35f1984-8864-4b32-8d48-c61998309f65', NULL, true, NULL, NULL, NULL),
   ('da9e701d-7752-495a-8145-fe967b40c0d3', '05adbf9f-3e6a-48f8-89b6-3655112365f2', NULL, true, NULL, NULL, NULL),
@@ -324,8 +324,8 @@ ON CONFLICT (id) DO UPDATE SET
   player_id = EXCLUDED.player_id,
   jersey_number = EXCLUDED.jersey_number,
   is_active = EXCLUDED.is_active,
-  joined_date = EXCLUDED.joined_date,
-  left_date = EXCLUDED.left_date,
+  joined_at = EXCLUDED.joined_at,
+  left_at = EXCLUDED.left_at,
   notes = EXCLUDED.notes
 ;
 

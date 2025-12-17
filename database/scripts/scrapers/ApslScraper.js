@@ -341,7 +341,7 @@ class ApslScraper extends Scraper {
         options: {
           title: 'APSL Team Rosters',
           tableName: 'team_players',
-          columns: ['team_id', 'player_id', 'jersey_number', 'is_active', 'joined_date', 'left_date', 'notes'],
+          columns: ['team_id', 'player_id', 'jersey_number', 'is_active', 'joined_at', 'left_at', 'notes'],
           useInserts: true
         }
       },

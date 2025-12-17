@@ -1,7 +1,7 @@
 -- APSL Team Rosters
--- Generated at: 2025-12-17T23:35:23.949Z
+-- Generated at: 2025-12-17T23:44:08.324Z
 
-INSERT INTO team_players (team_id, player_id, jersey_number, is_active, joined_date, left_date, notes)
+INSERT INTO team_players (team_id, player_id, jersey_number, is_active, joined_at, left_at, notes)
 VALUES
   ('fe1c0dbb-5ec2-4f07-8842-dc92875c29ec', 'b353ee4a-c92e-441b-8f66-2204ae4b1d59', '2', true, NULL, NULL, NULL),
   ('fe1c0dbb-5ec2-4f07-8842-dc92875c29ec', '11e115e6-1310-4f0c-8374-ab467c794a1b', '1', true, NULL, NULL, NULL),
@@ -1635,8 +1635,8 @@ ON CONFLICT (id) DO UPDATE SET
   player_id = EXCLUDED.player_id,
   jersey_number = EXCLUDED.jersey_number,
   is_active = EXCLUDED.is_active,
-  joined_date = EXCLUDED.joined_date,
-  left_date = EXCLUDED.left_date,
+  joined_at = EXCLUDED.joined_at,
+  left_at = EXCLUDED.left_at,
   notes = EXCLUDED.notes
 ;
 
