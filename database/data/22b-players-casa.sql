@@ -1,5 +1,5 @@
 -- CASA Players
--- Generated at: 2025-12-17T21:57:48.410Z
+-- Generated at: 2025-12-17T22:51:43.478Z
 
 INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
 VALUES (
@@ -11,8 +11,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.771Z',
-  '2025-12-17T21:56:15.771Z'
+  '2025-12-17T22:49:58.841Z',
+  '2025-12-17T22:49:58.841Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -34,8 +34,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.771Z',
-  '2025-12-17T21:56:15.771Z'
+  '2025-12-17T22:49:58.841Z',
+  '2025-12-17T22:49:58.841Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -57,8 +57,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.771Z',
-  '2025-12-17T21:56:15.771Z'
+  '2025-12-17T22:49:58.842Z',
+  '2025-12-17T22:49:58.842Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -80,8 +80,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.771Z',
-  '2025-12-17T21:56:15.771Z'
+  '2025-12-17T22:49:58.842Z',
+  '2025-12-17T22:49:58.842Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -103,8 +103,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.771Z',
-  '2025-12-17T21:56:15.771Z'
+  '2025-12-17T22:49:58.842Z',
+  '2025-12-17T22:49:58.842Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -126,8 +126,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.771Z',
-  '2025-12-17T21:56:15.771Z'
+  '2025-12-17T22:49:58.842Z',
+  '2025-12-17T22:49:58.842Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -149,8 +149,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.771Z',
-  '2025-12-17T21:56:15.771Z'
+  '2025-12-17T22:49:58.842Z',
+  '2025-12-17T22:49:58.842Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -172,8 +172,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.771Z',
-  '2025-12-17T21:56:15.771Z'
+  '2025-12-17T22:49:58.842Z',
+  '2025-12-17T22:49:58.842Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -195,8 +195,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.771Z',
-  '2025-12-17T21:56:15.771Z'
+  '2025-12-17T22:49:58.842Z',
+  '2025-12-17T22:49:58.842Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -218,8 +218,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.771Z',
-  '2025-12-17T21:56:15.771Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -241,8 +241,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.771Z',
-  '2025-12-17T21:56:15.771Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -264,8 +264,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -287,8 +287,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -310,8 +310,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -333,8 +333,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -356,8 +356,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -379,8 +379,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -402,8 +402,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -425,8 +425,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -448,8 +448,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -471,8 +471,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -494,8 +494,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.843Z',
+  '2025-12-17T22:49:58.843Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -517,8 +517,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.844Z',
+  '2025-12-17T22:49:58.844Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -540,8 +540,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.844Z',
+  '2025-12-17T22:49:58.844Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -563,8 +563,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.844Z',
+  '2025-12-17T22:49:58.844Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -586,8 +586,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.844Z',
+  '2025-12-17T22:49:58.844Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -609,8 +609,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.844Z',
+  '2025-12-17T22:49:58.844Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -632,8 +632,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.844Z',
+  '2025-12-17T22:49:58.844Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -655,8 +655,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:15.772Z',
-  '2025-12-17T21:56:15.772Z'
+  '2025-12-17T22:49:58.844Z',
+  '2025-12-17T22:49:58.844Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -678,8 +678,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.857Z',
-  '2025-12-17T21:56:17.857Z'
+  '2025-12-17T22:50:02.425Z',
+  '2025-12-17T22:50:02.425Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -701,8 +701,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.857Z',
-  '2025-12-17T21:56:17.857Z'
+  '2025-12-17T22:50:02.425Z',
+  '2025-12-17T22:50:02.425Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -724,8 +724,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.857Z',
-  '2025-12-17T21:56:17.857Z'
+  '2025-12-17T22:50:02.425Z',
+  '2025-12-17T22:50:02.425Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -747,8 +747,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.857Z',
-  '2025-12-17T21:56:17.857Z'
+  '2025-12-17T22:50:02.425Z',
+  '2025-12-17T22:50:02.425Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -770,8 +770,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.857Z',
-  '2025-12-17T21:56:17.857Z'
+  '2025-12-17T22:50:02.425Z',
+  '2025-12-17T22:50:02.425Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -793,8 +793,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.857Z',
-  '2025-12-17T21:56:17.857Z'
+  '2025-12-17T22:50:02.425Z',
+  '2025-12-17T22:50:02.425Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -816,8 +816,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.425Z',
+  '2025-12-17T22:50:02.425Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -839,8 +839,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.425Z',
+  '2025-12-17T22:50:02.425Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -862,8 +862,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.425Z',
+  '2025-12-17T22:50:02.425Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -885,8 +885,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.425Z',
+  '2025-12-17T22:50:02.425Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -908,8 +908,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -931,8 +931,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -954,8 +954,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -977,8 +977,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1000,8 +1000,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1023,8 +1023,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1046,8 +1046,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1069,8 +1069,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1092,8 +1092,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1115,8 +1115,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1138,8 +1138,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1161,8 +1161,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1184,8 +1184,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1207,8 +1207,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1230,8 +1230,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1253,8 +1253,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1276,8 +1276,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1299,8 +1299,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1322,8 +1322,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:17.858Z',
-  '2025-12-17T21:56:17.858Z'
+  '2025-12-17T22:50:02.426Z',
+  '2025-12-17T22:50:02.426Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1345,8 +1345,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.587Z',
+  '2025-12-17T22:50:04.587Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1368,8 +1368,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.587Z',
+  '2025-12-17T22:50:04.587Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1391,8 +1391,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.587Z',
+  '2025-12-17T22:50:04.587Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1414,8 +1414,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.587Z',
+  '2025-12-17T22:50:04.587Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1437,8 +1437,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.587Z',
+  '2025-12-17T22:50:04.587Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1460,8 +1460,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.587Z',
+  '2025-12-17T22:50:04.587Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1483,8 +1483,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1506,8 +1506,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1529,8 +1529,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1552,8 +1552,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1575,8 +1575,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1598,8 +1598,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1621,8 +1621,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1644,8 +1644,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1667,8 +1667,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1690,8 +1690,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1713,8 +1713,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1736,8 +1736,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1759,8 +1759,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1782,8 +1782,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1805,8 +1805,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1828,8 +1828,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1851,8 +1851,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1874,8 +1874,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.890Z',
-  '2025-12-17T21:56:19.890Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1897,8 +1897,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.891Z',
-  '2025-12-17T21:56:19.891Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1920,8 +1920,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.891Z',
-  '2025-12-17T21:56:19.891Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.588Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1943,8 +1943,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.891Z',
-  '2025-12-17T21:56:19.891Z'
+  '2025-12-17T22:50:04.588Z',
+  '2025-12-17T22:50:04.589Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1966,8 +1966,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:19.891Z',
-  '2025-12-17T21:56:19.891Z'
+  '2025-12-17T22:50:04.589Z',
+  '2025-12-17T22:50:04.589Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -1989,8 +1989,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.763Z',
+  '2025-12-17T22:50:06.763Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2012,8 +2012,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.763Z',
+  '2025-12-17T22:50:06.763Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2035,8 +2035,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.763Z',
+  '2025-12-17T22:50:06.763Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2058,8 +2058,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.763Z',
+  '2025-12-17T22:50:06.763Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2081,8 +2081,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.763Z',
+  '2025-12-17T22:50:06.763Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2104,8 +2104,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.763Z',
+  '2025-12-17T22:50:06.763Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2127,8 +2127,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.763Z',
+  '2025-12-17T22:50:06.763Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2150,8 +2150,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.763Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2173,8 +2173,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2196,8 +2196,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2219,8 +2219,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2242,8 +2242,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2265,8 +2265,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2288,8 +2288,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2311,8 +2311,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2334,8 +2334,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2357,8 +2357,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2380,8 +2380,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2403,8 +2403,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2426,8 +2426,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2449,8 +2449,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2472,8 +2472,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2495,8 +2495,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2518,8 +2518,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2541,8 +2541,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.764Z',
+  '2025-12-17T22:50:06.764Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2564,8 +2564,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.765Z',
+  '2025-12-17T22:50:06.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2587,8 +2587,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.765Z',
+  '2025-12-17T22:50:06.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2610,8 +2610,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.765Z',
+  '2025-12-17T22:50:06.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2633,8 +2633,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.765Z',
+  '2025-12-17T22:50:06.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2656,8 +2656,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:21.907Z',
-  '2025-12-17T21:56:21.907Z'
+  '2025-12-17T22:50:06.765Z',
+  '2025-12-17T22:50:06.765Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2679,8 +2679,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.799Z',
+  '2025-12-17T22:50:08.799Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2702,8 +2702,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.799Z',
+  '2025-12-17T22:50:08.799Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2725,8 +2725,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.799Z',
+  '2025-12-17T22:50:08.799Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2748,8 +2748,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.799Z',
+  '2025-12-17T22:50:08.799Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2771,8 +2771,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.799Z',
+  '2025-12-17T22:50:08.799Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2794,8 +2794,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.799Z',
+  '2025-12-17T22:50:08.799Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2817,8 +2817,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.799Z',
+  '2025-12-17T22:50:08.799Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2840,8 +2840,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.799Z',
+  '2025-12-17T22:50:08.799Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2863,8 +2863,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.799Z',
+  '2025-12-17T22:50:08.799Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2886,8 +2886,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2909,8 +2909,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2932,8 +2932,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2955,8 +2955,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -2978,8 +2978,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3001,8 +3001,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3024,8 +3024,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3047,8 +3047,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3070,8 +3070,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3093,8 +3093,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3116,8 +3116,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3139,8 +3139,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3162,8 +3162,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3185,8 +3185,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3208,8 +3208,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:23.792Z',
-  '2025-12-17T21:56:23.792Z'
+  '2025-12-17T22:50:08.800Z',
+  '2025-12-17T22:50:08.800Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3231,8 +3231,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.663Z',
+  '2025-12-17T22:50:12.663Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3254,8 +3254,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.663Z',
+  '2025-12-17T22:50:12.663Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3277,8 +3277,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.663Z',
+  '2025-12-17T22:50:12.663Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3300,8 +3300,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.663Z',
+  '2025-12-17T22:50:12.663Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3323,8 +3323,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.663Z',
+  '2025-12-17T22:50:12.663Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3346,8 +3346,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.663Z',
+  '2025-12-17T22:50:12.663Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3369,8 +3369,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.664Z',
+  '2025-12-17T22:50:12.664Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3392,8 +3392,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.664Z',
+  '2025-12-17T22:50:12.664Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3415,8 +3415,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.664Z',
+  '2025-12-17T22:50:12.664Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3438,8 +3438,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.664Z',
+  '2025-12-17T22:50:12.664Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3461,8 +3461,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.664Z',
+  '2025-12-17T22:50:12.664Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3484,8 +3484,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.664Z',
+  '2025-12-17T22:50:12.664Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3507,8 +3507,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.664Z',
+  '2025-12-17T22:50:12.664Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3530,8 +3530,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.664Z',
+  '2025-12-17T22:50:12.664Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3553,8 +3553,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.664Z',
+  '2025-12-17T22:50:12.664Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3576,8 +3576,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.664Z',
+  '2025-12-17T22:50:12.664Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3599,8 +3599,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.664Z',
+  '2025-12-17T22:50:12.664Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3622,8 +3622,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.665Z',
+  '2025-12-17T22:50:12.665Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3645,8 +3645,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.665Z',
+  '2025-12-17T22:50:12.665Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3668,8 +3668,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.665Z',
+  '2025-12-17T22:50:12.665Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3691,8 +3691,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.665Z',
+  '2025-12-17T22:50:12.665Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3714,8 +3714,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.665Z',
+  '2025-12-17T22:50:12.665Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3737,8 +3737,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.665Z',
+  '2025-12-17T22:50:12.665Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3760,8 +3760,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.665Z',
+  '2025-12-17T22:50:12.665Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3783,8 +3783,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.665Z',
+  '2025-12-17T22:50:12.665Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3806,8 +3806,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:25.804Z',
-  '2025-12-17T21:56:25.804Z'
+  '2025-12-17T22:50:12.665Z',
+  '2025-12-17T22:50:12.665Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3829,8 +3829,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.809Z',
+  '2025-12-17T22:50:14.809Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3852,8 +3852,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.809Z',
+  '2025-12-17T22:50:14.809Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3875,8 +3875,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.809Z',
+  '2025-12-17T22:50:14.809Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3898,8 +3898,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.810Z',
+  '2025-12-17T22:50:14.810Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3921,8 +3921,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.810Z',
+  '2025-12-17T22:50:14.810Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3944,8 +3944,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.810Z',
+  '2025-12-17T22:50:14.810Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3967,8 +3967,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.810Z',
+  '2025-12-17T22:50:14.810Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -3990,8 +3990,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.810Z',
+  '2025-12-17T22:50:14.810Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4013,8 +4013,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.810Z',
+  '2025-12-17T22:50:14.810Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4036,8 +4036,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.810Z',
+  '2025-12-17T22:50:14.810Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4059,8 +4059,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.810Z',
+  '2025-12-17T22:50:14.810Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4082,8 +4082,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.811Z',
+  '2025-12-17T22:50:14.811Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4105,8 +4105,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.811Z',
+  '2025-12-17T22:50:14.811Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4128,8 +4128,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.811Z',
+  '2025-12-17T22:50:14.811Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4151,8 +4151,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:27.645Z',
-  '2025-12-17T21:56:27.645Z'
+  '2025-12-17T22:50:14.811Z',
+  '2025-12-17T22:50:14.811Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4174,8 +4174,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.789Z',
+  '2025-12-17T22:50:16.789Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4197,8 +4197,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.789Z',
+  '2025-12-17T22:50:16.789Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4220,8 +4220,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.789Z',
+  '2025-12-17T22:50:16.789Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4243,8 +4243,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.789Z',
+  '2025-12-17T22:50:16.789Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4266,8 +4266,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.789Z',
+  '2025-12-17T22:50:16.789Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4289,8 +4289,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.789Z',
+  '2025-12-17T22:50:16.789Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4312,8 +4312,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4335,8 +4335,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4358,8 +4358,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4381,8 +4381,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4404,8 +4404,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4427,8 +4427,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4450,8 +4450,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4473,8 +4473,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4496,8 +4496,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4519,8 +4519,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4542,8 +4542,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4565,8 +4565,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4588,8 +4588,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4611,8 +4611,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4634,8 +4634,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4657,8 +4657,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4680,8 +4680,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4703,8 +4703,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4726,8 +4726,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4749,8 +4749,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4772,8 +4772,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.790Z',
+  '2025-12-17T22:50:16.790Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4795,8 +4795,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.791Z',
+  '2025-12-17T22:50:16.791Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4818,8 +4818,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:29.522Z',
-  '2025-12-17T21:56:29.522Z'
+  '2025-12-17T22:50:16.791Z',
+  '2025-12-17T22:50:16.791Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4841,8 +4841,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4864,8 +4864,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4887,8 +4887,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4910,8 +4910,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4933,8 +4933,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4956,8 +4956,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -4979,8 +4979,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5002,8 +5002,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5025,8 +5025,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5048,8 +5048,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5071,8 +5071,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5094,8 +5094,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.728Z',
+  '2025-12-17T22:50:18.728Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5117,8 +5117,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5140,8 +5140,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5163,8 +5163,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5186,8 +5186,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5209,8 +5209,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5232,8 +5232,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5255,8 +5255,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5278,8 +5278,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5301,8 +5301,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5324,8 +5324,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5347,8 +5347,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5370,8 +5370,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5393,8 +5393,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5416,8 +5416,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5439,8 +5439,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5462,8 +5462,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5485,8 +5485,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.729Z',
+  '2025-12-17T22:50:18.729Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5508,8 +5508,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.730Z',
+  '2025-12-17T22:50:18.730Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5531,8 +5531,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:31.342Z',
-  '2025-12-17T21:56:31.342Z'
+  '2025-12-17T22:50:18.730Z',
+  '2025-12-17T22:50:18.730Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5554,8 +5554,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5577,8 +5577,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5600,8 +5600,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5623,8 +5623,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5646,8 +5646,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5669,8 +5669,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5692,8 +5692,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5715,8 +5715,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5738,8 +5738,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5761,8 +5761,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5784,8 +5784,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5807,8 +5807,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.559Z',
+  '2025-12-17T22:50:40.559Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5830,8 +5830,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.560Z',
+  '2025-12-17T22:50:40.560Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5853,8 +5853,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.560Z',
+  '2025-12-17T22:50:40.560Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5876,8 +5876,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.560Z',
+  '2025-12-17T22:50:40.560Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5899,8 +5899,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.391Z',
-  '2025-12-17T21:56:52.391Z'
+  '2025-12-17T22:50:40.560Z',
+  '2025-12-17T22:50:40.560Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5922,8 +5922,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.392Z',
-  '2025-12-17T21:56:52.392Z'
+  '2025-12-17T22:50:40.560Z',
+  '2025-12-17T22:50:40.560Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5945,8 +5945,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:52.392Z',
-  '2025-12-17T21:56:52.392Z'
+  '2025-12-17T22:50:40.560Z',
+  '2025-12-17T22:50:40.560Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5968,8 +5968,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.176Z',
-  '2025-12-17T21:56:56.176Z'
+  '2025-12-17T22:50:42.677Z',
+  '2025-12-17T22:50:42.677Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -5991,8 +5991,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.677Z',
+  '2025-12-17T22:50:42.677Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6014,8 +6014,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.677Z',
+  '2025-12-17T22:50:42.677Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6037,8 +6037,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.677Z',
+  '2025-12-17T22:50:42.677Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6060,8 +6060,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.677Z',
+  '2025-12-17T22:50:42.677Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6083,8 +6083,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6106,8 +6106,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6129,8 +6129,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6152,8 +6152,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6175,8 +6175,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6198,8 +6198,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6221,8 +6221,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6244,8 +6244,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6267,8 +6267,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6290,8 +6290,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6313,8 +6313,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6336,8 +6336,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6359,8 +6359,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6382,8 +6382,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6405,8 +6405,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6428,8 +6428,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6451,8 +6451,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6474,8 +6474,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6497,8 +6497,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6520,8 +6520,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.678Z',
+  '2025-12-17T22:50:42.678Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6543,8 +6543,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.679Z',
+  '2025-12-17T22:50:42.679Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6566,8 +6566,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.679Z',
+  '2025-12-17T22:50:42.679Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6589,8 +6589,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:56.177Z',
-  '2025-12-17T21:56:56.177Z'
+  '2025-12-17T22:50:42.679Z',
+  '2025-12-17T22:50:42.679Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6612,8 +6612,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:58.243Z',
-  '2025-12-17T21:56:58.243Z'
+  '2025-12-17T22:50:44.738Z',
+  '2025-12-17T22:50:44.738Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6635,8 +6635,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:58.243Z',
-  '2025-12-17T21:56:58.243Z'
+  '2025-12-17T22:50:44.738Z',
+  '2025-12-17T22:50:44.738Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6658,8 +6658,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:58.243Z',
-  '2025-12-17T21:56:58.243Z'
+  '2025-12-17T22:50:44.738Z',
+  '2025-12-17T22:50:44.738Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6681,8 +6681,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:58.243Z',
-  '2025-12-17T21:56:58.243Z'
+  '2025-12-17T22:50:44.739Z',
+  '2025-12-17T22:50:44.739Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6704,8 +6704,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:56:58.243Z',
-  '2025-12-17T21:56:58.243Z'
+  '2025-12-17T22:50:44.739Z',
+  '2025-12-17T22:50:44.739Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6727,8 +6727,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.881Z',
+  '2025-12-17T22:50:46.881Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6750,8 +6750,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.881Z',
+  '2025-12-17T22:50:46.881Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6773,8 +6773,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6796,8 +6796,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6819,8 +6819,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6842,8 +6842,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6865,8 +6865,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6888,8 +6888,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6911,8 +6911,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6934,8 +6934,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6957,8 +6957,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -6980,8 +6980,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7003,8 +7003,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7026,8 +7026,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7049,8 +7049,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7072,8 +7072,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.882Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7095,8 +7095,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.882Z',
+  '2025-12-17T22:50:46.883Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7118,8 +7118,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.110Z'
+  '2025-12-17T22:50:46.883Z',
+  '2025-12-17T22:50:46.883Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7141,8 +7141,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.110Z',
-  '2025-12-17T21:57:02.111Z'
+  '2025-12-17T22:50:46.883Z',
+  '2025-12-17T22:50:46.883Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7164,8 +7164,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.111Z',
-  '2025-12-17T21:57:02.111Z'
+  '2025-12-17T22:50:46.883Z',
+  '2025-12-17T22:50:46.883Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7187,8 +7187,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.111Z',
-  '2025-12-17T21:57:02.111Z'
+  '2025-12-17T22:50:46.883Z',
+  '2025-12-17T22:50:46.883Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7210,8 +7210,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.111Z',
-  '2025-12-17T21:57:02.111Z'
+  '2025-12-17T22:50:46.883Z',
+  '2025-12-17T22:50:46.883Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7233,8 +7233,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.111Z',
-  '2025-12-17T21:57:02.111Z'
+  '2025-12-17T22:50:46.883Z',
+  '2025-12-17T22:50:46.883Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
@@ -7256,8 +7256,8 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  '2025-12-17T21:57:02.111Z',
-  '2025-12-17T21:57:02.111Z'
+  '2025-12-17T22:50:46.883Z',
+  '2025-12-17T22:50:46.883Z'
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),

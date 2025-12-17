@@ -7,6 +7,10 @@ class RoleSelectionScreen extends Screen {
     const user = this.navigation.context.user;
     const userName = user?.name || user?.email || 'User';
     
+    // Check if user has admin role (club, sport division, or team level)
+    const isAdmin = user?.role && (user.role === 'club' || user.role === 'sport_division' || user.role === 'team' || user.role === 'system' || user.role === 'league');
+    const adminButtonDisplay = isAdmin ? 'flex' : 'none';
+    
     div.innerHTML = `
       <div class="screen-header">
         <h1>Welcome, ${this.escapeHtml(userName)}</h1>
@@ -30,7 +34,7 @@ class RoleSelectionScreen extends Screen {
           </div>
         </button>
         
-        <button class="btn btn-lg btn-primary" data-role="admin" style="display: flex; align-items: center; gap: var(--space-3);">
+        <button class="btn btn-lg btn-primary" data-role="admin" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
           <span style="font-size: 2rem;">👨‍💼</span>
           <div style="flex: 1; text-align: left;">
             <div style="font-weight: bold;">Admin</div>

@@ -15,6 +15,8 @@
   - **Full Rebuild**: `./dev.sh` (destroys containers/volumes, cleans caches, rebuilds from scratch).
   - **Refresh Data**: `./dev.sh --refresh` (re-scrapes all data: APSL + CASA + GroupMe, updates SQL files, then rebuilds).
   - **NOTE**: No quick restart option exists. All rebuilds are full rebuilds.
+  - **Terminal Output**: Avoid using `tail` command for viewing terminal output. Use `head`, `grep`, or pipe directly instead.
+- **Database Changes**: 
 - **Database Changes**: 
   - **Persistent Data**: Add a new numbered SQL file in `database/data/` (e.g., `75-club-admins.sql`). Data inserted here persists across full rebuilds.
   - **Schema Changes**: Add to appropriate numbered file, then run full rebuild (`./dev.sh`).
