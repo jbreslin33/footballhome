@@ -878,7 +878,7 @@ class CasaScraper extends Scraper {
         }
       },
       {
-        filename: '09-players-casa.sql',
+        filename: '22-players-casa.sql',
         data: this.data.players,
         options: {
           title: 'CASA Players',
@@ -895,7 +895,7 @@ class CasaScraper extends Scraper {
         }
       },
       {
-        filename: '22-teams-casa.sql',
+        filename: '21-teams-casa.sql',
         data: this.data.teams,
         options: {
           title: 'CASA Teams',

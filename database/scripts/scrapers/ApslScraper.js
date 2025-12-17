@@ -309,7 +309,7 @@ class ApslScraper extends Scraper {
         }
       },
       {
-        filename: '09-players-apsl.sql',
+        filename: '22-players-apsl.sql',
         data: this.data.players,
         options: {
           title: 'APSL Players',
@@ -326,7 +326,7 @@ class ApslScraper extends Scraper {
         }
       },
       {
-        filename: '22-teams-apsl.sql',
+        filename: '21-teams-apsl.sql',
         data: this.data.teams,
         options: {
           title: 'APSL Teams',
