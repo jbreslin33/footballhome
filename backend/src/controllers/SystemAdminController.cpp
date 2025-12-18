@@ -618,15 +618,149 @@ Response SystemAdminController::handleGetSystemAdmins(const Request& request) {
 }
 
 Response SystemAdminController::handleGrantSystemAdmin(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        // Parse userId from path: /api/system-admin/admins/:userId/grant
+        std::string path = request.getPath();
+        size_t pos = path.find("/api/system-admin/admins/");
+        if (pos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        
+        std::string after_prefix = path.substr(pos + 26); // length of "/api/system-admin/admins/"
+        size_t slash_pos = after_prefix.find("/");
+        std::string user_id = after_prefix.substr(0, slash_pos);
+        
+        if (user_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"User ID is required\"}");
+        }
+        
+        // Get notes from request body (if provided)
+        std::string notes = "";
+        // TODO: Parse JSON body when available
+        
+        // Hardcoded admin_id for now (will be replaced with JWT token parsing)
+        std::string admin_id = "1";
+        
+        // Insert into system_admins table
+        std::string query = "INSERT INTO system_admins (user_id, appointed_by, notes, is_active) "
+                          "VALUES ($1, $2, $3, true) "
+                          "ON CONFLICT (user_id) DO UPDATE SET is_active = true, appointed_by = $2, notes = $3, updated_at = CURRENT_TIMESTAMP "
+                          "RETURNING id";
+        std::vector<std::string> params = {user_id, admin_id, notes};
+        auto result = db_->query(query, params);
+        
+        // Log audit action
+        logAuditAction(admin_id, "grant_system_admin", "system_admins", user_id, "{}", 
+                      "{\"user_id\":\"" + user_id + "\",\"appointed_by\":\"" + admin_id + "\"}");
+        
+        return Response(HttpStatus::OK, "{\"success\":true,\"message\":\"System admin granted\"}");
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to grant system admin: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleRevokeSystemAdmin(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        // Parse userId from path: /api/system-admin/admins/:userId/revoke
+        std::string path = request.getPath();
+        size_t pos = path.find("/api/system-admin/admins/");
+        if (pos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        
+        std::string after_prefix = path.substr(pos + 26); // length of "/api/system-admin/admins/"
+        size_t slash_pos = after_prefix.find("/");
+        std::string user_id = after_prefix.substr(0, slash_pos);
+        
+        if (user_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"User ID is required\"}");
+        }
+        
+        // Hardcoded admin_id for now (will be replaced with JWT token parsing)
+        std::string admin_id = "1";
+        
+        // Update system_admins table to set is_active = false
+        std::string query = "UPDATE system_admins SET is_active = false, updated_at = CURRENT_TIMESTAMP "
+                          "WHERE user_id = $1";
+        std::vector<std::string> params = {user_id};
+        db_->execute(query, params);
+        
+        // Log audit action
+        logAuditAction(admin_id, "revoke_system_admin", "system_admins", user_id, 
+                      "{\"user_id\":\"" + user_id + "\",\"is_active\":true}", 
+                      "{\"user_id\":\"" + user_id + "\",\"is_active\":false}");
+        
+        return Response(HttpStatus::OK, "{\"success\":true,\"message\":\"System admin revoked\"}");
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to revoke system admin: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleGetAuditLogs(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        // Parse query parameters
+        std::string limit = request.getQueryParam("limit");
+        if (limit.empty()) limit = "100";
+        std::string offset = request.getQueryParam("offset");
+        if (offset.empty()) offset = "0";
+        std::string action_type = request.getQueryParam("action_type");
+        std::string table_name = request.getQueryParam("table_name");
+        
+        // Build query with optional filters
+        std::string query = "SELECT sal.id, sal.admin_id, sal.action_type, sal.table_name, sal.record_id, "
+                          "sal.old_values, sal.new_values, sal.created_at, "
+                          "u.email, u.first_name, u.last_name "
+                          "FROM system_audit_log sal "
+                          "JOIN users u ON sal.admin_id = u.id "
+                          "WHERE 1=1 ";
+        
+        std::vector<std::string> params;
+        int param_count = 0;
+        
+        if (!action_type.empty()) {
+            params.push_back(action_type);
+            query += "AND sal.action_type = $" + std::to_string(++param_count) + " ";
+        }
+        
+        if (!table_name.empty()) {
+            params.push_back(table_name);
+            query += "AND sal.table_name = $" + std::to_string(++param_count) + " ";
+        }
+        
+        query += "ORDER BY sal.created_at DESC ";
+        params.push_back(limit);
+        query += "LIMIT $" + std::to_string(++param_count) + " ";
+        params.push_back(offset);
+        query += "OFFSET $" + std::to_string(++param_count);
+        
+        auto result = db_->query(query, params);
+        
+        // Build JSON array
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json += ",";
+            json += "{";
+            json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
+            json += "\"admin_id\":\"" + result[i]["admin_id"].as<std::string>() + "\",";
+            json += "\"admin_email\":\"" + result[i]["email"].as<std::string>() + "\",";
+            json += "\"admin_name\":\"" + result[i]["first_name"].as<std::string>() + " " + result[i]["last_name"].as<std::string>() + "\",";
+            json += "\"action_type\":\"" + result[i]["action_type"].as<std::string>() + "\",";
+            json += "\"table_name\":\"" + result[i]["table_name"].as<std::string>() + "\",";
+            json += "\"record_id\":\"" + result[i]["record_id"].as<std::string>() + "\",";
+            json += "\"old_values\":" + result[i]["old_values"].as<std::string>() + ",";
+            json += "\"new_values\":" + result[i]["new_values"].as<std::string>() + ",";
+            json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\"";
+            json += "}";
+        }
+        json += "]";
+        
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to fetch audit logs: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleGetApiUsageLogs(const Request& request) {
