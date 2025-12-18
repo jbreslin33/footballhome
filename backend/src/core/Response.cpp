@@ -31,6 +31,7 @@ std::string Response::getStatusText(HttpStatus status) const {
         case HttpStatus::NOT_FOUND: return "Not Found";
         case HttpStatus::METHOD_NOT_ALLOWED: return "Method Not Allowed";
         case HttpStatus::INTERNAL_SERVER_ERROR: return "Internal Server Error";
+        case HttpStatus::NOT_IMPLEMENTED: return "Not Implemented";
         default: return "Unknown";
     }
 }
