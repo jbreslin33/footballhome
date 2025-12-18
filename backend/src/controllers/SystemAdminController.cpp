@@ -5,6 +5,7 @@
 
 SystemAdminController::SystemAdminController() {
     db_ = Database::getInstance();
+    userService_ = new UserService(db_);
 }
 
 void SystemAdminController::registerRoutes(Router& router, const std::string& prefix) {
@@ -46,8 +47,28 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
         return this->handleGetAllUsers(request);
     });
     
+    router.get(prefix + "/users/:userId", [this](const Request& request) {
+        return this->handleGetUser(request);
+    });
+    
+    router.put(prefix + "/users/:userId", [this](const Request& request) {
+        return this->handleUpdateUser(request);
+    });
+    
     router.put(prefix + "/users/:userId/status", [this](const Request& request) {
         return this->handleUpdateUserStatus(request);
+    });
+    
+    router.get(prefix + "/users/:userId/teams", [this](const Request& request) {
+        return this->handleGetUserTeams(request);
+    });
+    
+    router.post(prefix + "/users/:userId/teams", [this](const Request& request) {
+        return this->handleAddUserToTeam(request);
+    });
+    
+    router.del(prefix + "/users/:userId/teams/:teamId", [this](const Request& request) {
+        return this->handleRemoveUserFromTeam(request);
     });
     
     router.post(prefix + "/users/:userId/impersonate", [this](const Request& request) {
@@ -628,6 +649,250 @@ Response SystemAdminController::handleUpdateUserStatus(const Request& request) {
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
                        "{\"error\":\"Failed to update user status: " + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetUser(const Request& request) {
+    try {
+        std::string path = request.getPath();
+        std::string prefix = "/api/system-admin/users/";
+        size_t pos = path.find(prefix);
+        if (pos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        
+        std::string user_id = path.substr(pos + prefix.length());
+        if (user_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"User ID is required\"}");
+        }
+        
+        // Get user basic info
+        std::string user_query = "SELECT id, first_name, last_name, email, phone, date_of_birth, is_active, created_at FROM users WHERE id = $1";
+        std::vector<std::string> params = {user_id};
+        auto user_result = db_->query(user_query, params);
+        
+        if (user_result.empty()) {
+            return Response(HttpStatus::NOT_FOUND, "{\"error\":\"User not found\"}");
+        }
+        
+        // Get player info if exists
+        std::string player_query = "SELECT preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating FROM players WHERE id = $1";
+        auto player_result = db_->query(player_query, params);
+        
+        // Get team memberships
+        std::string teams_query = R"(
+            SELECT t.id as team_id, t.name as team_name, sd.display_name as division_name, 
+                   tp.jersey_number, tp.is_active as team_active
+            FROM team_players tp
+            JOIN teams t ON tp.team_id = t.id
+            JOIN sport_divisions sd ON t.sport_division_id = sd.id
+            WHERE tp.player_id = $1
+            ORDER BY t.name
+        )";
+        auto teams_result = db_->query(teams_query, params);
+        
+        // Build JSON response
+        std::ostringstream json;
+        json << "{";
+        json << "\"id\":\"" << user_result[0]["id"].as<std::string>() << "\",";
+        json << "\"first_name\":" << (user_result[0]["first_name"].is_null() ? "null" : "\"" + user_result[0]["first_name"].as<std::string>() + "\"") << ",";
+        json << "\"last_name\":" << (user_result[0]["last_name"].is_null() ? "null" : "\"" + user_result[0]["last_name"].as<std::string>() + "\"") << ",";
+        json << "\"email\":" << (user_result[0]["email"].is_null() ? "null" : "\"" + user_result[0]["email"].as<std::string>() + "\"") << ",";
+        json << "\"phone\":" << (user_result[0]["phone"].is_null() ? "null" : "\"" + user_result[0]["phone"].as<std::string>() + "\"") << ",";
+        json << "\"date_of_birth\":" << (user_result[0]["date_of_birth"].is_null() ? "null" : "\"" + user_result[0]["date_of_birth"].as<std::string>() + "\"") << ",";
+        json << "\"is_active\":" << (user_result[0]["is_active"].as<bool>() ? "true" : "false") << ",";
+        json << "\"created_at\":\"" << user_result[0]["created_at"].as<std::string>() << "\",";
+        
+        // Add player info
+        json << "\"player_info\":";
+        if (!player_result.empty()) {
+            json << "{";
+            json << "\"preferred_position_id\":" << (player_result[0]["preferred_position_id"].is_null() ? "null" : "\"" + player_result[0]["preferred_position_id"].as<std::string>() + "\"") << ",";
+            json << "\"photo_url\":" << (player_result[0]["photo_url"].is_null() ? "null" : "\"" + player_result[0]["photo_url"].as<std::string>() + "\"") << ",";
+            json << "\"height_cm\":" << (player_result[0]["height_cm"].is_null() ? "null" : player_result[0]["height_cm"].as<std::string>()) << ",";
+            json << "\"weight_kg\":" << (player_result[0]["weight_kg"].is_null() ? "null" : player_result[0]["weight_kg"].as<std::string>()) << ",";
+            json << "\"dominant_foot\":" << (player_result[0]["dominant_foot"].is_null() ? "null" : "\"" + player_result[0]["dominant_foot"].as<std::string>() + "\"") << ",";
+            json << "\"player_rating\":" << (player_result[0]["player_rating"].is_null() ? "null" : player_result[0]["player_rating"].as<std::string>());
+            json << "}";
+        } else {
+            json << "null";
+        }
+        json << ",";
+        
+        // Add teams
+        json << "\"teams\":[";
+        for (size_t i = 0; i < teams_result.size(); ++i) {
+            if (i > 0) json << ",";
+            json << "{";
+            json << "\"team_id\":\"" << teams_result[i]["team_id"].as<std::string>() << "\",";
+            json << "\"team_name\":\"" << teams_result[i]["team_name"].as<std::string>() << "\",";
+            json << "\"division_name\":\"" << teams_result[i]["division_name"].as<std::string>() << "\",";
+            json << "\"jersey_number\":" << (teams_result[i]["jersey_number"].is_null() ? "null" : teams_result[i]["jersey_number"].as<std::string>()) << ",";
+            json << "\"is_active\":" << (teams_result[i]["team_active"].as<bool>() ? "true" : "false");
+            json << "}";
+        }
+        json << "]";
+        json << "}";
+        
+        return Response(HttpStatus::OK, json.str());
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to fetch user details: " + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleUpdateUser(const Request& request) {
+    try {
+        std::string path = request.getPath();
+        std::string prefix = "/api/system-admin/users/";
+        size_t pos = path.find(prefix);
+        if (pos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        
+        std::string user_id = path.substr(pos + prefix.length());
+        if (user_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"User ID is required\"}");
+        }
+        
+        // Parse JSON body - simple parsing for now
+        std::string body = request.getBody();
+        std::string first_name, last_name, email, phone, date_of_birth;
+        
+        // Extract fields from JSON (basic parsing)
+        auto extractField = [&body](const std::string& field) -> std::string {
+            std::string pattern = "\"" + field + "\":\"";
+            size_t pos = body.find(pattern);
+            if (pos == std::string::npos) return "";
+            pos += pattern.length();
+            size_t end = body.find("\"", pos);
+            if (end == std::string::npos) return "";
+            return body.substr(pos, end - pos);
+        };
+        
+        first_name = extractField("first_name");
+        last_name = extractField("last_name");
+        email = extractField("email");
+        phone = extractField("phone");
+        date_of_birth = extractField("date_of_birth");
+        
+        std::string admin_id = "311ee799-a6a1-450f-8bad-5140a021c92b"; // Hardcoded for now
+        
+        bool success = userService_->updateUserBasicInfo(user_id, first_name, last_name, email, phone, date_of_birth, admin_id);
+        
+        if (success) {
+            return Response(HttpStatus::OK, "{\"success\":true,\"message\":\"User updated successfully\"}");
+        } else {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"Failed to update user\"}");
+        }
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to update user: " + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetUserTeams(const Request& request) {
+    try {
+        std::string path = request.getPath();
+        std::string prefix = "/api/system-admin/users/";
+        size_t pos = path.find(prefix);
+        if (pos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        
+        std::string after_prefix = path.substr(pos + prefix.length());
+        size_t slash_pos = after_prefix.find("/");
+        std::string user_id = after_prefix.substr(0, slash_pos);
+        
+        if (user_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"User ID is required\"}");
+        }
+        
+        auto teams = userService_->getUserTeams(user_id);
+        
+        std::ostringstream json;
+        json << "{\"teams\":[";
+        for (size_t i = 0; i < teams.size(); ++i) {
+            if (i > 0) json << ",";
+            json << "{";
+            json << "\"team_id\":\"" << teams[i].team_id << "\",";
+            json << "\"team_name\":\"" << teams[i].team_name << "\",";
+            json << "\"sport_division_name\":\"" << teams[i].sport_division_name << "\",";
+            json << "\"jersey_number\":" << (teams[i].jersey_number.empty() ? "null" : "\"" + teams[i].jersey_number + "\"") << ",";
+            json << "\"position_id\":" << (teams[i].position_id.empty() ? "null" : "\"" + teams[i].position_id + "\"") << ",";
+            json << "\"position_name\":" << (teams[i].position_name.empty() ? "null" : "\"" + teams[i].position_name + "\"");
+            json << "}";
+        }
+        json << "]}";
+        
+        return Response(HttpStatus::OK, json.str());
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to fetch user teams: " + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleAddUserToTeam(const Request& request) {
+    try {
+        std::string path = request.getPath();
+        std::string prefix = "/api/system-admin/users/";
+        size_t pos = path.find(prefix);
+        if (pos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        
+        std::string after_prefix = path.substr(pos + prefix.length());
+        size_t slash_pos = after_prefix.find("/");
+        std::string user_id = after_prefix.substr(0, slash_pos);
+        
+        if (user_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"User ID is required\"}");
+        }
+        
+        // TODO: Parse JSON body for team_id and jersey_number
+        return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Add to team not yet fully implemented - need JSON body parsing\"}");
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to add user to team: " + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleRemoveUserFromTeam(const Request& request) {
+    try {
+        std::string path = request.getPath();
+        std::string prefix = "/api/system-admin/users/";
+        size_t pos = path.find(prefix);
+        if (pos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        
+        std::string after_prefix = path.substr(pos + prefix.length());
+        size_t first_slash = after_prefix.find("/");
+        std::string user_id = after_prefix.substr(0, first_slash);
+        
+        std::string after_teams = after_prefix.substr(first_slash + 7); // "/teams/"
+        std::string team_id = after_teams;
+        
+        if (user_id.empty() || team_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"User ID and Team ID are required\"}");
+        }
+        
+        // Soft delete from team_players
+        std::string query = "UPDATE team_players SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE player_id = $1 AND team_id = $2";
+        std::vector<std::string> params = {user_id, team_id};
+        db_->query(query, params);
+        
+        // Log audit action
+        std::string admin_id = "311ee799-a6a1-450f-8bad-5140a021c92b";
+        logAuditAction(admin_id, "remove_from_team", "team_players", user_id,
+                      "Removed user from team", team_id, "");
+        
+        return Response(HttpStatus::OK, "{\"success\":true}");
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to remove user from team: " + std::string(e.what()) + "\"}");
     }
 }
 

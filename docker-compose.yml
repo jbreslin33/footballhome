@@ -61,12 +61,12 @@ services:
       db:
         condition: service_healthy
 
-  # Simple C++ Backend (No Frameworks)
+  # C++ Backend
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: footballhome_simple_backend
+    container_name: footballhome_backend
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: footballhome_pass

@@ -26,6 +26,7 @@ set(SOURCES
     src/database/SqlBuilder.cpp
     src/models/User.cpp
     src/models/Team.cpp
+    src/services/UserService.cpp
     src/controllers/AuthController.cpp
     src/controllers/TeamController.cpp
     src/controllers/EventController.cpp

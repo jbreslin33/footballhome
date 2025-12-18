@@ -6,6 +6,7 @@
 #include "../database/Database.h"
 #include "../database/SqlFileLogger.h"
 #include "../database/SqlBuilder.h"
+#include "../services/UserService.h"
 #include <memory>
 
 class SystemAdminController : public Controller {
@@ -15,6 +16,7 @@ public:
 
 private:
     Database* db_;
+    UserService* userService_;
     
     // Dashboard & Overview
     Response handleGetDashboard(const Request& request);
@@ -31,7 +33,12 @@ private:
     
     // User Management
     Response handleGetAllUsers(const Request& request);
+    Response handleGetUser(const Request& request);
+    Response handleUpdateUser(const Request& request);
     Response handleUpdateUserStatus(const Request& request);
+    Response handleGetUserTeams(const Request& request);
+    Response handleAddUserToTeam(const Request& request);
+    Response handleRemoveUserFromTeam(const Request& request);
     Response handleImpersonateUser(const Request& request);
     Response handleBulkUserOperation(const Request& request);
     

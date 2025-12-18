@@ -274,10 +274,10 @@ ON CONFLICT (id) DO UPDATE SET
   match_status = EXCLUDED.match_status;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
-  '76dd00e8-6606-4127-8802-d60971ad0e68',
+  '2e7ef834-0565-4dc2-8789-f2a99acc4821',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
-  'Adé United FC vs Adé United FC',
+  'Lighthouse Old Timers Club vs Persepolis FC',
   NULL,
   'Sun Oct 12 2:45 PM EDT - 4:30 PM EDT',
   NULL,
@@ -292,9 +292,9 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
 VALUES (
-  '76dd00e8-6606-4127-8802-d60971ad0e68',
-  'da9e701d-7752-495a-8145-fe967b40c0d3',
-  'da9e701d-7752-495a-8145-fe967b40c0d3',
+  '2e7ef834-0565-4dc2-8789-f2a99acc4821',
+  'da5e129e-1d82-4c59-85f9-1f5efd3d6c11',
+  'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c',
   '550e8400-e29b-41d4-a716-446655440801',
   NULL,
   NULL,

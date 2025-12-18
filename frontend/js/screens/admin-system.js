@@ -211,6 +211,7 @@ class AdminSystemScreen extends Screen {
                   </td>
                   <td><small>${new Date(user.created_at).toLocaleDateString()}</small></td>
                   <td>
+                    <button class="btn btn-sm btn-primary edit-user" data-user-id="${user.id}">Edit</button>
                     <button class="btn btn-sm btn-secondary toggle-user-status" data-user-id="${user.id}" data-current-status="${user.is_active}">
                       ${user.is_active ? 'Deactivate' : 'Activate'}
                     </button>
@@ -241,6 +242,13 @@ class AdminSystemScreen extends Screen {
         await this.toggleUserStatus(userId, currentStatus);
       });
     });
+    
+    this.element.querySelectorAll('.edit-user').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const userId = e.target.dataset.userId;
+        await this.showEditUserModal(userId);
+      });
+    });
   }
   
   async toggleUserStatus(userId, currentStatus) {
@@ -262,6 +270,106 @@ class AdminSystemScreen extends Screen {
     } catch (error) {
       console.error('Error toggling user status:', error);
       alert('Error toggling user status');
+    }
+  }
+  
+  async showEditUserModal(userId) {
+    try {
+      // Fetch user details
+      const response = await fetch(`/api/system-admin/users/${userId}`);
+      if (!response.ok) {
+        alert('Failed to load user details');
+        return;
+      }
+      
+      const user = await response.json();
+      
+      // Create modal
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Edit User</h2>
+            <button class="modal-close">&times;</button>
+          </div>
+          <form class="edit-user-form">
+            <div class="form-group">
+              <label for="edit-first-name">First Name</label>
+              <input type="text" id="edit-first-name" name="first_name" value="${user.first_name || ''}" required>
+            </div>
+            <div class="form-group">
+              <label for="edit-last-name">Last Name</label>
+              <input type="text" id="edit-last-name" name="last_name" value="${user.last_name || ''}" required>
+            </div>
+            <div class="form-group">
+              <label for="edit-email">Email</label>
+              <input type="email" id="edit-email" name="email" value="${user.email || ''}" required>
+            </div>
+            <div class="form-group">
+              <label for="edit-phone">Phone</label>
+              <input type="tel" id="edit-phone" name="phone" value="${user.phone || ''}">
+            </div>
+            <div class="form-group">
+              <label for="edit-dob">Date of Birth</label>
+              <input type="date" id="edit-dob" name="date_of_birth" value="${user.date_of_birth || ''}">
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Event listeners
+      const closeModal = () => {
+        modal.remove();
+      };
+      
+      modal.querySelector('.modal-close').addEventListener('click', closeModal);
+      modal.querySelector('.modal-cancel').addEventListener('click', closeModal);
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+      
+      modal.querySelector('.edit-user-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const userData = {
+          first_name: formData.get('first_name'),
+          last_name: formData.get('last_name'),
+          email: formData.get('email'),
+          phone: formData.get('phone'),
+          date_of_birth: formData.get('date_of_birth')
+        };
+        
+        try {
+          const updateResponse = await fetch(`/api/system-admin/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+          });
+          
+          if (updateResponse.ok) {
+            alert('User updated successfully');
+            closeModal();
+            await this.loadUsers(this.usersOffset, this.usersLimit);
+          } else {
+            alert('Failed to update user');
+          }
+        } catch (error) {
+          console.error('Error updating user:', error);
+          alert('Error updating user');
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error showing edit modal:', error);
+      alert('Error loading user details');
     }
   }
   
@@ -727,6 +835,113 @@ class AdminSystemScreen extends Screen {
     } catch (error) {
       console.error('Error toggling feature:', error);
       alert('Error toggling feature flag');
+    }
+  }
+  
+  async showEditUserModal(userId) {
+    try {
+      // Fetch user details
+      const response = await fetch(`/api/system-admin/users/${userId}`);
+      if (!response.ok) {
+        alert('Failed to fetch user details');
+        return;
+      }
+      
+      const user = await response.json();
+      
+      // Create modal overlay
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Edit User</h2>
+            <button class="modal-close">&times;</button>
+          </div>
+          
+          <form class="edit-user-form">
+            <div class="form-group">
+              <label for="edit-first-name">First Name</label>
+              <input type="text" id="edit-first-name" name="first_name" value="${user.first_name || ''}" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="edit-last-name">Last Name</label>
+              <input type="text" id="edit-last-name" name="last_name" value="${user.last_name || ''}" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="edit-email">Email</label>
+              <input type="email" id="edit-email" name="email" value="${user.email || ''}">
+            </div>
+            
+            <div class="form-group">
+              <label for="edit-phone">Phone</label>
+              <input type="tel" id="edit-phone" name="phone" value="${user.phone || ''}">
+            </div>
+            
+            <div class="form-group">
+              <label for="edit-dob">Date of Birth</label>
+              <input type="date" id="edit-dob" name="date_of_birth" value="${user.date_of_birth || ''}">
+            </div>
+            
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary cancel-btn">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Close modal handlers
+      const closeModal = () => {
+        modal.remove();
+      };
+      
+      modal.querySelector('.modal-close').addEventListener('click', closeModal);
+      modal.querySelector('.cancel-btn').addEventListener('click', closeModal);
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+      });
+      
+      // Form submit handler
+      modal.querySelector('.edit-user-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+          first_name: document.getElementById('edit-first-name').value,
+          last_name: document.getElementById('edit-last-name').value,
+          email: document.getElementById('edit-email').value,
+          phone: document.getElementById('edit-phone').value,
+          date_of_birth: document.getElementById('edit-dob').value
+        };
+        
+        try {
+          const updateResponse = await fetch(`/api/system-admin/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+          });
+          
+          if (updateResponse.ok) {
+            closeModal();
+            await this.loadUsers(this.usersOffset, this.usersLimit);
+            alert('User updated successfully!');
+          } else {
+            const error = await updateResponse.json();
+            alert('Failed to update user: ' + (error.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Error updating user:', error);
+          alert('Error updating user');
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error showing edit modal:', error);
+      alert('Error loading user details');
     }
   }
 }
