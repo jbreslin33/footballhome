@@ -17,10 +17,14 @@
   - **NOTE**: No quick restart option exists. All rebuilds are full rebuilds.
   - **Terminal Output**: Avoid using `tail` command for viewing terminal output. Use `head`, `grep`, or pipe directly instead.
 - **Database Changes**: 
-- **Database Changes**: 
-  - **Persistent Data**: Add a new numbered SQL file in `database/data/` (e.g., `75-club-admins.sql`). Data inserted here persists across full rebuilds.
-  - **Schema Changes**: Add to appropriate numbered file, then run full rebuild (`./dev.sh`).
+  - **Manual Static Data**: Add a new numbered SQL file in `database/data/` (e.g., `75-club-admins.sql`). Data inserted here persists across full rebuilds.
+  - **App-Generated Data**: Backend must append to `-u` (dev) or `-p` (prod) files after any INSERT/UPDATE operations
+  - **Schema Changes**: Update `00-schema.sql`, then run full rebuild (`./dev.sh`).
   - **Alphabetical Execution**: SQL files in `database/data/` are executed alphabetically by init scripts.
+  - **Data Persistence Strategy**: 
+    - Manual data (created by developers) → static numbered files
+    - Scraped data (from external sources) → `-a` (APSL), `-b` (CASA), `-m` (manual) files
+    - App data (created by users via UI) → `-u` (dev) or `-p` (prod) files based on environment
 
 ## 🔄 Data Scraping Architecture (OOP)
 - **Scrapers**: Object-oriented Node.js scrapers in `database/scripts/`
@@ -43,21 +47,53 @@
   - Test with real data using team filters: `--team "Lighthouse"`
 
 ## 📝 Coding Conventions
+
+### 🎯 Core Principles (ALWAYS FOLLOW)
+1. **Object-Oriented Programming (OOP)**: 
+   - ALL code must use classes, inheritance, and encapsulation
+   - Frontend: ES6 classes with proper constructors and methods
+   - Backend: C++ classes with proper access modifiers (public/private/protected)
+   - No procedural/functional code unless explicitly justified
+   
+2. **Database Normalization**: 
+   - ALWAYS normalize database schemas (3NF minimum)
+   - Avoid data duplication - use foreign keys and junction tables
+   - Question any denormalized design before implementing
+
+3. **Data Persistence via SQL Files**:
+   - ALL data changes made through the app must be written to SQL files for persistence
+   - Use environment-specific files:
+     - `-u` suffix for **development/update** environment (e.g., `08u-users-app.sql`)
+     - `-p` suffix for **production** environment (e.g., `08p-users-app.sql`)
+   - Backend must append INSERT/UPDATE statements to appropriate files after DB operations
+   - This ensures data survives full rebuilds via `./dev.sh`
+
 ### Frontend (Vanilla JS)
 - **Screens**: All views must extend the `Screen` class pattern found in `frontend/js/screens/`.
-  - Pattern: `class MyScreen { constructor(nav, auth) { ... } show() { ... } }`
+  - Pattern: `class MyScreen extends Screen { constructor(nav, auth) { super(); ... } render() { ... } onEnter(params) { ... } }`
 - **Navigation**: Use `this.navigation.goTo('screen-name')` instead of `window.location`.
 - **DOM**: Use `document.getElementById` or `querySelector`. Avoid `innerHTML` for complex updates; prefer `createElement`.
+- **OOP Structure**: Group related functionality into classes with clear responsibilities
 
 ### Backend (C++)
 - **Controllers**: Implement business logic in `src/controllers/` inheriting from `Controller`.
 - **Routing**: Register routes in `HttpServer::setupRoutes()` in `src/main.cpp`.
   - Example: `router_.useController("/api/teams", team_controller_);`
 - **JSON**: Use `Response::json(string)` for outputs.
+- **OOP Structure**: Each feature should have dedicated classes (Controller, Service, Model)
+- **Data Persistence**: After INSERT/UPDATE operations, call SQLFileWriter to append to `-u` or `-p` files
 
 ### Database
 - **Initialization**: Data is loaded via `docker-entrypoint-initdb.d` mapping to `database/data`.
 - **Queries**: Write raw SQL in C++ models using `pqxx::work`.
+- **Normalization**: Always use proper foreign keys, junction tables, and avoid redundant data
+- **File Naming Convention**:
+  - `##-name.sql` - Manual static data (e.g., `51-admins.sql`, `76-team-admins.sql`)
+  - `##a-name-apsl.sql` - APSL scraped data (e.g., `21a-teams-apsl.sql`)
+  - `##b-name-casa.sql` - CASA scraped data (e.g., `21b-teams-casa.sql`)
+  - `##m-name-manual.sql` - Manual entries (e.g., `08m-users-manual.sql`)
+  - `##u-name-app.sql` - Dev/update app-generated data (e.g., `21u-teams-app.sql`)
+  - `##p-name-app.sql` - Production app-generated data (e.g., `21p-teams-app.sql`)
 
 ## 🔍 Key Files
 - `dev.sh`: Main entry point for all dev tasks.
