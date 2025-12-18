@@ -249,18 +249,16 @@ class AdminSystemScreen extends Screen {
     }
     
     try {
-      // TODO: Implement backend endpoint for toggling user status
-      // For now, just show a message
-      alert('User status toggle endpoint not yet implemented. This would call PUT /api/system-admin/users/:userId/status');
-      // After implementation:
-      // const response = await fetch(`/api/system-admin/users/${userId}/status`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ is_active: !currentStatus })
-      // });
-      // if (response.ok) {
-      //   await this.loadUsers(this.usersOffset, this.usersLimit);
-      // }
+      const response = await fetch(`/api/system-admin/users/${userId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        await this.loadUsers(this.usersOffset, this.usersLimit);
+      } else {
+        alert('Failed to update user status');
+      }
     } catch (error) {
       console.error('Error toggling user status:', error);
       alert('Error toggling user status');

@@ -31,6 +31,7 @@ private:
     
     // User Management
     Response handleGetAllUsers(const Request& request);
+    Response handleUpdateUserStatus(const Request& request);
     Response handleImpersonateUser(const Request& request);
     Response handleBulkUserOperation(const Request& request);
     

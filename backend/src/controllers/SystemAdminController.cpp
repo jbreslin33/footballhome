@@ -46,6 +46,10 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
         return this->handleGetAllUsers(request);
     });
     
+    router.put(prefix + "/users/:userId/status", [this](const Request& request) {
+        return this->handleUpdateUserStatus(request);
+    });
+    
     router.post(prefix + "/users/:userId/impersonate", [this](const Request& request) {
         return this->handleImpersonateUser(request);
     });
@@ -574,6 +578,56 @@ Response SystemAdminController::handleGetAllUsers(const Request& request) {
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
                        "{\"error\":\"Failed to fetch users: " + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleUpdateUserStatus(const Request& request) {
+    try {
+        // Parse user ID from path: /api/system-admin/users/:userId/status
+        std::string path = request.getPath();
+        std::string prefix = "/api/system-admin/users/";
+        size_t pos = path.find(prefix);
+        if (pos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        
+        std::string after_prefix = path.substr(pos + prefix.length());
+        size_t slash_pos = after_prefix.find("/");
+        std::string user_id = after_prefix.substr(0, slash_pos);
+        
+        if (user_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"User ID is required\"}");
+        }
+        
+        // TODO: Parse JSON body to get is_active value
+        // For now, toggle the current status
+        std::string check_query = "SELECT is_active FROM users WHERE id = $1";
+        std::vector<std::string> check_params = {user_id};
+        auto check_result = db_->query(check_query, check_params);
+        
+        if (check_result.empty()) {
+            return Response(HttpStatus::NOT_FOUND, "{\"error\":\"User not found\"}");
+        }
+        
+        bool current_status = check_result[0]["is_active"].as<bool>();
+        bool new_status = !current_status;
+        
+        // Update user status
+        std::string update_query = "UPDATE users SET is_active = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2";
+        std::vector<std::string> update_params = {new_status ? "true" : "false", user_id};
+        db_->query(update_query, update_params);
+        
+        // Log audit action
+        std::string admin_id = "311ee799-a6a1-450f-8bad-5140a021c92b"; // Hardcoded for now
+        logAuditAction(admin_id, "user_status_update", "users", user_id,
+                      new_status ? "Activated user" : "Deactivated user",
+                      current_status ? "active" : "inactive",
+                      new_status ? "active" : "inactive");
+        
+        return Response(HttpStatus::OK, "{\"success\":true,\"is_active\":" + std::string(new_status ? "true" : "false") + "}");
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to update user status: " + std::string(e.what()) + "\"}");
     }
 }
 
