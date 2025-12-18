@@ -1,5 +1,5 @@
 -- APSL Team Rosters
--- Generated at: 2025-12-18T01:40:39.899Z
+-- Generated at: 2025-12-18T12:49:33.853Z
 
 INSERT INTO team_players (team_id, player_id, jersey_number, is_active, joined_at, left_at, notes)
 VALUES
@@ -844,6 +844,7 @@ VALUES
   ('d48fb053-a685-499e-8663-9e5a3f8ec6c5', '1cb5dcbb-e342-4d14-8200-a0ed88630fda', NULL, true, NULL, NULL, NULL),
   ('d48fb053-a685-499e-8663-9e5a3f8ec6c5', 'e0e33810-9ee0-4a02-884a-73c34e75c894', NULL, true, NULL, NULL, NULL),
   ('d48fb053-a685-499e-8663-9e5a3f8ec6c5', 'bfcf4ad3-520a-46ea-850b-e7dbe2c45b73', NULL, true, NULL, NULL, NULL),
+  ('d48fb053-a685-499e-8663-9e5a3f8ec6c5', '8c33e50d-4acd-42c0-8af2-7bf23253b95f', NULL, true, NULL, NULL, NULL),
   ('d48fb053-a685-499e-8663-9e5a3f8ec6c5', 'c1bac19e-ebb6-46f0-8fcb-4aadc4c6d02e', NULL, true, NULL, NULL, NULL),
   ('d48fb053-a685-499e-8663-9e5a3f8ec6c5', '069da860-51f6-4887-86d5-59bdb4580993', NULL, true, NULL, NULL, NULL),
   ('d48fb053-a685-499e-8663-9e5a3f8ec6c5', '00fb937e-b3c9-4b43-8608-9c5e5e7f9d2d', '2', true, NULL, NULL, NULL),
