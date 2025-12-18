@@ -764,19 +764,191 @@ Response SystemAdminController::handleGetAuditLogs(const Request& request) {
 }
 
 Response SystemAdminController::handleGetApiUsageLogs(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        std::string limit = request.getQueryParam("limit");
+        if (limit.empty()) limit = "100";
+        std::string offset = request.getQueryParam("offset");
+        if (offset.empty()) offset = "0";
+        
+        std::string query = "SELECT id, endpoint, http_method, user_id, status_code, response_time_ms, created_at "
+                          "FROM api_usage_log "
+                          "ORDER BY created_at DESC "
+                          "LIMIT $1 OFFSET $2";
+        std::vector<std::string> params = {limit, offset};
+        auto result = db_->query(query, params);
+        
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json += ",";
+            json += "{";
+            json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
+            json += "\"endpoint\":\"" + result[i]["endpoint"].as<std::string>() + "\",";
+            json += "\"http_method\":\"" + result[i]["http_method"].as<std::string>() + "\",";
+            json += "\"user_id\":\"" + result[i]["user_id"].as<std::string>() + "\",";
+            json += "\"status_code\":" + result[i]["status_code"].as<std::string>() + ",";
+            json += "\"response_time_ms\":" + result[i]["response_time_ms"].as<std::string>() + ",";
+            json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\"";
+            json += "}";
+        }
+        json += "]";
+        
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to fetch API usage logs: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleGetImportJobs(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        std::string limit = request.getQueryParam("limit");
+        if (limit.empty()) limit = "50";
+        std::string offset = request.getQueryParam("offset");
+        if (offset.empty()) offset = "0";
+        std::string status = request.getQueryParam("status");
+        
+        std::string query = "SELECT id, job_type, status, total_records, processed_records, "
+                          "error_message, started_at, completed_at, created_at "
+                          "FROM import_jobs "
+                          "WHERE 1=1 ";
+        
+        std::vector<std::string> params;
+        int param_count = 0;
+        
+        if (!status.empty()) {
+            params.push_back(status);
+            query += "AND status = $" + std::to_string(++param_count) + " ";
+        }
+        
+        query += "ORDER BY created_at DESC ";
+        params.push_back(limit);
+        query += "LIMIT $" + std::to_string(++param_count) + " ";
+        params.push_back(offset);
+        query += "OFFSET $" + std::to_string(++param_count);
+        
+        auto result = db_->query(query, params);
+        
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json += ",";
+            json += "{";
+            json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
+            json += "\"job_type\":\"" + result[i]["job_type"].as<std::string>() + "\",";
+            json += "\"status\":\"" + result[i]["status"].as<std::string>() + "\",";
+            json += "\"total_records\":" + result[i]["total_records"].as<std::string>() + ",";
+            json += "\"processed_records\":" + result[i]["processed_records"].as<std::string>() + ",";
+            
+            if (!result[i]["error_message"].is_null()) {
+                json += "\"error_message\":\"" + result[i]["error_message"].as<std::string>() + "\",";
+            } else {
+                json += "\"error_message\":null,";
+            }
+            
+            if (!result[i]["started_at"].is_null()) {
+                json += "\"started_at\":\"" + result[i]["started_at"].as<std::string>() + "\",";
+            } else {
+                json += "\"started_at\":null,";
+            }
+            
+            if (!result[i]["completed_at"].is_null()) {
+                json += "\"completed_at\":\"" + result[i]["completed_at"].as<std::string>() + "\",";
+            } else {
+                json += "\"completed_at\":null,";
+            }
+            
+            json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\"";
+            json += "}";
+        }
+        json += "]";
+        
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to fetch import jobs: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleCreateImportJob(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        // TODO: Parse job_type from request body when JSON parsing is available
+        std::string job_type = "manual_import";
+        
+        std::string query = "INSERT INTO import_jobs (job_type, status, total_records, processed_records) "
+                          "VALUES ($1, 'pending', 0, 0) RETURNING id";
+        std::vector<std::string> params = {job_type};
+        auto result = db_->query(query, params);
+        
+        std::string job_id = result[0]["id"].as<std::string>();
+        
+        return Response(HttpStatus::CREATED, "{\"success\":true,\"job_id\":\"" + job_id + "\"}");
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to create import job: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleGetScraperLogs(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        std::string limit = request.getQueryParam("limit");
+        if (limit.empty()) limit = "50";
+        std::string offset = request.getQueryParam("offset");
+        if (offset.empty()) offset = "0";
+        std::string scraper_type = request.getQueryParam("scraper_type");
+        
+        std::string query = "SELECT id, scraper_type, status, records_scraped, error_message, "
+                          "started_at, completed_at, created_at "
+                          "FROM scraper_logs "
+                          "WHERE 1=1 ";
+        
+        std::vector<std::string> params;
+        int param_count = 0;
+        
+        if (!scraper_type.empty()) {
+            params.push_back(scraper_type);
+            query += "AND scraper_type = $" + std::to_string(++param_count) + " ";
+        }
+        
+        query += "ORDER BY created_at DESC ";
+        params.push_back(limit);
+        query += "LIMIT $" + std::to_string(++param_count) + " ";
+        params.push_back(offset);
+        query += "OFFSET $" + std::to_string(++param_count);
+        
+        auto result = db_->query(query, params);
+        
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json += ",";
+            json += "{";
+            json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
+            json += "\"scraper_type\":\"" + result[i]["scraper_type"].as<std::string>() + "\",";
+            json += "\"status\":\"" + result[i]["status"].as<std::string>() + "\",";
+            json += "\"records_scraped\":" + result[i]["records_scraped"].as<std::string>() + ",";
+            
+            if (!result[i]["error_message"].is_null()) {
+                json += "\"error_message\":\"" + result[i]["error_message"].as<std::string>() + "\",";
+            } else {
+                json += "\"error_message\":null,";
+            }
+            
+            json += "\"started_at\":\"" + result[i]["started_at"].as<std::string>() + "\",";
+            
+            if (!result[i]["completed_at"].is_null()) {
+                json += "\"completed_at\":\"" + result[i]["completed_at"].as<std::string>() + "\",";
+            } else {
+                json += "\"completed_at\":null,";
+            }
+            
+            json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\"";
+            json += "}";
+        }
+        json += "]";
+        
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to fetch scraper logs: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleTriggerScraper(const Request& request) {
