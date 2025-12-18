@@ -52,7 +52,7 @@ ON CONFLICT (id) DO UPDATE SET
   last_name = EXCLUDED.last_name,
   email = COALESCE(EXCLUDED.email, users.email),
   phone = COALESCE(EXCLUDED.phone, users.phone),
-  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth);
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth);`;
   }
 
   toPlayerSQL() {
@@ -69,7 +69,7 @@ VALUES (
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
-  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url);
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
   weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
   dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
   player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
