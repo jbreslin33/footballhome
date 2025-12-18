@@ -354,11 +354,30 @@
 }
 
 /* Pagination */
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3);
+  gap: var(--space-3);
+}
+
 .pagination-info {
   text-align: center;
-  padding: var(--space-3);
   color: var(--text-secondary);
   font-size: 0.875rem;
+  flex: 1;
+}
+
+.pagination-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* View Actions */
+.view-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 /* Lookup Tables Grid */

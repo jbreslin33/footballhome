@@ -170,16 +170,20 @@ class AdminSystemScreen extends Screen {
     `;
   }
   
-  async loadUsers() {
-    const response = await fetch('/api/system-admin/users?limit=50');
+  async loadUsers(offset = 0, limit = 100) {
+    const response = await fetch(`/api/system-admin/users?limit=${limit}&offset=${offset}`);
     this.users = await response.json();
+    this.usersOffset = offset;
+    this.usersLimit = limit;
     
     const content = this.element.querySelector('.admin-content');
     content.innerHTML = `
       <div class="users-view">
         <div class="view-header">
           <h2>User Management</h2>
-          <button class="btn btn-secondary refresh-btn">🔄 Refresh</button>
+          <div class="view-actions">
+            <button class="btn btn-secondary refresh-btn">🔄 Refresh</button>
+          </div>
         </div>
         
         <div class="table-container">
@@ -188,8 +192,10 @@ class AdminSystemScreen extends Screen {
               <tr>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Phone</th>
                 <th>Status</th>
                 <th>Created</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -197,23 +203,68 @@ class AdminSystemScreen extends Screen {
                 <tr>
                   <td>${user.first_name || ''} ${user.last_name || ''}</td>
                   <td>${user.email || '<em>No email</em>'}</td>
+                  <td>${user.phone || '-'}</td>
                   <td>
                     <span class="badge ${user.is_active ? 'badge-success' : 'badge-danger'}">
                       ${user.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                  <td><small>${new Date(user.created_at).toLocaleDateString()}</small></td>
+                  <td>
+                    <button class="btn btn-sm btn-secondary toggle-user-status" data-user-id="${user.id}" data-current-status="${user.is_active}">
+                      ${user.is_active ? 'Deactivate' : 'Activate'}
+                    </button>
+                  </td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
         
-        <div class="pagination-info">
-          Showing ${this.users.length} users
+        <div class="pagination-controls">
+          <button class="btn btn-secondary prev-page" ${offset === 0 ? 'disabled' : ''}>← Previous</button>
+          <span class="pagination-info">Showing ${offset + 1}-${offset + this.users.length} users</span>
+          <button class="btn btn-secondary next-page" ${this.users.length < limit ? 'disabled' : ''}>Next →</button>
         </div>
       </div>
     `;
+    
+    // Event listeners
+    this.element.querySelector('.refresh-btn')?.addEventListener('click', () => this.loadUsers(offset, limit));
+    this.element.querySelector('.prev-page')?.addEventListener('click', () => this.loadUsers(Math.max(0, offset - limit), limit));
+    this.element.querySelector('.next-page')?.addEventListener('click', () => this.loadUsers(offset + limit, limit));
+    
+    this.element.querySelectorAll('.toggle-user-status').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const userId = e.target.dataset.userId;
+        const currentStatus = e.target.dataset.currentStatus === 'true';
+        await this.toggleUserStatus(userId, currentStatus);
+      });
+    });
+  }
+  
+  async toggleUserStatus(userId, currentStatus) {
+    if (!confirm(`Are you sure you want to ${currentStatus ? 'deactivate' : 'activate'} this user?`)) {
+      return;
+    }
+    
+    try {
+      // TODO: Implement backend endpoint for toggling user status
+      // For now, just show a message
+      alert('User status toggle endpoint not yet implemented. This would call PUT /api/system-admin/users/:userId/status');
+      // After implementation:
+      // const response = await fetch(`/api/system-admin/users/${userId}/status`, {
+      //   method: 'PUT',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ is_active: !currentStatus })
+      // });
+      // if (response.ok) {
+      //   await this.loadUsers(this.usersOffset, this.usersLimit);
+      // }
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      alert('Error toggling user status');
+    }
   }
   
   async loadAdmins() {
