@@ -440,14 +440,26 @@ Response AuthController::handleAdminContexts(const Request& request) {
         contexts_json << "[";
         bool first = true;
         
+        // Check if user is a system admin (sees everything)
+        std::string system_admin_sql = "SELECT user_id FROM system_admins WHERE user_id = $1 AND is_active = true";
+        pqxx::result system_result = db_->query(system_admin_sql, {user_id});
+        bool is_system_admin = !system_result.empty();
+        
+        if (is_system_admin) {
+            // Add system admin context
+            contexts_json << "{\"id\":\"system\","
+                         << "\"display_name\":\"System Administration\","
+                         << "\"type\":\"system\"}";
+            first = false;
+        }
+        
         // Get clubs the user administers
         std::string club_sql = "SELECT DISTINCT c.id, c.display_name, 'club' as type, COUNT(DISTINCT t.id) as team_count "
                               "FROM clubs c "
                               "JOIN club_admins ca ON c.id = ca.club_id "
-                              "JOIN admins a ON ca.admin_id = a.id "
                               "LEFT JOIN sport_divisions sd ON c.id = sd.club_id "
                               "LEFT JOIN teams t ON sd.id = t.sport_division_id "
-                              "WHERE a.id = $1 AND ca.is_active = true "
+                              "WHERE ca.user_id = $1 AND ca.is_active = true "
                               "GROUP BY c.id, c.display_name";
         
         pqxx::result club_result = db_->query(club_sql, {user_id});
@@ -460,12 +472,30 @@ Response AuthController::handleAdminContexts(const Request& request) {
                          << "\"team_count\":" << row["team_count"].as<int>() << "}";
         }
         
-        // Get teams the user administers (team-level admins)
+        // Get sport divisions the user administers
+        std::string sport_div_sql = "SELECT DISTINCT sd.id, sd.display_name, 'sport_division' as type, c.display_name as club_name "
+                                    "FROM sport_divisions sd "
+                                    "JOIN clubs c ON sd.club_id = c.id "
+                                    "JOIN sport_division_admins sda ON sd.id = sda.sport_division_id "
+                                    "WHERE sda.user_id = $1 AND sda.is_active = true "
+                                    "ORDER BY sd.display_name";
+        
+        pqxx::result sport_div_result = db_->query(sport_div_sql, {user_id});
+        for (auto row : sport_div_result) {
+            if (!first) contexts_json << ",";
+            first = false;
+            contexts_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
+                         << "\"display_name\":\"" << row["display_name"].as<std::string>() << " (" << row["club_name"].as<std::string>() << ")\","
+                         << "\"type\":\"sport_division\"}";
+        }
+        
+        // Get teams the user administers (team-level admins or coaches with management roles)
         std::string team_sql = "SELECT DISTINCT t.id, t.name, 'team' as type "
                               "FROM teams t "
-                              "JOIN team_coaches tc ON t.id = tc.team_id "
-                              "JOIN coaches co ON tc.coach_id = co.id "
-                              "WHERE co.id = $1 AND tc.coach_role IN ('head_coach', 'team_manager') "
+                              "LEFT JOIN team_admins ta ON t.id = ta.team_id AND ta.user_id = $1 AND ta.is_active = true "
+                              "LEFT JOIN team_coaches tc ON t.id = tc.team_id "
+                              "LEFT JOIN coaches co ON tc.coach_id = co.id AND co.id = $1 "
+                              "WHERE (ta.user_id IS NOT NULL OR (co.id IS NOT NULL AND tc.coach_role IN ('head_coach', 'team_manager'))) "
                               "ORDER BY t.name";
         
         pqxx::result team_result = db_->query(team_sql, {user_id});

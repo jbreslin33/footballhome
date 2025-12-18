@@ -465,23 +465,25 @@ CREATE TABLE spectators (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Admins (administrative users at various organizational levels)
-CREATE TABLE admins (
-    id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    admin_level_id UUID NOT NULL REFERENCES admin_levels(id),
+-- System Admins (top-level administrators with full system access)
+CREATE TABLE system_admins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    appointed_by UUID REFERENCES users(id),
+    is_active BOOLEAN DEFAULT true,
+    UNIQUE(user_id)
 );
 
--- Admin permissions junction table (many-to-many, normalized like role_permissions)
+-- Admin permissions junction table (many-to-many for specific permissions)
 CREATE TABLE admin_permissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
     granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     granted_by UUID REFERENCES users(id),     -- Who granted this permission
-    UNIQUE(admin_id, permission_id)
+    UNIQUE(user_id, permission_id)
 );
 
 -- ========================================
@@ -650,84 +652,90 @@ CREATE TABLE team_followers (
 CREATE TABLE league_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
-    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     admin_role VARCHAR(50) NOT NULL,            -- 'commissioner', 'director', 'secretary', 'treasurer'
     is_primary BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    appointed_by UUID REFERENCES users(id),
     term_ends_at TIMESTAMP,
     notes TEXT,
-    UNIQUE(league_id, admin_id)
+    UNIQUE(league_id, user_id)
 );
 
 -- League Conference Admins (manage conferences within leagues)
 CREATE TABLE league_conference_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    conference_id UUID NOT NULL REFERENCES league_conferences(id) ON DELETE CASCADE,
-    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    league_conference_id UUID NOT NULL REFERENCES league_conferences(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     admin_role VARCHAR(50) NOT NULL,            -- 'conference_director', 'coordinator'
     is_primary BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    appointed_by UUID REFERENCES users(id),
     term_ends_at TIMESTAMP,
     notes TEXT,
-    UNIQUE(conference_id, admin_id)
+    UNIQUE(league_conference_id, user_id)
 );
 
 -- League Division Admins (manage divisions within conferences)
 CREATE TABLE league_division_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    division_id UUID NOT NULL REFERENCES league_divisions(id) ON DELETE CASCADE,
-    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    league_division_id UUID NOT NULL REFERENCES league_divisions(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     admin_role VARCHAR(50) NOT NULL,            -- 'division_director', 'scheduler'
     is_primary BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    appointed_by UUID REFERENCES users(id),
     term_ends_at TIMESTAMP,
     notes TEXT,
-    UNIQUE(division_id, admin_id)
+    UNIQUE(league_division_id, user_id)
 );
 
 -- Club Admins (manage clubs/organizations)
 CREATE TABLE club_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     club_id UUID NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
-    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
-    admin_role VARCHAR(50) NOT NULL,            -- 'president', 'vice_president', 'director', 'treasurer', 'secretary'
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    admin_role VARCHAR(50) NOT NULL,            -- 'president', 'vice_president', 'director', 'treasurer', 'secretary', 'club_manager'
     is_primary BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    appointed_by UUID REFERENCES users(id),
     term_ends_at TIMESTAMP,
     notes TEXT,
-    UNIQUE(club_id, admin_id)
+    UNIQUE(club_id, user_id)
 );
 
 -- Sport Division Admins (manage sport divisions within clubs)
 CREATE TABLE sport_division_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    division_id UUID NOT NULL REFERENCES sport_divisions(id) ON DELETE CASCADE,
-    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    sport_division_id UUID NOT NULL REFERENCES sport_divisions(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     admin_role VARCHAR(50) NOT NULL,            -- 'division_director', 'coordinator', 'registrar'
     is_primary BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    appointed_by UUID REFERENCES users(id),
     term_ends_at TIMESTAMP,
     notes TEXT,
-    UNIQUE(division_id, admin_id)
+    UNIQUE(sport_division_id, user_id)
 );
 
 -- Team Admins (manage individual teams)
 CREATE TABLE team_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    admin_id UUID NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
-    admin_role VARCHAR(50) NOT NULL,            -- 'team_administrator', 'registrar'
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    admin_role VARCHAR(50) NOT NULL,            -- 'team_administrator', 'team_manager', 'registrar'
     is_primary BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
     appointed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    appointed_by UUID REFERENCES users(id),
     term_ends_at TIMESTAMP,
     notes TEXT,
-    UNIQUE(team_id, admin_id)
+    UNIQUE(team_id, user_id)
 );
 
 -- Venues table (with complete Google Places integration)
@@ -1076,10 +1084,13 @@ CREATE INDEX idx_coaches_license ON coaches(coaching_license);
 CREATE INDEX idx_referees_grade ON referees(referee_grade);
 CREATE INDEX idx_medical_staff_role ON medical_staff(role_type);
 CREATE INDEX idx_managers_type ON managers(manager_type);
-CREATE INDEX idx_admins_level ON admins(admin_level_id);
+
+-- System admin indexes
+CREATE INDEX idx_system_admins_user ON system_admins(user_id);
+CREATE INDEX idx_system_admins_active ON system_admins(is_active) WHERE is_active = true;
 
 -- Admin permissions indexes
-CREATE INDEX idx_admin_permissions_admin ON admin_permissions(admin_id);
+CREATE INDEX idx_admin_permissions_user ON admin_permissions(user_id);
 CREATE INDEX idx_admin_permissions_permission ON admin_permissions(permission_id);
 
 -- Team relationship indexes (defined earlier in file)
@@ -1110,17 +1121,17 @@ CREATE INDEX idx_team_followers_spectator ON team_followers(spectator_id);
 
 -- Admin hierarchy indexes
 CREATE INDEX idx_league_admins_league ON league_admins(league_id);
-CREATE INDEX idx_league_admins_admin ON league_admins(admin_id);
-CREATE INDEX idx_league_conference_admins_conference ON league_conference_admins(conference_id);
-CREATE INDEX idx_league_conference_admins_admin ON league_conference_admins(admin_id);
-CREATE INDEX idx_league_division_admins_division ON league_division_admins(division_id);
-CREATE INDEX idx_league_division_admins_admin ON league_division_admins(admin_id);
+CREATE INDEX idx_league_admins_user ON league_admins(user_id);
+CREATE INDEX idx_league_conference_admins_conference ON league_conference_admins(league_conference_id);
+CREATE INDEX idx_league_conference_admins_user ON league_conference_admins(user_id);
+CREATE INDEX idx_league_division_admins_division ON league_division_admins(league_division_id);
+CREATE INDEX idx_league_division_admins_user ON league_division_admins(user_id);
 CREATE INDEX idx_club_admins_club ON club_admins(club_id);
-CREATE INDEX idx_club_admins_admin ON club_admins(admin_id);
-CREATE INDEX idx_sport_division_admins_division ON sport_division_admins(division_id);
-CREATE INDEX idx_sport_division_admins_admin ON sport_division_admins(admin_id);
+CREATE INDEX idx_club_admins_user ON club_admins(user_id);
+CREATE INDEX idx_sport_division_admins_division ON sport_division_admins(sport_division_id);
+CREATE INDEX idx_sport_division_admins_user ON sport_division_admins(user_id);
 CREATE INDEX idx_team_admins_team ON team_admins(team_id);
-CREATE INDEX idx_team_admins_admin ON team_admins(admin_id);
+CREATE INDEX idx_team_admins_user ON team_admins(user_id);
 
 CREATE INDEX idx_permission_categories_name ON permission_categories(name);
 CREATE INDEX idx_permissions_category ON permissions(permission_category_id);

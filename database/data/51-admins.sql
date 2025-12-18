@@ -1,17 +1,18 @@
 -- ========================================
--- MANUAL ADMINS
+-- SYSTEM ADMINS
 -- ========================================
--- Manually managed admins with role assignments using normalized admin_levels lookup table
+-- System-level administrators with full access to all entities
 -- NOTE: Authentication credentials (email/password) are set in 50m-auth-credentials.sql
+-- NOTE: Admin assignments are in junction tables: system_admins, league_admins, club_admins, etc.
+-- NOTE: Users can have multiple admin roles (e.g., system admin + club admin for specific club)
 
--- James Breslin - Club Administrator
-INSERT INTO admins (id, admin_level_id, notes)
+-- James Breslin - System Administrator
+INSERT INTO system_admins (user_id, notes, is_active)
 VALUES (
     '311ee799-a6a1-450f-8bad-5140a021c92b',
-    '550e8400-e29b-41d4-a716-446655440812',
-    'Club administrator for Lighthouse 1893 SC with full club management access'
+    'System administrator with full access to all entities and management capabilities',
+    true
 )
-ON CONFLICT (id) DO UPDATE SET
-    admin_level_id = EXCLUDED.admin_level_id,
+ON CONFLICT (user_id) DO UPDATE SET
     notes = EXCLUDED.notes,
-    updated_at = CURRENT_TIMESTAMP;
+    is_active = EXCLUDED.is_active;

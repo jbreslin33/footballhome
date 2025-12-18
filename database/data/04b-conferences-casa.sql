@@ -1,5 +1,5 @@
 -- CASA Conferences
--- Generated at: 2025-12-17T23:45:56.052Z
+-- Generated at: 2025-12-18T00:39:16.588Z
 
 INSERT INTO league_conferences (id, league_id, name, display_name, slug, description, contact_email, contact_phone, is_active)
 VALUES
