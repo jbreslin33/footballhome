@@ -58,25 +58,8 @@ class ContextSelectionScreen extends Screen {
         
         // Route based on context type and role
         if (this.role === 'admin') {
-          // Admin role - route to admin placeholder screens
-          if (contextType === 'system') {
-            this.navigation.goTo('admin-system');
-          } else if (contextType === 'club') {
-            this.navigation.goTo('admin-club', { 
-              clubId: contextId,
-              clubName: contextName 
-            });
-          } else if (contextType === 'sport_division') {
-            this.navigation.goTo('admin-sport-division', { 
-              sportDivisionId: contextId,
-              sportDivisionName: contextName 
-            });
-          } else if (contextType === 'team') {
-            this.navigation.goTo('admin-team', { 
-              teamId: contextId,
-              teamName: contextName 
-            });
-          }
+          // Admin role - go to level selection screen
+          this.navigation.goTo('admin-level-selection');
         } else if (contextType === 'club') {
           // Non-admin club selected - go to division selection for this club
           this.navigation.goTo('division-selection', { 
@@ -114,44 +97,31 @@ class ContextSelectionScreen extends Screen {
   loadAdminContexts(user) {
     const listContainer = this.find('#context-list');
     
-    // Get clubs and teams the user administers
+    // Check if user has any admin privileges
     const endpoint = '/api/auth/admin/contexts';
     this.safeFetch(endpoint, response => {
       const contexts = response.data || [];
       
       if (contexts.length === 0) {
-        listContainer.innerHTML = '<div class="empty-state"><p>No clubs or teams to administer</p></div>';
+        listContainer.innerHTML = '<div class="empty-state"><p>No admin privileges</p></div>';
         return;
       }
       
-      // Group and display icons based on type
-      const typeConfig = {
-        system: { icon: '👨‍💼', label: 'SYSTEM' },
-        club: { icon: '🏢', label: 'CLUB' },
-        sport_division: { icon: '⚽', label: 'SPORT DIVISION' },
-        team: { icon: '⚽', label: 'TEAM' }
-      };
-      
-      this.renderList('#context-list', contexts,
-        ctx => {
-          const config = typeConfig[ctx.type] || { icon: '📋', label: ctx.type.toUpperCase() };
-          return `
-            <button class="btn btn-lg btn-primary context-option" 
-                    data-context-id="${ctx.id}" 
-                    data-context-name="${ctx.display_name || ctx.name}"
-                    data-context-type="${ctx.type}"
-                    style="width: 100%; text-align: left; margin-bottom: var(--space-2); padding: var(--space-3);">
-              <h3 style="margin: 0; font-size: 1.2rem;">
-                ${config.icon} ${ctx.display_name || ctx.name}
-              </h3>
-              <p style="margin: var(--space-1) 0 0 0; opacity: 0.8; font-size: 0.9rem;">
-                ${config.label}
-              </p>
-            </button>
-          `;
-        },
-        '<div class="empty-state"><p>No admin contexts available</p></div>'
-      );
+      // Show single "Administration" button that goes to level selection
+      listContainer.innerHTML = `
+        <button class="btn btn-lg btn-primary context-option" 
+                data-context-id="admin" 
+                data-context-name="Administration"
+                data-context-type="admin"
+                style="width: 100%; text-align: left; margin-bottom: var(--space-2); padding: var(--space-3);">
+          <h3 style="margin: 0; font-size: 1.2rem;">
+            👨‍💼 Administration
+          </h3>
+          <p style="margin: var(--space-1) 0 0 0; opacity: 0.8; font-size: 0.9rem;">
+            Manage system, clubs, teams, and more
+          </p>
+        </button>
+      `;
     });
   }
   

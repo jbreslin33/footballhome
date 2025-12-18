@@ -33,6 +33,8 @@ class App {
       matchRSVPManagement: new MatchRSVPManagementScreen(this.navigation, this.auth),
       gameDayRoster: new GameDayRosterScreen(this.navigation, this.auth),
       matchShare: new MatchShareScreen(this.navigation, this.auth),
+      adminLevelSelection: new AdminLevelSelectionScreen(this.navigation, this.auth),
+      adminEntityList: new AdminEntityListScreen(this.navigation, this.auth),
       adminSystem: new AdminSystemScreen(this.navigation, this.auth),
       adminClub: new AdminClubScreen(this.navigation, this.auth),
       adminSportDivision: new AdminSportDivisionScreen(this.navigation, this.auth),
@@ -65,6 +67,8 @@ class App {
     this.screenManager.register('match-rsvp-management', this.screens.matchRSVPManagement);
     this.screenManager.register('game-day-roster', this.screens.gameDayRoster);
     this.screenManager.register('match-share', this.screens.matchShare);
+    this.screenManager.register('admin-level-selection', this.screens.adminLevelSelection);
+    this.screenManager.register('admin-entity-list', this.screens.adminEntityList);
     this.screenManager.register('admin-system', this.screens.adminSystem);
     this.screenManager.register('admin-club', this.screens.adminClub);
     this.screenManager.register('admin-sport-division', this.screens.adminSportDivision);
