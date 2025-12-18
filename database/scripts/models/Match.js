@@ -32,10 +32,10 @@ class Match {
     this.competition_round = data.competition_round || null;
   }
 
-  toSQL() {
+  toEventSQL() {
     return `INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
-  ${SqlGenerator.escape(this.id)},
+  ${SqlGenerator.escape(this.event_id)},
   ${SqlGenerator.escape(this.created_by)},
   ${SqlGenerator.escape(this.event_type_id)},
   ${SqlGenerator.escape(this.title)},
@@ -48,7 +48,7 @@ VALUES (
   ${SqlGenerator.escape(this.external_event_id)}
 )
 ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title;
+  title = EXCLUDED.title,
   updated_at = EXCLUDED.updated_at;`;
   }
 
