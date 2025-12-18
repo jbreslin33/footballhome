@@ -23,7 +23,6 @@ class SqlGenerator {
 
     // Header
     lines.push(`-- ${options.title || filename}`);
-    lines.push(`-- Generated at: ${new Date().toISOString()}`);
     if (options.description) {
       lines.push(`-- ${options.description}`);
     }
