@@ -68,8 +68,13 @@ class RoleSelectionScreen extends Screen {
   
   handleRoleSelection(role) {
     // Store selected role in navigation context and navigate
-    if (role === 'coach' || role === 'player' || role === 'admin') {
-      this.navigation.context.role = role;
+    this.navigation.context.role = role;
+    
+    if (role === 'admin') {
+      // Admin role - go directly to level selection
+      this.navigation.goTo('admin-level-selection');
+    } else if (role === 'coach' || role === 'player') {
+      // Coach/Player - go to context selection to pick team
       this.navigation.goTo('context-selection', { role: role });
     } else {
       this.handleError(new Error('Unknown role: ' + role), 'role-selection');
