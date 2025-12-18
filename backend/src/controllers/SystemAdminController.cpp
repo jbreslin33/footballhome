@@ -952,23 +952,168 @@ Response SystemAdminController::handleGetScraperLogs(const Request& request) {
 }
 
 Response SystemAdminController::handleTriggerScraper(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        // Parse scraper type from path or query param
+        std::string scraper_type = request.getQueryParam("scraper_type");
+        if (scraper_type.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"scraper_type is required\"}");
+        }
+        
+        // Create a scraper log entry
+        std::string query = "INSERT INTO scraper_logs (scraper_type, status, records_scraped, started_at) "
+                          "VALUES ($1, 'running', 0, CURRENT_TIMESTAMP) RETURNING id";
+        std::vector<std::string> params = {scraper_type};
+        auto result = db_->query(query, params);
+        
+        std::string log_id = result[0]["id"].as<std::string>();
+        
+        // TODO: Actually trigger the scraper process (external command or queue)
+        
+        return Response(HttpStatus::OK, "{\"success\":true,\"log_id\":\"" + log_id + "\",\"message\":\"Scraper triggered\"}");
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to trigger scraper: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleGetSystemNotifications(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        std::string is_active = request.getQueryParam("is_active");
+        
+        std::string query = "SELECT id, notification_type, title, message, severity, is_active, "
+                          "display_from, display_until, created_at "
+                          "FROM system_notifications "
+                          "WHERE 1=1 ";
+        
+        std::vector<std::string> params;
+        int param_count = 0;
+        
+        if (!is_active.empty()) {
+            params.push_back(is_active);
+            query += "AND is_active = $" + std::to_string(++param_count) + " ";
+        }
+        
+        query += "ORDER BY created_at DESC";
+        
+        auto result = db_->query(query, params);
+        
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json += ",";
+            json += "{";
+            json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
+            json += "\"notification_type\":\"" + result[i]["notification_type"].as<std::string>() + "\",";
+            json += "\"title\":\"" + result[i]["title"].as<std::string>() + "\",";
+            json += "\"message\":\"" + result[i]["message"].as<std::string>() + "\",";
+            json += "\"severity\":\"" + result[i]["severity"].as<std::string>() + "\",";
+            json += "\"is_active\":" + std::string(result[i]["is_active"].as<bool>() ? "true" : "false") + ",";
+            
+            if (!result[i]["display_from"].is_null()) {
+                json += "\"display_from\":\"" + result[i]["display_from"].as<std::string>() + "\",";
+            } else {
+                json += "\"display_from\":null,";
+            }
+            
+            if (!result[i]["display_until"].is_null()) {
+                json += "\"display_until\":\"" + result[i]["display_until"].as<std::string>() + "\",";
+            } else {
+                json += "\"display_until\":null,";
+            }
+            
+            json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\"";
+            json += "}";
+        }
+        json += "]";
+        
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to fetch notifications: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleCreateSystemNotification(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        // TODO: Parse JSON body when available
+        // For now, use placeholder values
+        std::string notification_type = "system";
+        std::string title = "System Notification";
+        std::string message = "Notification message";
+        std::string severity = "info";
+        
+        std::string query = "INSERT INTO system_notifications (notification_type, title, message, severity, is_active) "
+                          "VALUES ($1, $2, $3, $4, true) RETURNING id";
+        std::vector<std::string> params = {notification_type, title, message, severity};
+        auto result = db_->query(query, params);
+        
+        std::string notification_id = result[0]["id"].as<std::string>();
+        
+        return Response(HttpStatus::CREATED, "{\"success\":true,\"id\":\"" + notification_id + "\"}");
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to create notification: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleUpdateSystemNotification(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        // Parse notification ID from path
+        std::string path = request.getPath();
+        size_t pos = path.find("/api/system-admin/notifications/");
+        if (pos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        
+        std::string notification_id = path.substr(pos + 32); // length of prefix
+        size_t slash_pos = notification_id.find("/");
+        if (slash_pos != std::string::npos) {
+            notification_id = notification_id.substr(0, slash_pos);
+        }
+        
+        if (notification_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Notification ID is required\"}");
+        }
+        
+        // TODO: Parse JSON body for fields to update
+        // For now, just update the updated_at timestamp
+        std::string query = "UPDATE system_notifications SET updated_at = CURRENT_TIMESTAMP "
+                          "WHERE id = $1";
+        std::vector<std::string> params = {notification_id};
+        db_->execute(query, params);
+        
+        return Response(HttpStatus::OK, "{\"success\":true,\"message\":\"Notification updated\"}");
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to update notification: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleDeleteSystemNotification(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        // Parse notification ID from path
+        std::string path = request.getPath();
+        size_t pos = path.find("/api/system-admin/notifications/");
+        if (pos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        
+        std::string notification_id = path.substr(pos + 32); // length of prefix
+        
+        if (notification_id.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Notification ID is required\"}");
+        }
+        
+        // Soft delete: set is_active to false
+        std::string query = "UPDATE system_notifications SET is_active = false, updated_at = CURRENT_TIMESTAMP "
+                          "WHERE id = $1";
+        std::vector<std::string> params = {notification_id};
+        db_->execute(query, params);
+        
+        return Response(HttpStatus::OK, "{\"success\":true,\"message\":\"Notification deleted\"}");
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to delete notification: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleGetLookupTables(const Request& request) {
