@@ -14,7 +14,7 @@ public:
     void registerRoutes(Router& router, const std::string& prefix) override;
 
 private:
-    std::shared_ptr<Database> db_;
+    Database* db_;
     
     // Dashboard & Overview
     Response handleGetDashboard(const Request& request);

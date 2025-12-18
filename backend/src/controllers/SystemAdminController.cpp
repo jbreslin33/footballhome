@@ -449,7 +449,8 @@ Response SystemAdminController::handleToggleFeatureFlag(const Request& request) 
         // TODO: Get actual admin user_id from authentication
         std::string admin_id = "77d77471-1250-47e0-81ab-d4626595d63c";
         
-        db_->query(update_query, {new_state, admin_id, key});
+        std::vector<std::string> params = {new_state ? "true" : "false", admin_id, key};
+        db_->query(update_query, params);
         
         // Log to ##u/##p file
         std::map<std::string, std::string> columns;
