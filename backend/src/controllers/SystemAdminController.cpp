@@ -524,7 +524,38 @@ void SystemAdminController::logAuditAction(const std::string& admin_id,
 // ============================================================================
 
 Response SystemAdminController::handleGetAllUsers(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        // Parse query parameters for pagination
+        std::string limit = request.getQueryParam("limit");
+        if (limit.empty()) limit = "50";
+        std::string offset = request.getQueryParam("offset");
+        if (offset.empty()) offset = "0";
+        
+        std::string query = "SELECT u.id, u.email, u.first_name, u.last_name, u.is_active, u.created_at FROM users u "
+                          "ORDER BY u.created_at DESC LIMIT $1 OFFSET $2";
+        std::vector<std::string> params = {limit, offset};
+        auto result = db_->query(query, params);
+        
+        // Build JSON array
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json += ",";
+            json += "{";
+            json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
+            json += "\"email\":\"" + result[i]["email"].as<std::string>() + "\",";
+            json += "\"first_name\":\"" + result[i]["first_name"].as<std::string>() + "\",";
+            json += "\"last_name\":\"" + result[i]["last_name"].as<std::string>() + "\",";
+            json += "\"is_active\":" + std::string(result[i]["is_active"].as<bool>() ? "true" : "false") + ",";
+            json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\"";
+            json += "}";
+        }
+        json += "]";
+        
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to fetch users: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleImpersonateUser(const Request& request) {
