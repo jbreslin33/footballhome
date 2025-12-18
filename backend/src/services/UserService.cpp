@@ -1,6 +1,8 @@
 #include "UserService.h"
 #include <sstream>
 #include <stdexcept>
+#include <iostream>
+#include <fstream>
 
 UserService::UserService(Database* db) : db_(db) {}
 
@@ -104,6 +106,18 @@ bool UserService::updateUserBasicInfo(const std::string& user_id,
         params.push_back(user_id);
         
         db_->query(query, params);
+        
+        // Build SQL statement with actual values for file logging
+        std::ostringstream sql_log;
+        sql_log << "UPDATE users SET updated_at = CURRENT_TIMESTAMP";
+        if (!first_name.empty()) sql_log << ", first_name = '" << first_name << "'";
+        if (!last_name.empty()) sql_log << ", last_name = '" << last_name << "'";
+        if (!email.empty()) sql_log << ", email = '" << email << "'";
+        if (!phone.empty()) sql_log << ", phone = '" << phone << "'";
+        if (!date_of_birth.empty()) sql_log << ", date_of_birth = '" << date_of_birth << "'";
+        sql_log << " WHERE id = '" << user_id << "'";
+        
+        SqlFileLogger::log("users", sql_log.str());
         
         // Log audit action
         logAuditAction(admin_id, "user_update", "users", user_id, "Updated user basic info");

@@ -2,6 +2,7 @@
 #define USERSERVICE_H
 
 #include "../database/Database.h"
+#include "../database/SqlFileLogger.h"
 #include <string>
 #include <vector>
 #include <memory>
