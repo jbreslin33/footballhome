@@ -19,8 +19,6 @@ class SportDivision {
     this.primary_color = data.primary_color || null;
     this.secondary_color = data.secondary_color || null;
     this.is_active = data.is_active !== false;
-    this.created_at = data.created_at || new Date().toISOString();
-    this.updated_at = data.updated_at || new Date().toISOString();
   }
 
   toSQL() {

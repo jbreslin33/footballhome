@@ -34,12 +34,10 @@ class Venue {
     this.data_source = data.data_source || 'google_places';
     this.last_google_update = data.last_google_update || null;
     this.is_active = data.is_active !== false;
-    this.created_at = data.created_at || new Date().toISOString();
-    this.updated_at = data.updated_at || new Date().toISOString();
   }
 
   toSQL() {
-    return `INSERT INTO venues (id, name, venue_type, formatted_address, city, state, postal_code, country, latitude, longitude, surface_type, phone, international_phone_number, website, place_id, rating, user_ratings_total, price_level, business_status, google_types, opening_hours, photos, data_source, last_google_update, is_active, created_at, updated_at)
+    return `INSERT INTO venues (id, name, venue_type, formatted_address, city, state, postal_code, country, latitude, longitude, surface_type, phone, international_phone_number, website, place_id, rating, user_ratings_total, price_level, business_status, google_types, opening_hours, photos, data_source, last_google_update, is_active)
 VALUES (
   ${SqlGenerator.escape(this.id)},
   ${SqlGenerator.escape(this.name)},
@@ -65,9 +63,7 @@ VALUES (
   ${SqlGenerator.escape(this.photos)},
   ${SqlGenerator.escape(this.data_source)},
   ${SqlGenerator.escape(this.last_google_update)},
-  ${SqlGenerator.escape(this.is_active)},
-  ${SqlGenerator.escape(this.created_at)},
-  ${SqlGenerator.escape(this.updated_at)}
+  ${SqlGenerator.escape(this.is_active)}
 )
 ON CONFLICT (place_id) DO UPDATE SET
   name = EXCLUDED.name,

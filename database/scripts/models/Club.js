@@ -25,12 +25,10 @@ class Club {
     this.postal_code = data.postal_code || null;
     this.country = data.country || 'USA';
     this.is_active = data.is_active !== false;
-    this.created_at = data.created_at || new Date().toISOString();
-    this.updated_at = data.updated_at || new Date().toISOString();
   }
 
   toSQL() {
-    return `INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active, created_at, updated_at)
+    return `INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active)
 VALUES (
   ${SqlGenerator.escape(this.id)},
   ${SqlGenerator.escape(this.name)},
@@ -48,9 +46,7 @@ VALUES (
   ${SqlGenerator.escape(this.state)},
   ${SqlGenerator.escape(this.postal_code)},
   ${SqlGenerator.escape(this.country)},
-  ${SqlGenerator.escape(this.is_active)},
-  ${SqlGenerator.escape(this.created_at)},
-  ${SqlGenerator.escape(this.updated_at)}
+  ${SqlGenerator.escape(this.is_active)}
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
@@ -68,8 +64,7 @@ ON CONFLICT (id) DO UPDATE SET
   state = EXCLUDED.state,
   postal_code = EXCLUDED.postal_code,
   country = EXCLUDED.country,
-  is_active = EXCLUDED.is_active,
-  updated_at = EXCLUDED.updated_at;`;
+  is_active = EXCLUDED.is_active;`;
   }
 }
 

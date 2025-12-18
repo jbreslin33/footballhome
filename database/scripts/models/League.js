@@ -18,8 +18,6 @@ class League {
     this.contact_email = data.contact_email || null;
     this.contact_phone = data.contact_phone || null;
     this.is_active = data.is_active !== false;
-    this.created_at = data.created_at || new Date().toISOString();
-    this.updated_at = data.updated_at || new Date().toISOString();
   }
 
   toSQL() {

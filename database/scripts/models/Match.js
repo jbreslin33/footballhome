@@ -18,8 +18,8 @@ class Match {
     this.external_event_id = data.external_event_id || null;
     this.cancelled = data.cancelled || false;
     this.cancellation_reason = data.cancellation_reason || null;
-    this.created_at = data.created_at || new Date().toISOString();
-    this.updated_at = data.updated_at || new Date().toISOString();
+    this.created_at = data.created_at || '2025-01-01 00:00:00';
+    this.updated_at = data.updated_at || '2025-01-01 00:00:00';
     
     // Match-specific data (matching matches table schema)
     this.home_team_id = data.home_team_id;
@@ -32,10 +32,10 @@ class Match {
     this.competition_round = data.competition_round || null;
   }
 
-  toEventSQL() {
-    return `INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+  toSQL() {
+    return `INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
-  ${SqlGenerator.escape(this.event_id)},
+  ${SqlGenerator.escape(this.id)},
   ${SqlGenerator.escape(this.created_by)},
   ${SqlGenerator.escape(this.event_type_id)},
   ${SqlGenerator.escape(this.title)},
@@ -45,13 +45,10 @@ VALUES (
   ${SqlGenerator.escape(this.duration_minutes)},
   ${SqlGenerator.escape(this.cancelled)},
   ${SqlGenerator.escape(this.cancellation_reason)},
-  ${SqlGenerator.escape(this.external_event_id)},
-  ${SqlGenerator.escape(this.created_at)},
-  ${SqlGenerator.escape(this.updated_at)}
+  ${SqlGenerator.escape(this.external_event_id)}
 )
 ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
+  title = EXCLUDED.title;
   updated_at = EXCLUDED.updated_at;`;
   }
 

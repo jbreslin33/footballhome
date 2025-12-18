@@ -20,8 +20,8 @@ class Team {
     this.primary_color = data.primary_color || null;
     this.secondary_color = data.secondary_color || null;
     this.is_active = data.is_active !== false;
-    this.created_at = data.created_at || new Date().toISOString();
-    this.updated_at = data.updated_at || new Date().toISOString();
+    this.created_at = data.created_at || '2025-01-01 00:00:00';
+    this.updated_at = data.updated_at || '2025-01-01 00:00:00';
     
     // External identifiers (for reference only, not stored in DB)
     this.apsl_team_id = data.apsl_team_id || null;
@@ -30,7 +30,7 @@ class Team {
   }
 
   toSQL() {
-    return `INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+    return `INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   ${SqlGenerator.escape(this.id)},
   ${SqlGenerator.escape(this.name)},
@@ -43,15 +43,12 @@ VALUES (
   ${SqlGenerator.escape(this.logo_url)},
   ${SqlGenerator.escape(this.primary_color)},
   ${SqlGenerator.escape(this.secondary_color)},
-  ${SqlGenerator.escape(this.is_active)},
-  ${SqlGenerator.escape(this.created_at)},
-  ${SqlGenerator.escape(this.updated_at)}
+  ${SqlGenerator.escape(this.is_active)}
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;`;
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
   }
 }
 

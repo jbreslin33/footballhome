@@ -18,8 +18,6 @@ class Player {
     this.dominant_foot = data.dominant_foot || null;
     this.player_rating = data.player_rating || null;
     this.notes = data.notes || null;
-    this.created_at = data.created_at || new Date().toISOString();
-    this.updated_at = data.updated_at || new Date().toISOString();
     
     // User data (for creating user record)
     this.first_name = data.first_name;
@@ -39,7 +37,7 @@ class Player {
   }
 
   toUserSQL() {
-    return `INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active, created_at, updated_at)
+    return `INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active)
 VALUES (
   ${SqlGenerator.escape(this.id)},
   ${SqlGenerator.escape(this.first_name)},
@@ -47,21 +45,18 @@ VALUES (
   ${SqlGenerator.escape(this.email)},
   ${SqlGenerator.escape(this.phone)},
   ${SqlGenerator.escape(this.date_of_birth)},
-  ${SqlGenerator.escape(this.is_active)},
-  ${SqlGenerator.escape(this.created_at)},
-  ${SqlGenerator.escape(this.updated_at)}
+  ${SqlGenerator.escape(this.is_active)}
 )
 ON CONFLICT (id) DO UPDATE SET
   first_name = EXCLUDED.first_name,
   last_name = EXCLUDED.last_name,
   email = COALESCE(EXCLUDED.email, users.email),
   phone = COALESCE(EXCLUDED.phone, users.phone),
-  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth),
-  updated_at = EXCLUDED.updated_at;`;
+  date_of_birth = COALESCE(EXCLUDED.date_of_birth, users.date_of_birth);
   }
 
   toPlayerSQL() {
-    return `INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, created_at, updated_at)
+    return `INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes)
 VALUES (
   ${SqlGenerator.escape(this.id)},
   ${SqlGenerator.escape(this.preferred_position_id)},
@@ -70,14 +65,11 @@ VALUES (
   ${SqlGenerator.escape(this.weight_kg)},
   ${SqlGenerator.escape(this.dominant_foot)},
   ${SqlGenerator.escape(this.player_rating)},
-  ${SqlGenerator.escape(this.notes)},
-  ${SqlGenerator.escape(this.created_at)},
-  ${SqlGenerator.escape(this.updated_at)}
+  ${SqlGenerator.escape(this.notes)}
 )
 ON CONFLICT (id) DO UPDATE SET
   preferred_position_id = COALESCE(EXCLUDED.preferred_position_id, players.preferred_position_id),
-  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url),
-  height_cm = COALESCE(EXCLUDED.height_cm, players.height_cm),
+  photo_url = COALESCE(EXCLUDED.photo_url, players.photo_url);
   weight_kg = COALESCE(EXCLUDED.weight_kg, players.weight_kg),
   dominant_foot = COALESCE(EXCLUDED.dominant_foot, players.dominant_foot),
   player_rating = COALESCE(EXCLUDED.player_rating, players.player_rating),
