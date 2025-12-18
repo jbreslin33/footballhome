@@ -118,3 +118,47 @@ INSERT INTO recurrence_patterns (id, name, display_name, description) VALUES
 ('550e8400-e29b-41d4-a716-446655441004', 'monthly_by_day', 'Monthly by Day', 'Repeats monthly on the same day of week (e.g., first Monday)'),
 ('550e8400-e29b-41d4-a716-446655441005', 'custom', 'Custom Pattern', 'Custom recurrence pattern defined by interval')
 ON CONFLICT (id) DO NOTHING;
+
+-- System Settings (default platform configuration)
+INSERT INTO system_settings (setting_key, setting_value, value_type, category, display_name, description, is_sensitive, is_system_setting) VALUES
+('app_name', 'Football Home', 'string', 'general', 'Application Name', 'Display name for the platform', false, true),
+('app_tagline', 'Manage Your Teams, Events & Players', 'string', 'general', 'Application Tagline', 'Subtitle for the platform', false, true),
+('default_timezone', 'America/New_York', 'string', 'general', 'Default Timezone', 'Default timezone for dates and times', false, true),
+('default_language', 'en', 'string', 'general', 'Default Language', 'Default language code (en, es, fr)', false, true),
+('default_event_duration', '90', 'integer', 'events', 'Default Event Duration', 'Default duration for events in minutes', false, true),
+('rsvp_deadline_hours', '4', 'integer', 'events', 'RSVP Deadline', 'Hours before event when RSVPs close', false, true),
+('email_from_address', 'noreply@footballhome.com', 'string', 'email', 'Email From Address', 'Email address for outgoing emails', false, true),
+('email_from_name', 'Football Home', 'string', 'email', 'Email From Name', 'Name displayed on outgoing emails', false, true),
+('smtp_host', '', 'string', 'email', 'SMTP Host', 'SMTP server hostname', true, true),
+('smtp_port', '587', 'integer', 'email', 'SMTP Port', 'SMTP server port', false, true),
+('smtp_username', '', 'string', 'email', 'SMTP Username', 'SMTP authentication username', true, true),
+('smtp_password', '', 'string', 'email', 'SMTP Password', 'SMTP authentication password', true, true),
+('google_places_api_key', '', 'string', 'integrations', 'Google Places API Key', 'API key for Google Places integration', true, true),
+('groupme_access_token', '', 'string', 'integrations', 'GroupMe Access Token', 'Access token for GroupMe API', true, true),
+('max_roster_size', '35', 'integer', 'teams', 'Maximum Roster Size', 'Maximum players per team roster', false, true),
+('min_roster_size', '11', 'integer', 'teams', 'Minimum Roster Size', 'Minimum players for active team', false, true),
+('enable_public_registration', 'false', 'boolean', 'security', 'Enable Public Registration', 'Allow users to self-register', false, true),
+('require_email_verification', 'true', 'boolean', 'security', 'Require Email Verification', 'Require email verification for new accounts', false, true),
+('session_timeout_minutes', '1440', 'integer', 'security', 'Session Timeout', 'Minutes before user session expires', false, true),
+('max_login_attempts', '5', 'integer', 'security', 'Max Login Attempts', 'Maximum failed login attempts before lockout', false, true)
+ON CONFLICT (setting_key) DO NOTHING;
+
+-- Feature Flags (enable/disable platform features)
+INSERT INTO feature_flags (flag_key, flag_name, description, is_enabled, category, requires_restart) VALUES
+('enable_availability_tracking', 'Availability Tracking', 'Track player availability for practices and matches', true, 'player_management', false),
+('enable_medical_records', 'Medical Records', 'Track player medical status and injuries', true, 'player_management', false),
+('enable_academic_tracking', 'Academic Status Tracking', 'Track student athlete academic eligibility', true, 'player_management', false),
+('enable_match_lineups', 'Match Lineups', 'Create and manage match day lineups and formations', true, 'event_management', false),
+('enable_attendance_tracking', 'Attendance Tracking', 'Automatic attendance tracking from RSVPs', true, 'event_management', false),
+('enable_recurring_events', 'Recurring Events', 'Create events that repeat on a schedule', true, 'event_management', false),
+('enable_notifications', 'Notifications', 'Email and push notifications for events', true, 'communication', false),
+('enable_magic_links', 'Magic Login Links', 'Email-based passwordless authentication', true, 'security', false),
+('enable_external_calendar_sync', 'Calendar Sync', 'Sync events with external calendars (Google, Apple)', false, 'integrations', false),
+('enable_groupme_integration', 'GroupMe Integration', 'Sync with GroupMe chats for RSVP tracking', true, 'integrations', false),
+('enable_data_export', 'Data Export', 'Allow users to export their data (CSV, PDF)', true, 'data_management', false),
+('enable_bulk_import', 'Bulk Import', 'Import users/teams from CSV files', true, 'data_management', false),
+('enable_api_access', 'API Access', 'Enable REST API for external integrations', true, 'integrations', true),
+('enable_analytics', 'Analytics Dashboard', 'Show analytics and statistics dashboards', false, 'analytics', false),
+('enable_payment_processing', 'Payment Processing', 'Process team fees and payments', false, 'finance', true),
+('maintenance_mode', 'Maintenance Mode', 'Put platform in maintenance mode (read-only)', false, 'system', false)
+ON CONFLICT (flag_key) DO NOTHING;

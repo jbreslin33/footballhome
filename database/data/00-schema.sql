@@ -1879,3 +1879,151 @@ INSERT INTO practice_teams (practice_id, team_id, is_primary)
 SELECT id, team_id, true
 FROM practices
 ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- SUPER ADMIN SYSTEM TABLES
+-- ============================================================================
+
+-- System configuration settings (key-value store for platform settings)
+CREATE TABLE system_settings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    setting_key VARCHAR(100) UNIQUE NOT NULL,     -- 'app_name', 'default_timezone', 'default_language'
+    setting_value TEXT,                            -- JSON or simple text value
+    value_type VARCHAR(20) DEFAULT 'string',       -- 'string', 'integer', 'boolean', 'json'
+    category VARCHAR(50),                          -- 'general', 'email', 'notifications', 'integrations'
+    display_name VARCHAR(200) NOT NULL,            -- 'Application Name', 'Default Timezone'
+    description TEXT,                              -- Help text for the setting
+    is_sensitive BOOLEAN DEFAULT false,            -- Hide value in UI (for API keys)
+    is_system_setting BOOLEAN DEFAULT true,        -- Cannot be deleted by users
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by UUID REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Feature flags (enable/disable platform features)
+CREATE TABLE feature_flags (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    flag_key VARCHAR(100) UNIQUE NOT NULL,         -- 'enable_availability_tracking', 'enable_medical_records'
+    flag_name VARCHAR(200) NOT NULL,               -- 'Availability Tracking', 'Medical Records'
+    description TEXT,                              -- What this feature does
+    is_enabled BOOLEAN DEFAULT false,              -- Current state
+    category VARCHAR(50),                          -- 'player_management', 'event_management', 'analytics'
+    requires_restart BOOLEAN DEFAULT false,        -- Does changing this require app restart?
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by UUID REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- System audit log (track all super admin actions)
+CREATE TABLE system_audit_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    admin_user_id UUID NOT NULL REFERENCES users(id),
+    action_type VARCHAR(50) NOT NULL,              -- 'create', 'update', 'delete', 'bulk_import', 'permission_change'
+    entity_type VARCHAR(100),                      -- 'user', 'team', 'club', 'league', 'setting', 'feature_flag'
+    entity_id UUID,                                -- ID of affected record
+    entity_name VARCHAR(255),                      -- Human-readable name of affected entity
+    action_description TEXT,                       -- "Changed team name from 'Old Name' to 'New Name'"
+    old_values JSONB,                              -- Previous state (for updates)
+    new_values JSONB,                              -- New state (for creates/updates)
+    ip_address INET,                               -- Admin's IP address
+    user_agent TEXT,                               -- Browser/client info
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Indexes for searching audit log
+    CHECK (action_type IN ('create', 'update', 'delete', 'bulk_import', 'permission_change', 'login', 'impersonate', 'export'))
+);
+
+-- API usage tracking (monitor API calls per user/endpoint)
+CREATE TABLE api_usage_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id),             -- NULL for unauthenticated requests
+    endpoint VARCHAR(255) NOT NULL,                -- '/api/teams', '/api/events'
+    http_method VARCHAR(10) NOT NULL,              -- 'GET', 'POST', 'PUT', 'DELETE'
+    status_code INTEGER NOT NULL,                  -- 200, 404, 500, etc.
+    response_time_ms INTEGER,                      -- How long the request took
+    ip_address INET,
+    user_agent TEXT,
+    request_body_size INTEGER,                     -- Bytes
+    response_body_size INTEGER,                    -- Bytes
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- System notifications (platform-wide announcements from super admins)
+CREATE TABLE system_notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    notification_type VARCHAR(50) DEFAULT 'info',  -- 'info', 'warning', 'error', 'maintenance'
+    target_audience VARCHAR(50) DEFAULT 'all',     -- 'all', 'admins', 'coaches', 'players'
+    is_active BOOLEAN DEFAULT true,                -- Show/hide notification
+    priority INTEGER DEFAULT 0,                    -- Higher = more important
+    starts_at TIMESTAMP,                           -- When to start showing
+    ends_at TIMESTAMP,                             -- When to stop showing
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    CHECK (notification_type IN ('info', 'warning', 'error', 'maintenance')),
+    CHECK (target_audience IN ('all', 'admins', 'coaches', 'players', 'parents'))
+);
+
+-- Data import jobs (track bulk imports from CSV/scrapers)
+CREATE TABLE data_import_jobs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    job_type VARCHAR(50) NOT NULL,                 -- 'csv_import', 'scraper', 'api_sync'
+    entity_type VARCHAR(50) NOT NULL,              -- 'users', 'teams', 'players', 'matches'
+    source VARCHAR(100),                           -- 'manual_upload', 'apsl_scraper', 'casa_scraper'
+    status VARCHAR(20) DEFAULT 'pending',          -- 'pending', 'running', 'completed', 'failed'
+    total_records INTEGER DEFAULT 0,
+    processed_records INTEGER DEFAULT 0,
+    successful_records INTEGER DEFAULT 0,
+    failed_records INTEGER DEFAULT 0,
+    error_log TEXT,                                -- Error messages
+    file_path TEXT,                                -- Path to uploaded file
+    started_by UUID NOT NULL REFERENCES users(id),
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    
+    CHECK (status IN ('pending', 'running', 'completed', 'failed', 'cancelled')),
+    CHECK (job_type IN ('csv_import', 'scraper', 'api_sync', 'bulk_update'))
+);
+
+-- Scraper execution log (track scraper runs)
+CREATE TABLE scraper_execution_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    scraper_name VARCHAR(50) NOT NULL,             -- 'apsl', 'casa', 'groupme', 'venue'
+    execution_mode VARCHAR(50),                    -- 'full', 'players', 'schedules'
+    status VARCHAR(20) DEFAULT 'running',          -- 'running', 'completed', 'failed'
+    teams_scraped INTEGER DEFAULT 0,
+    players_scraped INTEGER DEFAULT 0,
+    matches_scraped INTEGER DEFAULT 0,
+    errors_count INTEGER DEFAULT 0,
+    error_messages TEXT,
+    started_by UUID REFERENCES users(id),          -- NULL if cron job
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    duration_seconds INTEGER,
+    
+    CHECK (status IN ('running', 'completed', 'failed')),
+    CHECK (scraper_name IN ('apsl', 'casa', 'groupme', 'venue'))
+);
+
+-- System health metrics (store periodic health check data)
+CREATE TABLE system_health_metrics (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    metric_name VARCHAR(100) NOT NULL,             -- 'database_size', 'active_users', 'api_response_time'
+    metric_value NUMERIC,
+    metric_unit VARCHAR(20),                       -- 'bytes', 'count', 'milliseconds'
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for performance
+CREATE INDEX idx_system_audit_log_admin ON system_audit_log(admin_user_id, created_at DESC);
+CREATE INDEX idx_system_audit_log_entity ON system_audit_log(entity_type, entity_id);
+CREATE INDEX idx_system_audit_log_action ON system_audit_log(action_type, created_at DESC);
+CREATE INDEX idx_api_usage_log_user ON api_usage_log(user_id, created_at DESC);
+CREATE INDEX idx_api_usage_log_endpoint ON api_usage_log(endpoint, created_at DESC);
+CREATE INDEX idx_system_notifications_active ON system_notifications(is_active, starts_at, ends_at);
+CREATE INDEX idx_data_import_jobs_status ON data_import_jobs(status, started_at DESC);
+CREATE INDEX idx_scraper_execution_log_scraper ON scraper_execution_log(scraper_name, started_at DESC);
+CREATE INDEX idx_system_health_metrics_name ON system_health_metrics(metric_name, recorded_at DESC);
