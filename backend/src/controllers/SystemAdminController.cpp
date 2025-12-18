@@ -542,9 +542,28 @@ Response SystemAdminController::handleGetAllUsers(const Request& request) {
             if (i > 0) json += ",";
             json += "{";
             json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
-            json += "\"email\":\"" + result[i]["email"].as<std::string>() + "\",";
-            json += "\"first_name\":\"" + result[i]["first_name"].as<std::string>() + "\",";
-            json += "\"last_name\":\"" + result[i]["last_name"].as<std::string>() + "\",";
+            
+            // Handle nullable email field
+            if (!result[i]["email"].is_null()) {
+                json += "\"email\":\"" + result[i]["email"].as<std::string>() + "\",";
+            } else {
+                json += "\"email\":null,";
+            }
+            
+            // Handle nullable first_name field
+            if (!result[i]["first_name"].is_null()) {
+                json += "\"first_name\":\"" + result[i]["first_name"].as<std::string>() + "\",";
+            } else {
+                json += "\"first_name\":null,";
+            }
+            
+            // Handle nullable last_name field
+            if (!result[i]["last_name"].is_null()) {
+                json += "\"last_name\":\"" + result[i]["last_name"].as<std::string>() + "\",";
+            } else {
+                json += "\"last_name\":null,";
+            }
+            
             json += "\"is_active\":" + std::string(result[i]["is_active"].as<bool>() ? "true" : "false") + ",";
             json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\"";
             json += "}";
@@ -622,14 +641,14 @@ Response SystemAdminController::handleGetSystemAdmins(const Request& request) {
     try {
         // Query system admins with user details
         std::string query = "SELECT sa.id, sa.user_id, sa.appointed_by, sa.notes, sa.is_active, "
-                          "sa.created_at, sa.updated_at, "
+                          "sa.appointed_at, "
                           "u.email, u.first_name, u.last_name, "
                           "appointer.first_name as appointer_first_name, appointer.last_name as appointer_last_name "
                           "FROM system_admins sa "
                           "JOIN users u ON sa.user_id = u.id "
                           "LEFT JOIN users appointer ON sa.appointed_by = appointer.id "
                           "WHERE sa.is_active = true "
-                          "ORDER BY sa.created_at DESC";
+                          "ORDER BY sa.appointed_at DESC";
         
         auto result = db_->query(query, {});
         
@@ -640,10 +659,34 @@ Response SystemAdminController::handleGetSystemAdmins(const Request& request) {
             json += "{";
             json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
             json += "\"user_id\":\"" + result[i]["user_id"].as<std::string>() + "\",";
-            json += "\"email\":\"" + result[i]["email"].as<std::string>() + "\",";
-            json += "\"first_name\":\"" + result[i]["first_name"].as<std::string>() + "\",";
-            json += "\"last_name\":\"" + result[i]["last_name"].as<std::string>() + "\",";
-            json += "\"appointed_by\":\"" + result[i]["appointed_by"].as<std::string>() + "\",";
+            
+            // Handle nullable email
+            if (!result[i]["email"].is_null()) {
+                json += "\"email\":\"" + result[i]["email"].as<std::string>() + "\",";
+            } else {
+                json += "\"email\":null,";
+            }
+            
+            // Handle nullable first_name
+            if (!result[i]["first_name"].is_null()) {
+                json += "\"first_name\":\"" + result[i]["first_name"].as<std::string>() + "\",";
+            } else {
+                json += "\"first_name\":null,";
+            }
+            
+            // Handle nullable last_name
+            if (!result[i]["last_name"].is_null()) {
+                json += "\"last_name\":\"" + result[i]["last_name"].as<std::string>() + "\",";
+            } else {
+                json += "\"last_name\":null,";
+            }
+            
+            // Handle nullable appointed_by
+            if (!result[i]["appointed_by"].is_null()) {
+                json += "\"appointed_by\":\"" + result[i]["appointed_by"].as<std::string>() + "\",";
+            } else {
+                json += "\"appointed_by\":null,";
+            }
             
             // Appointer name (may be null)
             if (!result[i]["appointer_first_name"].is_null()) {
@@ -654,10 +697,15 @@ Response SystemAdminController::handleGetSystemAdmins(const Request& request) {
                 json += "\"appointer_last_name\":null,";
             }
             
-            json += "\"notes\":\"" + result[i]["notes"].as<std::string>() + "\",";
+            // Handle nullable notes
+            if (!result[i]["notes"].is_null()) {
+                json += "\"notes\":\"" + result[i]["notes"].as<std::string>() + "\",";
+            } else {
+                json += "\"notes\":null,";
+            }
+            
             json += "\"is_active\":" + std::string(result[i]["is_active"].as<bool>() ? "true" : "false") + ",";
-            json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\",";
-            json += "\"updated_at\":\"" + result[i]["updated_at"].as<std::string>() + "\"";
+            json += "\"appointed_at\":\"" + result[i]["appointed_at"].as<std::string>() + "\"";
             json += "}";
         }
         json += "]";
@@ -696,7 +744,7 @@ Response SystemAdminController::handleGrantSystemAdmin(const Request& request) {
         // Insert into system_admins table
         std::string query = "INSERT INTO system_admins (user_id, appointed_by, notes, is_active) "
                           "VALUES ($1, $2, $3, true) "
-                          "ON CONFLICT (user_id) DO UPDATE SET is_active = true, appointed_by = $2, notes = $3, updated_at = CURRENT_TIMESTAMP "
+                          "ON CONFLICT (user_id) DO UPDATE SET is_active = true, appointed_by = $2, notes = $3 "
                           "RETURNING id";
         std::vector<std::string> params = {user_id, admin_id, notes};
         auto result = db_->query(query, params);
@@ -733,7 +781,7 @@ Response SystemAdminController::handleRevokeSystemAdmin(const Request& request) 
         std::string admin_id = "1";
         
         // Update system_admins table to set is_active = false
-        std::string query = "UPDATE system_admins SET is_active = false, updated_at = CURRENT_TIMESTAMP "
+        std::string query = "UPDATE system_admins SET is_active = false "
                           "WHERE user_id = $1";
         std::vector<std::string> params = {user_id};
         db_->execute(query, params);
@@ -758,14 +806,14 @@ Response SystemAdminController::handleGetAuditLogs(const Request& request) {
         std::string offset = request.getQueryParam("offset");
         if (offset.empty()) offset = "0";
         std::string action_type = request.getQueryParam("action_type");
-        std::string table_name = request.getQueryParam("table_name");
+        std::string entity_type = request.getQueryParam("entity_type");
         
         // Build query with optional filters
-        std::string query = "SELECT sal.id, sal.admin_id, sal.action_type, sal.table_name, sal.record_id, "
+        std::string query = "SELECT sal.id, sal.admin_user_id, sal.action_type, sal.entity_type, sal.entity_id, "
                           "sal.old_values, sal.new_values, sal.created_at, "
                           "u.email, u.first_name, u.last_name "
                           "FROM system_audit_log sal "
-                          "JOIN users u ON sal.admin_id = u.id "
+                          "JOIN users u ON sal.admin_user_id = u.id "
                           "WHERE 1=1 ";
         
         std::vector<std::string> params;
@@ -776,9 +824,9 @@ Response SystemAdminController::handleGetAuditLogs(const Request& request) {
             query += "AND sal.action_type = $" + std::to_string(++param_count) + " ";
         }
         
-        if (!table_name.empty()) {
-            params.push_back(table_name);
-            query += "AND sal.table_name = $" + std::to_string(++param_count) + " ";
+        if (!entity_type.empty()) {
+            params.push_back(entity_type);
+            query += "AND sal.entity_type = $" + std::to_string(++param_count) + " ";
         }
         
         query += "ORDER BY sal.created_at DESC ";
@@ -795,14 +843,52 @@ Response SystemAdminController::handleGetAuditLogs(const Request& request) {
             if (i > 0) json += ",";
             json += "{";
             json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
-            json += "\"admin_id\":\"" + result[i]["admin_id"].as<std::string>() + "\",";
-            json += "\"admin_email\":\"" + result[i]["email"].as<std::string>() + "\",";
-            json += "\"admin_name\":\"" + result[i]["first_name"].as<std::string>() + " " + result[i]["last_name"].as<std::string>() + "\",";
+            json += "\"admin_user_id\":\"" + result[i]["admin_user_id"].as<std::string>() + "\",";
+            
+            // Handle nullable email
+            if (!result[i]["email"].is_null()) {
+                json += "\"admin_email\":\"" + result[i]["email"].as<std::string>() + "\",";
+            } else {
+                json += "\"admin_email\":null,";
+            }
+            
+            // Handle nullable names
+            std::string admin_name = "";
+            if (!result[i]["first_name"].is_null() && !result[i]["last_name"].is_null()) {
+                admin_name = result[i]["first_name"].as<std::string>() + " " + result[i]["last_name"].as<std::string>();
+                json += "\"admin_name\":\"" + admin_name + "\",";
+            } else {
+                json += "\"admin_name\":null,";
+            }
+            
             json += "\"action_type\":\"" + result[i]["action_type"].as<std::string>() + "\",";
-            json += "\"table_name\":\"" + result[i]["table_name"].as<std::string>() + "\",";
-            json += "\"record_id\":\"" + result[i]["record_id"].as<std::string>() + "\",";
-            json += "\"old_values\":" + result[i]["old_values"].as<std::string>() + ",";
-            json += "\"new_values\":" + result[i]["new_values"].as<std::string>() + ",";
+            
+            // Handle nullable entity_type and entity_id
+            if (!result[i]["entity_type"].is_null()) {
+                json += "\"entity_type\":\"" + result[i]["entity_type"].as<std::string>() + "\",";
+            } else {
+                json += "\"entity_type\":null,";
+            }
+            
+            if (!result[i]["entity_id"].is_null()) {
+                json += "\"entity_id\":\"" + result[i]["entity_id"].as<std::string>() + "\",";
+            } else {
+                json += "\"entity_id\":null,";
+            }
+            
+            // Handle nullable JSONB fields
+            if (!result[i]["old_values"].is_null()) {
+                json += "\"old_values\":" + result[i]["old_values"].as<std::string>() + ",";
+            } else {
+                json += "\"old_values\":null,";
+            }
+            
+            if (!result[i]["new_values"].is_null()) {
+                json += "\"new_values\":" + result[i]["new_values"].as<std::string>() + ",";
+            } else {
+                json += "\"new_values\":null,";
+            }
+            
             json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\"";
             json += "}";
         }
