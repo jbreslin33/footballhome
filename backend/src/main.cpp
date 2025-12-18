@@ -9,6 +9,7 @@
 #include "core/Router.h"
 #include "core/Request.h"
 #include "core/Response.h"
+#include "core/SQLFileWriter.h"
 #include "database/Database.h"
 #include "database/SqlFileLogger.h"
 #include "controllers/AuthController.h"
@@ -49,6 +50,13 @@ public:
         
         // Initialize SQL file logger
         SqlFileLogger::initialize();
+        
+        // Initialize SQL file writer for data persistence
+        const char* env = std::getenv("ENVIRONMENT");
+        auto sqlEnv = (env && std::string(env) == "production") 
+            ? SQLFileWriter::Environment::PRODUCTION 
+            : SQLFileWriter::Environment::DEVELOPMENT;
+        SQLFileWriter::getInstance().initialize(sqlEnv, "/app/database/data");
         
         // Initialize database
         if (!db_->connect()) {

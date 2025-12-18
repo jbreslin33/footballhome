@@ -1,4 +1,5 @@
 #include "EventController.h"
+#include "../core/SQLFileWriter.h"
 #include "../database/SqlFileLogger.h"
 #include "../database/SqlBuilder.h"
 #include <sstream>
@@ -219,12 +220,15 @@ Response EventController::handleCreateEvent(const Request& request) {
         
         db_->query(practice_query.str());
         
-        // Log practice to ##u/##p file
+        // Log practice to ##u/##p file (OLD SYSTEM - SqlFileLogger)
         std::map<std::string, std::string> practice_columns;
         practice_columns["team_id"] = team_id;
         if (!notes.empty()) practice_columns["notes"] = notes;
         std::string practice_upsert = SqlBuilder::buildUpsert("practices", inserted_event_id, practice_columns, "id");
         SqlFileLogger::log("events", practice_upsert);
+        
+        // NEW: Persist to environment-specific SQL file for rebuilds
+        SQLFileWriter::getInstance().writeInsert("practices", practice_query.str() + ";");
         
         std::cout << "✅ Event created successfully: " << inserted_event_id << std::endl;
         

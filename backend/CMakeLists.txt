@@ -20,6 +20,7 @@ set(SOURCES
     src/core/Response.cpp
     src/core/Router.cpp
     src/core/Controller.cpp
+    src/core/SQLFileWriter.cpp
     src/database/Database.cpp
     src/database/Model.cpp
     src/database/SqlFileLogger.cpp
