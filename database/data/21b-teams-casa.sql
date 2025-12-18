@@ -1,7 +1,7 @@
 -- CASA Teams
--- Generated at: 2025-12-18T12:51:31.367Z
+-- Generated at: 2025-12-18T15:09:47.759Z
 
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'da9e701d-7752-495a-8145-fe967b40c0d3',
   'Adé United FC',
@@ -14,16 +14,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:49:40.361Z',
-  '2025-12-18T12:49:40.362Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '158e321e-2dd5-4926-82ce-c31822bde965',
   'Oaklyn United FC II',
@@ -36,16 +33,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:49:40.362Z',
-  '2025-12-18T12:49:40.362Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '3a2468dd-a31c-456a-88a9-fe7699d2b079',
   'Philadelphia Sierra Stars',
@@ -58,16 +52,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:49:40.362Z',
-  '2025-12-18T12:49:40.362Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c',
   'Persepolis FC',
@@ -80,16 +71,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:49:40.362Z',
-  '2025-12-18T12:49:40.362Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'aad58707-7310-4751-86c5-e403a28757f4',
   'Phoenix SCM',
@@ -102,16 +90,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:49:40.362Z',
-  '2025-12-18T12:49:40.362Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'bbef7779-4ba7-4939-891e-6d6f96a34577',
   'Philly BlackStars',
@@ -124,16 +109,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:49:40.362Z',
-  '2025-12-18T12:49:40.362Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '28134f76-23f8-4e68-80ce-9f9ab2a3942f',
   'Illyrians FC',
@@ -146,16 +128,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:49:40.362Z',
-  '2025-12-18T12:49:40.362Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '57d88568-993d-4411-8aa3-6244ca7ff704',
   'Lighthouse Boys Club',
@@ -168,16 +147,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:49:40.362Z',
-  '2025-12-18T12:49:40.362Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '4b2e5bca-3534-463e-8304-4ea9f4136646',
   'Persepolis United FC II',
@@ -190,16 +166,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:50:16.125Z',
-  '2025-12-18T12:50:16.125Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'c72c8463-2d38-455d-87d3-1afcd4da53c7',
   'Phoenix SCR',
@@ -212,16 +185,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:50:16.125Z',
-  '2025-12-18T12:50:16.125Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '0033b87c-9650-4c9d-80b3-69ec4751c7cc',
   'Philadelphia SC II',
@@ -234,16 +204,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:50:16.125Z',
-  '2025-12-18T12:50:16.125Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'da5e129e-1d82-4c59-85f9-1f5efd3d6c11',
   'Lighthouse Old Timers Club',
@@ -256,16 +223,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:50:16.126Z',
-  '2025-12-18T12:50:16.126Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '443c2788-3747-4197-8835-8861e67dbaae',
   'Club de Futbol Armada',
@@ -278,16 +242,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:50:16.126Z',
-  '2025-12-18T12:50:16.126Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '895ff6df-959f-4a46-80c9-fbef6eed5b78',
   'South Shore FC',
@@ -300,16 +261,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:50:47.836Z',
-  '2025-12-18T12:50:47.836Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '9795925d-4af7-449a-86fd-e27cdfe9eced',
   'Jaguars United FC',
@@ -322,16 +280,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:50:47.836Z',
-  '2025-12-18T12:50:47.836Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '16b6860e-6657-4bc8-87a5-9b35d0bcb2a7',
   'Strictly Nos Fc',
@@ -344,16 +299,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:50:47.836Z',
-  '2025-12-18T12:50:47.836Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '8b6ce6db-f6d5-4e0d-8524-ce184200c6c9',
   'BCFC All Stars',
@@ -366,16 +318,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:50:47.837Z',
-  '2025-12-18T12:50:47.837Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '3ded57de-85a3-41e5-8b3e-87ea2a84de13',
   'Flatley FC',
@@ -388,16 +337,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:50:47.837Z',
-  '2025-12-18T12:50:47.837Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '2bf2f14b-8e84-44ec-825c-bc6031d385de',
   'Gambeta FC',
@@ -410,16 +356,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:50:47.837Z',
-  '2025-12-18T12:50:47.837Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '5541a60c-6517-4e66-8c25-a513298fd487',
   'Kutztown Men''s Soccer',
@@ -432,16 +375,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:03.916Z',
-  '2025-12-18T12:51:03.916Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'c3bfdfa9-ce51-4af4-8c64-778323eff661',
   'Alloy Soccer Club Reserves',
@@ -454,16 +394,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:03.916Z',
-  '2025-12-18T12:51:03.916Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '9dbe9c4a-6108-44fc-898d-33defc0155da',
   'Keystone Elite',
@@ -476,16 +413,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:03.916Z',
-  '2025-12-18T12:51:03.916Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '1b742914-50d5-4105-81b9-f980ec0fb53e',
   'F&M FC',
@@ -498,16 +432,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:03.916Z',
-  '2025-12-18T12:51:03.916Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '525d469e-dbdf-475c-8bb3-ecddc849cfe0',
   'Lancaster City FC',
@@ -520,16 +451,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:03.916Z',
-  '2025-12-18T12:51:03.916Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'dda012cd-f081-48df-8903-d997d9fa6f96',
   'Alaso FC',
@@ -542,16 +470,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:19.950Z',
-  '2025-12-18T12:51:19.950Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'a3120f9e-c8ef-4cd8-8014-92f5e67fbfbc',
   'FeelsGood FC',
@@ -564,16 +489,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:19.950Z',
-  '2025-12-18T12:51:19.950Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '5e07fe31-75ac-4d95-8224-c762b2411566',
   'Rondo Football Club',
@@ -586,16 +508,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:19.950Z',
-  '2025-12-18T12:51:19.950Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '2da3f1d4-be7f-4cff-89d8-fea82a640d06',
   'Jersey Shore Boca Reserves',
@@ -608,16 +527,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:19.950Z',
-  '2025-12-18T12:51:19.950Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'd9b9ff4c-052c-4c9f-8d2d-483f66125de4',
   'Monmouth Light FC',
@@ -630,16 +546,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:19.950Z',
-  '2025-12-18T12:51:19.950Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'cc98cc5e-8b54-4c55-8564-a7ebeaccc68b',
   'Milan Football Club',
@@ -652,16 +565,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:19.950Z',
-  '2025-12-18T12:51:19.950Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '7708a49e-8512-43b2-8b85-13e98a4af318',
   'Princeton International FC',
@@ -674,16 +584,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:19.950Z',
-  '2025-12-18T12:51:19.950Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   '3e87d61d-3093-41a0-888a-83f66923a34b',
   'MFC Stars',
@@ -696,16 +603,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:19.951Z',
-  '2025-12-18T12:51:19.951Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'bb5768e2-fac3-42e0-8d07-f18a63fb2278',
   'Real Central NJ II',
@@ -718,16 +622,13 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:19.951Z',
-  '2025-12-18T12:51:19.951Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (
   'eb1511a3-cc96-4387-80c1-c8e470338ddc',
   'Jersey Shore Hounds',
@@ -740,12 +641,9 @@ VALUES (
   NULL,
   NULL,
   NULL,
-  true,
-  '2025-12-18T12:51:19.951Z',
-  '2025-12-18T12:51:19.951Z'
+  true
 )
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url),
-  updated_at = EXCLUDED.updated_at;
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);

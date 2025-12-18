@@ -116,16 +116,6 @@
   letter-spacing: 0.05em;
 }
 
-.quick-actions h3 {
-  margin-bottom: var(--space-3);
-}
-
-.action-buttons {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-3);
-}
-
 /* Tables */
 .table-container {
   overflow-x: auto;

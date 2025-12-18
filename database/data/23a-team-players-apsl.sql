@@ -1,5 +1,5 @@
 -- APSL Team Rosters
--- Generated at: 2025-12-18T12:49:33.853Z
+-- Generated at: 2025-12-18T15:07:54.378Z
 
 INSERT INTO team_players (team_id, player_id, jersey_number, is_active, joined_at, left_at, notes)
 VALUES

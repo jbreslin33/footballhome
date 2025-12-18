@@ -166,16 +166,6 @@ class AdminSystemScreen extends Screen {
             <div class="stat-label">Upcoming Events</div>
           </div>
         </div>
-        
-        <div class="quick-actions">
-          <h3>Quick Actions</h3>
-          <div class="action-buttons">
-            <button class="btn btn-primary admin-tab" data-view="users">View All Users</button>
-            <button class="btn btn-primary admin-tab" data-view="admins">Manage Admins</button>
-            <button class="btn btn-primary admin-tab" data-view="settings">System Settings</button>
-            <button class="btn btn-primary admin-tab" data-view="features">Feature Flags</button>
-          </div>
-        </div>
       </div>
     `;
   }

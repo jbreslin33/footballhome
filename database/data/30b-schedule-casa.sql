@@ -1,7 +1,7 @@
 -- CASA Match Schedule
--- Generated at: 2025-12-18T12:51:31.368Z
+-- Generated at: 2025-12-18T15:09:47.761Z
 
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '1658ed76-d6bb-41cb-8830-765ae5f59be7',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -13,13 +13,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:49:48.391Z',
-  '2025-12-18T12:49:48.391Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -38,7 +35,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   'da2d5656-7a28-46aa-8954-3a8a70dae71e',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -50,13 +47,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:50:23.923Z',
-  '2025-12-18T12:50:23.923Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -75,7 +69,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '4bc287fd-8011-49c7-892a-6e5260afbcf1',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -87,13 +81,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:49:48.391Z',
-  '2025-12-18T12:49:48.391Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -112,7 +103,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '2604af3e-028c-41a8-86cc-2f595cb5307e',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -124,13 +115,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:50:23.923Z',
-  '2025-12-18T12:50:23.923Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -149,7 +137,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '043de65a-a142-4756-8632-8c201c97288f',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -161,13 +149,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:50:23.923Z',
-  '2025-12-18T12:50:23.923Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -186,7 +171,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '2f423ad3-cd06-4df1-839c-c1d3622431a7',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -198,13 +183,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:50:23.924Z',
-  '2025-12-18T12:50:23.924Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -223,7 +205,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '82844a34-fda6-4bfe-80a6-835d7f5d9b55',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -235,13 +217,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:50:23.924Z',
-  '2025-12-18T12:50:23.924Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -260,7 +239,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   'f7fc03c0-7393-4d59-8db5-3e090ff67792',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -272,13 +251,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:50:23.924Z',
-  '2025-12-18T12:50:23.924Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -297,7 +273,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '2e7ef834-0565-4dc2-8789-f2a99acc4821',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -309,13 +285,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:50:23.924Z',
-  '2025-12-18T12:50:23.924Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -334,7 +307,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '2513e617-6742-4dc5-80b3-6a0357c5adcc',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -346,13 +319,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:11.854Z',
-  '2025-12-18T12:51:11.854Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -371,7 +341,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '431d2eef-b565-4311-870c-e8c99c02c9ef',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -383,13 +353,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:11.856Z',
-  '2025-12-18T12:51:11.856Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -408,7 +375,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   'd19c9db0-c7cc-4f34-8bbd-519f9b3b1f2c',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -420,13 +387,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:11.857Z',
-  '2025-12-18T12:51:11.857Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -445,7 +409,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   'e0ef9903-f1a4-491e-8631-cb90cd2dfc3d',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -457,13 +421,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:11.859Z',
-  '2025-12-18T12:51:11.859Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -482,7 +443,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '51cb3649-9a00-4cb2-8036-cf7535f6b41e',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -494,13 +455,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:11.861Z',
-  '2025-12-18T12:51:11.861Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -519,7 +477,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   'aab295a9-5fe3-407b-87eb-17ec63b65b8b',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -531,13 +489,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:11.863Z',
-  '2025-12-18T12:51:11.863Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -556,7 +511,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '69e5a862-fb03-426a-8b0b-a37c19a5bbd5',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -568,13 +523,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:27.712Z',
-  '2025-12-18T12:51:27.712Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -593,7 +545,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '017e5474-28fb-4eb2-88cb-505fcda0ee3f',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -605,13 +557,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:27.712Z',
-  '2025-12-18T12:51:27.712Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -630,7 +579,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '636e25c9-ab26-4584-8697-5eb60cf5ee1e',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -642,13 +591,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:27.713Z',
-  '2025-12-18T12:51:27.713Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -667,7 +613,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   'a61d7d58-145b-4934-8a2e-e624efdd7181',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -679,13 +625,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:27.713Z',
-  '2025-12-18T12:51:27.713Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -704,7 +647,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '0987f84e-fdf2-4a98-8b07-4f26e7048eea',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -716,13 +659,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:27.714Z',
-  '2025-12-18T12:51:27.714Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -741,7 +681,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '3849adb0-90ef-45a8-8751-f9ab001cc0a1',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -753,13 +693,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:27.715Z',
-  '2025-12-18T12:51:27.715Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
@@ -778,7 +715,7 @@ ON CONFLICT (id) DO UPDATE SET
   home_team_score = EXCLUDED.home_team_score,
   away_team_score = EXCLUDED.away_team_score,
   match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id, created_at, updated_at)
+INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
   '4d3587bb-c481-4be1-8892-a2ef11a0c0d6',
   '77d77471-1250-47e0-81ab-d4626595d63c',
@@ -790,13 +727,10 @@ VALUES (
   NULL,
   false,
   NULL,
-  NULL,
-  '2025-12-18T12:51:27.716Z',
-  '2025-12-18T12:51:27.716Z'
+  NULL
 )
 ON CONFLICT (id) DO UPDATE SET
   title = EXCLUDED.title,
-  event_date = EXCLUDED.event_date,
   updated_at = EXCLUDED.updated_at;
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
