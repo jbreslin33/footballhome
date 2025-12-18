@@ -567,7 +567,54 @@ Response SystemAdminController::handleBulkUserOperation(const Request& request) 
 }
 
 Response SystemAdminController::handleGetSystemAdmins(const Request& request) {
-    return Response(HttpStatus::NOT_IMPLEMENTED, "{\"error\":\"Not yet implemented\"}");
+    try {
+        // Query system admins with user details
+        std::string query = "SELECT sa.id, sa.user_id, sa.appointed_by, sa.notes, sa.is_active, "
+                          "sa.created_at, sa.updated_at, "
+                          "u.email, u.first_name, u.last_name, "
+                          "appointer.first_name as appointer_first_name, appointer.last_name as appointer_last_name "
+                          "FROM system_admins sa "
+                          "JOIN users u ON sa.user_id = u.id "
+                          "LEFT JOIN users appointer ON sa.appointed_by = appointer.id "
+                          "WHERE sa.is_active = true "
+                          "ORDER BY sa.created_at DESC";
+        
+        auto result = db_->query(query, {});
+        
+        // Build JSON array
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json += ",";
+            json += "{";
+            json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
+            json += "\"user_id\":\"" + result[i]["user_id"].as<std::string>() + "\",";
+            json += "\"email\":\"" + result[i]["email"].as<std::string>() + "\",";
+            json += "\"first_name\":\"" + result[i]["first_name"].as<std::string>() + "\",";
+            json += "\"last_name\":\"" + result[i]["last_name"].as<std::string>() + "\",";
+            json += "\"appointed_by\":\"" + result[i]["appointed_by"].as<std::string>() + "\",";
+            
+            // Appointer name (may be null)
+            if (!result[i]["appointer_first_name"].is_null()) {
+                json += "\"appointer_first_name\":\"" + result[i]["appointer_first_name"].as<std::string>() + "\",";
+                json += "\"appointer_last_name\":\"" + result[i]["appointer_last_name"].as<std::string>() + "\",";
+            } else {
+                json += "\"appointer_first_name\":null,";
+                json += "\"appointer_last_name\":null,";
+            }
+            
+            json += "\"notes\":\"" + result[i]["notes"].as<std::string>() + "\",";
+            json += "\"is_active\":" + std::string(result[i]["is_active"].as<bool>() ? "true" : "false") + ",";
+            json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\",";
+            json += "\"updated_at\":\"" + result[i]["updated_at"].as<std::string>() + "\"";
+            json += "}";
+        }
+        json += "]";
+        
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+                       "{\"error\":\"Failed to fetch system admins: " + std::string(e.what()) + "\"}");
+    }
 }
 
 Response SystemAdminController::handleGrantSystemAdmin(const Request& request) {
