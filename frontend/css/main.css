@@ -1117,14 +1117,17 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
 }
 
 .modal-content {
-    background: white;
+    background: var(--bg-primary);
     border-radius: var(--radius-lg);
     width: 100%;
     max-width: 500px;
     max-height: 80vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    /* Ensure solid background for better readability */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 .modal-header {

@@ -501,8 +501,11 @@
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   animation: slideUp 0.3s ease-out;
+  /* Ensure solid background for better readability */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 @keyframes slideUp {
