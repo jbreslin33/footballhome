@@ -945,9 +945,9 @@ Response SystemAdminController::handleGetImportJobs(const Request& request) {
         if (offset.empty()) offset = "0";
         std::string status = request.getQueryParam("status");
         
-        std::string query = "SELECT id, job_type, status, total_records, processed_records, "
-                          "error_message, started_at, completed_at, created_at "
-                          "FROM import_jobs "
+        std::string query = "SELECT id, job_type, entity_type, status, total_records, processed_records, "
+                          "successful_records, failed_records, error_log, started_at, completed_at "
+                          "FROM data_import_jobs "
                           "WHERE 1=1 ";
         
         std::vector<std::string> params;
@@ -958,7 +958,7 @@ Response SystemAdminController::handleGetImportJobs(const Request& request) {
             query += "AND status = $" + std::to_string(++param_count) + " ";
         }
         
-        query += "ORDER BY created_at DESC ";
+        query += "ORDER BY started_at DESC ";
         params.push_back(limit);
         query += "LIMIT $" + std::to_string(++param_count) + " ";
         params.push_back(offset);
@@ -972,14 +972,17 @@ Response SystemAdminController::handleGetImportJobs(const Request& request) {
             json += "{";
             json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
             json += "\"job_type\":\"" + result[i]["job_type"].as<std::string>() + "\",";
+            json += "\"entity_type\":\"" + result[i]["entity_type"].as<std::string>() + "\",";
             json += "\"status\":\"" + result[i]["status"].as<std::string>() + "\",";
             json += "\"total_records\":" + result[i]["total_records"].as<std::string>() + ",";
             json += "\"processed_records\":" + result[i]["processed_records"].as<std::string>() + ",";
+            json += "\"successful_records\":" + result[i]["successful_records"].as<std::string>() + ",";
+            json += "\"failed_records\":" + result[i]["failed_records"].as<std::string>() + ",";
             
-            if (!result[i]["error_message"].is_null()) {
-                json += "\"error_message\":\"" + result[i]["error_message"].as<std::string>() + "\",";
+            if (!result[i]["error_log"].is_null()) {
+                json += "\"error_log\":\"" + result[i]["error_log"].as<std::string>() + "\",";
             } else {
-                json += "\"error_message\":null,";
+                json += "\"error_log\":null,";
             }
             
             if (!result[i]["started_at"].is_null()) {
@@ -1011,9 +1014,13 @@ Response SystemAdminController::handleCreateImportJob(const Request& request) {
         // TODO: Parse job_type from request body when JSON parsing is available
         std::string job_type = "manual_import";
         
-        std::string query = "INSERT INTO import_jobs (job_type, status, total_records, processed_records) "
-                          "VALUES ($1, 'pending', 0, 0) RETURNING id";
-        std::vector<std::string> params = {job_type};
+        // TODO: Parse job_type and entity_type from request body
+        std::string entity_type = "manual";
+        std::string admin_id = "311ee799-a6a1-450f-8bad-5140a021c92b"; // Hardcoded for now
+        
+        std::string query = "INSERT INTO data_import_jobs (job_type, entity_type, status, started_by, total_records, processed_records) "
+                          "VALUES ($1, $2, 'pending', $3, 0, 0) RETURNING id";
+        std::vector<std::string> params = {job_type, entity_type, admin_id};
         auto result = db_->query(query, params);
         
         std::string job_id = result[0]["id"].as<std::string>();
@@ -1033,9 +1040,9 @@ Response SystemAdminController::handleGetScraperLogs(const Request& request) {
         if (offset.empty()) offset = "0";
         std::string scraper_type = request.getQueryParam("scraper_type");
         
-        std::string query = "SELECT id, scraper_type, status, records_scraped, error_message, "
-                          "started_at, completed_at, created_at "
-                          "FROM scraper_logs "
+        std::string query = "SELECT id, scraper_name, execution_mode, status, teams_scraped, players_scraped, "
+                          "matches_scraped, errors_count, error_messages, started_at, completed_at, duration_seconds "
+                          "FROM scraper_execution_log "
                           "WHERE 1=1 ";
         
         std::vector<std::string> params;
@@ -1043,10 +1050,10 @@ Response SystemAdminController::handleGetScraperLogs(const Request& request) {
         
         if (!scraper_type.empty()) {
             params.push_back(scraper_type);
-            query += "AND scraper_type = $" + std::to_string(++param_count) + " ";
+            query += "AND scraper_name = $" + std::to_string(++param_count) + " ";
         }
         
-        query += "ORDER BY created_at DESC ";
+        query += "ORDER BY started_at DESC ";
         params.push_back(limit);
         query += "LIMIT $" + std::to_string(++param_count) + " ";
         params.push_back(offset);
@@ -1059,14 +1066,24 @@ Response SystemAdminController::handleGetScraperLogs(const Request& request) {
             if (i > 0) json += ",";
             json += "{";
             json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
-            json += "\"scraper_type\":\"" + result[i]["scraper_type"].as<std::string>() + "\",";
-            json += "\"status\":\"" + result[i]["status"].as<std::string>() + "\",";
-            json += "\"records_scraped\":" + result[i]["records_scraped"].as<std::string>() + ",";
+            json += "\"scraper_name\":\"" + result[i]["scraper_name"].as<std::string>() + "\",";
             
-            if (!result[i]["error_message"].is_null()) {
-                json += "\"error_message\":\"" + result[i]["error_message"].as<std::string>() + "\",";
+            if (!result[i]["execution_mode"].is_null()) {
+                json += "\"execution_mode\":\"" + result[i]["execution_mode"].as<std::string>() + "\",";
             } else {
-                json += "\"error_message\":null,";
+                json += "\"execution_mode\":null,";
+            }
+            
+            json += "\"status\":\"" + result[i]["status"].as<std::string>() + "\",";
+            json += "\"teams_scraped\":" + result[i]["teams_scraped"].as<std::string>() + ",";
+            json += "\"players_scraped\":" + result[i]["players_scraped"].as<std::string>() + ",";
+            json += "\"matches_scraped\":" + result[i]["matches_scraped"].as<std::string>() + ",";
+            json += "\"errors_count\":" + result[i]["errors_count"].as<std::string>() + ",";
+            
+            if (!result[i]["error_messages"].is_null()) {
+                json += "\"error_messages\":\"" + result[i]["error_messages"].as<std::string>() + "\",";
+            } else {
+                json += "\"error_messages\":null,";
             }
             
             json += "\"started_at\":\"" + result[i]["started_at"].as<std::string>() + "\",";
@@ -1098,9 +1115,10 @@ Response SystemAdminController::handleTriggerScraper(const Request& request) {
         }
         
         // Create a scraper log entry
-        std::string query = "INSERT INTO scraper_logs (scraper_type, status, records_scraped, started_at) "
-                          "VALUES ($1, 'running', 0, CURRENT_TIMESTAMP) RETURNING id";
-        std::vector<std::string> params = {scraper_type};
+        std::string admin_id = "311ee799-a6a1-450f-8bad-5140a021c92b"; // Hardcoded for now
+        std::string query = "INSERT INTO scraper_execution_log (scraper_name, status, teams_scraped, players_scraped, matches_scraped, errors_count, started_by) "
+                          "VALUES ($1, 'running', 0, 0, 0, 0, $2) RETURNING id";
+        std::vector<std::string> params = {scraper_type, admin_id};
         auto result = db_->query(query, params);
         
         std::string log_id = result[0]["id"].as<std::string>();
@@ -1118,8 +1136,8 @@ Response SystemAdminController::handleGetSystemNotifications(const Request& requ
     try {
         std::string is_active = request.getQueryParam("is_active");
         
-        std::string query = "SELECT id, notification_type, title, message, severity, is_active, "
-                          "display_from, display_until, created_at "
+        std::string query = "SELECT id, notification_type, title, message, target_audience, priority, is_active, "
+                          "starts_at, ends_at, created_at, updated_at "
                           "FROM system_notifications "
                           "WHERE 1=1 ";
         
@@ -1143,22 +1161,24 @@ Response SystemAdminController::handleGetSystemNotifications(const Request& requ
             json += "\"notification_type\":\"" + result[i]["notification_type"].as<std::string>() + "\",";
             json += "\"title\":\"" + result[i]["title"].as<std::string>() + "\",";
             json += "\"message\":\"" + result[i]["message"].as<std::string>() + "\",";
-            json += "\"severity\":\"" + result[i]["severity"].as<std::string>() + "\",";
+            json += "\"target_audience\":\"" + result[i]["target_audience"].as<std::string>() + "\",";
+            json += "\"priority\":" + result[i]["priority"].as<std::string>() + ",";
             json += "\"is_active\":" + std::string(result[i]["is_active"].as<bool>() ? "true" : "false") + ",";
             
-            if (!result[i]["display_from"].is_null()) {
-                json += "\"display_from\":\"" + result[i]["display_from"].as<std::string>() + "\",";
+            if (!result[i]["starts_at"].is_null()) {
+                json += "\"starts_at\":\"" + result[i]["starts_at"].as<std::string>() + "\",";
             } else {
-                json += "\"display_from\":null,";
+                json += "\"starts_at\":null,";
             }
             
-            if (!result[i]["display_until"].is_null()) {
-                json += "\"display_until\":\"" + result[i]["display_until"].as<std::string>() + "\",";
+            if (!result[i]["ends_at"].is_null()) {
+                json += "\"ends_at\":\"" + result[i]["ends_at"].as<std::string>() + "\",";
             } else {
-                json += "\"display_until\":null,";
+                json += "\"ends_at\":null,";
             }
             
-            json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\"";
+            json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\",";
+            json += "\"updated_at\":\"" + result[i]["updated_at"].as<std::string>() + "\"";
             json += "}";
         }
         json += "]";
@@ -1174,14 +1194,15 @@ Response SystemAdminController::handleCreateSystemNotification(const Request& re
     try {
         // TODO: Parse JSON body when available
         // For now, use placeholder values
-        std::string notification_type = "system";
+        std::string notification_type = "info";
         std::string title = "System Notification";
         std::string message = "Notification message";
-        std::string severity = "info";
+        std::string target_audience = "all";
+        std::string admin_id = "311ee799-a6a1-450f-8bad-5140a021c92b"; // Hardcoded for now
         
-        std::string query = "INSERT INTO system_notifications (notification_type, title, message, severity, is_active) "
-                          "VALUES ($1, $2, $3, $4, true) RETURNING id";
-        std::vector<std::string> params = {notification_type, title, message, severity};
+        std::string query = "INSERT INTO system_notifications (notification_type, title, message, target_audience, is_active, created_by) "
+                          "VALUES ($1, $2, $3, $4, true, $5) RETURNING id";
+        std::vector<std::string> params = {notification_type, title, message, target_audience, admin_id};
         auto result = db_->query(query, params);
         
         std::string notification_id = result[0]["id"].as<std::string>();
