@@ -9,6 +9,11 @@ class AdminSystemScreen extends Screen {
     this.settings = [];
     this.features = [];
     this.auditLogs = [];
+    this.apiUsage = [];
+    this.importJobs = [];
+    this.scraperLogs = [];
+    this.notifications = [];
+    this.lookupTables = [];
   }
 
   render() {
@@ -31,6 +36,11 @@ class AdminSystemScreen extends Screen {
           <button class="admin-tab" data-view="settings">⚙️ Settings</button>
           <button class="admin-tab" data-view="features">🎛️ Features</button>
           <button class="admin-tab" data-view="audit">📋 Audit Logs</button>
+          <button class="admin-tab" data-view="api-usage">📡 API Usage</button>
+          <button class="admin-tab" data-view="imports">📥 Import Jobs</button>
+          <button class="admin-tab" data-view="scrapers">🕷️ Scrapers</button>
+          <button class="admin-tab" data-view="notifications">🔔 Notifications</button>
+          <button class="admin-tab" data-view="lookups">📚 Lookups</button>
         </div>
         
         <!-- Content Area -->
@@ -105,6 +115,21 @@ class AdminSystemScreen extends Screen {
           break;
         case 'audit':
           await this.loadAuditLogs();
+          break;
+        case 'api-usage':
+          await this.loadApiUsage();
+          break;
+        case 'imports':
+          await this.loadImportJobs();
+          break;
+        case 'scrapers':
+          await this.loadScraperLogs();
+          break;
+        case 'notifications':
+          await this.loadNotifications();
+          break;
+        case 'lookups':
+          await this.loadLookupTables();
           break;
       }
     } catch (error) {
@@ -389,6 +414,261 @@ class AdminSystemScreen extends Screen {
         <div class="pagination-info">
           ${this.auditLogs.length} log entries
         </div>
+      </div>
+    `;
+  }
+  
+  async loadApiUsage() {
+    const response = await fetch('/api/system-admin/api-usage?limit=50');
+    this.apiUsage = await response.json();
+    
+    const content = this.element.querySelector('.admin-content');
+    content.innerHTML = `
+      <div class="admin-section">
+        <div class="section-header">
+          <h2>📡 API Usage Log</h2>
+          <button class="btn btn-secondary refresh-btn">🔄 Refresh</button>
+        </div>
+        
+        ${this.apiUsage.length === 0 ? '<p class="empty-state">No API usage logs yet</p>' : `
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>User</th>
+                  <th>Endpoint</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${this.apiUsage.map(log => `
+                  <tr>
+                    <td><small>${new Date(log.created_at).toLocaleString()}</small></td>
+                    <td>${log.user_id ? log.user_id.substring(0, 8) + '...' : 'Anonymous'}</td>
+                    <td><code>${log.endpoint}</code></td>
+                    <td><span class="badge badge-info">${log.http_method}</span></td>
+                    <td><span class="badge ${log.status_code < 400 ? 'badge-success' : 'badge-danger'}">${log.status_code}</span></td>
+                    <td>${log.duration_ms}ms</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>`
+        }
+      </div>
+    `;
+    
+    this.element.querySelector('.refresh-btn')?.addEventListener('click', () => this.loadApiUsage());
+  }
+  
+  async loadImportJobs() {
+    const response = await fetch('/api/system-admin/imports?limit=50');
+    this.importJobs = await response.json();
+    
+    const content = this.element.querySelector('.admin-content');
+    content.innerHTML = `
+      <div class="admin-section">
+        <div class="section-header">
+          <h2>📥 Data Import Jobs</h2>
+          <button class="btn btn-secondary refresh-btn">🔄 Refresh</button>
+        </div>
+        
+        ${this.importJobs.length === 0 ? '<p class="empty-state">No import jobs yet</p>' : `
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Started</th>
+                  <th>Job Type</th>
+                  <th>Entity</th>
+                  <th>Status</th>
+                  <th>Progress</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${this.importJobs.map(job => {
+                  const duration = job.completed_at ? 
+                    Math.round((new Date(job.completed_at) - new Date(job.started_at)) / 1000) : '...';
+                  return `
+                    <tr>
+                      <td><small>${new Date(job.started_at).toLocaleString()}</small></td>
+                      <td>${job.job_type}</td>
+                      <td>${job.entity_type}</td>
+                      <td><span class="badge badge-${job.status === 'completed' ? 'success' : job.status === 'failed' ? 'danger' : 'warning'}">${job.status}</span></td>
+                      <td>${job.processed_records}/${job.total_records} (${job.successful_records} ✓, ${job.failed_records} ✗)</td>
+                      <td>${duration}s</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>`
+        }
+      </div>
+    `;
+    
+    this.element.querySelector('.refresh-btn')?.addEventListener('click', () => this.loadImportJobs());
+  }
+  
+  async loadScraperLogs() {
+    const response = await fetch('/api/system-admin/scrapers?limit=50');
+    this.scraperLogs = await response.json();
+    
+    const content = this.element.querySelector('.admin-content');
+    content.innerHTML = `
+      <div class="admin-section">
+        <div class="section-header">
+          <h2>🕷️ Scraper Execution Logs</h2>
+          <button class="btn btn-secondary refresh-btn">🔄 Refresh</button>
+        </div>
+        
+        ${this.scraperLogs.length === 0 ? '<p class="empty-state">No scraper logs yet</p>' : `
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Started</th>
+                  <th>Scraper</th>
+                  <th>Mode</th>
+                  <th>Status</th>
+                  <th>Results</th>
+                  <th>Errors</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${this.scraperLogs.map(log => `
+                  <tr>
+                    <td><small>${new Date(log.started_at).toLocaleString()}</small></td>
+                    <td><strong>${log.scraper_name}</strong></td>
+                    <td>${log.execution_mode || 'full'}</td>
+                    <td><span class="badge badge-${log.status === 'completed' ? 'success' : log.status === 'failed' ? 'danger' : 'warning'}">${log.status}</span></td>
+                    <td>T:${log.teams_scraped} P:${log.players_scraped} M:${log.matches_scraped}</td>
+                    <td>${log.errors_count > 0 ? '<span class="badge badge-danger">' + log.errors_count + '</span>' : '0'}</td>
+                    <td>${log.duration_seconds || '...'}s</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>`
+        }
+      </div>
+    `;
+    
+    this.element.querySelector('.refresh-btn')?.addEventListener('click', () => this.loadScraperLogs());
+  }
+  
+  async loadNotifications() {
+    const response = await fetch('/api/system-admin/notifications');
+    this.notifications = await response.json();
+    
+    const content = this.element.querySelector('.admin-content');
+    content.innerHTML = `
+      <div class="admin-section">
+        <div class="section-header">
+          <h2>🔔 System Notifications</h2>
+          <button class="btn btn-secondary refresh-btn">🔄 Refresh</button>
+        </div>
+        
+        ${this.notifications.length === 0 ? '<p class="empty-state">No notifications configured</p>' : `
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Title</th>
+                  <th>Message</th>
+                  <th>Audience</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Schedule</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${this.notifications.map(notif => `
+                  <tr>
+                    <td>${notif.notification_type}</td>
+                    <td><strong>${notif.title}</strong></td>
+                    <td><small>${notif.message.substring(0, 50)}${notif.message.length > 50 ? '...' : ''}</small></td>
+                    <td>${notif.target_audience}</td>
+                    <td><span class="badge badge-${notif.priority === 'high' ? 'danger' : notif.priority === 'medium' ? 'warning' : 'info'}">${notif.priority}</span></td>
+                    <td><span class="badge badge-${notif.is_active ? 'success' : 'secondary'}">${notif.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td><small>${notif.starts_at ? new Date(notif.starts_at).toLocaleDateString() : 'Now'} - ${notif.ends_at ? new Date(notif.ends_at).toLocaleDateString() : 'Ongoing'}</small></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>`
+        }
+      </div>
+    `;
+    
+    this.element.querySelector('.refresh-btn')?.addEventListener('click', () => this.loadNotifications());
+  }
+  
+  async loadLookupTables() {
+    const response = await fetch('/api/system-admin/lookups');
+    this.lookupTables = await response.json();
+    
+    const content = this.element.querySelector('.admin-content');
+    content.innerHTML = `
+      <div class="admin-section">
+        <div class="section-header">
+          <h2>📚 Lookup Tables</h2>
+          <button class="btn btn-secondary refresh-btn">🔄 Refresh</button>
+        </div>
+        
+        <div class="lookup-tables-grid">
+          ${this.lookupTables.map(table => `
+            <div class="lookup-table-card" data-table="${table.table_name}">
+              <h3>${table.table_name}</h3>
+              <button class="btn btn-sm btn-primary view-lookup-btn" data-table="${table.table_name}">View Entries</button>
+            </div>
+          `).join('')}
+        </div>
+        
+        <div id="lookup-entries-container" style="margin-top: 2rem;"></div>
+      </div>
+    `;
+    
+    this.element.querySelector('.refresh-btn')?.addEventListener('click', () => this.loadLookupTables());
+    
+    this.element.querySelectorAll('.view-lookup-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const tableName = e.target.dataset.table;
+        await this.viewLookupEntries(tableName);
+      });
+    });
+  }
+  
+  async viewLookupEntries(tableName) {
+    const response = await fetch(`/api/system-admin/lookups/${tableName}`);
+    const entries = await response.json();
+    
+    const container = this.element.querySelector('#lookup-entries-container');
+    container.innerHTML = `
+      <h3>Entries in: ${tableName}</h3>
+      <div class="table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              ${Object.keys(entries[0] || {}).map(key => `<th>${key}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${entries.map(entry => `
+              <tr>
+                ${Object.values(entry).map(val => `
+                  <td>${typeof val === 'boolean' ? (val ? '✓' : '✗') : (val || 'N/A')}</td>
+                `).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       </div>
     `;
   }

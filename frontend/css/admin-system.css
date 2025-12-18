@@ -371,6 +371,59 @@
   font-size: 0.875rem;
 }
 
+/* Lookup Tables Grid */
+.lookup-tables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.lookup-table-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+}
+
+.lookup-table-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.lookup-table-card h3 {
+  font-size: 0.938rem;
+  margin-bottom: var(--space-3);
+  color: var(--text-primary);
+  font-family: monospace;
+}
+
+/* Section Header */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.refresh-btn {
+  white-space: nowrap;
+}
+
+/* Admin Section */
+.admin-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .admin-container {
@@ -400,5 +453,9 @@
   .admin-table th,
   .admin-table td {
     padding: var(--space-2);
+  }
+  
+  .lookup-tables-grid {
+    grid-template-columns: 1fr;
   }
 }
