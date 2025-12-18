@@ -32,7 +32,11 @@ class App {
       matchList: new MatchListScreen(this.navigation, this.auth),
       matchRSVPManagement: new MatchRSVPManagementScreen(this.navigation, this.auth),
       gameDayRoster: new GameDayRosterScreen(this.navigation, this.auth),
-      matchShare: new MatchShareScreen(this.navigation, this.auth)
+      matchShare: new MatchShareScreen(this.navigation, this.auth),
+      adminSystem: new AdminSystemScreen(this.navigation, this.auth),
+      adminClub: new AdminClubScreen(this.navigation, this.auth),
+      adminSportDivision: new AdminSportDivisionScreen(this.navigation, this.auth),
+      adminTeam: new AdminTeamScreen(this.navigation, this.auth)
     };
     
     // Register all screens with the manager
@@ -61,6 +65,10 @@ class App {
     this.screenManager.register('match-rsvp-management', this.screens.matchRSVPManagement);
     this.screenManager.register('game-day-roster', this.screens.gameDayRoster);
     this.screenManager.register('match-share', this.screens.matchShare);
+    this.screenManager.register('admin-system', this.screens.adminSystem);
+    this.screenManager.register('admin-club', this.screens.adminClub);
+    this.screenManager.register('admin-sport-division', this.screens.adminSportDivision);
+    this.screenManager.register('admin-team', this.screens.adminTeam);
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }

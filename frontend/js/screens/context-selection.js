@@ -51,21 +51,41 @@ class ContextSelectionScreen extends Screen {
       if (contextBtn) {
         const contextId = contextBtn.getAttribute('data-context-id');
         const contextName = contextBtn.getAttribute('data-context-name');
-        const contextType = contextBtn.getAttribute('data-context-type'); // 'club' or 'team'
+        const contextType = contextBtn.getAttribute('data-context-type'); // 'system', 'club', 'sport_division', or 'team'
         
         const context = { id: contextId, name: contextName, type: contextType };
         this.navigation.context.selectedContext = context;
         
         // Route based on context type and role
-        if (contextType === 'club') {
-          // Club selected - go to division selection for this club
+        if (this.role === 'admin') {
+          // Admin role - route to admin placeholder screens
+          if (contextType === 'system') {
+            this.navigation.goTo('admin-system');
+          } else if (contextType === 'club') {
+            this.navigation.goTo('admin-club', { 
+              clubId: contextId,
+              clubName: contextName 
+            });
+          } else if (contextType === 'sport_division') {
+            this.navigation.goTo('admin-sport-division', { 
+              sportDivisionId: contextId,
+              sportDivisionName: contextName 
+            });
+          } else if (contextType === 'team') {
+            this.navigation.goTo('admin-team', { 
+              teamId: contextId,
+              teamName: contextName 
+            });
+          }
+        } else if (contextType === 'club') {
+          // Non-admin club selected - go to division selection for this club
           this.navigation.goTo('division-selection', { 
             role: this.role, 
             clubId: contextId,
             clubName: contextName 
           });
         } else if (contextType === 'team') {
-          // Team selected - go to team management
+          // Non-admin team selected - go to team management
           this.navigation.goTo('team-menu', { 
             role: this.role, 
             teamId: contextId,
@@ -104,21 +124,32 @@ class ContextSelectionScreen extends Screen {
         return;
       }
       
+      // Group and display icons based on type
+      const typeConfig = {
+        system: { icon: '👨‍💼', label: 'SYSTEM' },
+        club: { icon: '🏢', label: 'CLUB' },
+        sport_division: { icon: '⚽', label: 'SPORT DIVISION' },
+        team: { icon: '⚽', label: 'TEAM' }
+      };
+      
       this.renderList('#context-list', contexts,
-        ctx => `
-          <button class="btn btn-lg btn-primary context-option" 
-                  data-context-id="${ctx.id}" 
-                  data-context-name="${ctx.display_name || ctx.name}"
-                  data-context-type="${ctx.type}"
-                  style="width: 100%; text-align: left; margin-bottom: var(--space-2); padding: var(--space-3);">
-            <h3 style="margin: 0; font-size: 1.2rem;">
-              ${ctx.type === 'club' ? '🏢' : '⚽'} ${ctx.display_name || ctx.name}
-            </h3>
-            <p style="margin: var(--space-1) 0 0 0; opacity: 0.8; font-size: 0.9rem;">
-              ${ctx.type === 'club' ? 'Club' : 'Team'} - ${ctx.team_count ? ctx.team_count + ' teams' : 'Team'}
-            </p>
-          </button>
-        `,
+        ctx => {
+          const config = typeConfig[ctx.type] || { icon: '📋', label: ctx.type.toUpperCase() };
+          return `
+            <button class="btn btn-lg btn-primary context-option" 
+                    data-context-id="${ctx.id}" 
+                    data-context-name="${ctx.display_name || ctx.name}"
+                    data-context-type="${ctx.type}"
+                    style="width: 100%; text-align: left; margin-bottom: var(--space-2); padding: var(--space-3);">
+              <h3 style="margin: 0; font-size: 1.2rem;">
+                ${config.icon} ${ctx.display_name || ctx.name}
+              </h3>
+              <p style="margin: var(--space-1) 0 0 0; opacity: 0.8; font-size: 0.9rem;">
+                ${config.label}
+              </p>
+            </button>
+          `;
+        },
         '<div class="empty-state"><p>No admin contexts available</p></div>'
       );
     });

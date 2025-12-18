@@ -1,5 +1,5 @@
 -- CASA League Divisions
--- Generated at: 2025-12-18T00:39:16.591Z
+-- Generated at: 2025-12-18T00:49:56.614Z
 
 INSERT INTO league_divisions (id, conference_id, name, display_name, slug, tier, hierarchy_group, skill_level, age_group, description, max_teams, promotion_eligible, relegation_eligible, is_active)
 VALUES
