@@ -46,6 +46,12 @@ void SqlFileLogger::initializeTableMap() {
     table_file_map_["parent_rsvp_history"] = "30";
     table_file_map_["player_medical_status"] = "22";
     table_file_map_["player_academic_status"] = "22";
+    
+    // System admin tables (use '01' for system-level data)
+    table_file_map_["system_settings"] = "01";
+    table_file_map_["feature_flags"] = "01";
+    table_file_map_["system_admins"] = "08";
+    table_file_map_["system_notifications"] = "01";
 }
 
 std::string SqlFileLogger::getFileSuffix() {
