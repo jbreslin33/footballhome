@@ -1299,37 +1299,60 @@ Response SystemAdminController::handleGetLookupTable(const Request& request) {
     try {
         // Parse table name from path: /api/system-admin/lookups/:tableName
         std::string path = request.getPath();
-        size_t pos = path.find("/api/system-admin/lookups/");
+        std::string prefix = "/api/system-admin/lookups/";
+        size_t pos = path.find(prefix);
         if (pos == std::string::npos) {
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
         }
         
-        std::string table_name = path.substr(pos + 27); // length of prefix
+        std::string table_name = path.substr(pos + prefix.length());
         
         if (table_name.empty()) {
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Table name is required\"}");
         }
         
         // Query the specific lookup table
-        std::string query = "SELECT id, name, description, display_order, is_active FROM " + table_name + " "
-                          "ORDER BY display_order, name";
+        std::string query = "SELECT * FROM " + table_name;
         auto result = db_->query(query, {});
         
         std::string json = "[";
         for (size_t i = 0; i < result.size(); ++i) {
             if (i > 0) json += ",";
             json += "{";
-            json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
-            json += "\"name\":\"" + result[i]["name"].as<std::string>() + "\",";
             
-            if (!result[i]["description"].is_null()) {
-                json += "\"description\":\"" + result[i]["description"].as<std::string>() + "\",";
-            } else {
-                json += "\"description\":null,";
+            // Build JSON from actual columns dynamically
+            bool first_field = true;
+            for (int col = 0; col < static_cast<int>(result[i].size()); ++col) {
+                std::string col_name = result[i][col].name();
+                
+                if (!first_field) json += ",";
+                first_field = false;
+                
+                json += "\"" + col_name + "\":";
+                
+                if (result[i][col].is_null()) {
+                    json += "null";
+                } else {
+                    // Try to detect type and format accordingly
+                    std::string val = result[i][col].as<std::string>();
+                    
+                    // Check if it's a boolean column name or value
+                    if (col_name.find("is_") == 0 || col_name.find("_active") != std::string::npos ||
+                        col_name.find("requires_") == 0 || val == "t" || val == "f") {
+                        json += (val == "t" || val == "true" || val == "1") ? "true" : "false";
+                    }
+                    // Check if it's numeric
+                    else if (col_name.find("_order") != std::string::npos || col_name.find("duration") != std::string::npos ||
+                             col_name.find("_count") != std::string::npos || col_name == "sort_order") {
+                        json += val;
+                    }
+                    // Otherwise treat as string
+                    else {
+                        json += "\"" + val + "\"";
+                    }
+                }
             }
             
-            json += "\"display_order\":" + result[i]["display_order"].as<std::string>() + ",";
-            json += "\"is_active\":" + std::string(result[i]["is_active"].as<bool>() ? "true" : "false");
             json += "}";
         }
         json += "]";
@@ -1345,12 +1368,13 @@ Response SystemAdminController::handleCreateLookupEntry(const Request& request) 
     try {
         // Parse table name from path
         std::string path = request.getPath();
-        size_t pos = path.find("/api/system-admin/lookups/");
+        std::string prefix = "/api/system-admin/lookups/";
+        size_t pos = path.find(prefix);
         if (pos == std::string::npos) {
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
         }
         
-        std::string after_prefix = path.substr(pos + 27);
+        std::string after_prefix = path.substr(pos + prefix.length());
         size_t slash_pos = after_prefix.find("/");
         std::string table_name = after_prefix.substr(0, slash_pos);
         
@@ -1379,12 +1403,13 @@ Response SystemAdminController::handleUpdateLookupEntry(const Request& request) 
     try {
         // Parse table name and entry ID from path: /api/system-admin/lookups/:tableName/:id
         std::string path = request.getPath();
-        size_t pos = path.find("/api/system-admin/lookups/");
+        std::string prefix = "/api/system-admin/lookups/";
+        size_t pos = path.find(prefix);
         if (pos == std::string::npos) {
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
         }
         
-        std::string after_prefix = path.substr(pos + 27);
+        std::string after_prefix = path.substr(pos + prefix.length());
         size_t slash_pos = after_prefix.find("/");
         std::string table_name = after_prefix.substr(0, slash_pos);
         std::string entry_id = after_prefix.substr(slash_pos + 1);
@@ -1411,12 +1436,13 @@ Response SystemAdminController::handleDeleteLookupEntry(const Request& request) 
     try {
         // Parse table name and entry ID from path
         std::string path = request.getPath();
-        size_t pos = path.find("/api/system-admin/lookups/");
+        std::string prefix = "/api/system-admin/lookups/";
+        size_t pos = path.find(prefix);
         if (pos == std::string::npos) {
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
         }
         
-        std::string after_prefix = path.substr(pos + 27);
+        std::string after_prefix = path.substr(pos + prefix.length());
         size_t slash_pos = after_prefix.find("/");
         std::string table_name = after_prefix.substr(0, slash_pos);
         std::string entry_id = after_prefix.substr(slash_pos + 1);
