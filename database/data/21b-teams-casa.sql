@@ -1,5 +1,4 @@
 -- CASA Teams
--- Generated at: 2025-12-18T15:09:47.759Z
 
 INSERT INTO teams (id, name, sport_division_id, league_division_id, season, age_group, skill_level, description, logo_url, primary_color, secondary_color, is_active)
 VALUES (

@@ -1,5 +1,4 @@
 -- APSL Players
--- Generated at: 2025-12-18T15:07:54.371Z
 
 INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes)
 VALUES (

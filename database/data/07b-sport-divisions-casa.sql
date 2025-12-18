@@ -1,5 +1,4 @@
 -- CASA Sport Divisions
--- Generated at: 2025-12-18T15:09:47.756Z
 
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (

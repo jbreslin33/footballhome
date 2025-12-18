@@ -1,5 +1,4 @@
 -- CASA Players
--- Generated at: 2025-12-18T15:09:47.757Z
 
 INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes)
 VALUES (

@@ -1,5 +1,4 @@
 -- APSL Clubs
--- Generated at: 2025-12-18T15:07:54.363Z
 
 INSERT INTO clubs (id, name, display_name, slug, parent_club_id, description, logo_url, website, founded_year, contact_email, contact_phone, address, city, state, postal_code, country, is_active)
 VALUES (

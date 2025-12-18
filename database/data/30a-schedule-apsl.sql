@@ -1,5 +1,4 @@
 -- APSL Match Schedule
--- Generated at: 2025-12-18T15:07:54.380Z
 
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (

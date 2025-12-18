@@ -1,5 +1,4 @@
 -- CASA Users
--- Generated at: 2025-12-18T15:09:47.756Z
 
 INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active)
 VALUES (
