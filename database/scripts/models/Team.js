@@ -48,7 +48,7 @@ VALUES (
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
-  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);
+  logo_url = COALESCE(EXCLUDED.logo_url, teams.logo_url);`;
   }
 }
 
