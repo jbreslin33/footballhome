@@ -82,17 +82,7 @@ class PracticeRSVPManagementScreen extends Screen {
         return;
       }
       
-      // Player card clicked - show bottom sheet
-      const playerCard = e.target.closest('.player-card');
-      if (playerCard) {
-        const practiceId = playerCard.getAttribute('data-practice-id');
-        const playerId = playerCard.getAttribute('data-player-id');
-        const playerName = playerCard.getAttribute('data-player-name');
-        this.showBottomSheet(practiceId, playerId, playerName);
-        return;
-      }
-      
-      // Send reminder button clicked
+      // Send reminder button clicked (check BEFORE player card)
       const reminderBtn = e.target.closest('.send-reminder-btn');
       if (reminderBtn) {
         e.stopPropagation();
@@ -100,6 +90,16 @@ class PracticeRSVPManagementScreen extends Screen {
         const playerId = reminderBtn.getAttribute('data-player-id');
         const playerName = reminderBtn.getAttribute('data-player-name');
         this.sendReminder(practiceId, playerId, playerName);
+        return;
+      }
+      
+      // Player card clicked - show bottom sheet
+      const playerCard = e.target.closest('.player-card');
+      if (playerCard) {
+        const practiceId = playerCard.getAttribute('data-practice-id');
+        const playerId = playerCard.getAttribute('data-player-id');
+        const playerName = playerCard.getAttribute('data-player-name');
+        this.showBottomSheet(practiceId, playerId, playerName);
         return;
       }
       
