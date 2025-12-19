@@ -360,7 +360,7 @@ Response AuthController::handleCoachTeams(const Request& request) {
                          "JOIN team_coaches tc ON co.id = tc.coach_id "
                          "JOIN teams t ON tc.team_id = t.id "
                          "LEFT JOIN team_players tp ON t.id = tp.team_id "
-                         "WHERE co.user_id = $1 "
+                         "WHERE co.id = $1 "
                          "GROUP BY t.id, t.name "
                          "ORDER BY t.name";
         
