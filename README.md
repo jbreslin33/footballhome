@@ -17,11 +17,19 @@ A comprehensive team management system for football/soccer leagues, built with C
 git clone https://github.com/jbreslin33/footballhome.git
 cd footballhome
 
-# 2. Full setup (scrape data + build + start)
+# 2. Run first-time setup (installs Docker, Node, git-crypt, etc.)
+./setup.sh
+
+# 3. Unlock encrypted credentials (ask team for the key file)
+git-crypt unlock /path/to/footballhome.key
+
+# 4. Full setup (scrape data + build + start)
 ./dev.sh
 
 # Access at http://localhost:3000
 ```
+
+**Note**: The `.env` file with Twilio credentials is encrypted. New team members need the git-crypt key to unlock it.
 
 ## 🔧 Development Workflows
 

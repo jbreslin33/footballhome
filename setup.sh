@@ -206,7 +206,35 @@ else
 fi
 
 # ============================================================
-# Step 4: Install Node Dependencies
+# Step 4: Install git-crypt for encrypted credentials
+# ============================================================
+print_status "Checking for git-crypt..."
+
+if ! command -v git-crypt &> /dev/null; then
+    print_warning "git-crypt not found, installing..."
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS
+        print_status "Installing git-crypt via Homebrew..."
+        brew install git-crypt
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux
+        if command -v apt-get &> /dev/null; then
+            print_status "Installing git-crypt via apt..."
+            sudo apt-get update > /dev/null 2>&1
+            sudo apt-get install -y git-crypt
+        elif command -v yum &> /dev/null; then
+            print_status "Installing git-crypt via yum..."
+            sudo yum install -y git-crypt
+        fi
+    fi
+    print_success "git-crypt installed"
+else
+    print_success "git-crypt is installed: $(git-crypt --version | head -1)"
+fi
+
+# ============================================================
+# Step 5: Install Node Dependencies
 # ============================================================
 print_status "Installing Node.js dependencies..."
 
@@ -216,7 +244,7 @@ if [ -f "package.json" ]; then
 fi
 
 # ============================================================
-# Step 5: Configure Docker Group Permissions (Linux)
+# Step 6: Configure Docker Group Permissions (Linux)
 # ============================================================
 if [ "$OS_TYPE" == "Linux" ]; then
     print_status "Configuring Docker group permissions..."
