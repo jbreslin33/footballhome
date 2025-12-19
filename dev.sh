@@ -78,18 +78,18 @@ NC='\033[0m'
 # ============================================================
 # ENVIRONMENT FILE CHECK
 # ============================================================
-if [ ! -f ".env" ]; then
-    echo -e "${RED}Error: .env file not found${NC}"
+if [ ! -f "env" ]; then
+    echo -e "${RED}Error: env file not found${NC}"
     echo ""
-    echo "Download the .env file and place it in the project root:"
-    echo "  $(pwd)/.env"
+    echo "Download the env file and place it in the project root:"
+    echo "  $(pwd)/env"
     echo ""
     echo "Contact the team for access to the credentials file."
     echo ""
     exit 1
 fi
 
-echo -e "${GREEN}✓ Found .env file${NC}"
+echo -e "${GREEN}✓ Found env file${NC}"
 
 # ============================================================
 # DOCKER AVAILABILITY CHECK (early exit if docker not accessible)
@@ -116,11 +116,11 @@ if ! docker ps &> /dev/null 2>&1; then
     fi
     # Docker needs sudo, set alias for all docker commands
     DOCKER="sudo docker"
-    DOCKER_COMPOSE="sudo docker compose"
+    DOCKER_COMPOSE="sudo docker compose --env-file env"
 else
     # Docker works without sudo
     DOCKER="docker"
-    DOCKER_COMPOSE="docker compose"
+    DOCKER_COMPOSE="docker compose --env-file env"
 fi
 
 APSL_SCRAPE_MODE=""
@@ -672,7 +672,7 @@ echo ""
 
 # Check GroupMe token once for all operations
 GROUPME_TOKEN_EXISTS=false
-if grep -q "GROUPME_ACCESS_TOKEN=" .env 2>/dev/null; then
+if grep -q "GROUPME_ACCESS_TOKEN=" env 2>/dev/null; then
     GROUPME_TOKEN_EXISTS=true
 fi
 
@@ -688,7 +688,7 @@ if [ "$GROUPME_APSL_EXTERNAL" = true ] || [ "$GROUPME_APSL_SCHEDULE" = true ] ||
         $CMD
         echo -e "${GREEN}✓ APSL Lighthouse chat imported (users, schedule, RSVPs)${NC}"
     else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
+        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in env${NC}"
     fi
     echo ""
 fi
@@ -706,7 +706,7 @@ if [ "$GROUPME_TRAINING_LIGHTHOUSE_EXTERNAL" = true ] || [ "$GROUPME_TRAINING_LI
         $CMD
         echo -e "${GREEN}✓ Training Lighthouse chat imported (users, schedule, RSVPs)${NC}"
     else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
+        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in env${NC}"
     fi
     echo ""
 fi
@@ -723,7 +723,7 @@ if [ "$GROUPME_BOYS_CLUB_EXTERNAL" = true ] || [ "$GROUPME_BOYS_CLUB_SCHEDULE" =
         $CMD
         echo -e "${GREEN}✓ Lighthouse Boys Club Liga 1 chat imported (users, schedule, RSVPs)${NC}"
     else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
+        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in env${NC}"
     fi
     echo ""
 fi
@@ -740,7 +740,7 @@ if [ "$GROUPME_BOYS_CLUB_SCHEDULE" = true ]; then
             echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-boys-club-schedule.js${NC}"
         fi
     else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
+        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in env${NC}"
     fi
     echo ""
 fi
@@ -757,7 +757,7 @@ if [ "$GROUPME_BOYS_CLUB_RSVPS" = true ]; then
             echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-boys-club-rsvps.js${NC}"
         fi
     else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
+        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in env${NC}"
     fi
     echo ""
 fi
@@ -774,7 +774,7 @@ if [ "$GROUPME_OLD_TIMERS_EXTERNAL" = true ] || [ "$GROUPME_OLD_TIMERS_SCHEDULE"
         $CMD
         echo -e "${GREEN}✓ Lighthouse Old Timers Club Liga 2 chat imported (users, schedule, RSVPs)${NC}"
     else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in .env${NC}"
+        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in env${NC}"
     fi
     echo ""
 fi

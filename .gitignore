@@ -50,3 +50,4 @@ package-lock.json
 .groupme-cookies.json
 footballhome-git-crypt.key
 .env
+env
