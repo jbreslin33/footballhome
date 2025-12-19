@@ -4,6 +4,7 @@
 #include "../core/Controller.h"
 #include "../core/Response.h"
 #include "../core/Request.h"
+#include "../core/Router.h"
 #include <string>
 #include <map>
 
@@ -12,7 +13,7 @@ public:
     OAuthController();
     ~OAuthController() override = default;
 
-    Response handleRequest(const Request& request) override;
+    void registerRoutes(Router& router, const std::string& prefix) override;
 
 private:
     Response handleGoogleLogin(const Request& request);

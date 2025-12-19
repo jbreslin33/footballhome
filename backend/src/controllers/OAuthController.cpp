@@ -1,5 +1,5 @@
 #include "OAuthController.h"
-#include "../core/HttpStatus.h"
+#include "../core/Response.h"
 #include "../database/Database.h"
 #include <cstdlib>
 #include <curl/curl.h>
@@ -82,15 +82,14 @@ OAuthController::OAuthController() {
     std::cout << "  Redirect URI: " << redirectUri_ << std::endl;
 }
 
-Response OAuthController::handleRequest(const Request& request) {
-    if (request.method == "GET" && request.path == "/api/auth/google/login") {
-        return handleGoogleLogin(request);
-    } else if (request.method == "GET" && request.path == "/api/auth/google/callback") {
-        return handleGoogleCallback(request);
-    }
+void OAuthController::registerRoutes(Router& router, const std::string& prefix) {
+    router.get(prefix + "/login", [this](const Request& req) {
+        return this->handleGoogleLogin(req);
+    });
     
-    return Response(HttpStatus::NOT_FOUND, "application/json", 
-                   R"({"error": "OAuth endpoint not found"})");
+    router.get(prefix + "/callback", [this](const Request& req) {
+        return this->handleGoogleCallback(req);
+    });
 }
 
 std::string OAuthController::getGoogleAuthUrl() {
@@ -107,15 +106,16 @@ std::string OAuthController::getGoogleAuthUrl() {
 
 Response OAuthController::handleGoogleLogin(const Request& request) {
     if (clientId_.empty() || clientSecret_.empty() || redirectUri_.empty()) {
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "application/json",
-                       R"({"error": "OAuth configuration not set"})");
+        return Response::internalError("OAuth configuration not set");
     }
     
     std::string authUrl = getGoogleAuthUrl();
     
     // Return 302 redirect to Google
-    std::string headers = "Location: " + authUrl + "\r\n";
-    return Response(HttpStatus::FOUND, "text/html", "", headers);
+    Response response = Response::ok();
+    response.setStatus(HttpStatus::FOUND);
+    response.setHeader("Location", authUrl);
+    return response;
 }
 
 std::map<std::string, std::string> OAuthController::exchangeCodeForToken(const std::string& code) {
@@ -211,32 +211,25 @@ std::string OAuthController::findOrCreateUser(const std::map<std::string, std::s
     std::string lastName = userInfo.count("family_name") ? userInfo.at("family_name") : "";
     
     try {
-        auto conn = Database::getInstance().getConnection();
-        pqxx::work txn(*conn);
+        auto db = Database::getInstance();
         
         // Check if user exists
-        pqxx::result existingUser = txn.exec_params(
-            "SELECT id FROM users WHERE email = $1",
-            email
-        );
+        std::string checkSql = "SELECT id FROM users WHERE email = '" + db->escape(email) + "'";
+        pqxx::result existingUser = db->query(checkSql);
         
         if (!existingUser.empty()) {
             std::string userId = existingUser[0]["id"].as<std::string>();
-            txn.commit();
             std::cout << "Found existing user: " << userId << std::endl;
             return userId;
         }
         
         // Create new user
-        pqxx::result newUser = txn.exec_params(
-            "INSERT INTO users (email, first_name, last_name, password_hash, is_active, email_verified) "
-            "VALUES ($1, $2, $3, 'oauth-google', true, true) "
-            "RETURNING id",
-            email, firstName, lastName
-        );
+        std::string insertSql = "INSERT INTO users (email, first_name, last_name, password_hash, is_active, email_verified) "
+                              "VALUES ('" + db->escape(email) + "', '" + db->escape(firstName) + "', '" + db->escape(lastName) + "', "
+                              "'oauth-google', true, true) RETURNING id";
+        pqxx::result newUser = db->query(insertSql);
         
         std::string userId = newUser[0]["id"].as<std::string>();
-        txn.commit();
         
         std::cout << "Created new user via Google OAuth: " << userId << std::endl;
         return userId;
@@ -270,21 +263,20 @@ std::string OAuthController::generateJWT(const std::string& userId, const std::s
 Response OAuthController::handleGoogleCallback(const Request& request) {
     // Extract code from query parameters
     std::string code;
-    size_t codePos = request.path.find("code=");
+    size_t codePos = request.getPath().find("code=");
     if (codePos != std::string::npos) {
         size_t codeStart = codePos + 5;
-        size_t codeEnd = request.path.find("&", codeStart);
+        size_t codeEnd = request.getPath().find("&", codeStart);
         if (codeEnd == std::string::npos) {
-            code = request.path.substr(codeStart);
+            code = request.getPath().substr(codeStart);
         } else {
-            code = request.path.substr(codeStart, codeEnd - codeStart);
+            code = request.getPath().substr(codeStart, codeEnd - codeStart);
         }
     }
     
     if (code.empty()) {
         std::cerr << "No authorization code in callback" << std::endl;
-        return Response(HttpStatus::BAD_REQUEST, "application/json",
-                       R"({"error": "No authorization code received"})");
+        return Response::badRequest("No authorization code received");
     }
     
     std::cout << "Received OAuth code, exchanging for token..." << std::endl;
@@ -293,8 +285,7 @@ Response OAuthController::handleGoogleCallback(const Request& request) {
     auto tokenData = exchangeCodeForToken(code);
     if (tokenData.empty() || tokenData.count("access_token") == 0) {
         std::cerr << "Failed to exchange code for token" << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "application/json",
-                       R"({"error": "Failed to exchange authorization code"})");
+        return Response::internalError("Failed to exchange authorization code");
     }
     
     std::string accessToken = tokenData["access_token"];
@@ -304,8 +295,7 @@ Response OAuthController::handleGoogleCallback(const Request& request) {
     auto userInfo = getUserInfo(accessToken);
     if (userInfo.empty() || userInfo.count("email") == 0) {
         std::cerr << "Failed to get user info" << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "application/json",
-                       R"({"error": "Failed to fetch user information"})");
+        return Response::internalError("Failed to fetch user information");
     }
     
     std::cout << "Got user info for: " << userInfo["email"] << std::endl;
@@ -313,8 +303,7 @@ Response OAuthController::handleGoogleCallback(const Request& request) {
     // Find or create user in database
     std::string userId = findOrCreateUser(userInfo);
     if (userId.empty()) {
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "application/json",
-                       R"({"error": "Failed to create or find user"})");
+        return Response::internalError("Failed to create or find user");
     }
     
     // Generate JWT token
@@ -322,7 +311,9 @@ Response OAuthController::handleGoogleCallback(const Request& request) {
     
     // Redirect to frontend with token
     std::string frontendUrl = "http://localhost:3000/oauth-success?token=" + urlEncode(jwt);
-    std::string headers = "Location: " + frontendUrl + "\r\n";
     
-    return Response(HttpStatus::FOUND, "text/html", "", headers);
+    Response response = Response::ok();
+    response.setStatus(HttpStatus::FOUND);
+    response.setHeader("Location", frontendUrl);
+    return response;
 }
