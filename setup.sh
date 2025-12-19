@@ -233,40 +233,48 @@ if command -v git-crypt &> /dev/null; then
             # Try auto-download from Google Drive first
             KEY_FILE="./footballhome-git-crypt.key"
             GDRIVE_FILE_ID="195nWFngvA6Aje-_MPoWfkW_SLusXpGeO"
+            KEY_EXISTED=false
             
-            if [ ! -f "$KEY_FILE" ]; then
-                echo "  Attempting to download key file from Google Drive..."
-                
-                # Try wget first, then curl
-                if command -v wget &> /dev/null; then
-                    wget --no-check-certificate "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -O "$KEY_FILE" > /dev/null 2>&1
-                elif command -v curl &> /dev/null; then
-                    curl -L "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -o "$KEY_FILE" > /dev/null 2>&1
-                fi
-                
-                if [ -f "$KEY_FILE" ] && [ -s "$KEY_FILE" ]; then
-                    print_success "Key file downloaded successfully!"
+            if [ -f "$KEY_FILE" ]; then
+                KEY_EXISTED=true
+                print_status "Existing key file found, attempting to replace with latest..."
+                rm -f "$KEY_FILE"
+            fi
+            
+            echo "  Downloading key file from Google Drive..."
+            
+            # Try wget first, then curl
+            if command -v wget &> /dev/null; then
+                wget --no-check-certificate "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -O "$KEY_FILE" > /dev/null 2>&1
+            elif command -v curl &> /dev/null; then
+                curl -L "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -o "$KEY_FILE" > /dev/null 2>&1
+            fi
+            
+            if [ -f "$KEY_FILE" ] && [ -s "$KEY_FILE" ]; then
+                if [ "$KEY_EXISTED" = true ]; then
+                    print_success "Key file replaced successfully with latest version!"
                 else
-                    print_warning "Auto-download failed"
-                    echo ""
-                    read -p "  Do you have the key file locally? (y/n): " has_key
-                    
-                    if [ "$has_key" == "y" ] || [ "$has_key" == "Y" ]; then
-                        read -p "  Enter full path to key file: " key_path
-                        
-                        if [ -f "$key_path" ]; then
-                            cp "$key_path" "$KEY_FILE"
-                        else
-                            print_error "Key file not found: $key_path"
-                            exit 1
-                        fi
-                    else
-                        print_error "Setup cannot continue without key file"
-                        exit 1
-                    fi
+                    print_success "Key file downloaded successfully!"
                 fi
             else
-                print_success "Key file already exists locally"
+                print_warning "Auto-download failed"
+                echo ""
+                read -p "  Do you have the key file locally? (y/n): " has_key
+                
+                if [ "$has_key" == "y" ] || [ "$has_key" == "Y" ]; then
+                    read -p "  Enter full path to key file: " key_path
+                    
+                    if [ -f "$key_path" ]; then
+                        cp "$key_path" "$KEY_FILE"
+                        print_success "Key file copied to project directory!"
+                    else
+                        print_error "Key file not found: $key_path"
+                        exit 1
+                    fi
+                else
+                    print_error "Setup cannot continue without key file"
+                    exit 1
+                fi
             fi
             
             # Unlock with the key file
