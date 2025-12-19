@@ -89,9 +89,9 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
-# Check if .env is still encrypted
+# Check if .env is actually readable (not encrypted binary)
 if command -v git-crypt &> /dev/null; then
-    if git-crypt status .env 2>/dev/null | grep -q "encrypted"; then
+    if ! grep -q "ENVIRONMENT=" .env 2>/dev/null; then
         echo -e "${RED}Error: Credentials are locked${NC}"
         echo ""
         echo "The .env file is encrypted with git-crypt."
