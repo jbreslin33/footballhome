@@ -9,6 +9,7 @@ class App {
     // Create all screen instances
     this.screens = {
       login: new LoginScreen(this.navigation, this.auth),
+      oauthSuccess: new OAuthSuccessScreen(this.navigation, this.auth),
       roleSelection: new RoleSelectionScreen(this.navigation, this.auth),
       contextSelection: new ContextSelectionScreen(this.navigation, this.auth),
       divisionSelection: new DivisionSelectionScreen(this.navigation, this.auth),
@@ -43,6 +44,7 @@ class App {
     
     // Register all screens with the manager
     this.screenManager.register('login', this.screens.login);
+    this.screenManager.register('oauth-success', this.screens.oauthSuccess);
     this.screenManager.register('role-selection', this.screens.roleSelection);
     this.screenManager.register('context-selection', this.screens.contextSelection);
     this.screenManager.register('division-selection', this.screens.divisionSelection);

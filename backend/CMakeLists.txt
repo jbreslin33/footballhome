@@ -30,6 +30,7 @@ set(SOURCES
     src/models/Team.cpp
     src/services/UserService.cpp
     src/controllers/AuthController.cpp
+    src/controllers/OAuthController.cpp
     src/controllers/TeamController.cpp
     src/controllers/EventController.cpp
     src/controllers/DivisionController.cpp
@@ -44,6 +45,8 @@ target_link_libraries(server
     ${PQXX_LIBRARIES}
     pthread
     curl
+    ssl
+    crypto
 )
 
 # Compiler flags

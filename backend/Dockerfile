@@ -4,6 +4,8 @@ FROM gcc:12
 # Install required packages
 RUN apt-get update && apt-get install -y \
     libpqxx-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
     cmake \
     pkg-config \
     wget \
