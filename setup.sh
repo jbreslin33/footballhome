@@ -206,67 +206,69 @@ else
 fi
 
 # ============================================================
-# Step 4: Install git-crypt for encrypted credentials
+# Step 4: Setup Environment Configuration (.env file)
 # ============================================================
-print_status "Checking for git-crypt..."
+print_status "Setting up environment configuration..."
 
-if ! command -v git-crypt &> /dev/null; then
-    print_warning "git-crypt not found, installing..."
+if [ ! -f ".env" ]; then
+    print_warning ".env file not found, creating from template..."
     
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS
-        print_status "Installing git-crypt via Homebrew..."
-        brew install git-crypt
-    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        # Linux
-        if command -v apt-get &> /dev/null; then
-            print_status "Installing git-crypt via apt..."
-            sudo apt-get update > /dev/null 2>&1
-            sudo apt-get install -y git-crypt
-        elif command -v yum &> /dev/null; then
-            print_status "Installing git-crypt via yum..."
-            sudo yum install -y git-crypt
-        fi
+    if [ ! -f ".env.example" ]; then
+        print_error ".env.example template not found!"
+        exit 1
     fi
-    print_success "git-crypt installed"
-else
-    print_success "git-crypt is installed: $(git-crypt --version | head -1)"
-fi
-
-# ============================================================
-# Step 4.5: Unlock encrypted credentials
-# ============================================================
-print_status "Checking encrypted credentials..."
-
-if git-crypt status 2>/dev/null | grep -q "encrypted"; then
-    if git-crypt status 2>/dev/null | grep ".env" | grep -q "not encrypted"; then
-        print_success "Credentials already unlocked"
-    else
-        print_warning "Credentials are locked"
-        echo ""
-        echo "  To unlock credentials, you need the git-crypt key file."
-        echo "  Ask a team member for: footballhome-git-crypt.key"
-        echo ""
-        echo "  Then run:"
-        echo "    git-crypt unlock /path/to/footballhome-git-crypt.key"
-        echo ""
-        read -p "  Do you have the key file? (y/n): " has_key
-        
-        if [ "$has_key" == "y" ] || [ "$has_key" == "Y" ]; then
-            read -p "  Enter path to key file: " key_path
-            if [ -f "$key_path" ]; then
-                git-crypt unlock "$key_path"
-                print_success "Credentials unlocked successfully"
-            else
-                print_error "Key file not found: $key_path"
-                echo "  You can unlock later with: git-crypt unlock /path/to/key"
-            fi
-        else
-            echo "  You can unlock later with: git-crypt unlock /path/to/key"
-        fi
+    
+    # Copy template
+    cp .env.example .env
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  Environment Configuration Setup"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "The .env file contains optional credentials for external services."
+    echo "You can skip these now and add them later when needed."
+    echo ""
+    echo "Press Enter to skip any credential, or enter the value:"
+    echo ""
+    
+    # ENVIRONMENT
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Environment Type (dev or production)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    read -p "ENVIRONMENT [dev]: " ENV_TYPE
+    ENV_TYPE=${ENV_TYPE:-dev}
+    sed -i "s/^ENVIRONMENT=.*/ENVIRONMENT=${ENV_TYPE}/" .env
+    
+    # TWILIO
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Twilio SMS Credentials (Optional)"
+    echo "Get from: https://console.twilio.com/"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    read -p "TWILIO_ACCOUNT_SID: " TWILIO_SID
+    read -p "TWILIO_AUTH_TOKEN: " TWILIO_TOKEN
+    read -p "TWILIO_FROM_PHONE: " TWILIO_PHONE
+    
+    if [ ! -z "$TWILIO_SID" ]; then
+        sed -i "s/^TWILIO_ACCOUNT_SID=.*/TWILIO_ACCOUNT_SID=${TWILIO_SID}/" .env
     fi
+    if [ ! -z "$TWILIO_TOKEN" ]; then
+        sed -i "s/^TWILIO_AUTH_TOKEN=.*/TWILIO_AUTH_TOKEN=${TWILIO_TOKEN}/" .env
+    fi
+    if [ ! -z "$TWILIO_PHONE" ]; then
+        sed -i "s|^TWILIO_FROM_PHONE=.*|TWILIO_FROM_PHONE=${TWILIO_PHONE}|" .env
+    fi
+    
+    echo ""
+    print_success ".env file created"
+    echo ""
+    echo "  You can edit .env later to add more credentials:"
+    echo "  - Google Sheets API (for CASA scraping)"
+    echo "  - GroupMe API (for GroupMe scraping)"
+    echo ""
 else
-    print_success "No encrypted files in repository"
+    print_success ".env file already exists"
 fi
 
 # ============================================================

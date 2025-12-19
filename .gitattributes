@@ -1,1 +1,1 @@
-.env filter=git-crypt diff=git-crypt
+# Removed git-crypt - credentials now managed via .env.example and setup.sh prompts

@@ -76,6 +76,20 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # ============================================================
+# ENVIRONMENT FILE CHECK
+# ============================================================
+if [ ! -f ".env" ]; then
+    echo -e "${RED}Error: .env file not found${NC}"
+    echo ""
+    echo "The .env file contains required configuration for Docker services."
+    echo ""
+    echo "Run setup.sh to create it:"
+    echo "  ./setup.sh"
+    echo ""
+    exit 1
+fi
+
+# ============================================================
 # DOCKER AVAILABILITY CHECK (early exit if docker not accessible)
 # ============================================================
 if ! docker ps &> /dev/null 2>&1; then
