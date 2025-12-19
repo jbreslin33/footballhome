@@ -35,6 +35,31 @@ std::string urlEncode(const std::string& value) {
     return escaped.str();
 }
 
+// Helper to URL decode strings
+std::string urlDecode(const std::string& value) {
+    std::ostringstream decoded;
+    
+    for (size_t i = 0; i < value.length(); ++i) {
+        if (value[i] == '%' && i + 2 < value.length()) {
+            // Convert hex to char
+            int hex_value;
+            std::istringstream hex_stream(value.substr(i + 1, 2));
+            if (hex_stream >> std::hex >> hex_value) {
+                decoded << static_cast<char>(hex_value);
+                i += 2;
+            } else {
+                decoded << value[i];
+            }
+        } else if (value[i] == '+') {
+            decoded << ' ';
+        } else {
+            decoded << value[i];
+        }
+    }
+    
+    return decoded.str();
+}
+
 // Simple JSON parser for responses
 std::map<std::string, std::string> parseJsonResponse(const std::string& json) {
     std::map<std::string, std::string> result;
@@ -134,6 +159,8 @@ std::map<std::string, std::string> OAuthController::exchangeCodeForToken(const s
     postData += "&redirect_uri=" + urlEncode(redirectUri_);
     postData += "&grant_type=authorization_code";
     
+    std::cout << "POST data (first 100 chars): " << postData.substr(0, 100) << "..." << std::endl;
+    
     curl_easy_setopt(curl, CURLOPT_URL, "https://oauth2.googleapis.com/token");
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
@@ -214,7 +241,7 @@ std::string OAuthController::findOrCreateUser(const std::map<std::string, std::s
         auto db = Database::getInstance();
         
         // Check if email exists in user_emails table
-        std::string checkEmailSql = "SELECT user_id FROM user_emails WHERE email = '" + db->escape(email) + "'";
+        std::string checkEmailSql = "SELECT user_id FROM user_emails WHERE email = " + db->escape(email);
         pqxx::result existingEmail = db->query(checkEmailSql);
         
         if (!existingEmail.empty()) {
@@ -225,18 +252,18 @@ std::string OAuthController::findOrCreateUser(const std::map<std::string, std::s
         
         // Create new user
         std::string insertUserSql = "INSERT INTO users (first_name, last_name, is_active) "
-                                   "VALUES ('" + db->escape(firstName) + "', '" + db->escape(lastName) + "', true) "
+                                   "VALUES (" + db->escape(firstName) + ", " + db->escape(lastName) + ", true) "
                                    "RETURNING id";
         pqxx::result newUser = db->query(insertUserSql);
         std::string userId = newUser[0]["id"].as<std::string>();
         
         // Add email to user_emails table
         std::string insertEmailSql = "INSERT INTO user_emails (user_id, email, is_primary, is_verified, auth_provider) "
-                                    "VALUES ('" + userId + "', '" + db->escape(email) + "', true, true, 'google')";
+                                    "VALUES (" + db->escape(userId) + ", " + db->escape(email) + ", true, true, 'google')";
         db->query(insertEmailSql);
         
         // Also set email in users table for backwards compatibility
-        std::string updateUserSql = "UPDATE users SET email = '" + db->escape(email) + "' WHERE id = '" + userId + "'";
+        std::string updateUserSql = "UPDATE users SET email = " + db->escape(email) + " WHERE id = " + db->escape(userId);
         db->query(updateUserSql);
         
         std::cout << "Created new user via Google OAuth: " << userId << " with email: " << email << std::endl;
@@ -269,15 +296,19 @@ std::string OAuthController::generateJWT(const std::string& userId, const std::s
 }
 
 Response OAuthController::handleGoogleCallback(const Request& request) {
-    // Extract code from query parameters
-    std::string code = request.getQueryParam("code");
+    // Extract code from query parameters (it comes URL-encoded from the Request class)
+    std::string encodedCode = request.getQueryParam("code");
     
-    if (code.empty()) {
+    if (encodedCode.empty()) {
         std::cerr << "No authorization code in callback" << std::endl;
         return Response::badRequest("No authorization code received");
     }
     
-    std::cout << "Received OAuth code, exchanging for token..." << std::endl;
+    // Decode the authorization code
+    std::string code = urlDecode(encodedCode);
+    
+    std::cout << "Received OAuth code (length=" << code.length() << "): " << code.substr(0, 20) << "..." << std::endl;
+    std::cout << "Exchanging for token..." << std::endl;
     
     // Exchange code for access token
     auto tokenData = exchangeCodeForToken(code);
