@@ -47,5 +47,5 @@ node_modules/
 package-lock.json
 
 # Environment and credentials
-.env
 .groupme-cookies.json
+footballhome-git-crypt.key

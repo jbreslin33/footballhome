@@ -117,6 +117,7 @@ public:
 private:
     void setupRoutes() {
         // Register controllers
+        router_.useController("/api/auth/google", oauth_controller_);
         router_.useController("/api/auth", auth_controller_);
         router_.useController("/api/auth/google", oauth_controller_);
         router_.useController("/api/teams", team_controller_);

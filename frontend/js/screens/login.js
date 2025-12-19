@@ -23,9 +23,9 @@ class LoginScreen extends Screen {
           Sign in with Google
         </a>
         
-        <div style="text-align: center; margin: var(--space-3) 0; color: var(--text-secondary); position: relative;">
-          <hr style="position: absolute; width: 100%; top: 50%; border: none; border-top: 1px solid var(--border-color);">
-          <span style="background: white; padding: 0 var(--space-2); position: relative; z-index: 1;">or</span>
+        <div style="text-align: center; margin: var(--space-3) 0; color: var(--text-secondary);">
+          <span style="background: white; padding: 0 var(--space-2);">or</span>
+          <hr style="margin-top: -12px; border: none; border-top: 1px solid var(--border-color);">
         </div>
         
         <form id="login-form">

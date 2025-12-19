@@ -96,6 +96,7 @@ bool TwilioSMSService::sendSMS(const std::string& toPhone, const std::string& me
     if (httpCode >= 200 && httpCode < 300) {
         std::cout << "✅ SMS sent successfully to " << toPhone << std::endl;
         std::cout << "   Message: " << message << std::endl;
+        std::cout << "   Twilio Response: " << responseBuffer << std::endl;
         return true;
     } else {
         std::cerr << "❌ SMS send failed with HTTP " << httpCode << std::endl;

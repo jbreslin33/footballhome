@@ -324,6 +324,23 @@ CREATE TABLE users (
 CREATE INDEX idx_users_last_first_name ON users(last_name, first_name);
 CREATE INDEX idx_users_first_name ON users(first_name);
 
+-- User emails table - supports multiple emails per user for OAuth/linking
+CREATE TABLE user_emails (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    is_primary BOOLEAN DEFAULT false,
+    is_verified BOOLEAN DEFAULT false,
+    auth_provider VARCHAR(50),               -- 'password', 'google', 'facebook', etc.
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    verified_at TIMESTAMP,
+    UNIQUE(user_id, email)
+);
+
+CREATE INDEX idx_user_emails_user_id ON user_emails(user_id);
+CREATE INDEX idx_user_emails_email ON user_emails(email);
+CREATE INDEX idx_user_emails_primary ON user_emails(user_id, is_primary) WHERE is_primary = true;
+
 -- External identity tracking (staged import pattern)
 -- Scrapers create identities with user_id=NULL, then admin manually links/merges via UI
 CREATE TABLE user_external_identities (

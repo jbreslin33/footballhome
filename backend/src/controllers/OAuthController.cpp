@@ -27,7 +27,7 @@ std::string urlEncode(const std::string& value) {
             escaped << c;
         } else {
             escaped << std::uppercase;
-            escaped << '%' << std::setw(2) << int((unsigned char) c);
+            escaped << '%' << std::setw(2) << int((unsigned char)c);
             escaped << std::nouppercase;
         }
     }
@@ -39,42 +39,33 @@ std::string urlEncode(const std::string& value) {
 std::map<std::string, std::string> parseJsonResponse(const std::string& json) {
     std::map<std::string, std::string> result;
     
+    // Very simple parser - extract "key":"value" pairs
     size_t pos = 0;
     while (pos < json.length()) {
-        // Find key
-        size_t keyStart = json.find('"', pos);
+        size_t keyStart = json.find("\"", pos);
         if (keyStart == std::string::npos) break;
-        keyStart++;
         
-        size_t keyEnd = json.find('"', keyStart);
+        size_t keyEnd = json.find("\"", keyStart + 1);
         if (keyEnd == std::string::npos) break;
         
-        std::string key = json.substr(keyStart, keyEnd - keyStart);
+        std::string key = json.substr(keyStart + 1, keyEnd - keyStart - 1);
         
-        // Find value
-        size_t colonPos = json.find(':', keyEnd);
+        size_t colonPos = json.find(":", keyEnd);
         if (colonPos == std::string::npos) break;
         
-        size_t valueStart = json.find_first_not_of(" \t\n\r", colonPos + 1);
-        if (valueStart == std::string::npos) break;
-        
-        std::string value;
-        if (json[valueStart] == '"') {
-            // String value
-            valueStart++;
-            size_t valueEnd = json.find('"', valueStart);
-            if (valueEnd == std::string::npos) break;
-            value = json.substr(valueStart, valueEnd - valueStart);
-            pos = valueEnd + 1;
-        } else {
-            // Number/boolean value
-            size_t valueEnd = json.find_first_of(",}", valueStart);
-            if (valueEnd == std::string::npos) break;
-            value = json.substr(valueStart, valueEnd - valueStart);
-            pos = valueEnd;
+        size_t valueStart = json.find("\"", colonPos);
+        if (valueStart == std::string::npos) {
+            pos = colonPos + 1;
+            continue;
         }
         
+        size_t valueEnd = json.find("\"", valueStart + 1);
+        if (valueEnd == std::string::npos) break;
+        
+        std::string value = json.substr(valueStart + 1, valueEnd - valueStart - 1);
         result[key] = value;
+        
+        pos = valueEnd + 1;
     }
     
     return result;
@@ -156,9 +147,16 @@ std::map<std::string, std::string> OAuthController::exchangeCodeForToken(const s
         return {};
     }
     
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
     curl_easy_cleanup(curl);
     
-    std::cout << "Token response: " << responseBuffer << std::endl;
+    if (httpCode != 200) {
+        std::cerr << "Token exchange failed with HTTP " << httpCode << std::endl;
+        std::cerr << "Response: " << responseBuffer << std::endl;
+        return {};
+    }
+    
     return parseJsonResponse(responseBuffer);
 }
 
@@ -167,80 +165,131 @@ std::map<std::string, std::string> OAuthController::getUserInfo(const std::strin
     std::string responseBuffer;
     
     if (!curl) {
-        std::cerr << "Failed to initialize CURL" << std::endl;
         return {};
     }
     
-    std::string url = "https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + accessToken;
+    struct curl_slist* headers = nullptr;
+    std::string authHeader = "Authorization: Bearer " + accessToken;
+    headers = curl_slist_append(headers, authHeader.c_str());
     
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_URL, "https://www.googleapis.com/oauth2/v2/userinfo");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
     
     CURLcode res = curl_easy_perform(curl);
     
+    curl_slist_free_all(headers);
+    
     if (res != CURLE_OK) {
-        std::cerr << "CURL error: " << curl_easy_strerror(res) << std::endl;
+        std::cerr << "CURL error fetching user info: " << curl_easy_strerror(res) << std::endl;
         curl_easy_cleanup(curl);
         return {};
     }
     
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
     curl_easy_cleanup(curl);
     
-    std::cout << "User info response: " << responseBuffer << std::endl;
+    if (httpCode != 200) {
+        std::cerr << "User info fetch failed with HTTP " << httpCode << std::endl;
+        return {};
+    }
+    
     return parseJsonResponse(responseBuffer);
 }
 
 std::string OAuthController::findOrCreateUser(const std::map<std::string, std::string>& userInfo) {
-    auto db = Database::getInstance();
-    std::string email = userInfo.at("email");
-    
-    // Check if user exists
-    std::string query = "SELECT id FROM users WHERE email = '" + email + "'";
-    auto result = db->query(query);
-    
-    if (!result.empty()) {
-        return result[0]["id"].as<std::string>();
-    }
-    
-    // Create new user
-    std::string firstName = userInfo.count("given_name") ? userInfo.at("given_name") : "";
-    std::string lastName = userInfo.count("family_name") ? userInfo.at("family_name") : "";
-    
-    std::string insertQuery = "INSERT INTO users (email, first_name, last_name) VALUES ('"
-        + email + "', '" + firstName + "', '" + lastName + "') RETURNING id";
-    
-    auto insertResult = db->query(insertQuery);
-    if (insertResult.empty()) {
+    auto it = userInfo.find("email");
+    if (it == userInfo.end()) {
+        std::cerr << "No email in user info" << std::endl;
         return "";
     }
     
-    return insertResult[0]["id"].as<std::string>();
+    std::string email = it->second;
+    std::string firstName = userInfo.count("given_name") ? userInfo.at("given_name") : "";
+    std::string lastName = userInfo.count("family_name") ? userInfo.at("family_name") : "";
+    
+    try {
+        auto db = Database::getInstance();
+        
+        // Check if email exists in user_emails table
+        std::string checkEmailSql = "SELECT user_id FROM user_emails WHERE email = '" + db->escape(email) + "'";
+        pqxx::result existingEmail = db->query(checkEmailSql);
+        
+        if (!existingEmail.empty()) {
+            std::string userId = existingEmail[0]["user_id"].as<std::string>();
+            std::cout << "Found existing user via email: " << userId << std::endl;
+            return userId;
+        }
+        
+        // Create new user
+        std::string insertUserSql = "INSERT INTO users (first_name, last_name, is_active) "
+                                   "VALUES ('" + db->escape(firstName) + "', '" + db->escape(lastName) + "', true) "
+                                   "RETURNING id";
+        pqxx::result newUser = db->query(insertUserSql);
+        std::string userId = newUser[0]["id"].as<std::string>();
+        
+        // Add email to user_emails table
+        std::string insertEmailSql = "INSERT INTO user_emails (user_id, email, is_primary, is_verified, auth_provider) "
+                                    "VALUES ('" + userId + "', '" + db->escape(email) + "', true, true, 'google')";
+        db->query(insertEmailSql);
+        
+        // Also set email in users table for backwards compatibility
+        std::string updateUserSql = "UPDATE users SET email = '" + db->escape(email) + "' WHERE id = '" + userId + "'";
+        db->query(updateUserSql);
+        
+        std::cout << "Created new user via Google OAuth: " << userId << " with email: " << email << std::endl;
+        return userId;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Database error in findOrCreateUser: " << e.what() << std::endl;
+        return "";
+    }
 }
 
 std::string OAuthController::generateJWT(const std::string& userId, const std::string& email) {
-    // Simple JWT generation (in production, use a proper JWT library)
-    std::string payload = "{\"userId\":\"" + userId + "\",\"email\":\"" + email + "\"}";
+    // Simple JWT generation (for production, use a proper JWT library)
+    std::string header = R"({"alg":"HS256","typ":"JWT"})";
     
-    // For now, just base64 encode (NOT SECURE - just for demo)
-    // In production, use proper HMAC-SHA256 signing
-    return "jwt_" + userId;
+    std::time_t now = std::time(nullptr);
+    std::time_t exp = now + (24 * 60 * 60); // 24 hours
+    
+    std::ostringstream payloadStream;
+    payloadStream << R"({"userId":")" << userId << R"(",)";
+    payloadStream << R"("email":")" << email << R"(",)";
+    payloadStream << R"("iat":)" << now << R"(,)";
+    payloadStream << R"("exp":)" << exp << "}";
+    std::string payload = payloadStream.str();
+    
+    // Note: This is simplified - in production, use base64url encoding and proper signing
+    std::string token = header + "." + payload + ".signature";
+    
+    return token;
 }
 
 Response OAuthController::handleGoogleCallback(const Request& request) {
-    std::cout << "OAuth callback received" << std::endl;
-    
-    // Get authorization code from query params
-    auto params = request.getQueryParams();
-    if (params.count("code") == 0) {
-        std::cerr << "No authorization code in callback" << std::endl;
-        return Response::badRequest("Missing authorization code");
+    // Extract code from query parameters
+    std::string code;
+    size_t codePos = request.getPath().find("code=");
+    if (codePos != std::string::npos) {
+        size_t codeStart = codePos + 5;
+        size_t codeEnd = request.getPath().find("&", codeStart);
+        if (codeEnd == std::string::npos) {
+            code = request.getPath().substr(codeStart);
+        } else {
+            code = request.getPath().substr(codeStart, codeEnd - codeStart);
+        }
     }
     
-    std::string code = params.at("code");
-    std::cout << "Got authorization code: " << code.substr(0, 20) << "..." << std::endl;
+    if (code.empty()) {
+        std::cerr << "No authorization code in callback" << std::endl;
+        return Response::badRequest("No authorization code received");
+    }
     
-    // Exchange code for token
+    std::cout << "Received OAuth code, exchanging for token..." << std::endl;
+    
+    // Exchange code for access token
     auto tokenData = exchangeCodeForToken(code);
     if (tokenData.empty() || tokenData.count("access_token") == 0) {
         std::cerr << "Failed to exchange code for token" << std::endl;
@@ -266,13 +315,13 @@ Response OAuthController::handleGoogleCallback(const Request& request) {
     }
     
     // Generate JWT token
-    std::string jwtToken = generateJWT(userId, userInfo["email"]);
+    std::string jwt = generateJWT(userId, userInfo["email"]);
     
     // Redirect to frontend with token
-    std::string redirectUrl = "http://localhost:3000/oauth-success?token=" + jwtToken;
+    std::string frontendUrl = "http://localhost:3000/oauth-success?token=" + urlEncode(jwt);
     
     Response response = Response::ok();
     response.setStatus(HttpStatus::FOUND);
-    response.setHeader("Location", redirectUrl);
+    response.setHeader("Location", frontendUrl);
     return response;
 }

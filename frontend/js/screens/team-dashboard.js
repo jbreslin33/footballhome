@@ -31,6 +31,14 @@ class TeamDashboardScreen extends Screen {
   }
   
   onEnter(params) {
+    // Set team context from params if provided
+    if (params?.teamId && params?.teamName) {
+      this.navigation.context.team = {
+        id: params.teamId,
+        name: params.teamName
+      };
+    }
+    
     this.element.addEventListener('click', (e) => {
       const actionBtn = e.target.closest('[data-action]');
       if (actionBtn) {

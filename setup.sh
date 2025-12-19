@@ -206,76 +206,134 @@ else
 fi
 
 # ============================================================
-# Step 4: Install git-crypt for encrypted credentials
-# ============================================================
-print_status "Checking for git-crypt..."
-
-if ! command -v git-crypt &> /dev/null; then
-    print_warning "git-crypt not found, installing..."
-    
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS
-        print_status "Installing git-crypt via Homebrew..."
-        brew install git-crypt
-    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        # Linux
-        if command -v apt-get &> /dev/null; then
-            print_status "Installing git-crypt via apt..."
-            sudo apt-get update > /dev/null 2>&1
-            sudo apt-get install -y git-crypt
-        elif command -v yum &> /dev/null; then
-            print_status "Installing git-crypt via yum..."
-            sudo yum install -y git-crypt
-        fi
-    fi
-    print_success "git-crypt installed"
-else
-    print_success "git-crypt is installed: $(git-crypt --version | head -1)"
-fi
-
-# ============================================================
-# Step 4.5: Unlock encrypted credentials
+# Step 4: Unlock Encrypted Credentials (git-crypt)
 # ============================================================
 print_status "Checking encrypted credentials..."
 
-if git-crypt status 2>/dev/null | grep -q "encrypted"; then
-    if git-crypt status 2>/dev/null | grep ".env" | grep -q "not encrypted"; then
-        print_success "Credentials already unlocked"
-    else
-        print_status "Downloading git-crypt key from Google Drive..."
-        
-        # Always download key from Google Drive to ensure it's current
-        KEY_FILE="~/footballhome-git-crypt.key"
-        KEY_FILE_EXPANDED="${HOME}/footballhome-git-crypt.key"
-        GDRIVE_FILE_ID="195nWFngvA6Aje-_MPoWfkW_SLusXpGeO"
-        
-        # Download and overwrite existing key file
-        curl -L "https://drive.google.com/uc?export=download&id=${GDRIVE_FILE_ID}" -o "$KEY_FILE_EXPANDED" 2>/dev/null
-        
-        if [ -f "$KEY_FILE_EXPANDED" ] && [ -s "$KEY_FILE_EXPANDED" ]; then
-            print_success "Key file downloaded to $KEY_FILE"
+if command -v git-crypt &> /dev/null; then
+    if git-crypt status 2>/dev/null | grep -q "encrypted"; then
+        if git-crypt status 2>/dev/null | grep ".env" | grep -q "not encrypted"; then
+            # Credentials already unlocked, but still refresh key file
+            KEY_FILE="./footballhome-git-crypt.key"
+            GDRIVE_FILE_ID="195nWFngvA6Aje-_MPoWfkW_SLusXpGeO"
             
-            # Unlock credentials
-            git-crypt unlock "$KEY_FILE_EXPANDED"
-            if [ $? -eq 0 ]; then
-                print_success "Credentials unlocked successfully"
+            if [ -f "$KEY_FILE" ]; then
+                print_status "Refreshing key file from Google Drive..."
+                rm -f "$KEY_FILE"
             else
-                print_error "Failed to unlock credentials with downloaded key"
-                echo ""
-                echo "  The downloaded key may be invalid or you may have git changes."
-                echo "  Try: git stash && git-crypt unlock $KEY_FILE && git stash pop"
+                print_status "Downloading key file from Google Drive..."
             fi
+            
+            # Try wget first, then curl
+            if command -v wget &> /dev/null; then
+                wget --no-check-certificate "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -O "$KEY_FILE" > /dev/null 2>&1
+            elif command -v curl &> /dev/null; then
+                curl -L "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -o "$KEY_FILE" > /dev/null 2>&1
+            fi
+            
+            if [ -f "$KEY_FILE" ] && [ -s "$KEY_FILE" ]; then
+                print_success "Key file downloaded and replaced with latest version!"
+            else
+                print_warning "Key file download failed (credentials still unlocked)"
+            fi
+            
+            print_success "Credentials already unlocked"
         else
-            print_error "Failed to download key from Google Drive"
+            print_warning "Credentials are encrypted and need to be unlocked"
             echo ""
-            echo "  Manual unlock required:"
-            echo "    1. Get key file from team member"
-            echo "    2. Save to: $KEY_FILE"
-            echo "    3. Run: git-crypt unlock $KEY_FILE"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "  🔐 Git-Crypt Key Required"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "  The .env file contains encrypted credentials (Twilio, GroupMe, etc.)"
+            echo "  You need the git-crypt key file to unlock them."
+            echo ""
+            echo "  Get the key file from:"
+            echo "    - Project lead / team admin"
+            echo "    - Secure shared location (Dropbox, password manager, etc.)"
+            echo "    - File name: footballhome-git-crypt.key"
+            echo ""
+            
+            # Try auto-download from Google Drive first
+            KEY_FILE="./footballhome-git-crypt.key"
+            GDRIVE_FILE_ID="195nWFngvA6Aje-_MPoWfkW_SLusXpGeO"
+            KEY_EXISTED=false
+            
+            if [ -f "$KEY_FILE" ]; then
+                KEY_EXISTED=true
+                print_status "Existing key file found, attempting to replace with latest..."
+                rm -f "$KEY_FILE"
+            fi
+            
+            echo "  Downloading key file from Google Drive..."
+            
+            # Try wget first, then curl
+            if command -v wget &> /dev/null; then
+                wget --no-check-certificate "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -O "$KEY_FILE" > /dev/null 2>&1
+            elif command -v curl &> /dev/null; then
+                curl -L "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -o "$KEY_FILE" > /dev/null 2>&1
+            fi
+            
+            if [ -f "$KEY_FILE" ] && [ -s "$KEY_FILE" ]; then
+                if [ "$KEY_EXISTED" = true ]; then
+                    print_success "Key file replaced successfully with latest version!"
+                else
+                    print_success "Key file downloaded successfully!"
+                fi
+            else
+                print_warning "Auto-download failed"
+                echo ""
+                read -p "  Do you have the key file locally? (y/n): " has_key
+                
+                if [ "$has_key" == "y" ] || [ "$has_key" == "Y" ]; then
+                    read -p "  Enter full path to key file: " key_path
+                    
+                    if [ -f "$key_path" ]; then
+                        cp "$key_path" "$KEY_FILE"
+                        print_success "Key file copied to project directory!"
+                    else
+                        print_error "Key file not found: $key_path"
+                        exit 1
+                    fi
+                else
+                    print_error "Setup cannot continue without key file"
+                    exit 1
+                fi
+            fi
+            
+            # Unlock with the key file
+            if [ -f "$KEY_FILE" ]; then
+                git-crypt unlock "$KEY_FILE"
+                if [ $? -eq 0 ]; then
+                    print_success "Credentials unlocked successfully!"
+                else
+                    print_error "Failed to unlock credentials"
+                    exit 1
+                fi
+            fi
         fi
+    else
+        print_success "No encrypted files in repository"
     fi
 else
-    print_success "No encrypted files in repository"
+    print_warning "git-crypt not installed"
+    echo "  Installing git-crypt..."
+    
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        brew install git-crypt
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if command -v apt-get &> /dev/null; then
+            sudo apt-get update > /dev/null 2>&1
+            sudo apt-get install -y git-crypt
+        elif command -v yum &> /dev/null; then
+            sudo yum install -y git-crypt
+        fi
+    fi
+    
+    print_success "git-crypt installed"
+    echo ""
+    echo "  Now run setup.sh again to unlock credentials."
+    exit 0
 fi
 
 # ============================================================
@@ -402,9 +460,10 @@ echo ""
 echo "  2. Once running, open in your browser:"
 echo "     ${YELLOW}http://localhost:3000${NC}"
 echo ""
-echo "  3. Log in with demo credentials:"
-echo "     Email:    jbreslin@footballhome.org"
+echo "  3. Log in with credentials:"
+echo "     Email:    soccer@lighthouse1893.org"
 echo "     Password: 1893Soccer!"
+echo "     Name:     James Breslin"
 echo ""
 echo "For more information, see DEVELOPMENT.md or run:"
 echo "  ${YELLOW}./dev.sh --help${NC}"
