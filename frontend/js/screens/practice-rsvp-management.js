@@ -92,6 +92,17 @@ class PracticeRSVPManagementScreen extends Screen {
         return;
       }
       
+      // Send reminder button clicked
+      const reminderBtn = e.target.closest('.send-reminder-btn');
+      if (reminderBtn) {
+        e.stopPropagation();
+        const practiceId = reminderBtn.getAttribute('data-practice-id');
+        const playerId = reminderBtn.getAttribute('data-player-id');
+        const playerName = reminderBtn.getAttribute('data-player-name');
+        this.sendReminder(practiceId, playerId, playerName);
+        return;
+      }
+      
       // Bottom sheet backdrop clicked - close sheet
       if (e.target.id === 'sheet-backdrop') {
         this.hideBottomSheet();
@@ -387,12 +398,22 @@ class PracticeRSVPManagementScreen extends Screen {
            style="padding: var(--space-3); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s;"
            onmouseover="this.style.background='var(--color-background)'" 
            onmouseout="this.style.background='white'">
-        <div style="display: flex; align-items: center; gap: var(--space-2);">
+        <div style="display: flex; align-items: center; gap: var(--space-2); flex: 1;">
           ${avatarHtml}
           <span style="font-weight: bold; color: var(--color-primary); min-width: 28px; font-size: 1.1em;">#${jersey}</span>
           <span style="font-size: 1.05em;">${name}</span>
         </div>
-        <span style="color: var(--color-text-secondary); font-size: 1.2em;">›</span>
+        <div style="display: flex; align-items: center; gap: var(--space-2);">
+          <button class="send-reminder-btn" 
+                  data-practice-id="${practiceId}" 
+                  data-player-id="${player.id}"
+                  data-player-name="${name}"
+                  style="padding: 6px 12px; background: var(--color-primary); color: white; border: none; border-radius: 6px; font-size: 0.85em; cursor: pointer; display: flex; align-items: center; gap: 4px;"
+                  title="Send SMS reminder to ${name}">
+            📲 Remind
+          </button>
+          <span style="color: var(--color-text-secondary); font-size: 1.2em;">›</span>
+        </div>
       </div>
     `;
   }
@@ -440,6 +461,33 @@ class PracticeRSVPManagementScreen extends Screen {
       console.error('RSVP update failed:', err);
       alert('Failed to update RSVP. Please try again.');
     });
+  }
+  
+  async sendReminder(practiceId, playerId, playerName) {
+    if (!confirm(`Send SMS reminder to ${playerName}?`)) {
+      return;
+    }
+    
+    console.log('Sending SMS reminder:', { practiceId, playerId, playerName });
+    
+    try {
+      const response = await this.auth.fetch(`/api/events/${practiceId}/send-reminder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player_id: playerId })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`✅ SMS reminder sent to ${playerName}!`);
+      } else {
+        alert(`❌ Failed to send SMS: ${result.message}`);
+      }
+    } catch (err) {
+      console.error('Send reminder failed:', err);
+      alert('❌ Failed to send SMS reminder. Please try again.');
+    }
   }
   
   find(selector) {

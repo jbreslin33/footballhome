@@ -68,8 +68,8 @@ class ContextSelectionScreen extends Screen {
             clubName: contextName 
           });
         } else if (contextType === 'team') {
-          // Non-admin team selected - go to team management
-          this.navigation.goTo('team-menu', { 
+          // Non-admin team selected - go to team dashboard
+          this.navigation.goTo('team-dashboard', { 
             role: this.role, 
             teamId: contextId,
             teamName: contextName 

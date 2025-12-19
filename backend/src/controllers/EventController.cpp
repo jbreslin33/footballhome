@@ -114,6 +114,11 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
     router.get("/api/matches/:matchId/eligible-players", [this](const Request& request) {
         return this->handleGetEligiblePlayers(request);
     });
+    
+    // POST /api/events/:eventId/send-reminder - Send SMS reminder to a player
+    router.post(prefix + "/:eventId/send-reminder", [this](const Request& request) {
+        return this->handleSendReminder(request);
+    });
 }
 
 Response EventController::handleCreateEvent(const Request& request) {
@@ -154,8 +159,12 @@ Response EventController::handleCreateEvent(const Request& request) {
         
         std::string event_type_id = type_result[0][0].c_str();
         
-        // Get created_by user (for now, use the system admin user)
-        std::string created_by = "77d77471-1250-47e0-81ab-d4626595d63c";
+        // Get created_by from authenticated user
+        std::string created_by = extractUserIdFromToken(request);
+        if (created_by.empty()) {
+            std::string json = createJSONResponse(false, "Authentication required");
+            return Response(HttpStatus::UNAUTHORIZED, json);
+        }
         
         // Calculate duration in minutes
         int duration = 90; // Default 90 minutes for practice
@@ -230,26 +239,6 @@ Response EventController::handleCreateEvent(const Request& request) {
         
         // NEW: Persist to environment-specific SQL file for rebuilds
         SQLFileWriter::getInstance().writeInsert("practices", practice_query.str() + ";");
-        
-        // Send SMS notification to coach who created the practice
-        try {
-            auto result = db_->query(
-                "SELECT phone, first_name FROM users WHERE id = '" + created_by + "' AND phone IS NOT NULL"
-            );
-            
-            if (!result.empty()) {
-                std::string coach_phone = result[0]["phone"].as<std::string>();
-                std::string coach_name = result[0]["first_name"].as<std::string>();
-                
-                std::string sms_message = "Hi " + coach_name + "! Your practice for " + 
-                                         date + " at " + start_time + " has been created successfully.";
-                
-                TwilioSMSService::getInstance().sendSMS(coach_phone, sms_message);
-            }
-        } catch (const std::exception& e) {
-            std::cout << "⚠️  SMS notification failed: " << e.what() << std::endl;
-            // Don't fail the request if SMS fails
-        }
         
         std::cout << "✅ Event created successfully: " << inserted_event_id << std::endl;
         
@@ -1777,4 +1766,108 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
         std::cerr << "❌ Error getting eligible players: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get eligible players: ") + e.what()));
     }
+}
+
+Response EventController::handleSendReminder(const Request& request) {
+    std::string eventId = extractEventIdFromPath(request.getPath());
+    if (eventId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Event ID is required"));
+    }
+    
+    try {
+        std::string body = request.getBody();
+        std::string playerId = parseJSON(body, "player_id");
+        
+        if (playerId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "player_id is required"));
+        }
+        
+        std::cout << "📲 Sending SMS reminder for event " << eventId << " to player " << playerId << std::endl;
+        
+        // Get event details and player phone
+        std::string query = R"(
+            SELECT 
+                e.title,
+                e.event_date,
+                e.duration_minutes,
+                v.name as venue_name,
+                v.address as venue_address,
+                u.first_name,
+                u.phone
+            FROM events e
+            LEFT JOIN venues v ON e.venue_id = v.id
+            JOIN users u ON u.id = $1
+            WHERE e.id = $2
+        )";
+        
+        pqxx::result result = db_->query(query, {playerId, eventId});
+        
+        if (result.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Event or player not found"));
+        }
+        
+        auto row = result[0];
+        
+        if (row["phone"].is_null()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Player has no phone number on file"));
+        }
+        
+        std::string phone = row["phone"].as<std::string>();
+        std::string firstName = row["first_name"].as<std::string>();
+        std::string title = row["title"].as<std::string>();
+        std::string eventDate = row["event_date"].as<std::string>();
+        std::string venueName = row["venue_name"].is_null() ? "TBD" : row["venue_name"].as<std::string>();
+        
+        // Parse event date/time (format: YYYY-MM-DD HH:MM:SS)
+        std::string dateStr = eventDate.substr(0, 10);  // YYYY-MM-DD
+        std::string timeStr = eventDate.substr(11, 5);  // HH:MM
+        
+        // Format message
+        std::ostringstream message;
+        message << "Hi " << firstName << "! Reminder: " << title 
+                << " on " << dateStr << " at " << timeStr;
+        if (venueName != "TBD") {
+            message << " at " << venueName;
+        }
+        message << ". See you there! ⚽";
+        
+        // Send SMS
+        bool success = TwilioSMSService::getInstance().sendSMS(phone, message.str());
+        
+        if (success) {
+            std::cout << "✅ SMS sent successfully to " << phone << std::endl;
+            return Response(HttpStatus::OK, createJSONResponse(true, "SMS reminder sent successfully"));
+        } else {
+            std::cerr << "❌ Failed to send SMS to " << phone << std::endl;
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to send SMS"));
+        }
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error sending reminder: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to send reminder: ") + e.what()));
+    }
+}
+
+std::string EventController::extractUserIdFromToken(const Request& request) {
+    // Extract Authorization header
+    std::string auth_header = request.getHeader("Authorization");
+    
+    if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ") {
+        return "";
+    }
+    
+    // Extract token (remove "Bearer " prefix)
+    std::string token = auth_header.substr(7);
+    
+    if (!token.empty() && token.substr(0, 4) == "jwt_") {
+        // Extract user ID from our JWT format: jwt_{user_id}_{hash}
+        // Find the last underscore (since UUID contains hyphens, not underscores)
+        size_t last_underscore = token.rfind('_');
+        if (last_underscore != std::string::npos && last_underscore > 4) {
+            std::string user_id = token.substr(4, last_underscore - 4);
+            return user_id;
+        }
+    }
+    
+    return "";
 }

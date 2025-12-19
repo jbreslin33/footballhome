@@ -41,7 +41,11 @@ private:
     Response handleUpdateGameRoster(const Request& request);
     Response handleGetEligiblePlayers(const Request& request);
     
+    // SMS Reminder endpoint
+    Response handleSendReminder(const Request& request);
+    
     // Helper methods
+    std::string extractUserIdFromToken(const Request& request);
     std::string extractTeamIdFromPath(const std::string& path);
     std::string extractEventIdFromPath(const std::string& path);
     std::string extractMatchIdFromPath(const std::string& path);
