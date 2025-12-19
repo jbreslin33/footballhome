@@ -230,33 +230,54 @@ if command -v git-crypt &> /dev/null; then
             echo "    - File name: footballhome-git-crypt.key"
             echo ""
             
-            read -p "  Do you have the key file? (y/n): " has_key
+            # Try auto-download from Google Drive first
+            KEY_FILE="./footballhome-git-crypt.key"
+            GDRIVE_FILE_ID="195nWFngvA6Aje-_MPoWfkW_SLusXpGeO"
             
-            if [ "$has_key" == "y" ] || [ "$has_key" == "Y" ]; then
-                read -p "  Enter full path to key file: " key_path
+            if [ ! -f "$KEY_FILE" ]; then
+                echo "  Attempting to download key file from Google Drive..."
                 
-                if [ -f "$key_path" ]; then
-                    git-crypt unlock "$key_path"
-                    if [ $? -eq 0 ]; then
-                        print_success "Credentials unlocked successfully!"
+                # Try wget first, then curl
+                if command -v wget &> /dev/null; then
+                    wget --no-check-certificate "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -O "$KEY_FILE" > /dev/null 2>&1
+                elif command -v curl &> /dev/null; then
+                    curl -L "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -o "$KEY_FILE" > /dev/null 2>&1
+                fi
+                
+                if [ -f "$KEY_FILE" ] && [ -s "$KEY_FILE" ]; then
+                    print_success "Key file downloaded successfully!"
+                else
+                    print_warning "Auto-download failed"
+                    echo ""
+                    read -p "  Do you have the key file locally? (y/n): " has_key
+                    
+                    if [ "$has_key" == "y" ] || [ "$has_key" == "Y" ]; then
+                        read -p "  Enter full path to key file: " key_path
+                        
+                        if [ -f "$key_path" ]; then
+                            cp "$key_path" "$KEY_FILE"
+                        else
+                            print_error "Key file not found: $key_path"
+                            exit 1
+                        fi
                     else
-                        print_error "Failed to unlock credentials"
-                        echo "  You can try again later with: git-crypt unlock /path/to/key"
+                        print_error "Setup cannot continue without key file"
                         exit 1
                     fi
-                else
-                    print_error "Key file not found: $key_path"
-                    echo ""
-                    echo "  Setup cannot continue without unlocked credentials."
-                    echo "  Get the key file and run setup.sh again."
-                    exit 1
                 fi
             else
-                print_error "Setup cannot continue without unlocked credentials"
-                echo ""
-                echo "  Get the key file and run setup.sh again."
-                echo "  Or unlock manually: git-crypt unlock /path/to/footballhome-git-crypt.key"
-                exit 1
+                print_success "Key file already exists locally"
+            fi
+            
+            # Unlock with the key file
+            if [ -f "$KEY_FILE" ]; then
+                git-crypt unlock "$KEY_FILE"
+                if [ $? -eq 0 ]; then
+                    print_success "Credentials unlocked successfully!"
+                else
+                    print_error "Failed to unlock credentials"
+                    exit 1
+                fi
             fi
         fi
     else
