@@ -234,6 +234,42 @@ else
 fi
 
 # ============================================================
+# Step 4.5: Unlock encrypted credentials
+# ============================================================
+print_status "Checking encrypted credentials..."
+
+if git-crypt status 2>/dev/null | grep -q "encrypted"; then
+    if git-crypt status 2>/dev/null | grep ".env" | grep -q "not encrypted"; then
+        print_success "Credentials already unlocked"
+    else
+        print_warning "Credentials are locked"
+        echo ""
+        echo "  To unlock credentials, you need the git-crypt key file."
+        echo "  Ask a team member for: footballhome-git-crypt.key"
+        echo ""
+        echo "  Then run:"
+        echo "    git-crypt unlock /path/to/footballhome-git-crypt.key"
+        echo ""
+        read -p "  Do you have the key file? (y/n): " has_key
+        
+        if [ "$has_key" == "y" ] || [ "$has_key" == "Y" ]; then
+            read -p "  Enter path to key file: " key_path
+            if [ -f "$key_path" ]; then
+                git-crypt unlock "$key_path"
+                print_success "Credentials unlocked successfully"
+            else
+                print_error "Key file not found: $key_path"
+                echo "  You can unlock later with: git-crypt unlock /path/to/key"
+            fi
+        else
+            echo "  You can unlock later with: git-crypt unlock /path/to/key"
+        fi
+    fi
+else
+    print_success "No encrypted files in repository"
+fi
+
+# ============================================================
 # Step 5: Install Node Dependencies
 # ============================================================
 print_status "Installing Node.js dependencies..."
