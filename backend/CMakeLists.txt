@@ -21,6 +21,7 @@ set(SOURCES
     src/core/Router.cpp
     src/core/Controller.cpp
     src/core/SQLFileWriter.cpp
+    src/core/TwilioSMSService.cpp
     src/database/Database.cpp
     src/database/Model.cpp
     src/database/SqlFileLogger.cpp
@@ -42,6 +43,7 @@ add_executable(server ${SOURCES})
 target_link_libraries(server 
     ${PQXX_LIBRARIES}
     pthread
+    curl
 )
 
 # Compiler flags

@@ -1,5 +1,6 @@
 #include "EventController.h"
 #include "../core/SQLFileWriter.h"
+#include "../core/TwilioSMSService.h"
 #include "../database/SqlFileLogger.h"
 #include "../database/SqlBuilder.h"
 #include <sstream>
@@ -229,6 +230,26 @@ Response EventController::handleCreateEvent(const Request& request) {
         
         // NEW: Persist to environment-specific SQL file for rebuilds
         SQLFileWriter::getInstance().writeInsert("practices", practice_query.str() + ";");
+        
+        // Send SMS notification to coach who created the practice
+        try {
+            auto result = db_->query(
+                "SELECT phone, first_name FROM users WHERE id = '" + created_by + "' AND phone IS NOT NULL"
+            );
+            
+            if (!result.empty()) {
+                std::string coach_phone = result[0]["phone"].as<std::string>();
+                std::string coach_name = result[0]["first_name"].as<std::string>();
+                
+                std::string sms_message = "Hi " + coach_name + "! Your practice for " + 
+                                         date + " at " + start_time + " has been created successfully.";
+                
+                TwilioSMSService::getInstance().sendSMS(coach_phone, sms_message);
+            }
+        } catch (const std::exception& e) {
+            std::cout << "⚠️  SMS notification failed: " << e.what() << std::endl;
+            // Don't fail the request if SMS fails
+        }
         
         std::cout << "✅ Event created successfully: " << inserted_event_id << std::endl;
         

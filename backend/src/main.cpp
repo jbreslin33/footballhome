@@ -10,6 +10,7 @@
 #include "core/Request.h"
 #include "core/Response.h"
 #include "core/SQLFileWriter.h"
+#include "core/TwilioSMSService.h"
 #include "database/Database.h"
 #include "database/SqlFileLogger.h"
 #include "controllers/AuthController.h"
@@ -57,6 +58,21 @@ public:
             ? SQLFileWriter::Environment::PRODUCTION 
             : SQLFileWriter::Environment::DEVELOPMENT;
         SQLFileWriter::getInstance().initialize(sqlEnv, "/app/database/data");
+        
+        // Initialize Twilio SMS service
+        const char* twilioSid = std::getenv("TWILIO_ACCOUNT_SID");
+        const char* twilioToken = std::getenv("TWILIO_AUTH_TOKEN");
+        const char* twilioPhone = std::getenv("TWILIO_FROM_PHONE");
+        
+        if (twilioSid && twilioToken && twilioPhone) {
+            TwilioSMSService::getInstance().initialize(
+                std::string(twilioSid),
+                std::string(twilioToken),
+                std::string(twilioPhone)
+            );
+        } else {
+            std::cout << "⚠️  Twilio credentials not found - SMS disabled" << std::endl;
+        }
         
         // Initialize database
         if (!db_->connect()) {

@@ -87,13 +87,33 @@
 - **Initialization**: Data is loaded via `docker-entrypoint-initdb.d` mapping to `database/data`.
 - **Queries**: Write raw SQL in C++ models using `pqxx::work`.
 - **Normalization**: Always use proper foreign keys, junction tables, and avoid redundant data
-- **File Naming Convention**:
-  - `##-name.sql` - Manual static data (e.g., `51-admins.sql`, `76-team-admins.sql`)
-  - `##a-name-apsl.sql` - APSL scraped data (e.g., `21a-teams-apsl.sql`)
-  - `##b-name-casa.sql` - CASA scraped data (e.g., `21b-teams-casa.sql`)
-  - `##m-name-manual.sql` - Manual entries (e.g., `08m-users-manual.sql`)
-  - `##u-name-app.sql` - Dev/update app-generated data (e.g., `21u-teams-app.sql`)
-  - `##p-name-app.sql` - Production app-generated data (e.g., `21p-teams-app.sql`)
+- **SQL File Naming Convention** (4 file types per major table):
+  1. **Scraped Data Files** - Data from external sources (APSL/CASA websites, Google Sheets)
+     - `##a-name-apsl.sql` - APSL league scraped data (e.g., `21a-teams-apsl.sql`, `24a-players-apsl.sql`)
+     - `##b-name-casa.sql` - CASA league scraped data (e.g., `21b-teams-casa.sql`, `24b-players-casa.sql`)
+  
+  2. **Manual Data Files** - Developer-created static data (not from scraping or app)
+     - `##m-name-manual.sql` - Manual entries for any table (e.g., `08m-users-manual.sql`, `24m-coaches-manual.sql`)
+     - Also: Numbered files without suffix for foundational data (e.g., `51-admins.sql`, `76-team-admins.sql`)
+  
+  3. **Development App Files** - Data created by users via web UI in development environment
+     - `##u-name-app.sql` - Dev/update app-generated data (e.g., `08u-users-app.sql`, `72u-practices-app.sql`)
+     - Auto-appended by backend after INSERT/UPDATE operations
+     - Loaded only when `ENVIRONMENT=dev`
+  
+  4. **Production App Files** - Data created by users via web UI in production environment
+     - `##p-name-app.sql` - Production app-generated data (e.g., `08p-users-app.sql`, `72p-practices-app.sql`)
+     - Auto-appended by backend after INSERT/UPDATE operations
+     - Loaded only when `ENVIRONMENT=production`
+  
+  **Major Tables with Full File Set**:
+  - `users` (08): 08a, 08b, 08m, 08u, 08p
+  - `teams` (21): 21a, 21b, 21m, 21u, 21p
+  - `players` (24): 24a, 24b, 24m, 24u, 24p
+  - `coaches` (24): 24m, 24u, 24p (coaches come from scraped players, not separate scrape)
+  - `team_coaches` (25): 25m, 25u, 25p
+  - `schedule` (30): 30a, 30b, 30m, 30u, 30p
+  - `practices` (72): 72u, 72p (practices are always app-generated)
 
 ## 🔍 Key Files
 - `dev.sh`: Main entry point for all dev tasks.

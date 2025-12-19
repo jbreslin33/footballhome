@@ -71,6 +71,9 @@ services:
     environment:
       POSTGRES_PASSWORD: footballhome_pass
       ENVIRONMENT: ${ENVIRONMENT:-dev}  # dev or production
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_FROM_PHONE: ${TWILIO_FROM_PHONE}
     ports:
       - "3001:3001"
     volumes:
