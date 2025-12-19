@@ -49,3 +49,4 @@ package-lock.json
 # Environment and credentials
 .groupme-cookies.json
 footballhome-git-crypt.key
+.env
