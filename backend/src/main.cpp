@@ -14,6 +14,7 @@
 #include "database/Database.h"
 #include "database/SqlFileLogger.h"
 #include "controllers/AuthController.h"
+#include "controllers/OAuthController.h"
 #include "controllers/TeamController.h"
 #include "controllers/EventController.h"
 #include "controllers/DivisionController.h"
@@ -29,6 +30,7 @@ private:
     
     // Controllers
     std::shared_ptr<AuthController> auth_controller_;
+    std::shared_ptr<OAuthController> oauth_controller_;
     std::shared_ptr<TeamController> team_controller_;
     std::shared_ptr<EventController> event_controller_;
     std::shared_ptr<DivisionController> division_controller_;
@@ -39,6 +41,7 @@ public:
     HttpServer(int port = 3001) : port_(port) {
         db_ = Database::getInstance();
         auth_controller_ = std::make_shared<AuthController>();
+        oauth_controller_ = std::make_shared<OAuthController>();
         team_controller_ = std::make_shared<TeamController>();
         event_controller_ = std::make_shared<EventController>();
         division_controller_ = std::make_shared<DivisionController>();
@@ -115,6 +118,7 @@ private:
     void setupRoutes() {
         // Register controllers
         router_.useController("/api/auth", auth_controller_);
+        router_.useController("/api/auth/google", oauth_controller_);
         router_.useController("/api/teams", team_controller_);
         router_.useController("/api/events", event_controller_);
         router_.useController("/api", division_controller_);

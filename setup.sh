@@ -242,27 +242,36 @@ if git-crypt status 2>/dev/null | grep -q "encrypted"; then
     if git-crypt status 2>/dev/null | grep ".env" | grep -q "not encrypted"; then
         print_success "Credentials already unlocked"
     else
-        print_warning "Credentials are locked"
-        echo ""
-        echo "  To unlock credentials, you need the git-crypt key file."
-        echo "  Ask a team member for: footballhome-git-crypt.key"
-        echo ""
-        echo "  Then run:"
-        echo "    git-crypt unlock /path/to/footballhome-git-crypt.key"
-        echo ""
-        read -p "  Do you have the key file? (y/n): " has_key
+        print_status "Downloading git-crypt key from Google Drive..."
         
-        if [ "$has_key" == "y" ] || [ "$has_key" == "Y" ]; then
-            read -p "  Enter path to key file: " key_path
-            if [ -f "$key_path" ]; then
-                git-crypt unlock "$key_path"
+        # Always download key from Google Drive to ensure it's current
+        KEY_FILE="~/footballhome-git-crypt.key"
+        KEY_FILE_EXPANDED="${HOME}/footballhome-git-crypt.key"
+        GDRIVE_FILE_ID="195nWFngvA6Aje-_MPoWfkW_SLusXpGeO"
+        
+        # Download and overwrite existing key file
+        curl -L "https://drive.google.com/uc?export=download&id=${GDRIVE_FILE_ID}" -o "$KEY_FILE_EXPANDED" 2>/dev/null
+        
+        if [ -f "$KEY_FILE_EXPANDED" ] && [ -s "$KEY_FILE_EXPANDED" ]; then
+            print_success "Key file downloaded to $KEY_FILE"
+            
+            # Unlock credentials
+            git-crypt unlock "$KEY_FILE_EXPANDED"
+            if [ $? -eq 0 ]; then
                 print_success "Credentials unlocked successfully"
             else
-                print_error "Key file not found: $key_path"
-                echo "  You can unlock later with: git-crypt unlock /path/to/key"
+                print_error "Failed to unlock credentials with downloaded key"
+                echo ""
+                echo "  The downloaded key may be invalid or you may have git changes."
+                echo "  Try: git stash && git-crypt unlock $KEY_FILE && git stash pop"
             fi
         else
-            echo "  You can unlock later with: git-crypt unlock /path/to/key"
+            print_error "Failed to download key from Google Drive"
+            echo ""
+            echo "  Manual unlock required:"
+            echo "    1. Get key file from team member"
+            echo "    2. Save to: $KEY_FILE"
+            echo "    3. Run: git-crypt unlock $KEY_FILE"
         fi
     fi
 else

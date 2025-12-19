@@ -25,6 +25,7 @@ std::string Response::getStatusText(HttpStatus status) const {
         case HttpStatus::OK: return "OK";
         case HttpStatus::CREATED: return "Created";
         case HttpStatus::NO_CONTENT: return "No Content";
+        case HttpStatus::FOUND: return "Found";
         case HttpStatus::BAD_REQUEST: return "Bad Request";
         case HttpStatus::UNAUTHORIZED: return "Unauthorized";
         case HttpStatus::FORBIDDEN: return "Forbidden";
