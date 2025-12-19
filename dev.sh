@@ -76,35 +76,20 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # ============================================================
-# ENVIRONMENT FILE CHECK (git-crypt encrypted credentials)
+# ENVIRONMENT FILE CHECK
 # ============================================================
 if [ ! -f ".env" ]; then
     echo -e "${RED}Error: .env file not found${NC}"
     echo ""
-    echo "The .env file contains required configuration for Docker services."
+    echo "Download the .env file and place it in the project root:"
+    echo "  $(pwd)/.env"
     echo ""
-    echo "Run setup.sh to unlock encrypted credentials:"
-    echo "  ./setup.sh"
+    echo "Contact the team for access to the credentials file."
     echo ""
     exit 1
 fi
 
-# Check if .env is actually readable (not encrypted binary)
-if command -v git-crypt &> /dev/null; then
-    if ! grep -q "ENVIRONMENT=" .env 2>/dev/null; then
-        echo -e "${RED}Error: Credentials are locked${NC}"
-        echo ""
-        echo "The .env file is encrypted with git-crypt."
-        echo ""
-        echo "Run setup.sh to unlock with your key file:"
-        echo "  ./setup.sh"
-        echo ""
-        echo "Or unlock manually:"
-        echo "  git-crypt unlock /path/to/footballhome-git-crypt.key"
-        echo ""
-        exit 1
-    fi
-fi
+echo -e "${GREEN}✓ Found .env file${NC}"
 
 # ============================================================
 # DOCKER AVAILABILITY CHECK (early exit if docker not accessible)
