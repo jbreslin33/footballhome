@@ -213,6 +213,30 @@ print_status "Checking encrypted credentials..."
 if command -v git-crypt &> /dev/null; then
     if git-crypt status 2>/dev/null | grep -q "encrypted"; then
         if git-crypt status 2>/dev/null | grep ".env" | grep -q "not encrypted"; then
+            # Credentials already unlocked, but still refresh key file
+            KEY_FILE="./footballhome-git-crypt.key"
+            GDRIVE_FILE_ID="195nWFngvA6Aje-_MPoWfkW_SLusXpGeO"
+            
+            if [ -f "$KEY_FILE" ]; then
+                print_status "Refreshing key file from Google Drive..."
+                rm -f "$KEY_FILE"
+            else
+                print_status "Downloading key file from Google Drive..."
+            fi
+            
+            # Try wget first, then curl
+            if command -v wget &> /dev/null; then
+                wget --no-check-certificate "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -O "$KEY_FILE" > /dev/null 2>&1
+            elif command -v curl &> /dev/null; then
+                curl -L "https://drive.google.com/uc?export=download&id=$GDRIVE_FILE_ID" -o "$KEY_FILE" > /dev/null 2>&1
+            fi
+            
+            if [ -f "$KEY_FILE" ] && [ -s "$KEY_FILE" ]; then
+                print_success "Key file downloaded and replaced with latest version!"
+            else
+                print_warning "Key file download failed (credentials still unlocked)"
+            fi
+            
             print_success "Credentials already unlocked"
         else
             print_warning "Credentials are encrypted and need to be unlocked"
