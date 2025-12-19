@@ -270,17 +270,7 @@ std::string OAuthController::generateJWT(const std::string& userId, const std::s
 
 Response OAuthController::handleGoogleCallback(const Request& request) {
     // Extract code from query parameters
-    std::string code;
-    size_t codePos = request.getPath().find("code=");
-    if (codePos != std::string::npos) {
-        size_t codeStart = codePos + 5;
-        size_t codeEnd = request.getPath().find("&", codeStart);
-        if (codeEnd == std::string::npos) {
-            code = request.getPath().substr(codeStart);
-        } else {
-            code = request.getPath().substr(codeStart, codeEnd - codeStart);
-        }
-    }
+    std::string code = request.getQueryParam("code");
     
     if (code.empty()) {
         std::cerr << "No authorization code in callback" << std::endl;
