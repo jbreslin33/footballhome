@@ -92,33 +92,33 @@ fi
 echo -e "${GREEN}✓ Found env file${NC}"
 
 # ============================================================
-# DOCKER AVAILABILITY CHECK (early exit if docker not accessible)
+# PODMAN/DOCKER AVAILABILITY CHECK (early exit if not accessible)
 # ============================================================
 if ! docker ps &> /dev/null 2>&1; then
     # Try with sudo as fallback
     if ! sudo docker ps &> /dev/null 2>&1; then
-        echo -e "${RED}Error: Docker is not accessible${NC}"
+        echo -e "${RED}Error: Podman/Docker is not accessible${NC}"
         echo ""
-        echo "Docker is required to run this application."
+        echo "Container runtime is required to run this application."
         echo ""
         echo "Possible solutions:"
-        echo "  1. Make sure Docker is installed:"
+        echo "  1. Make sure Podman is installed:"
         echo "     ./setup.sh"
         echo ""
-        echo "  2. If Docker is installed, you may need to log out and back in:"
-        echo "     Docker group permissions take effect after login"
+        echo "  2. If installed, you may need to log out and back in:"
+        echo "     Group permissions take effect after login"
         echo "     Quick fix: exec su -l \$USER"
         echo ""
-        echo "  3. Check Docker status:"
-        echo "     sudo systemctl status docker"
+        echo "  3. Check Podman status (macOS):"
+        echo "     podman machine start"
         echo ""
         exit 1
     fi
-    # Docker needs sudo, set alias for all docker commands
+    # Needs sudo, set alias for all commands
     DOCKER="sudo docker"
     DOCKER_COMPOSE="sudo docker compose --env-file env"
 else
-    # Docker works without sudo
+    # Works without sudo
     DOCKER="docker"
     DOCKER_COMPOSE="docker compose --env-file env"
 fi
@@ -527,7 +527,7 @@ npm install --silent
 echo -e "${YELLOW}🧹 Step 2: Full cleanup (containers, volumes, build cache)...${NC}"
 echo "  ✓ Stopping and removing containers and volumes..."
 $DOCKER_COMPOSE down -v 2>/dev/null || true
-echo "  ✓ Clearing Docker build cache..."
+echo "  ✓ Clearing build cache..."
 $DOCKER builder prune -af 2>/dev/null || true
 echo -e "${GREEN}✓ Cleanup complete (fresh start guaranteed)${NC}"
 echo ""
