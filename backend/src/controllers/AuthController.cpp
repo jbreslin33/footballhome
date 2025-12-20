@@ -94,8 +94,38 @@ Response AuthController::handleLogout(const Request& request) {
     return Response(HttpStatus::OK, json);
 }
 
-// Helper function to decode base64url
-std::string base64UrlDecode(const std::string& input) {
+// Helper function to encode base64url (static to avoid multiple definition)
+static std::string base64UrlEncode(const std::string& input) {
+    // Encode to base64
+    BIO *bio, *b64;
+    BUF_MEM *bufferPtr;
+    
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_new(BIO_s_mem());
+    bio = BIO_push(b64, bio);
+    
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+    BIO_write(bio, input.c_str(), input.length());
+    BIO_flush(bio);
+    BIO_get_mem_ptr(bio, &bufferPtr);
+    
+    std::string base64(bufferPtr->data, bufferPtr->length);
+    BIO_free_all(bio);
+    
+    // Convert base64 to base64url
+    std::string result;
+    for (char c : base64) {
+        if (c == '+') result += '-';
+        else if (c == '/') result += '_';
+        else if (c == '=') break; // Remove padding
+        else result += c;
+    }
+    
+    return result;
+}
+
+// Helper function to decode base64url (static to avoid multiple definition)
+static std::string base64UrlDecode(const std::string& input) {
     std::string base64 = input;
     
     // Convert base64url to base64
@@ -127,8 +157,8 @@ std::string base64UrlDecode(const std::string& input) {
     return result;
 }
 
-// Helper function to extract userId from JWT token
-std::string extractUserIdFromJWT(const std::string& token) {
+// Helper function to extract userId from JWT token (static to avoid multiple definition)
+static std::string extractUserIdFromJWT(const std::string& token) {
     // JWT format: header.payload.signature
     size_t first_dot = token.find('.');
     if (first_dot == std::string::npos) {
@@ -281,9 +311,23 @@ std::string AuthController::createJSONResponse(bool success, const std::string& 
 }
 
 std::string AuthController::generateJWT(const UserData& userData) {
-    // Simple JWT-like token for now (in production, use proper JWT library)
-    std::hash<std::string> hasher;
-    return "jwt_" + userData.id + "_" + std::to_string(hasher(userData.email));
+    // Create JWT header
+    std::string header = "{\"alg\":\"none\",\"typ\":\"JWT\"}";
+    
+    // Create JWT payload
+    std::ostringstream payload;
+    payload << "{";
+    payload << "\"userId\":\"" << userData.id << "\",";
+    payload << "\"email\":\"" << userData.email << "\",";
+    payload << "\"role\":\"" << userData.role << "\"";
+    payload << "}";
+    
+    // Encode header and payload
+    std::string header_encoded = base64UrlEncode(header);
+    std::string payload_encoded = base64UrlEncode(payload.str());
+    
+    // Create JWT token (no signature for now)
+    return header_encoded + "." + payload_encoded + ".";
 }
 
 std::string AuthController::extractField(const std::string& json, const std::string& field) {

@@ -24,6 +24,10 @@ class TeamDashboardScreen extends Screen {
         <button data-action="matches" class="btn btn-lg btn-primary">
           🏆 Matches
         </button>
+        
+        <button data-action="tactical-board" class="btn btn-lg btn-primary">
+          📋 Tactical Board
+        </button>
       </div>
     `;
     this.element = div;
@@ -50,6 +54,8 @@ class TeamDashboardScreen extends Screen {
           this.navigation.goTo('practice-options');
         } else if (action === 'matches') {
           this.navigation.goTo('match-options');
+        } else if (action === 'tactical-board') {
+          this.navigation.goTo('tactical-board');
         }
         return;
       }
