@@ -71,98 +71,122 @@ if ! command -v curl &> /dev/null; then
 fi
 
 # ============================================================
-# Step 1: Install/Check Docker
+# Step 1: Install/Check Podman
 # ============================================================
-print_status "Checking Docker..."
+print_status "Checking Podman..."
 
-if ! command -v docker &> /dev/null; then
-    print_warning "Docker not found, installing..."
+if ! command -v podman &> /dev/null; then
+    print_warning "Podman not found, installing..."
     
     if [ "$OS_TYPE" == "Linux" ]; then
-        print_status "Running Docker installation script..."
-        curl -fsSL https://get.docker.com | sh
+        print_status "Installing Podman..."
+        sudo apt-get update
+        sudo apt-get install -y podman
         
-        print_status "Adding current user to docker group..."
-        sudo usermod -aG docker $USER
-        
-        print_warning "You may need to log out and log back in for docker group permissions to take effect"
-        print_warning "Or run: newgrp docker"
-        
-        print_status "Starting Docker service..."
-        sudo systemctl start docker || true
-        sudo systemctl enable docker || true
+        print_status "Starting Podman socket..."
+        systemctl --user enable --now podman.socket || true
     elif [ "$OS_TYPE" == "Darwin" ]; then
         if ! command -v brew &> /dev/null; then
-            print_error "Homebrew is required to install Docker Desktop"
+            print_error "Homebrew is required to install Podman"
             echo ""
             echo "Please install Homebrew first:"
             echo "  /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
             echo ""
-            echo "Then re-run this setup script, or install Docker Desktop manually:"
-            echo "  https://docs.docker.com/desktop/install/mac-install/"
             exit 1
         fi
         
-        print_status "Installing Docker Desktop via Homebrew..."
-        brew install --cask docker
+        print_status "Installing Podman via Homebrew..."
+        brew install podman
         
-        print_success "Docker Desktop installed"
-        print_warning "Please start Docker Desktop from Applications and wait for it to finish starting"
-        print_warning "Then re-run this setup script to continue"
-        echo ""
-        echo "Starting Docker Desktop now..."
-        open -a Docker
-        echo ""
-        echo "Waiting for Docker to start (this may take a minute)..."
+        print_status "Initializing Podman machine..."
+        podman machine init --cpus=4 --memory=8192 --disk-size=50 2>/dev/null || true
         
-        # Wait for Docker daemon to be ready (max 60 seconds)
-        for i in {1..60}; do
-            if docker ps &> /dev/null; then
-                print_success "Docker is now running!"
-                break
-            fi
-            sleep 1
-            echo -n "."
-        done
-        echo ""
+        print_status "Starting Podman machine..."
+        podman machine start
         
-        if ! docker ps &> /dev/null; then
-            print_warning "Docker Desktop is installed but not yet running"
-            echo ""
-            echo "Please:"
-            echo "  1. Make sure Docker Desktop has finished starting"
-            echo "  2. Accept any permission prompts"
-            echo "  3. Re-run this setup script"
-            echo ""
-            exit 1
-        fi
+        print_success "Podman installed and started"
     else
         print_error "Unsupported operating system: $OS_TYPE"
         exit 1
     fi
 else
-    print_success "Docker is installed: $(docker --version)"
+    print_success "Podman is installed: $(podman --version)"
+    
+    # On macOS, ensure podman machine is running
+    if [ "$OS_TYPE" == "Darwin" ]; then
+        if ! podman machine list | grep -q "Currently running"; then
+            print_status "Starting Podman machine..."
+            podman machine start
+        fi
+    fi
 fi
 
 # ============================================================
-# Step 2: Install/Check Docker Compose
+# Step 1.5: Configure Docker CLI compatibility for Podman
+# ============================================================
+print_status "Configuring Docker CLI compatibility..."
+
+# Create docker alias/symlink for podman
+mkdir -p ~/bin
+
+if [ "$OS_TYPE" == "Darwin" ]; then
+    ln -sf "$(which podman)" ~/bin/docker
+elif [ "$OS_TYPE" == "Linux" ]; then
+    ln -sf "$(which podman)" ~/bin/docker
+fi
+
+# Add to PATH if not already there
+if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
+    echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
+    export PATH="$HOME/bin:$PATH"
+fi
+
+print_success "Docker CLI compatibility enabled (docker -> podman)"
+
+# ============================================================
+# Step 2: Install/Check Docker Compose (podman-compose)
 # ============================================================
 print_status "Checking Docker Compose..."
 
-if ! docker compose version &> /dev/null && ! command -v docker-compose &> /dev/null; then
-    print_warning "Docker Compose not found, installing..."
+if ! command -v docker-compose &> /dev/null; then
+    print_warning "docker-compose not found, installing podman-compose..."
     
-    if [ "$OS_TYPE" == "Linux" ]; then
-        print_status "Installing docker-compose-plugin..."
-        sudo apt-get update
-        sudo apt-get install -y docker-compose-plugin
-    elif [ "$OS_TYPE" == "Darwin" ]; then
-        print_status "Installing Docker Compose via Homebrew..."
-        brew install docker-compose
-        print_success "Docker Compose installed"
+    # Install podman-compose (Python-based docker-compose for podman)
+    if ! command -v pip3 &> /dev/null && ! command -v pip &> /dev/null; then
+        print_status "Installing pip..."
+        if [ "$OS_TYPE" == "Linux" ]; then
+            sudo apt-get update
+            sudo apt-get install -y python3-pip
+        elif [ "$OS_TYPE" == "Darwin" ]; then
+            # pip should come with Python on macOS
+            if ! command -v python3 &> /dev/null; then
+                brew install python3
+            fi
+        fi
+    fi
+    
+    print_status "Installing podman-compose..."
+    pip3 install --user podman-compose 2>/dev/null || pip install --user podman-compose
+    
+    # Create docker-compose symlink
+    COMPOSE_BIN=$(python3 -m site --user-base)/bin/podman-compose
+    if [ -f "$COMPOSE_BIN" ]; then
+        mkdir -p ~/bin
+        ln -sf "$COMPOSE_BIN" ~/bin/docker-compose
+        
+        # Add to PATH if not already there
+        if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
+            echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
+            export PATH="$HOME/bin:$PATH"
+        fi
+        
+        print_success "docker-compose installed (podman-compose)"
+    else
+        print_warning "podman-compose installed but not found in expected location"
+        print_warning "You may need to add it to PATH manually"
     fi
 else
-    print_success "Docker Compose is installed"
+    print_success "docker-compose is installed"
 fi
 
 # ============================================================
@@ -206,7 +230,7 @@ else
 fi
 
 # ============================================================
-# Step 4: Install Node Dependencies
+# Step 3: Install Node Dependencies
 # ============================================================
 print_status "Installing Node.js dependencies..."
 
@@ -216,89 +240,31 @@ if [ -f "package.json" ]; then
 fi
 
 # ============================================================
-# Step 6: Configure Docker Group Permissions (Linux)
+# Step 4: Verify Podman is Running
 # ============================================================
-if [ "$OS_TYPE" == "Linux" ]; then
-    print_status "Configuring Docker group permissions..."
-    
-    # Check if docker group exists
-    if ! getent group docker > /dev/null; then
-        print_status "Creating docker group..."
-        sudo groupadd docker
-    fi
-    
-    # Add current user to docker group
-    if ! id -nG "$USER" | grep -qw docker; then
-        print_status "Adding $USER to docker group..."
-        sudo usermod -aG docker "$USER"
-        
-        print_warning "Docker group added"
-        print_warning "You must log out and log back in for permissions to take effect"
-        print_warning ""
-        print_warning "Quick fix without logout (run this):"
-        print_warning "  exec su -l \$USER"
-        print_warning ""
-        print_status "Attempting to switch to docker group in this session..."
-        
-        # Try to apply in current session
-        if ! newgrp docker <<ENDOFGROUP
-sleep 1
-ENDOFGROUP
-        then
-            print_warning "Could not apply in current session - you must log out/in"
-        fi
-    else
-        print_success "Docker group permissions configured"
-    fi
-    
-    # Fix socket permissions as additional safety measure
-    if [ -S /var/run/docker.sock ]; then
-        sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
-    fi
-fi
+print_status "Verifying Podman..."
 
-# ============================================================
-# Step 6: Verify Docker Daemon is Running
-# ============================================================
-print_status "Verifying Docker daemon..."
-
-# Try docker command (with sudo if needed on Linux)
-DOCKER_CMD="docker"
-if ! docker ps &> /dev/null 2>&1; then
-    if [ "$OS_TYPE" == "Linux" ]; then
-        # If docker fails without sudo on Linux, try with sudo
-        if sudo docker ps &> /dev/null 2>&1; then
-            DOCKER_CMD="sudo docker"
-            print_warning "Docker requires sudo - permissions may need adjustment after login"
-        else
-            print_error "Docker daemon is not responding"
-            echo ""
-            echo "Try restarting Docker:"
-            echo "  sudo systemctl restart docker"
-            exit 1
-        fi
-    elif [ "$OS_TYPE" == "Darwin" ]; then
-        print_error "Docker daemon is not responding"
+if ! podman ps &> /dev/null 2>&1; then
+    if [ "$OS_TYPE" == "Darwin" ]; then
+        print_error "Podman machine is not running"
         echo ""
-        echo "Please ensure Docker Desktop is running:"
-        echo "  1. Open Docker Desktop from Applications"
-        echo "  2. Wait for Docker to fully start"
-        echo "  3. Re-run this setup script"
+        echo "Try starting it:"
+        echo "  podman machine start"
         echo ""
+        exit 1
+    elif [ "$OS_TYPE" == "Linux" ]; then
+        print_error "Podman is not responding"
+        echo ""
+        echo "Try restarting the socket:"
+        echo "  systemctl --user restart podman.socket"
         exit 1
     fi
 else
-    if [ "$OS_TYPE" == "Linux" ]; then
-        print_success "Docker is accessible without sudo"
-    else
-        print_success "Docker is accessible"
-    fi
+    print_success "Podman is running and accessible"
 fi
 
-print_success "Docker daemon is running and accessible"
-
 # ============================================================
-# Step 6.5: Create .env file
+# Step 4.5: Create .env file
 # ============================================================
 print_status "Creating .env file..."
 
@@ -328,21 +294,21 @@ EOF
 fi
 
 # ============================================================
-# Step 7: Final Verification
+# Step 5: Final Verification
 # ============================================================
 print_status "Running final checks..."
 
-DOCKER_VERSION=$(docker --version 2>/dev/null || echo "unknown")
+PODMAN_VERSION=$(podman --version 2>/dev/null || echo "unknown")
 NODE_VERSION=$(node --version 2>/dev/null || echo "unknown")
 NPM_VERSION=$(npm --version 2>/dev/null || echo "unknown")
 
 print_success "System ready:"
-echo "  • $DOCKER_VERSION"
+echo "  • $PODMAN_VERSION"
 echo "  • Node.js $NODE_VERSION"
 echo "  • npm $NPM_VERSION"
 
 # ============================================================
-# Step 8: Success and Next Steps
+# Step 6: Success and Next Steps
 # ============================================================
 echo ""
 echo -e "${GREEN}========================================${NC}"

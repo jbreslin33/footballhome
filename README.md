@@ -6,8 +6,8 @@ A comprehensive team management system for football/soccer leagues, built with C
 
 ### Prerequisites
 
-- Docker and Docker Compose
-- Node.js (for APSL data scraping)
+- Podman (Docker alternative, no rate limits)
+- Node.js (for data scraping)
 - Git
 
 ### Initial Setup
@@ -17,7 +17,7 @@ A comprehensive team management system for football/soccer leagues, built with C
 git clone https://github.com/jbreslin33/footballhome.git
 cd footballhome
 
-# 2. Run first-time setup (installs Docker, Node, git-crypt, etc.)
+# 2. Run first-time setup (installs Podman, Node, etc.)
 ./setup.sh
 
 # 3. Unlock encrypted credentials (ask team for the key file)
@@ -30,6 +30,8 @@ git-crypt unlock /path/to/footballhome.key
 ```
 
 **Note**: The `.env` file with Twilio credentials is encrypted. New team members need the git-crypt key to unlock it.
+
+**Podman vs Docker**: This project uses Podman instead of Docker to avoid rate limits and licensing issues. The setup script creates a `docker` alias to Podman for compatibility.
 
 ## 🔧 Development Workflows
 
