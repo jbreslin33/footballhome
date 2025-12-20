@@ -126,6 +126,12 @@ fi
 # ============================================================
 print_status "Checking Docker Compose..."
 
+# Add Python user bin to PATH first (in case podman-compose is already installed there)
+PYTHON_USER_BIN=$(python3 -m site --user-base)/bin
+if [[ ":$PATH:" != *":$PYTHON_USER_BIN:"* ]]; then
+    export PATH="$PYTHON_USER_BIN:$PATH"
+fi
+
 if ! command -v podman-compose &> /dev/null; then
     print_warning "podman-compose not found, installing..."
     
@@ -146,11 +152,11 @@ if ! command -v podman-compose &> /dev/null; then
     print_status "Installing podman-compose..."
     pip3 install --user podman-compose 2>/dev/null || pip install --user podman-compose
     
-    # Add Python user bin to PATH if needed
-    PYTHON_USER_BIN=$(python3 -m site --user-base)/bin
-    if [[ ":$PATH:" != *":$PYTHON_USER_BIN:"* ]]; then
+    # Persist PATH change to shell config
+    if ! grep -q "PYTHON_USER_BIN" ~/.zshrc 2>/dev/null; then
+        echo "" >> ~/.zshrc
+        echo "# Python user packages" >> ~/.zshrc
         echo "export PATH=\"$PYTHON_USER_BIN:\$PATH\"" >> ~/.zshrc
-        export PATH="$PYTHON_USER_BIN:$PATH"
     fi
     
     print_success "podman-compose installed"
