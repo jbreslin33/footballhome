@@ -1,4 +1,5 @@
 #include "TacticalBoardController.h"
+#include "../database/SqlFileLogger.h"
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -416,6 +417,32 @@ Response TacticalBoardController::handleCreateBoard(const Request& request) {
         }
         
         std::string boardId = result[0]["id"].c_str();
+        
+        // Log to SQL file for persistence
+        std::ostringstream sqlLog;
+        sqlLog << "INSERT INTO tactical_boards (id, name, description, created_by, board_type_id, "
+               << "stance_id, field_third_id, formation_home, formation_opponent, "
+               << "canvas_width, canvas_height, is_public, is_template) VALUES ('"
+               << boardId << "', '" << name << "', '" << description << "', '" << userId << "', "
+               << boardTypeId << ", ";
+        
+        if (stanceId > 0) {
+            sqlLog << stanceId << ", ";
+        } else {
+            sqlLog << "NULL, ";
+        }
+        
+        if (fieldThirdId > 0) {
+            sqlLog << fieldThirdId << ", ";
+        } else {
+            sqlLog << "NULL, ";
+        }
+        
+        sqlLog << "'" << formationHome << "', '" << formationOpponent << "', "
+               << canvasWidth << ", " << canvasHeight << ", "
+               << (isPublic ? "true" : "false") << ", " << (isTemplate ? "true" : "false") << ");";
+        
+        SqlFileLogger::log("tactical_boards", sqlLog.str());
         
         std::ostringstream response;
         response << "{\"id\":\"" << escapeJson(boardId) << "\",\"message\":\"Board created successfully\"}";

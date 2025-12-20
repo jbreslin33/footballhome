@@ -47,6 +47,17 @@ void SqlFileLogger::initializeTableMap() {
     table_file_map_["player_medical_status"] = "22";
     table_file_map_["player_academic_status"] = "22";
     
+    // Tactical board tables (use '31' for tactical board data)
+    table_file_map_["tactical_boards"] = "31";
+    table_file_map_["tactical_board_players"] = "31";
+    table_file_map_["tactical_board_arrows"] = "31";
+    table_file_map_["tactical_board_annotations"] = "31";
+    table_file_map_["tactical_board_entities"] = "31";
+    table_file_map_["tactical_board_collaborators"] = "31";
+    table_file_map_["tactical_board_tags"] = "31";
+    table_file_map_["tactical_board_animations"] = "31";
+    table_file_map_["tactical_board_animation_frames"] = "31";
+    
     // System admin tables (use '01' for system-level data)
     table_file_map_["system_settings"] = "01";
     table_file_map_["feature_flags"] = "01";
