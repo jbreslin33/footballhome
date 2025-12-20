@@ -82,6 +82,16 @@ class App {
   start() {
     console.log('Starting app...');
     
+    // Check if this is an OAuth callback redirect (has token in query string)
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasOAuthToken = urlParams.has('token');
+    
+    if (hasOAuthToken) {
+      console.log('OAuth callback detected, showing oauth-success screen');
+      this.navigation.goTo('oauth-success');
+      return;
+    }
+    
     // Check if user is already logged in
     if (this.auth.isLoggedIn()) {
       console.log('User already logged in:', this.auth.getUser());

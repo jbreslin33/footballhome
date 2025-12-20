@@ -1,6 +1,9 @@
 #include "AuthController.h"
 #include <sstream>
 #include <regex>
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/buffer.h>
 
 AuthController::AuthController() {
     user_model_ = std::make_unique<User>();
@@ -91,10 +94,88 @@ Response AuthController::handleLogout(const Request& request) {
     return Response(HttpStatus::OK, json);
 }
 
+// Helper function to decode base64url
+std::string base64UrlDecode(const std::string& input) {
+    std::string base64 = input;
+    
+    // Convert base64url to base64
+    for (size_t i = 0; i < base64.length(); ++i) {
+        if (base64[i] == '-') base64[i] = '+';
+        else if (base64[i] == '_') base64[i] = '/';
+    }
+    
+    // Add padding if necessary
+    while (base64.length() % 4 != 0) {
+        base64 += '=';
+    }
+    
+    // Decode base64
+    BIO *bio, *b64;
+    char *buffer = new char[base64.length()];
+    
+    bio = BIO_new_mem_buf(base64.c_str(), base64.length());
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_push(b64, bio);
+    
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+    int decoded_length = BIO_read(bio, buffer, base64.length());
+    BIO_free_all(bio);
+    
+    std::string result(buffer, decoded_length);
+    delete[] buffer;
+    
+    return result;
+}
+
+// Helper function to extract userId from JWT token
+std::string extractUserIdFromJWT(const std::string& token) {
+    // JWT format: header.payload.signature
+    size_t first_dot = token.find('.');
+    if (first_dot == std::string::npos) {
+        std::cout << "❌ JWT: No first dot found" << std::endl;
+        return "";
+    }
+    
+    size_t second_dot = token.find('.', first_dot + 1);
+    if (second_dot == std::string::npos) {
+        std::cout << "❌ JWT: No second dot found" << std::endl;
+        return "";
+    }
+    
+    // Extract payload (between first and second dot)
+    std::string payload_encoded = token.substr(first_dot + 1, second_dot - first_dot - 1);
+    std::cout << "🔍 JWT payload_encoded: " << payload_encoded << std::endl;
+    
+    // Decode payload
+    std::string payload = base64UrlDecode(payload_encoded);
+    std::cout << "🔍 JWT payload decoded: " << payload << std::endl;
+    
+    // Extract userId from JSON payload
+    // Format: {"userId":"xxx","email":"..."}
+    size_t user_id_start = payload.find("\"userId\":\"");
+    if (user_id_start == std::string::npos) {
+        std::cout << "❌ JWT: userId field not found in payload" << std::endl;
+        return "";
+    }
+    user_id_start += 10; // Length of "userId":\"
+    
+    size_t user_id_end = payload.find('"', user_id_start);
+    if (user_id_end == std::string::npos) {
+        std::cout << "❌ JWT: userId closing quote not found" << std::endl;
+        return "";
+    }
+    
+    std::string user_id = payload.substr(user_id_start, user_id_end - user_id_start);
+    std::cout << "✅ JWT: Extracted userId=" << user_id << std::endl;
+    return user_id;
+}
+
 Response AuthController::handleCurrentUser(const Request& request) {
     try {
         // Extract Authorization header directly
         std::string auth_header = request.getHeader("Authorization");
+        
+        std::cout << "🔐 handleCurrentUser: auth_header=" << (auth_header.empty() ? "EMPTY" : auth_header.substr(0, std::min((size_t)50, auth_header.length()))) << "..." << std::endl;
         
         if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ") {
             std::string json = createJSONResponse(false, "Invalid or missing authentication token");
@@ -103,15 +184,11 @@ Response AuthController::handleCurrentUser(const Request& request) {
         
         // Extract token (remove "Bearer " prefix)
         std::string token = auth_header.substr(7);
+        std::cout << "🔐 Token length: " << token.length() << ", first 50 chars: " << token.substr(0, std::min((size_t)50, token.length())) << "..." << std::endl;
         
-        // Extract user ID from JWT format: jwt_{user_id}_{hash}
-        std::string user_id;
-        if (!token.empty() && token.substr(0, 4) == "jwt_") {
-            size_t last_underscore = token.rfind('_');
-            if (last_underscore != std::string::npos && last_underscore > 4) {
-                user_id = token.substr(4, last_underscore - 4);
-            }
-        }
+        // Extract user ID from JWT token
+        std::string user_id = extractUserIdFromJWT(token);
+        std::cout << "🔐 Extracted user_id: " << (user_id.empty() ? "EMPTY" : user_id) << std::endl;
         
         if (user_id.empty()) {
             std::string json = createJSONResponse(false, "Invalid authentication token format");
@@ -147,13 +224,7 @@ Response AuthController::handleUserRoles(const Request& request) {
         
         // Extract token and user ID
         std::string token = auth_header.substr(7);
-        std::string user_id;
-        if (!token.empty() && token.substr(0, 4) == "jwt_") {
-            size_t last_underscore = token.rfind('_');
-            if (last_underscore != std::string::npos && last_underscore > 4) {
-                user_id = token.substr(4, last_underscore - 4);
-            }
-        }
+        std::string user_id = extractUserIdFromJWT(token);
         
         if (user_id.empty()) {
             std::string json = createJSONResponse(false, "Invalid authentication token format");

@@ -36,8 +36,11 @@ class OAuthSuccessScreen extends Screen {
   
   async completeOAuthLogin(token) {
     try {
-      // Store the token
-      localStorage.setItem('jwt_token', token);
+      // Store the token (using 'token' key to match Auth class)
+      localStorage.setItem('token', token);
+      
+      // Update the auth instance with the new token
+      this.auth.token = token;
       
       // Fetch user data to populate context
       const response = await this.auth.fetch('/api/auth/me', {
@@ -49,7 +52,12 @@ class OAuthSuccessScreen extends Screen {
       }
       
       const data = await response.json();
-      this.navigation.context.user = data.user;
+      
+      // Store user data
+      this.auth.user = data.data.user;
+      localStorage.setItem('user', JSON.stringify(data.data.user));
+      
+      this.navigation.context.user = data.data.user;
       
       // Navigate to role selection
       this.navigation.goTo('role-selection');
