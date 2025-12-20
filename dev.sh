@@ -534,9 +534,9 @@ npm install --silent
 # This ensures database init scripts (like 51-admins.sql, 75-club-admins.sql) run every time
 echo -e "${YELLOW}🧹 Step 2: Full cleanup (containers, volumes, build cache)...${NC}"
 echo "  ✓ Stopping and removing containers and volumes..."
-$DOCKER_COMPOSE down -v 2>/dev/null || true
+$DOCKER_COMPOSE down -v
 echo "  ✓ Clearing build cache..."
-$DOCKER builder prune -af 2>/dev/null || true
+$DOCKER builder prune -af
 echo -e "${GREEN}✓ Cleanup complete (fresh start guaranteed)${NC}"
 echo ""
 
