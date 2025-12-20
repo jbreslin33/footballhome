@@ -167,6 +167,27 @@ UserData User::getUserById(const std::string& user_id) {
             userData.preferred_name = data[0].find("preferred_name") != data[0].end() ? data[0]["preferred_name"] : "";
             userData.name = userData.first_name + " " + userData.last_name; // Computed
             userData.role = "user"; // Default role
+            
+            // Check if user has any admin roles
+            std::string admin_check_sql = 
+                "SELECT 'system' as admin_type FROM system_admins WHERE user_id = $1 "
+                "UNION "
+                "SELECT 'club' as admin_type FROM club_admins WHERE user_id = $1 "
+                "UNION "
+                "SELECT 'sport_division' as admin_type FROM sport_division_admins WHERE user_id = $1 "
+                "UNION "
+                "SELECT 'team' as admin_type FROM team_admins WHERE user_id = $1 "
+                "LIMIT 1";
+            
+            try {
+                pqxx::result admin_result = executeQuery(admin_check_sql, {user_id});
+                if (!admin_result.empty()) {
+                    userData.role = admin_result[0]["admin_type"].as<std::string>();
+                }
+            } catch (const std::exception& admin_error) {
+                std::cerr << "Error checking admin roles: " << admin_error.what() << std::endl;
+            }
+            
             userData.valid = true;
         }
     } catch (const std::exception& e) {

@@ -302,31 +302,16 @@ std::string AuthController::extractField(const std::string& json, const std::str
 std::string AuthController::extractUserIdFromToken(const Request& request) {
     // Extract Authorization header
     std::string auth_header = request.getHeader("Authorization");
-    std::cout << "🔍 Auth header: '" << auth_header << "'" << std::endl;
     
     if (auth_header.empty() || auth_header.substr(0, 7) != "Bearer ") {
-        std::cout << "❌ No Bearer token found" << std::endl;
         return "";
     }
     
     // Extract token (remove "Bearer " prefix)
     std::string token = auth_header.substr(7);
-    std::cout << "🔍 Token: '" << token << "'" << std::endl;
     
-    if (!token.empty() && token.substr(0, 4) == "jwt_") {
-        // Extract user ID from our JWT format: jwt_{user_id}_{hash}
-        // Find the last underscore (since UUID contains hyphens, not underscores)
-        size_t last_underscore = token.rfind('_');
-        std::cout << "🔍 Last underscore at position: " << last_underscore << std::endl;
-        if (last_underscore != std::string::npos && last_underscore > 4) {
-            std::string user_id = token.substr(4, last_underscore - 4);
-            std::cout << "🔍 Extracted user ID: '" << user_id << "'" << std::endl;
-            return user_id;
-        }
-    }
-    
-    std::cout << "❌ Token parsing failed" << std::endl;
-    return "";
+    // Use the JWT decoder to extract user ID
+    return extractUserIdFromJWT(token);
 }
 
 void AuthController::logLoginAttempt(const std::string& user_id, bool success, const Request& request) {
