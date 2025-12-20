@@ -76,6 +76,14 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 # ============================================================
+# ADD PYTHON USER BIN TO PATH (for podman-compose)
+# ============================================================
+if command -v python3 &> /dev/null; then
+    PYTHON_USER_BIN=$(python3 -m site --user-base)/bin
+    export PATH="$PYTHON_USER_BIN:$PATH"
+fi
+
+# ============================================================
 # ENVIRONMENT FILE CHECK
 # ============================================================
 if [ ! -f "env" ]; then
