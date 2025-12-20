@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 );
 
 -- Sports lookup table
-CREATE TABLE sports (
+CREATE TABLE IF NOT EXISTS sports (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(50) UNIQUE NOT NULL,          -- 'soccer', 'basketball', 'hockey'
     display_name VARCHAR(100) NOT NULL,        -- 'Soccer', 'Basketball', 'Ice Hockey'
@@ -32,7 +32,7 @@ CREATE TABLE sports (
 );
 
 -- Permission categories lookup table
-CREATE TABLE permission_categories (
+CREATE TABLE IF NOT EXISTS permission_categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(50) UNIQUE NOT NULL,          -- 'team_management', 'user_management'
     display_name VARCHAR(100) NOT NULL,        -- 'Team Management', 'User Management'
@@ -42,7 +42,7 @@ CREATE TABLE permission_categories (
 );
 
 -- Permissions lookup table (4NF compliant)
-CREATE TABLE permissions (
+CREATE TABLE IF NOT EXISTS permissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(50) UNIQUE NOT NULL,          -- 'manage_teams', 'manage_users'
     display_name VARCHAR(100) NOT NULL,        -- 'Manage Teams', 'Manage Users'
@@ -53,7 +53,7 @@ CREATE TABLE permissions (
 );
 
 -- Event types lookup table
-CREATE TABLE event_types (
+CREATE TABLE IF NOT EXISTS event_types (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     sport_id UUID REFERENCES sports(id),       -- Different types per sport
     name VARCHAR(50) NOT NULL,                 -- 'training', 'match', 'meeting'
@@ -67,7 +67,7 @@ CREATE TABLE event_types (
 );
 
 -- RSVP statuses lookup table
-CREATE TABLE rsvp_statuses (
+CREATE TABLE IF NOT EXISTS rsvp_statuses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(20) UNIQUE NOT NULL,          -- 'yes', 'no', 'maybe'
     display_name VARCHAR(50) NOT NULL,         -- 'Attending', 'Not Attending', 'Maybe'
@@ -77,7 +77,7 @@ CREATE TABLE rsvp_statuses (
 );
 
 -- RSVP change sources lookup table (how was RSVP submitted)
-CREATE TABLE rsvp_change_sources (
+CREATE TABLE IF NOT EXISTS rsvp_change_sources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(30) UNIQUE NOT NULL,          -- 'app', 'coach_entry', 'magic_link', 'bulk_import'
     display_name VARCHAR(50) NOT NULL,         -- 'Mobile App', 'Coach Entry', 'Email Link', 'Bulk Import'
@@ -87,7 +87,7 @@ CREATE TABLE rsvp_change_sources (
 );
 
 -- Home/Away venue status lookup table
-CREATE TABLE home_away_statuses (
+CREATE TABLE IF NOT EXISTS home_away_statuses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(20) UNIQUE NOT NULL,          -- 'home', 'away', 'neutral'
     display_name VARCHAR(50) NOT NULL,         -- 'Home', 'Away', 'Neutral Venue'
@@ -97,7 +97,7 @@ CREATE TABLE home_away_statuses (
 );
 
 -- Admin levels lookup table
-CREATE TABLE admin_levels (
+CREATE TABLE IF NOT EXISTS admin_levels (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(50) UNIQUE NOT NULL,          -- 'system', 'league', 'club', 'team'
     display_name VARCHAR(100) NOT NULL,        -- 'System Administrator', 'League Administrator', 'Club Administrator', 'Team Administrator'
@@ -107,7 +107,7 @@ CREATE TABLE admin_levels (
 );
 
 -- External data providers lookup table (data sources like APSL, CASA, GroupMe, etc)
-CREATE TABLE external_providers (
+CREATE TABLE IF NOT EXISTS external_providers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(50) UNIQUE NOT NULL,          -- 'apsl', 'casa', 'groupme'
     display_name VARCHAR(100) NOT NULL,        -- 'APSL', 'CASA', 'GroupMe'
@@ -124,7 +124,7 @@ CREATE TABLE external_providers (
 );
 
 -- External apps/platforms lookup table
-CREATE TABLE external_apps (
+CREATE TABLE IF NOT EXISTS external_apps (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) UNIQUE NOT NULL,         -- 'groupme', 'teamsnap', 'sportsengine', 'whatsapp'
     display_name VARCHAR(100) NOT NULL,        -- 'GroupMe', 'TeamSnap', 'SportsEngine'
@@ -140,7 +140,7 @@ CREATE TABLE external_apps (
 );
 
 -- Player positions lookup table (sport-specific)
-CREATE TABLE positions (
+CREATE TABLE IF NOT EXISTS positions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     sport_id UUID NOT NULL REFERENCES sports(id),
     name VARCHAR(50) NOT NULL,                 -- 'goalkeeper', 'striker', 'point_guard'
@@ -152,7 +152,7 @@ CREATE TABLE positions (
 );
 
 -- Leagues table (top-level competition structure)
-CREATE TABLE leagues (
+CREATE TABLE IF NOT EXISTS leagues (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
     display_name VARCHAR(150) NOT NULL,
@@ -169,7 +169,7 @@ CREATE TABLE leagues (
 );
 
 -- League conferences (geographical/organizational groupings within leagues)
-CREATE TABLE league_conferences (
+CREATE TABLE IF NOT EXISTS league_conferences (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,              -- 'Philadelphia', 'Lancaster', 'New Jersey'
@@ -185,7 +185,7 @@ CREATE TABLE league_conferences (
 );
 
 -- League divisions (competition divisions within conferences)
-CREATE TABLE league_divisions (
+CREATE TABLE IF NOT EXISTS league_divisions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     conference_id UUID NOT NULL REFERENCES league_conferences(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,              -- 'Division 1', 'Premier', 'Over 30'
@@ -206,7 +206,7 @@ CREATE TABLE league_divisions (
 );
 
 -- Division relationships (promotion/relegation between divisions, can cross leagues)
-CREATE TABLE division_relationships (
+CREATE TABLE IF NOT EXISTS division_relationships (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     from_division_id UUID NOT NULL REFERENCES league_divisions(id) ON DELETE CASCADE,
     to_division_id UUID NOT NULL REFERENCES league_divisions(id) ON DELETE CASCADE,
@@ -223,7 +223,7 @@ CREATE TABLE division_relationships (
 );
 
 -- Clubs table (pure organizational entities - no sport mixing)
-CREATE TABLE clubs (
+CREATE TABLE IF NOT EXISTS clubs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
     display_name VARCHAR(150) NOT NULL,
@@ -246,7 +246,7 @@ CREATE TABLE clubs (
 );
 
 -- Sport divisions table (sport-specific divisions within clubs)
-CREATE TABLE sport_divisions (
+CREATE TABLE IF NOT EXISTS sport_divisions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     club_id UUID NOT NULL REFERENCES clubs(id),
     sport_id UUID NOT NULL REFERENCES sports(id),
@@ -264,7 +264,7 @@ CREATE TABLE sport_divisions (
 );
 
 -- Teams table (now belongs to sport divisions and league divisions)
-CREATE TABLE teams (
+CREATE TABLE IF NOT EXISTS teams (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(100) NOT NULL,
     sport_division_id UUID NOT NULL REFERENCES sport_divisions(id),
@@ -282,7 +282,7 @@ CREATE TABLE teams (
 );
 
 -- Team external apps junction table (links teams to external platforms they use)
-CREATE TABLE team_external_apps (
+CREATE TABLE IF NOT EXISTS team_external_apps (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     sport_division_id UUID REFERENCES sport_divisions(id) ON DELETE CASCADE, -- For division-wide apps (training chats)
@@ -298,13 +298,13 @@ CREATE TABLE team_external_apps (
     CONSTRAINT team_or_division CHECK ((team_id IS NOT NULL AND sport_division_id IS NULL) OR (team_id IS NULL AND sport_division_id IS NOT NULL))
 );
 
-CREATE INDEX idx_team_external_apps_team ON team_external_apps(team_id);
-CREATE INDEX idx_team_external_apps_division ON team_external_apps(sport_division_id);
-CREATE INDEX idx_team_external_apps_app ON team_external_apps(external_app_id);
-CREATE INDEX idx_team_external_apps_active ON team_external_apps(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_team_external_apps_team ON team_external_apps(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_external_apps_division ON team_external_apps(sport_division_id);
+CREATE INDEX IF NOT EXISTS idx_team_external_apps_app ON team_external_apps(external_app_id);
+CREATE INDEX IF NOT EXISTS idx_team_external_apps_active ON team_external_apps(is_active) WHERE is_active = true;
 
 -- Users table (no direct role reference - uses junction table)
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE,
     first_name VARCHAR(100) NOT NULL,
@@ -321,11 +321,11 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_users_last_first_name ON users(last_name, first_name);
-CREATE INDEX idx_users_first_name ON users(first_name);
+CREATE INDEX IF NOT EXISTS idx_users_last_first_name ON users(last_name, first_name);
+CREATE INDEX IF NOT EXISTS idx_users_first_name ON users(first_name);
 
 -- User emails table - supports multiple emails per user for OAuth/linking
-CREATE TABLE user_emails (
+CREATE TABLE IF NOT EXISTS user_emails (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -337,13 +337,13 @@ CREATE TABLE user_emails (
     UNIQUE(user_id, email)
 );
 
-CREATE INDEX idx_user_emails_user_id ON user_emails(user_id);
-CREATE INDEX idx_user_emails_email ON user_emails(email);
-CREATE INDEX idx_user_emails_primary ON user_emails(user_id, is_primary) WHERE is_primary = true;
+CREATE INDEX IF NOT EXISTS idx_user_emails_user_id ON user_emails(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_emails_email ON user_emails(email);
+CREATE INDEX IF NOT EXISTS idx_user_emails_primary ON user_emails(user_id, is_primary) WHERE is_primary = true;
 
 -- External identity tracking (staged import pattern)
 -- Scrapers create identities with user_id=NULL, then admin manually links/merges via UI
-CREATE TABLE user_external_identities (
+CREATE TABLE IF NOT EXISTS user_external_identities (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
     provider_id UUID NOT NULL REFERENCES external_providers(id), -- Which external provider
@@ -366,12 +366,12 @@ CREATE TABLE user_external_identities (
     UNIQUE(provider_id, external_id)
 );
 
-CREATE INDEX idx_user_external_identities_user_id ON user_external_identities(user_id);
-CREATE INDEX idx_user_external_identities_provider ON user_external_identities(provider_id);
-CREATE INDEX idx_user_external_identities_external_app ON user_external_identities(external_app_id);
-CREATE INDEX idx_user_external_identities_team_id ON user_external_identities(team_id);
-CREATE INDEX idx_user_external_identities_sport_division_id ON user_external_identities(sport_division_id);
-CREATE INDEX idx_user_external_identities_unlinked ON user_external_identities(provider_id, external_id) WHERE user_id IS NULL;
+CREATE INDEX IF NOT EXISTS idx_user_external_identities_user_id ON user_external_identities(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_external_identities_provider ON user_external_identities(provider_id);
+CREATE INDEX IF NOT EXISTS idx_user_external_identities_external_app ON user_external_identities(external_app_id);
+CREATE INDEX IF NOT EXISTS idx_user_external_identities_team_id ON user_external_identities(team_id);
+CREATE INDEX IF NOT EXISTS idx_user_external_identities_sport_division_id ON user_external_identities(sport_division_id);
+CREATE INDEX IF NOT EXISTS idx_user_external_identities_unlinked ON user_external_identities(provider_id, external_id) WHERE user_id IS NULL;
 
 -- ========================================
 -- USER ENTITY TABLES (Normalized)
@@ -380,7 +380,7 @@ CREATE INDEX idx_user_external_identities_unlinked ON user_external_identities(p
 -- Following the same pattern as events -> practices/matches/meetings
 
 -- Players (athletes on teams)
-CREATE TABLE players (
+CREATE TABLE IF NOT EXISTS players (
     id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     preferred_position_id UUID REFERENCES positions(id),
     photo_url TEXT,                          -- Player headshot photo path
@@ -394,7 +394,7 @@ CREATE TABLE players (
 );
 
 -- Coaches (team instructors/trainers)
-CREATE TABLE coaches (
+CREATE TABLE IF NOT EXISTS coaches (
     id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     coaching_license VARCHAR(100),           -- 'UEFA A', 'USSF B', etc.
     license_expiry DATE,
@@ -407,7 +407,7 @@ CREATE TABLE coaches (
 );
 
 -- Parents (guardians of players)
-CREATE TABLE parents (
+CREATE TABLE IF NOT EXISTS parents (
     id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     occupation VARCHAR(100),
     volunteer_interests TEXT[],              -- ['Team Parent', 'Fundraising', 'Transportation']
@@ -419,7 +419,7 @@ CREATE TABLE parents (
 );
 
 -- Referees (match officials)
-CREATE TABLE referees (
+CREATE TABLE IF NOT EXISTS referees (
     id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     referee_grade VARCHAR(50),               -- 'Grade 7', 'Grade 5', 'National'
     certification_level VARCHAR(100),        -- 'Regional', 'State', 'National'
@@ -433,7 +433,7 @@ CREATE TABLE referees (
 );
 
 -- Medical Staff (trainers, physiotherapists, doctors)
-CREATE TABLE medical_staff (
+CREATE TABLE IF NOT EXISTS medical_staff (
     id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     role_type VARCHAR(50),                   -- 'trainer', 'physiotherapist', 'doctor', 'paramedic'
     license_number VARCHAR(100),
@@ -448,7 +448,7 @@ CREATE TABLE medical_staff (
 );
 
 -- Managers (non-coach team management roles)
-CREATE TABLE managers (
+CREATE TABLE IF NOT EXISTS managers (
     id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     manager_type VARCHAR(50),                -- 'team_manager', 'equipment_manager', 'operations'
     years_experience INTEGER,
@@ -459,7 +459,7 @@ CREATE TABLE managers (
 );
 
 -- Volunteers (general volunteers for teams/clubs)
-CREATE TABLE volunteers (
+CREATE TABLE IF NOT EXISTS volunteers (
     id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     volunteer_roles TEXT[],                  -- ['Fundraising', 'Event Coordinator', 'Photographer']
     skills TEXT[],                           -- ['Photography', 'Social Media', 'Web Design']
@@ -473,7 +473,7 @@ CREATE TABLE volunteers (
 );
 
 -- Spectators (fans following teams)
-CREATE TABLE spectators (
+CREATE TABLE IF NOT EXISTS spectators (
     id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     favorite_sport_id UUID REFERENCES sports(id),
     fan_since DATE,
@@ -483,7 +483,7 @@ CREATE TABLE spectators (
 );
 
 -- System Admins (top-level administrators with full system access)
-CREATE TABLE system_admins (
+CREATE TABLE IF NOT EXISTS system_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     notes TEXT,
@@ -494,7 +494,7 @@ CREATE TABLE system_admins (
 );
 
 -- Admin permissions junction table (many-to-many for specific permissions)
-CREATE TABLE admin_permissions (
+CREATE TABLE IF NOT EXISTS admin_permissions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
@@ -509,7 +509,7 @@ CREATE TABLE admin_permissions (
 -- Link entity tables to teams with role-specific fields
 
 -- Roster Status Lookup Table
-CREATE TABLE roster_statuses (
+CREATE TABLE IF NOT EXISTS roster_statuses (
     id SERIAL PRIMARY KEY,
     code VARCHAR(30) UNIQUE NOT NULL,
     display_name VARCHAR(50) NOT NULL,
@@ -522,7 +522,7 @@ CREATE TABLE roster_statuses (
 );
 
 -- Team Players (players on teams)
-CREATE TABLE team_players (
+CREATE TABLE IF NOT EXISTS team_players (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -540,7 +540,7 @@ CREATE TABLE team_players (
 );
 
 -- Roster Status History (track changes over time)
-CREATE TABLE team_players_status_history (
+CREATE TABLE IF NOT EXISTS team_players_status_history (
     id SERIAL PRIMARY KEY,
     team_player_id UUID REFERENCES team_players(id) ON DELETE CASCADE,
     roster_status_id INTEGER REFERENCES roster_statuses(id),
@@ -550,17 +550,17 @@ CREATE TABLE team_players_status_history (
 );
 
 -- Indexes for team_players
-CREATE INDEX idx_team_players_roster_status ON team_players(roster_status_id);
-CREATE INDEX idx_team_players_team ON team_players(team_id);
-CREATE INDEX idx_team_players_player ON team_players(player_id);
-CREATE INDEX idx_team_players_active ON team_players(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_team_players_roster_status ON team_players(roster_status_id);
+CREATE INDEX IF NOT EXISTS idx_team_players_team ON team_players(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_players_player ON team_players(player_id);
+CREATE INDEX IF NOT EXISTS idx_team_players_active ON team_players(is_active) WHERE is_active = true;
 
 -- Indexes for team_players_status_history
-CREATE INDEX idx_team_players_status_history_player ON team_players_status_history(team_player_id, changed_at DESC);
-CREATE INDEX idx_team_players_status_history_status ON team_players_status_history(roster_status_id);
+CREATE INDEX IF NOT EXISTS idx_team_players_status_history_player ON team_players_status_history(team_player_id, changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_team_players_status_history_status ON team_players_status_history(roster_status_id);
 
 -- Team Coaches (coaches for teams)
-CREATE TABLE team_coaches (
+CREATE TABLE IF NOT EXISTS team_coaches (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     coach_id UUID NOT NULL REFERENCES coaches(id) ON DELETE CASCADE,
@@ -574,7 +574,7 @@ CREATE TABLE team_coaches (
 );
 
 -- Team Medical Staff (medical staff assigned to teams)
-CREATE TABLE team_medical_staff (
+CREATE TABLE IF NOT EXISTS team_medical_staff (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     medical_staff_id UUID NOT NULL REFERENCES medical_staff(id) ON DELETE CASCADE,
@@ -588,7 +588,7 @@ CREATE TABLE team_medical_staff (
 );
 
 -- Team Managers (managers for teams)
-CREATE TABLE team_managers (
+CREATE TABLE IF NOT EXISTS team_managers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     manager_id UUID NOT NULL REFERENCES managers(id) ON DELETE CASCADE,
@@ -601,7 +601,7 @@ CREATE TABLE team_managers (
 );
 
 -- Team Volunteers (volunteers helping teams)
-CREATE TABLE team_volunteers (
+CREATE TABLE IF NOT EXISTS team_volunteers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     volunteer_id UUID NOT NULL REFERENCES volunteers(id) ON DELETE CASCADE,
@@ -618,7 +618,7 @@ CREATE TABLE team_volunteers (
 -- ========================================
 
 -- Player Guardians (parents/guardians of players)
-CREATE TABLE player_guardians (
+CREATE TABLE IF NOT EXISTS player_guardians (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     parent_id UUID NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
@@ -632,7 +632,7 @@ CREATE TABLE player_guardians (
 );
 
 -- Team Parents (parents who volunteer with teams)
-CREATE TABLE team_parents (
+CREATE TABLE IF NOT EXISTS team_parents (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     parent_id UUID NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
@@ -649,7 +649,7 @@ CREATE TABLE team_parents (
 -- ========================================
 
 -- Team Followers (spectators following teams)
-CREATE TABLE team_followers (
+CREATE TABLE IF NOT EXISTS team_followers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     spectator_id UUID NOT NULL REFERENCES spectators(id) ON DELETE CASCADE,
@@ -666,7 +666,7 @@ CREATE TABLE team_followers (
 -- Admins at different organizational levels
 
 -- League Admins (manage entire leagues)
-CREATE TABLE league_admins (
+CREATE TABLE IF NOT EXISTS league_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -681,7 +681,7 @@ CREATE TABLE league_admins (
 );
 
 -- League Conference Admins (manage conferences within leagues)
-CREATE TABLE league_conference_admins (
+CREATE TABLE IF NOT EXISTS league_conference_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     league_conference_id UUID NOT NULL REFERENCES league_conferences(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -696,7 +696,7 @@ CREATE TABLE league_conference_admins (
 );
 
 -- League Division Admins (manage divisions within conferences)
-CREATE TABLE league_division_admins (
+CREATE TABLE IF NOT EXISTS league_division_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     league_division_id UUID NOT NULL REFERENCES league_divisions(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -711,7 +711,7 @@ CREATE TABLE league_division_admins (
 );
 
 -- Club Admins (manage clubs/organizations)
-CREATE TABLE club_admins (
+CREATE TABLE IF NOT EXISTS club_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     club_id UUID NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -726,7 +726,7 @@ CREATE TABLE club_admins (
 );
 
 -- Sport Division Admins (manage sport divisions within clubs)
-CREATE TABLE sport_division_admins (
+CREATE TABLE IF NOT EXISTS sport_division_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     sport_division_id UUID NOT NULL REFERENCES sport_divisions(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -741,7 +741,7 @@ CREATE TABLE sport_division_admins (
 );
 
 -- Team Admins (manage individual teams)
-CREATE TABLE team_admins (
+CREATE TABLE IF NOT EXISTS team_admins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -756,7 +756,7 @@ CREATE TABLE team_admins (
 );
 
 -- Venues table (with complete Google Places integration)
-CREATE TABLE venues (
+CREATE TABLE IF NOT EXISTS venues (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     short_name VARCHAR(100),                    -- "Training Ground", "Stadium", etc.
@@ -834,7 +834,7 @@ CREATE TABLE venues (
 );
 
 -- Base events table (common fields for all event types)
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     created_by UUID NOT NULL REFERENCES users(id),
     event_type_id UUID NOT NULL REFERENCES event_types(id),
@@ -852,7 +852,7 @@ CREATE TABLE events (
 );
 
 -- Practices table (extends events for training/practice sessions)
-CREATE TABLE practices (
+CREATE TABLE IF NOT EXISTS practices (
     id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     max_players INTEGER,                       -- Optional attendance limit
@@ -867,7 +867,7 @@ CREATE TABLE practices (
 );
 
 -- Matches table (extends events for competitive games)
-CREATE TABLE matches (
+CREATE TABLE IF NOT EXISTS matches (
     id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
     home_team_id UUID REFERENCES teams(id),
     away_team_id UUID REFERENCES teams(id),
@@ -898,7 +898,7 @@ CREATE TABLE matches (
 -- Use the *_current views to get the latest RSVP for each person/event.
 
 -- Player RSVP History (append-only log of all player RSVP changes)
-CREATE TABLE player_rsvp_history (
+CREATE TABLE IF NOT EXISTS player_rsvp_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -910,13 +910,13 @@ CREATE TABLE player_rsvp_history (
     -- NO unique constraint - multiple rows per player/event allowed
 );
 
-CREATE INDEX idx_player_rsvp_history_lookup ON player_rsvp_history(event_id, player_id, changed_at DESC);
-CREATE INDEX idx_player_rsvp_history_event ON player_rsvp_history(event_id);
-CREATE INDEX idx_player_rsvp_history_player ON player_rsvp_history(player_id);
-CREATE INDEX idx_player_rsvp_history_status ON player_rsvp_history(rsvp_status_id);
+CREATE INDEX IF NOT EXISTS idx_player_rsvp_history_lookup ON player_rsvp_history(event_id, player_id, changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_player_rsvp_history_event ON player_rsvp_history(event_id);
+CREATE INDEX IF NOT EXISTS idx_player_rsvp_history_player ON player_rsvp_history(player_id);
+CREATE INDEX IF NOT EXISTS idx_player_rsvp_history_status ON player_rsvp_history(rsvp_status_id);
 
 -- Coach RSVP History (append-only log of all coach RSVP changes)
-CREATE TABLE coach_rsvp_history (
+CREATE TABLE IF NOT EXISTS coach_rsvp_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     coach_id UUID NOT NULL REFERENCES coaches(id) ON DELETE CASCADE,
@@ -927,13 +927,13 @@ CREATE TABLE coach_rsvp_history (
     notes TEXT
 );
 
-CREATE INDEX idx_coach_rsvp_history_lookup ON coach_rsvp_history(event_id, coach_id, changed_at DESC);
-CREATE INDEX idx_coach_rsvp_history_event ON coach_rsvp_history(event_id);
-CREATE INDEX idx_coach_rsvp_history_coach ON coach_rsvp_history(coach_id);
-CREATE INDEX idx_coach_rsvp_history_status ON coach_rsvp_history(rsvp_status_id);
+CREATE INDEX IF NOT EXISTS idx_coach_rsvp_history_lookup ON coach_rsvp_history(event_id, coach_id, changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_coach_rsvp_history_event ON coach_rsvp_history(event_id);
+CREATE INDEX IF NOT EXISTS idx_coach_rsvp_history_coach ON coach_rsvp_history(coach_id);
+CREATE INDEX IF NOT EXISTS idx_coach_rsvp_history_status ON coach_rsvp_history(rsvp_status_id);
 
 -- Parent RSVP History (append-only log of all parent RSVP changes)
-CREATE TABLE parent_rsvp_history (
+CREATE TABLE IF NOT EXISTS parent_rsvp_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     parent_id UUID NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
@@ -944,10 +944,10 @@ CREATE TABLE parent_rsvp_history (
     notes TEXT
 );
 
-CREATE INDEX idx_parent_rsvp_history_lookup ON parent_rsvp_history(event_id, parent_id, changed_at DESC);
-CREATE INDEX idx_parent_rsvp_history_event ON parent_rsvp_history(event_id);
-CREATE INDEX idx_parent_rsvp_history_parent ON parent_rsvp_history(parent_id);
-CREATE INDEX idx_parent_rsvp_history_status ON parent_rsvp_history(rsvp_status_id);
+CREATE INDEX IF NOT EXISTS idx_parent_rsvp_history_lookup ON parent_rsvp_history(event_id, parent_id, changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_parent_rsvp_history_event ON parent_rsvp_history(event_id);
+CREATE INDEX IF NOT EXISTS idx_parent_rsvp_history_parent ON parent_rsvp_history(parent_id);
+CREATE INDEX IF NOT EXISTS idx_parent_rsvp_history_status ON parent_rsvp_history(rsvp_status_id);
 
 -- ========================================
 -- CURRENT RSVP VIEWS
@@ -994,7 +994,7 @@ FROM parent_rsvp_history
 ORDER BY event_id, parent_id, changed_at DESC;
 
 -- Match Officials (referees assigned to matches)
-CREATE TABLE match_officials (
+CREATE TABLE IF NOT EXISTS match_officials (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
     referee_id UUID NOT NULL REFERENCES referees(id) ON DELETE CASCADE,
@@ -1011,7 +1011,7 @@ CREATE TABLE match_officials (
 -- MATCH ROSTER & LINEUP TABLES
 -- ========================================
 -- Formations reference table (4-4-2, 4-3-3, etc.)
-CREATE TABLE formations (
+CREATE TABLE IF NOT EXISTS formations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     code VARCHAR(20) UNIQUE NOT NULL,          -- '4-4-2', '4-3-3', '3-5-2'
     name VARCHAR(50) NOT NULL,                 -- 'Four-Four-Two'
@@ -1020,7 +1020,7 @@ CREATE TABLE formations (
 );
 
 -- Match Rosters (who is available/selected for game day)
-CREATE TABLE match_rosters (
+CREATE TABLE IF NOT EXISTS match_rosters (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
     player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -1029,11 +1029,11 @@ CREATE TABLE match_rosters (
     UNIQUE(match_id, player_id)
 );
 
-CREATE INDEX idx_match_rosters_match ON match_rosters(match_id);
-CREATE INDEX idx_match_rosters_player ON match_rosters(player_id);
+CREATE INDEX IF NOT EXISTS idx_match_rosters_match ON match_rosters(match_id);
+CREATE INDEX IF NOT EXISTS idx_match_rosters_player ON match_rosters(player_id);
 
 -- Match Lineups (starting 11 + bench with positions)
-CREATE TABLE match_lineups (
+CREATE TABLE IF NOT EXISTS match_lineups (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
     player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -1046,12 +1046,12 @@ CREATE TABLE match_lineups (
     CONSTRAINT valid_lineup_type CHECK (lineup_type IN ('starting', 'bench'))
 );
 
-CREATE INDEX idx_match_lineups_match ON match_lineups(match_id);
-CREATE INDEX idx_match_lineups_player ON match_lineups(player_id);
-CREATE INDEX idx_match_lineups_type ON match_lineups(lineup_type);
+CREATE INDEX IF NOT EXISTS idx_match_lineups_match ON match_lineups(match_id);
+CREATE INDEX IF NOT EXISTS idx_match_lineups_player ON match_lineups(player_id);
+CREATE INDEX IF NOT EXISTS idx_match_lineups_type ON match_lineups(lineup_type);
 
 -- Meetings table (extends events for team meetings, parent meetings, etc.)
-CREATE TABLE meetings (
+CREATE TABLE IF NOT EXISTS meetings (
     id UUID PRIMARY KEY REFERENCES events(id) ON DELETE CASCADE,
     meeting_type VARCHAR(50),                  -- 'team', 'parent', 'board', 'social'
     agenda TEXT,                               -- Meeting agenda
@@ -1065,7 +1065,7 @@ CREATE TABLE meetings (
 );
 
 -- Meeting attendees (many-to-many for meetings that involve multiple teams or individuals)
-CREATE TABLE meeting_teams (
+CREATE TABLE IF NOT EXISTS meeting_teams (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     meeting_id UUID NOT NULL REFERENCES meetings(id) ON DELETE CASCADE,
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
@@ -1073,7 +1073,7 @@ CREATE TABLE meeting_teams (
 );
 
 -- Magic tokens for RSVP links via email/SMS (unchanged)
-CREATE TABLE magic_tokens (
+CREATE TABLE IF NOT EXISTS magic_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     token VARCHAR(255) UNIQUE NOT NULL,
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -1085,103 +1085,103 @@ CREATE TABLE magic_tokens (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_events_date ON events(event_date);
-CREATE INDEX idx_events_type ON events(event_type_id);
-CREATE INDEX idx_practices_team ON practices(team_id);
-CREATE INDEX idx_practices_focus ON practices(focus_areas);
-CREATE INDEX idx_matches_home_team ON matches(home_team_id);
-CREATE INDEX idx_matches_away_team ON matches(away_team_id);
-CREATE INDEX idx_matches_competition ON matches(competition_name);
-CREATE INDEX idx_matches_status ON matches(match_status);
-CREATE INDEX idx_matches_home_away ON matches(home_away_status_id);
+CREATE INDEX IF NOT EXISTS idx_events_date ON events(event_date);
+CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type_id);
+CREATE INDEX IF NOT EXISTS idx_practices_team ON practices(team_id);
+CREATE INDEX IF NOT EXISTS idx_practices_focus ON practices(focus_areas);
+CREATE INDEX IF NOT EXISTS idx_matches_home_team ON matches(home_team_id);
+CREATE INDEX IF NOT EXISTS idx_matches_away_team ON matches(away_team_id);
+CREATE INDEX IF NOT EXISTS idx_matches_competition ON matches(competition_name);
+CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(match_status);
+CREATE INDEX IF NOT EXISTS idx_matches_home_away ON matches(home_away_status_id);
 
 -- User entity indexes
-CREATE INDEX idx_players_position ON players(preferred_position_id);
-CREATE INDEX idx_coaches_license ON coaches(coaching_license);
-CREATE INDEX idx_referees_grade ON referees(referee_grade);
-CREATE INDEX idx_medical_staff_role ON medical_staff(role_type);
-CREATE INDEX idx_managers_type ON managers(manager_type);
+CREATE INDEX IF NOT EXISTS idx_players_position ON players(preferred_position_id);
+CREATE INDEX IF NOT EXISTS idx_coaches_license ON coaches(coaching_license);
+CREATE INDEX IF NOT EXISTS idx_referees_grade ON referees(referee_grade);
+CREATE INDEX IF NOT EXISTS idx_medical_staff_role ON medical_staff(role_type);
+CREATE INDEX IF NOT EXISTS idx_managers_type ON managers(manager_type);
 
 -- System admin indexes
-CREATE INDEX idx_system_admins_user ON system_admins(user_id);
-CREATE INDEX idx_system_admins_active ON system_admins(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_system_admins_user ON system_admins(user_id);
+CREATE INDEX IF NOT EXISTS idx_system_admins_active ON system_admins(is_active) WHERE is_active = true;
 
 -- Admin permissions indexes
-CREATE INDEX idx_admin_permissions_user ON admin_permissions(user_id);
-CREATE INDEX idx_admin_permissions_permission ON admin_permissions(permission_id);
+CREATE INDEX IF NOT EXISTS idx_admin_permissions_user ON admin_permissions(user_id);
+CREATE INDEX IF NOT EXISTS idx_admin_permissions_permission ON admin_permissions(permission_id);
 
 -- Team relationship indexes (defined earlier in file)
-CREATE INDEX idx_team_coaches_team ON team_coaches(team_id);
-CREATE INDEX idx_team_coaches_coach ON team_coaches(coach_id);
-CREATE INDEX idx_team_coaches_active ON team_coaches(team_id, is_active);
-CREATE INDEX idx_team_medical_staff_team ON team_medical_staff(team_id);
-CREATE INDEX idx_team_medical_staff_staff ON team_medical_staff(medical_staff_id);
-CREATE INDEX idx_team_managers_team ON team_managers(team_id);
-CREATE INDEX idx_team_managers_manager ON team_managers(manager_id);
-CREATE INDEX idx_team_volunteers_team ON team_volunteers(team_id);
-CREATE INDEX idx_team_volunteers_volunteer ON team_volunteers(volunteer_id);
+CREATE INDEX IF NOT EXISTS idx_team_coaches_team ON team_coaches(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_coaches_coach ON team_coaches(coach_id);
+CREATE INDEX IF NOT EXISTS idx_team_coaches_active ON team_coaches(team_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_team_medical_staff_team ON team_medical_staff(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_medical_staff_staff ON team_medical_staff(medical_staff_id);
+CREATE INDEX IF NOT EXISTS idx_team_managers_team ON team_managers(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_managers_manager ON team_managers(manager_id);
+CREATE INDEX IF NOT EXISTS idx_team_volunteers_team ON team_volunteers(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_volunteers_volunteer ON team_volunteers(volunteer_id);
 
 -- Parent/guardian indexes
-CREATE INDEX idx_player_guardians_player ON player_guardians(player_id);
-CREATE INDEX idx_player_guardians_parent ON player_guardians(parent_id);
-CREATE INDEX idx_team_parents_team ON team_parents(team_id);
-CREATE INDEX idx_team_parents_parent ON team_parents(parent_id);
+CREATE INDEX IF NOT EXISTS idx_player_guardians_player ON player_guardians(player_id);
+CREATE INDEX IF NOT EXISTS idx_player_guardians_parent ON player_guardians(parent_id);
+CREATE INDEX IF NOT EXISTS idx_team_parents_team ON team_parents(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_parents_parent ON team_parents(parent_id);
 
 -- Match officials indexes
-CREATE INDEX idx_match_officials_match ON match_officials(match_id);
-CREATE INDEX idx_match_officials_referee ON match_officials(referee_id);
-CREATE INDEX idx_match_officials_role ON match_officials(official_role);
+CREATE INDEX IF NOT EXISTS idx_match_officials_match ON match_officials(match_id);
+CREATE INDEX IF NOT EXISTS idx_match_officials_referee ON match_officials(referee_id);
+CREATE INDEX IF NOT EXISTS idx_match_officials_role ON match_officials(official_role);
 
 -- Team followers indexes
-CREATE INDEX idx_team_followers_team ON team_followers(team_id);
-CREATE INDEX idx_team_followers_spectator ON team_followers(spectator_id);
+CREATE INDEX IF NOT EXISTS idx_team_followers_team ON team_followers(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_followers_spectator ON team_followers(spectator_id);
 
 -- Admin hierarchy indexes
-CREATE INDEX idx_league_admins_league ON league_admins(league_id);
-CREATE INDEX idx_league_admins_user ON league_admins(user_id);
-CREATE INDEX idx_league_conference_admins_conference ON league_conference_admins(league_conference_id);
-CREATE INDEX idx_league_conference_admins_user ON league_conference_admins(user_id);
-CREATE INDEX idx_league_division_admins_division ON league_division_admins(league_division_id);
-CREATE INDEX idx_league_division_admins_user ON league_division_admins(user_id);
-CREATE INDEX idx_club_admins_club ON club_admins(club_id);
-CREATE INDEX idx_club_admins_user ON club_admins(user_id);
-CREATE INDEX idx_sport_division_admins_division ON sport_division_admins(sport_division_id);
-CREATE INDEX idx_sport_division_admins_user ON sport_division_admins(user_id);
-CREATE INDEX idx_team_admins_team ON team_admins(team_id);
-CREATE INDEX idx_team_admins_user ON team_admins(user_id);
+CREATE INDEX IF NOT EXISTS idx_league_admins_league ON league_admins(league_id);
+CREATE INDEX IF NOT EXISTS idx_league_admins_user ON league_admins(user_id);
+CREATE INDEX IF NOT EXISTS idx_league_conference_admins_conference ON league_conference_admins(league_conference_id);
+CREATE INDEX IF NOT EXISTS idx_league_conference_admins_user ON league_conference_admins(user_id);
+CREATE INDEX IF NOT EXISTS idx_league_division_admins_division ON league_division_admins(league_division_id);
+CREATE INDEX IF NOT EXISTS idx_league_division_admins_user ON league_division_admins(user_id);
+CREATE INDEX IF NOT EXISTS idx_club_admins_club ON club_admins(club_id);
+CREATE INDEX IF NOT EXISTS idx_club_admins_user ON club_admins(user_id);
+CREATE INDEX IF NOT EXISTS idx_sport_division_admins_division ON sport_division_admins(sport_division_id);
+CREATE INDEX IF NOT EXISTS idx_sport_division_admins_user ON sport_division_admins(user_id);
+CREATE INDEX IF NOT EXISTS idx_team_admins_team ON team_admins(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_admins_user ON team_admins(user_id);
 
-CREATE INDEX idx_permission_categories_name ON permission_categories(name);
-CREATE INDEX idx_permissions_category ON permissions(permission_category_id);
-CREATE INDEX idx_teams_sport_division ON teams(sport_division_id);
-CREATE INDEX idx_teams_league_division ON teams(league_division_id);
-CREATE INDEX idx_league_conferences_league ON league_conferences(league_id);
-CREATE INDEX idx_league_conferences_slug ON league_conferences(slug);
-CREATE INDEX idx_league_divisions_conference ON league_divisions(conference_id);
-CREATE INDEX idx_league_divisions_slug ON league_divisions(slug);
-CREATE INDEX idx_league_divisions_tier ON league_divisions(tier);
-CREATE INDEX idx_league_divisions_hierarchy_group ON league_divisions(hierarchy_group) WHERE hierarchy_group IS NOT NULL;
-CREATE INDEX idx_division_relationships_from ON division_relationships(from_division_id);
-CREATE INDEX idx_division_relationships_to ON division_relationships(to_division_id);
-CREATE INDEX idx_division_relationships_type ON division_relationships(relationship_type);
-CREATE INDEX idx_division_relationships_season ON division_relationships(season);
-CREATE INDEX idx_sport_divisions_club ON sport_divisions(club_id);
-CREATE INDEX idx_sport_divisions_sport ON sport_divisions(sport_id);
-CREATE INDEX idx_sport_divisions_slug ON sport_divisions(slug);
-CREATE INDEX idx_clubs_parent ON clubs(parent_club_id) WHERE parent_club_id IS NOT NULL;
-CREATE INDEX idx_clubs_slug ON clubs(slug);
-CREATE INDEX idx_leagues_sport ON leagues(sport_id);
-CREATE INDEX idx_positions_sport ON positions(sport_id);
-CREATE INDEX idx_event_types_sport ON event_types(sport_id);
-CREATE INDEX idx_event_types_category ON event_types(category);
-CREATE INDEX idx_magic_tokens_token ON magic_tokens(token);
-CREATE INDEX idx_magic_tokens_expires ON magic_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_permission_categories_name ON permission_categories(name);
+CREATE INDEX IF NOT EXISTS idx_permissions_category ON permissions(permission_category_id);
+CREATE INDEX IF NOT EXISTS idx_teams_sport_division ON teams(sport_division_id);
+CREATE INDEX IF NOT EXISTS idx_teams_league_division ON teams(league_division_id);
+CREATE INDEX IF NOT EXISTS idx_league_conferences_league ON league_conferences(league_id);
+CREATE INDEX IF NOT EXISTS idx_league_conferences_slug ON league_conferences(slug);
+CREATE INDEX IF NOT EXISTS idx_league_divisions_conference ON league_divisions(conference_id);
+CREATE INDEX IF NOT EXISTS idx_league_divisions_slug ON league_divisions(slug);
+CREATE INDEX IF NOT EXISTS idx_league_divisions_tier ON league_divisions(tier);
+CREATE INDEX IF NOT EXISTS idx_league_divisions_hierarchy_group ON league_divisions(hierarchy_group) WHERE hierarchy_group IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_division_relationships_from ON division_relationships(from_division_id);
+CREATE INDEX IF NOT EXISTS idx_division_relationships_to ON division_relationships(to_division_id);
+CREATE INDEX IF NOT EXISTS idx_division_relationships_type ON division_relationships(relationship_type);
+CREATE INDEX IF NOT EXISTS idx_division_relationships_season ON division_relationships(season);
+CREATE INDEX IF NOT EXISTS idx_sport_divisions_club ON sport_divisions(club_id);
+CREATE INDEX IF NOT EXISTS idx_sport_divisions_sport ON sport_divisions(sport_id);
+CREATE INDEX IF NOT EXISTS idx_sport_divisions_slug ON sport_divisions(slug);
+CREATE INDEX IF NOT EXISTS idx_clubs_parent ON clubs(parent_club_id) WHERE parent_club_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_clubs_slug ON clubs(slug);
+CREATE INDEX IF NOT EXISTS idx_leagues_sport ON leagues(sport_id);
+CREATE INDEX IF NOT EXISTS idx_positions_sport ON positions(sport_id);
+CREATE INDEX IF NOT EXISTS idx_event_types_sport ON event_types(sport_id);
+CREATE INDEX IF NOT EXISTS idx_event_types_category ON event_types(category);
+CREATE INDEX IF NOT EXISTS idx_magic_tokens_token ON magic_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_magic_tokens_expires ON magic_tokens(expires_at);
 
 -- Google Places indexes
-CREATE INDEX idx_venues_place_id ON venues(place_id) WHERE place_id IS NOT NULL;
-CREATE INDEX idx_venues_rating ON venues(rating) WHERE rating IS NOT NULL;
-CREATE INDEX idx_venues_data_source ON venues(data_source);
-CREATE INDEX idx_venues_business_status ON venues(business_status);
-CREATE INDEX idx_venues_phone ON venues(phone) WHERE phone IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_venues_place_id ON venues(place_id) WHERE place_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_venues_rating ON venues(rating) WHERE rating IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_venues_data_source ON venues(data_source);
+CREATE INDEX IF NOT EXISTS idx_venues_business_status ON venues(business_status);
+CREATE INDEX IF NOT EXISTS idx_venues_phone ON venues(phone) WHERE phone IS NOT NULL;
 
 -- Insert lookup data
 
@@ -1288,7 +1288,7 @@ INSERT INTO formations (id, code, name, positions) VALUES
 -- =============================================================================
 
 -- Notification types lookup table (for granular notification control)
-CREATE TABLE notification_types (
+CREATE TABLE IF NOT EXISTS notification_types (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(50) UNIQUE NOT NULL,          -- 'event_created', 'event_cancelled', 'rsvp_reminder'
     display_name VARCHAR(100) NOT NULL,        -- 'Event Created', 'Event Cancelled', 'RSVP Reminder'
@@ -1300,7 +1300,7 @@ CREATE TABLE notification_types (
 );
 
 -- User notification preferences (many-to-many with notification types)
-CREATE TABLE user_notification_preferences (
+CREATE TABLE IF NOT EXISTS user_notification_preferences (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
     notification_type_id UUID NOT NULL REFERENCES notification_types(id) ON DELETE CASCADE,
@@ -1314,7 +1314,7 @@ CREATE TABLE user_notification_preferences (
 );
 
 -- Recurring pattern types lookup
-CREATE TABLE recurrence_patterns (
+CREATE TABLE IF NOT EXISTS recurrence_patterns (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(30) UNIQUE NOT NULL,          -- 'weekly', 'biweekly', 'monthly'
     display_name VARCHAR(50) NOT NULL,         -- 'Weekly', 'Every 2 Weeks', 'Monthly'
@@ -1323,7 +1323,7 @@ CREATE TABLE recurrence_patterns (
 );
 
 -- Event recurrence (for recurring training sessions, etc.)
-CREATE TABLE event_recurrences (
+CREATE TABLE IF NOT EXISTS event_recurrences (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     parent_event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE, -- Template event
     recurrence_pattern_id UUID NOT NULL REFERENCES recurrence_patterns(id),
@@ -1346,7 +1346,7 @@ CREATE TABLE event_recurrences (
 );
 
 -- Generated events from recurring patterns
-CREATE TABLE recurring_event_instances (
+CREATE TABLE IF NOT EXISTS recurring_event_instances (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_recurrence_id UUID NOT NULL REFERENCES event_recurrences(id) ON DELETE CASCADE,
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -1358,7 +1358,7 @@ CREATE TABLE recurring_event_instances (
 );
 
 -- Notification log (audit trail of sent notifications)
-CREATE TABLE notification_log (
+CREATE TABLE IF NOT EXISTS notification_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
     notification_type_id UUID NOT NULL REFERENCES notification_types(id),
@@ -1376,7 +1376,7 @@ CREATE TABLE notification_log (
 );
 
 -- Session management (for better security)
-CREATE TABLE user_sessions (
+CREATE TABLE IF NOT EXISTS user_sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
     session_token VARCHAR(255) UNIQUE NOT NULL,
@@ -1390,20 +1390,20 @@ CREATE TABLE user_sessions (
 );
 
 -- Additional indexes for new tables
-CREATE INDEX idx_notification_prefs_user ON user_notification_preferences(user_id);
-CREATE INDEX idx_notification_prefs_type ON user_notification_preferences(notification_type_id);
-CREATE INDEX idx_event_recurrences_parent ON event_recurrences(parent_event_id);
-CREATE INDEX idx_event_recurrences_pattern ON event_recurrences(recurrence_pattern_id);
-CREATE INDEX idx_recurring_instances_recurrence ON recurring_event_instances(event_recurrence_id);
-CREATE INDEX idx_recurring_instances_event ON recurring_event_instances(event_id);
-CREATE INDEX idx_notification_log_user ON notification_log(user_id);
-CREATE INDEX idx_notification_log_event ON notification_log(event_id);
-CREATE INDEX idx_notification_log_sent_at ON notification_log(sent_at);
-CREATE INDEX idx_user_sessions_user ON user_sessions(user_id);
-CREATE INDEX idx_user_sessions_token ON user_sessions(session_token);
-CREATE INDEX idx_user_sessions_expires ON user_sessions(expires_at);
-CREATE INDEX idx_notification_types_category ON notification_types(category);
-CREATE INDEX idx_recurrence_patterns_name ON recurrence_patterns(name);
+CREATE INDEX IF NOT EXISTS idx_notification_prefs_user ON user_notification_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_prefs_type ON user_notification_preferences(notification_type_id);
+CREATE INDEX IF NOT EXISTS idx_event_recurrences_parent ON event_recurrences(parent_event_id);
+CREATE INDEX IF NOT EXISTS idx_event_recurrences_pattern ON event_recurrences(recurrence_pattern_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_instances_recurrence ON recurring_event_instances(event_recurrence_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_instances_event ON recurring_event_instances(event_id);
+CREATE INDEX IF NOT EXISTS idx_notification_log_user ON notification_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_log_event ON notification_log(event_id);
+CREATE INDEX IF NOT EXISTS idx_notification_log_sent_at ON notification_log(sent_at);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(session_token);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_expires ON user_sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_notification_types_category ON notification_types(category);
+CREATE INDEX IF NOT EXISTS idx_recurrence_patterns_name ON recurrence_patterns(name);
 
 -- Insert notification types
 INSERT INTO notification_types (id, name, display_name, description, category, default_enabled, is_system_notification) VALUES
@@ -1564,7 +1564,7 @@ COMMENT ON COLUMN login_history.success IS 'Whether the login was successful';
 -- Tracks player attendance at events, auto-populated from RSVPs
 
 -- Attendance statuses lookup table
-CREATE TABLE attendance_statuses (
+CREATE TABLE IF NOT EXISTS attendance_statuses (
     id SERIAL PRIMARY KEY,
     name VARCHAR(20) UNIQUE NOT NULL,          -- 'present', 'absent', 'late', 'excused', 'unknown'
     display_name VARCHAR(50) NOT NULL,         -- 'Present', 'Absent', 'Late', 'Excused', 'Unknown'
@@ -1582,7 +1582,7 @@ INSERT INTO attendance_statuses (name, display_name, sort_order, color) VALUES
 ('unknown', 'Unknown', 5, '#95a5a6');
 
 -- Event attendance table (one row per player per event)
-CREATE TABLE event_attendance (
+CREATE TABLE IF NOT EXISTS event_attendance (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -1596,10 +1596,10 @@ CREATE TABLE event_attendance (
 );
 
 -- Indexes for attendance queries
-CREATE INDEX idx_event_attendance_event ON event_attendance(event_id);
-CREATE INDEX idx_event_attendance_player ON event_attendance(player_id);
-CREATE INDEX idx_event_attendance_status ON event_attendance(status_id);
-CREATE INDEX idx_event_attendance_created ON event_attendance(created_at);
+CREATE INDEX IF NOT EXISTS idx_event_attendance_event ON event_attendance(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_attendance_player ON event_attendance(player_id);
+CREATE INDEX IF NOT EXISTS idx_event_attendance_status ON event_attendance(status_id);
+CREATE INDEX IF NOT EXISTS idx_event_attendance_created ON event_attendance(created_at);
 
 -- Comments
 COMMENT ON TABLE event_attendance IS 'Player attendance records, auto-populated from RSVPs at event start/end';
@@ -1745,7 +1745,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Log table for attendance cron jobs
-CREATE TABLE attendance_cron_log (
+CREATE TABLE IF NOT EXISTS attendance_cron_log (
     id SERIAL PRIMARY KEY,
     run_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     events_processed INTEGER DEFAULT 0,
@@ -1763,7 +1763,7 @@ COMMENT ON TABLE attendance_cron_log IS 'Log of attendance auto-creation cron jo
 -- =====================================================
 -- Player Availability Tracking System
 -- =====================================================
-CREATE TABLE player_medical_status (
+CREATE TABLE IF NOT EXISTS player_medical_status (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL DEFAULT 'healthy',
@@ -1791,7 +1791,7 @@ CREATE TABLE player_medical_status (
     CONSTRAINT team_scope_valid CHECK ((affects_all_teams = true AND team_id IS NULL) OR (affects_all_teams = false AND team_id IS NOT NULL))
 );
 
-CREATE TABLE player_academic_status (
+CREATE TABLE IF NOT EXISTS player_academic_status (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL DEFAULT 'eligible',
@@ -1819,7 +1819,7 @@ CREATE TABLE player_academic_status (
     CONSTRAINT academic_team_scope_valid CHECK ((affects_all_teams = true AND team_id IS NULL) OR (affects_all_teams = false AND team_id IS NOT NULL))
 );
 
-CREATE TABLE player_medical_status_history (
+CREATE TABLE IF NOT EXISTS player_medical_status_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     medical_status_id UUID NOT NULL REFERENCES player_medical_status(id) ON DELETE CASCADE,
     player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -1831,7 +1831,7 @@ CREATE TABLE player_medical_status_history (
     reason TEXT
 );
 
-CREATE TABLE player_academic_status_history (
+CREATE TABLE IF NOT EXISTS player_academic_status_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     academic_status_id UUID NOT NULL REFERENCES player_academic_status(id) ON DELETE CASCADE,
     player_id UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -1843,14 +1843,14 @@ CREATE TABLE player_academic_status_history (
     reason TEXT
 );
 
-CREATE INDEX idx_medical_status_player ON player_medical_status(player_id);
-CREATE INDEX idx_medical_status_active ON player_medical_status(player_id) WHERE resolved_at IS NULL;
-CREATE INDEX idx_medical_status_team ON player_medical_status(team_id) WHERE team_id IS NOT NULL;
-CREATE INDEX idx_academic_status_player ON player_academic_status(player_id);
-CREATE INDEX idx_academic_status_active ON player_academic_status(player_id) WHERE resolved_at IS NULL;
-CREATE INDEX idx_academic_status_team ON player_academic_status(team_id) WHERE team_id IS NOT NULL;
-CREATE INDEX idx_medical_history_status ON player_medical_status_history(medical_status_id);
-CREATE INDEX idx_academic_history_status ON player_academic_status_history(academic_status_id);
+CREATE INDEX IF NOT EXISTS idx_medical_status_player ON player_medical_status(player_id);
+CREATE INDEX IF NOT EXISTS idx_medical_status_active ON player_medical_status(player_id) WHERE resolved_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_medical_status_team ON player_medical_status(team_id) WHERE team_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_academic_status_player ON player_academic_status(player_id);
+CREATE INDEX IF NOT EXISTS idx_academic_status_active ON player_academic_status(player_id) WHERE resolved_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_academic_status_team ON player_academic_status(team_id) WHERE team_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_medical_history_status ON player_medical_status_history(medical_status_id);
+CREATE INDEX IF NOT EXISTS idx_academic_history_status ON player_academic_status_history(academic_status_id);
 
 -- ========================================
 -- PRACTICE TEAMS JUNCTION TABLE
@@ -1864,8 +1864,8 @@ CREATE TABLE IF NOT EXISTS practice_teams (
     UNIQUE(practice_id, team_id)
 );
 
-CREATE INDEX idx_practice_teams_practice ON practice_teams(practice_id);
-CREATE INDEX idx_practice_teams_team ON practice_teams(team_id);
+CREATE INDEX IF NOT EXISTS idx_practice_teams_practice ON practice_teams(practice_id);
+CREATE INDEX IF NOT EXISTS idx_practice_teams_team ON practice_teams(team_id);
 
 CREATE OR REPLACE FUNCTION sync_practice_teams()
 RETURNS TRIGGER AS $$
@@ -1902,7 +1902,7 @@ ON CONFLICT DO NOTHING;
 -- ============================================================================
 
 -- System configuration settings (key-value store for platform settings)
-CREATE TABLE system_settings (
+CREATE TABLE IF NOT EXISTS system_settings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     setting_key VARCHAR(100) UNIQUE NOT NULL,     -- 'app_name', 'default_timezone', 'default_language'
     setting_value TEXT,                            -- JSON or simple text value
@@ -1918,7 +1918,7 @@ CREATE TABLE system_settings (
 );
 
 -- Feature flags (enable/disable platform features)
-CREATE TABLE feature_flags (
+CREATE TABLE IF NOT EXISTS feature_flags (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     flag_key VARCHAR(100) UNIQUE NOT NULL,         -- 'enable_availability_tracking', 'enable_medical_records'
     flag_name VARCHAR(200) NOT NULL,               -- 'Availability Tracking', 'Medical Records'
@@ -1932,7 +1932,7 @@ CREATE TABLE feature_flags (
 );
 
 -- System audit log (track all super admin actions)
-CREATE TABLE system_audit_log (
+CREATE TABLE IF NOT EXISTS system_audit_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     admin_user_id UUID NOT NULL REFERENCES users(id),
     action_type VARCHAR(50) NOT NULL,              -- 'create', 'update', 'delete', 'bulk_import', 'permission_change'
@@ -1951,7 +1951,7 @@ CREATE TABLE system_audit_log (
 );
 
 -- API usage tracking (monitor API calls per user/endpoint)
-CREATE TABLE api_usage_log (
+CREATE TABLE IF NOT EXISTS api_usage_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id),             -- NULL for unauthenticated requests
     endpoint VARCHAR(255) NOT NULL,                -- '/api/teams', '/api/events'
@@ -1966,7 +1966,7 @@ CREATE TABLE api_usage_log (
 );
 
 -- System notifications (platform-wide announcements from super admins)
-CREATE TABLE system_notifications (
+CREATE TABLE IF NOT EXISTS system_notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
@@ -1985,7 +1985,7 @@ CREATE TABLE system_notifications (
 );
 
 -- Data import jobs (track bulk imports from CSV/scrapers)
-CREATE TABLE data_import_jobs (
+CREATE TABLE IF NOT EXISTS data_import_jobs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     job_type VARCHAR(50) NOT NULL,                 -- 'csv_import', 'scraper', 'api_sync'
     entity_type VARCHAR(50) NOT NULL,              -- 'users', 'teams', 'players', 'matches'
@@ -2006,7 +2006,7 @@ CREATE TABLE data_import_jobs (
 );
 
 -- Scraper execution log (track scraper runs)
-CREATE TABLE scraper_execution_log (
+CREATE TABLE IF NOT EXISTS scraper_execution_log (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     scraper_name VARCHAR(50) NOT NULL,             -- 'apsl', 'casa', 'groupme', 'venue'
     execution_mode VARCHAR(50),                    -- 'full', 'players', 'schedules'
@@ -2026,7 +2026,7 @@ CREATE TABLE scraper_execution_log (
 );
 
 -- System health metrics (store periodic health check data)
-CREATE TABLE system_health_metrics (
+CREATE TABLE IF NOT EXISTS system_health_metrics (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     metric_name VARCHAR(100) NOT NULL,             -- 'database_size', 'active_users', 'api_response_time'
     metric_value NUMERIC,
@@ -2035,12 +2035,12 @@ CREATE TABLE system_health_metrics (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_system_audit_log_admin ON system_audit_log(admin_user_id, created_at DESC);
-CREATE INDEX idx_system_audit_log_entity ON system_audit_log(entity_type, entity_id);
-CREATE INDEX idx_system_audit_log_action ON system_audit_log(action_type, created_at DESC);
-CREATE INDEX idx_api_usage_log_user ON api_usage_log(user_id, created_at DESC);
-CREATE INDEX idx_api_usage_log_endpoint ON api_usage_log(endpoint, created_at DESC);
-CREATE INDEX idx_system_notifications_active ON system_notifications(is_active, starts_at, ends_at);
-CREATE INDEX idx_data_import_jobs_status ON data_import_jobs(status, started_at DESC);
-CREATE INDEX idx_scraper_execution_log_scraper ON scraper_execution_log(scraper_name, started_at DESC);
-CREATE INDEX idx_system_health_metrics_name ON system_health_metrics(metric_name, recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_audit_log_admin ON system_audit_log(admin_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_audit_log_entity ON system_audit_log(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_system_audit_log_action ON system_audit_log(action_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_api_usage_log_user ON api_usage_log(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_api_usage_log_endpoint ON api_usage_log(endpoint, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_notifications_active ON system_notifications(is_active, starts_at, ends_at);
+CREATE INDEX IF NOT EXISTS idx_data_import_jobs_status ON data_import_jobs(status, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_scraper_execution_log_scraper ON scraper_execution_log(scraper_name, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_system_health_metrics_name ON system_health_metrics(metric_name, recorded_at DESC);

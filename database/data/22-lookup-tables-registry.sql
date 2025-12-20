@@ -1,7 +1,7 @@
 -- Registry of manageable lookup tables for System Admin
 -- This allows super admins to view and edit reference data through the UI
 
-CREATE TABLE lookup_tables (
+CREATE TABLE IF NOT EXISTS lookup_tables (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     table_name VARCHAR(100) UNIQUE NOT NULL,
     display_name VARCHAR(150) NOT NULL,
@@ -38,4 +38,4 @@ INSERT INTO lookup_tables (table_name, display_name, description, category, is_s
 ('audit_action_types', 'Audit Action Types', 'Types of administrative actions logged', 'system', true, 41);
 
 -- Create index for faster lookups
-CREATE INDEX idx_lookup_tables_category ON lookup_tables(category, sort_order);
+CREATE INDEX IF NOT EXISTS idx_lookup_tables_category ON lookup_tables(category, sort_order);
