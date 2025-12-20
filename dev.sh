@@ -534,9 +534,26 @@ npm install --silent
 # This ensures database init scripts (like 51-admins.sql, 75-club-admins.sql) run every time
 echo -e "${YELLOW}🧹 Step 2: Full cleanup (containers, volumes, build cache)...${NC}"
 echo "  ✓ Stopping and removing containers and volumes..."
-$DOCKER_COMPOSE down -v
+
+# Stop containers first
+$DOCKER_COMPOSE down 2>&1 | grep -v "no container with" | grep -v "Error:" || true
+
+# Force remove any remaining containers
+$DOCKER stop footballhome_db footballhome_backend footballhome_frontend footballhome_pgadmin 2>/dev/null || true
+$DOCKER rm -f footballhome_db footballhome_backend footballhome_frontend footballhome_pgadmin 2>/dev/null || true
+
+# Remove volumes explicitly
+$DOCKER volume rm footballhome_db_data 2>/dev/null || true
+$DOCKER volume rm footballhome_footballhome_network 2>/dev/null || true
+
+# Remove network
+$DOCKER network rm footballhome_footballhome_network 2>/dev/null || true
+
+# Remove pod if it exists
+$DOCKER pod rm -f pod_footballhome 2>/dev/null || true
+
 echo "  ✓ Clearing build cache..."
-$DOCKER builder prune -af
+$DOCKER builder prune -af 2>&1 | grep -v "^$" || true
 echo -e "${GREEN}✓ Cleanup complete (fresh start guaranteed)${NC}"
 echo ""
 
