@@ -244,6 +244,39 @@ else
 fi
 
 # ============================================================
+# Step 4.3: Docker Hub Authentication (to avoid rate limits)
+# ============================================================
+print_status "Checking Docker Hub authentication..."
+
+# Check if already logged in
+if podman login --get-login docker.io &> /dev/null; then
+    DOCKER_USER=$(podman login --get-login docker.io)
+    print_success "Already logged in to Docker Hub as: $DOCKER_USER"
+else
+    # Try to login from env file if credentials exist
+    if [ -f env ]; then
+        source env
+        if [ -n "$DOCKER_HUB_USERNAME" ] && [ -n "$DOCKER_HUB_TOKEN" ]; then
+            print_status "Logging in to Docker Hub from env file..."
+            echo "$DOCKER_HUB_TOKEN" | podman login docker.io -u "$DOCKER_HUB_USERNAME" --password-stdin &> /dev/null
+            if [ $? -eq 0 ]; then
+                print_success "Successfully logged in to Docker Hub"
+            else
+                print_warning "Login failed - check credentials in env file"
+            fi
+        else
+            print_warning "No Docker Hub credentials in env file"
+            echo ""
+            echo "To avoid rate limits, add to your env file:"
+            echo "  DOCKER_HUB_USERNAME=your_username"
+            echo "  DOCKER_HUB_TOKEN=your_access_token"
+            echo ""
+            echo "Get a token from: https://hub.docker.com/settings/security"
+        fi
+    fi
+fi
+
+# ============================================================
 # Step 4.5: Create env file
 # ============================================================
 print_status "Setting up env file..."
@@ -259,6 +292,12 @@ cat > env << 'EOF'
 # Football Home Environment Variables
 # Created by setup.sh
 
+# Docker Hub Authentication (to avoid rate limits)
+# Get a free account at: https://hub.docker.com/signup
+# Generate token at: https://hub.docker.com/settings/security
+DOCKER_HUB_USERNAME=
+DOCKER_HUB_TOKEN=
+
 # Twilio SMS (optional - for SMS notifications)
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
@@ -271,7 +310,8 @@ GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/oauth/google/callback
 EOF
 print_success "env file created successfully"
 echo ""
-print_warning "Optional: Edit env to add Twilio/Google credentials"
+print_warning "Optional: Edit env to add Docker Hub, Twilio, or Google credentials"
+echo "  • Docker Hub: To avoid rate limits (100 anon vs 200 authenticated pulls/6 hours)"
 echo "  • Twilio: For SMS notifications (RSVPs, reminders)"
 echo "  • Google OAuth: For Google sign-in"
 echo ""
