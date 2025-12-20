@@ -298,6 +298,36 @@ fi
 print_success "Docker daemon is running and accessible"
 
 # ============================================================
+# Step 6.5: Create .env file
+# ============================================================
+print_status "Creating .env file..."
+
+if [ -f .env ]; then
+    print_warning ".env file already exists, skipping"
+else
+    cat > .env << 'EOF'
+# Football Home Environment Variables
+# Created by setup.sh
+
+# Twilio SMS (optional - for SMS notifications)
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_PHONE=
+
+# Google OAuth (optional - for Google login)
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/oauth/google/callback
+EOF
+    print_success ".env file created"
+    echo ""
+    print_warning "Optional: Edit .env to add Twilio/Google credentials"
+    echo "  • Twilio: For SMS notifications (RSVPs, reminders)"
+    echo "  • Google OAuth: For Google sign-in"
+    echo ""
+fi
+
+# ============================================================
 # Step 7: Final Verification
 # ============================================================
 print_status "Running final checks..."

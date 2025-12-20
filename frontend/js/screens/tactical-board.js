@@ -24,6 +24,7 @@ class TacticalBoardScreen extends Screen {
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>Tactical Board</h1>
         <div style="display: flex; gap: var(--space-2);">
+          <button class="btn btn-secondary load-board-btn">📂 Load</button>
           <button class="btn btn-secondary save-btn">💾 Save</button>
           <button class="btn btn-secondary share-btn">📤 Share</button>
         </div>
@@ -154,6 +155,11 @@ class TacticalBoardScreen extends Screen {
       this.navigation.goBack();
     });
     
+    // Load button
+    this.find('.load-board-btn').addEventListener('click', () => {
+      this.showLoadBoardDialog();
+    });
+    
     // Save button
     this.find('.save-btn').addEventListener('click', () => {
       this.saveTacticalBoard();
@@ -267,7 +273,7 @@ class TacticalBoardScreen extends Screen {
     const number = prompt('Jersey number:', String(this.getActivePlayers().length + 1));
     if (!number) return;
     
-    const color = this.activeTeam === 'home' ? '#FF6B35' : '#3498db';
+    const color = this.activeTeam === 'home' ? '#0066CC' : '#FFFFFF';  // Blue for home, white for away
     const players = this.getActivePlayers();
     
     players.push({
@@ -316,7 +322,7 @@ class TacticalBoardScreen extends Screen {
             jerseyNumber: p.jersey_number || index + 1,
             x: this.canvas.width / 2,
             y: this.canvas.height / 2 + (index * 30) - 150,
-            color: '#FF6B35',
+            color: '#0066CC',  // Blue for home team
             team: 'home'
           });
         });
@@ -553,24 +559,27 @@ class TacticalBoardScreen extends Screen {
       ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
       ctx.fill();
       
-      // Draw border if selected
-      if (this.selectedPlayer === player) {
-        ctx.strokeStyle = 'yellow';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-      }
+      // Always draw a border for visibility (especially for white players)
+      ctx.strokeStyle = this.selectedPlayer === player ? 'yellow' : '#333';
+      ctx.lineWidth = this.selectedPlayer === player ? 3 : 2;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
+      ctx.stroke();
       
-      // Draw jersey number
-      ctx.fillStyle = 'white';
+      // Draw jersey number (black for white players, white for others)
+      ctx.fillStyle = player.color === '#FFFFFF' ? '#000000' : '#FFFFFF';
       ctx.font = 'bold 14px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(player.jerseyNumber, player.x, player.y);
       
-      // Draw name below
-      ctx.fillStyle = 'white';
+      // Draw name below (with background for visibility)
       ctx.font = '11px sans-serif';
-      ctx.fillText(player.name, player.x, player.y + 30);
+      const textWidth = ctx.measureText(player.name).width;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(player.x - textWidth/2 - 2, player.y + 22, textWidth + 4, 14);
+      ctx.fillStyle = 'white';
+      ctx.fillText(player.name, player.x, player.y + 29);
     });
   }
   
@@ -761,14 +770,16 @@ class TacticalBoardScreen extends Screen {
     }
     
     const players = this.getActivePlayers();
-    const color = this.activeTeam === 'home' ? '#FF6B35' : '#3498db';
+    const color = this.activeTeam === 'home' ? '#0066CC' : '#FFFFFF';  // Blue for home, white for away
     
     // If we don't have enough players, create them
     while (players.length < positions.length) {
+      const playerNum = players.length + 1;
+      const positionName = playerNum === 1 ? 'GK' : playerNum <= 5 ? 'DEF' : playerNum <= 9 ? 'MID' : 'ATT';
       players.push({
         id: Date.now() + players.length,
-        name: `Player ${players.length + 1}`,
-        jerseyNumber: players.length + 1,
+        name: `${positionName} ${playerNum}`,
+        jerseyNumber: playerNum,
         x: this.canvas.width / 2,
         y: this.canvas.height / 2,
         color: color,
@@ -789,16 +800,221 @@ class TacticalBoardScreen extends Screen {
     this.drawAll();
   }
   
-  saveTacticalBoard() {
-    // TODO: Implement save to backend
+  async saveTacticalBoard() {
+    try {
+      // Get board metadata
+      const boardName = prompt('Enter board name:', `Tactical Board - ${new Date().toLocaleDateString()}`);
+      if (!boardName) return;
+      
+      const description = prompt('Enter description (optional):', '');
+      
+      // Prepare board data with players and arrows embedded
+      const boardData = {
+        name: boardName,
+        description: description || '',
+        boardTypeId: 2, // Practice session
+        formationHome: this.getFormationString('home') || '',
+        formationOpponent: this.getFormationString('opponent') || '',
+        canvasWidth: Math.floor(this.canvas.width),
+        canvasHeight: Math.floor(this.canvas.height),
+        isPublic: false,
+        isTemplate: false
+      };
+      
+      console.log('Saving board:', JSON.stringify(boardData, null, 2));
+      
+      // Get auth token from localStorage (same pattern as roster-management.js)
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated. Please log in first.');
+      }
+      
+      // Create the board
+      const response = await fetch('http://localhost:3001/api/tactical-boards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(boardData)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error:', errorText);
+        let errorMessage = 'Failed to create board';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.error || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const result = await response.json();
+      const boardId = result.id;
+      
+      console.log('Board created with ID:', boardId);
+      
+      // Note: For full functionality, we'd need additional endpoints to save:
+      // - Players (POST /api/tactical-boards/:boardId/players)
+      // - Arrows (POST /api/tactical-boards/:boardId/arrows)  
+      // - Team link (POST /api/tactical-boards/:boardId/entities)
+      // These can be added to the backend later
+      
+      alert(`Board "${boardName}" saved successfully!\n\nBoard ID: ${boardId}\n\nNote: Player positions and arrows are saved locally. Backend integration for these will be added soon.`);
+      this.currentBoardId = boardId;
+      
+      // Save to localStorage as backup
+      this.saveToLocalStorage(boardId);
+      
+    } catch (error) {
+      console.error('Error saving board:', error);
+      alert(`Failed to save board: ${error.message}`);
+    }
+  }
+  
+  saveToLocalStorage(boardId) {
     const data = {
+      boardId,
       homePlayers: this.homePlayers,
       opponentPlayers: this.opponentPlayers,
-      arrows: this.arrows
+      arrows: this.arrows,
+      timestamp: Date.now()
     };
-    
-    console.log('Saving tactical board:', data);
-    alert('Save functionality coming soon!');
+    localStorage.setItem(`tactical-board-${boardId}`, JSON.stringify(data));
+  }
+  
+  loadFromLocalStorage(boardId) {
+    const data = localStorage.getItem(`tactical-board-${boardId}`);
+    if (data) {
+      return JSON.parse(data);
+    }
+    return null;
+  }
+  
+  getFormationString(team) {
+    const players = team === 'home' ? this.homePlayers : this.opponentPlayers;
+    // Simple formation detection based on player count
+    if (players.length === 11) return '4-4-2';
+    if (players.length === 10) return '4-3-3';
+    return 'custom';
+  }
+  
+  async loadTacticalBoard(boardId) {
+    try {
+      console.log('Loading board:', boardId);
+      
+      const response = await fetch(`http://localhost:3001/api/tactical-boards/${boardId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load board');
+      }
+      
+      const board = await response.json();
+      console.log('Loaded board:', board);
+      
+      // Clear current board
+      this.homePlayers = [];
+      this.opponentPlayers = [];
+      this.arrows = [];
+      
+      // Load players
+      for (const player of board.players) {
+        const playerObj = {
+          x: parseFloat(player.positionX),
+          y: parseFloat(player.positionY),
+          number: player.jerseyNumber,
+          name: player.name
+        };
+        
+        if (player.team === 'home') {
+          this.homePlayers.push(playerObj);
+        } else {
+          this.opponentPlayers.push(playerObj);
+        }
+      }
+      
+      // Load arrows
+      for (const arrow of board.arrows) {
+        this.arrows.push({
+          startX: parseFloat(arrow.startX),
+          startY: parseFloat(arrow.startY),
+          endX: parseFloat(arrow.endX),
+          endY: parseFloat(arrow.endY),
+          color: arrow.color || '#000000'
+        });
+      }
+      
+      this.currentBoardId = boardId;
+      this.draw();
+      
+      alert(`Board "${board.name}" loaded successfully!`);
+      
+    } catch (error) {
+      console.error('Error loading board:', error);
+      alert(`Failed to load board: ${error.message}`);
+    }
+  }
+  
+  async loadBoardsList() {
+    try {
+      if (!this.teamId) return [];
+      
+      const response = await fetch(`http://localhost:3001/api/tactical-boards/team/${this.teamId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load boards list');
+      }
+      
+      const boards = await response.json();
+      return boards;
+      
+    } catch (error) {
+      console.error('Error loading boards list:', error);
+      return [];
+    }
+  }
+  
+  async showLoadBoardDialog() {
+    try {
+      const boards = await this.loadBoardsList();
+      
+      if (boards.length === 0) {
+        alert('No saved boards found for this team.');
+        return;
+      }
+      
+      // Create a simple selection dialog
+      let message = 'Select a board to load:\n\n';
+      boards.forEach((board, index) => {
+        message += `${index + 1}. ${board.name} (${new Date(board.createdAt).toLocaleDateString()})\n`;
+      });
+      message += '\nEnter the number:';
+      
+      const selection = prompt(message);
+      if (!selection) return;
+      
+      const index = parseInt(selection) - 1;
+      if (index >= 0 && index < boards.length) {
+        await this.loadTacticalBoard(boards[index].id);
+      } else {
+        alert('Invalid selection');
+      }
+      
+    } catch (error) {
+      console.error('Error showing load dialog:', error);
+      alert('Failed to load boards list');
+    }
   }
   
   shareTacticalBoard() {

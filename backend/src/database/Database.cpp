@@ -98,8 +98,9 @@ pqxx::result Database::query(const std::string& sql, const std::vector<std::stri
         pqxx::nontransaction work(*connection_);
         
         // Simple parameter substitution (for production, use proper prepared statements)
+        // Replace in reverse order to avoid $1 matching $10, $11, etc.
         std::string parameterized_sql = sql;
-        for (size_t i = 0; i < params.size(); ++i) {
+        for (int i = params.size() - 1; i >= 0; --i) {
             std::string placeholder = "$" + std::to_string(i + 1);
             std::string escaped_param = connection_->quote(params[i]);
             
