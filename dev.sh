@@ -572,7 +572,26 @@ fi
 
 echo -e "${YELLOW}🔨 Step 3: Building images (no cache)...${NC}"
 echo -e "${BLUE}Note: First-time image downloads can take 5-15 minutes${NC}"
+echo ""
+
+# Start background monitoring
+(
+    sleep 10  # Give build time to start
+    while kill -0 $$ 2>/dev/null; do
+        echo -e "${BLUE}📊 Image status:${NC}"
+        $DOCKER images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" 2>/dev/null | grep -E "(REPOSITORY|gcc|postgres|nginx|footballhome)" | head -10
+        echo ""
+        sleep 10
+    done
+) &
+MONITOR_PID=$!
+
+# Run the build
 $DOCKER_COMPOSE --verbose build --no-cache
+
+# Stop monitoring
+kill $MONITOR_PID 2>/dev/null
+
 echo -e "${GREEN}✓ Build complete${NC}"
 echo ""
 
