@@ -4,13 +4,15 @@ class TacticalBoardScreen extends Screen {
     super(navigation, auth);
     this.canvas = null;
     this.ctx = null;
-    this.players = [];
+    this.homePlayers = [];
+    this.opponentPlayers = [];
     this.selectedPlayer = null;
     this.isDragging = false;
     this.arrows = [];
     this.drawingArrow = null;
     this.mode = 'move'; // 'move' or 'draw'
     this.scale = 1;
+    this.activeTeam = 'home'; // 'home' or 'opponent'
   }
 
   render() {
@@ -44,15 +46,28 @@ class TacticalBoardScreen extends Screen {
           </div>
           
           <div class="card">
+            <h3 style="margin: 0 0 var(--space-2) 0; font-size: 0.9rem;">Team</h3>
+            <button class="btn btn-sm team-btn" data-team="home" style="width: 100%;">🔵 Home Team</button>
+            <button class="btn btn-sm team-btn" data-team="opponent" style="width: 100%; margin-top: var(--space-1);">🔴 Opponent</button>
+          </div>
+          
+          <div class="card">
             <h3 style="margin: 0 0 var(--space-2) 0; font-size: 0.9rem;">Formations</h3>
             <button class="btn btn-sm formation-btn" data-formation="4-4-2" style="width: 100%;">4-4-2</button>
             <button class="btn btn-sm formation-btn" data-formation="4-3-3" style="width: 100%; margin-top: var(--space-1);">4-3-3</button>
             <button class="btn btn-sm formation-btn" data-formation="3-5-2" style="width: 100%; margin-top: var(--space-1);">3-5-2</button>
           </div>
           
-          <div class="card" style="flex: 1; overflow-y: auto;">
+          <div class="card">
             <h3 style="margin: 0 0 var(--space-2) 0; font-size: 0.9rem;">Players</h3>
-            <div id="player-list"></div>
+            <button class="btn btn-sm add-player-btn" style="width: 100%;">➕ Add Player</button>
+            <button class="btn btn-sm load-roster-btn" style="width: 100%; margin-top: var(--space-1);">📥 Load Roster</button>
+            <button class="btn btn-sm clear-players-btn" style="width: 100%; margin-top: var(--space-1);">🗑️ Clear All</button>
+          </div>
+          
+          <div class="card" style="flex: 1; overflow-y: auto;">
+            <h3 style="margin: 0 0 var(--space-2) 0; font-size: 0.9rem;">Player List</h3>
+            <div id="player-list" style="max-height: 300px; overflow-y: auto;"></div>
           </div>
         </div>
         
@@ -70,33 +85,53 @@ class TacticalBoardScreen extends Screen {
   onEnter(params) {
     // Get team from context
     const team = this.navigation.context.team;
+    console.log('TacticalBoard onEnter - team:', team);
+    
     if (!team) {
+      console.error('No team in context');
       alert('No team selected');
       this.navigation.goBack();
       return;
     }
     
-    // Initialize canvas
-    this.initCanvas();
+    // Store team info
+    this.teamId = team.id;
+    this.teamName = team.name;
     
-    // Load team roster
-    this.loadRoster(team.id);
-    
-    // Setup event listeners
-    this.setupEventListeners();
-    
-    // Set initial mode
-    this.setMode('move');
+    // Initialize canvas after a brief delay to ensure DOM is ready
+    setTimeout(() => {
+      console.log('Initializing canvas...');
+      this.initCanvas();
+      
+      // Setup event listeners
+      this.setupEventListeners();
+      
+      // Set initial mode and team
+      this.setMode('move');
+      this.setActiveTeam('home');
+      
+      // Start with empty field - user can load roster or add players manually
+      this.drawAll();
+    }, 100);
   }
   
   initCanvas() {
     this.canvas = this.find('#tactical-canvas');
+    console.log('Canvas element:', this.canvas);
+    
+    if (!this.canvas) {
+      console.error('Canvas element not found!');
+      return;
+    }
+    
     this.ctx = this.canvas.getContext('2d');
+    console.log('Canvas context:', this.ctx);
     
     // Set canvas size to match container
     const container = this.canvas.parentElement;
     this.canvas.width = container.clientWidth;
     this.canvas.height = container.clientHeight;
+    console.log('Canvas size:', this.canvas.width, 'x', this.canvas.height);
     
     // Handle resize
     window.addEventListener('resize', () => this.handleResize());
@@ -143,12 +178,35 @@ class TacticalBoardScreen extends Screen {
       this.drawAll();
     });
     
+    // Team selection buttons
+    this.element.querySelectorAll('.team-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const team = e.currentTarget.dataset.team;
+        this.setActiveTeam(team);
+      });
+    });
+    
     // Formation buttons
     this.element.querySelectorAll('.formation-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const formation = e.currentTarget.dataset.formation;
         this.applyFormation(formation);
       });
+    });
+    
+    // Player management buttons
+    this.find('.add-player-btn').addEventListener('click', () => {
+      this.addPlayer();
+    });
+    
+    this.find('.load-roster-btn').addEventListener('click', () => {
+      this.loadRoster(this.teamId);
+    });
+    
+    this.find('.clear-players-btn').addEventListener('click', () => {
+      if (confirm(`Clear all ${this.activeTeam} players?`)) {
+        this.clearPlayers();
+      }
     });
     
     // Canvas mouse events
@@ -176,22 +234,94 @@ class TacticalBoardScreen extends Screen {
     this.canvas.style.cursor = mode === 'move' ? 'pointer' : 'crosshair';
   }
   
+  setActiveTeam(team) {
+    this.activeTeam = team;
+    console.log('Active team set to:', team);
+    
+    // Update button styles
+    this.element.querySelectorAll('.team-btn').forEach(btn => {
+      if (btn.dataset.team === team) {
+        btn.classList.add('btn-primary');
+        btn.classList.remove('btn-secondary');
+      } else {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-secondary');
+      }
+    });
+    
+    this.updatePlayerList();
+  }
+  
+  getActivePlayers() {
+    return this.activeTeam === 'home' ? this.homePlayers : this.opponentPlayers;
+  }
+  
+  getAllPlayers() {
+    return [...this.homePlayers, ...this.opponentPlayers];
+  }
+  
+  addPlayer() {
+    const name = prompt('Player name:');
+    if (!name) return;
+    
+    const number = prompt('Jersey number:', String(this.getActivePlayers().length + 1));
+    if (!number) return;
+    
+    const color = this.activeTeam === 'home' ? '#FF6B35' : '#3498db';
+    const players = this.getActivePlayers();
+    
+    players.push({
+      id: Date.now(),
+      name: name,
+      jerseyNumber: parseInt(number) || players.length + 1,
+      x: this.canvas.width / 2,
+      y: this.canvas.height / 2,
+      color: color,
+      team: this.activeTeam
+    });
+    
+    this.updatePlayerList();
+    this.drawAll();
+  }
+  
+  clearPlayers() {
+    if (this.activeTeam === 'home') {
+      this.homePlayers = [];
+    } else {
+      this.opponentPlayers = [];
+    }
+    this.updatePlayerList();
+    this.drawAll();
+  }
+  
   loadRoster(teamId) {
     const endpoint = `/api/teams/${teamId}/roster`;
+    console.log('Fetching roster from:', endpoint);
+    
     this.safeFetch(endpoint, response => {
+      console.log('Roster response:', response);
       const roster = response.data || [];
+      console.log('Roster data:', roster);
+      
+      // Clear current home players
+      this.homePlayers = [];
       
       // Initialize players on field
-      this.players = roster
+      roster
         .filter(p => p.roster_status === 'active')
-        .map((p, index) => ({
-          id: p.player_id,
-          name: p.preferred_name || p.first_name,
-          jerseyNumber: p.jersey_number || index + 1,
-          x: this.canvas.width / 2,
-          y: this.canvas.height / 2 + (index * 30) - 150,
-          color: '#FF6B35'
-        }));
+        .forEach((p, index) => {
+          this.homePlayers.push({
+            id: p.player_id,
+            name: p.preferred_name || p.first_name,
+            jerseyNumber: p.jersey_number || index + 1,
+            x: this.canvas.width / 2,
+            y: this.canvas.height / 2 + (index * 30) - 150,
+            color: '#FF6B35',
+            team: 'home'
+          });
+        });
+      
+      console.log('Home players loaded:', this.homePlayers.length);
       
       // Update player list
       this.updatePlayerList();
@@ -203,16 +333,61 @@ class TacticalBoardScreen extends Screen {
   
   updatePlayerList() {
     const listContainer = this.find('#player-list');
-    listContainer.innerHTML = this.players
-      .map(p => `
-        <div style="padding: var(--space-1); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; gap: var(--space-2);">
+    const players = this.getActivePlayers();
+    
+    if (players.length === 0) {
+      listContainer.innerHTML = '<div style="padding: var(--space-2); text-align: center; opacity: 0.6; font-size: 0.85rem;">No players</div>';
+      return;
+    }
+    
+    listContainer.innerHTML = players
+      .map((p, index) => `
+        <div class="player-item" data-player-id="${p.id}" style="padding: var(--space-1); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; gap: var(--space-2); cursor: pointer;">
           <div style="width: 24px; height: 24px; background: ${p.color}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; color: white;">
             ${p.jerseyNumber}
           </div>
-          <span style="font-size: 0.85rem;">${p.name}</span>
+          <span style="font-size: 0.85rem; flex: 1;">${p.name}</span>
+          <button class="delete-player-btn" data-index="${index}" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; opacity: 0.5;" title="Delete">🗑️</button>
         </div>
       `)
       .join('');
+    
+    // Add delete handlers
+    listContainer.querySelectorAll('.delete-player-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const index = parseInt(e.currentTarget.dataset.index);
+        this.deletePlayer(index);
+      });
+    });
+    
+    // Add click to edit handlers
+    listContainer.querySelectorAll('.player-item').forEach((item, index) => {
+      item.addEventListener('click', () => {
+        this.editPlayer(index);
+      });
+    });
+  }
+  
+  deletePlayer(index) {
+    const players = this.getActivePlayers();
+    players.splice(index, 1);
+    this.updatePlayerList();
+    this.drawAll();
+  }
+  
+  editPlayer(index) {
+    const players = this.getActivePlayers();
+    const player = players[index];
+    
+    const name = prompt('Player name:', player.name);
+    if (name) player.name = name;
+    
+    const number = prompt('Jersey number:', player.jerseyNumber);
+    if (number) player.jerseyNumber = parseInt(number) || player.jerseyNumber;
+    
+    this.updatePlayerList();
+    this.drawAll();
   }
   
   drawField() {
@@ -255,8 +430,9 @@ class TacticalBoardScreen extends Screen {
   
   drawPlayers() {
     const ctx = this.ctx;
+    const allPlayers = this.getAllPlayers();
     
-    this.players.forEach(player => {
+    allPlayers.forEach(player => {
       // Draw player circle
       ctx.fillStyle = player.color;
       ctx.beginPath();
@@ -278,6 +454,7 @@ class TacticalBoardScreen extends Screen {
       ctx.fillText(player.jerseyNumber, player.x, player.y);
       
       // Draw name below
+      ctx.fillStyle = 'white';
       ctx.font = '11px sans-serif';
       ctx.fillText(player.name, player.x, player.y + 30);
     });
@@ -345,8 +522,9 @@ class TacticalBoardScreen extends Screen {
     const y = e.clientY - rect.top;
     
     if (this.mode === 'move') {
-      // Check if clicking on a player
-      this.selectedPlayer = this.players.find(p => {
+      // Check if clicking on a player from all players
+      const allPlayers = this.getAllPlayers();
+      this.selectedPlayer = allPlayers.find(p => {
         const dx = p.x - x;
         const dy = p.y - y;
         return Math.sqrt(dx * dx + dy * dy) < 20;
@@ -405,6 +583,7 @@ class TacticalBoardScreen extends Screen {
   }
   
   applyFormation(formation) {
+    console.log('Applying formation:', formation);
     const w = this.canvas.width;
     const h = this.canvas.height;
     const margin = 80;
@@ -467,21 +646,40 @@ class TacticalBoardScreen extends Screen {
       ];
     }
     
+    const players = this.getActivePlayers();
+    const color = this.activeTeam === 'home' ? '#FF6B35' : '#3498db';
+    
+    // If we don't have enough players, create them
+    while (players.length < positions.length) {
+      players.push({
+        id: Date.now() + players.length,
+        name: `Player ${players.length + 1}`,
+        jerseyNumber: players.length + 1,
+        x: this.canvas.width / 2,
+        y: this.canvas.height / 2,
+        color: color,
+        team: this.activeTeam
+      });
+    }
+    
     // Apply positions to players
-    this.players.forEach((player, index) => {
+    players.forEach((player, index) => {
       if (positions[index]) {
         player.x = positions[index].x;
         player.y = positions[index].y;
       }
     });
     
+    console.log(`Formation ${formation} applied with ${players.length} players`);
+    this.updatePlayerList();
     this.drawAll();
   }
   
   saveTacticalBoard() {
     // TODO: Implement save to backend
     const data = {
-      players: this.players,
+      homePlayers: this.homePlayers,
+      opponentPlayers: this.opponentPlayers,
       arrows: this.arrows
     };
     
