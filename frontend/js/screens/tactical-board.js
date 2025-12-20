@@ -395,37 +395,151 @@ class TacticalBoardScreen extends Screen {
     const w = this.canvas.width;
     const h = this.canvas.height;
     
-    // Clear canvas
+    // Clear canvas with grass color
     ctx.fillStyle = '#1a4d2e';
     ctx.fillRect(0, 0, w, h);
     
-    // Field lines
+    // FIFA regulation pitch is 105m x 68m (ratio 1.544:1)
+    // Calculate field dimensions maintaining aspect ratio with padding
+    const padding = 40;
+    const availableWidth = w - (padding * 2);
+    const availableHeight = h - (padding * 2);
+    const aspectRatio = 105 / 68;
+    
+    let fieldWidth, fieldHeight;
+    if (availableWidth / availableHeight > aspectRatio) {
+      // Height constrained
+      fieldHeight = availableHeight;
+      fieldWidth = fieldHeight * aspectRatio;
+    } else {
+      // Width constrained
+      fieldWidth = availableWidth;
+      fieldHeight = fieldWidth / aspectRatio;
+    }
+    
+    const offsetX = (w - fieldWidth) / 2;
+    const offsetY = (h - fieldHeight) / 2;
+    
+    // Field lines (white)
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 2;
+    ctx.fillStyle = 'white';
     
-    // Outline
-    ctx.strokeRect(20, 20, w - 40, h - 40);
+    // Outer boundary
+    ctx.strokeRect(offsetX, offsetY, fieldWidth, fieldHeight);
     
-    // Center line
+    // Halfway line
     ctx.beginPath();
-    ctx.moveTo(w / 2, 20);
-    ctx.lineTo(w / 2, h - 20);
+    ctx.moveTo(offsetX + fieldWidth / 2, offsetY);
+    ctx.lineTo(offsetX + fieldWidth / 2, offsetY + fieldHeight);
     ctx.stroke();
     
-    // Center circle
+    // Center circle (9.15m radius = ~8.7% of field width)
+    const centerCircleRadius = fieldWidth * 0.087;
     ctx.beginPath();
-    ctx.arc(w / 2, h / 2, 60, 0, Math.PI * 2);
+    ctx.arc(offsetX + fieldWidth / 2, offsetY + fieldHeight / 2, centerCircleRadius, 0, Math.PI * 2);
     ctx.stroke();
     
-    // Penalty areas
-    const penaltyWidth = 200;
-    const penaltyHeight = 150;
+    // Center spot
+    ctx.beginPath();
+    ctx.arc(offsetX + fieldWidth / 2, offsetY + fieldHeight / 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Penalty areas (40.3m wide x 16.5m deep)
+    const penaltyAreaWidth = fieldWidth * (16.5 / 105);
+    const penaltyAreaHeight = fieldHeight * (40.3 / 68);
+    const penaltyAreaY = offsetY + (fieldHeight - penaltyAreaHeight) / 2;
     
     // Left penalty area
-    ctx.strokeRect(20, (h - penaltyHeight) / 2, penaltyWidth, penaltyHeight);
+    ctx.strokeRect(offsetX, penaltyAreaY, penaltyAreaWidth, penaltyAreaHeight);
     
     // Right penalty area
-    ctx.strokeRect(w - 20 - penaltyWidth, (h - penaltyHeight) / 2, penaltyWidth, penaltyHeight);
+    ctx.strokeRect(offsetX + fieldWidth - penaltyAreaWidth, penaltyAreaY, penaltyAreaWidth, penaltyAreaHeight);
+    
+    // Goal areas (18.3m wide x 5.5m deep)
+    const goalAreaWidth = fieldWidth * (5.5 / 105);
+    const goalAreaHeight = fieldHeight * (18.3 / 68);
+    const goalAreaY = offsetY + (fieldHeight - goalAreaHeight) / 2;
+    
+    // Left goal area
+    ctx.strokeRect(offsetX, goalAreaY, goalAreaWidth, goalAreaHeight);
+    
+    // Right goal area
+    ctx.strokeRect(offsetX + fieldWidth - goalAreaWidth, goalAreaY, goalAreaWidth, goalAreaHeight);
+    
+    // Penalty spots (11m from goal line = 10.5% of field width)
+    const penaltySpotDistance = fieldWidth * (11 / 105);
+    
+    // Left penalty spot
+    ctx.beginPath();
+    ctx.arc(offsetX + penaltySpotDistance, offsetY + fieldHeight / 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Right penalty spot
+    ctx.beginPath();
+    ctx.arc(offsetX + fieldWidth - penaltySpotDistance, offsetY + fieldHeight / 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Penalty arcs (9.15m radius from penalty spot, only the part outside penalty box)
+    const penaltyArcRadius = centerCircleRadius;
+    
+    // Calculate the angle where the arc intersects the penalty box edge
+    // The penalty box edge is at penaltyAreaWidth from the goal line
+    // The penalty spot is at penaltySpotDistance from the goal line
+    // So the distance from penalty spot to box edge is: penaltyAreaWidth - penaltySpotDistance
+    const distanceToBoxEdge = penaltyAreaWidth - penaltySpotDistance;
+    
+    // If the arc radius is greater than distance to box edge, calculate the angle
+    if (penaltyArcRadius > distanceToBoxEdge) {
+      const angleAtBoxEdge = Math.acos(distanceToBoxEdge / penaltyArcRadius);
+      
+      // Left penalty arc (only draw the part outside the penalty box)
+      ctx.beginPath();
+      ctx.arc(offsetX + penaltySpotDistance, offsetY + fieldHeight / 2, penaltyArcRadius, -angleAtBoxEdge, angleAtBoxEdge);
+      ctx.stroke();
+      
+      // Right penalty arc (only draw the part outside the penalty box)
+      ctx.beginPath();
+      ctx.arc(offsetX + fieldWidth - penaltySpotDistance, offsetY + fieldHeight / 2, penaltyArcRadius, Math.PI - angleAtBoxEdge, Math.PI + angleAtBoxEdge);
+      ctx.stroke();
+    }
+    
+    // Corner arcs (1m radius)
+    const cornerRadius = fieldWidth * (1 / 105);
+    
+    // Bottom-left corner
+    ctx.beginPath();
+    ctx.arc(offsetX, offsetY + fieldHeight, cornerRadius, -Math.PI / 2, 0);
+    ctx.stroke();
+    
+    // Top-left corner
+    ctx.beginPath();
+    ctx.arc(offsetX, offsetY, cornerRadius, 0, Math.PI / 2);
+    ctx.stroke();
+    
+    // Bottom-right corner
+    ctx.beginPath();
+    ctx.arc(offsetX + fieldWidth, offsetY + fieldHeight, cornerRadius, Math.PI, Math.PI * 1.5);
+    ctx.stroke();
+    
+    // Top-right corner
+    ctx.beginPath();
+    ctx.arc(offsetX + fieldWidth, offsetY, cornerRadius, Math.PI / 2, Math.PI);
+    ctx.stroke();
+    
+    // Goals (7.32m wide x 2.44m deep)
+    const goalWidth = fieldHeight * (7.32 / 68);
+    const goalDepth = fieldWidth * (2.44 / 105);
+    const goalY = offsetY + (fieldHeight - goalWidth) / 2;
+    
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.lineWidth = 3;
+    
+    // Left goal
+    ctx.strokeRect(offsetX - goalDepth, goalY, goalDepth, goalWidth);
+    
+    // Right goal
+    ctx.strokeRect(offsetX + fieldWidth, goalY, goalDepth, goalWidth);
   }
   
   drawPlayers() {
