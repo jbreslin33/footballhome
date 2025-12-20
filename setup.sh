@@ -243,10 +243,8 @@ fi
 # ============================================================
 print_status "Creating .env file..."
 
-if [ -f .env ]; then
-    print_warning ".env file already exists, skipping"
-else
-    cat > .env << 'EOF'
+# Always recreate .env with fresh template
+cat > .env << 'EOF'
 # Football Home Environment Variables
 # Created by setup.sh
 
@@ -260,13 +258,12 @@ GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/oauth/google/callback
 EOF
-    print_success ".env file created"
-    echo ""
-    print_warning "Optional: Edit .env to add Twilio/Google credentials"
-    echo "  • Twilio: For SMS notifications (RSVPs, reminders)"
-    echo "  • Google OAuth: For Google sign-in"
-    echo ""
-fi
+print_success ".env file created"
+echo ""
+print_warning "Optional: Edit .env to add Twilio/Google credentials"
+echo "  • Twilio: For SMS notifications (RSVPs, reminders)"
+echo "  • Google OAuth: For Google sign-in"
+echo ""
 
 # ============================================================
 # Step 5: Final Verification
