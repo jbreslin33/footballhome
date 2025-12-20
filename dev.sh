@@ -571,7 +571,8 @@ fi
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 echo -e "${YELLOW}🔨 Step 3: Building images (no cache)...${NC}"
-$DOCKER_COMPOSE build --no-cache
+echo -e "${BLUE}Note: First-time image downloads can take 5-15 minutes${NC}"
+$DOCKER_COMPOSE build --no-cache --progress=plain
 echo -e "${GREEN}✓ Build complete${NC}"
 echo ""
 
