@@ -122,34 +122,12 @@ else
 fi
 
 # ============================================================
-# Step 1.5: Configure Docker CLI compatibility for Podman
-# ============================================================
-print_status "Configuring Docker CLI compatibility..."
-
-# Create docker alias/symlink for podman
-mkdir -p ~/bin
-
-if [ "$OS_TYPE" == "Darwin" ]; then
-    ln -sf "$(which podman)" ~/bin/docker
-elif [ "$OS_TYPE" == "Linux" ]; then
-    ln -sf "$(which podman)" ~/bin/docker
-fi
-
-# Add to PATH if not already there
-if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
-    echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
-    export PATH="$HOME/bin:$PATH"
-fi
-
-print_success "Docker CLI compatibility enabled (docker -> podman)"
-
-# ============================================================
 # Step 2: Install/Check Docker Compose (podman-compose)
 # ============================================================
 print_status "Checking Docker Compose..."
 
-if ! command -v docker-compose &> /dev/null; then
-    print_warning "docker-compose not found, installing podman-compose..."
+if ! command -v podman-compose &> /dev/null; then
+    print_warning "podman-compose not found, installing..."
     
     # Install podman-compose (Python-based docker-compose for podman)
     if ! command -v pip3 &> /dev/null && ! command -v pip &> /dev/null; then
@@ -168,25 +146,16 @@ if ! command -v docker-compose &> /dev/null; then
     print_status "Installing podman-compose..."
     pip3 install --user podman-compose 2>/dev/null || pip install --user podman-compose
     
-    # Create docker-compose symlink
-    COMPOSE_BIN=$(python3 -m site --user-base)/bin/podman-compose
-    if [ -f "$COMPOSE_BIN" ]; then
-        mkdir -p ~/bin
-        ln -sf "$COMPOSE_BIN" ~/bin/docker-compose
-        
-        # Add to PATH if not already there
-        if [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
-            echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
-            export PATH="$HOME/bin:$PATH"
-        fi
-        
-        print_success "docker-compose installed (podman-compose)"
-    else
-        print_warning "podman-compose installed but not found in expected location"
-        print_warning "You may need to add it to PATH manually"
+    # Add Python user bin to PATH if needed
+    PYTHON_USER_BIN=$(python3 -m site --user-base)/bin
+    if [[ ":$PATH:" != *":$PYTHON_USER_BIN:"* ]]; then
+        echo "export PATH=\"$PYTHON_USER_BIN:\$PATH\"" >> ~/.zshrc
+        export PATH="$PYTHON_USER_BIN:$PATH"
     fi
+    
+    print_success "podman-compose installed"
 else
-    print_success "docker-compose is installed"
+    print_success "podman-compose is installed"
 fi
 
 # ============================================================

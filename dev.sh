@@ -92,14 +92,14 @@ fi
 echo -e "${GREEN}✓ Found env file${NC}"
 
 # ============================================================
-# PODMAN/DOCKER AVAILABILITY CHECK (early exit if not accessible)
+# PODMAN AVAILABILITY CHECK (early exit if not accessible)
 # ============================================================
-if ! docker ps &> /dev/null 2>&1; then
+if ! podman ps &> /dev/null 2>&1; then
     # Try with sudo as fallback
-    if ! sudo docker ps &> /dev/null 2>&1; then
-        echo -e "${RED}Error: Podman/Docker is not accessible${NC}"
+    if ! sudo podman ps &> /dev/null 2>&1; then
+        echo -e "${RED}Error: Podman is not accessible${NC}"
         echo ""
-        echo "Container runtime is required to run this application."
+        echo "Podman is required to run this application."
         echo ""
         echo "Possible solutions:"
         echo "  1. Make sure Podman is installed:"
@@ -115,12 +115,12 @@ if ! docker ps &> /dev/null 2>&1; then
         exit 1
     fi
     # Needs sudo, set alias for all commands
-    DOCKER="sudo docker"
-    DOCKER_COMPOSE="sudo docker compose --env-file env"
+    DOCKER="sudo podman"
+    DOCKER_COMPOSE="sudo podman-compose --env-file env"
 else
     # Works without sudo
-    DOCKER="docker"
-    DOCKER_COMPOSE="docker compose --env-file env"
+    DOCKER="podman"
+    DOCKER_COMPOSE="podman-compose --env-file env"
 fi
 
 APSL_SCRAPE_MODE=""
