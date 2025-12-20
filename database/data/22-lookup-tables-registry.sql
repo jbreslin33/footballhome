@@ -35,7 +35,8 @@ INSERT INTO lookup_tables (table_name, display_name, description, category, is_s
 
 -- System lookups
 ('admin_levels', 'Admin Levels', 'System administrator permission levels', 'system', true, 40),
-('audit_action_types', 'Audit Action Types', 'Types of administrative actions logged', 'system', true, 41);
+('audit_action_types', 'Audit Action Types', 'Types of administrative actions logged', 'system', true, 41)
+ON CONFLICT (table_name) DO NOTHING;
 
 -- Create index for faster lookups
 CREATE INDEX IF NOT EXISTS idx_lookup_tables_category ON lookup_tables(category, sort_order);
