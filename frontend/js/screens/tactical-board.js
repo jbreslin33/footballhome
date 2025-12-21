@@ -70,6 +70,26 @@ class TacticalBoardScreen extends Screen {
             <h3 style="margin: 0 0 var(--space-2) 0; font-size: 0.9rem;">Player List</h3>
             <div id="player-list" style="max-height: 300px; overflow-y: auto;"></div>
           </div>
+          
+          <!-- Player Details (Hidden by default) -->
+          <div id="player-details" class="card" style="display: none; margin-top: var(--space-2);">
+            <h3 style="margin: 0 0 var(--space-2) 0; font-size: 0.9rem;">Selected Player</h3>
+            <div class="form-group">
+              <label>Name</label>
+              <input type="text" id="player-name-input" class="form-control form-control-sm">
+            </div>
+            <div class="form-group">
+              <label>Number</label>
+              <input type="number" id="player-number-input" class="form-control form-control-sm">
+            </div>
+            <div class="form-group">
+              <label>Assign Roster Player</label>
+              <select id="roster-select" class="form-control form-control-sm">
+                <option value="">-- Select --</option>
+              </select>
+            </div>
+            <button id="update-player-btn" class="btn btn-sm btn-primary" style="width: 100%; margin-top: var(--space-2);">Update</button>
+          </div>
         </div>
         
         <!-- Canvas -->
@@ -113,6 +133,9 @@ class TacticalBoardScreen extends Screen {
       
       // Start with empty field - user can load roster or add players manually
       this.drawAll();
+      
+      // Load team roster for dropdown
+      this.fetchTeamRoster();
     }, 100);
   }
   
@@ -220,6 +243,22 @@ class TacticalBoardScreen extends Screen {
     this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
     this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
     this.canvas.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
+    
+    // Player details events
+    this.find('#update-player-btn').addEventListener('click', () => {
+      this.updateSelectedPlayer();
+    });
+    
+    this.find('#roster-select').addEventListener('change', (e) => {
+      const playerId = e.target.value;
+      if (playerId && this.rosterData) {
+        const player = this.rosterData.find(p => p.id === playerId);
+        if (player) {
+          this.find('#player-name-input').value = `${player.firstName} ${player.lastName}`;
+          this.find('#player-number-input').value = player.jerseyNumber || '';
+        }
+      }
+    });
   }
   
   setMode(mode) {
@@ -657,6 +696,10 @@ class TacticalBoardScreen extends Screen {
       
       if (this.selectedPlayer) {
         this.isDragging = true;
+        this.populatePlayerDetails(this.selectedPlayer);
+      } else {
+        const detailsPanel = document.getElementById('player-details');
+        if (detailsPanel) detailsPanel.style.display = 'none';
       }
     } else if (this.mode === 'draw') {
       // Start drawing arrow
@@ -810,6 +853,12 @@ class TacticalBoardScreen extends Screen {
       
       const description = prompt('Enter description (optional):', '');
       
+      // Prepare players array
+      const allPlayers = [
+        ...this.homePlayers.map(p => ({ ...p, team: 'home', id: p.playerId })),
+        ...this.opponentPlayers.map(p => ({ ...p, team: 'opponent', id: p.playerId }))
+      ];
+
       // Prepare board data with players and arrows embedded
       const boardData = {
         name: boardName,
@@ -820,7 +869,10 @@ class TacticalBoardScreen extends Screen {
         canvasWidth: Math.floor(this.canvas.width),
         canvasHeight: Math.floor(this.canvas.height),
         isPublic: false,
-        isTemplate: false
+        isTemplate: false,
+        players: allPlayers,
+        arrows: this.arrows,
+        teamId: this.teamId
       };
       
       console.log('Saving board:', JSON.stringify(boardData, null, 2));
@@ -859,13 +911,7 @@ class TacticalBoardScreen extends Screen {
       
       console.log('Board created with ID:', boardId);
       
-      // Note: For full functionality, we'd need additional endpoints to save:
-      // - Players (POST /api/tactical-boards/:boardId/players)
-      // - Arrows (POST /api/tactical-boards/:boardId/arrows)  
-      // - Team link (POST /api/tactical-boards/:boardId/entities)
-      // These can be added to the backend later
-      
-      alert(`Board "${boardName}" saved successfully!\n\nBoard ID: ${boardId}\n\nNote: Player positions and arrows are saved locally. Backend integration for these will be added soon.`);
+      alert(`Board "${boardName}" saved successfully!\n\nBoard ID: ${boardId}`);
       this.currentBoardId = boardId;
       
       // Save to localStorage as backup
@@ -933,7 +979,8 @@ class TacticalBoardScreen extends Screen {
           y: parseFloat(player.positionY),
           jerseyNumber: player.jerseyNumber,
           name: player.name || '',
-          color: player.color
+          color: player.color,
+          playerId: player.playerId
         };
         
         if (player.team === 'home') {
@@ -1018,6 +1065,92 @@ class TacticalBoardScreen extends Screen {
       console.error('Error showing load dialog:', error);
       alert('Failed to load boards list');
     }
+  }
+  
+  async fetchTeamRoster() {
+    try {
+      if (!this.teamId) return;
+      
+      const response = await fetch(`http://localhost:3001/api/teams/${this.teamId}/roster`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load roster');
+      }
+      
+      const result = await response.json();
+      const roster = result.data || [];
+      const select = document.getElementById('roster-select');
+      if (!select) return;
+      
+      select.innerHTML = '<option value="">-- Select Player --</option>';
+      
+      roster.forEach(player => {
+        const option = document.createElement('option');
+        option.value = player.id;
+        option.textContent = `#${player.jerseyNumber || '?'} ${player.firstName} ${player.lastName}`;
+        select.appendChild(option);
+      });
+      
+    } catch (error) {
+      console.error('Error loading roster:', error);
+    }
+  }
+
+  updateSelectedPlayer() {
+    if (!this.selectedPlayer) return;
+    
+    const nameInput = document.getElementById('player-name');
+    const numberInput = document.getElementById('player-number');
+    const colorInput = document.getElementById('player-color');
+    const rosterSelect = document.getElementById('roster-select');
+    
+    if (nameInput) this.selectedPlayer.name = nameInput.value;
+    if (numberInput) this.selectedPlayer.jerseyNumber = numberInput.value;
+    if (colorInput) this.selectedPlayer.color = colorInput.value;
+    
+    if (rosterSelect && rosterSelect.value) {
+      this.selectedPlayer.playerId = rosterSelect.value;
+      // Also update name/number from roster if selected
+      const selectedOption = rosterSelect.options[rosterSelect.selectedIndex];
+      if (selectedOption) {
+        // Parse name/number from option text "#10 John Doe"
+        const text = selectedOption.textContent;
+        const match = text.match(/#(\S+)\s+(.+)/);
+        if (match) {
+          this.selectedPlayer.jerseyNumber = match[1];
+          this.selectedPlayer.name = match[2];
+          
+          // Update inputs to match
+          if (nameInput) nameInput.value = this.selectedPlayer.name;
+          if (numberInput) numberInput.value = this.selectedPlayer.jerseyNumber;
+        }
+      }
+    } else {
+      this.selectedPlayer.playerId = null;
+    }
+    
+    this.drawAll();
+  }
+
+  populatePlayerDetails(player) {
+    const detailsPanel = document.getElementById('player-details');
+    if (!detailsPanel) return;
+    
+    detailsPanel.style.display = 'block';
+    
+    const nameInput = document.getElementById('player-name');
+    const numberInput = document.getElementById('player-number');
+    const colorInput = document.getElementById('player-color');
+    const rosterSelect = document.getElementById('roster-select');
+    
+    if (nameInput) nameInput.value = player.name || '';
+    if (numberInput) numberInput.value = player.jerseyNumber || '';
+    if (colorInput) colorInput.value = player.color || '#ffffff';
+    if (rosterSelect) rosterSelect.value = player.playerId || '';
   }
   
   shareTacticalBoard() {

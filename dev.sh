@@ -151,6 +151,7 @@ SAVE_MANUAL=false
 ENVIRONMENT="dev"
 WIPE_U=false
 WIPE_P=false
+BUILD_BACKEND_ONLY=false
 
 # Parse arguments
 for arg in "$@"; do
@@ -284,6 +285,9 @@ for arg in "$@"; do
         --save)
             SAVE_MANUAL=true
             ;;
+        --backend-only)
+            BUILD_BACKEND_ONLY=true
+            ;;
         --production)
             ENVIRONMENT="production"
             ;;
@@ -346,6 +350,7 @@ for arg in "$@"; do
             echo ""
             echo "Workflow Flags:"
             echo "  --save                                     Export manual edits before rebuild"
+            echo "  --backend-only                             Rebuild and restart backend container only"
             echo ""
             echo "Examples:"
             echo "  ./dev.sh --apsl --casa --save"
@@ -362,6 +367,25 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# FAST PATH: BACKEND REBUILD ONLY
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [ "$BUILD_BACKEND_ONLY" = true ]; then
+    echo -e "${BLUE}========================================${NC}"
+    echo -e "${BLUE}Football Home - Backend Rebuild${NC}"
+    echo -e "${BLUE}========================================${NC}"
+    echo ""
+    
+    echo -e "${YELLOW}🔨 Rebuilding backend container...${NC}"
+    $DOCKER_COMPOSE build backend
+    
+    echo -e "${YELLOW}🚀 Restarting backend container...${NC}"
+    $DOCKER_COMPOSE up -d backend
+    
+    echo -e "${GREEN}✓ Backend rebuilt and restarted${NC}"
+    exit 0
+fi
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Football Home - Full Rebuild${NC}"

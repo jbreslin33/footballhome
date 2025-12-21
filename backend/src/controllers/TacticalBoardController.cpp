@@ -443,6 +443,181 @@ Response TacticalBoardController::handleCreateBoard(const Request& request) {
                << (isPublic ? "true" : "false") << ", " << (isTemplate ? "true" : "false") << ");";
         
         SqlFileLogger::log("tactical_boards", sqlLog.str());
+
+        // --- Link to Team (if provided) ---
+        std::string teamId = parseJsonString(body, "teamId");
+        if (!teamId.empty()) {
+            db_->execute(
+                "INSERT INTO tactical_board_entities (tactical_board_id, team_id) VALUES ($1, $2)",
+                {boardId, teamId}
+            );
+            
+            std::ostringstream entityLog;
+            entityLog << "INSERT INTO tactical_board_entities (tactical_board_id, team_id) VALUES ('"
+                      << boardId << "', '" << teamId << "');";
+            SqlFileLogger::log("tactical_board_entities", entityLog.str());
+        }
+
+        // --- Save Players ---
+        // Note: A robust JSON parser would be better here, but we'll do basic extraction for now
+        // Expected format: "players":[{"x":100,"y":200,"name":"Player","number":10,"team":"home","color":"#fff","playerId":"uuid"},...]
+        
+        size_t playersPos = body.find("\"players\":[");
+        if (playersPos != std::string::npos) {
+            size_t arrayStart = playersPos + 10;
+            size_t arrayEnd = body.find(']', arrayStart);
+            
+            if (arrayEnd != std::string::npos) {
+                std::string playersJson = body.substr(arrayStart + 1, arrayEnd - arrayStart - 1);
+                
+                // Split by objects "},{"
+                size_t pos = 0;
+                while (pos < playersJson.length()) {
+                    size_t objEnd = playersJson.find("}", pos);
+                    if (objEnd == std::string::npos) break;
+                    
+                    std::string playerObj = playersJson.substr(pos, objEnd - pos + 1);
+                    
+                    // Parse player fields
+                    double x = 0, y = 0;
+                    int number = 0;
+                    std::string pName, pTeam, pColor, pId;
+                    
+                    // Simple parsing (assumes standard JSON formatting from frontend)
+                    // X
+                    size_t xPos = playerObj.find("\"x\":");
+                    if (xPos != std::string::npos) {
+                        size_t end = playerObj.find_first_of(",}", xPos);
+                        try { x = std::stod(playerObj.substr(xPos + 4, end - xPos - 4)); } catch(...) {}
+                    }
+                    
+                    // Y
+                    size_t yPos = playerObj.find("\"y\":");
+                    if (yPos != std::string::npos) {
+                        size_t end = playerObj.find_first_of(",}", yPos);
+                        try { y = std::stod(playerObj.substr(yPos + 4, end - yPos - 4)); } catch(...) {}
+                    }
+                    
+                    // Number (jerseyNumber)
+                    size_t numPos = playerObj.find("\"jerseyNumber\":");
+                    if (numPos != std::string::npos) {
+                        size_t end = playerObj.find_first_of(",}", numPos);
+                        try { number = std::stoi(playerObj.substr(numPos + 15, end - numPos - 15)); } catch(...) {}
+                    }
+                    
+                    // Name
+                    pName = parseJsonString(playerObj, "name");
+                    
+                    // Team
+                    pTeam = parseJsonString(playerObj, "team");
+                    if (pTeam.empty()) pTeam = "home";
+                    
+                    // Color
+                    pColor = parseJsonString(playerObj, "color");
+                    if (pColor.empty()) pColor = "#ffffff";
+                    
+                    // Player ID
+                    pId = parseJsonString(playerObj, "id"); // Frontend sends 'id' for player UUID if linked
+                    
+                    // Insert into DB
+                    std::ostringstream pQuery;
+                    pQuery << "INSERT INTO tactical_board_players (tactical_board_id, team, name, jersey_number, position_x, position_y, color, player_id) "
+                           << "VALUES ($1, $2, $3, $4, $5, $6, $7, ";
+                    
+                    std::vector<std::string> pParams = {
+                        boardId, pTeam, pName, std::to_string(number), std::to_string(x), std::to_string(y), pColor
+                    };
+                    
+                    if (!pId.empty() && pId.length() > 10) { // Basic validation
+                        pQuery << "$8)";
+                        pParams.push_back(pId);
+                    } else {
+                        pQuery << "NULL)";
+                    }
+                    
+                    db_->query(pQuery.str(), pParams);
+                    
+                    // Log to SQL file
+                    std::ostringstream pLog;
+                    pLog << "INSERT INTO tactical_board_players (tactical_board_id, team, name, jersey_number, position_x, position_y, color, player_id) VALUES ('"
+                         << boardId << "', '" << pTeam << "', '" << pName << "', " << number << ", " << x << ", " << y << ", '" << pColor << "', ";
+                    
+                    if (!pId.empty() && pId.length() > 10) {
+                        pLog << "'" << pId << "');";
+                    } else {
+                        pLog << "NULL);";
+                    }
+                    SqlFileLogger::log("tactical_board_players", pLog.str());
+                    
+                    pos = objEnd + 2; // Skip "},"
+                }
+            }
+        }
+        
+        // --- Save Arrows ---
+        size_t arrowsPos = body.find("\"arrows\":[");
+        if (arrowsPos != std::string::npos) {
+            size_t arrayStart = arrowsPos + 9;
+            size_t arrayEnd = body.find(']', arrayStart);
+            
+            if (arrayEnd != std::string::npos) {
+                std::string arrowsJson = body.substr(arrayStart + 1, arrayEnd - arrayStart - 1);
+                
+                size_t pos = 0;
+                while (pos < arrowsJson.length()) {
+                    size_t objEnd = arrowsJson.find("}", pos);
+                    if (objEnd == std::string::npos) break;
+                    
+                    std::string arrowObj = arrowsJson.substr(pos, objEnd - pos + 1);
+                    
+                    double startX = 0, startY = 0, endX = 0, endY = 0;
+                    std::string color;
+                    
+                    // Parse coordinates
+                    size_t sxPos = arrowObj.find("\"startX\":");
+                    if (sxPos != std::string::npos) {
+                        size_t end = arrowObj.find_first_of(",}", sxPos);
+                        try { startX = std::stod(arrowObj.substr(sxPos + 9, end - sxPos - 9)); } catch(...) {}
+                    }
+                    
+                    size_t syPos = arrowObj.find("\"startY\":");
+                    if (syPos != std::string::npos) {
+                        size_t end = arrowObj.find_first_of(",}", syPos);
+                        try { startY = std::stod(arrowObj.substr(syPos + 9, end - syPos - 9)); } catch(...) {}
+                    }
+                    
+                    size_t exPos = arrowObj.find("\"endX\":");
+                    if (exPos != std::string::npos) {
+                        size_t end = arrowObj.find_first_of(",}", exPos);
+                        try { endX = std::stod(arrowObj.substr(exPos + 7, end - exPos - 7)); } catch(...) {}
+                    }
+                    
+                    size_t eyPos = arrowObj.find("\"endY\":");
+                    if (eyPos != std::string::npos) {
+                        size_t end = arrowObj.find_first_of(",}", eyPos);
+                        try { endY = std::stod(arrowObj.substr(eyPos + 7, end - eyPos - 7)); } catch(...) {}
+                    }
+                    
+                    color = parseJsonString(arrowObj, "color");
+                    if (color.empty()) color = "#FFD700";
+                    
+                    // Insert
+                    db_->query(
+                        "INSERT INTO tactical_board_arrows (tactical_board_id, start_x, start_y, end_x, end_y, color, arrow_type_id, line_style_id) "
+                        "VALUES ($1, $2, $3, $4, $5, $6, 1, 1)",
+                        {boardId, std::to_string(startX), std::to_string(startY), std::to_string(endX), std::to_string(endY), color}
+                    );
+                    
+                    // Log
+                    std::ostringstream aLog;
+                    aLog << "INSERT INTO tactical_board_arrows (tactical_board_id, start_x, start_y, end_x, end_y, color, arrow_type_id, line_style_id) VALUES ('"
+                         << boardId << "', " << startX << ", " << startY << ", " << endX << ", " << endY << ", '" << color << "', 1, 1);";
+                    SqlFileLogger::log("tactical_board_arrows", aLog.str());
+                    
+                    pos = objEnd + 2;
+                }
+            }
+        }
         
         std::ostringstream response;
         response << "{\"id\":\"" << escapeJson(boardId) << "\",\"message\":\"Board created successfully\"}";
@@ -557,7 +732,7 @@ Response TacticalBoardController::handleGetBoard(const Request& request) {
     
     // Get players
     auto playersResult = db_->query(
-        "SELECT tbp.id, tbp.team, tbp.name, tbp.jersey_number, tbp.position_x, tbp.position_y, tbp.color, "
+        "SELECT tbp.id, tbp.team, tbp.name, tbp.jersey_number, tbp.position_x, tbp.position_y, tbp.color, tbp.player_id, "
         "tpr.id as role_id, tpr.code as role_code, tpr.name as role_name "
         "FROM tactical_board_players tbp "
         "LEFT JOIN tactical_position_roles tpr ON tbp.position_role_id = tpr.id "
@@ -580,6 +755,12 @@ Response TacticalBoardController::handleGetBoard(const Request& request) {
             json << "\"jerseyNumber\":" << player["jersey_number"] << ",";
         } else {
             json << "\"jerseyNumber\":null,";
+        }
+        
+        if (!player["player_id"].is_null()) {
+            json << "\"playerId\":\"" << escapeJson(player["player_id"].c_str()) << "\",";
+        } else {
+            json << "\"playerId\":null,";
         }
         
         json << "\"positionX\":" << player["position_x"] << ","
@@ -667,7 +848,7 @@ Response TacticalBoardController::handleDeleteBoard(const Request& request) {
         return Response::badRequest(R"({"error":"Invalid board ID"})");
     }
     
-    db_->execute("DELETE FROM tactical_boards WHERE id = $1", {boardId});
+    db_->query("DELETE FROM tactical_boards WHERE id = $1", {boardId});
     
     return Response(HttpStatus::NO_CONTENT);
 }
@@ -735,6 +916,8 @@ Response TacticalBoardController::handleGetBoardsByPractice(const Request& reque
 Response TacticalBoardController::handleGetBoardsByTeam(const Request& request) {
     std::string teamId = extractIdFromPath(request.getPath(), "/tactical-boards/team/([^/]+)");
     
+    // Get boards linked to team OR created by current user (if we had user context here)
+    // For now, just get boards linked to team
     auto result = db_->query(
         "SELECT DISTINCT tb.id, tb.name, tb.description, tb.created_at "
         "FROM tactical_boards tb "
