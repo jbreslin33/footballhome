@@ -71,8 +71,10 @@ class ContextSelectionScreen extends Screen {
           // Non-admin team selected - go to team dashboard
           this.navigation.goTo('team-dashboard', { 
             role: this.role, 
-            teamId: contextId,
-            teamName: contextName 
+            team: {
+              id: contextId,
+              name: contextName
+            }
           });
         }
       }

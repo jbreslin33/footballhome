@@ -1,5 +1,10 @@
 // TeamDashboardScreen - choose between practices or matches after selecting a team
 class TeamDashboardScreen extends Screen {
+  onEnter(params) {
+    // Force re-render when entering to ensure we have the latest context
+    this.render();
+  }
+
   render() {
     const teamName = this.navigation.context.team?.name || 'Unknown Team';
     
