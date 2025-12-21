@@ -574,12 +574,14 @@ class TacticalBoardScreen extends Screen {
       ctx.fillText(player.jerseyNumber, player.x, player.y);
       
       // Draw name below (with background for visibility)
-      ctx.font = '11px sans-serif';
-      const textWidth = ctx.measureText(player.name).width;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(player.x - textWidth/2 - 2, player.y + 22, textWidth + 4, 14);
-      ctx.fillStyle = 'white';
-      ctx.fillText(player.name, player.x, player.y + 29);
+      if (player.name) {
+        ctx.font = '11px sans-serif';
+        const textWidth = ctx.measureText(player.name).width;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(player.x - textWidth/2 - 2, player.y + 22, textWidth + 4, 14);
+        ctx.fillStyle = 'white';
+        ctx.fillText(player.name, player.x, player.y + 29);
+      }
     });
   }
   
@@ -929,8 +931,8 @@ class TacticalBoardScreen extends Screen {
         const playerObj = {
           x: parseFloat(player.positionX),
           y: parseFloat(player.positionY),
-          number: player.jerseyNumber,
-          name: player.name,
+          jerseyNumber: player.jerseyNumber,
+          name: player.name || '',
           color: player.color
         };
         
