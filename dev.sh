@@ -625,8 +625,9 @@ echo -e "${YELLOW}🚀 Step 4: Starting containers (Environment: $ENVIRONMENT)..
 echo -n "  Starting database"
 $DOCKER_COMPOSE up -d db
 for i in $(seq 1 120); do
-    if [ "$($DOCKER_COMPOSE ps db --status running -q 2>/dev/null | wc -l)" -eq 1 ]; then
-        DB_HEALTH=$($DOCKER_COMPOSE ps db --format json 2>/dev/null | grep -o '"Health":"[^"]*"' | cut -d'"' -f4 || echo "starting")
+    # Check if container exists and is running
+    if $DOCKER ps --format "{{.Names}}" | grep -q "footballhome_db"; then
+        DB_HEALTH=$($DOCKER inspect --format '{{.State.Health.Status}}' footballhome_db 2>/dev/null || echo "starting")
         if [ "$DB_HEALTH" = "healthy" ]; then
             echo -e " ${GREEN}✓ Healthy (${i}s)${NC}"
             break
@@ -636,7 +637,7 @@ for i in $(seq 1 120); do
     sleep 1
     if [ "$i" -eq 120 ]; then
         echo -e " ${RED}✗ Timeout${NC}"
-        $DOCKER_COMPOSE logs db | tail -20
+        $DOCKER logs footballhome_db | tail -20
         exit 1
     fi
 done
