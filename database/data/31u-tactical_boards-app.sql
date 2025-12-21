@@ -22,3 +22,17 @@ INSERT INTO tactical_board_entities (tactical_board_id, team_id) VALUES
 ('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'a16e9445-9bed-4fe6-804d-e77c56258610'),
 ('7ffc916d-f50f-420a-b749-e6fee999a7e8', '57d88568-993d-4411-8aa3-6244ca7ff704'),
 ('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11');
+
+-- Players for Inverted Board (7ffc916d-f50f-420a-b749-e6fee999a7e8)
+INSERT INTO tactical_board_players (tactical_board_id, team, name, jersey_number, position_x, position_y, color) VALUES
+('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'home', 'GK', 1, 60, 303.5, '#0066CC'),
+('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'home', 'LB', 3, 200, 100, '#0066CC'),
+('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'home', 'CB', 4, 180, 250, '#0066CC'),
+('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'home', 'CB', 5, 180, 350, '#0066CC'),
+('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'home', 'RB', 2, 200, 500, '#0066CC'),
+('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'home', 'LM', 11, 400, 100, '#0066CC'),
+('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'home', 'CM', 8, 380, 250, '#0066CC'),
+('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'home', 'CM', 6, 380, 350, '#0066CC'),
+('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'home', 'RM', 7, 400, 500, '#0066CC'),
+('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'home', 'ST', 9, 550, 250, '#0066CC'),
+('7ffc916d-f50f-420a-b749-e6fee999a7e8', 'home', 'ST', 10, 550, 350, '#0066CC');
