@@ -930,7 +930,8 @@ class TacticalBoardScreen extends Screen {
           x: parseFloat(player.positionX),
           y: parseFloat(player.positionY),
           number: player.jerseyNumber,
-          name: player.name
+          name: player.name,
+          color: player.color
         };
         
         if (player.team === 'home') {
@@ -952,7 +953,7 @@ class TacticalBoardScreen extends Screen {
       }
       
       this.currentBoardId = boardId;
-      this.draw();
+      this.drawAll();
       
       alert(`Board "${board.name}" loaded successfully!`);
       
