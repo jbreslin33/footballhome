@@ -32,6 +32,10 @@ lighthouse_*.txt
 database/data/*.copy.sql
 database/data/99-*.sql
 
+# App-generated data files (User/Dev and Production)
+# database/data/*u-*-app.sql
+# database/data/*p-*-app.sql
+
 # Downloaded team logos (regenerated on scrape)
 frontend/images/teams/logos/*.png
 frontend/images/teams/logos/*.jpg

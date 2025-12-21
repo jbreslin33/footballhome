@@ -8,7 +8,7 @@ echo "Loading data files..."
 echo "Environment: ${ENVIRONMENT:-dev}"
 
 # Get all SQL files in alphabetical order
-for file in /docker-entrypoint-initdb.d/*.sql; do
+for file in /app/data/*.sql; do
     if [ -f "$file" ]; then
         filename=$(basename "$file")
         

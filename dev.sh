@@ -297,6 +297,9 @@ for arg in "$@"; do
         --wipe-p)
             WIPE_P=true
             ;;
+        --wipe-scrapes)
+            WIPE_SCRAPES=true
+            ;;
         --help|-h)
             echo "Football Home Development Script"
             echo ""
@@ -587,10 +590,28 @@ echo ""
 
 if [ "$WIPE_U" = true ]; then
     echo -e "${YELLOW}🗑️  Wiping dev app data (##u files)...${NC}"
-    rm -f database/data/*u-*-app.sql
-    # Recreate empty placeholders
-    for num in 08 21 22 23 24 25 30; do
-        cat > "database/data/${num}u-"*"-app.sql" 2>/dev/null || true
+    # Truncate all u files
+    for file in database/data/*u-*-app.sql; do
+        [ -f "$file" ] && : > "$file"
+    done
+    
+    # Ensure standard placeholders exist if they were deleted
+    for num in 08 21 22 23 24 25 30 31; do
+        # Find if any file starts with this number and has u-*-app.sql pattern
+        if ! ls database/data/${num}u-*-app.sql 1> /dev/null 2>&1; then
+            # Create a default one if missing
+            case $num in
+                08) name="users" ;;
+                21) name="teams" ;;
+                22) name="players" ;;
+                23) name="team_players" ;;
+                24) name="coaches" ;;
+                25) name="team_coaches" ;;
+                30) name="schedule" ;;
+                31) name="tactical_boards" ;;
+            esac
+            touch "database/data/${num}u-${name}-app.sql"
+        fi
     done
     echo -e "${GREEN}✓ Dev app data wiped${NC}"
     echo ""
@@ -598,12 +619,42 @@ fi
 
 if [ "$WIPE_P" = true ]; then
     echo -e "${YELLOW}🗑️  Wiping production app data (##p files)...${NC}"
-    rm -f database/data/*p-*-app.sql
-    # Recreate empty placeholders
-    for num in 08 21 22 23 24 25 30; do
-        cat > "database/data/${num}p-"*"-app.sql" 2>/dev/null || true
+    # Truncate all p files
+    for file in database/data/*p-*-app.sql; do
+        [ -f "$file" ] && : > "$file"
     done
+
+    # Ensure standard placeholders exist if they were deleted
+    for num in 08 21 22 23 24 25 30 31; do
+        # Find if any file starts with this number and has p-*-app.sql pattern
+        if ! ls database/data/${num}p-*-app.sql 1> /dev/null 2>&1; then
+            # Create a default one if missing
+            case $num in
+                08) name="users" ;;
+                21) name="teams" ;;
+                22) name="players" ;;
+                23) name="team_players" ;;
+                24) name="coaches" ;;
+                25) name="team_coaches" ;;
+                30) name="schedule" ;;
+                31) name="tactical_boards" ;;
+            esac
+            touch "database/data/${num}p-${name}-app.sql"
+        fi
+    done
+
     echo -e "${GREEN}✓ Production app data wiped${NC}"
+    echo ""
+fi
+
+if [ "$WIPE_SCRAPES" = true ]; then
+    echo -e "${YELLOW}🗑️  Wiping scrape data (##[a-l] files)...${NC}"
+    # Truncate all scrape files (a-l)
+    # Pattern matches: ##[a-l]-*.sql (e.g., 08a-users-apsl.sql)
+    for file in database/data/*[0-9][0-9][a-l]-*.sql; do
+        [ -f "$file" ] && : > "$file"
+    done
+    echo -e "${GREEN}✓ Scrape data wiped${NC}"
     echo ""
 fi
 

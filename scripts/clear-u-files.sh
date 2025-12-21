@@ -41,20 +41,14 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-# Clear each file (keep header comment if it exists)
+# Clear files (truncate to empty)
 echo ""
 echo -e "${BLUE}Clearing files...${NC}"
 
 for file in "${u_files[@]}"; do
-    # Keep first 3-4 lines (header comments) and clear rest
     if [ -f "$file" ]; then
-        # Get the header (first 4 lines or until first blank line after comments)
-        header=$(head -n 10 "$file" | grep -E "^--" | head -n 4)
-        
-        # Recreate file with just header
-        echo "$header" > "$file"
-        echo "" >> "$file"
-        
+        # Truncate file to 0 bytes
+        : > "$file"
         echo -e "${GREEN}✓${NC} Cleared: $file"
     fi
 done
@@ -64,6 +58,6 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}✓ All u files cleared!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-echo "Files have been cleared but headers preserved."
-echo "App-generated data will be re-logged on next use."
+echo "Files have been emptied but remain on disk."
+echo "App-generated data will be written to these files on next use."
 echo ""
