@@ -115,9 +115,28 @@ class TacticalBoardScreen extends Screen {
       return;
     }
     
-    // Store team info
+    // Store context info
     this.teamId = team.id;
     this.teamName = team.name;
+    
+    // Store optional contexts (match, practice, club)
+    this.matchId = params?.matchId || null;
+    this.matchTitle = params?.matchTitle || null;
+    this.practiceId = params?.practiceId || null;
+    this.practiceTitle = params?.practiceTitle || null;
+    this.clubId = params?.clubId || team.clubId || null;
+    
+    // Update header title if we have a specific context
+    const titleEl = this.find('h1');
+    if (this.matchTitle) {
+      titleEl.textContent = `Tactics: ${this.matchTitle}`;
+    } else if (this.practiceTitle) {
+      titleEl.textContent = `Tactics: ${this.practiceTitle}`;
+    } else if (this.practiceId) {
+      titleEl.textContent = `Tactics: Practice Session`;
+    } else {
+      titleEl.textContent = `Tactical Board: ${this.teamName}`;
+    }
     
     // Initialize canvas after a brief delay to ensure DOM is ready
     setTimeout(() => {
@@ -872,7 +891,10 @@ class TacticalBoardScreen extends Screen {
         isTemplate: false,
         players: allPlayers,
         arrows: this.arrows,
-        teamId: this.teamId
+        teamId: this.teamId,
+        matchId: this.matchId,
+        practiceId: this.practiceId,
+        clubId: this.clubId
       };
       
       console.log('Saving board:', JSON.stringify(boardData, null, 2));

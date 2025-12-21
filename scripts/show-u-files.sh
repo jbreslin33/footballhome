@@ -16,7 +16,7 @@ cd "$(dirname "$0")/../database/data" || exit 1
 
 # Find all u files and display their content
 for file in *u-*.sql; do
-    if [ -f "$file" ]; then
+    if [ -f "$file" ] && [ -s "$file" ]; then
         echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo -e "${GREEN}📄 $file${NC}"
         echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

@@ -596,11 +596,17 @@ if [ "$WIPE_U" = true ]; then
     done
     
     # Ensure standard placeholders exist if they were deleted
-    for num in 08 21 22 23 24 25 30 31; do
+    for num in 02 03 04 05 06 07 08 21 22 23 24 25 30 31 50 51 54 55 56 75 76; do
         # Find if any file starts with this number and has u-*-app.sql pattern
         if ! ls database/data/${num}u-*-app.sql 1> /dev/null 2>&1; then
             # Create a default one if missing
             case $num in
+                02) name="venues" ;;
+                03) name="leagues" ;;
+                04) name="conferences" ;;
+                05) name="league-divisions" ;;
+                06) name="clubs" ;;
+                07) name="sport-divisions" ;;
                 08) name="users" ;;
                 21) name="teams" ;;
                 22) name="players" ;;
@@ -608,7 +614,14 @@ if [ "$WIPE_U" = true ]; then
                 24) name="coaches" ;;
                 25) name="team_coaches" ;;
                 30) name="schedule" ;;
-                31) name="tactical_boards" ;;
+                31) name="tactical-boards" ;;
+                50) name="auth-credentials" ;;
+                51) name="admins" ;;
+                54) name="parents" ;;
+                55) name="player-parents" ;;
+                56) name="sport-admins" ;;
+                75) name="club-admins" ;;
+                76) name="team-admins" ;;
             esac
             touch "database/data/${num}u-${name}-app.sql"
         fi
@@ -625,11 +638,17 @@ if [ "$WIPE_P" = true ]; then
     done
 
     # Ensure standard placeholders exist if they were deleted
-    for num in 08 21 22 23 24 25 30 31; do
+    for num in 02 03 04 05 06 07 08 21 22 23 24 25 30 31 50 51 54 55 56 75 76; do
         # Find if any file starts with this number and has p-*-app.sql pattern
         if ! ls database/data/${num}p-*-app.sql 1> /dev/null 2>&1; then
             # Create a default one if missing
             case $num in
+                02) name="venues" ;;
+                03) name="leagues" ;;
+                04) name="conferences" ;;
+                05) name="league-divisions" ;;
+                06) name="clubs" ;;
+                07) name="sport-divisions" ;;
                 08) name="users" ;;
                 21) name="teams" ;;
                 22) name="players" ;;
@@ -637,7 +656,14 @@ if [ "$WIPE_P" = true ]; then
                 24) name="coaches" ;;
                 25) name="team_coaches" ;;
                 30) name="schedule" ;;
-                31) name="tactical_boards" ;;
+                31) name="tactical-boards" ;;
+                50) name="auth-credentials" ;;
+                51) name="admins" ;;
+                54) name="parents" ;;
+                55) name="player-parents" ;;
+                56) name="sport-admins" ;;
+                75) name="club-admins" ;;
+                76) name="team-admins" ;;
             esac
             touch "database/data/${num}p-${name}-app.sql"
         fi

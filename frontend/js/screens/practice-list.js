@@ -28,6 +28,21 @@ class PracticeListScreen extends Screen {
         return;
       }
       
+      // Tactics button
+      const tacticsBtn = e.target.closest('[data-action="tactics"]');
+      if (tacticsBtn) {
+        const practiceId = tacticsBtn.getAttribute('data-id');
+        const practiceTitle = tacticsBtn.getAttribute('data-title');
+        const team = this.navigation.context.team;
+        
+        this.navigation.goTo('tactical-board', { 
+          practiceId: practiceId,
+          practiceTitle: practiceTitle,
+          team: team
+        });
+        return;
+      }
+      
       // RSVP buttons
       const rsvpBtn = e.target.closest('[data-action="rsvp"]');
       if (rsvpBtn) {
@@ -206,6 +221,17 @@ class PracticeListScreen extends Screen {
                 data-status="not_attending"
                 class="btn ${notAttendingClass}">
                 ✗ Can't Make It
+              </button>
+            </div>
+            
+            <div class="practice-card-actions" style="margin-top: var(--space-2); border-top: 1px solid var(--border-color); padding-top: var(--space-2);">
+              <button 
+                data-action="tactics" 
+                data-id="${p.id}" 
+                data-title="${p.title}"
+                class="btn btn-secondary"
+                style="width: 100%;">
+                📋 Tactics Board
               </button>
             </div>
           </div>

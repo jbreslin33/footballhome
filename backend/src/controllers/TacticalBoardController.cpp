@@ -444,19 +444,57 @@ Response TacticalBoardController::handleCreateBoard(const Request& request) {
         
         SqlFileLogger::log("tactical_boards", sqlLog.str());
 
-        // --- Link to Team (if provided) ---
+        // --- Link to Entities (Team, Club, Match, Practice) ---
+        
+        // Team
         std::string teamId = parseJsonString(body, "teamId");
         if (!teamId.empty()) {
-            // Use query() instead of execute() to avoid prepared statement issues with some drivers/wrappers
-            // or ensure the statement is properly prepared if using a prepared statement cache
             db_->query(
                 "INSERT INTO tactical_board_entities (tactical_board_id, team_id) VALUES ($1, $2)",
                 {boardId, teamId}
             );
-            
             std::ostringstream entityLog;
             entityLog << "INSERT INTO tactical_board_entities (tactical_board_id, team_id) VALUES ('"
                       << boardId << "', '" << teamId << "');";
+            SqlFileLogger::log("tactical_board_entities", entityLog.str());
+        }
+
+        // Club
+        std::string clubId = parseJsonString(body, "clubId");
+        if (!clubId.empty()) {
+            db_->query(
+                "INSERT INTO tactical_board_entities (tactical_board_id, club_id) VALUES ($1, $2)",
+                {boardId, clubId}
+            );
+            std::ostringstream entityLog;
+            entityLog << "INSERT INTO tactical_board_entities (tactical_board_id, club_id) VALUES ('"
+                      << boardId << "', '" << clubId << "');";
+            SqlFileLogger::log("tactical_board_entities", entityLog.str());
+        }
+
+        // Match
+        std::string matchId = parseJsonString(body, "matchId");
+        if (!matchId.empty()) {
+            db_->query(
+                "INSERT INTO tactical_board_entities (tactical_board_id, match_id) VALUES ($1, $2)",
+                {boardId, matchId}
+            );
+            std::ostringstream entityLog;
+            entityLog << "INSERT INTO tactical_board_entities (tactical_board_id, match_id) VALUES ('"
+                      << boardId << "', '" << matchId << "');";
+            SqlFileLogger::log("tactical_board_entities", entityLog.str());
+        }
+
+        // Practice
+        std::string practiceId = parseJsonString(body, "practiceId");
+        if (!practiceId.empty()) {
+            db_->query(
+                "INSERT INTO tactical_board_entities (tactical_board_id, practice_id) VALUES ($1, $2)",
+                {boardId, practiceId}
+            );
+            std::ostringstream entityLog;
+            entityLog << "INSERT INTO tactical_board_entities (tactical_board_id, practice_id) VALUES ('"
+                      << boardId << "', '" << practiceId << "');";
             SqlFileLogger::log("tactical_board_entities", entityLog.str());
         }
 
@@ -1059,10 +1097,18 @@ std::string TacticalBoardController::parseJsonString(const std::string& body, co
         return "";
     }
     
-    size_t quoteStart = body.find('"', colonPos);
-    if (quoteStart == std::string::npos) {
+    // Find start of value (skip whitespace)
+    size_t valueStart = colonPos + 1;
+    while (valueStart < body.length() && (body[valueStart] == ' ' || body[valueStart] == '\t' || body[valueStart] == '\n' || body[valueStart] == '\r')) {
+        valueStart++;
+    }
+    
+    // If value doesn't start with quote, it's not a string (could be null, number, boolean)
+    if (valueStart >= body.length() || body[valueStart] != '"') {
         return "";
     }
+    
+    size_t quoteStart = valueStart;
     
     size_t quoteEnd = body.find('"', quoteStart + 1);
     if (quoteEnd == std::string::npos) {

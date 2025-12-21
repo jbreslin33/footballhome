@@ -187,7 +187,7 @@ class MatchListScreen extends Screen {
               ` : ''}
             </div>
             
-            <div class="match-card-actions">
+                        <div class="match-card-actions">
               <button 
                 data-action="rsvp" 
                 data-id="${m.id}" 
@@ -203,11 +203,57 @@ class MatchListScreen extends Screen {
                 ✗ Can't Make It
               </button>
             </div>
+            
+            <div class="match-card-actions" style="margin-top: var(--space-2); border-top: 1px solid var(--border-color); padding-top: var(--space-2);">
+              <button 
+                data-action="tactics" 
+                data-id="${m.id}" 
+                data-title="${m.title}"
+                class="btn btn-secondary"
+                style="width: 100%;">
+                📋 Tactics Board
+              </button>
+            </div>
           </div>
         `;
       },
       '<div class="empty-state"><p>🏆 No matches scheduled yet</p><p class="text-muted">Check back later</p></div>'
     );
+  }
+  
+  onEnter(params) {
+    this.loadMatches();
+    
+    this.element.addEventListener('click', (e) => {
+      // Back button
+      if (e.target.id === 'back-btn' || e.target.closest('#back-btn')) {
+        this.navigation.goBack();
+        return;
+      }
+      
+      // Tactics button
+      const tacticsBtn = e.target.closest('[data-action="tactics"]');
+      if (tacticsBtn) {
+        const matchId = tacticsBtn.getAttribute('data-id');
+        const matchTitle = tacticsBtn.getAttribute('data-title');
+        const team = this.navigation.context.team;
+        
+        this.navigation.goTo('tactical-board', { 
+          matchId: matchId,
+          matchTitle: matchTitle,
+          team: team
+        });
+        return;
+      }
+      
+      // RSVP buttons
+      const rsvpBtn = e.target.closest('[data-action="rsvp"]');
+      if (rsvpBtn) {
+        const matchId = rsvpBtn.getAttribute('data-id');
+        const status = rsvpBtn.getAttribute('data-status');
+        this.handleRSVP(matchId, status);
+      }
+    });
   }
   
   handleRSVP(matchId, status) {

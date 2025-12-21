@@ -52,6 +52,7 @@ class ContextSelectionScreen extends Screen {
         const contextId = contextBtn.getAttribute('data-context-id');
         const contextName = contextBtn.getAttribute('data-context-name');
         const contextType = contextBtn.getAttribute('data-context-type'); // 'system', 'club', 'sport_division', or 'team'
+        const clubId = contextBtn.getAttribute('data-club-id');
         
         const context = { id: contextId, name: contextName, type: contextType };
         this.navigation.context.selectedContext = context;
@@ -73,7 +74,8 @@ class ContextSelectionScreen extends Screen {
             role: this.role, 
             team: {
               id: contextId,
-              name: contextName
+              name: contextName,
+              clubId: clubId
             }
           });
         }
@@ -146,6 +148,7 @@ class ContextSelectionScreen extends Screen {
                   data-context-id="${team.id}" 
                   data-context-name="${team.display_name || team.name}"
                   data-context-type="team"
+                  data-club-id="${team.club_id || ''}"
                   style="width: 100%; text-align: left; margin-bottom: var(--space-2); padding: var(--space-3);">
             <h3 style="margin: 0; font-size: 1.2rem;">⚽ ${team.display_name || team.name}</h3>
             <p style="margin: var(--space-1) 0 0 0; opacity: 0.8; font-size: 0.9rem;">
@@ -177,6 +180,7 @@ class ContextSelectionScreen extends Screen {
                   data-context-id="${team.id}" 
                   data-context-name="${team.display_name || team.name}"
                   data-context-type="team"
+                  data-club-id="${team.club_id || ''}"
                   style="width: 100%; text-align: left; margin-bottom: var(--space-2); padding: var(--space-3);">
             <h3 style="margin: 0; font-size: 1.2rem;">⚽ ${team.display_name || team.name}</h3>
             <p style="margin: var(--space-1) 0 0 0; opacity: 0.8; font-size: 0.9rem;">
