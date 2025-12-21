@@ -447,7 +447,9 @@ Response TacticalBoardController::handleCreateBoard(const Request& request) {
         // --- Link to Team (if provided) ---
         std::string teamId = parseJsonString(body, "teamId");
         if (!teamId.empty()) {
-            db_->execute(
+            // Use query() instead of execute() to avoid prepared statement issues with some drivers/wrappers
+            // or ensure the statement is properly prepared if using a prepared statement cache
+            db_->query(
                 "INSERT INTO tactical_board_entities (tactical_board_id, team_id) VALUES ($1, $2)",
                 {boardId, teamId}
             );
