@@ -1,5 +1,5 @@
 # Use a pre-built image with development tools
-FROM gcc:12
+FROM docker.io/library/gcc:12
 
 # Install required packages
 RUN apt-get update && apt-get install -y \

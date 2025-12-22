@@ -133,22 +133,77 @@ export PATH="$PYTHON_USER_BIN:$PATH"
 if ! command -v podman-compose &> /dev/null; then
     print_warning "podman-compose not found, installing..."
     
-    # Install podman-compose (Python-based docker-compose for podman)
-    if ! command -v pip3 &> /dev/null && ! command -v pip &> /dev/null; then
-        print_status "Installing pip..."
-        if [ "$OS_TYPE" == "Linux" ]; then
-            sudo apt-get update
-            sudo apt-get install -y python3-pip
-        elif [ "$OS_TYPE" == "Darwin" ]; then
-            # pip should come with Python on macOS
-            if ! command -v python3 &> /dev/null; then
-                brew install python3
+    INSTALLED=false
+    
+    # 1. Try system package manager (apt/brew)
+    if [ "$OS_TYPE" == "Linux" ]; then
+        print_status "Attempting to install podman-compose via apt..."
+        # Check if package exists before trying to install to avoid error messages
+        if sudo apt-cache show podman-compose &>/dev/null; then
+            if sudo apt-get update && sudo apt-get install -y podman-compose; then
+                INSTALLED=true
+                print_success "Installed podman-compose via apt"
             fi
+        fi
+    elif [ "$OS_TYPE" == "Darwin" ]; then
+        print_status "Attempting to install podman-compose via brew..."
+        if brew install podman-compose; then
+            INSTALLED=true
+            print_success "Installed podman-compose via brew"
         fi
     fi
     
-    print_status "Installing podman-compose..."
-    pip3 install --user podman-compose 2>/dev/null || pip install --user podman-compose
+    # 2. Try pipx if system install failed
+    if [ "$INSTALLED" = false ]; then
+        # Try pipx first (recommended for managed environments like Debian 12/Ubuntu 24.04)
+        if ! command -v pipx &> /dev/null; then
+            print_status "Installing pipx..."
+            if [ "$OS_TYPE" == "Linux" ]; then
+                sudo apt-get update
+                sudo apt-get install -y pipx || echo "pipx install failed, will try pip fallback"
+            elif [ "$OS_TYPE" == "Darwin" ]; then
+                brew install pipx
+            fi
+        fi
+
+        if command -v pipx &> /dev/null; then
+            print_status "Installing podman-compose via pipx..."
+            if pipx install podman-compose; then
+                INSTALLED=true
+                # Ensure pipx bin path is in PATH (usually ~/.local/bin)
+                export PATH="$HOME/.local/bin:$PATH"
+                print_success "Installed podman-compose via pipx"
+            fi
+        fi
+    fi
+
+    # 3. Fallback to pip
+    if [ "$INSTALLED" = false ]; then
+        if ! command -v pip3 &> /dev/null && ! command -v pip &> /dev/null; then
+            print_status "Installing pip..."
+            if [ "$OS_TYPE" == "Linux" ]; then
+                sudo apt-get update
+                sudo apt-get install -y python3-pip
+            elif [ "$OS_TYPE" == "Darwin" ]; then
+                # pip should come with Python on macOS
+                if ! command -v python3 &> /dev/null; then
+                    brew install python3
+                fi
+            fi
+        fi
+        
+        print_status "Installing podman-compose via pip..."
+        # Try with --break-system-packages for newer pip versions in managed envs
+        if pip3 install --user podman-compose --break-system-packages 2>/dev/null || \
+           pip3 install --user podman-compose 2>/dev/null || \
+           pip install --user podman-compose; then
+            INSTALLED=true
+            print_success "Installed podman-compose via pip"
+        else
+            print_error "Failed to install podman-compose. Please install it manually."
+            exit 1
+        fi
+    fi
     
     # Refresh PATH after install
     export PATH="$PYTHON_USER_BIN:$PATH"
@@ -255,7 +310,7 @@ if podman login --get-login docker.io &> /dev/null; then
 else
     # Try to login from env file if credentials exist
     if [ -f env ]; then
-        source env
+        source ./env
         if [ -n "$DOCKER_HUB_USERNAME" ] && [ -n "$DOCKER_HUB_TOKEN" ]; then
             print_status "Logging in to Docker Hub from env file..."
             echo "$DOCKER_HUB_TOKEN" | podman login docker.io -u "$DOCKER_HUB_USERNAME" --password-stdin &> /dev/null
@@ -282,13 +337,11 @@ fi
 print_status "Setting up env file..."
 
 if [ -f env ]; then
-    print_status "Removing existing env file..."
-    rm -f env
-    print_success "Existing env file deleted"
-fi
-
-print_status "Downloading fresh env template..."
-cat > env << 'EOF'
+    print_warning "env file already exists, skipping creation."
+    print_status "If you want to reset it, delete it and run setup.sh again."
+else
+    print_status "Creating fresh env template..."
+    cat > env << 'EOF'
 # Football Home Environment Variables
 # Created by setup.sh
 
@@ -308,13 +361,14 @@ GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 GOOGLE_OAUTH_REDIRECT_URI=http://localhost:3000/oauth/google/callback
 EOF
-print_success "env file created successfully"
-echo ""
-print_warning "Optional: Edit env to add Docker Hub, Twilio, or Google credentials"
-echo "  • Docker Hub: To avoid rate limits (100 anon vs 200 authenticated pulls/6 hours)"
-echo "  • Twilio: For SMS notifications (RSVPs, reminders)"
-echo "  • Google OAuth: For Google sign-in"
-echo ""
+    print_success "env file created successfully"
+    echo ""
+    print_warning "Optional: Edit env to add Docker Hub, Twilio, or Google credentials"
+    echo "  • Docker Hub: To avoid rate limits (100 anon vs 200 authenticated pulls/6 hours)"
+    echo "  • Twilio: For SMS notifications (RSVPs, reminders)"
+    echo "  • Google OAuth: For Google sign-in"
+    echo ""
+fi
 
 # ============================================================
 # Step 5: Final Verification
