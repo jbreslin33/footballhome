@@ -705,7 +705,7 @@ echo ""
 MONITOR_PID=$!
 
 # Run the build
-$DOCKER_COMPOSE --verbose build --no-cache
+$DOCKER_COMPOSE build --no-cache
 
 # Stop monitoring
 kill $MONITOR_PID 2>/dev/null
