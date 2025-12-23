@@ -31,7 +31,7 @@ git-crypt unlock /path/to/footballhome.key
 
 **Note**: The `.env` file with Twilio credentials is encrypted. New team members need the git-crypt key to unlock it.
 
-**Podman**: This project uses Podman instead of Docker to avoid rate limits and licensing issues. All commands use `podman` and `podman-compose` directly.
+**Podman/Docker**: This project defaults to Podman but supports Docker as a fallback. The `dev.sh` script automatically detects `podman-compose` or `docker-compose`.
 
 ## 🔧 Development Workflows
 

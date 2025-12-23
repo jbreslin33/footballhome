@@ -198,6 +198,24 @@ if ! command -v podman-compose &> /dev/null; then
            pip3 install --user podman-compose 2>/dev/null || \
            pip install --user podman-compose; then
             INSTALLED=true
+            
+            # Ensure the binary is executable and in path
+            PYTHON_USER_BIN=$(python3 -m site --user-base)/bin
+            export PATH="$PYTHON_USER_BIN:$PATH"
+            
+            if ! command -v podman-compose &> /dev/null; then
+                print_warning "podman-compose installed but not found in PATH. Adding to .bashrc/.zshrc..."
+                for rcfile in ~/.zshrc ~/.bashrc ~/.bash_profile; do
+                    if [ -f "$rcfile" ]; then
+                        if ! grep -q "# Python user packages" "$rcfile" 2>/dev/null; then
+                            echo "" >> "$rcfile"
+                            echo "# Python user packages" >> "$rcfile"
+                            echo "export PATH=\"$PYTHON_USER_BIN:\$PATH\"" >> "$rcfile"
+                        fi
+                    fi
+                done
+            fi
+
             print_success "Installed podman-compose via pip"
         else
             print_error "Failed to install podman-compose. Please install it manually."

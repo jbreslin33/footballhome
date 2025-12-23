@@ -124,11 +124,21 @@ if ! podman ps &> /dev/null 2>&1; then
     fi
     # Needs sudo, set alias for all commands
     DOCKER="sudo podman"
-    DOCKER_COMPOSE="sudo podman-compose --env-file env"
+    # Fallback to docker-compose if podman-compose is missing
+    if command -v podman-compose &> /dev/null; then
+        DOCKER_COMPOSE="sudo podman-compose --env-file env"
+    else
+        DOCKER_COMPOSE="sudo docker-compose --env-file env"
+    fi
 else
     # Works without sudo
     DOCKER="podman"
-    DOCKER_COMPOSE="podman-compose --env-file env"
+    # Fallback to docker-compose if podman-compose is missing
+    if command -v podman-compose &> /dev/null; then
+        DOCKER_COMPOSE="podman-compose --env-file env"
+    else
+        DOCKER_COMPOSE="docker-compose --env-file env"
+    fi
 fi
 
 APSL_SCRAPE_MODE=""

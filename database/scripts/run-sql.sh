@@ -11,6 +11,30 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# ============================================================
+# PODMAN AVAILABILITY CHECK
+# ============================================================
+if ! podman ps &> /dev/null 2>&1; then
+    # Try with sudo as fallback
+    if ! sudo podman ps &> /dev/null 2>&1; then
+        # Fallback to docker if podman is not found at all
+        if ! docker ps &> /dev/null 2>&1; then
+            echo -e "${RED}Error: Neither Podman nor Docker is accessible${NC}"
+            exit 1
+        fi
+        DOCKER="docker"
+        DOCKER_COMPOSE="docker compose"
+    else
+        # Needs sudo, set alias for all commands
+        DOCKER="sudo podman"
+        DOCKER_COMPOSE="sudo podman-compose"
+    fi
+else
+    # Works without sudo
+    DOCKER="podman"
+    DOCKER_COMPOSE="podman-compose"
+fi
+
 # Database connection details
 DB_CONTAINER="footballhome_db"
 DB_NAME="footballhome"
@@ -37,9 +61,9 @@ if [ "$2" = "-f" ]; then
 fi
 
 # Check if Docker container is running
-if ! docker ps --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
+if ! $DOCKER ps --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
     echo -e "${RED}Error: Database container '${DB_CONTAINER}' is not running${NC}"
-    echo "Start it with: docker compose up -d db"
+    echo "Start it with: ./dev.sh"
     exit 1
 fi
 
@@ -48,7 +72,8 @@ echo -e "${YELLOW}Executing SQL:${NC}"
 echo "$SQL_QUERY"
 echo ""
 
-docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" $FORMAT_FLAG -c "$SQL_QUERY"
+# Use direct container execution instead of compose to avoid dependency on podman-compose/docker-compose
+$DOCKER exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" $FORMAT_FLAG -c "$SQL_QUERY"
 
 EXIT_CODE=$?
 
