@@ -61,6 +61,7 @@ class AdminClubScreen extends Screen {
       { id: 'players', icon: '⚽', label: 'Players', description: 'Manage player records' },
       { id: 'teams', icon: '👥', label: 'Teams', description: 'Manage teams' },
       { id: 'venues', icon: '🏟️', label: 'Venues', description: 'Manage venues' },
+      { id: 'tactics', icon: '🧠', label: 'Tactics', description: 'Club-wide tactical boards' },
       { id: 'settings', icon: '⚙️', label: 'Settings', description: 'Club settings' }
     ];
     
@@ -76,6 +77,14 @@ class AdminClubScreen extends Screen {
   }
   
   handleSubNavigation(section) {
+    if (section === 'tactics') {
+      this.navigation.goTo('tactical-board', {
+        clubId: this.clubId,
+        teamName: 'Club Wide' // Fallback for title
+      });
+      return;
+    }
+    
     // Placeholder - will implement actual navigation later
     alert(`${section.toUpperCase()} management coming soon for ${this.clubName}`);
   }

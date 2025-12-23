@@ -43,6 +43,18 @@ class PracticeManagementScreen extends Screen {
         return;
       }
       
+      // Tactics
+      const tacticsBtn = e.target.closest('[data-action="tactics"]');
+      if (tacticsBtn) {
+        const practiceId = tacticsBtn.getAttribute('data-id');
+        const practiceTitle = tacticsBtn.getAttribute('data-title');
+        this.navigation.goTo('tactical-board', { 
+          practiceId: practiceId,
+          practiceTitle: practiceTitle
+        });
+        return;
+      }
+      
       // Delete practice
       const deleteBtn = e.target.closest('[data-action="delete"]');
       if (deleteBtn) {
@@ -132,6 +144,7 @@ class PracticeManagementScreen extends Screen {
             ${p.notes ? `<p class="practice-notes">${p.notes}</p>` : ''}
             
             <div style="display: flex; gap: var(--space-3); margin-top: var(--space-4);">
+              <button data-action="tactics" data-id="${p.id}" data-title="${p.title}" class="btn btn-secondary" style="flex: 1;">Tactics</button>
               <button data-action="edit" data-id="${p.id}" class="btn btn-primary" style="flex: 1;">Edit</button>
               <button data-action="delete" data-id="${p.id}" data-name="${p.title}" class="btn btn-danger" style="flex: 1;">Delete</button>
             </div>

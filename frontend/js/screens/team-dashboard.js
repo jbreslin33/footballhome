@@ -1,10 +1,5 @@
 // TeamDashboardScreen - choose between practices or matches after selecting a team
 class TeamDashboardScreen extends Screen {
-  onEnter(params) {
-    // Force re-render when entering to ensure we have the latest context
-    this.render();
-  }
-
   render() {
     const teamName = this.navigation.context.team?.name || 'Unknown Team';
     
@@ -41,11 +36,20 @@ class TeamDashboardScreen extends Screen {
   
   onEnter(params) {
     // Set team context from params if provided
-    if (params?.teamId && params?.teamName) {
+    if (params?.team) {
+      this.navigation.context.team = params.team;
+    } else if (params?.teamId && params?.teamName) {
       this.navigation.context.team = {
         id: params.teamId,
-        name: params.teamName
+        name: params.teamName,
+        clubId: params.clubId || null
       };
+    }
+    
+    // Re-render to update title if team changed
+    const titleEl = this.find('h1');
+    if (titleEl && this.navigation.context.team) {
+      titleEl.textContent = `⚽ ${this.navigation.context.team.name}`;
     }
     
     this.element.addEventListener('click', (e) => {

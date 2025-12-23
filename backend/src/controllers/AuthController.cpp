@@ -455,13 +455,14 @@ Response AuthController::handleCoachTeams(const Request& request) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
         }
         
-        std::string sql = "SELECT DISTINCT t.id, t.name, COUNT(tp.player_id) as player_count "
+        std::string sql = "SELECT DISTINCT t.id, t.name, sd.club_id, COUNT(tp.player_id) as player_count "
                          "FROM coaches co "
                          "JOIN team_coaches tc ON co.id = tc.coach_id "
                          "JOIN teams t ON tc.team_id = t.id "
+                         "JOIN sport_divisions sd ON t.sport_division_id = sd.id "
                          "LEFT JOIN team_players tp ON t.id = tp.team_id "
                          "WHERE co.id = $1 "
-                         "GROUP BY t.id, t.name "
+                         "GROUP BY t.id, t.name, sd.club_id "
                          "ORDER BY t.name";
         
         pqxx::result result = db_->query(sql, {user_id});
@@ -475,6 +476,7 @@ Response AuthController::handleCoachTeams(const Request& request) {
             teams_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
                       << "\"display_name\":\"" << row["name"].as<std::string>() << "\","
                       << "\"name\":\"" << row["name"].as<std::string>() << "\","
+                      << "\"club_id\":\"" << row["club_id"].as<std::string>() << "\","
                       << "\"player_count\":" << row["player_count"].as<int>() << "}";
         }
         teams_json << "]";
@@ -496,7 +498,7 @@ Response AuthController::handlePlayerTeams(const Request& request) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
         }
         
-        std::string sql = "SELECT DISTINCT t.id, t.name, sd.display_name as division_name "
+        std::string sql = "SELECT DISTINCT t.id, t.name, sd.display_name as division_name, sd.club_id "
                          "FROM team_players tp "
                          "JOIN teams t ON tp.team_id = t.id "
                          "JOIN sport_divisions sd ON t.sport_division_id = sd.id "
@@ -515,6 +517,7 @@ Response AuthController::handlePlayerTeams(const Request& request) {
             teams_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
                       << "\"display_name\":\"" << row["name"].as<std::string>() << "\","
                       << "\"name\":\"" << row["name"].as<std::string>() << "\","
+                      << "\"club_id\":\"" << row["club_id"].as<std::string>() << "\","
                       << "\"division_name\":\"" << row["division_name"].as<std::string>() << "\"}";
         }
         teams_json << "]";

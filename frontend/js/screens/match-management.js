@@ -44,6 +44,18 @@ class MatchManagementScreen extends Screen {
         return;
       }
 
+      // Tactics
+      const tacticsBtn = e.target.closest('[data-action="tactics"]');
+      if (tacticsBtn) {
+        const matchId = tacticsBtn.getAttribute('data-id');
+        const matchTitle = tacticsBtn.getAttribute('data-title');
+        this.navigation.goTo('tactical-board', { 
+          matchId: matchId,
+          matchTitle: matchTitle
+        });
+        return;
+      }
+
       // Edit match
       const editBtn = e.target.closest('[data-action="edit"]');
       if (editBtn) {
@@ -185,6 +197,7 @@ class MatchManagementScreen extends Screen {
             </div>
             
             <div style="display: flex; gap: var(--space-3); margin-top: var(--space-4);">
+              <button data-action="tactics" data-id="${m.id}" data-title="${m.title}" class="btn btn-secondary" style="flex: 1;">Tactics</button>
               <button data-action="share" data-id="${m.id}" class="btn btn-secondary" style="flex: 1;">Share</button>
               <button data-action="edit" data-id="${m.id}" class="btn btn-primary" style="flex: 1;">Edit</button>
               <button data-action="delete" data-id="${m.id}" data-name="${m.title}" class="btn btn-danger" style="flex: 1;">Delete</button>

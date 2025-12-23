@@ -20,15 +20,18 @@ class TacticalBoardScreen extends Screen {
     div.className = 'screen screen-tactical-board';
     
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>Tactical Board</h1>
-        <div style="display: flex; gap: var(--space-2);">
-          <button class="btn btn-secondary load-board-btn">📂 Load</button>
-          <button class="btn btn-secondary save-btn">💾 Save</button>
-          <button class="btn btn-secondary share-btn">📤 Share</button>
-        </div>
+      <div class="screen-header" style="margin-bottom: var(--space-3);">
+        <h1 style="margin: 0;">Tactical Board</h1>
       </div>
+      
+      <div class="toolbar" style="display: flex; gap: var(--space-2); margin-bottom: var(--space-3);">
+            <button class="btn btn-secondary load-btn">📂 Load</button>
+            <button class="btn btn-secondary save-btn">💾 Save</button>
+            <button class="btn btn-secondary link-btn">🔗 Link</button>
+            <button class="btn btn-secondary clear-btn">🗑️ Clear</button>
+            <button class="btn btn-secondary export-btn">📷 Export Image</button>
+            <button class="btn btn-secondary back-btn" style="margin-left: auto;">⬅️ Back</button>
+          </div>
       
       <div style="display: flex; gap: var(--space-3); padding: var(--space-3); height: calc(100vh - 120px);">
         <!-- Toolbar -->
@@ -104,29 +107,32 @@ class TacticalBoardScreen extends Screen {
   }
   
   onEnter(params) {
-    // Get team from context
+    // Get context from params or navigation context
     const team = this.navigation.context.team;
-    console.log('TacticalBoard onEnter - team:', team);
+    const club = this.navigation.context.club;
     
-    if (!team) {
-      console.error('No team in context');
-      alert('No team selected');
-      this.navigation.goBack();
-      return;
-    }
+    console.log('TacticalBoard onEnter params:', params);
     
     // Store context info
-    this.teamId = team.id;
-    this.teamName = team.name;
+    this.teamId = team?.id || params?.teamId || null;
+    this.teamName = team?.name || params?.teamName || null;
+    this.clubId = club?.id || params?.clubId || team?.clubId || null;
     
-    // Store optional contexts (match, practice, club)
+    // Store specific contexts (match, practice)
     this.matchId = params?.matchId || null;
     this.matchTitle = params?.matchTitle || null;
     this.practiceId = params?.practiceId || null;
     this.practiceTitle = params?.practiceTitle || null;
-    this.clubId = params?.clubId || team.clubId || null;
     
-    // Update header title if we have a specific context
+    // Validate we have at least one context
+    if (!this.teamId && !this.clubId && !this.matchId && !this.practiceId) {
+      console.error('No context provided for tactical board');
+      alert('No team, club, match, or practice selected');
+      this.navigation.goBack();
+      return;
+    }
+    
+    // Update header title based on most specific context
     const titleEl = this.find('h1');
     if (this.matchTitle) {
       titleEl.textContent = `Tactics: ${this.matchTitle}`;
@@ -134,8 +140,10 @@ class TacticalBoardScreen extends Screen {
       titleEl.textContent = `Tactics: ${this.practiceTitle}`;
     } else if (this.practiceId) {
       titleEl.textContent = `Tactics: Practice Session`;
-    } else {
+    } else if (this.teamName) {
       titleEl.textContent = `Tactical Board: ${this.teamName}`;
+    } else {
+      titleEl.textContent = `Tactical Board: Club Level`;
     }
     
     // Initialize canvas after a brief delay to ensure DOM is ready
@@ -145,6 +153,11 @@ class TacticalBoardScreen extends Screen {
       
       // Setup event listeners
       this.setupEventListeners();
+      
+      // Show startup menu if we have a context
+      if (this.matchId || this.practiceId || this.teamId) {
+        this.showStartupMenu();
+      }
       
       // Set initial mode and team
       this.setMode('move');
@@ -198,7 +211,7 @@ class TacticalBoardScreen extends Screen {
     });
     
     // Load button
-    this.find('.load-board-btn').addEventListener('click', () => {
+    this.find('.load-btn').addEventListener('click', () => {
       this.showLoadBoardDialog();
     });
     
@@ -207,9 +220,27 @@ class TacticalBoardScreen extends Screen {
       this.saveTacticalBoard();
     });
     
-    // Share button
-    this.find('.share-btn').addEventListener('click', () => {
-      this.shareTacticalBoard();
+    // Link button
+    this.find('.link-btn').addEventListener('click', () => {
+      this.showLinkDialog();
+    });
+
+    // Clear button
+    this.find('.clear-btn').addEventListener('click', () => {
+      if(confirm('Are you sure you want to clear the board?')) {
+        this.homePlayers = [];
+        this.opponentPlayers = [];
+        this.arrows = [];
+        this.drawAll();
+      }
+    });
+
+    // Export button
+    this.find('.export-btn').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = `tactical-board-${new Date().toISOString().slice(0,10)}.png`;
+      link.href = this.canvas.toDataURL();
+      link.click();
     });
     
     // Mode buttons
@@ -878,11 +909,17 @@ class TacticalBoardScreen extends Screen {
         ...this.opponentPlayers.map(p => ({ ...p, team: 'opponent', id: p.playerId }))
       ];
 
+      // Determine board type
+      let boardTypeId = 2; // Default to practice
+      if (this.matchId) boardTypeId = 1; // Match
+      else if (this.practiceId) boardTypeId = 2; // Practice
+      else if (this.clubId && !this.teamId) boardTypeId = 3; // Club-wide
+      
       // Prepare board data with players and arrows embedded
       const boardData = {
         name: boardName,
         description: description || '',
-        boardTypeId: 2, // Practice session
+        boardTypeId: boardTypeId,
         formationHome: this.getFormationString('home') || '',
         formationOpponent: this.getFormationString('opponent') || '',
         canvasWidth: Math.floor(this.canvas.width),
@@ -1036,57 +1073,206 @@ class TacticalBoardScreen extends Screen {
   
   async loadBoardsList() {
     try {
-      if (!this.teamId) return [];
-      
-      const response = await fetch(`http://localhost:3001/api/tactical-boards/team/${this.teamId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to load boards list');
+      // 1. Load context-specific boards
+      let endpoint = '';
+      if (this.matchId) {
+        endpoint = `/api/tactical-boards/match/${this.matchId}`;
+      } else if (this.practiceId) {
+        endpoint = `/api/tactical-boards/practice/${this.practiceId}`;
+      } else if (this.teamId) {
+        endpoint = `/api/tactical-boards/team/${this.teamId}`;
+      } else if (this.clubId) {
+        endpoint = `/api/tactical-boards/club/${this.clubId}`;
       }
       
-      const boards = await response.json();
-      return boards;
+      const contextResponse = await fetch(`http://localhost:3001${endpoint}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const contextBoards = contextResponse.ok ? await contextResponse.json() : [];
+      
+      // 2. Load all club boards (for the "Other Boards" list)
+      // We only do this if we have a clubId available
+      let clubBoards = [];
+      if (this.clubId) {
+        const clubResponse = await fetch(`http://localhost:3001/api/tactical-boards/club/${this.clubId}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (clubResponse.ok) {
+          clubBoards = await clubResponse.json();
+        }
+      }
+      
+      // Filter out duplicates (boards that are already in contextBoards)
+      const contextBoardIds = new Set(contextBoards.map(b => b.id));
+      const otherBoards = clubBoards.filter(b => !contextBoardIds.has(b.id));
+      
+      return { contextBoards, otherBoards };
       
     } catch (error) {
       console.error('Error loading boards list:', error);
-      return [];
+      return { contextBoards: [], otherBoards: [] };
     }
   }
   
-  async showLoadBoardDialog() {
+  async showLoadBoardDialog(mode = 'both') {
     try {
-      const boards = await this.loadBoardsList();
+      const { contextBoards, otherBoards } = await this.loadBoardsList();
       
-      if (boards.length === 0) {
-        alert('No saved boards found for this team.');
+      if (contextBoards.length === 0 && otherBoards.length === 0) {
+        alert('No saved boards found.');
+        return;
+      }
+
+      // Filter based on mode
+      const displayContextBoards = (mode === 'both' || mode === 'linked') ? contextBoards : [];
+      const displayOtherBoards = (mode === 'both' || mode === 'all') ? otherBoards : [];
+      
+      if (mode === 'linked' && displayContextBoards.length === 0) {
+        alert('No boards linked specifically to this context.');
         return;
       }
       
-      // Create a simple selection dialog
-      let message = 'Select a board to load:\n\n';
-      boards.forEach((board, index) => {
-        message += `${index + 1}. ${board.name} (${new Date(board.createdAt).toLocaleDateString()})\n`;
+      // Create a custom modal for better UX than prompt()
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
+        z-index: 1000;
+      `;
+      
+      const content = document.createElement('div');
+      content.style.cssText = `
+        background: white; padding: 20px; border-radius: 8px; width: 500px; max-height: 80vh; overflow-y: auto;
+      `;
+      
+      content.innerHTML = `
+        <h2 style="margin-top: 0;">Load Tactical Board</h2>
+        
+        ${displayContextBoards.length > 0 ? `
+          <h3 style="font-size: 1rem; color: var(--primary-color); border-bottom: 1px solid #eee; padding-bottom: 5px;">
+            Linked to this Context
+          </h3>
+          <div class="board-list" style="margin-bottom: 20px;">
+            ${displayContextBoards.map(b => `
+              <div class="board-item" data-id="${b.id}" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: bold;">${b.name}</div>
+                  <div style="font-size: 0.8rem; color: #666;">${new Date(b.createdAt).toLocaleDateString()}</div>
+                </div>
+                <button class="btn btn-sm btn-primary">Load</button>
+              </div>
+            `).join('')}
+          </div>
+        ` : (mode === 'linked' ? '<p>No linked boards found.</p>' : '')}
+        
+        ${displayOtherBoards.length > 0 ? `
+          <h3 style="font-size: 1rem; color: var(--gray-600); border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 20px;">
+            ${mode === 'all' ? 'All Club Boards' : 'Other Club Boards'}
+          </h3>
+          <div class="board-list">
+            ${displayOtherBoards.map(b => `
+              <div class="board-item" data-id="${b.id}" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <div style="font-weight: bold;">${b.name}</div>
+                  <div style="font-size: 0.8rem; color: #666;">
+                    ${new Date(b.createdAt).toLocaleDateString()} • 
+                    ${b.matchId ? 'Match' : b.practiceId ? 'Practice' : b.teamId ? 'Team' : 'Club'}
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-secondary">Load</button>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        
+        <div style="margin-top: 20px; text-align: right;">
+          <button id="close-modal-btn" class="btn btn-secondary">Cancel</button>
+        </div>
+      `;
+      
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+      
+      // Event listeners
+      modal.addEventListener('click', (e) => {
+        const boardItem = e.target.closest('.board-item');
+        if (boardItem) {
+          const boardId = boardItem.dataset.id;
+          this.loadTacticalBoard(boardId);
+          document.body.removeChild(modal);
+        }
+        
+        if (e.target.id === 'close-modal-btn' || e.target === modal) {
+          document.body.removeChild(modal);
+        }
       });
-      message += '\nEnter the number:';
-      
-      const selection = prompt(message);
-      if (!selection) return;
-      
-      const index = parseInt(selection) - 1;
-      if (index >= 0 && index < boards.length) {
-        await this.loadTacticalBoard(boards[index].id);
-      } else {
-        alert('Invalid selection');
-      }
       
     } catch (error) {
       console.error('Error showing load dialog:', error);
       alert('Failed to load boards list');
     }
+  }
+
+  showStartupMenu() {
+    const modal = document.createElement('div');
+    modal.className = 'tactical-board-startup-modal';
+    modal.style.cssText = `
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center;
+      z-index: 2000;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: white; padding: 30px; border-radius: 12px; width: 400px; text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    
+    let contextName = 'Club Level';
+    if (this.matchId) contextName = 'Match';
+    else if (this.practiceId) contextName = 'Practice';
+    else if (this.teamId) contextName = 'Team';
+    
+    content.innerHTML = `
+      <h2 style="margin-top: 0; margin-bottom: 20px;">Tactical Board</h2>
+      <p style="color: #666; margin-bottom: 30px;">${contextName} Context</p>
+      
+      <div style="display: flex; flex-direction: column; gap: 15px;">
+        <button id="startup-create" class="btn btn-primary btn-lg" style="width: 100%;">
+          ✨ Create New Board
+        </button>
+        
+        <button id="startup-load-linked" class="btn btn-secondary btn-lg" style="width: 100%;">
+          📂 Load from ${contextName}
+        </button>
+        
+        <button id="startup-load-all" class="btn btn-outline-secondary" style="width: 100%;">
+          🌐 Load from All Contexts
+        </button>
+      </div>
+    `;
+    
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    // Event listeners
+    content.querySelector('#startup-create').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+    
+    content.querySelector('#startup-load-linked').addEventListener('click', () => {
+      document.body.removeChild(modal);
+      this.showLoadBoardDialog('linked');
+    });
+    
+    content.querySelector('#startup-load-all').addEventListener('click', () => {
+      document.body.removeChild(modal);
+      this.showLoadBoardDialog('all');
+    });
+  }
+
+  showLinkDialog() {
+    alert('Link to Context feature coming soon!');
   }
   
   async fetchTeamRoster() {

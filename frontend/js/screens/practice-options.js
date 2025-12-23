@@ -32,10 +32,17 @@ class PracticeOptionsScreen extends Screen {
             </small>
           </button>
           
-          <button data-action="attendance" class="btn btn-lg btn-primary">
+                    <button data-action="attendance" class="btn btn-lg btn-primary">
             📋 Manage Practice Attendance
             <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
               Track who attended each practice
+            </small>
+          </button>
+
+          <button data-action="tactical-board" class="btn btn-lg btn-primary">
+            🧠 Practice Tactics
+            <small style="display: block; font-weight: normal; margin-top: 5px; opacity: 0.9;">
+              Create tactical boards for practices
             </small>
           </button>
         ` : ''}
@@ -64,6 +71,10 @@ class PracticeOptionsScreen extends Screen {
           this.navigation.goTo('practice-rsvp-management');
         } else if (action === 'attendance') {
           this.navigation.goTo('practice-attendance');
+        } else if (action === 'tactical-board') {
+          this.navigation.goTo('tactical-board', { 
+            practiceTitle: 'General Practice Planning' 
+          });
         } else if (action === 'rsvp') {
           this.navigation.goTo('practice-list');
         }

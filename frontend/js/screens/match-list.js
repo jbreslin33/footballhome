@@ -28,6 +28,21 @@ class MatchListScreen extends Screen {
         return;
       }
       
+      // Tactics button
+      const tacticsBtn = e.target.closest('[data-action="tactics"]');
+      if (tacticsBtn) {
+        const matchId = tacticsBtn.getAttribute('data-id');
+        const matchTitle = tacticsBtn.getAttribute('data-title');
+        const team = this.navigation.context.team;
+        
+        this.navigation.goTo('tactical-board', { 
+          matchId: matchId,
+          matchTitle: matchTitle,
+          team: team
+        });
+        return;
+      }
+      
       // RSVP buttons
       const rsvpBtn = e.target.closest('[data-action="rsvp"]');
       if (rsvpBtn) {
