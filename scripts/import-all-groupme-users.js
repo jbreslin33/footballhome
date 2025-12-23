@@ -22,26 +22,32 @@ const { Client } = require('pg');
 const ACCESS_TOKEN = process.env.GROUPME_ACCESS_TOKEN;
 const BASE_URL = 'https://api.groupme.com/v3';
 const MODE = process.argv[2]; // 'lighthouse' or undefined (full import)
+const GROUPME_PROVIDER_ID = '550e8400-e29b-41d4-a716-446655440a03';
 
 // Configuration: Map GroupMe Group IDs to DB Team IDs
-const CLUB_TEAM_ID = 'd37eb44b-8e47-0005-9060-f0cbe96fe089'; // Lighthouse 1893 SC (The "Club" container)
+const CLUB_TEAM_ID = 'a16e9445-9bed-4fe6-804d-e77c56258610'; // Lighthouse 1893 SC (The "Club" container)
 
 const GROUP_MAPPINGS = [
   {
     name: 'APSL Lighthouse',
     groupMeId: '109785985',
-    dbTeamId: 'd37eb44b-8e47-0005-9060-f0cbe96fe089', // Lighthouse 1893 SC (APSL)
-    skipRosterImport: true // Don't add to team_players - APSL scraper provides roster
+    dbTeamId: 'a16e9445-9bed-4fe6-804d-e77c56258610', // Lighthouse 1893 SC (APSL)
+    // No longer skipping roster import - will use 'chat_only' status for non-official players
   },
   {
     name: 'Lighthouse Boys Club (Liga 1)',
     groupMeId: '109786182',
-    dbTeamId: 'b0c1abb0-c1ab-0001-b0c1-ab0c1abb0c1a' // Lighthouse Boys Club (CASA)
+    dbTeamId: '57d88568-993d-4411-8aa3-6244ca7ff704' // Lighthouse Boys Club (CASA)
   },
   {
     name: 'Lighthouse Old Timers Club (Liga 2)',
     groupMeId: '109786278',
-    dbTeamId: '01d71ee5-01d7-0002-1ee5-01d71ee501d7' // Lighthouse Old Timers Club (CASA)
+    dbTeamId: 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11' // Lighthouse Old Timers Club (CASA)
+  },
+  {
+    name: 'Training Lighthouse',
+    groupMeId: '108640377',
+    dbTeamId: '3ee933c4-3ecc-4478-8737-b5a148fcebc7' // Lighthouse Training
   }
 ];
 
@@ -130,8 +136,8 @@ async function importAllUsers() {
           // Check if identity already exists
           const identityCheck = await client.query(
             `SELECT id FROM user_external_identities 
-             WHERE provider = 'groupme' AND external_id = $1`,
-            [gmId]
+             WHERE provider_id = $1 AND external_id = $2`,
+            [GROUPME_PROVIDER_ID, gmId]
           );
 
           if (identityCheck.rows.length > 0) {
@@ -139,13 +145,13 @@ async function importAllUsers() {
           } else {
             // Create new external identity with user_id=NULL
             await client.query(
-              `INSERT INTO user_external_identities (provider, external_id, external_username, external_data, user_id)
+              `INSERT INTO user_external_identities (provider_id, external_id, external_username, external_data, user_id)
                VALUES ($1, $2, $3, $4::jsonb, NULL)
-               ON CONFLICT (provider, external_id) DO UPDATE SET
+               ON CONFLICT (provider_id, external_id) DO UPDATE SET
                  external_username = EXCLUDED.external_username,
                  external_data = EXCLUDED.external_data,
                  updated_at = CURRENT_TIMESTAMP`,
-              ['groupme', gmId, nickname, JSON.stringify({
+              [GROUPME_PROVIDER_ID, gmId, nickname, JSON.stringify({
                 first_name: first,
                 last_name: last,
                 avatar_url: avatar,
@@ -166,8 +172,8 @@ async function importAllUsers() {
           // A. Check by GroupMe ID in external identities
           let userResult = await client.query(
             `SELECT user_id FROM user_external_identities 
-             WHERE provider = 'groupme' AND external_id = $1`,
-            [gmId]
+             WHERE provider_id = $1 AND external_id = $2`,
+            [GROUPME_PROVIDER_ID, gmId]
           );
 
           if (userResult.rows.length > 0) {
@@ -188,14 +194,14 @@ async function importAllUsers() {
               // Found by Name -> Link GroupMe ID
               userId = userResult.rows[0].id;
               await client.query(
-                `INSERT INTO user_external_identities (user_id, provider, external_id, external_username, external_data)
-                 VALUES ($1, 'groupme', $2, $3, $4)
-                 ON CONFLICT (user_id, provider) DO UPDATE SET 
+                `INSERT INTO user_external_identities (user_id, provider_id, external_id, external_username, external_data)
+                 VALUES ($1, $2, $3, $4, $5)
+                 ON CONFLICT (provider_id, external_id) DO UPDATE SET 
                    external_id = EXCLUDED.external_id,
                    external_username = EXCLUDED.external_username,
                    external_data = EXCLUDED.external_data,
                    updated_at = CURRENT_TIMESTAMP`,
-                [userId, gmId, nickname, JSON.stringify({ avatar_url: avatar })]
+                [userId, GROUPME_PROVIDER_ID, gmId, nickname, JSON.stringify({ avatar_url: avatar })]
               );
               // Also update avatar if not set
               await client.query(
@@ -215,9 +221,9 @@ async function importAllUsers() {
               
               // Link GroupMe identity
               await client.query(
-                `INSERT INTO user_external_identities (user_id, provider, external_id, external_username, external_data)
-                 VALUES ($1, 'groupme', $2, $3, $4)`,
-                [userId, gmId, nickname, JSON.stringify({ avatar_url: avatar })]
+                `INSERT INTO user_external_identities (user_id, provider_id, external_id, external_username, external_data)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [userId, GROUPME_PROVIDER_ID, gmId, nickname, JSON.stringify({ avatar_url: avatar })]
               );
               
               // Create Player record
@@ -230,28 +236,29 @@ async function importAllUsers() {
           }
 
           if (userId) {
-            // 2. Add to Specific Team (unless skipRosterImport is true)
-            if (!mapping.skipRosterImport) {
-              try {
-                const teamCheck = await client.query(
-                  `SELECT id FROM team_players WHERE team_id = $1 AND player_id = $2`,
+            // 2. Add to Specific Team
+            // Logic: If player is already on team (from scraper), do nothing (keep official status).
+            //        If player is NOT on team, add them with status 7 (Chat Only).
+            try {
+              const teamCheck = await client.query(
+                `SELECT id, roster_status_id FROM team_players WHERE team_id = $1 AND player_id = $2`,
+                [mapping.dbTeamId, userId]
+              );
+
+              if (teamCheck.rows.length === 0) {
+                // Not on roster -> Add as Chat Only (7)
+                await client.query(
+                  `INSERT INTO team_players (team_id, player_id, roster_status_id)
+                   VALUES ($1, $2, 7)`,
                   [mapping.dbTeamId, userId]
                 );
-
-                if (teamCheck.rows.length === 0) {
-                  await client.query(
-                    `INSERT INTO team_players (team_id, player_id, roster_status_id)
-                     VALUES ($1, $2, 1)`,
-                    [mapping.dbTeamId, userId]
-                  );
-                  stats.teamAdded++;
-                }
-              } catch (err) {
-                console.error(`   ⚠️  Failed to add to team: ${err.message}`);
+                stats.teamAdded++;
               }
+            } catch (err) {
+              console.error(`   ⚠️  Failed to add to team: ${err.message}`);
             }
 
-            // 3. Add to Club Team (if different and not skipping)
+            // 3. Add to Club Team (if different)
             if (mapping.dbTeamId !== CLUB_TEAM_ID) {
               try {
                 const clubCheck = await client.query(
@@ -260,9 +267,10 @@ async function importAllUsers() {
                 );
 
                 if (clubCheck.rows.length === 0) {
+                  // Add to club container as Chat Only (7)
                   await client.query(
                     `INSERT INTO team_players (team_id, player_id, roster_status_id)
-                     VALUES ($1, $2, 1)`,
+                     VALUES ($1, $2, 7)`,
                     [CLUB_TEAM_ID, userId]
                   );
                   stats.clubAdded++;

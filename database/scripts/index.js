@@ -5,6 +5,11 @@
  * Main entry point for all OOP scrapers
  */
 
+require('dotenv').config({ path: require('path').resolve(__dirname, '../../env') });
+
+// Force disable SSL verification for development environment
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 const ApslScraper = require('./scrapers/ApslScraper');
 const CasaScraper = require('./scrapers/CasaScraper');
 const TrainingLighthouseScraper = require('./scrapers/TrainingLighthouseScraper');

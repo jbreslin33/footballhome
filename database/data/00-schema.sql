@@ -1268,7 +1268,8 @@ INSERT INTO roster_statuses (code, display_name, description, show_in_rsvp, show
 ('trial', 'On Trial', 'Trialing with team, not official yet', true, false, 3),
 ('injured_reserve', 'Injured Reserve', 'Injured, not on official roster', true, false, 4),
 ('suspended', 'Suspended', 'Temporarily suspended from team', false, true, 5),
-('departed', 'Departed', 'No longer with team', false, false, 6);
+('departed', 'Departed', 'No longer with team', false, false, 6),
+('chat_only', 'Chat Only', 'In team chat but not on official roster', true, false, 7);
 
 -- Formations (common soccer formations)
 INSERT INTO formations (id, code, name, positions) VALUES

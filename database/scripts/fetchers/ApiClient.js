@@ -11,6 +11,7 @@ class ApiClient extends DataFetcher {
     this.apiKey = config.apiKey;
     this.baseUrl = config.baseUrl;
     this.headers = config.headers || {};
+    this.insecure = config.insecure || false;
   }
 
   async fetch(endpoint, options = {}) {
@@ -23,7 +24,8 @@ class ApiClient extends DataFetcher {
           ...this.headers,
           ...options.headers
         },
-        timeout: options.timeout || 30000
+        timeout: options.timeout || 30000,
+        rejectUnauthorized: !this.insecure
       };
 
       const req = https.request(url, reqOptions, (res) => {

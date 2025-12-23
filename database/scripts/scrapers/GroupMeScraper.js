@@ -4,6 +4,7 @@ const IdGenerator = require('../services/IdGenerator');
 const SqlGenerator = require('../services/SqlGenerator');
 const Player = require('../models/Player');
 const Match = require('../models/Match');
+const Practice = require('../models/Practice');
 
 /**
  * Base GroupMe Scraper
@@ -33,7 +34,8 @@ class GroupMeScraper extends Scraper {
       baseUrl: 'https://api.groupme.com/v3',
       authType: 'query',
       apiKey: accessToken,
-      apiKeyName: 'token'
+      apiKeyName: 'token',
+      insecure: true // Bypass SSL verification for dev environment
     });
     
     this.sqlGenerator = new SqlGenerator();
@@ -126,21 +128,39 @@ class GroupMeScraper extends Scraper {
           : new Date(startTime.getTime() + 90 * 60000); // Default 90 min
         
         const eventId = IdGenerator.fromComponents('groupme', 'event', groupmeEventId);
+        const eventTypeId = this.getEventTypeId();
+        const durationMinutes = Math.round((endTime - startTime) / 60000);
         
-        const match = new Match({
-          event_id: eventId,
-          name: name,
-          event_type_id: this.getEventTypeId(),
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
-          team_id: this.teamId || null,
-          created_by: '77d77471-1250-47e0-81ab-d4626595d63c', // SYSTEM_USER_ID
-          source_app_id: '550e8400-e29b-41d4-a716-446655440311',
-          external_source: 'groupme',
-          external_event_id: groupmeEventId
-        });
+        let eventObj;
         
-        this.data.events.set(eventId, match);
+        if (eventTypeId === this.eventTypes.training) {
+          eventObj = new Practice({
+            event_id: eventId,
+            title: name,
+            event_type_id: eventTypeId,
+            event_date: startTime.toISOString(),
+            duration_minutes: durationMinutes,
+            team_id: this.teamId || null,
+            created_by: '77d77471-1250-47e0-81ab-d4626595d63c', // SYSTEM_USER_ID
+            external_event_id: groupmeEventId
+          });
+        } else {
+          eventObj = new Match({
+            event_id: eventId,
+            name: name,
+            event_type_id: eventTypeId,
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            duration_minutes: durationMinutes,
+            team_id: this.teamId || null,
+            created_by: '77d77471-1250-47e0-81ab-d4626595d63c', // SYSTEM_USER_ID
+            source_app_id: '550e8400-e29b-41d4-a716-446655440311',
+            external_source: 'groupme',
+            external_event_id: groupmeEventId
+          });
+        }
+        
+        this.data.events.set(eventId, eventObj);
         
         // Store RSVPs for later processing
         if (evt.going) {

@@ -10,8 +10,8 @@ class OldTimersLiga2Scraper extends GroupMeScraper {
       name: 'Old Timers Liga 2',
       chatName: 'Lighthouse Old Timers Club Liga 2',
       groupId: '109786278',
-      teamId: 'TBD', // Need actual team ID from CASA Liga 2
-      sportDivisionId: null,
+      teamId: 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', // Lighthouse Old Timers Club
+      sportDivisionId: '6362c82a-4383-4d2f-8ecc-8b0e87ab1788', // Lighthouse Old Timers Club Soccer
       mode: mode,
       includeSchedules: options.includeSchedules !== false
     });

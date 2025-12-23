@@ -886,38 +886,38 @@ if [ "$GROUPME_BOYS_CLUB_EXTERNAL" = true ] || [ "$GROUPME_BOYS_CLUB_SCHEDULE" =
 fi
 
 # Lighthouse Boys Club Liga 1 Chat - Schedule
-if [ "$GROUPME_BOYS_CLUB_SCHEDULE" = true ]; then
-    echo -e "${YELLOW}📅 Step 7e: Lighthouse Boys Club Liga 1 - Schedule...${NC}"
-    if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
-        if [ -f "scripts/import-groupme-boys-club-schedule.js" ]; then
-            echo "  Importing Lighthouse Boys Club Liga 1 game schedule..."
-            node scripts/import-groupme-boys-club-schedule.js
-            [ $? -eq 0 ] && echo -e "${GREEN}✓ Lighthouse Boys Club Liga 1 schedule imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
-        else
-            echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-boys-club-schedule.js${NC}"
-        fi
-    else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in env${NC}"
-    fi
-    echo ""
-fi
+# if [ "$GROUPME_BOYS_CLUB_SCHEDULE" = true ]; then
+#     echo -e "${YELLOW}📅 Step 7e: Lighthouse Boys Club Liga 1 - Schedule...${NC}"
+#     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
+#         if [ -f "scripts/import-groupme-boys-club-schedule.js" ]; then
+#             echo "  Importing Lighthouse Boys Club Liga 1 game schedule..."
+#             node scripts/import-groupme-boys-club-schedule.js
+#             [ $? -eq 0 ] && echo -e "${GREEN}✓ Lighthouse Boys Club Liga 1 schedule imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
+#         else
+#             echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-boys-club-schedule.js${NC}"
+#         fi
+#     else
+#         echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in env${NC}"
+#     fi
+#     echo ""
+# fi
 
 # Lighthouse Boys Club Liga 1 Chat - RSVPs
-if [ "$GROUPME_BOYS_CLUB_RSVPS" = true ]; then
-    echo -e "${YELLOW}✅ Step 7f: Lighthouse Boys Club Liga 1 - RSVPs...${NC}"
-    if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
-        if [ -f "scripts/import-groupme-boys-club-rsvps.js" ]; then
-            echo "  Importing Lighthouse Boys Club Liga 1 game RSVPs..."
-            node scripts/import-groupme-boys-club-rsvps.js 2>&1 | sed 's/^/  /'
-            [ $? -eq 0 ] && echo -e "${GREEN}✓ Lighthouse Boys Club Liga 1 RSVPs imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
-        else
-            echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-boys-club-rsvps.js${NC}"
-        fi
-    else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in env${NC}"
-    fi
-    echo ""
-fi
+# if [ "$GROUPME_BOYS_CLUB_RSVPS" = true ]; then
+#     echo -e "${YELLOW}✅ Step 7f: Lighthouse Boys Club Liga 1 - RSVPs...${NC}"
+#     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
+#         if [ -f "scripts/import-groupme-boys-club-rsvps.js" ]; then
+#             echo "  Importing Lighthouse Boys Club Liga 1 game RSVPs..."
+#             node scripts/import-groupme-boys-club-rsvps.js 2>&1 | sed 's/^/  /'
+#             [ $? -eq 0 ] && echo -e "${GREEN}✓ Lighthouse Boys Club Liga 1 RSVPs imported${NC}" || echo -e "${YELLOW}⚠ Completed with warnings${NC}"
+#         else
+#             echo -e "${YELLOW}⚠ Script not found: scripts/import-groupme-boys-club-rsvps.js${NC}"
+#         fi
+#     else
+#         echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in env${NC}"
+#     fi
+#     echo ""
+# fi
 
 # ──────────────────────────────────────────────────────────────────
 # Lighthouse Old Timers Club Liga 2 Chat (OOP) - Group ID: 109786278

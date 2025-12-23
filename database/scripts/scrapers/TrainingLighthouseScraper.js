@@ -10,8 +10,8 @@ class TrainingLighthouseScraper extends GroupMeScraper {
       name: 'Training Lighthouse',
       chatName: 'Training Lighthouse',
       groupId: '108640377',
-      sportDivisionId: 'd37eb44b-8e47-0005-9060-f0cbe96fe089', // Lighthouse 1893 SC division
-      teamId: null, // No specific team - division-wide training
+      sportDivisionId: '46b8ef6e-b9f3-41b9-8c7c-525dd63d14f9', // Lighthouse 1893 SC Soccer
+      teamId: '3ee933c4-3ecc-4478-8737-b5a148fcebc7', // Lighthouse Training Team
       mode: mode,
       includeSchedules: options.includeSchedules !== false
     });
