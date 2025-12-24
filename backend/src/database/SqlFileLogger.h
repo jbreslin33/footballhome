@@ -36,6 +36,13 @@ public:
      * @param sql SQL statement (INSERT ... ON CONFLICT ... or UPDATE ...)
      */
     static void log(const std::string& table, const std::string& sql);
+
+    /**
+     * Log a SQL statement to a specific manual file (e.g., 80m-manual-links.sql)
+     * @param filename The specific filename to write to
+     * @param sql SQL statement
+     */
+    static void logToManualFile(const std::string& filename, const std::string& sql);
     
     /**
      * Check if logging is enabled for current environment

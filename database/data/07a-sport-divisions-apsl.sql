@@ -177,31 +177,6 @@ ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
   updated_at = EXCLUDED.updated_at;
 INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
 VALUES (
-  '1fa5187b-a7ee-4cb8-82cf-84e252e359fd',
-  '0f88bdf4-6a86-4800-8767-dd17e3009ada',
-  '550e8400-e29b-41d4-a716-446655440101',
-  'Sete Setembro USA Soccer',
-  'Sete Setembro USA Soccer',
-  'sete-setembro-usa',
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  true,
-  NULL,
-  NULL
-)
-ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
-  name = EXCLUDED.name,
-  display_name = EXCLUDED.display_name,
-  description = EXCLUDED.description,
-  logo_url = EXCLUDED.logo_url,
-  primary_color = EXCLUDED.primary_color,
-  secondary_color = EXCLUDED.secondary_color,
-  is_active = EXCLUDED.is_active,
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
-VALUES (
   '5a5edf0f-2e18-49ad-8976-c47bc0feb19d',
   'e1293c35-a49e-4bec-8194-21b6b992d739',
   '550e8400-e29b-41d4-a716-446655440101',
@@ -1308,31 +1283,6 @@ VALUES (
   'SC Gwinnett Soccer',
   'SC Gwinnett Soccer',
   'sc-gwinnett',
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  true,
-  NULL,
-  NULL
-)
-ON CONFLICT (club_id, sport_id, slug) DO UPDATE SET
-  name = EXCLUDED.name,
-  display_name = EXCLUDED.display_name,
-  description = EXCLUDED.description,
-  logo_url = EXCLUDED.logo_url,
-  primary_color = EXCLUDED.primary_color,
-  secondary_color = EXCLUDED.secondary_color,
-  is_active = EXCLUDED.is_active,
-  updated_at = EXCLUDED.updated_at;
-INSERT INTO sport_divisions (id, club_id, sport_id, name, display_name, slug, description, logo_url, primary_color, secondary_color, is_active, created_at, updated_at)
-VALUES (
-  'e7bd5270-3f8a-4c87-8a57-7cea8c73a638',
-  'daebd418-b752-4a87-8292-4e1dcf06ec88',
-  '550e8400-e29b-41d4-a716-446655440101',
-  'Lithonia City FC Soccer',
-  'Lithonia City FC Soccer',
-  'lithonia-city-fc',
   NULL,
   NULL,
   NULL,

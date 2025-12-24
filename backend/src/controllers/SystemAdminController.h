@@ -47,6 +47,10 @@ private:
     Response handleGrantSystemAdmin(const Request& request);
     Response handleRevokeSystemAdmin(const Request& request);
     
+    // Identity Management
+    Response handleGetIdentities(const Request& request);
+    Response handleLinkIdentity(const Request& request);
+    
     // Audit Logs
     Response handleGetAuditLogs(const Request& request);
     Response handleGetApiUsageLogs(const Request& request);

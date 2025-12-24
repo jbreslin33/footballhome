@@ -32,6 +32,7 @@ class AdminSystemScreen extends Screen {
         <div class="admin-tabs">
           <button class="admin-tab active" data-view="dashboard">📊 Dashboard</button>
           <button class="admin-tab" data-view="users">👥 Users</button>
+          <button class="admin-tab" data-view="identities">🔗 Identities</button>
           <button class="admin-tab" data-view="admins">🛡️ Admins</button>
           <button class="admin-tab" data-view="settings">⚙️ Settings</button>
           <button class="admin-tab" data-view="features">🎛️ Features</button>
@@ -103,6 +104,9 @@ class AdminSystemScreen extends Screen {
           break;
         case 'users':
           await this.loadUsers();
+          break;
+        case 'identities':
+          await this.loadIdentities();
           break;
         case 'admins':
           await this.loadAdmins();
@@ -273,6 +277,170 @@ class AdminSystemScreen extends Screen {
     }
   }
   
+  async loadIdentities() {
+    const content = this.element.querySelector('.admin-content');
+    content.innerHTML = '<div class="loading-indicator">Loading identities...</div>';
+    
+    try {
+      const response = await fetch('/api/system-admin/identities');
+      
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`API Error (${response.status}): ${text}`);
+      }
+      
+      const identities = await response.json();
+      
+      if (!Array.isArray(identities)) {
+        console.error('Invalid identities response:', identities);
+        throw new Error('Server returned invalid data format (expected array)');
+      }
+      
+      content.innerHTML = `
+        <div class="identities-view">
+          <div class="view-header">
+            <h2>🔗 Identity Management</h2>
+            <p>Connect external accounts (GroupMe, etc.) to system users.</p>
+          </div>
+          
+          <div class="data-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>External Name</th>
+                  <th>Provider</th>
+                  <th>Linked To</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${identities.length === 0 ? '<tr><td colspan="4" class="empty-state">No identities found</td></tr>' : ''}
+                ${identities.map(id => `
+                  <tr>
+                    <td>
+                      <div class="user-info">
+                        <span class="user-name">${id.external_username || id.external_id}</span>
+                        <span class="user-email">${id.team_name || 'No Team'}</span>
+                      </div>
+                    </td>
+                    <td>${id.provider_name || 'Unknown'}</td>
+                    <td>
+                      ${id.user_id ? `
+                        <div class="user-info">
+                          <span class="user-name">${id.user_first} ${id.user_last}</span>
+                          <span class="user-email">${id.user_email || ''}</span>
+                        </div>
+                      ` : '<span class="status-badge status-inactive">Unlinked</span>'}
+                    </td>
+                    <td>
+                      <button class="btn btn-sm btn-primary link-identity-btn" 
+                        data-id="${id.id}" 
+                        data-name="${id.external_username || id.external_id}">
+                        ${id.user_id ? 'Edit Link' : 'Link to User'}
+                      </button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      
+      // Add event listeners
+      content.querySelectorAll('.link-identity-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          this.showLinkIdentityModal(e.target.dataset.id, e.target.dataset.name);
+        });
+      });
+      
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading identities: ${error.message}</div>`;
+    }
+  }
+
+  async showLinkIdentityModal(identityId, identityName) {
+    // Fetch users for selection
+    const response = await fetch('/api/system-admin/users?limit=100'); // Simple list for now
+    const data = await response.json();
+    const users = data.users || [];
+    
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Link Identity: ${identityName}</h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>Select the system user to link this external identity to.</p>
+          <p><strong>Note:</strong> This will update the database AND save the link to <code>80m-manual-links.sql</code>.</p>
+          
+          <div class="form-group">
+            <label>Search User</label>
+            <input type="text" id="user-search" placeholder="Type name or email...">
+          </div>
+          
+          <div class="user-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; margin-top: 10px;">
+            ${users.map(u => `
+              <div class="user-select-item" data-user-id="${u.id}" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;">
+                <strong>${u.first_name} ${u.last_name}</strong><br>
+                <small>${u.email || 'No email'}</small>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Filter logic
+    const searchInput = modal.querySelector('#user-search');
+    const userItems = modal.querySelectorAll('.user-select-item');
+    
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      userItems.forEach(item => {
+        const text = item.innerText.toLowerCase();
+        item.style.display = text.includes(term) ? 'block' : 'none';
+      });
+    });
+    
+    // Selection logic
+    userItems.forEach(item => {
+      item.addEventListener('click', async () => {
+        if (confirm(`Link ${identityName} to this user?`)) {
+          await this.linkIdentity(identityId, item.dataset.userId);
+          modal.remove();
+        }
+      });
+    });
+    
+    modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+  }
+
+  async linkIdentity(identityId, userId) {
+    try {
+      const response = await fetch('/api/system-admin/identities/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identityId, userId })
+      });
+      
+      if (response.ok) {
+        alert('Identity linked successfully! SQL file updated.');
+        this.loadIdentities();
+      } else {
+        const err = await response.json();
+        alert('Failed to link: ' + err.error);
+      }
+    } catch (error) {
+      alert('Error linking identity: ' + error.message);
+    }
+  }
+
   async showEditUserModal(userId) {
     try {
       // Fetch user details

@@ -391,10 +391,14 @@ if [ "$BUILD_BACKEND_ONLY" = true ]; then
     echo ""
     
     echo -e "${YELLOW}🔨 Rebuilding backend container...${NC}"
-    $DOCKER_COMPOSE build backend
+    $DOCKER_COMPOSE build --no-cache backend
     
     echo -e "${YELLOW}🚀 Restarting backend container...${NC}"
+    # Force remove backend and frontend to avoid dependency errors with Podman
+    $DOCKER rm -f footballhome_frontend footballhome_backend || true
+    
     $DOCKER_COMPOSE up -d backend
+    $DOCKER_COMPOSE up -d frontend
     
     echo -e "${GREEN}✓ Backend rebuilt and restarted${NC}"
     exit 0

@@ -2076,312 +2076,6 @@ ON CONFLICT (id) DO UPDATE SET
   match_status = EXCLUDED.match_status;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
-  '9d57e871-40c6-4488-8c3c-968da63a9b7b',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Sete Setembro USA vs game on fitchburg',
-  NULL,
-  '2025-09-06T20:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '9d57e871-40c6-4488-8c3c-968da63a9b7b',
-  NULL,
-  '032152f4-6b1f-4a87-8ba6-7c3330e1fbdb',
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  '20b25881-09e9-42f6-80cc-9b684e9e38b8',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Sete Setembro USA vs brush field',
-  NULL,
-  '2025-09-13T22:15:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '20b25881-09e9-42f6-80cc-9b684e9e38b8',
-  '032152f4-6b1f-4a87-8ba6-7c3330e1fbdb',
-  NULL,
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  'da35b7d7-80cb-4c8a-86cb-4fbd595bae44',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Sete Setembro USA vs east boston memorial stadium',
-  NULL,
-  '2025-09-25T00:30:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  'da35b7d7-80cb-4c8a-86cb-4fbd595bae44',
-  NULL,
-  '032152f4-6b1f-4a87-8ba6-7c3330e1fbdb',
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  '4c49b2c6-9753-4c22-8eab-02b78a5cde89',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Sete Setembro USA vs burlington high school',
-  NULL,
-  '2025-09-27T22:15:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '4c49b2c6-9753-4c22-8eab-02b78a5cde89',
-  '032152f4-6b1f-4a87-8ba6-7c3330e1fbdb',
-  NULL,
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  '53f757b0-66b7-4e54-858c-07abc1fcc59a',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Sete Setembro USA vs english high school',
-  NULL,
-  '2025-10-05T23:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '53f757b0-66b7-4e54-858c-07abc1fcc59a',
-  NULL,
-  '032152f4-6b1f-4a87-8ba6-7c3330e1fbdb',
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  'ccc06594-13e5-4f70-8d84-35863a5e01d8',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Sete Setembro USA vs burlington high school',
-  NULL,
-  '2025-10-11T22:15:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  'ccc06594-13e5-4f70-8d84-35863a5e01d8',
-  '032152f4-6b1f-4a87-8ba6-7c3330e1fbdb',
-  NULL,
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  'e1e08417-eb3e-40cd-87a4-509dcc772fea',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Sete Setembro USA vs dilboy stadium',
-  NULL,
-  '2025-10-25T22:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  'e1e08417-eb3e-40cd-87a4-509dcc772fea',
-  '032152f4-6b1f-4a87-8ba6-7c3330e1fbdb',
-  NULL,
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  '77f4d45f-25ef-4b4e-8446-1124d2c8c8d4',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Sete Setembro USA vs burlington high school',
-  NULL,
-  '2025-11-01T19:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '77f4d45f-25ef-4b4e-8446-1124d2c8c8d4',
-  '032152f4-6b1f-4a87-8ba6-7c3330e1fbdb',
-  NULL,
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  '45612c25-da7f-4f04-88c8-8ca2d408d200',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Sete Setembro USA vs tbd',
-  NULL,
-  '2025-11-04T01:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '45612c25-da7f-4f04-88c8-8ca2d408d200',
-  '032152f4-6b1f-4a87-8ba6-7c3330e1fbdb',
-  NULL,
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
   'f6043743-f6e0-4efa-8d20-4ed52c800c9e',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
@@ -3538,12 +3232,12 @@ ON CONFLICT (id) DO UPDATE SET
   match_status = EXCLUDED.match_status;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
-  '29e9fa20-b35f-42a6-8ea2-4af44276ab4d',
+  '852e56a2-11ab-49e0-82c1-8ca1ee9a7e4d',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
   'NY Greek Americans vs travers island',
   NULL,
-  '2025-12-14T17:15:00.000Z',
+  '2026-01-11T17:15:00.000Z',
   NULL,
   NULL,
   false,
@@ -3556,7 +3250,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
 VALUES (
-  '29e9fa20-b35f-42a6-8ea2-4af44276ab4d',
+  '852e56a2-11ab-49e0-82c1-8ca1ee9a7e4d',
   NULL,
   '05ec5303-e217-4602-8c03-06fb02c3c083',
   '550e8400-e29b-41d4-a716-446655440801',
@@ -5408,12 +5102,12 @@ ON CONFLICT (id) DO UPDATE SET
   match_status = EXCLUDED.match_status;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
-  'b57732e3-ed70-44dc-858f-25e7d3965242',
+  '23955a7a-0563-45f6-8285-524e5dbf7669',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
-  'Leros SC vs roosevelt island - jack mcmanus field',
+  'Leros SC vs randalls island - field 83',
   NULL,
-  '2025-12-14T21:00:00.000Z',
+  '2026-01-11T19:00:00.000Z',
   NULL,
   NULL,
   false,
@@ -5426,7 +5120,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
 VALUES (
-  'b57732e3-ed70-44dc-858f-25e7d3965242',
+  '23955a7a-0563-45f6-8285-524e5dbf7669',
   NULL,
   '2bb5ff3c-b055-4d67-8ed4-6ebf0fdcfc47',
   '550e8400-e29b-41d4-a716-446655440801',
@@ -5782,12 +5476,12 @@ ON CONFLICT (id) DO UPDATE SET
   match_status = EXCLUDED.match_status;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
-  '387c83f3-7905-45a7-80f9-b416116e32e0',
+  '5f3a6116-29cb-405e-8d18-11a575ac5d64',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
   'NY International FC vs owl hollow field',
   NULL,
-  '2025-12-15T01:00:00.000Z',
+  '2026-01-11T18:00:00.000Z',
   NULL,
   NULL,
   false,
@@ -5800,7 +5494,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
 VALUES (
-  '387c83f3-7905-45a7-80f9-b416116e32e0',
+  '5f3a6116-29cb-405e-8d18-11a575ac5d64',
   NULL,
   'cfc9b089-1fc3-48b4-89b8-41df1c9013c3',
   '550e8400-e29b-41d4-a716-446655440801',
@@ -6156,12 +5850,12 @@ ON CONFLICT (id) DO UPDATE SET
   match_status = EXCLUDED.match_status;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
-  '800d8cf0-64d1-44f4-8767-d6eb761b118a',
+  '8160ffa7-4e95-4db9-80cd-42ff3b249af0',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
   'Richmond County FC vs owl hollow field',
   NULL,
-  '2025-12-15T01:00:00.000Z',
+  '2026-01-11T18:00:00.000Z',
   NULL,
   NULL,
   false,
@@ -6174,7 +5868,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
 VALUES (
-  '800d8cf0-64d1-44f4-8767-d6eb761b118a',
+  '8160ffa7-4e95-4db9-80cd-42ff3b249af0',
   '139b5b54-bef5-4b6a-8863-57ce6e6d399d',
   NULL,
   '550e8400-e29b-41d4-a716-446655440801',
@@ -6904,12 +6598,12 @@ ON CONFLICT (id) DO UPDATE SET
   match_status = EXCLUDED.match_status;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
-  '7dec9386-f3bc-4962-80a6-058a1addc23f',
+  '437cb1a0-9ee2-4749-8f3c-8d031758bc0b',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
-  'Central Park Rangers FC vs roosevelt island - jack mcmanus field',
+  'Central Park Rangers FC vs randalls island - field 83',
   NULL,
-  '2025-12-14T21:00:00.000Z',
+  '2026-01-11T19:00:00.000Z',
   NULL,
   NULL,
   false,
@@ -6922,7 +6616,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
 VALUES (
-  '7dec9386-f3bc-4962-80a6-058a1addc23f',
+  '437cb1a0-9ee2-4749-8f3c-8d031758bc0b',
   'ae682d5e-54bb-480c-81b9-64294c39fd79',
   NULL,
   '550e8400-e29b-41d4-a716-446655440801',
@@ -7652,12 +7346,12 @@ ON CONFLICT (id) DO UPDATE SET
   match_status = EXCLUDED.match_status;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
-  '05def8ed-5489-4991-88ec-36a223ab2fc0',
+  'f4b8a9ad-b346-498b-857c-d4c39933aa22',
   '77d77471-1250-47e0-81ab-d4626595d63c',
   '550e8400-e29b-41d4-a716-446655440402',
   'NY Athletic Club vs travers island',
   NULL,
-  '2025-12-14T17:15:00.000Z',
+  '2026-01-11T17:15:00.000Z',
   NULL,
   NULL,
   false,
@@ -7670,7 +7364,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
 VALUES (
-  '05def8ed-5489-4991-88ec-36a223ab2fc0',
+  'f4b8a9ad-b346-498b-857c-d4c39933aa22',
   '6312950e-7d25-4b0d-8bfb-8e34e8f29515',
   NULL,
   '550e8400-e29b-41d4-a716-446655440801',
@@ -16513,278 +16207,6 @@ VALUES (
   '4c6b17af-0621-459d-866c-a43b908205be',
   NULL,
   '582ace7a-0fbe-4368-8f03-462dae171b0c',
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  'f0464e09-3469-415a-8fb2-5b33f7182fcb',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Lithonia City FC vs bay creek park',
-  NULL,
-  '2025-09-21T22:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  'f0464e09-3469-415a-8fb2-5b33f7182fcb',
-  '55ed4434-a232-448f-8f3b-b52933af199b',
-  NULL,
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  'c00d36d8-e4b4-4444-81c7-e3c63f220d76',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Lithonia City FC vs bay creek park',
-  NULL,
-  '2025-09-28T22:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  'c00d36d8-e4b4-4444-81c7-e3c63f220d76',
-  '55ed4434-a232-448f-8f3b-b52933af199b',
-  NULL,
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  '0d443b89-cb48-44be-81ea-c502de291c26',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Lithonia City FC vs jm tull gwinnett family ymca',
-  NULL,
-  '2025-10-12T19:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '0d443b89-cb48-44be-81ea-c502de291c26',
-  NULL,
-  '55ed4434-a232-448f-8f3b-b52933af199b',
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  '462be6b4-42f8-4bc8-8ba2-8ea60300bdb8',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Lithonia City FC vs bay creek park',
-  NULL,
-  '2025-10-19T22:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '462be6b4-42f8-4bc8-8ba2-8ea60300bdb8',
-  '55ed4434-a232-448f-8f3b-b52933af199b',
-  NULL,
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  '7a03a6e9-9e86-44f2-8749-50d2ce616dfd',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Lithonia City FC vs bay creek park',
-  NULL,
-  '2025-10-26T22:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '7a03a6e9-9e86-44f2-8749-50d2ce616dfd',
-  '55ed4434-a232-448f-8f3b-b52933af199b',
-  NULL,
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  '3b90d82c-1837-431e-878b-5313a3d513ff',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Lithonia City FC vs maynard h jackson high school',
-  NULL,
-  '2025-11-09T19:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '3b90d82c-1837-431e-878b-5313a3d513ff',
-  NULL,
-  '55ed4434-a232-448f-8f3b-b52933af199b',
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  '3e3dd324-18ba-48d9-873c-e0f93a9190c2',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Lithonia City FC vs the best academy',
-  NULL,
-  '2025-11-16T14:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '3e3dd324-18ba-48d9-873c-e0f93a9190c2',
-  NULL,
-  '55ed4434-a232-448f-8f3b-b52933af199b',
-  '550e8400-e29b-41d4-a716-446655440801',
-  NULL,
-  NULL,
-  'scheduled',
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  home_team_score = EXCLUDED.home_team_score,
-  away_team_score = EXCLUDED.away_team_score,
-  match_status = EXCLUDED.match_status;
-INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
-VALUES (
-  '9959b234-8acc-4e22-8d71-94e7ae9a991d',
-  '77d77471-1250-47e0-81ab-d4626595d63c',
-  '550e8400-e29b-41d4-a716-446655440402',
-  'Lithonia City FC vs ebster field',
-  NULL,
-  '2025-11-23T19:00:00.000Z',
-  NULL,
-  NULL,
-  false,
-  NULL,
-  NULL
-)
-ON CONFLICT (id) DO UPDATE SET
-  title = EXCLUDED.title,
-  updated_at = EXCLUDED.updated_at;
-
-INSERT INTO matches (id, home_team_id, away_team_id, home_away_status_id, home_team_score, away_team_score, match_status, competition_name, competition_round)
-VALUES (
-  '9959b234-8acc-4e22-8d71-94e7ae9a991d',
-  NULL,
-  '55ed4434-a232-448f-8f3b-b52933af199b',
   '550e8400-e29b-41d4-a716-446655440801',
   NULL,
   NULL,

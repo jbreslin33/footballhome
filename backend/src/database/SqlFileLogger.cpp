@@ -227,6 +227,45 @@ void SqlFileLogger::log(const std::string& table, const std::string& sql) {
     }
 }
 
+void SqlFileLogger::logToManualFile(const std::string& filename, const std::string& sql) {
+    if (!isEnabled()) {
+        return;
+    }
+    
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    std::string filepath = data_path_ + "/" + filename;
+    
+    try {
+        // Open file in append mode
+        std::ofstream file(filepath, std::ios::app);
+        if (!file.is_open()) {
+            std::cerr << "Failed to open SQL log file: " << filepath << std::endl;
+            return;
+        }
+        
+        // Add timestamp comment
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::system_clock::to_time_t(now);
+        file << "\n-- Logged at: " << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M:%S") << "\n";
+        
+        // Write SQL statement
+        file << sql;
+        if (sql.back() != ';') {
+            file << ";";
+        }
+        file << "\n";
+        
+        file.close();
+        
+        // Debug log
+        std::cout << "SQL logged to " << filepath << std::endl;
+        
+    } catch (const std::exception& e) {
+        std::cerr << "Error logging SQL to file: " << e.what() << std::endl;
+    }
+}
+
 bool SqlFileLogger::isEnabled() {
     // Only log in dev and production, not during init or tests
     return !environment_.empty() && 
