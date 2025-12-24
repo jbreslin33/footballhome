@@ -278,148 +278,411 @@ class AdminSystemScreen extends Screen {
   }
   
   async loadIdentities() {
-    const content = this.element.querySelector('.admin-content');
-    content.innerHTML = '<div class="loading-indicator">Loading identities...</div>';
-    
-    try {
-      const response = await fetch('/api/system-admin/identities');
-      
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`API Error (${response.status}): ${text}`);
-      }
-      
-      const identities = await response.json();
-      
-      if (!Array.isArray(identities)) {
-        console.error('Invalid identities response:', identities);
-        throw new Error('Server returned invalid data format (expected array)');
-      }
-      
-      content.innerHTML = `
-        <div class="identities-view">
-          <div class="view-header">
-            <h2>🔗 Identity Management</h2>
-            <p>Connect external accounts (GroupMe, etc.) to system users.</p>
-          </div>
-          
-          <div class="data-table-container">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>External Name</th>
-                  <th>Provider</th>
-                  <th>Linked To</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${identities.length === 0 ? '<tr><td colspan="4" class="empty-state">No identities found</td></tr>' : ''}
-                ${identities.map(id => `
-                  <tr>
-                    <td>
-                      <div class="user-info">
-                        <span class="user-name">${id.external_username || id.external_id}</span>
-                        <span class="user-email">${id.team_name || 'No Team'}</span>
-                      </div>
-                    </td>
-                    <td>${id.provider_name || 'Unknown'}</td>
-                    <td>
-                      ${id.user_id ? `
-                        <div class="user-info">
-                          <span class="user-name">${id.user_first} ${id.user_last}</span>
-                          <span class="user-email">${id.user_email || ''}</span>
-                        </div>
-                      ` : '<span class="status-badge status-inactive">Unlinked</span>'}
-                    </td>
-                    <td>
-                      <button class="btn btn-sm btn-primary link-identity-btn" 
-                        data-id="${id.id}" 
-                        data-name="${id.external_username || id.external_id}">
-                        ${id.user_id ? 'Edit Link' : 'Link to User'}
-                      </button>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-      
-      // Add event listeners
-      content.querySelectorAll('.link-identity-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          this.showLinkIdentityModal(e.target.dataset.id, e.target.dataset.name);
-        });
-      });
-      
-    } catch (error) {
-      content.innerHTML = `<div class="error-message">Error loading identities: ${error.message}</div>`;
+    // Initialize filters if not exists
+    if (!this.identityFilters) {
+      this.identityFilters = {
+        team_id: '',
+        club_id: '',
+        provider_id: '',
+        linked: 'false' // Default to unlinked
+      };
     }
-  }
 
-  async showLinkIdentityModal(identityId, identityName) {
-    // Fetch users for selection
-    const response = await fetch('/api/system-admin/users?limit=100'); // Simple list for now
-    const data = await response.json();
-    const users = data.users || [];
-    
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2>Link Identity: ${identityName}</h2>
-          <button class="modal-close">&times;</button>
+    const content = this.element.querySelector('.admin-content');
+    content.innerHTML = `
+      <div class="identities-view">
+        <div class="view-header">
+          <h2>🔗 Identity Management</h2>
+          <p>Connect external accounts (GroupMe, etc.) to system users.</p>
         </div>
-        <div class="modal-body">
-          <p>Select the system user to link this external identity to.</p>
-          <p><strong>Note:</strong> This will update the database AND save the link to <code>80m-manual-links.sql</code>.</p>
-          
-          <div class="form-group">
-            <label>Search User</label>
-            <input type="text" id="user-search" placeholder="Type name or email...">
+        
+        <!-- Filters -->
+        <div class="filters-bar" style="display: flex; gap: 10px; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+          <select id="filter-team" class="form-control">
+            <option value="">All Teams</option>
+          </select>
+          <select id="filter-club" class="form-control">
+            <option value="">All Clubs</option>
+          </select>
+          <select id="filter-provider" class="form-control">
+            <option value="">All Providers</option>
+            <option value="1">GroupMe</option>
+          </select>
+          <select id="filter-linked" class="form-control">
+            <option value="">All Status</option>
+            <option value="false" selected>Unlinked Only</option>
+            <option value="true">Linked Only</option>
+          </select>
+          <button id="apply-filters" class="btn btn-primary">Apply Filters</button>
+        </div>
+
+        <!-- Split View -->
+        <div class="split-view-container" style="display: flex; gap: 20px; height: 600px;">
+          <!-- Left Pane: Identities -->
+          <div class="split-pane left-pane" style="flex: 1; display: flex; flex-direction: column; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+            <div class="pane-header" style="padding: 10px; background: #eee; border-bottom: 1px solid #ddd;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <h3 style="margin: 0; font-size: 1.1em;">1. Select Source</h3>
+                  <small class="text-muted">External accounts</small>
+                </div>
+                <select id="sort-identities" class="form-control form-control-sm" style="width:auto; font-size: 0.8em;">
+                  <option value="name_asc">Name A-Z</option>
+                  <option value="name_desc">Name Z-A</option>
+                  <option value="team">Team</option>
+                </select>
+              </div>
+            </div>
+            <div id="identities-list" class="list-group" style="flex: 1; overflow-y: auto; padding: 10px;">
+              <div class="loading-indicator">Loading...</div>
+            </div>
           </div>
           
-          <div class="user-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; margin-top: 10px;">
-            ${users.map(u => `
-              <div class="user-select-item" data-user-id="${u.id}" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;">
-                <strong>${u.first_name} ${u.last_name}</strong><br>
-                <small>${u.email || 'No email'}</small>
+          <!-- Center Action Area (Visual Only) -->
+          <div style="display: flex; align-items: center; justify-content: center; width: 40px;">
+            <div style="font-size: 24px; color: #999;">➔</div>
+          </div>
+          
+          <!-- Right Pane: Users -->
+          <div class="split-pane right-pane" style="flex: 1; display: flex; flex-direction: column; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+            <div class="pane-header" style="padding: 10px; background: #eee; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h3 style="margin: 0; font-size: 1.1em;">2. Select Target</h3>
+                <small class="text-muted">System User</small>
               </div>
-            `).join('')}
+              <button id="btn-create-user" class="btn btn-sm btn-success">+ New</button>
+            </div>
+            <div style="padding: 10px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px;">
+               <div style="display: flex; gap: 5px;">
+                 <select id="user-target-team-filter" class="form-control form-control-sm">
+                   <option value="">All Teams (Target)</option>
+                 </select>
+                 <select id="user-target-sort" class="form-control form-control-sm" style="width: 120px;">
+                   <option value="last_name_asc">Name A-Z</option>
+                   <option value="last_name_desc">Name Z-A</option>
+                   <option value="email">Email</option>
+                   <option value="created_at">Newest</option>
+                 </select>
+               </div>
+               <input type="text" id="user-target-search" placeholder="Search users..." class="form-control" style="width: 100%;">
+            </div>
+            <div id="users-list" class="list-group" style="flex: 1; overflow-y: auto; padding: 10px;">
+              <div class="loading-indicator">Loading...</div>
+            </div>
           </div>
         </div>
       </div>
     `;
     
-    document.body.appendChild(modal);
+    // Load initial data
+    await this.fetchFilterOptions();
+    await this.fetchIdentities();
+    await this.fetchUsersForLinking();
     
-    // Filter logic
-    const searchInput = modal.querySelector('#user-search');
-    const userItems = modal.querySelectorAll('.user-select-item');
-    
-    searchInput.addEventListener('input', (e) => {
-      const term = e.target.value.toLowerCase();
-      userItems.forEach(item => {
-        const text = item.innerText.toLowerCase();
-        item.style.display = text.includes(term) ? 'block' : 'none';
+    this.setupIdentityEventListeners();
+  }
+
+  async fetchFilterOptions() {
+    try {
+      // Fetch teams
+      const teamsRes = await fetch('/api/teams');
+      const response = await teamsRes.json();
+      const teams = response.data || []; // Handle { data: [...] } format
+      
+      const teamSelect = this.element.querySelector('#filter-team');
+      const targetTeamSelect = this.element.querySelector('#user-target-team-filter');
+      
+      // Clear existing options except first
+      while (teamSelect.options.length > 1) teamSelect.remove(1);
+      while (targetTeamSelect.options.length > 1) targetTeamSelect.remove(1);
+      
+      teams.forEach(t => {
+        // Main filter
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.name;
+        teamSelect.appendChild(opt);
+        
+        // Target filter
+        const opt2 = document.createElement('option');
+        opt2.value = t.id;
+        opt2.textContent = t.name;
+        targetTeamSelect.appendChild(opt2);
       });
-    });
+
+      // Fetch clubs (mock for now or fetch if endpoint exists)
+      // const clubsRes = await fetch('/api/clubs');
+      // ...
+    } catch (e) {
+      console.error('Error loading filter options:', e);
+    }
+  }
+
+  async fetchIdentities() {
+    const list = this.element.querySelector('#identities-list');
+    list.innerHTML = '<div class="loading-indicator">Loading...</div>';
     
-    // Selection logic
-    userItems.forEach(item => {
-      item.addEventListener('click', async () => {
-        if (confirm(`Link ${identityName} to this user?`)) {
-          await this.linkIdentity(identityId, item.dataset.userId);
-          modal.remove();
+    try {
+      const params = new URLSearchParams(this.identityFilters);
+      const response = await fetch(`/api/system-admin/identities?${params}`);
+      let identities = await response.json();
+      
+      // Client-side sorting
+      const sortMode = this.element.querySelector('#sort-identities')?.value || 'name_asc';
+      identities.sort((a, b) => {
+          const nameA = (a.external_username || a.external_id).toLowerCase();
+          const nameB = (b.external_username || b.external_id).toLowerCase();
+          
+          if (sortMode === 'name_asc') return nameA.localeCompare(nameB);
+          if (sortMode === 'name_desc') return nameB.localeCompare(nameA);
+          if (sortMode === 'team') {
+              const teamA = (a.team_name || '').toLowerCase();
+              const teamB = (b.team_name || '').toLowerCase();
+              return teamA.localeCompare(teamB) || nameA.localeCompare(nameB);
+          }
+          return 0;
+      });
+
+      if (identities.length === 0) {
+        list.innerHTML = '<div class="empty-state">No identities found</div>';
+        return;
+      }
+      
+      list.innerHTML = identities.map(id => `
+        <div class="identity-item" data-id="${id.id}" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;">
+          <div style="font-weight: bold;">${id.external_username || id.external_id}</div>
+          <div style="font-size: 0.9em; color: #666;">
+            ${id.provider_name} • ${id.team_name || 'No Team'}
+          </div>
+          ${id.user_id ? `<div style="font-size: 0.8em; color: green;">Linked to: ${id.user_first} ${id.user_last}</div>` : ''}
+        </div>
+      `).join('');
+      
+      // Add click selection
+      list.querySelectorAll('.identity-item').forEach(item => {
+        item.addEventListener('click', () => {
+          list.querySelectorAll('.identity-item').forEach(i => i.style.background = 'none');
+          item.style.background = '#e3f2fd';
+          this.selectedIdentityId = item.dataset.id;
+        });
+      });
+      
+    } catch (e) {
+      list.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+    }
+  }
+
+  async fetchUsersForLinking() {
+    const list = this.element.querySelector('#users-list');
+    list.innerHTML = '<div class="loading-indicator">Loading users...</div>';
+    
+    try {
+      // Build query params
+      const params = new URLSearchParams();
+      params.append('limit', '50');
+      
+      // Use Right Pane specific filters if available
+      const targetTeamFilter = this.element.querySelector('#user-target-team-filter');
+      const targetSort = this.element.querySelector('#user-target-sort');
+      
+      if (targetTeamFilter && targetTeamFilter.value) {
+          params.append('team_id', targetTeamFilter.value);
+      } else if (this.identityFilters.team_id) {
+          // Fallback to main filter if right filter is "All" (or maybe we shouldn't? 
+          // If user explicitly selects "All" on right, they want all. 
+          // But initially it's empty. Let's rely on the sync logic in Apply Filters)
+          // Actually, let's NOT fallback. If the right filter is empty, it means "All Teams".
+          // The "Apply Filters" button will sync them.
+      }
+
+      if (this.identityFilters.club_id) {
+        params.append('club_id', this.identityFilters.club_id);
+      }
+      
+      // Sorting
+      if (targetSort) {
+          const [field, order] = targetSort.value.split('_'); // e.g. "last_name_asc" -> "last", "name", "asc" oops.
+          // Fix split logic
+          let sortBy = 'last_name';
+          let sortOrder = 'asc';
+          
+          if (targetSort.value === 'email') { sortBy = 'email'; sortOrder = 'asc'; }
+          else if (targetSort.value === 'created_at') { sortBy = 'created_at'; sortOrder = 'desc'; }
+          else if (targetSort.value.includes('_desc')) { 
+              sortBy = targetSort.value.replace('_desc', ''); 
+              sortOrder = 'desc'; 
+          } else if (targetSort.value.includes('_asc')) {
+              sortBy = targetSort.value.replace('_asc', '');
+              sortOrder = 'asc';
+          }
+          
+          params.append('sort_by', sortBy);
+          params.append('sort_order', sortOrder);
+      }
+      
+      // Check for search term
+      const searchInput = this.element.querySelector('#user-target-search');
+      if (searchInput && searchInput.value) {
+          params.append('q', searchInput.value);
+      }
+      
+      const response = await fetch(`/api/system-admin/users?${params.toString()}`);
+      const data = await response.json();
+      const users = data.users || [];
+      
+      this.renderUsersList(users);
+    } catch (e) {
+      list.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+    }
+  }
+
+  renderUsersList(users) {
+    const list = this.element.querySelector('#users-list');
+    list.innerHTML = users.map(u => `
+      <div class="user-item" data-id="${u.id}" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-weight: bold;">${u.first_name || ''} ${u.last_name || ''}</div>
+          <div style="font-size: 0.9em; color: #666;">${u.email || 'No email'}</div>
+          <div style="font-size: 0.8em; color: #999;">Created: ${new Date(u.created_at).toLocaleDateString()}</div>
+        </div>
+        <button class="btn btn-sm btn-outline-primary link-btn">Link</button>
+      </div>
+    `).join('');
+    
+    list.querySelectorAll('.link-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const userId = e.target.closest('.user-item').dataset.id;
+        if (this.selectedIdentityId) {
+            if (confirm('Link selected identity to this user?')) {
+                await this.linkIdentity(this.selectedIdentityId, userId);
+            }
+        } else {
+            alert('Please select an identity from the left list first.');
         }
       });
     });
-    
-    modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
   }
+
+  setupIdentityEventListeners() {
+    this.element.querySelector('#apply-filters').addEventListener('click', () => {
+      this.identityFilters.team_id = this.element.querySelector('#filter-team').value;
+      this.identityFilters.club_id = this.element.querySelector('#filter-club').value;
+      this.identityFilters.provider_id = this.element.querySelector('#filter-provider').value;
+      this.identityFilters.linked = this.element.querySelector('#filter-linked').value;
+      
+      // Sync Right Filter to match Left Filter initially
+      const targetTeamFilter = this.element.querySelector('#user-target-team-filter');
+      if (targetTeamFilter) {
+          targetTeamFilter.value = this.identityFilters.team_id;
+      }
+      
+      // Refresh both lists
+      this.fetchIdentities();
+      this.fetchUsersForLinking();
+    });
+
+    // Debounce search
+    let searchTimeout;
+    this.element.querySelector('#user-target-search').addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            this.fetchUsersForLinking();
+        }, 300);
+    });
+    
+    // New Listeners for Right Pane controls
+    this.element.querySelector('#user-target-team-filter')?.addEventListener('change', () => {
+        this.fetchUsersForLinking();
+    });
+    
+    this.element.querySelector('#user-target-sort')?.addEventListener('change', () => {
+        this.fetchUsersForLinking();
+    });
+    
+    // New Listener for Left Pane sort
+    this.element.querySelector('#sort-identities')?.addEventListener('change', () => {
+        this.fetchIdentities(); // Re-fetches and sorts client-side
+    });
+
+    this.element.querySelector('#btn-create-user').addEventListener('click', () => {
+        this.showCreateUserModal();
+    });
+  }
+
+  async showCreateUserModal() {
+      // Pre-fill if identity selected
+      let prefill = {};
+      if (this.selectedIdentityId) {
+          const item = this.element.querySelector(`.identity-item[data-id="${this.selectedIdentityId}"]`);
+          if (item) {
+              // Try to parse name "First Last"
+              const name = item.querySelector('div').innerText.trim();
+              const parts = name.split(' ');
+              if (parts.length > 1) {
+                  prefill.first_name = parts[0];
+                  prefill.last_name = parts.slice(1).join(' ');
+              } else {
+                  prefill.first_name = name;
+              }
+          }
+      }
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Create New User</h2>
+            <button class="modal-close">&times;</button>
+          </div>
+          <form class="create-user-form">
+            <div class="form-group">
+              <label>First Name</label>
+              <input type="text" name="first_name" value="${prefill.first_name || ''}" required>
+            </div>
+            <div class="form-group">
+              <label>Last Name</label>
+              <input type="text" name="last_name" value="${prefill.last_name || ''}" required>
+            </div>
+            <div class="form-group">
+              <label>Email (Optional)</label>
+              <input type="email" name="email" placeholder="user@example.com">
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+              <button type="submit" class="btn btn-primary">Create User</button>
+            </div>
+          </form>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      const closeModal = () => modal.remove();
+      modal.querySelector('.modal-close').addEventListener('click', closeModal);
+      modal.querySelector('.modal-cancel').addEventListener('click', closeModal);
+
+      modal.querySelector('form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const data = {
+              first_name: formData.get('first_name'),
+              last_name: formData.get('last_name'),
+              email: formData.get('email')
+          };
+
+          try {
+              // TODO: Implement POST /api/system-admin/users
+              // For now, alert
+              alert('Create User API not yet implemented. This is a UI demo.');
+              closeModal();
+          } catch (err) {
+              alert('Error: ' + err.message);
+          }
+      });
+  }
+
+
 
   async linkIdentity(identityId, userId) {
     try {

@@ -6,6 +6,7 @@
 SystemAdminController::SystemAdminController() {
     db_ = Database::getInstance();
     userService_ = new UserService(db_);
+    identityService_ = std::make_unique<IdentityService>(db_);
 }
 
 void SystemAdminController::registerRoutes(Router& router, const std::string& prefix) {
@@ -571,41 +572,99 @@ void SystemAdminController::logAuditAction(const std::string& admin_id,
 
 Response SystemAdminController::handleGetAllUsers(const Request& request) {
     try {
-        // Parse query parameters for pagination
+        // Parse query parameters
         std::string limit = request.getQueryParam("limit");
         if (limit.empty()) limit = "50";
         std::string offset = request.getQueryParam("offset");
         if (offset.empty()) offset = "0";
         
-        std::string query = "SELECT u.id, u.email, u.first_name, u.last_name, u.is_active, u.created_at FROM users u "
-                          "ORDER BY u.created_at DESC LIMIT $1 OFFSET $2";
-        std::vector<std::string> params = {limit, offset};
+        std::string team_id = request.getQueryParam("team_id");
+        std::string club_id = request.getQueryParam("club_id");
+        std::string search = request.getQueryParam("q");
+        std::string sort_by = request.getQueryParam("sort_by");
+        std::string sort_order = request.getQueryParam("sort_order");
+        
+        std::string query = "SELECT DISTINCT u.id, u.email, u.first_name, u.last_name, u.is_active, u.created_at FROM users u ";
+        std::vector<std::string> params;
+        int param_idx = 1;
+        
+        std::string where_clause = "WHERE 1=1 ";
+        
+        if (!team_id.empty()) {
+            query += "JOIN team_players tp ON u.id = tp.player_id ";
+            where_clause += "AND tp.team_id = $" + std::to_string(param_idx++) + " AND tp.is_active = true ";
+            params.push_back(team_id);
+        } else if (!club_id.empty()) {
+            query += "JOIN team_players tp ON u.id = tp.player_id JOIN teams t ON tp.team_id = t.id ";
+            where_clause += "AND t.club_id = $" + std::to_string(param_idx++) + " AND tp.is_active = true ";
+            params.push_back(club_id);
+        }
+        
+        if (!search.empty()) {
+            where_clause += "AND (LOWER(u.first_name) LIKE LOWER($" + std::to_string(param_idx) + ") OR LOWER(u.last_name) LIKE LOWER($" + std::to_string(param_idx) + ") OR LOWER(u.email) LIKE LOWER($" + std::to_string(param_idx) + ")) ";
+            params.push_back("%" + search + "%");
+            param_idx++;
+        }
+        
+        query += where_clause;
+
+        // Sorting
+        std::string order_clause = "ORDER BY u.last_name, u.first_name"; // Default
+        if (!sort_by.empty()) {
+            std::string direction = (sort_order == "desc" || sort_order == "DESC") ? "DESC" : "ASC";
+            if (sort_by == "first_name") order_clause = "ORDER BY u.first_name " + direction + ", u.last_name ASC";
+            else if (sort_by == "last_name") order_clause = "ORDER BY u.last_name " + direction + ", u.first_name ASC";
+            else if (sort_by == "email") order_clause = "ORDER BY u.email " + direction;
+            else if (sort_by == "created_at") order_clause = "ORDER BY u.created_at " + direction;
+        }
+        query += " " + order_clause;
+
+        query += " LIMIT $" + std::to_string(param_idx++) + " OFFSET $" + std::to_string(param_idx++);
+        params.push_back(limit);
+        params.push_back(offset);
+
         auto result = db_->query(query, params);
         
+        // Helper lambda for JSON escaping
+        auto escape_json = [](const std::string& s) -> std::string {
+            std::string res;
+            for (char c : s) {
+                if (c == '"') res += "\\\"";
+                else if (c == '\\') res += "\\\\";
+                else if (c == '\b') res += "\\b";
+                else if (c == '\f') res += "\\f";
+                else if (c == '\n') res += "\\n";
+                else if (c == '\r') res += "\\r";
+                else if (c == '\t') res += "\\t";
+                else res += c;
+            }
+            return res;
+        };
+
         // Build JSON array
-        std::string json = "[";
+        std::string json = "{\"users\":[";
         for (size_t i = 0; i < result.size(); ++i) {
             if (i > 0) json += ",";
             json += "{";
-            json += "\"id\":\"" + result[i]["id"].as<std::string>() + "\",";
+            json += "\"id\":\"" + escape_json(result[i]["id"].as<std::string>()) + "\",";
             
             // Handle nullable email field
             if (!result[i]["email"].is_null()) {
-                json += "\"email\":\"" + result[i]["email"].as<std::string>() + "\",";
+                json += "\"email\":\"" + escape_json(result[i]["email"].as<std::string>()) + "\",";
             } else {
                 json += "\"email\":null,";
             }
             
             // Handle nullable first_name field
             if (!result[i]["first_name"].is_null()) {
-                json += "\"first_name\":\"" + result[i]["first_name"].as<std::string>() + "\",";
+                json += "\"first_name\":\"" + escape_json(result[i]["first_name"].as<std::string>()) + "\",";
             } else {
                 json += "\"first_name\":null,";
             }
             
             // Handle nullable last_name field
             if (!result[i]["last_name"].is_null()) {
-                json += "\"last_name\":\"" + result[i]["last_name"].as<std::string>() + "\",";
+                json += "\"last_name\":\"" + escape_json(result[i]["last_name"].as<std::string>()) + "\",";
             } else {
                 json += "\"last_name\":null,";
             }
@@ -614,7 +673,7 @@ Response SystemAdminController::handleGetAllUsers(const Request& request) {
             json += "\"created_at\":\"" + result[i]["created_at"].as<std::string>() + "\"";
             json += "}";
         }
-        json += "]";
+        json += "]}";
         
         return Response(HttpStatus::OK, json);
     } catch (const std::exception& e) {
@@ -1806,31 +1865,29 @@ Response SystemAdminController::handleDeleteLookupEntry(const Request& request) 
 
 Response SystemAdminController::handleGetIdentities(const Request& request) {
     try {
-        std::string sql = R"(
-            SELECT 
-                uei.id, uei.external_id, uei.external_username, uei.first_name, uei.last_name, 
-                uei.provider_id, uei.team_id, uei.user_id,
-                t.name as team_name,
-                ep.name as provider_name,
-                u.first_name as user_first, u.last_name as user_last, u.email as user_email
-            FROM user_external_identities uei
-            LEFT JOIN teams t ON uei.team_id = t.id
-            LEFT JOIN external_providers ep ON uei.provider_id = ep.id
-            LEFT JOIN users u ON uei.user_id = u.id
-            ORDER BY uei.user_id NULLS FIRST, uei.created_at DESC
-        )";
+        IdentityService::IdentityFilter filter;
         
-        auto result = db_->query(sql);
+        // Parse query parameters
+        auto params = request.getQueryParams();
+        if (params.count("team_id")) filter.team_id = params.at("team_id");
+        if (params.count("club_id")) filter.club_id = params.at("club_id");
+        if (params.count("provider_id")) filter.provider_id = params.at("provider_id");
+        
+        if (params.count("linked")) {
+            std::string linked = params.at("linked");
+            if (linked == "true") filter.only_linked = true;
+            else if (linked == "false") filter.only_unlinked = true;
+        }
+
+        auto identities = identityService_->getIdentities(filter);
         
         // Convert to JSON array
         std::string json = "[";
-        for (size_t i = 0; i < result.size(); ++i) {
-            const auto& row = result[i];
+        for (size_t i = 0; i < identities.size(); ++i) {
+            const auto& id = identities[i];
             
-            // Helper lambda for safe string extraction and JSON escaping
-            auto safe_str = [](const pqxx::field& f) -> std::string {
-                if (f.is_null()) return "";
-                std::string s = f.c_str();
+            // Helper lambda for JSON escaping
+            auto escape_json = [](const std::string& s) -> std::string {
                 std::string res;
                 for (char c : s) {
                     if (c == '"') res += "\\\"";
@@ -1846,20 +1903,22 @@ Response SystemAdminController::handleGetIdentities(const Request& request) {
             };
 
             json += "{";
-            json += "\"id\":\"" + safe_str(row.at("id")) + "\",";
-            json += "\"external_id\":\"" + safe_str(row.at("external_id")) + "\",";
-            json += "\"external_username\":\"" + safe_str(row.at("external_username")) + "\",";
-            json += "\"first_name\":\"" + safe_str(row.at("first_name")) + "\",";
-            json += "\"last_name\":\"" + safe_str(row.at("last_name")) + "\",";
-            json += "\"provider_name\":\"" + safe_str(row.at("provider_name")) + "\",";
-            json += "\"team_name\":\"" + safe_str(row.at("team_name")) + "\",";
-            json += "\"user_id\":\"" + safe_str(row.at("user_id")) + "\",";
-            json += "\"user_first\":\"" + safe_str(row.at("user_first")) + "\",";
-            json += "\"user_last\":\"" + safe_str(row.at("user_last")) + "\",";
-            json += "\"user_email\":\"" + safe_str(row.at("user_email")) + "\"";
+            json += "\"id\":\"" + escape_json(id.id) + "\",";
+            json += "\"external_id\":\"" + escape_json(id.external_id) + "\",";
+            json += "\"external_username\":\"" + escape_json(id.external_username) + "\",";
+            json += "\"first_name\":\"" + escape_json(id.first_name) + "\",";
+            json += "\"last_name\":\"" + escape_json(id.last_name) + "\",";
+            json += "\"provider_id\":\"" + escape_json(id.provider_id) + "\",";
+            json += "\"provider_name\":\"" + escape_json(id.provider_name) + "\",";
+            json += "\"team_id\":\"" + escape_json(id.team_id) + "\",";
+            json += "\"team_name\":\"" + escape_json(id.team_name) + "\",";
+            json += "\"user_id\":\"" + escape_json(id.user_id) + "\",";
+            json += "\"user_first\":\"" + escape_json(id.user_first) + "\",";
+            json += "\"user_last\":\"" + escape_json(id.user_last) + "\",";
+            json += "\"user_email\":\"" + escape_json(id.user_email) + "\"";
             
             json += "}";
-            if (i < result.size() - 1) json += ",";
+            if (i < identities.size() - 1) json += ",";
         }
         json += "]";
         
@@ -1871,7 +1930,7 @@ Response SystemAdminController::handleGetIdentities(const Request& request) {
 
 Response SystemAdminController::handleLinkIdentity(const Request& request) {
     try {
-        // Simple JSON parsing since we don't have a full JSON library
+        // Simple JSON parsing
         std::string body = request.getJson();
         
         // Extract identityId
@@ -1879,8 +1938,11 @@ Response SystemAdminController::handleLinkIdentity(const Request& request) {
         if (idPos == std::string::npos) {
              return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"identityId is required\"}");
         }
-        size_t idStart = body.find("\"", idPos + 13); // Skip "identityId":
-        if (idStart == std::string::npos) idStart = body.find("\"", idPos + 12); // Try without space
+        // Robust finding of value
+        size_t idStart = body.find(":", idPos);
+        if (idStart == std::string::npos) return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid JSON\"}");
+        idStart = body.find("\"", idStart);
+        if (idStart == std::string::npos) return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid JSON\"}");
         idStart++; // Skip quote
         size_t idEnd = body.find("\"", idStart);
         std::string identityId = body.substr(idStart, idEnd - idStart);
@@ -1890,37 +1952,23 @@ Response SystemAdminController::handleLinkIdentity(const Request& request) {
         if (userPos == std::string::npos) {
              return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"userId is required\"}");
         }
-        size_t userStart = body.find("\"", userPos + 9); // Skip "userId":
-        if (userStart == std::string::npos) userStart = body.find("\"", userPos + 8); // Try without space
+        size_t userStart = body.find(":", userPos);
+        if (userStart == std::string::npos) return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid JSON\"}");
+        userStart = body.find("\"", userStart);
+        if (userStart == std::string::npos) return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid JSON\"}");
         userStart++; // Skip quote
         size_t userEnd = body.find("\"", userStart);
         std::string userId = body.substr(userStart, userEnd - userStart);
         
-        // 1. Update DB
-        std::string sql = "UPDATE user_external_identities SET user_id = $1 WHERE id = $2";
-        std::vector<std::string> params = {userId, identityId};
-        db_->execute(sql, params);
+        // Use Service
+        std::string adminId = "system-admin"; // TODO: Get from auth context
+        bool success = identityService_->linkIdentity(identityId, userId, adminId);
         
-        // 2. Get details for file logging
-        auto identity = db_->query("SELECT external_id, provider_id FROM user_external_identities WHERE id = '" + identityId + "'");
-        auto user = db_->query("SELECT email FROM users WHERE id = '" + userId + "'");
-        
-        if (!identity.empty() && !user.empty()) {
-            std::string extId = identity[0].at("external_id").c_str();
-            std::string providerId = identity[0].at("provider_id").c_str();
-            std::string email = user[0].at("email").c_str();
-            
-            // 3. Log to manual file
-            std::stringstream fileSql;
-            fileSql << "-- Manual Link: " << extId << " -> " << email << "\n";
-            fileSql << "UPDATE user_external_identities\n";
-            fileSql << "SET user_id = (SELECT id FROM users WHERE email = '" << email << "')\n";
-            fileSql << "WHERE external_id = '" << extId << "' AND provider_id = '" << providerId << "';";
-            
-            SqlFileLogger::logToManualFile("80m-manual-links.sql", fileSql.str());
+        if (success) {
+            return Response(HttpStatus::OK, "{\"success\":true}");
+        } else {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"Failed to link identity\"}");
         }
-        
-        return Response(HttpStatus::OK, "{\"success\":true}");
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
     }

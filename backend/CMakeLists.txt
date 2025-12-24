@@ -29,6 +29,7 @@ set(SOURCES
     src/models/User.cpp
     src/models/Team.cpp
     src/services/UserService.cpp
+    src/services/IdentityService.cpp
     src/controllers/AuthController.cpp
     src/controllers/OAuthController.cpp
     src/controllers/TeamController.cpp

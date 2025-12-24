@@ -210,7 +210,15 @@ async function importAllUsers() {
               );
               stats.updated++;
             } else {
-              // C. Create New User
+              // C. Create New User - DISABLED per user request (2025-12-24)
+              // We do NOT want to automatically create users from GroupMe anymore.
+              // They should be imported as identities only (via 'lighthouse' mode) and linked manually.
+              console.log(`⚠️  Skipping auto-creation of user for GroupMe member: ${nickname}`);
+              stats.skipped++;
+              continue;
+              
+              /* 
+              // OLD LOGIC:
               const insertRes = await client.query(
                 `INSERT INTO users (first_name, last_name, preferred_name, avatar_url)
                  VALUES ($1, $2, $3, $4)
@@ -232,6 +240,7 @@ async function importAllUsers() {
                 [userId]
               );
               stats.created++;
+              */
             }
           }
 

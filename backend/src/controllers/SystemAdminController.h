@@ -7,6 +7,7 @@
 #include "../database/SqlFileLogger.h"
 #include "../database/SqlBuilder.h"
 #include "../services/UserService.h"
+#include "../services/IdentityService.h"
 #include <memory>
 
 class SystemAdminController : public Controller {
@@ -17,6 +18,7 @@ public:
 private:
     Database* db_;
     UserService* userService_;
+    std::unique_ptr<IdentityService> identityService_;
     
     // Dashboard & Overview
     Response handleGetDashboard(const Request& request);
