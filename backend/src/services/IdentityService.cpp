@@ -17,6 +17,7 @@ std::vector<IdentityService::IdentityDTO> IdentityService::getIdentities(const I
             SELECT 
                 uei.id, uei.external_id, uei.external_username, uei.first_name, uei.last_name, 
                 uei.provider_id, uei.team_id, uei.user_id,
+                uei.external_data->>'source' as source,
                 t.name as team_name,
                 ep.name as provider_name,
                 u.first_name as user_first, u.last_name as user_last, u.email as user_email
@@ -67,6 +68,7 @@ std::vector<IdentityService::IdentityDTO> IdentityService::getIdentities(const I
             dto.user_first = safeStr(row["user_first"]);
             dto.user_last = safeStr(row["user_last"]);
             dto.user_email = safeStr(row["user_email"]);
+            dto.source = safeStr(row["source"]);
             
             identities.push_back(dto);
         }

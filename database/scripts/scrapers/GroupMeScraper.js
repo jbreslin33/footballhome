@@ -97,7 +97,11 @@ class GroupMeScraper extends Scraper {
           first_name: first,
           last_name: last,
           team_id: this.teamId || null,
-          sport_division_id: this.sportDivisionId || null
+          sport_division_id: this.sportDivisionId || null,
+          external_data: JSON.stringify({
+            source: this.chatName,
+            group_id: this.groupId
+          })
         });
       }
       

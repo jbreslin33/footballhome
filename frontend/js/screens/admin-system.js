@@ -308,6 +308,9 @@ class AdminSystemScreen extends Screen {
             <option value="">All Providers</option>
             <option value="1">GroupMe</option>
           </select>
+          <select id="filter-source" class="form-control">
+            <option value="">All Sources</option>
+          </select>
           <select id="filter-linked" class="form-control">
             <option value="">All Status</option>
             <option value="false" selected>Unlinked Only</option>
@@ -424,8 +427,42 @@ class AdminSystemScreen extends Screen {
     
     try {
       const params = new URLSearchParams(this.identityFilters);
+      // Remove source from server params as we filter client-side for now
+      params.delete('source'); 
+      
       const response = await fetch(`/api/system-admin/identities?${params}`);
       let identities = await response.json();
+      
+      // Populate Source Dropdown (if not already filtered by it)
+      const sourceSelect = this.element.querySelector('#filter-source');
+      const currentSource = this.identityFilters.source || '';
+      
+      // Extract unique sources
+      const sources = [...new Set(identities.map(i => i.source).filter(s => s))].sort();
+      
+      // Only rebuild options if we have more sources than currently shown (or if it's empty)
+      // But simpler to just rebuild and restore selection
+      if (sourceSelect.options.length <= 1 || !currentSource) {
+          // Save current selection if any
+          const oldVal = sourceSelect.value;
+          
+          // Clear (keep first)
+          while (sourceSelect.options.length > 1) sourceSelect.remove(1);
+          
+          sources.forEach(s => {
+              const opt = document.createElement('option');
+              opt.value = s;
+              opt.textContent = s;
+              sourceSelect.appendChild(opt);
+          });
+          
+          if (oldVal && sources.includes(oldVal)) sourceSelect.value = oldVal;
+      }
+      
+      // Client-side Source Filtering
+      if (currentSource) {
+          identities = identities.filter(i => i.source === currentSource);
+      }
       
       // Client-side sorting
       const sortMode = this.element.querySelector('#sort-identities')?.value || 'name_asc';
@@ -453,6 +490,7 @@ class AdminSystemScreen extends Screen {
           <div style="font-weight: bold;">${id.external_username || id.external_id}</div>
           <div style="font-size: 0.9em; color: #666;">
             ${id.provider_name} • ${id.team_name || 'No Team'}
+            ${id.source ? `<br><span style="font-size:0.85em; color:#888;">Source: ${id.source}</span>` : ''}
           </div>
           ${id.user_id ? `<div style="font-size: 0.8em; color: green;">Linked to: ${id.user_first} ${id.user_last}</div>` : ''}
         </div>
@@ -619,6 +657,7 @@ class AdminSystemScreen extends Screen {
       this.identityFilters.team_id = this.element.querySelector('#filter-team').value;
       this.identityFilters.club_id = this.element.querySelector('#filter-club').value;
       this.identityFilters.provider_id = this.element.querySelector('#filter-provider').value;
+      this.identityFilters.source = this.element.querySelector('#filter-source').value;
       this.identityFilters.linked = this.element.querySelector('#filter-linked').value;
       
       // Sync Right Filter to match Left Filter initially

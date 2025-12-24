@@ -1915,7 +1915,8 @@ Response SystemAdminController::handleGetIdentities(const Request& request) {
             json += "\"user_id\":\"" + escape_json(id.user_id) + "\",";
             json += "\"user_first\":\"" + escape_json(id.user_first) + "\",";
             json += "\"user_last\":\"" + escape_json(id.user_last) + "\",";
-            json += "\"user_email\":\"" + escape_json(id.user_email) + "\"";
+            json += "\"user_email\":\"" + escape_json(id.user_email) + "\",";
+            json += "\"source\":\"" + escape_json(id.source) + "\"";
             
             json += "}";
             if (i < identities.size() - 1) json += ",";

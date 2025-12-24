@@ -30,6 +30,7 @@ public:
         std::string user_first;
         std::string user_last;
         std::string user_email;
+        std::string source; // From external_data -> source
     };
 
     struct IdentityFilter {
