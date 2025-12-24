@@ -588,3 +588,22 @@
   padding-top: var(--space-4);
   border-top: 1px solid var(--border-color);
 }
+
+/* Identity Linker Styles */
+.identity-item, .user-item {
+  transition: all 0.2s ease;
+}
+
+.identity-item:hover, .user-item:hover {
+  background-color: var(--bg-secondary);
+}
+
+.identity-item.selected, .user-item.selected {
+  background-color: #e3f2fd !important; /* Light Blue */
+  border-left: 4px solid #2196f3 !important;
+}
+
+.identity-item.highlight-linked, .user-item.highlight-linked {
+  background-color: #d4edda !important; /* Light Green */
+  border-left: 4px solid #28a745 !important;
+}

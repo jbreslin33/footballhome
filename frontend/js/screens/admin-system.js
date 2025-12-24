@@ -449,7 +449,7 @@ class AdminSystemScreen extends Screen {
       }
       
       list.innerHTML = identities.map(id => `
-        <div class="identity-item" data-id="${id.id}" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;">
+        <div class="identity-item" data-id="${id.id}" data-linked-user-id="${id.user_id || ''}" style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;">
           <div style="font-weight: bold;">${id.external_username || id.external_id}</div>
           <div style="font-size: 0.9em; color: #666;">
             ${id.provider_name} • ${id.team_name || 'No Team'}
@@ -461,9 +461,13 @@ class AdminSystemScreen extends Screen {
       // Add click selection
       list.querySelectorAll('.identity-item').forEach(item => {
         item.addEventListener('click', () => {
-          list.querySelectorAll('.identity-item').forEach(i => i.style.background = 'none');
-          item.style.background = '#e3f2fd';
+          list.querySelectorAll('.identity-item').forEach(i => i.classList.remove('selected'));
+          item.classList.add('selected');
           this.selectedIdentityId = item.dataset.id;
+          
+          // Highlight linked user on the right
+          const linkedUserId = item.dataset.linkedUserId;
+          this.highlightLinkedUser(linkedUserId);
         });
       });
       
@@ -549,6 +553,23 @@ class AdminSystemScreen extends Screen {
       </div>
     `).join('');
     
+    // Row selection handler
+    list.querySelectorAll('.user-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            // Ignore if clicked on button
+            if (e.target.closest('.link-btn')) return;
+
+            // Visual selection (Blue)
+            list.querySelectorAll('.user-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+            
+            // Cross-highlighting (Green)
+            const userId = item.dataset.id;
+            this.highlightLinkedIdentities(userId);
+        });
+    });
+
+    // Link button handler
     list.querySelectorAll('.link-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -562,6 +583,35 @@ class AdminSystemScreen extends Screen {
         }
       });
     });
+  }
+
+  highlightLinkedUser(userId) {
+    // Clear previous highlights
+    this.element.querySelectorAll('.user-item').forEach(el => el.classList.remove('highlight-linked'));
+    
+    if (!userId) return;
+    
+    const userItem = this.element.querySelector(`.user-item[data-id="${userId}"]`);
+    if (userItem) {
+      userItem.classList.add('highlight-linked');
+      userItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  highlightLinkedIdentities(userId) {
+    // Clear previous highlights
+    this.element.querySelectorAll('.identity-item').forEach(el => el.classList.remove('highlight-linked'));
+    
+    if (!userId) return;
+    
+    const identityItems = this.element.querySelectorAll(`.identity-item[data-linked-user-id="${userId}"]`);
+    identityItems.forEach(item => {
+      item.classList.add('highlight-linked');
+    });
+    
+    if (identityItems.length > 0) {
+        identityItems[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }
 
   setupIdentityEventListeners() {
