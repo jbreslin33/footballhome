@@ -10,7 +10,7 @@ DECLARE
     counter INTEGER := 0;
 BEGIN
     FOR r IN 
-        SELECT id, first_name, last_name 
+        SELECT id, first_name, last_name, external_username 
         FROM user_external_identities 
         WHERE user_id IS NULL 
           AND first_name IS NOT NULL 
@@ -19,8 +19,9 @@ BEGIN
         new_uid := uuid_generate_v4();
         
         -- 1. Create User
-        INSERT INTO users (id, first_name, last_name, is_active, created_at, updated_at)
-        VALUES (new_uid, r.first_name, r.last_name, true, NOW(), NOW());
+        -- Use external_username as preferred_name to preserve the full display name
+        INSERT INTO users (id, first_name, last_name, preferred_name, is_active, created_at, updated_at)
+        VALUES (new_uid, r.first_name, r.last_name, r.external_username, true, NOW(), NOW());
         
         -- 2. Create Player
         INSERT INTO players (id) VALUES (new_uid);
