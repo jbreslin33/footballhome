@@ -1,0 +1,2 @@
+-- Training Lighthouse - External Identities
+

@@ -840,7 +840,11 @@ if [ "$GROUPME_APSL_EXTERNAL" = true ] || [ "$GROUPME_APSL_SCHEDULE" = true ] ||
     echo -e "${YELLOW}💬 Step 7a: APSL Lighthouse Chat...${NC}"
     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
         # Single command imports users, schedule, and RSVPs
-        CMD="node database/scripts/index.js groupme-apsl full"
+        ARGS="groupme-apsl full"
+        if [ "$GROUPME_APSL_SCHEDULE" = true ]; then
+            ARGS="$ARGS --schedules"
+        fi
+        CMD="node database/scripts/index.js $ARGS"
         echo "  Running: $CMD"
         $CMD
         echo -e "${GREEN}✓ APSL Lighthouse chat imported (users, schedule, RSVPs)${NC}"
@@ -858,7 +862,11 @@ if [ "$GROUPME_TRAINING_LIGHTHOUSE_EXTERNAL" = true ] || [ "$GROUPME_TRAINING_LI
     echo -e "${YELLOW}💬 Step 7b: Training Lighthouse Chat...${NC}"
     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
         # Single command imports users, schedule, and RSVPs
-        CMD="node database/scripts/index.js groupme-training full"
+        ARGS="groupme-training full"
+        if [ "$GROUPME_TRAINING_LIGHTHOUSE_SCHEDULE" = true ]; then
+            ARGS="$ARGS --schedules"
+        fi
+        CMD="node database/scripts/index.js $ARGS"
         echo "  Running: $CMD"
         $CMD
         echo -e "${GREEN}✓ Training Lighthouse chat imported (users, schedule, RSVPs)${NC}"
@@ -875,7 +883,11 @@ if [ "$GROUPME_BOYS_CLUB_EXTERNAL" = true ] || [ "$GROUPME_BOYS_CLUB_SCHEDULE" =
     echo -e "${YELLOW}💬 Step 7c: Lighthouse Boys Club Liga 1 Chat...${NC}"
     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
         # Single command imports users, schedule, and RSVPs
-        CMD="node database/scripts/index.js groupme-boys-club full"
+        ARGS="groupme-boys-club full"
+        if [ "$GROUPME_BOYS_CLUB_SCHEDULE" = true ]; then
+            ARGS="$ARGS --schedules"
+        fi
+        CMD="node database/scripts/index.js $ARGS"
         echo "  Running: $CMD"
         $CMD
         echo -e "${GREEN}✓ Lighthouse Boys Club Liga 1 chat imported (users, schedule, RSVPs)${NC}"
@@ -926,7 +938,11 @@ if [ "$GROUPME_OLD_TIMERS_EXTERNAL" = true ] || [ "$GROUPME_OLD_TIMERS_SCHEDULE"
     echo -e "${YELLOW}💬 Step 7d: Lighthouse Old Timers Club Liga 2 Chat...${NC}"
     if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
         # Single command imports users, schedule, and RSVPs
-        CMD="node database/scripts/index.js groupme-old-timers full"
+        ARGS="groupme-old-timers full"
+        if [ "$GROUPME_OLD_TIMERS_SCHEDULE" = true ]; then
+            ARGS="$ARGS --schedules"
+        fi
+        CMD="node database/scripts/index.js $ARGS"
         echo "  Running: $CMD"
         $CMD
         echo -e "${GREEN}✓ Lighthouse Old Timers Club Liga 2 chat imported (users, schedule, RSVPs)${NC}"

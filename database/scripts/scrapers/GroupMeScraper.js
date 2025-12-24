@@ -76,7 +76,8 @@ class GroupMeScraper extends Scraper {
     this.log('\n👥 Fetching chat members...');
     
     try {
-      const group = await this.apiClient.fetch(`/groups/${this.groupId}`);
+      const apiResponse = await this.apiClient.fetch(`/groups/${this.groupId}`);
+      const group = apiResponse.response || apiResponse;
       const members = group.members || [];
       
       this.log(`   Found ${members.length} members`);
@@ -109,7 +110,8 @@ class GroupMeScraper extends Scraper {
     this.log('\n📅 Fetching calendar events...');
     
     try {
-      const response = await this.apiClient.fetch(`/conversations/${this.groupId}/events/list`);
+      const apiResponse = await this.apiClient.fetch(`/conversations/${this.groupId}/events/list`);
+      const response = apiResponse.response || apiResponse;
       const events = response.events || [];
       
       if (events.length === 0) {
@@ -120,12 +122,26 @@ class GroupMeScraper extends Scraper {
       this.log(`   Found ${events.length} events`);
       
       for (const evt of events) {
-        const groupmeEventId = evt.id;
+        const groupmeEventId = evt.id || evt.event_id;
         const name = evt.name || this.getDefaultEventName();
-        const startTime = new Date(evt.start_at * 1000);
-        const endTime = evt.end_at 
-          ? new Date(evt.end_at * 1000) 
-          : new Date(startTime.getTime() + 90 * 60000); // Default 90 min
+        
+        let startTime;
+        if (typeof evt.start_at === 'string') {
+            startTime = new Date(evt.start_at);
+        } else {
+            startTime = new Date(evt.start_at * 1000);
+        }
+
+        let endTime;
+        if (evt.end_at) {
+             if (typeof evt.end_at === 'string') {
+                endTime = new Date(evt.end_at);
+            } else {
+                endTime = new Date(evt.end_at * 1000);
+            }
+        } else {
+            endTime = new Date(startTime.getTime() + 90 * 60000); // Default 90 min
+        }
         
         const eventId = IdGenerator.fromComponents('groupme', 'event', groupmeEventId);
         const eventTypeId = this.getEventTypeId();
