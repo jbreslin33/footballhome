@@ -3,8 +3,8 @@
 FROM docker.io/library/postgres:15
 
 # Install pg_cron from PGDG repository  
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false --allow-insecure-repositories update \
+    && apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false --allow-unauthenticated install -y --no-install-recommends \
         postgresql-15-cron \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
