@@ -91,9 +91,9 @@ class GroupMeScraper extends Scraper {
         const identityId = IdGenerator.fromComponents('groupme', 'identity', groupmeId);
         this.data.externalIdentities.set(identityId, {
           id: identityId,
-          provider: 'groupme',
+          provider_id: '550e8400-e29b-41d4-a716-446655440a03', // GroupMe Provider ID
           external_id: groupmeId,
-          display_name: name,
+          external_username: name,
           first_name: first,
           last_name: last,
           team_id: this.teamId || null,
@@ -235,6 +235,7 @@ class GroupMeScraper extends Scraper {
         data: this.data.externalIdentities,
         options: {
           title: `${this.chatName} - External Identities`,
+          tableName: 'user_external_identities',
           useInserts: true
         }
       },
