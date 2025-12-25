@@ -14,6 +14,7 @@ const Match = require('../models/Match');
 const LeagueConference = require('../models/LeagueConference');
 const LeagueDivision = require('../models/LeagueDivision');
 const puppeteer = require('puppeteer');
+const { JSDOM } = require('jsdom');
 require('dotenv').config();
 
 /**
@@ -204,58 +205,58 @@ class CasaScraper extends Scraper {
     try {
       this.log(`   Navigating to ${url}...`);
       await page.goto(url, { 
-        waitUntil: 'networkidle2'
+        waitUntil: 'networkidle2',
+        timeout: 60000
       });
       
       // Wait for iframe to load
-      this.log(`   Waiting for iframe content...`);
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      this.log(`   Waiting 5s for content...`);
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
-      // Find the frame with standings data
+      // Get all frames
       const frames = page.frames();
-      let standingsFrame = null;
+      this.log(`   Found ${frames.length} frames. Scanning for standings...`);
+      
+      let teamNames = [];
       
       for (const frame of frames) {
-        const url = frame.url();
-        if (url.includes('sportsengine.com') && url.includes('standings')) {
-          standingsFrame = frame;
-          break;
+        try {
+            const html = await frame.content();
+            
+            // Quick check
+            if (!html.includes('table') && !html.includes('Table')) {
+                continue;
+            }
+            
+            const names = this.parseStandingsHtml(html);
+            if (names.length > 0) {
+                this.log(`   Found ${names.length} teams in frame ${frame.url()}`);
+                teamNames = teamNames.concat(names);
+            }
+        } catch (e) {
+            // ignore
         }
       }
       
-      if (!standingsFrame) {
-        this.logWarning(`No standings iframe found for ${divisionName}`);
+      // Fallback to main page
+      if (teamNames.length === 0) {
+          const mainHtml = await page.content();
+          const names = this.parseStandingsHtml(mainHtml);
+          if (names.length > 0) {
+              this.log(`   Found ${names.length} teams in main page`);
+              teamNames = names;
+          }
+      }
+      
+      if (teamNames.length === 0) {
+        this.logWarning(`No teams found for ${divisionName}`);
         return;
       }
       
-      this.log(`   Found standings iframe`);
+      // Deduplicate
+      teamNames = [...new Set(teamNames)];
       
-      // Extract team names from standings table in iframe
-      const teamNames = await standingsFrame.evaluate(() => {
-        const data = [];
-        const rows = document.querySelectorAll('table tbody tr');
-        
-        rows.forEach(row => {
-          // Get the row's text content and parse it
-          const text = row.innerText || row.textContent;
-          const parts = text.split(/\s{2,}|\t/).map(p => p.trim()).filter(p => p);
-          
-          // Format is: rank teamName pts w l d gp gf ga gd
-          // Team name is typically the second element (after rank number)
-          if (parts.length >= 2) {
-            const rank = parts[0];
-            const teamName = parts[1];
-            
-            // If first part is a number (rank), second part is team name
-            if (/^\d+$/.test(rank) && teamName && teamName.length > 2) {
-              data.push(teamName);
-            }
-          }
-        });
-        return data;
-      });
-      
-      this.log(`   Extracted ${teamNames.length} team names`);
+      this.log(`   Extracted ${teamNames.length} unique team names`);
       
       for (const teamName of teamNames) {
         if (!this.matchesTeamFilter(teamName)) {
@@ -332,156 +333,91 @@ class CasaScraper extends Scraper {
     }
   }
 
+  parseStandingsHtml(html) {
+    const dom = new JSDOM(html);
+    const doc = dom.window.document;
+    const data = [];
+    const rows = doc.querySelectorAll('table tbody tr');
+    
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      // Need at least rank and team name
+      if (cells.length >= 2) {
+          const rank = cells[0].textContent.trim();
+          const teamName = cells[1].textContent.trim();
+          
+          // Check if first column is a number (rank) and second is a name
+          if (/^\d+$/.test(rank) && teamName && teamName.length > 2) {
+              data.push(teamName);
+          }
+      }
+    });
+    return data;
+  }
+
   async fetchSchedule(url, divisionName) {
     const page = await this.browser.newPage();
     
     try {
       this.log(`   Navigating to schedule...`);
-      await page.goto(url, { waitUntil: 'networkidle2' });
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
       
       // Wait longer for iframe content to load (schedule loads slower than standings)
-      this.log(`   Waiting for iframe content to load...`);
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      this.log(`   Waiting 10s for content to load...`);
+      await new Promise(resolve => setTimeout(resolve, 10000));
       
-      // Find the frame with schedule data
+      // Get all frames
       const frames = page.frames();
-      let scheduleFrame = null;
+      this.log(`   Found ${frames.length} frames. Scanning for schedule data...`);
+      
+      let allMatches = [];
       
       for (const frame of frames) {
-        const frameUrl = frame.url();
-        if (frameUrl.includes('sportsengine.com') && frameUrl.includes('schedule')) {
-          scheduleFrame = frame;
-          break;
+        try {
+            // Get content from frame
+            const html = await frame.content();
+            
+            // Quick check if this frame might contain schedule data
+            if (!html.includes('schedule') && !html.includes('Schedule') && !html.includes('sportsengine')) {
+                continue;
+            }
+
+            // Parse HTML to text using JSDOM
+            const dom = new JSDOM(html);
+            const text = dom.window.document.body.textContent;
+            
+            // Try to parse matches from this text
+            const matches = this.parseScheduleText(text);
+            
+            if (matches.length > 0) {
+                this.log(`   Found ${matches.length} matches in frame ${frame.url()}`);
+                allMatches = allMatches.concat(matches);
+            }
+        } catch (e) {
+            // Ignore cross-origin frame errors or parsing errors
         }
       }
       
-      if (!scheduleFrame) {
-        this.logWarning(`No schedule iframe found for ${divisionName}`);
-        return;
-      }
-      
-      this.log(`   Found schedule iframe: ${scheduleFrame.url()}`);
-      
-      // Check what's actually in the iframe without waiting for table
-      const frameContent = await scheduleFrame.evaluate(() => {
-        const html = document.body.innerHTML;
-        const text = document.body.innerText || document.body.textContent;
+      if (allMatches.length === 0) {
+        this.logWarning(`No matches found in any frame for ${divisionName}`);
         
-        return {
-          htmlLength: html.length,
-          textLength: text.length,
-          textPreview: text.substring(0, 500),
-          htmlPreview: html.substring(0, 1000),
-          hasTable: document.querySelectorAll('table').length > 0,
-          hasDivs: document.querySelectorAll('div').length,
-          hasSchedule: text.toLowerCase().includes('schedule'),
-          hasNoGames: text.toLowerCase().includes('no games') || text.toLowerCase().includes('no matches')
-        };
-      });
-      
-      this.log(`   Iframe content: ${frameContent.textLength} chars, ${frameContent.hasDivs} divs, table=${frameContent.hasTable}`);
-      
-      if (frameContent.hasNoGames) {
-        this.logWarning(`Schedule appears empty (no games published)`);
-        return;
-      }
-      
-      // Schedule uses div-based structure, not tables
-      // Extract match data from divs (different from standings approach)
-      const matchData = await scheduleFrame.evaluate(() => {
-        const data = [];
+        // Fallback: Try main page content
+        const mainHtml = await page.content();
+        const mainDom = new JSDOM(mainHtml);
+        const mainText = mainDom.window.document.body.textContent;
+        const mainMatches = this.parseScheduleText(mainText);
         
-        // Get all text content and split by newlines
-        const text = document.body.innerText || document.body.textContent;
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-        
-        // Parse matches - looking for date pattern followed by teams
-        let currentDate = '';
-        let currentTime = '';
-        let i = 0;
-        
-        while (i < lines.length) {
-          const line = lines[i];
-          
-          // Check if this is a date line (e.g., "Sun Nov 9", "Mon Dec 15")
-          if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+[A-Z][a-z]+\s+\d{1,2}$/.test(line)) {
-            currentDate = line;
-            i++;
-            
-            // Next line is usually the time
-            if (i < lines.length && /\d{1,2}:\d{2}\s+(AM|PM|EST|EDT)/.test(lines[i])) {
-              currentTime = lines[i];
-              i++;
-            }
-            
-            // Skip "FINAL", "SCHEDULED", etc status lines
-            while (i < lines.length && /^(FINAL|SCHEDULED|POSTPONED|CANCELLED)$/.test(lines[i])) {
-              i++;
-            }
-            
-            // Next two non-empty lines should be team names
-            let homeTeam = '';
-            let awayTeam = '';
-            let score = '';
-            
-            // Get home team (skip lines with just parentheses/records)
-            while (i < lines.length) {
-              if (lines[i] && !lines[i].match(/^\([0-9\s\-]+\)$/) && !lines[i].match(/^\d+\s*-\s*\d+$/)) {
-                homeTeam = lines[i];
-                i++;
-                break;
-              }
-              i++;
-            }
-            
-            // Skip record in parentheses
-            if (i < lines.length && lines[i].match(/^\([0-9\s\-]+\)$/)) {
-              i++;
-            }
-            
-            // Get score if present
-            if (i < lines.length && lines[i].match(/^\d+\s*-\s*\d+$/)) {
-              score = lines[i];
-              i++;
-            }
-            
-            // Skip "Game recap" or similar
-            if (i < lines.length && lines[i].toLowerCase().includes('recap')) {
-              i++;
-            }
-            
-            // Get away team
-            while (i < lines.length) {
-              if (lines[i] && !lines[i].match(/^\([0-9\s\-]+\)$/) && !lines[i].match(/^\d+\s*-\s*\d+$/)) {
-                awayTeam = lines[i];
-                i++;
-                break;
-              }
-              i++;
-            }
-            
-            if (homeTeam && awayTeam && currentDate) {
-              data.push({
-                date: currentDate,
-                time: currentTime,
-                homeTeam: homeTeam,
-                awayTeam: awayTeam,
-                score: score
-              });
-            }
-          } else {
-            i++;
-          }
+        if (mainMatches.length > 0) {
+             this.log(`   Found ${mainMatches.length} matches in main page`);
+             allMatches = mainMatches;
         }
-        
-        return data;
-      });
+      }
       
-      this.log(`   Extracted ${matchData.length} matches from schedule`);
+      this.log(`   Extracted total ${allMatches.length} matches`);
       
-      // Parse matches
+      // Process matches
       let matchCount = 0;
-      for (const matchInfo of matchData) {
+      for (const matchInfo of allMatches) {
         const match = this.parseMatchFromDiv(matchInfo, divisionName);
         if (match) {
           this.data.matches.set(match.event_id, match);
@@ -489,13 +425,99 @@ class CasaScraper extends Scraper {
         }
       }
       
-      this.log(`   Found ${matchCount} matches`);
+      this.log(`   Saved ${matchCount} matches`);
       
     } catch (error) {
       this.logError(`Failed to fetch ${divisionName} schedule`, error);
     } finally {
       await page.close();
     }
+  }
+
+  parseScheduleText(text) {
+    const data = [];
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    
+    // Parse matches - looking for date pattern followed by teams
+    let currentDate = '';
+    let currentTime = '';
+    let i = 0;
+    
+    while (i < lines.length) {
+      const line = lines[i];
+      
+      // Check if this is a date line (e.g., "Sun Nov 9", "Mon Dec 15")
+      if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+[A-Z][a-z]+\s+\d{1,2}$/.test(line)) {
+        currentDate = line;
+        i++;
+        
+        // Next line is usually the time
+        if (i < lines.length && /\d{1,2}:\d{2}\s+(AM|PM|EST|EDT)/.test(lines[i])) {
+          currentTime = lines[i];
+          i++;
+        }
+        
+        // Skip "FINAL", "SCHEDULED", etc status lines
+        while (i < lines.length && /^(FINAL|SCHEDULED|POSTPONED|CANCELLED)$/.test(lines[i])) {
+          i++;
+        }
+        
+        // Next two non-empty lines should be team names
+        let homeTeam = '';
+        let awayTeam = '';
+        let score = '';
+        
+        // Get home team (skip lines with just parentheses/records)
+        while (i < lines.length) {
+          if (lines[i] && !lines[i].match(/^\([0-9\s\-]+\)$/) && !lines[i].match(/^\d+\s*-\s*\d+$/)) {
+            homeTeam = lines[i];
+            i++;
+            break;
+          }
+          i++;
+        }
+        
+        // Skip record in parentheses
+        if (i < lines.length && lines[i].match(/^\([0-9\s\-]+\)$/)) {
+          i++;
+        }
+        
+        // Get score if present
+        if (i < lines.length && lines[i].match(/^\d+\s*-\s*\d+$/)) {
+          score = lines[i];
+          i++;
+        }
+        
+        // Skip "Game recap" or similar
+        if (i < lines.length && lines[i].toLowerCase().includes('recap')) {
+          i++;
+        }
+        
+        // Get away team
+        while (i < lines.length) {
+          if (lines[i] && !lines[i].match(/^\([0-9\s\-]+\)$/) && !lines[i].match(/^\d+\s*-\s*\d+$/)) {
+            awayTeam = lines[i];
+            i++;
+            break;
+          }
+          i++;
+        }
+        
+        if (homeTeam && awayTeam && currentDate) {
+          data.push({
+            date: currentDate,
+            time: currentTime,
+            homeTeam: homeTeam,
+            awayTeam: awayTeam,
+            score: score
+          });
+        }
+      } else {
+        i++;
+      }
+    }
+    
+    return data;
   }
 
   parseMatchFromDiv(matchInfo, divisionName) {
