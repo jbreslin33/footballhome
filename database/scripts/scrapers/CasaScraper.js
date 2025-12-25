@@ -340,15 +340,41 @@ class CasaScraper extends Scraper {
     const rows = doc.querySelectorAll('table tbody tr');
     
     rows.forEach(row => {
+      // Try to find by class first (SportsEngine specific)
+      const rankCell = row.querySelector('.rank');
+      const teamCell = row.querySelector('.team-name');
+      
+      if (rankCell && teamCell) {
+          const rank = rankCell.textContent.trim();
+          const teamName = teamCell.textContent.trim();
+          
+          if (/^\d+$/.test(rank) && teamName && teamName.length > 2) {
+              data.push(teamName);
+              return;
+          }
+      }
+
+      // Fallback to column indices
       const cells = row.querySelectorAll('td');
       // Need at least rank and team name
       if (cells.length >= 2) {
-          const rank = cells[0].textContent.trim();
-          const teamName = cells[1].textContent.trim();
+          // Check index 0 and 1
+          let rank = cells[0].textContent.trim();
+          let teamName = cells[1].textContent.trim();
           
-          // Check if first column is a number (rank) and second is a name
           if (/^\d+$/.test(rank) && teamName && teamName.length > 2) {
               data.push(teamName);
+              return;
+          }
+          
+          // Check index 1 and 2 (if there's a shadow column)
+          if (cells.length >= 3) {
+              rank = cells[1].textContent.trim();
+              teamName = cells[2].textContent.trim();
+              
+              if (/^\d+$/.test(rank) && teamName && teamName.length > 2) {
+                  data.push(teamName);
+              }
           }
       }
     });
@@ -382,12 +408,8 @@ class CasaScraper extends Scraper {
                 continue;
             }
 
-            // Parse HTML to text using JSDOM
-            const dom = new JSDOM(html);
-            const text = dom.window.document.body.textContent;
-            
-            // Try to parse matches from this text
-            const matches = this.parseScheduleText(text);
+            // Parse HTML using JSDOM
+            const matches = this.parseScheduleHtml(html);
             
             if (matches.length > 0) {
                 this.log(`   Found ${matches.length} matches in frame ${frame.url()}`);
@@ -403,9 +425,7 @@ class CasaScraper extends Scraper {
         
         // Fallback: Try main page content
         const mainHtml = await page.content();
-        const mainDom = new JSDOM(mainHtml);
-        const mainText = mainDom.window.document.body.textContent;
-        const mainMatches = this.parseScheduleText(mainText);
+        const mainMatches = this.parseScheduleHtml(mainHtml);
         
         if (mainMatches.length > 0) {
              this.log(`   Found ${mainMatches.length} matches in main page`);
@@ -432,6 +452,70 @@ class CasaScraper extends Scraper {
     } finally {
       await page.close();
     }
+  }
+
+  parseScheduleHtml(html) {
+    const dom = new JSDOM(html);
+    const doc = dom.window.document;
+    const matches = [];
+    
+    // Find the container
+    const container = doc.querySelector('.sm-schedule__events');
+    if (!container) return matches;
+    
+    let currentDate = '';
+    
+    // Iterate through children
+    for (const child of container.children) {
+      const tagName = child.tagName.toLowerCase();
+      
+      if (tagName === 'sm-schedule-header') {
+        const primary = child.querySelector('.sm-list-header__primary');
+        const secondary = child.querySelector('.sm-list-header__secondary');
+        if (primary && secondary) {
+          currentDate = `${primary.textContent.trim()} ${secondary.textContent.trim()}`;
+        }
+      } else if (tagName === 'sm-schedule-event') {
+        if (!currentDate) continue;
+        
+        const timeEl = child.querySelector('.sm-event__time');
+        const time = timeEl ? timeEl.textContent.trim() : '';
+        
+        // Teams
+        // In the HTML dump: away-team-name comes first, then home-team-name.
+        // <sm-nav-link tag="away-team-name">...
+        // <sm-nav-link tag="home-team-name">...
+        let awayTeam = '';
+        let homeTeam = '';
+        
+        const awayLink = child.querySelector('sm-nav-link[tag="away-team-name"] span');
+        const homeLink = child.querySelector('sm-nav-link[tag="home-team-name"] span');
+        
+        if (awayLink) awayTeam = awayLink.textContent.trim();
+        if (homeLink) homeTeam = homeLink.textContent.trim();
+        
+        // Score
+        const scoreEl = child.querySelector('.sm-event__scores');
+        const score = scoreEl ? scoreEl.textContent.trim() : '';
+        
+        // Venue
+        const venueEl = child.querySelector('se-fe-inline-list-item[data-cy="venue-name"]');
+        const venue = venueEl ? venueEl.textContent.replace(/•/g, '').trim() : '';
+        
+        if (homeTeam && awayTeam) {
+            matches.push({
+                date: currentDate,
+                time: time,
+                homeTeam: homeTeam,
+                awayTeam: awayTeam,
+                score: score,
+                venue: venue
+            });
+        }
+      }
+    }
+    
+    return matches;
   }
 
   parseScheduleText(text) {
