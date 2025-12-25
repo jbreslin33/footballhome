@@ -44,6 +44,12 @@ class ApslScraper extends Scraper {
     
     // Conference data cache (with tables for team extraction)
     this.conferences = new Map();
+
+    // Initialize data stores for new schema
+    this.data.apslDivisions = new Map();
+    this.data.apslTeams = new Map();
+    this.data.apslPlayers = new Map();
+    this.data.apslTeamPlayers = new Map();
   }
 
   async initialize() {
@@ -111,6 +117,16 @@ class ApslScraper extends Scraper {
         season: confData.season,
         table: confData.table
       });
+
+      // Create APSL Division
+      const apslDivisionId = IdGenerator.fromComponents('apsl', 'division', confName);
+      this.data.apslDivisions.set(apslDivisionId, {
+        id: apslDivisionId,
+        apsl_id: confName, // Using name as ID since APSL doesn't expose a clear ID
+        name: confName,
+        season: confData.season,
+        league_division_id: null // To be linked manually or via fuzzy match later
+      });
     }
     
   }
@@ -166,6 +182,25 @@ class ApslScraper extends Scraper {
       });
       
       this.data.teams.set(teamId, team);
+
+      // Create APSL Team
+      const apslTeamId = IdGenerator.fromComponents('apsl', 'team_record', teamData.apsl_team_id);
+      // Find division ID (simplified logic, assumes we can map back)
+      // In reality, we'd need to know which conference this team belongs to from the table data
+      let apslDivisionId = null;
+      for (const [confId, conf] of this.conferences) {
+          // This is a simplification. Ideally we check if team is in conf.table
+          // For now, we'll leave it null or implement better lookup if needed
+      }
+
+      this.data.apslTeams.set(apslTeamId, {
+          id: apslTeamId,
+          apsl_id: teamData.apsl_team_id,
+          name: normalizedName,
+          apsl_division_id: apslDivisionId,
+          team_id: teamId // Link to internal team
+      });
+
       this.log(`   ✓ ${normalizedName}`);
     }
   }
@@ -213,6 +248,35 @@ class ApslScraper extends Scraper {
             is_active: true
           });
           this.data.teamPlayers.set(teamPlayerKey, teamPlayer);
+
+          // Create APSL Player
+          // We use a composite ID of name because APSL might not give unique IDs per player easily
+          // Or if playerData has an ID, use that. Assuming name is unique enough for now within context
+          const apslPlayerId = IdGenerator.fromComponents('apsl', 'player', first, last);
+          
+          if (!this.data.apslPlayers.has(apslPlayerId)) {
+              this.data.apslPlayers.set(apslPlayerId, {
+                  id: apslPlayerId,
+                  apsl_id: `${first}-${last}`.toLowerCase(), // Generate a slug-like ID
+                  name: `${first} ${last}`,
+                  license_number: null,
+                  user_id: playerId // Link to internal user
+              });
+          }
+
+          // Create APSL Team Player (Junction)
+          const apslTeamId = IdGenerator.fromComponents('apsl', 'team_record', team.apsl_team_id);
+          const apslTeamPlayerId = IdGenerator.fromComponents('apsl', 'team_player', team.apsl_team_id, first, last);
+          
+          this.data.apslTeamPlayers.set(apslTeamPlayerId, {
+              id: apslTeamPlayerId,
+              apsl_team_id: apslTeamId,
+              apsl_player_id: apslPlayerId,
+              jersey_number: playerData.jersey_number || null,
+              position: playerData.position,
+              is_active: true
+          });
+
         }
       } catch (error) {
         this.logError(`Failed to fetch roster for ${team.name}`, error);
@@ -298,37 +362,12 @@ class ApslScraper extends Scraper {
         data: this.data.players,
         options: {
           title: 'APSL Users',
-          tableName: 'users',
-          columns: ['id', 'first_name', 'last_name', 'email', 'phone', 'date_of_birth', 'is_active', 'created_at', 'updated_at'],
-          useInserts: true,
-          customSQL: (players) => {
-            const lines = [];
-            for (const player of players) {
-              lines.push(player.toUserSQL());
-            }
-            return lines.join('\n\n');
-          }
+          tableName: 'users', // Keep populating base users
+          useInserts: true
         }
       },
       {
-        filename: '22a-players-apsl.sql',
-        data: this.data.players,
-        options: {
-          title: 'APSL Players',
-          tableName: 'players',
-          columns: ['id', 'preferred_position_id', 'photo_url', 'height_cm', 'weight_kg', 'dominant_foot', 'player_rating', 'notes', 'created_at', 'updated_at'],
-          useInserts: true,
-          customSQL: (players) => {
-            const lines = [];
-            for (const player of players) {
-              lines.push(player.toPlayerSQL());
-            }
-            return lines.join('\n\n');
-          }
-        }
-      },
-      {
-        filename: '21a-teams-apsl.sql',
+        filename: '22-teams-apsl.sql',
         data: this.data.teams,
         options: {
           title: 'APSL Teams',
@@ -336,42 +375,63 @@ class ApslScraper extends Scraper {
         }
       },
       {
-        filename: '23a-team-players-apsl.sql',
+        filename: '24-players-apsl.sql',
+        data: this.data.players, // This might be redundant if 08a handles it, but keeping for now
+        options: {
+            title: 'APSL Players (Base)',
+            tableName: 'players',
+            useInserts: true
+        }
+      },
+      {
+        filename: '30-rosters-apsl.sql',
         data: this.data.teamPlayers,
         options: {
-          title: 'APSL Team Rosters',
+          title: 'APSL Rosters (Internal)',
           tableName: 'team_players',
-          columns: ['team_id', 'player_id', 'jersey_number', 'is_active', 'joined_at', 'left_at', 'notes'],
           useInserts: true
         }
       },
+      // New APSL Specific Tables
       {
-        filename: '24a-coaches-apsl.sql',
-        data: this.data.coaches,
-        options: {
-          title: 'APSL Coaches',
-          tableName: 'coaches',
-          columns: ['id', 'coaching_license', 'license_expiry', 'years_experience', 'certifications', 'specializations', 'bio'],
-          useInserts: true
-        }
+          filename: '04-conferences-apsl.sql', // Using as divisions
+          data: this.data.apslDivisions,
+          options: {
+              title: 'APSL Divisions',
+              tableName: 'apsl_divisions',
+              useInserts: true,
+              conflictColumns: ['apsl_id']
+          }
       },
       {
-        filename: '25a-team-coaches-apsl.sql',
-        data: this.data.teamCoaches,
-        options: {
-          title: 'APSL Team Coaches',
-          tableName: 'team_coaches',
-          columns: ['team_id', 'coach_id', 'coach_role', 'is_primary', 'is_active', 'joined_at', 'left_at', 'notes'],
-          useInserts: true
-        }
+          filename: '22b-teams-apsl-linked.sql',
+          data: this.data.apslTeams,
+          options: {
+              title: 'APSL Teams (Linked)',
+              tableName: 'apsl_teams',
+              useInserts: true,
+              conflictColumns: ['apsl_id']
+          }
       },
       {
-        filename: '30a-schedule-apsl.sql',
-        data: this.data.matches,
-        options: {
-          title: 'APSL Match Schedule',
-          useInserts: true
-        }
+          filename: '24b-players-apsl-linked.sql',
+          data: this.data.apslPlayers,
+          options: {
+              title: 'APSL Players (Linked)',
+              tableName: 'apsl_players',
+              useInserts: true,
+              conflictColumns: ['apsl_id']
+          }
+      },
+      {
+          filename: '30b-rosters-apsl-linked.sql',
+          data: this.data.apslTeamPlayers,
+          options: {
+              title: 'APSL Rosters (Linked)',
+              tableName: 'apsl_team_players',
+              useInserts: true,
+              conflictColumns: ['apsl_team_id', 'apsl_player_id']
+          }
       }
     ]);
     

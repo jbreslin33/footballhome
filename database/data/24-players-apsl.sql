@@ -1,6 +1,6 @@
--- APSL Users
+-- APSL Players (Base)
 
-INSERT INTO users (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, first_name, last_name, email, phone, date_of_birth, is_active, apsl_player_id, casa_player_id)
+INSERT INTO players (id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes, first_name, last_name, email, phone, date_of_birth, is_active, apsl_player_id, casa_player_id)
 VALUES
   INSERT INTO users (id, first_name, last_name, email, phone, date_of_birth, is_active)
 VALUES (

@@ -99,6 +99,12 @@ class CasaScraper extends Scraper {
     
     // Puppeteer browser
     this.browser = null;
+
+    // Initialize data stores for new schema
+    this.data.casaDivisions = new Map();
+    this.data.casaTeams = new Map();
+    this.data.casaPlayers = new Map();
+    this.data.casaTeamPlayers = new Map();
   }
 
   async initialize() {
@@ -148,6 +154,16 @@ class CasaScraper extends Scraper {
         
         // Store division ID for later reference
         this.divisionIds[`${confKey}_${divKey}`] = divId;
+
+        // Create CASA Division
+        const casaDivisionId = IdGenerator.fromComponents('casa', 'division_record', `${confData.name} ${divData.name}`);
+        this.data.casaDivisions.set(casaDivisionId, {
+            id: casaDivisionId,
+            casa_id: `${confData.name}-${divData.name}`.toLowerCase().replace(/\s+/g, '-'),
+            name: `${confData.name} ${divData.name}`,
+            season: '2024', // Hardcoded for now, should be dynamic
+            league_division_id: divId
+        });
         
         this.log(`  Created division: ${confData.name} ${divData.name} (${divId})`);
       }
@@ -286,6 +302,26 @@ class CasaScraper extends Scraper {
         });
         
         this.data.teams.set(teamId, team);
+
+        // Create CASA Team
+        const casaTeamId = IdGenerator.fromComponents('casa', 'team_record', normalizedName, divisionName);
+        // Find CASA Division ID
+        let casaDivisionId = null;
+        for (const [id, div] of this.data.casaDivisions) {
+            if (div.league_division_id === divisionId) {
+                casaDivisionId = id;
+                break;
+            }
+        }
+
+        this.data.casaTeams.set(casaTeamId, {
+            id: casaTeamId,
+            casa_id: `${normalizedName}-${divisionName}`.toLowerCase().replace(/\s+/g, '-'),
+            name: normalizedName,
+            casa_division_id: casaDivisionId,
+            team_id: teamId
+        });
+
         this.log(`   ✓ ${normalizedName}`);
       }
       
@@ -753,6 +789,40 @@ class CasaScraper extends Scraper {
             is_active: true
           });
           this.data.teamPlayers.set(teamPlayerKey, teamPlayer);
+
+          // Create CASA Player
+          const casaPlayerId = IdGenerator.fromComponents('casa', 'player', firstName, lastName);
+          if (!this.data.casaPlayers.has(casaPlayerId)) {
+              this.data.casaPlayers.set(casaPlayerId, {
+                  id: casaPlayerId,
+                  casa_id: `${firstName}-${lastName}`.toLowerCase().replace(/\s+/g, '-'),
+                  name: `${firstName} ${lastName}`,
+                  user_id: playerId
+              });
+          }
+
+          // Create CASA Team Player
+          let casaTeamId = null;
+          for (const [cId, cTeam] of this.data.casaTeams) {
+              if (cTeam.team_id === teamId) {
+                  casaTeamId = cId;
+                  break;
+              }
+          }
+
+          if (casaTeamId) {
+              const casaTeamPlayerId = IdGenerator.fromComponents('casa', 'team_player', casaTeamId, firstName, lastName);
+              this.data.casaTeamPlayers.set(casaTeamPlayerId, {
+                  id: casaTeamPlayerId,
+                  casa_team_id: casaTeamId,
+                  casa_player_id: casaPlayerId,
+                  jersey_number: jerseyNumber || null,
+                  position: position || null,
+                  is_active: true
+              });
+          }
+
+
           
           playerCount++;
         }
@@ -941,6 +1011,47 @@ class CasaScraper extends Scraper {
           title: 'CASA Match Schedule',
           useInserts: true
         }
+      },
+      // New CASA Specific Tables
+      {
+          filename: '05c-divisions-casa-linked.sql',
+          data: this.data.casaDivisions,
+          options: {
+              title: 'CASA Divisions (Linked)',
+              tableName: 'casa_divisions',
+              useInserts: true,
+              conflictColumns: ['casa_id']
+          }
+      },
+      {
+          filename: '21c-teams-casa-linked.sql',
+          data: this.data.casaTeams,
+          options: {
+              title: 'CASA Teams (Linked)',
+              tableName: 'casa_teams',
+              useInserts: true,
+              conflictColumns: ['casa_id']
+          }
+      },
+      {
+          filename: '24c-players-casa-linked.sql',
+          data: this.data.casaPlayers,
+          options: {
+              title: 'CASA Players (Linked)',
+              tableName: 'casa_players',
+              useInserts: true,
+              conflictColumns: ['casa_id']
+          }
+      },
+      {
+          filename: '30c-rosters-casa-linked.sql',
+          data: this.data.casaTeamPlayers,
+          options: {
+              title: 'CASA Rosters (Linked)',
+              tableName: 'casa_team_players',
+              useInserts: true,
+              conflictColumns: ['casa_team_id', 'casa_player_id']
+          }
       }
     ]);
     

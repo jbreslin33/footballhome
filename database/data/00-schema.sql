@@ -281,27 +281,9 @@ CREATE TABLE IF NOT EXISTS teams (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Team external apps junction table (links teams to external platforms they use)
-CREATE TABLE IF NOT EXISTS team_external_apps (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    sport_division_id UUID REFERENCES sport_divisions(id) ON DELETE CASCADE, -- For division-wide apps (training chats)
-    external_app_id UUID NOT NULL REFERENCES external_apps(id),
-    external_group_id VARCHAR(255),            -- GroupMe group ID, TeamSnap team ID, etc.
-    external_group_name VARCHAR(255),          -- Human-readable name from external system
-    config JSONB,                              -- App-specific config (can store auth tokens, settings)
-    is_active BOOLEAN DEFAULT true,            -- Can disable without deleting
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(team_id, external_app_id, external_group_id),
-    UNIQUE(sport_division_id, external_app_id, external_group_id),
-    CONSTRAINT team_or_division CHECK ((team_id IS NOT NULL AND sport_division_id IS NULL) OR (team_id IS NULL AND sport_division_id IS NOT NULL))
-);
-
-CREATE INDEX IF NOT EXISTS idx_team_external_apps_team ON team_external_apps(team_id);
-CREATE INDEX IF NOT EXISTS idx_team_external_apps_division ON team_external_apps(sport_division_id);
-CREATE INDEX IF NOT EXISTS idx_team_external_apps_app ON team_external_apps(external_app_id);
-CREATE INDEX IF NOT EXISTS idx_team_external_apps_active ON team_external_apps(is_active) WHERE is_active = true;
+-- Team external apps junction table (DEPRECATED - Replaced by specific provider tables)
+-- Kept commented out for reference or if needed for generic apps later
+-- CREATE TABLE IF NOT EXISTS team_external_apps ...
 
 -- Users table (no direct role reference - uses junction table)
 CREATE TABLE IF NOT EXISTS users (
@@ -341,37 +323,185 @@ CREATE INDEX IF NOT EXISTS idx_user_emails_user_id ON user_emails(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_emails_email ON user_emails(email);
 CREATE INDEX IF NOT EXISTS idx_user_emails_primary ON user_emails(user_id, is_primary) WHERE is_primary = true;
 
--- External identity tracking (staged import pattern)
--- Scrapers create identities with user_id=NULL, then admin manually links/merges via UI
-CREATE TABLE IF NOT EXISTS user_external_identities (
+-- ==========================================
+-- GROUPME INTEGRATION (Specific Tables)
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS groupme_users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL = not yet linked to a user
-    provider_id UUID NOT NULL REFERENCES external_providers(id), -- Which external provider
-    external_app_id UUID REFERENCES external_apps(id),    -- Which external app/platform (optional, for multi-provider apps)
-    external_id VARCHAR(255) NOT NULL,       -- ID from external system
-    external_username VARCHAR(255),          -- Display name from external system
+    groupme_id VARCHAR(255) UNIQUE NOT NULL,  -- The immutable GroupMe User ID
+    name VARCHAR(255),                        -- Display name (global)
+    avatar_url VARCHAR(500),
     
-    -- Context fields for easier filtering/merging
-    team_id UUID REFERENCES teams(id) ON DELETE SET NULL, -- Which team they belong to in external system
-    sport_division_id UUID REFERENCES sport_divisions(id) ON DELETE SET NULL, -- For training chats (all teams in division)
-    first_name VARCHAR(100),                 -- Parsed first name
-    last_name VARCHAR(100),                  -- Parsed last name
-    email VARCHAR(255),                      -- Email if available (for auto-matching)
+    -- Link to internal FootballHome User
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     
-    external_data JSONB,                     -- Raw data from external system (jersey, position, etc)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS groupme_groups (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    groupme_group_id VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    description TEXT,
+    image_url VARCHAR(500),
+    
+    -- Link to internal FootballHome Team (or Division)
+    team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
+    sport_division_id UUID REFERENCES sport_divisions(id) ON DELETE SET NULL,
+    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    -- Composite unique: provider + external_id (same person can have IDs on multiple platforms)
-    UNIQUE(provider_id, external_id)
+    CONSTRAINT team_or_division_groupme CHECK ((team_id IS NOT NULL AND sport_division_id IS NULL) OR (team_id IS NULL AND sport_division_id IS NOT NULL) OR (team_id IS NULL AND sport_division_id IS NULL))
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_external_identities_user_id ON user_external_identities(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_external_identities_provider ON user_external_identities(provider_id);
-CREATE INDEX IF NOT EXISTS idx_user_external_identities_external_app ON user_external_identities(external_app_id);
-CREATE INDEX IF NOT EXISTS idx_user_external_identities_team_id ON user_external_identities(team_id);
-CREATE INDEX IF NOT EXISTS idx_user_external_identities_sport_division_id ON user_external_identities(sport_division_id);
-CREATE INDEX IF NOT EXISTS idx_user_external_identities_unlinked ON user_external_identities(provider_id, external_id) WHERE user_id IS NULL;
+CREATE TABLE IF NOT EXISTS groupme_memberships (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    groupme_user_id UUID NOT NULL REFERENCES groupme_users(id) ON DELETE CASCADE,
+    groupme_group_id UUID NOT NULL REFERENCES groupme_groups(id) ON DELETE CASCADE,
+    
+    nickname VARCHAR(255), -- User's display name in this specific chat
+    role VARCHAR(50) DEFAULT 'member', -- 'admin', 'owner', 'member'
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(groupme_user_id, groupme_group_id)
+);
+
+CREATE TABLE IF NOT EXISTS groupme_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    groupme_message_id VARCHAR(255) UNIQUE NOT NULL,
+    groupme_group_id UUID NOT NULL REFERENCES groupme_groups(id) ON DELETE CASCADE,
+    groupme_user_id UUID REFERENCES groupme_users(id) ON DELETE SET NULL,
+    
+    text TEXT,
+    attachments JSONB, -- Images, mentions, etc.
+    favorited_by JSONB, -- List of user IDs who liked it
+    
+    created_at TIMESTAMP NOT NULL, -- Message timestamp from GroupMe
+    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_groupme_messages_group ON groupme_messages(groupme_group_id);
+CREATE INDEX IF NOT EXISTS idx_groupme_messages_created ON groupme_messages(created_at);
+
+-- ==========================================
+-- APSL INTEGRATION (Specific Tables)
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS apsl_divisions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    apsl_id VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    season VARCHAR(50),
+    
+    -- Link to internal FootballHome Division
+    league_division_id UUID REFERENCES league_divisions(id) ON DELETE SET NULL,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS apsl_teams (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    apsl_id VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    apsl_division_id UUID REFERENCES apsl_divisions(id) ON DELETE SET NULL,
+    
+    -- Link to internal FootballHome Team
+    team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS apsl_players (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    apsl_id VARCHAR(255) UNIQUE NOT NULL, -- External ID if available, or generated
+    name VARCHAR(255),
+    license_number VARCHAR(100),
+    
+    -- Link to internal FootballHome User
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS apsl_team_players (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    apsl_team_id UUID NOT NULL REFERENCES apsl_teams(id) ON DELETE CASCADE,
+    apsl_player_id UUID NOT NULL REFERENCES apsl_players(id) ON DELETE CASCADE,
+    
+    jersey_number INTEGER,
+    position VARCHAR(50),
+    is_active BOOLEAN DEFAULT true, -- If they leave the roster
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(apsl_team_id, apsl_player_id)
+);
+
+-- ==========================================
+-- CASA INTEGRATION (Specific Tables)
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS casa_divisions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    casa_id VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    season VARCHAR(50),
+    
+    -- Link to internal FootballHome Division
+    league_division_id UUID REFERENCES league_divisions(id) ON DELETE SET NULL,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS casa_teams (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    casa_id VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    casa_division_id UUID REFERENCES casa_divisions(id) ON DELETE SET NULL,
+    
+    -- Link to internal FootballHome Team
+    team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS casa_players (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    casa_id VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    
+    -- Link to internal FootballHome User
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS casa_team_players (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    casa_team_id UUID NOT NULL REFERENCES casa_teams(id) ON DELETE CASCADE,
+    casa_player_id UUID NOT NULL REFERENCES casa_players(id) ON DELETE CASCADE,
+    
+    jersey_number INTEGER,
+    position VARCHAR(50),
+    is_active BOOLEAN DEFAULT true,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(casa_team_id, casa_player_id)
+);
 
 -- ========================================
 -- USER ENTITY TABLES (Normalized)

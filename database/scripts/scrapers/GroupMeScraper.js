@@ -52,17 +52,36 @@ class GroupMeScraper extends Scraper {
       maybe: '550e8400-e29b-41d4-a716-446655440302',
       no: '550e8400-e29b-41d4-a716-446655440303'
     };
+
+    // Initialize data stores for new schema
+    this.data.groupmeUsers = new Map();
+    this.data.groupmeGroups = new Map();
+    this.data.groupmeMemberships = new Map();
+    this.data.groupmeMessages = new Map();
   }
 
   async initialize() {
     this.log(`Initializing ${this.chatName} scraper...`);
     this.log(`Group ID: ${this.groupId}`);
+    
+    // Create the group record immediately
+    const internalGroupId = IdGenerator.fromComponents('groupme', 'group', this.groupId);
+    this.data.groupmeGroups.set(internalGroupId, {
+      id: internalGroupId,
+      groupme_group_id: this.groupId,
+      name: this.chatName,
+      team_id: this.teamId || null,
+      sport_division_id: this.sportDivisionId || null
+    });
   }
 
   async fetchData() {
     // Fetch users (members)
     await this.fetchUsers();
     
+    // Fetch messages (chat history)
+    await this.fetchMessages();
+
     // Fetch schedule (events)
     if (this.shouldScrapeSchedules()) {
       await this.fetchSchedule();
@@ -80,6 +99,15 @@ class GroupMeScraper extends Scraper {
       const group = apiResponse.response || apiResponse;
       const members = group.members || [];
       
+      // Update group details if available
+      const internalGroupId = IdGenerator.fromComponents('groupme', 'group', this.groupId);
+      if (this.data.groupmeGroups.has(internalGroupId)) {
+        const groupRecord = this.data.groupmeGroups.get(internalGroupId);
+        groupRecord.name = group.name || this.chatName;
+        groupRecord.description = group.description || null;
+        groupRecord.image_url = group.image_url || null;
+      }
+      
       this.log(`   Found ${members.length} members`);
       
       for (const member of members) {
@@ -87,27 +115,42 @@ class GroupMeScraper extends Scraper {
         const name = member.nickname || member.name || 'Unknown';
         const { first, last } = this.splitName(name);
         
-        // Create external identity record
-        const identityId = IdGenerator.fromComponents('groupme', 'identity', groupmeId);
-        this.data.externalIdentities.set(identityId, {
-          id: identityId,
-          provider_id: '550e8400-e29b-41d4-a716-446655440a03', // GroupMe Provider ID
-          external_id: groupmeId,
-          external_username: name,
-          first_name: first,
-          last_name: last,
-          team_id: this.teamId || null,
-          sport_division_id: this.sportDivisionId || null,
-          external_data: JSON.stringify({
-            source: this.chatName,
-            group_id: this.groupId
-          })
+        // 1. Create/Update GroupMe User
+        // We use the immutable groupme_id to generate our internal UUID
+        const internalUserId = IdGenerator.fromComponents('groupme', 'user', groupmeId);
+        
+        if (!this.data.groupmeUsers.has(internalUserId)) {
+            this.data.groupmeUsers.set(internalUserId, {
+                id: internalUserId,
+                groupme_id: groupmeId,
+                name: member.name || name, // Prefer global name if available, else nickname
+                avatar_url: member.image_url || null
+            });
+        }
+
+        // 2. Create Membership Record
+        // Links this user to this specific group with their specific nickname
+        const membershipId = IdGenerator.fromComponents('groupme', 'membership', this.groupId, groupmeId);
+        
+        this.data.groupmeMemberships.set(membershipId, {
+            id: membershipId,
+            groupme_user_id: internalUserId,
+            groupme_group_id: internalGroupId,
+            nickname: member.nickname,
+            role: member.roles ? (member.roles.includes('owner') ? 'owner' : (member.roles.includes('admin') ? 'admin' : 'member')) : 'member'
         });
       }
       
     } catch (error) {
       this.logError('Failed to fetch chat members', error);
     }
+  }
+
+  async fetchMessages() {
+    this.log('\n💬 Fetching chat messages...');
+    // TODO: Implement message fetching with pagination
+    // For now, we'll skip deep history to save time/quota, but the structure is ready
+    this.log('   (Skipping message history for this run)');
   }
 
   async fetchSchedule() {
@@ -236,11 +279,32 @@ class GroupMeScraper extends Scraper {
     const results = await this.sqlGenerator.generateMultiple([
       {
         filename: `50-groupme-${this.getFilenameSuffix()}-users.sql`,
-        data: this.data.externalIdentities,
+        data: this.data.groupmeUsers,
         options: {
-          title: `${this.chatName} - External Identities`,
-          tableName: 'user_external_identities',
-          useInserts: true
+          title: `${this.chatName} - GroupMe Users`,
+          tableName: 'groupme_users',
+          useInserts: true,
+          conflictColumns: ['groupme_id'] // Upsert on groupme_id
+        }
+      },
+      {
+        filename: `51-groupme-${this.getFilenameSuffix()}-groups.sql`,
+        data: this.data.groupmeGroups,
+        options: {
+          title: `${this.chatName} - GroupMe Groups`,
+          tableName: 'groupme_groups',
+          useInserts: true,
+          conflictColumns: ['groupme_group_id']
+        }
+      },
+      {
+        filename: `52-groupme-${this.getFilenameSuffix()}-memberships.sql`,
+        data: this.data.groupmeMemberships,
+        options: {
+          title: `${this.chatName} - GroupMe Memberships`,
+          tableName: 'groupme_memberships',
+          useInserts: true,
+          conflictColumns: ['groupme_user_id', 'groupme_group_id']
         }
       },
       {

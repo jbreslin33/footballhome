@@ -10,7 +10,7 @@ class ApslLighthouseScraper extends GroupMeScraper {
       name: 'APSL Lighthouse',
       chatName: 'APSL Lighthouse',
       groupId: '109785985',
-      teamId: 'd37eb44b-8e47-0005-9060-f0cbe96fe089', // Lighthouse 1893 SC APSL team
+      teamId: 'a16e9445-9bed-4fe6-804d-e77c56258610', // Lighthouse 1893 SC APSL team
       sportDivisionId: null,
       mode: mode,
       includeSchedules: options.includeSchedules !== false
