@@ -642,7 +642,56 @@ class CasaScraper extends Scraper {
     }
     
     // Parse date and time into a timestamp
-    const eventDateTime = time ? `${date} ${time}` : date;
+    let isoDate = null;
+    try {
+        // date format: "Sun Nov 9" or similar
+        // time format: "3:00 PM EST - 4:45 PM EST" or just "3:00 PM"
+        
+        const monthMap = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+        let monthStr, dayStr;
+        
+        // Try to extract Month and Day
+        const dateParts = date.split(' ');
+        // Expected: ["Sun", "Nov", "9"]
+        if (dateParts.length >= 3) {
+            monthStr = dateParts[1];
+            dayStr = dateParts[2];
+        } else if (dateParts.length === 2) {
+            // Maybe "Nov 9"
+            monthStr = dateParts[0];
+            dayStr = dateParts[1];
+        }
+        
+        if (monthStr && dayStr && monthMap.hasOwnProperty(monthStr)) {
+            const month = monthMap[monthStr];
+            const day = parseInt(dayStr);
+            const year = new Date().getFullYear(); // Assume current year
+            
+            // Parse time
+            let hours = 12; // Default noon
+            let minutes = 0;
+            
+            if (time) {
+                const timeMatch = time.match(/(\d{1,2}):(\d{2})\s*([AP]M)/i);
+                if (timeMatch) {
+                    hours = parseInt(timeMatch[1]);
+                    minutes = parseInt(timeMatch[2]);
+                    const period = timeMatch[3].toUpperCase();
+                    
+                    if (period === 'PM' && hours !== 12) hours += 12;
+                    if (period === 'AM' && hours === 12) hours = 0;
+                }
+            }
+            
+            const d = new Date(year, month, day, hours, minutes);
+            // Adjust for timezone if needed, but for now assume local/UTC match or ignore
+            isoDate = d.toISOString().replace('T', ' ').substring(0, 19);
+        }
+    } catch (e) {
+        this.logWarning(`Failed to parse date: ${date} ${time}`);
+    }
+
+    const eventDateTime = isoDate || date; // Fallback to original if parsing fails
     
     const eventId = IdGenerator.fromComponents('casa', 'match', date, matchedHome, matchedAway);
     

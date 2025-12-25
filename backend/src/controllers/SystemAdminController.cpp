@@ -22,6 +22,39 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
         return this->handleLinkIdentity(request);
     });
 
+    // Integration Dashboards
+    router.get(prefix + "/casa", [this](const Request& request) {
+        return this->handleGetCasaDashboard(request);
+    });
+    
+    router.get(prefix + "/casa/divisions", [this](const Request& request) {
+        return this->handleGetCasaDivisions(request);
+    });
+    
+    router.get(prefix + "/casa/teams", [this](const Request& request) {
+        return this->handleGetCasaTeams(request);
+    });
+    
+    router.get(prefix + "/casa/players", [this](const Request& request) {
+        return this->handleGetCasaPlayers(request);
+    });
+    
+    router.get(prefix + "/casa/matches", [this](const Request& request) {
+        return this->handleGetCasaMatches(request);
+    });
+
+    router.get(prefix + "/apsl", [this](const Request& request) {
+        return this->handleGetApslDashboard(request);
+    });
+
+    router.get(prefix + "/groupme", [this](const Request& request) {
+        return this->handleGetGroupMeDashboard(request);
+    });
+    
+    router.get(prefix + "/groupme/groups", [this](const Request& request) {
+        return this->handleGetGroupMeGroups(request);
+    });
+
     // Dashboard & Overview
     router.get(prefix + "/dashboard", [this](const Request& request) {
         return this->handleGetDashboard(request);
@@ -1979,3 +2012,214 @@ Response SystemAdminController::handleLinkIdentity(const Request& request) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
     }
 }
+
+Response SystemAdminController::handleGetCasaDashboard(const Request& request) {
+    try {
+        std::string json = "{";
+        
+        // Divisions
+        auto divisions = db_->query("SELECT COUNT(*) FROM casa_divisions");
+        if (!divisions.empty()) {
+            json += "\"divisions\":" + std::to_string(divisions[0][0].as<int>()) + ",";
+        } else {
+            json += "\"divisions\":0,";
+        }
+
+        // Teams
+        auto teams = db_->query("SELECT COUNT(*) FROM casa_teams");
+        if (!teams.empty()) {
+            json += "\"teams\":" + std::to_string(teams[0][0].as<int>()) + ",";
+        } else {
+            json += "\"teams\":0,";
+        }
+
+        // Players
+        auto players = db_->query("SELECT COUNT(*) FROM casa_players");
+        if (!players.empty()) {
+            json += "\"players\":" + std::to_string(players[0][0].as<int>()) + ",";
+        } else {
+            json += "\"players\":0,";
+        }
+        
+        // Matches (Linked via casa_teams)
+        auto matches = db_->query(
+            "SELECT COUNT(*) FROM matches m "
+            "JOIN casa_teams ct1 ON m.home_team_id = ct1.team_id "
+            "JOIN casa_teams ct2 ON m.away_team_id = ct2.team_id"
+        );
+        if (!matches.empty()) {
+            json += "\"matches\":" + std::to_string(matches[0][0].as<int>());
+        } else {
+            json += "\"matches\":0";
+        }
+
+        json += "}";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetCasaDivisions(const Request& request) {
+    try {
+        auto result = db_->query("SELECT id, casa_id, name, season FROM casa_divisions ORDER BY name");
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            json += "{";
+            json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
+            json += "\"casa_id\":\"" + row["casa_id"].as<std::string>() + "\",";
+            json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"season\":\"" + (row["season"].is_null() ? "" : row["season"].as<std::string>()) + "\"";
+            json += "}";
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetCasaTeams(const Request& request) {
+    try {
+        auto result = db_->query(
+            "SELECT ct.id, ct.casa_id, ct.name, cd.name as division_name "
+            "FROM casa_teams ct "
+            "LEFT JOIN casa_divisions cd ON ct.casa_division_id = cd.id "
+            "ORDER BY ct.name"
+        );
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            json += "{";
+            json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
+            json += "\"casa_id\":\"" + row["casa_id"].as<std::string>() + "\",";
+            json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"division_name\":\"" + (row["division_name"].is_null() ? "" : row["division_name"].as<std::string>()) + "\"";
+            json += "}";
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetCasaPlayers(const Request& request) {
+    try {
+        // Limit to 100 for performance, maybe add pagination later
+        auto result = db_->query(
+            "SELECT cp.id, cp.casa_id, cp.name, ct.name as team_name "
+            "FROM casa_players cp "
+            "LEFT JOIN casa_team_players ctp ON cp.id = ctp.casa_player_id "
+            "LEFT JOIN casa_teams ct ON ctp.casa_team_id = ct.id "
+            "ORDER BY cp.name LIMIT 100"
+        );
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            json += "{";
+            json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
+            json += "\"casa_id\":\"" + row["casa_id"].as<std::string>() + "\",";
+            json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"team_name\":\"" + (row["team_name"].is_null() ? "" : row["team_name"].as<std::string>()) + "\"";
+            json += "}";
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetCasaMatches(const Request& request) {
+    try {
+        auto result = db_->query(
+            "SELECT m.id, e.event_date, ct1.name as home_team, ct2.name as away_team, "
+            "m.home_team_score, m.away_team_score, m.match_status "
+            "FROM matches m "
+            "JOIN events e ON m.id = e.id "
+            "JOIN casa_teams ct1 ON m.home_team_id = ct1.team_id "
+            "JOIN casa_teams ct2 ON m.away_team_id = ct2.team_id "
+            "ORDER BY e.event_date DESC LIMIT 100"
+        );
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            json += "{";
+            json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
+            json += "\"event_date\":\"" + (row["event_date"].is_null() ? "" : row["event_date"].as<std::string>()) + "\",";
+            json += "\"home_team\":\"" + row["home_team"].as<std::string>() + "\",";
+            json += "\"away_team\":\"" + row["away_team"].as<std::string>() + "\",";
+            json += "\"home_score\":\"" + (row["home_team_score"].is_null() ? "-" : row["home_team_score"].as<std::string>()) + "\",";
+            json += "\"away_score\":\"" + (row["away_team_score"].is_null() ? "-" : row["away_team_score"].as<std::string>()) + "\",";
+            json += "\"status\":\"" + (row["match_status"].is_null() ? "" : row["match_status"].as<std::string>()) + "\"";
+            json += "}";
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetApslDashboard(const Request& request) {
+    try {
+        std::string json = "{";
+        
+        // Placeholder for APSL stats
+        json += "\"teams\":0,";
+        json += "\"players\":0,";
+        json += "\"matches\":0";
+
+        json += "}";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetGroupMeDashboard(const Request& request) {
+    try {
+        std::string json = "{";
+        
+        // Groups
+        auto groups = db_->query("SELECT COUNT(*) FROM groupme_groups");
+        if (!groups.empty()) {
+            json += "\"groups\":" + std::to_string(groups[0][0].as<int>());
+        } else {
+            json += "\"groups\":0";
+        }
+
+        json += "}";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetGroupMeGroups(const Request& request) {
+    try {
+        auto result = db_->query("SELECT id, groupme_group_id, name, description FROM groupme_groups ORDER BY name");
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            json += "{";
+            json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
+            json += "\"groupme_id\":\"" + row["groupme_group_id"].as<std::string>() + "\",";
+            json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"description\":\"" + (row["description"].is_null() ? "" : row["description"].as<std::string>()) + "\"";
+            json += "}";
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+

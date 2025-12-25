@@ -52,6 +52,18 @@ private:
     // Identity Management
     Response handleGetIdentities(const Request& request);
     Response handleLinkIdentity(const Request& request);
+
+    // Integration Dashboards
+    Response handleGetCasaDashboard(const Request& request);
+    Response handleGetCasaDivisions(const Request& request);
+    Response handleGetCasaTeams(const Request& request);
+    Response handleGetCasaPlayers(const Request& request);
+    Response handleGetCasaMatches(const Request& request);
+    
+    Response handleGetApslDashboard(const Request& request);
+    
+    Response handleGetGroupMeDashboard(const Request& request);
+    Response handleGetGroupMeGroups(const Request& request);
     
     // Audit Logs
     Response handleGetAuditLogs(const Request& request);
