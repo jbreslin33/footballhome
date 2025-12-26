@@ -2141,8 +2141,8 @@ Response SystemAdminController::handleGetCasaMatches(const Request& request) {
     try {
         auto result = db_->query(
             "SELECT m.id, e.event_date, "
-            "COALESCE(ct1.name, t1.name) as home_team, "
-            "COALESCE(ct2.name, t2.name) as away_team, "
+            "COALESCE(ct1.name, t1.name, 'Unknown Team') as home_team, "
+            "COALESCE(ct2.name, t2.name, 'Unknown Team') as away_team, "
             "m.home_team_score, m.away_team_score, m.match_status "
             "FROM matches m "
             "JOIN events e ON m.id = e.id "

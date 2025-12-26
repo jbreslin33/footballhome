@@ -276,7 +276,13 @@ class AdminSystemScreen extends Screen {
         `;
       } else if (target === 'casa-matches') {
         const res = await fetch('/api/system-admin/casa/matches');
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+        }
         const items = await res.json();
+        if (!Array.isArray(items)) {
+          throw new Error(`Expected array but got: ${typeof items}`);
+        }
         html = `
           <h3>Recent Matches</h3>
           <table class="admin-table">
