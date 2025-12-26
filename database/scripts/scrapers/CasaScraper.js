@@ -1696,7 +1696,7 @@ class CasaScraper extends Scraper {
                   id: casaPlayerId,
                   casa_id: `${firstName}-${lastName}`.toLowerCase().replace(/\s+/g, '-'),
                   name: `${firstName} ${lastName}`,
-                  user_id: playerId
+                  user_id: null // Users will be linked via UI later
               });
           }
 

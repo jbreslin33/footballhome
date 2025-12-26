@@ -260,7 +260,7 @@ class ApslScraper extends Scraper {
                   apsl_id: `${first}-${last}`.toLowerCase(), // Generate a slug-like ID
                   name: `${first} ${last}`,
                   license_number: null,
-                  user_id: playerId // Link to internal user
+                  user_id: null // Users will be linked via UI later
               });
           }
 
