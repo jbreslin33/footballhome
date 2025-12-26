@@ -321,6 +321,6 @@ VALUES
 ON CONFLICT (id) DO UPDATE SET
   casa_id = EXCLUDED.casa_id,
   name = EXCLUDED.name,
-  user_id = EXCLUDED.user_id
+  user_id = NULL
 ;
 

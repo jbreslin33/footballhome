@@ -1576,6 +1576,6 @@ ON CONFLICT (id) DO UPDATE SET
   apsl_id = EXCLUDED.apsl_id,
   name = EXCLUDED.name,
   license_number = EXCLUDED.license_number,
-  user_id = EXCLUDED.user_id
+  user_id = NULL
 ;
 
