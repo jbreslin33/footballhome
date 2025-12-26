@@ -315,27 +315,127 @@ class AdminSystemScreen extends Screen {
       <div class="dashboard-view">
         <h2>🦅 APSL Dashboard</h2>
         <div class="stats-grid">
-          <div class="stat-card">
+          <div class="stat-card clickable" data-target="apsl-divisions">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-value">${data.divisions}</div>
+            <div class="stat-label">Divisions</div>
+          </div>
+          <div class="stat-card clickable" data-target="apsl-teams">
             <div class="stat-icon">👕</div>
             <div class="stat-value">${data.teams}</div>
             <div class="stat-label">Teams</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card clickable" data-target="apsl-players">
             <div class="stat-icon">🏃</div>
             <div class="stat-value">${data.players}</div>
             <div class="stat-label">Players</div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card clickable" data-target="apsl-matches">
             <div class="stat-icon">📅</div>
             <div class="stat-value">${data.matches}</div>
             <div class="stat-label">Matches</div>
           </div>
         </div>
-        <div class="info-box" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-          <p>ℹ️ APSL integration is currently limited. More stats coming soon.</p>
+        
+        <div id="apsl-details-container" style="margin-top: 20px;">
+          <div class="info-box">Select a card above to view details</div>
         </div>
       </div>
     `;
+    
+    // Add click listeners for cards
+    content.querySelectorAll('.stat-card.clickable').forEach(card => {
+      card.addEventListener('click', async () => {
+        const target = card.dataset.target;
+        await this.loadApslDetails(target);
+      });
+    });
+  }
+  
+  async loadApslDetails(target) {
+    const container = this.element.querySelector('#apsl-details-container');
+    container.innerHTML = '<div class="loading-indicator">Loading details...</div>';
+    
+    try {
+      let html = '';
+      if (target === 'apsl-divisions') {
+        const res = await fetch('/api/system-admin/apsl/divisions');
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+        }
+        const items = await res.json();
+        if (!Array.isArray(items)) {
+          throw new Error(`Expected array but got: ${typeof items}`);
+        }
+        html = `
+          <h3>Divisions</h3>
+          <table class="admin-table">
+            <thead><tr><th>Name</th><th>Season</th><th>APSL ID</th></tr></thead>
+            <tbody>
+              ${items.map(i => `<tr><td>${i.name}</td><td>${i.season}</td><td>${i.apsl_id}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        `;
+      } else if (target === 'apsl-teams') {
+        const res = await fetch('/api/system-admin/apsl/teams');
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+        }
+        const items = await res.json();
+        if (!Array.isArray(items)) {
+          throw new Error(`Expected array but got: ${typeof items}`);
+        }
+        html = `
+          <h3>Teams</h3>
+          <table class="admin-table">
+            <thead><tr><th>Name</th><th>Division</th><th>APSL ID</th></tr></thead>
+            <tbody>
+              ${items.map(i => `<tr><td>${i.name}</td><td>${i.division || ''}</td><td>${i.apsl_id}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        `;
+      } else if (target === 'apsl-players') {
+        const res = await fetch('/api/system-admin/apsl/players');
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+        }
+        const items = await res.json();
+        if (!Array.isArray(items)) {
+          throw new Error(`Expected array but got: ${typeof items}`);
+        }
+        html = `
+          <h3>Players (Top 100)</h3>
+          <table class="admin-table">
+            <thead><tr><th>Name</th><th>Team</th><th>APSL ID</th></tr></thead>
+            <tbody>
+              ${items.map(i => `<tr><td>${i.name}</td><td>${i.team || ''}</td><td>${i.apsl_id}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        `;
+      } else if (target === 'apsl-matches') {
+        const res = await fetch('/api/system-admin/apsl/matches');
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+        }
+        const items = await res.json();
+        if (!Array.isArray(items)) {
+          throw new Error(`Expected array but got: ${typeof items}`);
+        }
+        html = `
+          <h3>Matches (Last 100)</h3>
+          <table class="admin-table">
+            <thead><tr><th>Date</th><th>Home</th><th>Score</th><th>Away</th><th>Status</th></tr></thead>
+            <tbody>
+              ${items.map(i => `<tr><td>${i.event_date}</td><td>${i.home_team}</td><td>${i.home_score} - ${i.away_score}</td><td>${i.away_team}</td><td>${i.status}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+      container.innerHTML = html;
+    } catch (err) {
+      container.innerHTML = `<div class="error-message">Error loading details: ${err.message}</div>`;
+      console.error('Error loading APSL details:', err);
+    }
   }
 
   async loadGroupMeDashboard() {

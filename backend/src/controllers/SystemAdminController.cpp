@@ -46,6 +46,22 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
     router.get(prefix + "/apsl", [this](const Request& request) {
         return this->handleGetApslDashboard(request);
     });
+    
+    router.get(prefix + "/apsl/divisions", [this](const Request& request) {
+        return this->handleGetApslDivisions(request);
+    });
+    
+    router.get(prefix + "/apsl/teams", [this](const Request& request) {
+        return this->handleGetApslTeams(request);
+    });
+    
+    router.get(prefix + "/apsl/players", [this](const Request& request) {
+        return this->handleGetApslPlayers(request);
+    });
+    
+    router.get(prefix + "/apsl/matches", [this](const Request& request) {
+        return this->handleGetApslMatches(request);
+    });
 
     router.get(prefix + "/groupme", [this](const Request& request) {
         return this->handleGetGroupMeDashboard(request);
@@ -2178,12 +2194,156 @@ Response SystemAdminController::handleGetApslDashboard(const Request& request) {
     try {
         std::string json = "{";
         
-        // Placeholder for APSL stats
-        json += "\"teams\":0,";
-        json += "\"players\":0,";
-        json += "\"matches\":0";
+        // Divisions
+        auto divisions = db_->query("SELECT COUNT(*) FROM apsl_divisions");
+        if (!divisions.empty()) {
+            json += "\"divisions\":" + std::to_string(divisions[0][0].as<int>()) + ",";
+        } else {
+            json += "\"divisions\":0,";
+        }
+
+        // Teams
+        auto teams = db_->query("SELECT COUNT(*) FROM apsl_teams");
+        if (!teams.empty()) {
+            json += "\"teams\":" + std::to_string(teams[0][0].as<int>()) + ",";
+        } else {
+            json += "\"teams\":0,";
+        }
+
+        // Players
+        auto players = db_->query("SELECT COUNT(*) FROM apsl_players");
+        if (!players.empty()) {
+            json += "\"players\":" + std::to_string(players[0][0].as<int>()) + ",";
+        } else {
+            json += "\"players\":0,";
+        }
+        
+        // Matches (Linked via apsl_teams) - Use LEFT JOIN to show all APSL matches
+        auto matches = db_->query(
+            "SELECT COUNT(DISTINCT m.id) FROM matches m "
+            "JOIN events e ON m.id = e.id "
+            "LEFT JOIN apsl_teams at1 ON m.home_team_id = at1.team_id "
+            "LEFT JOIN apsl_teams at2 ON m.away_team_id = at2.team_id "
+            "WHERE at1.team_id IS NOT NULL OR at2.team_id IS NOT NULL"
+        );
+        if (!matches.empty()) {
+            json += "\"matches\":" + std::to_string(matches[0][0].as<int>());
+        } else {
+            json += "\"matches\":0";
+        }
 
         json += "}";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetApslDivisions(const Request& request) {
+    try {
+        auto result = db_->query("SELECT id, apsl_id, name, season FROM apsl_divisions ORDER BY name");
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            json += "{";
+            json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
+            json += "\"apsl_id\":\"" + row["apsl_id"].as<std::string>() + "\",";
+            json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"season\":\"" + (row["season"].is_null() ? "" : row["season"].as<std::string>()) + "\"";
+            json += "}";
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetApslTeams(const Request& request) {
+    try {
+        auto result = db_->query(
+            "SELECT at.id, at.apsl_id, at.name, ad.name as division_name "
+            "FROM apsl_teams at "
+            "LEFT JOIN apsl_divisions ad ON at.apsl_division_id = ad.id "
+            "ORDER BY at.name"
+        );
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            json += "{";
+            json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
+            json += "\"apsl_id\":\"" + row["apsl_id"].as<std::string>() + "\",";
+            json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"division\":\"" + (row["division_name"].is_null() ? "" : row["division_name"].as<std::string>()) + "\"";
+            json += "}";
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetApslPlayers(const Request& request) {
+    try {
+        auto result = db_->query(
+            "SELECT ap.id, ap.apsl_id, ap.name, at.name as team_name "
+            "FROM apsl_players ap "
+            "LEFT JOIN apsl_team_players atp ON ap.id = atp.apsl_player_id "
+            "LEFT JOIN apsl_teams at ON atp.apsl_team_id = at.id "
+            "ORDER BY ap.name LIMIT 100"
+        );
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            json += "{";
+            json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
+            json += "\"apsl_id\":\"" + row["apsl_id"].as<std::string>() + "\",";
+            json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"team\":\"" + (row["team_name"].is_null() ? "" : row["team_name"].as<std::string>()) + "\"";
+            json += "}";
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetApslMatches(const Request& request) {
+    try {
+        auto result = db_->query(
+            "SELECT m.id, e.event_date, "
+            "COALESCE(at1.name, t1.name, 'Unknown Team') as home_team, "
+            "COALESCE(at2.name, t2.name, 'Unknown Team') as away_team, "
+            "m.home_team_score, m.away_team_score, m.match_status "
+            "FROM matches m "
+            "JOIN events e ON m.id = e.id "
+            "LEFT JOIN apsl_teams at1 ON m.home_team_id = at1.team_id "
+            "LEFT JOIN apsl_teams at2 ON m.away_team_id = at2.team_id "
+            "LEFT JOIN teams t1 ON m.home_team_id = t1.id "
+            "LEFT JOIN teams t2 ON m.away_team_id = t2.id "
+            "WHERE at1.team_id IS NOT NULL OR at2.team_id IS NOT NULL "
+            "ORDER BY e.event_date DESC LIMIT 100"
+        );
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            json += "{";
+            json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
+            json += "\"event_date\":\"" + (row["event_date"].is_null() ? "" : row["event_date"].as<std::string>()) + "\",";
+            json += "\"home_team\":\"" + row["home_team"].as<std::string>() + "\",";
+            json += "\"away_team\":\"" + row["away_team"].as<std::string>() + "\",";
+            json += "\"home_score\":\"" + (row["home_team_score"].is_null() ? "-" : row["home_team_score"].as<std::string>()) + "\",";
+            json += "\"away_score\":\"" + (row["away_team_score"].is_null() ? "-" : row["away_team_score"].as<std::string>()) + "\",";
+            json += "\"status\":\"" + (row["match_status"].is_null() ? "" : row["match_status"].as<std::string>()) + "\"";
+            json += "}";
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
         return Response(HttpStatus::OK, json);
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");

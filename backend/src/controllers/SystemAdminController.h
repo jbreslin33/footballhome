@@ -61,6 +61,10 @@ private:
     Response handleGetCasaMatches(const Request& request);
     
     Response handleGetApslDashboard(const Request& request);
+    Response handleGetApslDivisions(const Request& request);
+    Response handleGetApslTeams(const Request& request);
+    Response handleGetApslPlayers(const Request& request);
+    Response handleGetApslMatches(const Request& request);
     
     Response handleGetGroupMeDashboard(const Request& request);
     Response handleGetGroupMeGroups(const Request& request);
