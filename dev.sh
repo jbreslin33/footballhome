@@ -100,28 +100,22 @@ fi
 echo -e "${GREEN}✓ Found env file${NC}"
 
 # ============================================================
-# PODMAN AVAILABILITY CHECK (early exit if not accessible)
+# DOCKER/PODMAN AVAILABILITY CHECK (early exit if not accessible)
 # ============================================================
-if ! podman ps &> /dev/null 2>&1; then
-    # Try with sudo as fallback
-    if ! sudo podman ps &> /dev/null 2>&1; then
-        echo -e "${RED}Error: Podman is not accessible${NC}"
-        echo ""
-        echo "Podman is required to run this application."
-        echo ""
-        echo "Possible solutions:"
-        echo "  1. Make sure Podman is installed:"
-        echo "     ./setup.sh"
-        echo ""
-        echo "  2. If installed, you may need to log out and back in:"
-        echo "     Group permissions take effect after login"
-        echo "     Quick fix: exec su -l \$USER"
-        echo ""
-        echo "  3. Check Podman status (macOS):"
-        echo "     podman machine start"
-        echo ""
-        exit 1
+# Try docker-compose first (most common setup)
+if command -v docker-compose &> /dev/null; then
+    DOCKER="docker"
+    DOCKER_COMPOSE="docker-compose --env-file env"
+elif podman ps &> /dev/null 2>&1; then
+    # Works without sudo
+    DOCKER="podman"
+    # Fallback to docker-compose if podman-compose is missing
+    if command -v podman-compose &> /dev/null; then
+        DOCKER_COMPOSE="podman-compose --env-file env"
+    else
+        DOCKER_COMPOSE="docker-compose --env-file env"
     fi
+elif sudo podman ps &> /dev/null 2>&1; then
     # Needs sudo, set alias for all commands
     DOCKER="sudo podman"
     # Fallback to docker-compose if podman-compose is missing
@@ -131,14 +125,22 @@ if ! podman ps &> /dev/null 2>&1; then
         DOCKER_COMPOSE="sudo docker-compose --env-file env"
     fi
 else
-    # Works without sudo
-    DOCKER="podman"
-    # Fallback to docker-compose if podman-compose is missing
-    if command -v podman-compose &> /dev/null; then
-        DOCKER_COMPOSE="podman-compose --env-file env"
-    else
-        DOCKER_COMPOSE="docker-compose --env-file env"
-    fi
+    echo -e "${RED}Error: Neither Docker nor Podman is accessible${NC}"
+    echo ""
+    echo "Docker or Podman is required to run this application."
+    echo ""
+    echo "Possible solutions:"
+    echo "  1. Make sure Docker or Podman is installed:"
+    echo "     ./setup.sh"
+    echo ""
+    echo "  2. If installed, you may need to log out and back in:"
+    echo "     Group permissions take effect after login"
+    echo "     Quick fix: exec su -l \$USER"
+    echo ""
+    echo "  3. Check Podman status (macOS):"
+    echo "     podman machine start"
+    echo ""
+    exit 1
 fi
 
 APSL_SCRAPE_MODE=""
