@@ -42,6 +42,9 @@ class App {
       adminTeam: new AdminTeamScreen(this.navigation, this.auth),
       tacticalBoard: new TacticalBoardScreen(this.navigation, this.auth)
     };
+    // Expose certain screens globally for legacy inline onclick handlers
+    // (e.g., admin-system uses `adminSystemScreen.loadGroupMeMessages(...)`)
+    window.adminSystemScreen = this.screens.adminSystem;
     
     // Register all screens with the manager
     this.screenManager.register('login', this.screens.login);

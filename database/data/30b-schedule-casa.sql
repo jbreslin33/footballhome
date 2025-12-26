@@ -37,8 +37,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('cbe0747b-62af-423c-b089-78825ac5375b', '62d30cd4-fb69-4a97-84bd-0e506564c188', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701'),
-  ('a53766a0-1193-496e-b52e-c084c3324ddb', '62d30cd4-fb69-4a97-84bd-0e506564c188', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701')
+  ('0f296bc5-71d5-4265-8c23-8229af6721d9', '62d30cd4-fb69-4a97-84bd-0e506564c188', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701'),
+  ('5a9731da-b4d9-43b2-ab1d-b72ec8047d3f', '62d30cd4-fb69-4a97-84bd-0e506564c188', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -77,8 +77,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('9e28b8a6-1f8f-4e23-bfe4-aadf7a9eba40', '2537da99-8f86-4c23-81f7-b0ea2621bb05', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
-  ('2ff85662-f2ff-426a-8c50-efe756cb6fea', '2537da99-8f86-4c23-81f7-b0ea2621bb05', '158e321e-2dd5-4926-82ce-c31822bde965', '550e8400-e29b-41d4-a716-446655440701')
+  ('dc73713f-b4ad-4b3a-93f0-e83954ced338', '2537da99-8f86-4c23-81f7-b0ea2621bb05', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
+  ('7525d997-7697-4dfa-96ec-b2a72b463913', '2537da99-8f86-4c23-81f7-b0ea2621bb05', '158e321e-2dd5-4926-82ce-c31822bde965', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -117,8 +117,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('c3969c05-a1ad-4bfb-ad22-a2b74c1cc114', '49f8304b-9d17-4990-82c5-c29a7fa32ac5', '3a2468dd-a31c-456a-88a9-fe7699d2b079', '550e8400-e29b-41d4-a716-446655440701'),
-  ('567cdf08-1e25-475d-8423-e51732df8c56', '49f8304b-9d17-4990-82c5-c29a7fa32ac5', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701')
+  ('37c8a043-3894-4b85-a4ae-cdabec1d85b3', '49f8304b-9d17-4990-82c5-c29a7fa32ac5', '3a2468dd-a31c-456a-88a9-fe7699d2b079', '550e8400-e29b-41d4-a716-446655440701'),
+  ('141a6866-bb6a-4668-82ef-cd061054ea57', '49f8304b-9d17-4990-82c5-c29a7fa32ac5', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -157,7 +157,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('eb50d983-796a-44a6-89f1-363d32b936e3', '4d734c38-ec21-47a9-8b6a-1e8395f2afc1', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
+  ('a212b344-f0c6-4939-9a2e-c9590c131117', '4d734c38-ec21-47a9-8b6a-1e8395f2afc1', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -196,8 +196,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('aba1d241-0aec-4cdb-af8f-07f245ee6ae8', 'a2da5631-8d20-47c6-8c65-e39aa953fd8c', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701'),
-  ('c64f75c0-26f9-4eca-8fae-6b176ee6af48', 'a2da5631-8d20-47c6-8c65-e39aa953fd8c', 'bbef7779-4ba7-4939-891e-6d6f96a34577', '550e8400-e29b-41d4-a716-446655440701')
+  ('bb86d3f9-fe7c-4251-8485-db457dcca298', 'a2da5631-8d20-47c6-8c65-e39aa953fd8c', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701'),
+  ('bf0bc351-84fa-45fd-ad88-01b370cf5b19', 'a2da5631-8d20-47c6-8c65-e39aa953fd8c', 'bbef7779-4ba7-4939-891e-6d6f96a34577', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -236,7 +236,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('ae98b375-0b05-48a3-8aeb-8ac05ec80163', '4d524c17-9d79-4153-8a04-7aeab379e450', '158e321e-2dd5-4926-82ce-c31822bde965', '550e8400-e29b-41d4-a716-446655440701')
+  ('da011c2f-d60d-4338-8a9d-3652ce7d0db4', '4d524c17-9d79-4153-8a04-7aeab379e450', '158e321e-2dd5-4926-82ce-c31822bde965', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -275,8 +275,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('78a8bc0c-4bb1-463f-9397-0b0530c70974', '83d619c8-bca1-42a1-8b4f-096d80083a5c', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701'),
-  ('8bd10920-cf4f-4bb6-b2cb-69f2d6635a79', '83d619c8-bca1-42a1-8b4f-096d80083a5c', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701')
+  ('bc009214-7124-41e8-9220-78461ec3262d', '83d619c8-bca1-42a1-8b4f-096d80083a5c', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701'),
+  ('3ab6508b-f8a7-4a55-bbf0-75ebe9b6edb1', '83d619c8-bca1-42a1-8b4f-096d80083a5c', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -315,8 +315,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('4dca42df-c14a-47bf-a5f7-689646c9d98f', 'fc19745e-b7ac-4b64-8731-a256613e1534', '3a2468dd-a31c-456a-88a9-fe7699d2b079', '550e8400-e29b-41d4-a716-446655440701'),
-  ('5f3508ee-988c-4f3d-92a8-c89a93262ade', 'fc19745e-b7ac-4b64-8731-a256613e1534', 'bbef7779-4ba7-4939-891e-6d6f96a34577', '550e8400-e29b-41d4-a716-446655440701')
+  ('7ea115dd-118b-42eb-80a0-7ad53155a3d5', 'fc19745e-b7ac-4b64-8731-a256613e1534', '3a2468dd-a31c-456a-88a9-fe7699d2b079', '550e8400-e29b-41d4-a716-446655440701'),
+  ('13c310c6-01f0-491e-94f8-e31d16fba9cc', 'fc19745e-b7ac-4b64-8731-a256613e1534', 'bbef7779-4ba7-4939-891e-6d6f96a34577', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -355,8 +355,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('67f585f1-65e2-45c3-be65-5d4caac94a3f', 'eca34b29-7579-4b19-8833-5f5acf847b86', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
-  ('73d779e5-3a9a-4ad1-b022-21532709bb09', 'eca34b29-7579-4b19-8833-5f5acf847b86', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
+  ('994bfed0-041a-48fe-981e-2fc902edbd2d', 'eca34b29-7579-4b19-8833-5f5acf847b86', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
+  ('c88af3a7-0067-45f3-af6d-31b4d03353ca', 'eca34b29-7579-4b19-8833-5f5acf847b86', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -395,8 +395,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('d1a0c9c9-863f-4cf4-b7d4-2d39c2cba671', 'd21597c2-6129-466a-8e93-2ac187d2fd9e', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701'),
-  ('c8860cff-abf1-4455-bb31-b6d466c404c7', 'd21597c2-6129-466a-8e93-2ac187d2fd9e', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
+  ('101793a8-d143-44ca-abba-ea30c0a508fe', 'd21597c2-6129-466a-8e93-2ac187d2fd9e', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701'),
+  ('cb90aa2f-3660-4747-8bf8-d44c801283f5', 'd21597c2-6129-466a-8e93-2ac187d2fd9e', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -435,8 +435,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('7ee67c92-6a5d-48df-9775-ba1873384be2', '3a2d7ecc-fa9b-4169-874b-72b07ddf204f', 'bbef7779-4ba7-4939-891e-6d6f96a34577', '550e8400-e29b-41d4-a716-446655440701'),
-  ('4660fa81-11c0-4108-92b5-9737415ab3ba', '3a2d7ecc-fa9b-4169-874b-72b07ddf204f', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701')
+  ('78157b49-c78e-44e8-8f1b-861267b03515', '3a2d7ecc-fa9b-4169-874b-72b07ddf204f', 'bbef7779-4ba7-4939-891e-6d6f96a34577', '550e8400-e29b-41d4-a716-446655440701'),
+  ('0a49e6c3-14a9-4358-a4fc-bb7acaf99fea', '3a2d7ecc-fa9b-4169-874b-72b07ddf204f', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -475,8 +475,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('9e10d055-5d95-4257-928d-bb3ec0aa6d42', '3ad04f53-81ed-43b8-8b7e-fc544d239d67', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701'),
-  ('2aefd3aa-af1d-49fa-942e-6c82f27c5b31', '3ad04f53-81ed-43b8-8b7e-fc544d239d67', '158e321e-2dd5-4926-82ce-c31822bde965', '550e8400-e29b-41d4-a716-446655440701')
+  ('98a64ace-0b02-4111-9dd3-de3aac2023a2', '3ad04f53-81ed-43b8-8b7e-fc544d239d67', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701'),
+  ('39cac561-201f-47ab-a01c-7db6ecd3c601', '3ad04f53-81ed-43b8-8b7e-fc544d239d67', '158e321e-2dd5-4926-82ce-c31822bde965', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -515,8 +515,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('b3306ee2-0fd5-4631-8ef6-7252469a3d80', 'a652c999-a49e-4a94-8cd9-1d098cf426f9', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
-  ('0d1c0ad6-9c9a-4162-b041-51846aa220df', 'a652c999-a49e-4a94-8cd9-1d098cf426f9', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701')
+  ('f26b98f7-dc66-499f-aa79-5b4c1760e688', 'a652c999-a49e-4a94-8cd9-1d098cf426f9', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
+  ('1a6d3240-0208-4e0d-90bf-a86b26948675', 'a652c999-a49e-4a94-8cd9-1d098cf426f9', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -555,8 +555,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('da56ab90-5d85-4ee9-889b-815b2670695f', '8165bc74-cfe4-495b-86e4-86702b0dbf41', '3a2468dd-a31c-456a-88a9-fe7699d2b079', '550e8400-e29b-41d4-a716-446655440701'),
-  ('7c6b4ef8-6e5a-43b7-9406-854bab051178', '8165bc74-cfe4-495b-86e4-86702b0dbf41', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
+  ('8d675b48-b72d-4cb1-b334-ba2185ac736e', '8165bc74-cfe4-495b-86e4-86702b0dbf41', '3a2468dd-a31c-456a-88a9-fe7699d2b079', '550e8400-e29b-41d4-a716-446655440701'),
+  ('3947dc39-a08c-40bd-bf87-0d14384dcda7', '8165bc74-cfe4-495b-86e4-86702b0dbf41', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -595,8 +595,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('e23e8e6a-4350-458c-8c45-671e8f83158c', '2517d2fd-90c5-471a-84de-4f7d3ec058ec', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701'),
-  ('a1b110fe-0bff-4692-be22-1d2ff9f4e458', '2517d2fd-90c5-471a-84de-4f7d3ec058ec', 'bbef7779-4ba7-4939-891e-6d6f96a34577', '550e8400-e29b-41d4-a716-446655440701')
+  ('8ecb8456-9b70-4289-b690-05e785a4b948', '2517d2fd-90c5-471a-84de-4f7d3ec058ec', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701'),
+  ('fa3d4a29-85cd-4c4f-8f71-2b2b4977d89a', '2517d2fd-90c5-471a-84de-4f7d3ec058ec', 'bbef7779-4ba7-4939-891e-6d6f96a34577', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -635,8 +635,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('822651bf-c6bb-452f-bb53-0373b5b1ecec', '91a9c8b7-406d-41de-8df6-8607f59396cf', '158e321e-2dd5-4926-82ce-c31822bde965', '550e8400-e29b-41d4-a716-446655440701'),
-  ('fd09ae0d-dfe1-448c-8dfd-cc3dabdbb510', '91a9c8b7-406d-41de-8df6-8607f59396cf', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701')
+  ('5dcebe17-1fa6-4254-b881-747f7fd163e7', '91a9c8b7-406d-41de-8df6-8607f59396cf', '158e321e-2dd5-4926-82ce-c31822bde965', '550e8400-e29b-41d4-a716-446655440701'),
+  ('4901e717-0655-4ee9-bdc3-a0890451190e', '91a9c8b7-406d-41de-8df6-8607f59396cf', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -675,7 +675,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('d5d8897c-f755-4d79-88bd-3e1674af1111', '52f4814d-e1a3-468f-89bd-6e02155b6129', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701')
+  ('467707e8-4fa8-4eac-924e-efcbdc4f58a0', '52f4814d-e1a3-468f-89bd-6e02155b6129', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -714,8 +714,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('4ac4333d-5d1c-4048-af42-8c5539788c86', '4705a186-2ec4-4a63-8c68-f2921e2bc16f', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701'),
-  ('d3f05858-811f-4dd3-977f-e8c92d77ee5f', '4705a186-2ec4-4a63-8c68-f2921e2bc16f', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701')
+  ('19549122-ef5c-4786-9cad-fd6ff7d261e1', '4705a186-2ec4-4a63-8c68-f2921e2bc16f', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701'),
+  ('5225c595-03e2-434d-8b06-6843a13512c0', '4705a186-2ec4-4a63-8c68-f2921e2bc16f', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -754,8 +754,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('707e359a-1a2e-49f8-8fab-977fc6aa2947', '55b1a2da-7521-4691-82ae-831d929ec711', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701'),
-  ('e9494faa-1478-4c07-9a1b-363b937f1234', '55b1a2da-7521-4691-82ae-831d929ec711', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701')
+  ('649342f5-8f26-4951-a3a2-44de5ee17e9e', '55b1a2da-7521-4691-82ae-831d929ec711', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701'),
+  ('2ac72b9d-d824-4b8c-a49b-6e6d690403c9', '55b1a2da-7521-4691-82ae-831d929ec711', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -794,7 +794,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('3d85b5ee-6efa-4bef-9515-66528bd4dd8f', '34bb814d-67bc-489f-8c94-2198057fb592', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701')
+  ('128ee27d-8118-4366-abb5-4c4b1d986cc8', '34bb814d-67bc-489f-8c94-2198057fb592', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -833,8 +833,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('038180fb-40e4-4baa-8b4d-4a2cbfcd68c9', '69b364be-8f29-4a83-8fb9-69c70a476f67', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701'),
-  ('cca969e7-69f9-4b2e-8211-655887dd18c3', '69b364be-8f29-4a83-8fb9-69c70a476f67', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701')
+  ('863dcacc-aa85-45de-b257-b80ee918aaf5', '69b364be-8f29-4a83-8fb9-69c70a476f67', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701'),
+  ('0a8a40f2-5b7b-4d02-b2a1-4585e61e395a', '69b364be-8f29-4a83-8fb9-69c70a476f67', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -873,8 +873,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('f9df5d25-b346-4e3b-82fa-d58f9b0e8d59', '09e2955e-5f2f-441b-8fb0-d033f67dc791', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
-  ('06f46b0b-4c4f-4c0f-98f9-bf01b3ab2ced', '09e2955e-5f2f-441b-8fb0-d033f67dc791', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
+  ('0f3f35af-a827-421e-a6d8-3064be7a4200', '09e2955e-5f2f-441b-8fb0-d033f67dc791', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
+  ('7d7f9feb-9462-41b0-8900-a8dd1059a612', '09e2955e-5f2f-441b-8fb0-d033f67dc791', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -913,7 +913,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('f4066128-0d35-4266-b097-640ef72367fd', 'e082a5b2-71e3-474a-8256-16ce76e60795', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701')
+  ('507a46b3-486c-442c-8fa0-f5b4f8761911', 'e082a5b2-71e3-474a-8256-16ce76e60795', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -952,8 +952,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('63f951da-0919-4e4c-9c1a-df457f105ea2', '91ebabec-ce77-47e8-832e-99263cba41e6', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701'),
-  ('ada6c9f8-0376-4fbe-8291-9034c908fc4a', '91ebabec-ce77-47e8-832e-99263cba41e6', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701')
+  ('d53f7c3b-8a39-42fc-83c4-cf2dfba9fbcb', '91ebabec-ce77-47e8-832e-99263cba41e6', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701'),
+  ('2d075e6d-8789-43aa-89e5-f5919439f7a9', '91ebabec-ce77-47e8-832e-99263cba41e6', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -992,8 +992,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('991499a4-9ced-4383-8bdc-2ebc7d94ab23', '65ba7c5f-18c6-4fb1-8eca-963156acf6f3', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701'),
-  ('6ea4ab7f-3d01-416d-8c29-fb05420ed5d1', '65ba7c5f-18c6-4fb1-8eca-963156acf6f3', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
+  ('cbd6a6a4-051e-4c61-8235-4569bc7e9638', '65ba7c5f-18c6-4fb1-8eca-963156acf6f3', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701'),
+  ('4203eee8-b5cc-4348-945c-b5b81c456b4a', '65ba7c5f-18c6-4fb1-8eca-963156acf6f3', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1032,8 +1032,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('424cdba2-18df-4583-914c-2d1bebb1002d', 'abcbff6c-c508-4198-86c6-d093e886f9d7', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701'),
-  ('f66938ad-e09a-4ac2-b521-75328d410f51', 'abcbff6c-c508-4198-86c6-d093e886f9d7', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701')
+  ('a2604afc-2769-4ee5-9cf7-3d1590c69694', 'abcbff6c-c508-4198-86c6-d093e886f9d7', '28134f76-23f8-4e68-80ce-9f9ab2a3942f', '550e8400-e29b-41d4-a716-446655440701'),
+  ('a4ccd11d-9115-4ba6-a325-c552bd7814f2', 'abcbff6c-c508-4198-86c6-d093e886f9d7', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1072,8 +1072,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('a72fcea6-82ca-45b3-9d81-5c04de2a4372', 'afafacd7-d142-4996-881f-cbade4ac2ca9', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701'),
-  ('7bf4d0f3-0387-451b-bed5-9764e52cc3dc', 'afafacd7-d142-4996-881f-cbade4ac2ca9', 'bbef7779-4ba7-4939-891e-6d6f96a34577', '550e8400-e29b-41d4-a716-446655440701')
+  ('016a9562-c4c1-46a0-98cd-c0f40aa7716d', 'afafacd7-d142-4996-881f-cbade4ac2ca9', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701'),
+  ('cdc80934-2936-4613-b17e-cec331f3da0d', 'afafacd7-d142-4996-881f-cbade4ac2ca9', 'bbef7779-4ba7-4939-891e-6d6f96a34577', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1112,8 +1112,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('5a2e3336-0b5f-4f4b-ac45-00c8d16c4fb9', '81da90ed-f792-4c81-8f6b-4e74349bea1d', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701'),
-  ('8db7d573-f0c1-478a-af26-40e17a697e3e', '81da90ed-f792-4c81-8f6b-4e74349bea1d', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701')
+  ('8f865b1e-6298-4ef0-9cfb-c2afd9a65e00', '81da90ed-f792-4c81-8f6b-4e74349bea1d', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701'),
+  ('069b77ae-babd-4961-989d-ba649da8e744', '81da90ed-f792-4c81-8f6b-4e74349bea1d', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1152,8 +1152,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('bd191b2a-ea50-4ba8-b946-93d62ef86f62', '1ef4683f-b4d8-41d6-8c35-21df11a48cff', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
-  ('2acb7330-bbef-4c70-ba6c-dc3a75cf7418', '1ef4683f-b4d8-41d6-8c35-21df11a48cff', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701')
+  ('91961f50-e742-4741-876f-91c34bb57e02', '1ef4683f-b4d8-41d6-8c35-21df11a48cff', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
+  ('e80f490d-0f2a-4728-9135-bf187afb111e', '1ef4683f-b4d8-41d6-8c35-21df11a48cff', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1192,8 +1192,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('f839ca7e-aad5-400f-a969-7a9ed98e6666', '65f7a58b-d5f2-4aff-842b-49089f156b53', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
-  ('63cfd8c6-4b69-43b4-b09e-002636a402a4', '65f7a58b-d5f2-4aff-842b-49089f156b53', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701')
+  ('4d5ccefe-48a2-4b73-812d-9f3adeaf26fb', '65f7a58b-d5f2-4aff-842b-49089f156b53', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
+  ('6bf44b32-45f4-4de6-b1eb-f92d7f1479b4', '65f7a58b-d5f2-4aff-842b-49089f156b53', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1232,7 +1232,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('8e2b4f1c-f3dc-4b1f-9e4c-fab55ffe9bf5', 'd5e6fbec-5173-4a03-83ad-97f5620f579e', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701')
+  ('77cb7f53-3bf2-4de1-9816-6dfe37098072', 'd5e6fbec-5173-4a03-83ad-97f5620f579e', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1271,8 +1271,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('2fadff29-4d93-422c-8f06-d42b6cd79fff', '1a769bff-9ff3-447b-85c7-d57d62d5dcfd', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701'),
-  ('8e6c73e6-ffa2-442f-a4a9-63a5cef6f25f', '1a769bff-9ff3-447b-85c7-d57d62d5dcfd', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701')
+  ('39a29088-fb58-48da-b732-5a0f79ef5c49', '1a769bff-9ff3-447b-85c7-d57d62d5dcfd', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701'),
+  ('087446eb-5f42-4d80-ba88-67764d94312e', '1a769bff-9ff3-447b-85c7-d57d62d5dcfd', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1311,8 +1311,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('b589f662-9014-475b-8942-01f1953bb3b6', '9885c815-fde9-407e-861c-06510f86d8df', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701'),
-  ('72d4541e-7788-4e92-a1ee-5da9c5404522', '9885c815-fde9-407e-861c-06510f86d8df', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701')
+  ('c165692d-2f42-43bc-9ba9-d870b252f701', '9885c815-fde9-407e-861c-06510f86d8df', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701'),
+  ('68d7a570-4db1-4156-9e76-aa7e82e3e195', '9885c815-fde9-407e-861c-06510f86d8df', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1351,8 +1351,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('000baf21-75fb-4b03-be98-e4d8138cf21c', 'ce16612f-bb54-4993-875f-e511bac9c82d', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
-  ('298217e2-fa74-4ed0-b805-145a84cbfa5a', 'ce16612f-bb54-4993-875f-e511bac9c82d', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
+  ('f0783abe-4ad7-4534-8bd1-e01b1934428f', 'ce16612f-bb54-4993-875f-e511bac9c82d', 'aad58707-7310-4751-86c5-e403a28757f4', '550e8400-e29b-41d4-a716-446655440701'),
+  ('5507ed5a-34f9-4649-a4ce-a17ab135571e', 'ce16612f-bb54-4993-875f-e511bac9c82d', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1391,8 +1391,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('fa8ba2c8-1d5f-42f6-bdd5-bb2d6a9592e9', '3ac0f639-cef4-4ab4-8eee-8818085b4cae', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701'),
-  ('06beb434-2544-4a50-87f6-5a6c87747745', '3ac0f639-cef4-4ab4-8eee-8818085b4cae', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701')
+  ('341ff5af-6f93-4785-b86d-5d4cfb0d78f5', '3ac0f639-cef4-4ab4-8eee-8818085b4cae', 'da9e701d-7752-495a-8145-fe967b40c0d3', '550e8400-e29b-41d4-a716-446655440701'),
+  ('aea96883-ced0-4903-9f50-77098cc78db9', '3ac0f639-cef4-4ab4-8eee-8818085b4cae', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1431,8 +1431,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('63bdd11b-f0c5-4612-8a63-15c7b7f18c04', '9577b205-2607-4ba5-80c6-494adbbfeea4', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701'),
-  ('c319089d-2b81-4b7c-aef9-8b9cf85e6fb9', '9577b205-2607-4ba5-80c6-494adbbfeea4', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701')
+  ('b1286c94-915f-4715-bb10-c0d0a91426fb', '9577b205-2607-4ba5-80c6-494adbbfeea4', 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11', '550e8400-e29b-41d4-a716-446655440701'),
+  ('eb3d30bc-5d95-4d19-bef0-cdf02f703bee', '9577b205-2607-4ba5-80c6-494adbbfeea4', '57d88568-993d-4411-8aa3-6244ca7ff704', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1471,8 +1471,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('d2d62996-f4ff-499c-8c67-4350ee73b74c', 'f887a773-2b54-4713-8b04-8ca7a7721cce', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701'),
-  ('1546e7bd-f302-4287-a475-9801e3c8dc5b', 'f887a773-2b54-4713-8b04-8ca7a7721cce', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
+  ('81747b26-d073-404c-afbd-a0d820a15854', 'f887a773-2b54-4713-8b04-8ca7a7721cce', '0033b87c-9650-4c9d-80b3-69ec4751c7cc', '550e8400-e29b-41d4-a716-446655440701'),
+  ('5f31198b-27bc-424f-9a52-e93f30d4ed24', 'f887a773-2b54-4713-8b04-8ca7a7721cce', 'e1fe8b60-1ff9-46ae-8274-feccfd31eb8c', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1511,8 +1511,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('1826bb37-e261-4c58-b3ce-f25fd62a9e4c', '581c00d7-bf32-4533-8032-a953bf35aba8', '895ff6df-959f-4a46-80c9-fbef6eed5b78', '550e8400-e29b-41d4-a716-446655440701'),
-  ('fe760cc0-33ae-4639-a198-86db88a61a9a', '581c00d7-bf32-4533-8032-a953bf35aba8', '16b6860e-6657-4bc8-87a5-9b35d0bcb2a7', '550e8400-e29b-41d4-a716-446655440701')
+  ('1367e744-88d9-417f-9964-ef6e8ba91283', '581c00d7-bf32-4533-8032-a953bf35aba8', '895ff6df-959f-4a46-80c9-fbef6eed5b78', '550e8400-e29b-41d4-a716-446655440701'),
+  ('5bc814f4-752d-462c-be58-49fa4e733249', '581c00d7-bf32-4533-8032-a953bf35aba8', '16b6860e-6657-4bc8-87a5-9b35d0bcb2a7', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1551,8 +1551,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('19cdab14-d611-44df-b143-2e0db359b76f', '97175e59-2b10-47ac-8ef7-d276b0aafb77', '8b6ce6db-f6d5-4e0d-8524-ce184200c6c9', '550e8400-e29b-41d4-a716-446655440701'),
-  ('178558bc-74f3-46ba-a550-7c6f287f6cf4', '97175e59-2b10-47ac-8ef7-d276b0aafb77', '3ded57de-85a3-41e5-8b3e-87ea2a84de13', '550e8400-e29b-41d4-a716-446655440701')
+  ('d0ab8f0c-015c-406b-b298-18f84647eb40', '97175e59-2b10-47ac-8ef7-d276b0aafb77', '8b6ce6db-f6d5-4e0d-8524-ce184200c6c9', '550e8400-e29b-41d4-a716-446655440701'),
+  ('17df61f2-a122-4f08-8ade-31d1a80a343e', '97175e59-2b10-47ac-8ef7-d276b0aafb77', '3ded57de-85a3-41e5-8b3e-87ea2a84de13', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1591,8 +1591,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('fa8bb095-7f36-4c59-ad30-0c5d74e835da', '0aaa8905-7f99-4ea2-8829-c4991fcb539f', '16b6860e-6657-4bc8-87a5-9b35d0bcb2a7', '550e8400-e29b-41d4-a716-446655440701'),
-  ('e113793c-2d25-457d-aa7e-3a0c60245f3b', '0aaa8905-7f99-4ea2-8829-c4991fcb539f', '9795925d-4af7-449a-86fd-e27cdfe9eced', '550e8400-e29b-41d4-a716-446655440701')
+  ('faf2ca14-ffd9-4202-9b2d-144223e57627', '0aaa8905-7f99-4ea2-8829-c4991fcb539f', '16b6860e-6657-4bc8-87a5-9b35d0bcb2a7', '550e8400-e29b-41d4-a716-446655440701'),
+  ('ec195b7b-3cd2-4200-8678-d3016cecca2f', '0aaa8905-7f99-4ea2-8829-c4991fcb539f', '9795925d-4af7-449a-86fd-e27cdfe9eced', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1631,8 +1631,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('5ea4d816-2220-4b9f-8d4a-5d30ad0b9701', 'b44929d2-3a68-4879-8639-6546d1c9f548', '2bf2f14b-8e84-44ec-825c-bc6031d385de', '550e8400-e29b-41d4-a716-446655440701'),
-  ('d190d83a-8ac7-460d-a0b5-e3e6dc8fd078', 'b44929d2-3a68-4879-8639-6546d1c9f548', '895ff6df-959f-4a46-80c9-fbef6eed5b78', '550e8400-e29b-41d4-a716-446655440701')
+  ('687cf2b0-51f2-4128-8cdb-c460319a8411', 'b44929d2-3a68-4879-8639-6546d1c9f548', '2bf2f14b-8e84-44ec-825c-bc6031d385de', '550e8400-e29b-41d4-a716-446655440701'),
+  ('b33ab192-fdbe-4c90-a631-cb9c5287bbbb', 'b44929d2-3a68-4879-8639-6546d1c9f548', '895ff6df-959f-4a46-80c9-fbef6eed5b78', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1671,8 +1671,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('259d7610-dd8b-44f3-a6af-1da17744eae1', 'ce0a90b2-65d2-4ce1-8109-77dfc72d6b7e', '8b6ce6db-f6d5-4e0d-8524-ce184200c6c9', '550e8400-e29b-41d4-a716-446655440701'),
-  ('0eba75e9-72c1-4f0f-a96a-818c60f8aa57', 'ce0a90b2-65d2-4ce1-8109-77dfc72d6b7e', '9795925d-4af7-449a-86fd-e27cdfe9eced', '550e8400-e29b-41d4-a716-446655440701')
+  ('57104e84-c70e-47d3-b351-1a22a2e1c11c', 'ce0a90b2-65d2-4ce1-8109-77dfc72d6b7e', '8b6ce6db-f6d5-4e0d-8524-ce184200c6c9', '550e8400-e29b-41d4-a716-446655440701'),
+  ('ae6754aa-e71f-4091-9016-0f81b03e0395', 'ce0a90b2-65d2-4ce1-8109-77dfc72d6b7e', '9795925d-4af7-449a-86fd-e27cdfe9eced', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1711,8 +1711,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('4429d5c4-0d02-4267-b11c-5d3eb4395bef', '28f04c53-c630-49d1-8af2-f3cde837a516', '3ded57de-85a3-41e5-8b3e-87ea2a84de13', '550e8400-e29b-41d4-a716-446655440701'),
-  ('5399e3d1-6a1b-4f93-88e7-ab464757a250', '28f04c53-c630-49d1-8af2-f3cde837a516', '16b6860e-6657-4bc8-87a5-9b35d0bcb2a7', '550e8400-e29b-41d4-a716-446655440701')
+  ('16697d8f-fde2-4267-bd9c-a96261069664', '28f04c53-c630-49d1-8af2-f3cde837a516', '3ded57de-85a3-41e5-8b3e-87ea2a84de13', '550e8400-e29b-41d4-a716-446655440701'),
+  ('805ee5bc-efb5-42b3-9269-a2f3265282ee', '28f04c53-c630-49d1-8af2-f3cde837a516', '16b6860e-6657-4bc8-87a5-9b35d0bcb2a7', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1751,8 +1751,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('47df054e-c2e6-4d4b-9a65-f1c63efccfdc', '58b9196a-7093-49e8-82f1-6bd71921cc22', '2bf2f14b-8e84-44ec-825c-bc6031d385de', '550e8400-e29b-41d4-a716-446655440701'),
-  ('cff3ed36-ef07-44fd-9cf6-7a4a728e0d7e', '58b9196a-7093-49e8-82f1-6bd71921cc22', '8b6ce6db-f6d5-4e0d-8524-ce184200c6c9', '550e8400-e29b-41d4-a716-446655440701')
+  ('c60c0d8d-0084-46bd-b3f4-efd561f8ef6d', '58b9196a-7093-49e8-82f1-6bd71921cc22', '2bf2f14b-8e84-44ec-825c-bc6031d385de', '550e8400-e29b-41d4-a716-446655440701'),
+  ('cf68d752-37cd-42c5-b46f-692081d71860', '58b9196a-7093-49e8-82f1-6bd71921cc22', '8b6ce6db-f6d5-4e0d-8524-ce184200c6c9', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1791,8 +1791,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('29c6b43c-0f4a-4dbd-a4b5-2de4572f93d6', '6bacf64d-c627-48f1-8956-2f9f5476e047', '9795925d-4af7-449a-86fd-e27cdfe9eced', '550e8400-e29b-41d4-a716-446655440701'),
-  ('0223a8e4-57c0-453f-bb37-0dc205bf6525', '6bacf64d-c627-48f1-8956-2f9f5476e047', '895ff6df-959f-4a46-80c9-fbef6eed5b78', '550e8400-e29b-41d4-a716-446655440701')
+  ('881aca93-a5fa-4d05-ad4b-fc02ffc302f8', '6bacf64d-c627-48f1-8956-2f9f5476e047', '9795925d-4af7-449a-86fd-e27cdfe9eced', '550e8400-e29b-41d4-a716-446655440701'),
+  ('c7db749e-c01c-41e0-b0c3-17274b715b95', '6bacf64d-c627-48f1-8956-2f9f5476e047', '895ff6df-959f-4a46-80c9-fbef6eed5b78', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1831,8 +1831,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('cf2ee344-bf1d-4eb4-9fa4-6a5603d3ad1b', '53389dfc-19cd-4eca-811c-61e5f1dff3d0', '16b6860e-6657-4bc8-87a5-9b35d0bcb2a7', '550e8400-e29b-41d4-a716-446655440701'),
-  ('7bb6c6b7-e399-439c-be87-70aae23e572a', '53389dfc-19cd-4eca-811c-61e5f1dff3d0', '2bf2f14b-8e84-44ec-825c-bc6031d385de', '550e8400-e29b-41d4-a716-446655440701')
+  ('cefbec6f-3f42-42b5-9b1f-db9712d80455', '53389dfc-19cd-4eca-811c-61e5f1dff3d0', '16b6860e-6657-4bc8-87a5-9b35d0bcb2a7', '550e8400-e29b-41d4-a716-446655440701'),
+  ('edd21063-7a23-4970-b4eb-43ab9cf81a26', '53389dfc-19cd-4eca-811c-61e5f1dff3d0', '2bf2f14b-8e84-44ec-825c-bc6031d385de', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1871,8 +1871,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('fe8dd65b-3d0a-4e9b-b5e0-3f51628a2121', 'b9402498-7473-457a-8010-50103bb7dc44', '895ff6df-959f-4a46-80c9-fbef6eed5b78', '550e8400-e29b-41d4-a716-446655440701'),
-  ('2868539c-deb6-49e2-aea4-8d9d1625ca8b', 'b9402498-7473-457a-8010-50103bb7dc44', '8b6ce6db-f6d5-4e0d-8524-ce184200c6c9', '550e8400-e29b-41d4-a716-446655440701')
+  ('c29c4533-30b6-484a-b274-e9d47969a222', 'b9402498-7473-457a-8010-50103bb7dc44', '895ff6df-959f-4a46-80c9-fbef6eed5b78', '550e8400-e29b-41d4-a716-446655440701'),
+  ('84dffe4c-872f-4ebe-90b5-3c79ffa7546e', 'b9402498-7473-457a-8010-50103bb7dc44', '8b6ce6db-f6d5-4e0d-8524-ce184200c6c9', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1911,8 +1911,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('f106b805-c86f-4e3a-8fd5-d95ac984eb20', '7807d12f-bcfc-4391-80b5-8588cee543fb', '3ded57de-85a3-41e5-8b3e-87ea2a84de13', '550e8400-e29b-41d4-a716-446655440701'),
-  ('5156eb52-4b04-412d-901e-aea344567ce8', '7807d12f-bcfc-4391-80b5-8588cee543fb', '9795925d-4af7-449a-86fd-e27cdfe9eced', '550e8400-e29b-41d4-a716-446655440701')
+  ('b67de61b-f16a-4c36-9978-996d8d9513aa', '7807d12f-bcfc-4391-80b5-8588cee543fb', '3ded57de-85a3-41e5-8b3e-87ea2a84de13', '550e8400-e29b-41d4-a716-446655440701'),
+  ('e952abac-db5d-4997-917e-c6272916a95b', '7807d12f-bcfc-4391-80b5-8588cee543fb', '9795925d-4af7-449a-86fd-e27cdfe9eced', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1951,8 +1951,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('cf1d41b5-4fe1-4e59-a9a8-f1d2fe383c47', '345f0215-c3c6-419f-8b1f-5e6d8178af5d', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701'),
-  ('3844fc25-ecab-4e59-b1f8-9e040bbf9da1', '345f0215-c3c6-419f-8b1f-5e6d8178af5d', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701')
+  ('be924a66-653f-4716-9c63-a1e7c2b11b0b', '345f0215-c3c6-419f-8b1f-5e6d8178af5d', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701'),
+  ('865b2fe8-eb34-4906-b0c6-c8be9780f876', '345f0215-c3c6-419f-8b1f-5e6d8178af5d', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -1991,8 +1991,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('3d4e8bb3-9206-421e-8d24-8b04e439d512', '536c950d-5e71-4511-8e29-39f40af7c7cc', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701'),
-  ('cbb0800d-d2d4-407b-9309-17e2a218b62b', '536c950d-5e71-4511-8e29-39f40af7c7cc', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701')
+  ('c005998a-7950-4b61-9a3d-7439c107b538', '536c950d-5e71-4511-8e29-39f40af7c7cc', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701'),
+  ('24175581-481f-47b4-9ea7-e615b90ec716', '536c950d-5e71-4511-8e29-39f40af7c7cc', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2031,8 +2031,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('d1ba9c41-4753-46da-89e3-7db5c3244ed5', '2752740a-b05a-4c4e-8137-1c7d0a03b5ea', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701'),
-  ('f0d5b912-95de-49cb-b561-b47b555cc3f5', '2752740a-b05a-4c4e-8137-1c7d0a03b5ea', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701')
+  ('a572cdda-e94d-4e71-9529-6750401aa5b4', '2752740a-b05a-4c4e-8137-1c7d0a03b5ea', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701'),
+  ('f56d5296-1b8e-42cc-9e04-fec8de707003', '2752740a-b05a-4c4e-8137-1c7d0a03b5ea', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2071,8 +2071,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('77a76db5-dcef-4dff-bd8f-93d7934c66d4', '121331ca-679b-4406-84f7-95ef8f4669d8', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701'),
-  ('f6fb693a-2288-4e2d-b60a-731df4ff9052', '121331ca-679b-4406-84f7-95ef8f4669d8', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701')
+  ('9a3e6d4d-cabe-4444-86eb-a726cb0b1081', '121331ca-679b-4406-84f7-95ef8f4669d8', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701'),
+  ('8666050a-dd38-45a1-b594-2063962aacb1', '121331ca-679b-4406-84f7-95ef8f4669d8', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2111,8 +2111,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('844745c3-9793-490f-8d22-6bab80d44d2c', '04b6bf56-3721-4e88-81e1-1a9889d75a08', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701'),
-  ('b2397c0b-6824-49eb-ba88-ccb58147a286', '04b6bf56-3721-4e88-81e1-1a9889d75a08', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701')
+  ('64d89aeb-af1a-4afa-92c2-06e793b0665e', '04b6bf56-3721-4e88-81e1-1a9889d75a08', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701'),
+  ('0fdae29b-62b5-4be7-87a9-031c6594cea9', '04b6bf56-3721-4e88-81e1-1a9889d75a08', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2151,8 +2151,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('4da40b8a-6a4e-4121-960d-392027ab3985', '6b61f8ad-b3fe-49b8-8fd5-3f87cf720205', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701'),
-  ('f2c27c5b-df8c-4408-9f8b-692d98211b6e', '6b61f8ad-b3fe-49b8-8fd5-3f87cf720205', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701')
+  ('489ab01a-4dd3-48e0-873f-bee75dd73e8d', '6b61f8ad-b3fe-49b8-8fd5-3f87cf720205', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701'),
+  ('d92725b9-3bb1-4187-97cc-3147d7af47dd', '6b61f8ad-b3fe-49b8-8fd5-3f87cf720205', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2191,8 +2191,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('2f5024cc-1ad8-4d26-8656-67cadd9ab77f', 'ccdb6d59-c7bb-436d-801c-346952a049df', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701'),
-  ('baaee87a-dcb1-4c22-8305-7c858ce1c1ec', 'ccdb6d59-c7bb-436d-801c-346952a049df', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701')
+  ('d9c49329-bd98-45da-8785-865cfc11980b', 'ccdb6d59-c7bb-436d-801c-346952a049df', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701'),
+  ('7357760e-9bc8-4378-bd50-ad030bc6a36b', 'ccdb6d59-c7bb-436d-801c-346952a049df', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2231,8 +2231,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('854173cf-2477-4238-968a-83a298ff8fe1', 'd0398281-b2c4-488f-8cf2-9b1a5e52d373', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701'),
-  ('3ef4f165-827b-49da-b76c-aca60183eaee', 'd0398281-b2c4-488f-8cf2-9b1a5e52d373', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701')
+  ('687f4deb-ef48-4925-8cb7-db8c758cb895', 'd0398281-b2c4-488f-8cf2-9b1a5e52d373', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701'),
+  ('e8478533-7e04-4b41-a728-31bf8af09e07', 'd0398281-b2c4-488f-8cf2-9b1a5e52d373', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2271,8 +2271,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('331e2f52-a21c-4d32-8d94-3796f99d5c36', '3166f851-6d5d-4d21-8b24-b4a114a0d7d6', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701'),
-  ('0eb98498-bde2-4470-bfc0-6c9de3aa0cb1', '3166f851-6d5d-4d21-8b24-b4a114a0d7d6', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701')
+  ('71e40a1e-3fb2-4976-8ee9-fa67cea97549', '3166f851-6d5d-4d21-8b24-b4a114a0d7d6', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701'),
+  ('cefb2173-96d3-434b-9f73-d4882384b87e', '3166f851-6d5d-4d21-8b24-b4a114a0d7d6', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2311,8 +2311,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('a87b5f9e-1fc1-4452-ac5a-1206881860a7', '7d035123-7c88-4349-80a5-fdca105d0c22', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701'),
-  ('79bce13b-b430-45df-ac0f-dc8fc7a4ca69', '7d035123-7c88-4349-80a5-fdca105d0c22', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701')
+  ('69e329b4-758c-4343-89ed-80186499a87c', '7d035123-7c88-4349-80a5-fdca105d0c22', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701'),
+  ('6d586219-4a81-4a75-8b92-dd69d225be66', '7d035123-7c88-4349-80a5-fdca105d0c22', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2351,8 +2351,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('cfadaf39-2e65-4973-834c-ebb46e8a20a8', 'ff8f2f8c-4a57-4823-890a-44e19272bac4', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701'),
-  ('3500958b-ea51-478f-9546-4fa0f9d9a961', 'ff8f2f8c-4a57-4823-890a-44e19272bac4', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701')
+  ('b3ba9e37-0c34-4076-82d0-7730f3925618', 'ff8f2f8c-4a57-4823-890a-44e19272bac4', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701'),
+  ('765efe6f-0bfe-4100-89f7-a25dd6850707', 'ff8f2f8c-4a57-4823-890a-44e19272bac4', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2391,8 +2391,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('a995a7ff-acfe-4f55-9f7c-416518f70f7e', '7f3c7055-8217-4efe-8b6f-c426f8e4804c', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701'),
-  ('3b3d3c85-8dda-4143-8e5d-d899e6c68abe', '7f3c7055-8217-4efe-8b6f-c426f8e4804c', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701')
+  ('c290314a-0ad9-48e2-90f6-4602282fed76', '7f3c7055-8217-4efe-8b6f-c426f8e4804c', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701'),
+  ('2740e046-416f-4d19-b0da-8ecc4f72c864', '7f3c7055-8217-4efe-8b6f-c426f8e4804c', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2431,8 +2431,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('7eab034a-9b75-4bdc-8117-a8e1507de78d', '7dbf50e1-dc5f-45a8-895f-962cc2187b96', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701'),
-  ('a166a0ac-847d-491b-a3dc-d55899f71faf', '7dbf50e1-dc5f-45a8-895f-962cc2187b96', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701')
+  ('0195b710-86da-4e49-aba8-577b894daae3', '7dbf50e1-dc5f-45a8-895f-962cc2187b96', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701'),
+  ('5af886e6-ef92-41b1-929f-1d03329051e3', '7dbf50e1-dc5f-45a8-895f-962cc2187b96', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2471,8 +2471,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('a73e4b30-a3d7-4532-95cf-517b5c2c78ea', 'b249c4dc-4ba3-42f5-8281-5819e4dc67a7', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701'),
-  ('534f8230-bd7a-48e3-9ce1-d738070de000', 'b249c4dc-4ba3-42f5-8281-5819e4dc67a7', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701')
+  ('f6f66c4b-ccff-4cc3-927e-40207d21cde8', 'b249c4dc-4ba3-42f5-8281-5819e4dc67a7', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701'),
+  ('e497d161-9d3f-4976-9280-e8e53043c135', 'b249c4dc-4ba3-42f5-8281-5819e4dc67a7', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2511,8 +2511,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('724b6108-a879-40e8-9566-080ce0098ff3', 'e97dd3af-d2fe-4679-810a-2b5758f7b6e2', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701'),
-  ('461b7acd-91c1-4093-9e38-7f2ad9a8a392', 'e97dd3af-d2fe-4679-810a-2b5758f7b6e2', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701')
+  ('a1e23c5e-422a-4ce6-9c75-b82f31c8f398', 'e97dd3af-d2fe-4679-810a-2b5758f7b6e2', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701'),
+  ('865b53d0-f5d0-491e-8f07-a01834c66ed6', 'e97dd3af-d2fe-4679-810a-2b5758f7b6e2', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2551,8 +2551,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('2d91724b-6818-42b4-87b6-83421662a4a2', '41ccaddc-8057-4d9a-8821-ad5657d9b6a9', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701'),
-  ('0459f102-05af-4b89-8d46-36fb843a7b15', '41ccaddc-8057-4d9a-8821-ad5657d9b6a9', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701')
+  ('e21d6a89-a284-4a6c-b9e5-ba8ec3da29cf', '41ccaddc-8057-4d9a-8821-ad5657d9b6a9', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701'),
+  ('048f3e01-2ae5-40cf-a9fb-26a42dac571d', '41ccaddc-8057-4d9a-8821-ad5657d9b6a9', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2591,8 +2591,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('1c1873da-acd9-4d44-93e8-67f85d9fc78a', '29641fce-744f-48b2-8102-d1f234d2dddc', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701'),
-  ('d1c90d7b-fc42-487d-80cf-d7e5ad92210e', '29641fce-744f-48b2-8102-d1f234d2dddc', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701')
+  ('6427afc1-6775-44f8-8dde-5a794f19e1c9', '29641fce-744f-48b2-8102-d1f234d2dddc', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701'),
+  ('b93950fd-39a9-478e-838d-5c5c271c168b', '29641fce-744f-48b2-8102-d1f234d2dddc', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2631,8 +2631,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('e77e512e-95a7-4ee3-8dd4-39723b4fe7b3', '96a1189e-373f-4de5-81f7-3869b7486f77', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701'),
-  ('1149920d-6b84-4b7f-b33c-c000126fbf40', '96a1189e-373f-4de5-81f7-3869b7486f77', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701')
+  ('8b858fa8-a02c-4aee-a21c-035627927d48', '96a1189e-373f-4de5-81f7-3869b7486f77', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701'),
+  ('4486ddcb-cc49-439a-a780-0776e159280e', '96a1189e-373f-4de5-81f7-3869b7486f77', '9dbe9c4a-6108-44fc-898d-33defc0155da', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2671,8 +2671,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('1eb027e1-b92a-45f2-ba8a-3972d6e30df9', '471ee4f9-72a6-4432-8aa5-a3740830921f', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701'),
-  ('6c3474dc-f068-4771-8066-4e36f106be29', '471ee4f9-72a6-4432-8aa5-a3740830921f', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701')
+  ('6178d41c-b453-45ed-a3eb-d7115a504c47', '471ee4f9-72a6-4432-8aa5-a3740830921f', '525d469e-dbdf-475c-8bb3-ecddc849cfe0', '550e8400-e29b-41d4-a716-446655440701'),
+  ('f1d7faa0-6fef-4f60-99d1-d03977ab47e2', '471ee4f9-72a6-4432-8aa5-a3740830921f', '5541a60c-6517-4e66-8c25-a513298fd487', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2711,8 +2711,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('8e91742f-7af5-47c0-a51d-58c200db210e', '6a283f17-da54-4e7b-812c-3299d4d9eeb8', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701'),
-  ('8e2ab85d-a90a-4aac-b42f-9c867d248272', '6a283f17-da54-4e7b-812c-3299d4d9eeb8', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701')
+  ('3fffcedc-98fd-43e8-b0c7-b557192c6332', '6a283f17-da54-4e7b-812c-3299d4d9eeb8', '1b742914-50d5-4105-81b9-f980ec0fb53e', '550e8400-e29b-41d4-a716-446655440701'),
+  ('7642acee-f900-4215-a534-6dd2093b5069', '6a283f17-da54-4e7b-812c-3299d4d9eeb8', 'c3bfdfa9-ce51-4af4-8c64-778323eff661', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2751,8 +2751,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('91a86413-1331-4493-b14a-9495a1ad25e1', 'c6e5a74c-05c9-4ddf-893c-79eeae92b9a3', '2da3f1d4-be7f-4cff-89d8-fea82a640d06', '550e8400-e29b-41d4-a716-446655440701'),
-  ('e4478b43-5e79-4ccd-9d8b-816065a70827', 'c6e5a74c-05c9-4ddf-893c-79eeae92b9a3', 'cc98cc5e-8b54-4c55-8564-a7ebeaccc68b', '550e8400-e29b-41d4-a716-446655440701')
+  ('5efcf94e-012c-4344-a100-5ee139254461', 'c6e5a74c-05c9-4ddf-893c-79eeae92b9a3', '2da3f1d4-be7f-4cff-89d8-fea82a640d06', '550e8400-e29b-41d4-a716-446655440701'),
+  ('5828ab05-73d9-487d-a061-c10dc485eec8', 'c6e5a74c-05c9-4ddf-893c-79eeae92b9a3', 'cc98cc5e-8b54-4c55-8564-a7ebeaccc68b', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2791,8 +2791,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('933a588e-db6c-47fa-8241-c0f4e856fa90', 'fee5ff6c-fa94-46f2-87ed-014d3f9d164b', 'd9b9ff4c-052c-4c9f-8d2d-483f66125de4', '550e8400-e29b-41d4-a716-446655440701'),
-  ('dedc482b-f625-4bc7-98e1-72bde15e6b43', 'fee5ff6c-fa94-46f2-87ed-014d3f9d164b', 'eb1511a3-cc96-4387-80c1-c8e470338ddc', '550e8400-e29b-41d4-a716-446655440701')
+  ('27069bd6-5585-4ce2-acd4-c0b2b7b893be', 'fee5ff6c-fa94-46f2-87ed-014d3f9d164b', 'd9b9ff4c-052c-4c9f-8d2d-483f66125de4', '550e8400-e29b-41d4-a716-446655440701'),
+  ('88a017c6-41c2-4f69-bef5-920557a23b31', 'fee5ff6c-fa94-46f2-87ed-014d3f9d164b', 'eb1511a3-cc96-4387-80c1-c8e470338ddc', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2831,8 +2831,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('0b012f96-4be3-412f-aa24-fd7ec5c5127d', 'a9299cdb-4795-4ae2-8563-c3b062d9aa9b', '5e07fe31-75ac-4d95-8224-c762b2411566', '550e8400-e29b-41d4-a716-446655440701'),
-  ('8b85a474-2624-46ce-84d4-525f930b8a32', 'a9299cdb-4795-4ae2-8563-c3b062d9aa9b', 'dda012cd-f081-48df-8903-d997d9fa6f96', '550e8400-e29b-41d4-a716-446655440701')
+  ('59c41a19-e163-48dc-bc7d-fab72ddd4615', 'a9299cdb-4795-4ae2-8563-c3b062d9aa9b', '5e07fe31-75ac-4d95-8224-c762b2411566', '550e8400-e29b-41d4-a716-446655440701'),
+  ('2a8427f3-98e4-4446-88bc-5cbd0dbbb3aa', 'a9299cdb-4795-4ae2-8563-c3b062d9aa9b', 'dda012cd-f081-48df-8903-d997d9fa6f96', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2871,8 +2871,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('6703fd09-07e4-488f-82cb-b6b9ffdc76f4', 'c888f4f9-395d-4d8f-8ee4-39e99c27ae7b', 'a3120f9e-c8ef-4cd8-8014-92f5e67fbfbc', '550e8400-e29b-41d4-a716-446655440701'),
-  ('3c7ca470-4e43-4d5f-8de7-1e1c5e033efa', 'c888f4f9-395d-4d8f-8ee4-39e99c27ae7b', 'cc98cc5e-8b54-4c55-8564-a7ebeaccc68b', '550e8400-e29b-41d4-a716-446655440701')
+  ('26122e5c-a5b0-45a4-a286-138dcbd9f1a0', 'c888f4f9-395d-4d8f-8ee4-39e99c27ae7b', 'a3120f9e-c8ef-4cd8-8014-92f5e67fbfbc', '550e8400-e29b-41d4-a716-446655440701'),
+  ('76464618-ebb0-45e1-96f8-2a3e4989f239', 'c888f4f9-395d-4d8f-8ee4-39e99c27ae7b', 'cc98cc5e-8b54-4c55-8564-a7ebeaccc68b', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2911,8 +2911,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('3e5e0013-f775-401d-bb2c-bba59064ac3f', 'd3d06a09-4ace-4176-8e9c-8a2aedad2ce0', '7708a49e-8512-43b2-8b85-13e98a4af318', '550e8400-e29b-41d4-a716-446655440701'),
-  ('dcdc59bd-820c-4f1a-98f1-d1dea885513a', 'd3d06a09-4ace-4176-8e9c-8a2aedad2ce0', '2da3f1d4-be7f-4cff-89d8-fea82a640d06', '550e8400-e29b-41d4-a716-446655440701')
+  ('e6454909-3186-4d5a-91bf-0ce6d40b661b', 'd3d06a09-4ace-4176-8e9c-8a2aedad2ce0', '7708a49e-8512-43b2-8b85-13e98a4af318', '550e8400-e29b-41d4-a716-446655440701'),
+  ('a1694051-c5ac-40e7-8107-dd6ed55c6b23', 'd3d06a09-4ace-4176-8e9c-8a2aedad2ce0', '2da3f1d4-be7f-4cff-89d8-fea82a640d06', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2951,8 +2951,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('298096e0-345b-480d-abc4-bd6f66426a5c', '13ae55a8-01d6-4849-8327-bcbea6d52cfb', 'dda012cd-f081-48df-8903-d997d9fa6f96', '550e8400-e29b-41d4-a716-446655440701'),
-  ('e086b811-5e7d-4172-86f6-b9542139dceb', '13ae55a8-01d6-4849-8327-bcbea6d52cfb', 'bb5768e2-fac3-42e0-8d07-f18a63fb2278', '550e8400-e29b-41d4-a716-446655440701')
+  ('c8bde6c3-da4c-460b-9b58-fe1aae7295db', '13ae55a8-01d6-4849-8327-bcbea6d52cfb', 'dda012cd-f081-48df-8903-d997d9fa6f96', '550e8400-e29b-41d4-a716-446655440701'),
+  ('c30b5cea-4845-4667-9d97-15fdfe301f91', '13ae55a8-01d6-4849-8327-bcbea6d52cfb', 'bb5768e2-fac3-42e0-8d07-f18a63fb2278', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -2991,8 +2991,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('cfc73521-ef73-4cdb-9978-66534b48ba7f', '0cf035b4-2b92-4468-8cd4-cb30251db88d', '5e07fe31-75ac-4d95-8224-c762b2411566', '550e8400-e29b-41d4-a716-446655440701'),
-  ('c250121b-fdf6-4cd1-816e-1994b643fdd2', '0cf035b4-2b92-4468-8cd4-cb30251db88d', '3e87d61d-3093-41a0-888a-83f66923a34b', '550e8400-e29b-41d4-a716-446655440701')
+  ('5e6684bb-ca98-487a-8bc8-70552aab657b', '0cf035b4-2b92-4468-8cd4-cb30251db88d', '5e07fe31-75ac-4d95-8224-c762b2411566', '550e8400-e29b-41d4-a716-446655440701'),
+  ('1495a5e1-7ea3-4581-be91-4e2a4b66ff04', '0cf035b4-2b92-4468-8cd4-cb30251db88d', '3e87d61d-3093-41a0-888a-83f66923a34b', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -3031,8 +3031,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('d675e0d6-0327-46ac-9709-c84a95343569', '8a557316-f880-44f0-8028-97b52d290cae', 'eb1511a3-cc96-4387-80c1-c8e470338ddc', '550e8400-e29b-41d4-a716-446655440701'),
-  ('699e46eb-0a21-4c14-973e-35eae8453ef4', '8a557316-f880-44f0-8028-97b52d290cae', 'bb5768e2-fac3-42e0-8d07-f18a63fb2278', '550e8400-e29b-41d4-a716-446655440701')
+  ('3356bb8f-5cd3-46c9-97b5-e2f6702e4c71', '8a557316-f880-44f0-8028-97b52d290cae', 'eb1511a3-cc96-4387-80c1-c8e470338ddc', '550e8400-e29b-41d4-a716-446655440701'),
+  ('dd8c4fa7-18b8-4c1f-80b7-c9da0f1f940c', '8a557316-f880-44f0-8028-97b52d290cae', 'bb5768e2-fac3-42e0-8d07-f18a63fb2278', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -3071,8 +3071,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('da2e3d18-ac17-434e-a222-01c2943922ab', '9cc8bfe7-2df1-434e-8313-3e592dfc9d53', 'cc98cc5e-8b54-4c55-8564-a7ebeaccc68b', '550e8400-e29b-41d4-a716-446655440701'),
-  ('32a0ad70-6a78-45cf-b630-025ac6cf095b', '9cc8bfe7-2df1-434e-8313-3e592dfc9d53', '5e07fe31-75ac-4d95-8224-c762b2411566', '550e8400-e29b-41d4-a716-446655440701')
+  ('fef33006-f558-4812-8ff4-e335e4f98a1f', '9cc8bfe7-2df1-434e-8313-3e592dfc9d53', 'cc98cc5e-8b54-4c55-8564-a7ebeaccc68b', '550e8400-e29b-41d4-a716-446655440701'),
+  ('1d32ed8f-a03e-4452-9b5c-767d8d19203d', '9cc8bfe7-2df1-434e-8313-3e592dfc9d53', '5e07fe31-75ac-4d95-8224-c762b2411566', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -3111,8 +3111,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('3d50dc3b-9f72-4656-8ca8-6c37a423f309', '44687709-00cd-4828-8492-eb117a75be45', '7708a49e-8512-43b2-8b85-13e98a4af318', '550e8400-e29b-41d4-a716-446655440701'),
-  ('fac2fd4a-86b9-4336-a146-501bd605d0db', '44687709-00cd-4828-8492-eb117a75be45', 'a3120f9e-c8ef-4cd8-8014-92f5e67fbfbc', '550e8400-e29b-41d4-a716-446655440701')
+  ('a86de661-c4f1-4067-a078-7f84223d27aa', '44687709-00cd-4828-8492-eb117a75be45', '7708a49e-8512-43b2-8b85-13e98a4af318', '550e8400-e29b-41d4-a716-446655440701'),
+  ('30265003-99ac-469e-a1e4-cce929a5ceaa', '44687709-00cd-4828-8492-eb117a75be45', 'a3120f9e-c8ef-4cd8-8014-92f5e67fbfbc', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -3151,8 +3151,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('d816e749-c888-46ba-9165-0c6d117418ad', 'da8d12b0-afd7-4b1f-8f5b-63620db06ff2', '2da3f1d4-be7f-4cff-89d8-fea82a640d06', '550e8400-e29b-41d4-a716-446655440701'),
-  ('59b711ff-5e75-4aa3-8eb9-8783d41fa640', 'da8d12b0-afd7-4b1f-8f5b-63620db06ff2', 'd9b9ff4c-052c-4c9f-8d2d-483f66125de4', '550e8400-e29b-41d4-a716-446655440701')
+  ('5e2861d7-46a3-4032-9d39-7b504b1b47e5', 'da8d12b0-afd7-4b1f-8f5b-63620db06ff2', '2da3f1d4-be7f-4cff-89d8-fea82a640d06', '550e8400-e29b-41d4-a716-446655440701'),
+  ('9b41c41e-14f0-4582-961c-3f855fb0ddd7', 'da8d12b0-afd7-4b1f-8f5b-63620db06ff2', 'd9b9ff4c-052c-4c9f-8d2d-483f66125de4', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -3191,8 +3191,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('a47fe6a7-8dbf-45e6-b15e-7d88781e9c8f', '8e018dcd-a2a5-4f4d-8cad-9406b56458b6', 'dda012cd-f081-48df-8903-d997d9fa6f96', '550e8400-e29b-41d4-a716-446655440701'),
-  ('41106bd4-ba5c-43ad-a106-ba2f0ffeef12', '8e018dcd-a2a5-4f4d-8cad-9406b56458b6', '3e87d61d-3093-41a0-888a-83f66923a34b', '550e8400-e29b-41d4-a716-446655440701')
+  ('4a1e357c-50f2-4b86-a41c-803bc00a3180', '8e018dcd-a2a5-4f4d-8cad-9406b56458b6', 'dda012cd-f081-48df-8903-d997d9fa6f96', '550e8400-e29b-41d4-a716-446655440701'),
+  ('343fa94e-3c3b-4d8e-a94a-a24b84c53c7d', '8e018dcd-a2a5-4f4d-8cad-9406b56458b6', '3e87d61d-3093-41a0-888a-83f66923a34b', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -3231,8 +3231,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('0e1c6aa8-197f-48bb-9771-4d31326ab6f1', 'bbb552d5-3241-4dca-8824-69be1f232855', '5e07fe31-75ac-4d95-8224-c762b2411566', '550e8400-e29b-41d4-a716-446655440701'),
-  ('57dc185f-68a4-4c04-83e4-26bd5f2bcfe5', 'bbb552d5-3241-4dca-8824-69be1f232855', 'd9b9ff4c-052c-4c9f-8d2d-483f66125de4', '550e8400-e29b-41d4-a716-446655440701')
+  ('0204e255-d671-4678-b46b-ffa58ec0a856', 'bbb552d5-3241-4dca-8824-69be1f232855', '5e07fe31-75ac-4d95-8224-c762b2411566', '550e8400-e29b-41d4-a716-446655440701'),
+  ('08d4f5be-6356-4b41-a4da-81e2b1a77b4e', 'bbb552d5-3241-4dca-8824-69be1f232855', 'd9b9ff4c-052c-4c9f-8d2d-483f66125de4', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -3271,8 +3271,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('7e5cd6e4-0101-40e4-a61f-b2feda9ffb4d', '54e7ac62-60c6-4da1-8ca0-48e735edd4d6', 'eb1511a3-cc96-4387-80c1-c8e470338ddc', '550e8400-e29b-41d4-a716-446655440701'),
-  ('67ee7e92-f198-42e5-831c-5ee589c28625', '54e7ac62-60c6-4da1-8ca0-48e735edd4d6', '2da3f1d4-be7f-4cff-89d8-fea82a640d06', '550e8400-e29b-41d4-a716-446655440701')
+  ('f7ded879-d834-48a2-b561-081881935374', '54e7ac62-60c6-4da1-8ca0-48e735edd4d6', 'eb1511a3-cc96-4387-80c1-c8e470338ddc', '550e8400-e29b-41d4-a716-446655440701'),
+  ('f0789fed-8c34-4d52-b8bb-41ea998c6eb2', '54e7ac62-60c6-4da1-8ca0-48e735edd4d6', '2da3f1d4-be7f-4cff-89d8-fea82a640d06', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -3311,8 +3311,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('62563d9f-2f53-45b0-b99c-68c79674d19e', '628a1237-b966-42f2-8927-678809d67be4', 'cc98cc5e-8b54-4c55-8564-a7ebeaccc68b', '550e8400-e29b-41d4-a716-446655440701'),
-  ('387d8b18-5f74-4f7f-9c91-bba9cd2dd066', '628a1237-b966-42f2-8927-678809d67be4', 'bb5768e2-fac3-42e0-8d07-f18a63fb2278', '550e8400-e29b-41d4-a716-446655440701')
+  ('5025aa16-5e91-4658-aab0-2158e4d6070c', '628a1237-b966-42f2-8927-678809d67be4', 'cc98cc5e-8b54-4c55-8564-a7ebeaccc68b', '550e8400-e29b-41d4-a716-446655440701'),
+  ('35a2430d-3ae9-4d4b-b788-8ac1776d77d0', '628a1237-b966-42f2-8927-678809d67be4', 'bb5768e2-fac3-42e0-8d07-f18a63fb2278', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -3351,8 +3351,8 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('d4a1b342-7ff3-4208-81e0-ce8a826e3773', 'cfe2ecfa-b9b4-4f2c-8baf-25cd902551e9', '3e87d61d-3093-41a0-888a-83f66923a34b', '550e8400-e29b-41d4-a716-446655440701'),
-  ('810db9e7-7aa1-4bbc-8453-c332f23c8db9', 'cfe2ecfa-b9b4-4f2c-8baf-25cd902551e9', '7708a49e-8512-43b2-8b85-13e98a4af318', '550e8400-e29b-41d4-a716-446655440701')
+  ('f15be561-912b-4ae1-a4f4-c8490c555b93', 'cfe2ecfa-b9b4-4f2c-8baf-25cd902551e9', '3e87d61d-3093-41a0-888a-83f66923a34b', '550e8400-e29b-41d4-a716-446655440701'),
+  ('3f14e4fa-b162-4fd1-9dff-0e870057e35a', 'cfe2ecfa-b9b4-4f2c-8baf-25cd902551e9', '7708a49e-8512-43b2-8b85-13e98a4af318', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO events (id, created_by, event_type_id, title, description, event_date, venue_id, duration_minutes, cancelled, cancellation_reason, external_event_id)
 VALUES (
@@ -3391,6 +3391,6 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
 VALUES 
-  ('fd91178e-b036-4df6-aeff-021c74e3ddc1', 'b0dfa54d-7374-4e08-8840-cafe6aa4b951', '7708a49e-8512-43b2-8b85-13e98a4af318', '550e8400-e29b-41d4-a716-446655440701'),
-  ('ba55362c-73af-479f-a8b7-c7824b5e2d9d', 'b0dfa54d-7374-4e08-8840-cafe6aa4b951', 'd9b9ff4c-052c-4c9f-8d2d-483f66125de4', '550e8400-e29b-41d4-a716-446655440701')
+  ('b11e3c94-cbec-45fe-b329-2c9a24f28e69', 'b0dfa54d-7374-4e08-8840-cafe6aa4b951', '7708a49e-8512-43b2-8b85-13e98a4af318', '550e8400-e29b-41d4-a716-446655440701'),
+  ('7ca999f0-048e-4852-a485-6c9cbd1a0559', 'b0dfa54d-7374-4e08-8840-cafe6aa4b951', 'd9b9ff4c-052c-4c9f-8d2d-483f66125de4', '550e8400-e29b-41d4-a716-446655440701')
 ON CONFLICT (id) DO NOTHING;

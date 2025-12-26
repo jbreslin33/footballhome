@@ -466,28 +466,40 @@ class AdminSystemScreen extends Screen {
     container.innerHTML = '<div class="loading-indicator">Loading live GroupMe data...</div>';
     
     try {
-      const res = await fetch('/api/system-admin/groupme/live/groups');
-      if (!res.ok) {
-        throw new Error('Failed to fetch live GroupMe data');
+      // First, fetch configured groups from the database so we always display all configured groups
+      const dbRes = await fetch('/api/system-admin/groupme/groups');
+      const dbGroups = dbRes.ok ? await dbRes.json() : [];
+
+      // Try to get live data from GroupMe API and map by group id
+      let liveMap = {};
+      try {
+        const liveRes = await fetch('/api/system-admin/groupme/live/groups');
+        if (liveRes.ok) {
+          const liveArr = await liveRes.json();
+          if (Array.isArray(liveArr)) {
+            for (const item of liveArr) {
+              const g = item.response || item;
+              const gid = g.id || g.groupme_id || g.groupme_group_id || '';
+              if (gid) liveMap[gid] = g;
+            }
+          }
+        }
+      } catch (e) {
+        // Ignore live errors; we'll fall back to DB-only view
+        console.warn('Live GroupMe fetch failed, falling back to DB groups:', e);
       }
-      
-      const groups = await res.json();
-      
-      if (!Array.isArray(groups)) {
-        throw new Error('Invalid response format');
-      }
-      
+
       let html = '<div class="groupme-groups">';
-      
-      for (const groupData of groups) {
-        // GroupMe API returns: {"response": {"id": "...", "name": "...", "members": [...], "messages": {...}}}
-        const group = groupData.response || groupData;
-        const memberCount = group.members ? group.members.length : 0;
-        const messageCount = group.messages ? group.messages.count : 0;
-        
+
+      for (const dbGroup of dbGroups) {
+        const gid = dbGroup.groupme_id || dbGroup.groupme_group_id || '';
+        const live = gid ? liveMap[gid] : null;
+        const memberCount = live?.members ? live.members.length : (live?.member_count || 0);
+        const messageCount = live?.messages ? (live.messages.count || 0) : 0;
+
         html += `
           <div class="groupme-group-card" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px;">
-            <h3 style="margin: 0 0 10px 0;">📱 ${this.escapeHtml(group.name || 'Unknown Group')}</h3>
+            <h3 style="margin: 0 0 10px 0;">📱 ${this.escapeHtml(dbGroup.name || live?.name || 'Unknown Group')}</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">
               <div class="stat-mini">
                 <div style="font-size: 24px; font-weight: bold;">${memberCount}</div>
@@ -498,16 +510,16 @@ class AdminSystemScreen extends Screen {
                 <div style="color: #666; font-size: 12px;">Total Messages</div>
               </div>
             </div>
-            <button class="btn btn-primary" onclick="adminSystemScreen.loadGroupMeMessages('${group.id || group.groupme_id}', '${this.escapeHtml(group.name)}')">
+            <button class="btn btn-primary" onclick="adminSystemScreen.loadGroupMeMessages('${gid}', '${this.escapeHtml(dbGroup.name || live?.name || '')}')">
               💬 View Recent Messages
             </button>
-            <button class="btn btn-secondary" onclick="adminSystemScreen.loadGroupMeMembers('${group.id || group.groupme_id}', '${this.escapeHtml(group.name)}')">
+            <button class="btn btn-secondary" onclick="adminSystemScreen.loadGroupMeMembers('${gid}', '${this.escapeHtml(dbGroup.name || live?.name || '')}')">
               👥 View Members
             </button>
           </div>
         `;
       }
-      
+
       html += '</div>';
       container.innerHTML = html;
       

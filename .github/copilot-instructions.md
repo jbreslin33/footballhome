@@ -15,7 +15,11 @@
   - **Full Rebuild**: `./dev.sh` (destroys containers/volumes, cleans caches, rebuilds from scratch).
   - **Refresh Data**: `./dev.sh --refresh` (re-scrapes all data: APSL + CASA + GroupMe, updates SQL files, then rebuilds).
   - **NOTE**: No quick restart option exists. All rebuilds are full rebuilds.
-  - **Terminal Commands**: NEVER use `tail`, `head`, `sleep`, or `wait` commands when checking logs or output. Use direct commands like `docker-compose logs backend` or `grep` patterns without delays.
+- **Terminal Commands - CRITICAL RULES**:
+  - **NEVER filter command output** with `grep`, `head`, `tail`, or pipe to files when running build/rebuild commands
+  - **NEVER use `tail -f`** or any hanging/blocking commands - they will be cancelled by the user
+  - **User wants to see FULL output** from `./dev.sh`, scrapers, and Docker commands
+  - For log inspection AFTER completion, use `docker-compose logs` or `podman logs` directly
 - **Database Changes**: 
   - **Manual Static Data**: Add a new numbered SQL file in `database/data/` (e.g., `75-club-admins.sql`). Data inserted here persists across full rebuilds.
   - **App-Generated Data**: Backend must append to `-u` (dev) or `-p` (prod) files after any INSERT/UPDATE operations

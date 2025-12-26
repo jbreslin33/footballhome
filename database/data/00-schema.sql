@@ -347,15 +347,35 @@ CREATE TABLE IF NOT EXISTS groupme_groups (
     description TEXT,
     image_url VARCHAR(500),
     
-    -- Link to internal FootballHome Team (or Division)
-    team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
-    sport_division_id UUID REFERENCES sport_divisions(id) ON DELETE SET NULL,
-    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT team_or_division_groupme CHECK ((team_id IS NOT NULL AND sport_division_id IS NULL) OR (team_id IS NULL AND sport_division_id IS NOT NULL) OR (team_id IS NULL AND sport_division_id IS NULL))
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Junction: Teams to GroupMe Groups (many-to-many)
+CREATE TABLE IF NOT EXISTS team_groupme_groups (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    groupme_group_id UUID NOT NULL REFERENCES groupme_groups(id) ON DELETE CASCADE,
+    is_primary BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(team_id, groupme_group_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_team_groupme_groups_team ON team_groupme_groups(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_groupme_groups_group ON team_groupme_groups(groupme_group_id);
+
+-- Junction: Sport Divisions to GroupMe Groups (many-to-many)
+CREATE TABLE IF NOT EXISTS sport_division_groupme_groups (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sport_division_id UUID NOT NULL REFERENCES sport_divisions(id) ON DELETE CASCADE,
+    groupme_group_id UUID NOT NULL REFERENCES groupme_groups(id) ON DELETE CASCADE,
+    is_primary BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(sport_division_id, groupme_group_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sport_division_groupme_groups_division ON sport_division_groupme_groups(sport_division_id);
+CREATE INDEX IF NOT EXISTS idx_sport_division_groupme_groups_group ON sport_division_groupme_groups(groupme_group_id);
 
 CREATE TABLE IF NOT EXISTS groupme_memberships (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -380,6 +400,7 @@ CREATE TABLE IF NOT EXISTS groupme_messages (
     text TEXT,
     attachments JSONB, -- Images, mentions, etc.
     favorited_by JSONB, -- List of user IDs who liked it
+    is_system BOOLEAN DEFAULT false,
     
     created_at TIMESTAMP NOT NULL, -- Message timestamp from GroupMe
     synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -387,6 +408,54 @@ CREATE TABLE IF NOT EXISTS groupme_messages (
 
 CREATE INDEX IF NOT EXISTS idx_groupme_messages_group ON groupme_messages(groupme_group_id);
 CREATE INDEX IF NOT EXISTS idx_groupme_messages_created ON groupme_messages(created_at);
+
+-- GroupMe Calendar Events (separate from main events table)
+CREATE TABLE IF NOT EXISTS groupme_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    groupme_event_id VARCHAR(255) UNIQUE NOT NULL,
+    groupme_group_id UUID NOT NULL REFERENCES groupme_groups(id) ON DELETE CASCADE,
+    
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    start_at TIMESTAMP NOT NULL,
+    end_at TIMESTAMP,
+    location VARCHAR(500),
+    
+    -- Sync status
+    synced_to_event_id UUID REFERENCES events(id) ON DELETE SET NULL,
+    sync_status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'synced', 'ignored', 'conflict'
+    last_synced_at TIMESTAMP,
+    
+    -- Track changes
+    is_cancelled BOOLEAN DEFAULT false,
+    cancelled_at TIMESTAMP,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_checked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_groupme_events_group ON groupme_events(groupme_group_id);
+CREATE INDEX IF NOT EXISTS idx_groupme_events_start ON groupme_events(start_at);
+CREATE INDEX IF NOT EXISTS idx_groupme_events_sync_status ON groupme_events(sync_status);
+
+-- GroupMe Event RSVPs (separate from main event_rsvps)
+CREATE TABLE IF NOT EXISTS groupme_event_rsvps (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    groupme_event_id UUID NOT NULL REFERENCES groupme_events(id) ON DELETE CASCADE,
+    groupme_user_id UUID NOT NULL REFERENCES groupme_users(id) ON DELETE CASCADE,
+    
+    status VARCHAR(50) NOT NULL, -- 'going', 'not_going', 'maybe'
+    responded_at TIMESTAMP,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    UNIQUE(groupme_event_id, groupme_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_groupme_event_rsvps_event ON groupme_event_rsvps(groupme_event_id);
+CREATE INDEX IF NOT EXISTS idx_groupme_event_rsvps_user ON groupme_event_rsvps(groupme_user_id);
 
 -- ==========================================
 -- APSL INTEGRATION (Specific Tables)
@@ -1220,6 +1289,19 @@ CREATE TABLE IF NOT EXISTS magic_tokens (
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_events_date ON events(event_date);
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type_id);
+
+-- Junction: Events to Teams (many-to-many - one event can serve multiple teams)
+CREATE TABLE IF NOT EXISTS event_teams (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(event_id, team_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_event_teams_event ON event_teams(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_teams_team ON event_teams(team_id);
+
 CREATE INDEX IF NOT EXISTS idx_practices_team ON practices(team_id);
 CREATE INDEX IF NOT EXISTS idx_practices_focus ON practices(focus_areas);
 CREATE INDEX IF NOT EXISTS idx_matches_home_team ON matches(home_team_id);

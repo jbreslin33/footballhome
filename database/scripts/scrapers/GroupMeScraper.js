@@ -58,21 +58,42 @@ class GroupMeScraper extends Scraper {
     this.data.groupmeGroups = new Map();
     this.data.groupmeMemberships = new Map();
     this.data.groupmeMessages = new Map();
+    this.data.teamGroupmeGroups = new Map(); // Junction table
+    this.data.sportDivisionGroupmeGroups = new Map(); // Junction table
   }
 
   async initialize() {
     this.log(`Initializing ${this.chatName} scraper...`);
     this.log(`Group ID: ${this.groupId}`);
     
-    // Create the group record immediately
+    // Create the group record immediately (without team_id/sport_division_id)
     const internalGroupId = IdGenerator.fromComponents('groupme', 'group', this.groupId);
     this.data.groupmeGroups.set(internalGroupId, {
       id: internalGroupId,
       groupme_group_id: this.groupId,
-      name: this.chatName,
-      team_id: this.teamId || null,
-      sport_division_id: this.sportDivisionId || null
+      name: this.chatName
     });
+    
+    // Create junction table records
+    if (this.teamId) {
+      const junctionId = IdGenerator.fromComponents('team_groupme', this.teamId, this.groupId);
+      this.data.teamGroupmeGroups.set(junctionId, {
+        id: junctionId,
+        team_id: this.teamId,
+        groupme_group_id: internalGroupId,
+        is_primary: true
+      });
+    }
+    
+    if (this.sportDivisionId) {
+      const junctionId = IdGenerator.fromComponents('division_groupme', this.sportDivisionId, this.groupId);
+      this.data.sportDivisionGroupmeGroups.set(junctionId, {
+        id: junctionId,
+        sport_division_id: this.sportDivisionId,
+        groupme_group_id: internalGroupId,
+        is_primary: true
+      });
+    }
   }
 
   async fetchData() {
@@ -148,9 +169,65 @@ class GroupMeScraper extends Scraper {
 
   async fetchMessages() {
     this.log('\n💬 Fetching chat messages...');
-    // TODO: Implement message fetching with pagination
-    // For now, we'll skip deep history to save time/quota, but the structure is ready
-    this.log('   (Skipping message history for this run)');
+    
+    try {
+      const internalGroupId = IdGenerator.fromComponents('groupme', 'group', this.groupId);
+      let messageCount = 0;
+      let beforeId = null;
+      const limit = 100; // GroupMe max per page
+      const maxMessages = 1000; // Limit total messages to avoid long scrapes
+      
+      while (messageCount < maxMessages) {
+        let endpoint = `/groups/${this.groupId}/messages?limit=${limit}`;
+        if (beforeId) {
+          endpoint += `&before_id=${beforeId}`;
+        }
+        
+        const apiResponse = await this.apiClient.fetch(endpoint);
+        const response = apiResponse.response || apiResponse;
+        const messages = response.messages || [];
+        
+        if (messages.length === 0) {
+          break; // No more messages
+        }
+        
+        for (const msg of messages) {
+          const groupmeMessageId = msg.id;
+          const groupmeUserId = msg.sender_id !== 'system' 
+            ? IdGenerator.fromComponents('groupme', 'user', msg.user_id)
+            : null;
+          
+          const messageId = IdGenerator.fromComponents('groupme', 'message', groupmeMessageId);
+          
+          this.data.groupmeMessages.set(messageId, {
+            id: messageId,
+            groupme_message_id: groupmeMessageId,
+            groupme_group_id: internalGroupId,
+            groupme_user_id: groupmeUserId,
+            text: msg.text || null,
+            attachments: msg.attachments ? JSON.stringify(msg.attachments) : null,
+            favorited_by: msg.favorited_by ? JSON.stringify(msg.favorited_by) : null,
+            is_system: msg.system || false,
+            created_at: new Date(msg.created_at * 1000).toISOString()
+          });
+          
+          messageCount++;
+        }
+        
+        // Set beforeId to the last message ID for pagination
+        beforeId = messages[messages.length - 1].id;
+        
+        this.log(`   Fetched ${messageCount} messages...`);
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      this.log(`   Total: ${messageCount} messages`);
+      
+    } catch (error) {
+      this.logError('Failed to fetch chat messages', error);
+    }
   }
 
   async fetchSchedule() {
@@ -167,6 +244,11 @@ class GroupMeScraper extends Scraper {
       }
       
       this.log(`   Found ${events.length} events`);
+      
+      // Initialize groupmeEvents storage if needed
+      if (!this.data.groupmeEvents) this.data.groupmeEvents = new Map();
+      
+      const internalGroupId = IdGenerator.fromComponents('groupme', 'group', this.groupId);
       
       for (const evt of events) {
         const groupmeEventId = evt.id || evt.event_id;
@@ -191,44 +273,37 @@ class GroupMeScraper extends Scraper {
         }
         
         const eventId = IdGenerator.fromComponents('groupme', 'event', groupmeEventId);
-        const eventTypeId = this.getEventTypeId();
-        const durationMinutes = Math.round((endTime - startTime) / 60000);
         
-        let eventObj;
-        
-        if (eventTypeId === this.eventTypes.training) {
-          eventObj = new Practice({
-            event_id: eventId,
-            title: name,
-            event_type_id: eventTypeId,
-            event_date: startTime.toISOString(),
-            duration_minutes: durationMinutes,
-            team_id: this.teamId || null,
-            created_by: '77d77471-1250-47e0-81ab-d4626595d63c', // SYSTEM_USER_ID
-            external_event_id: groupmeEventId
-          });
-        } else {
-          eventObj = new Match({
-            event_id: eventId,
-            name: name,
-            event_type_id: eventTypeId,
-            start_time: startTime.toISOString(),
-            end_time: endTime.toISOString(),
-            duration_minutes: durationMinutes,
-            team_id: this.teamId || null,
-            created_by: '77d77471-1250-47e0-81ab-d4626595d63c', // SYSTEM_USER_ID
-            source_app_id: '550e8400-e29b-41d4-a716-446655440311',
-            external_source: 'groupme',
-            external_event_id: groupmeEventId
-          });
-        }
-        
-        this.data.events.set(eventId, eventObj);
+        // Store in groupme_events table (not main events table)
+        this.data.groupmeEvents.set(eventId, {
+          id: eventId,
+          groupme_event_id: groupmeEventId,
+          groupme_group_id: internalGroupId,
+          name: name,
+          description: evt.description || null,
+          start_at: startTime.toISOString(),
+          end_at: endTime.toISOString(),
+          location: evt.location || null,
+          is_cancelled: evt.is_cancelled || false,
+          sync_status: 'pending' // Will be synced to events table later
+        });
         
         // Store RSVPs for later processing
-        if (evt.going) {
-          if (!this.data.rsvps) this.data.rsvps = new Map();
-          this.data.rsvps.set(eventId, evt.going);
+        if (evt.going && evt.going.length > 0) {
+          if (!this.data.groupmeEventRsvps) this.data.groupmeEventRsvps = new Map();
+          
+          for (const rsvp of evt.going) {
+            const groupmeUserId = IdGenerator.fromComponents('groupme', 'user', rsvp.user_id);
+            const rsvpId = IdGenerator.fromComponents('groupme', 'rsvp', eventId, rsvp.user_id);
+            
+            this.data.groupmeEventRsvps.set(rsvpId, {
+              id: rsvpId,
+              groupme_event_id: eventId,
+              groupme_user_id: groupmeUserId,
+              status: 'going',
+              responded_at: new Date().toISOString()
+            });
+          }
         }
       }
       
@@ -238,35 +313,8 @@ class GroupMeScraper extends Scraper {
   }
 
   async fetchRsvps() {
-    if (!this.data.rsvps || this.data.rsvps.size === 0) {
-      return;
-    }
-    
-    this.log('\n✅ Processing RSVPs...');
-    
-    let totalRsvps = 0;
-    
-    for (const [eventId, rsvps] of this.data.rsvps.entries()) {
-      for (const rsvp of rsvps) {
-        const groupmeUserId = rsvp.user_id;
-        const status = this.mapRsvpStatus(rsvp.status || 'going');
-        
-        const rsvpId = IdGenerator.fromComponents('rsvp', eventId, groupmeUserId);
-        
-        if (!this.data.eventRsvps) this.data.eventRsvps = new Map();
-        
-        this.data.eventRsvps.set(rsvpId, {
-          event_id: eventId,
-          groupme_user_id: groupmeUserId,
-          rsvp_status_id: status,
-          responded_at: new Date().toISOString()
-        });
-        
-        totalRsvps++;
-      }
-    }
-    
-    this.log(`   Processed ${totalRsvps} RSVPs`);
+    // RSVPs are now handled inline in fetchSchedule()
+    // This method is kept for compatibility but does nothing
   }
 
   async transformData() {
@@ -308,19 +356,53 @@ class GroupMeScraper extends Scraper {
         }
       },
       {
-        filename: `25-groupme-${this.getFilenameSuffix()}-schedule.sql`,
-        data: this.data.events,
+        filename: `53-groupme-${this.getFilenameSuffix()}-messages.sql`,
+        data: this.data.groupmeMessages || new Map(),
         options: {
-          title: `${this.chatName} - Schedule`,
-          useInserts: true
+          title: `${this.chatName} - Messages`,
+          tableName: 'groupme_messages',
+          useInserts: true,
+          conflictColumns: ['groupme_message_id']
         }
       },
       {
-        filename: `26-groupme-${this.getFilenameSuffix()}-rsvps.sql`,
-        data: this.data.eventRsvps || new Map(),
+        filename: `54-groupme-${this.getFilenameSuffix()}-events.sql`,
+        data: this.data.groupmeEvents || new Map(),
         options: {
-          title: `${this.chatName} - RSVPs`,
-          useInserts: true
+          title: `${this.chatName} - Calendar Events`,
+          tableName: 'groupme_events',
+          useInserts: true,
+          conflictColumns: ['groupme_event_id']
+        }
+      },
+      {
+        filename: `55-groupme-${this.getFilenameSuffix()}-event-rsvps.sql`,
+        data: this.data.groupmeEventRsvps || new Map(),
+        options: {
+          title: `${this.chatName} - Event RSVPs`,
+          tableName: 'groupme_event_rsvps',
+          useInserts: true,
+          conflictColumns: ['groupme_event_id', 'groupme_user_id']
+        }
+      },
+      {
+        filename: `56-groupme-${this.getFilenameSuffix()}-team-groups.sql`,
+        data: this.data.teamGroupmeGroups || new Map(),
+        options: {
+          title: `${this.chatName} - Team GroupMe Groups (Junction)`,
+          tableName: 'team_groupme_groups',
+          useInserts: true,
+          conflictColumns: ['team_id', 'groupme_group_id']
+        }
+      },
+      {
+        filename: `57-groupme-${this.getFilenameSuffix()}-division-groups.sql`,
+        data: this.data.sportDivisionGroupmeGroups || new Map(),
+        options: {
+          title: `${this.chatName} - Sport Division GroupMe Groups (Junction)`,
+          tableName: 'sport_division_groupme_groups',
+          useInserts: true,
+          conflictColumns: ['sport_division_id', 'groupme_group_id']
         }
       }
     ]);
