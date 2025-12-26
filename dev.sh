@@ -100,13 +100,9 @@ fi
 echo -e "${GREEN}✓ Found env file${NC}"
 
 # ============================================================
-# DOCKER/PODMAN AVAILABILITY CHECK (early exit if not accessible)
+# PODMAN AVAILABILITY CHECK (early exit if not accessible)
 # ============================================================
-# Try docker-compose first (most common setup)
-if command -v docker-compose &> /dev/null; then
-    DOCKER="docker"
-    DOCKER_COMPOSE="docker-compose --env-file env"
-elif podman ps &> /dev/null 2>&1; then
+if podman ps &> /dev/null 2>&1; then
     # Works without sudo
     DOCKER="podman"
     # Fallback to docker-compose if podman-compose is missing
@@ -125,12 +121,12 @@ elif sudo podman ps &> /dev/null 2>&1; then
         DOCKER_COMPOSE="sudo docker-compose --env-file env"
     fi
 else
-    echo -e "${RED}Error: Neither Docker nor Podman is accessible${NC}"
+    echo -e "${RED}Error: Podman is not accessible${NC}"
     echo ""
-    echo "Docker or Podman is required to run this application."
+    echo "Podman is required to run this application."
     echo ""
     echo "Possible solutions:"
-    echo "  1. Make sure Docker or Podman is installed:"
+    echo "  1. Make sure Podman is installed:"
     echo "     ./setup.sh"
     echo ""
     echo "  2. If installed, you may need to log out and back in:"
