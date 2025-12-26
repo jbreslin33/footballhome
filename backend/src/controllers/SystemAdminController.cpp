@@ -2,6 +2,8 @@
 #include <sstream>
 #include <regex>
 #include <iostream>
+#include <curl/curl.h>
+#include <cstdlib>
 
 SystemAdminController::SystemAdminController() {
     db_ = Database::getInstance();
@@ -69,6 +71,22 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
     
     router.get(prefix + "/groupme/groups", [this](const Request& request) {
         return this->handleGetGroupMeGroups(request);
+    });
+    
+    router.get(prefix + "/groupme/live/groups", [this](const Request& request) {
+        return this->handleGetGroupMeLiveGroups(request);
+    });
+    
+    router.get(prefix + "/groupme/live/group/:id", [this](const Request& request) {
+        return this->handleGetGroupMeLiveGroupDetails(request);
+    });
+    
+    router.get(prefix + "/groupme/live/group/:id/messages", [this](const Request& request) {
+        return this->handleGetGroupMeLiveMessages(request);
+    });
+    
+    router.get(prefix + "/groupme/live/group/:id/members", [this](const Request& request) {
+        return this->handleGetGroupMeLiveMembers(request);
     });
 
     // Dashboard & Overview
@@ -2385,6 +2403,142 @@ Response SystemAdminController::handleGetGroupMeGroups(const Request& request) {
         }
         json += "]";
         return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+// Helper function to call GroupMe API
+static std::string callGroupMeAPI(const std::string& endpoint, const std::string& token) {
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        throw std::runtime_error("Failed to initialize curl");
+    }
+    
+    std::string url = "https://api.groupme.com/v3" + endpoint;
+    if (url.find('?') == std::string::npos) {
+        url += "?token=" + token;
+    } else {
+        url += "&token=" + token;
+    }
+    
+    std::string response;
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, +[](void* ptr, size_t size, size_t nmemb, std::string* data) {
+        data->append((char*)ptr, size * nmemb);
+        return size * nmemb;
+    });
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // Dev mode
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    
+    CURLcode res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+    
+    if (res != CURLE_OK) {
+        throw std::runtime_error("curl_easy_perform() failed: " + std::string(curl_easy_strerror(res)));
+    }
+    
+    return response;
+}
+
+Response SystemAdminController::handleGetGroupMeLiveGroups(const Request& request) {
+    try {
+        const char* token = std::getenv("GROUPME_ACCESS_TOKEN");
+        if (!token) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"GROUPME_ACCESS_TOKEN not set\"}");
+        }
+        
+        // Get group IDs from database
+        auto result = db_->query("SELECT groupme_group_id, name FROM groupme_groups ORDER BY name");
+        
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            std::string groupId = row["groupme_group_id"].as<std::string>();
+            
+            try {
+                // Fetch live data from GroupMe API
+                std::string apiResponse = callGroupMeAPI("/groups/" + groupId, token);
+                
+                // Parse the response to extract member_count and message info
+                // The API returns: {"response": {"id": "...", "name": "...", "members": [...]}}
+                json += apiResponse; // For now, pass through the entire response
+                
+            } catch (const std::exception& e) {
+                // If API call fails, return minimal info from database
+                json += "{\"groupme_id\":\"" + groupId + "\",";
+                json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+                json += "\"error\":\"" + std::string(e.what()) + "\"}";
+            }
+            
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
+        
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetGroupMeLiveGroupDetails(const Request& request) {
+    try {
+        const char* token = std::getenv("GROUPME_ACCESS_TOKEN");
+        if (!token) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"GROUPME_ACCESS_TOKEN not set\"}");
+        }
+        
+        std::string groupId = getPathParam(request, "id");
+        if (groupId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Missing group ID\"}");
+        }
+        
+        std::string apiResponse = callGroupMeAPI("/groups/" + groupId, token);
+        return Response(HttpStatus::OK, apiResponse);
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetGroupMeLiveMessages(const Request& request) {
+    try {
+        const char* token = std::getenv("GROUPME_ACCESS_TOKEN");
+        if (!token) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"GROUPME_ACCESS_TOKEN not set\"}");
+        }
+        
+        std::string groupId = getPathParam(request, "id");
+        if (groupId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Missing group ID\"}");
+        }
+        
+        // Fetch recent messages (limit 50)
+        std::string apiResponse = callGroupMeAPI("/groups/" + groupId + "/messages?limit=50", token);
+        return Response(HttpStatus::OK, apiResponse);
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetGroupMeLiveMembers(const Request& request) {
+    try {
+        const char* token = std::getenv("GROUPME_ACCESS_TOKEN");
+        if (!token) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"GROUPME_ACCESS_TOKEN not set\"}");
+        }
+        
+        std::string groupId = getPathParam(request, "id");
+        if (groupId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Missing group ID\"}");
+        }
+        
+        // Fetch group details which includes members array
+        std::string apiResponse = callGroupMeAPI("/groups/" + groupId, token);
+        return Response(HttpStatus::OK, apiResponse);
+        
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
     }

@@ -68,6 +68,10 @@ private:
     
     Response handleGetGroupMeDashboard(const Request& request);
     Response handleGetGroupMeGroups(const Request& request);
+    Response handleGetGroupMeLiveGroups(const Request& request);
+    Response handleGetGroupMeLiveGroupDetails(const Request& request);
+    Response handleGetGroupMeLiveMessages(const Request& request);
+    Response handleGetGroupMeLiveMembers(const Request& request);
     
     // Audit Logs
     Response handleGetAuditLogs(const Request& request);

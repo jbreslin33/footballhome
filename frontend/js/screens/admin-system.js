@@ -439,59 +439,198 @@ class AdminSystemScreen extends Screen {
   }
 
   async loadGroupMeDashboard() {
-    const response = await fetch('/api/system-admin/groupme');
-    const data = await response.json();
-    
     const content = this.element.querySelector('.admin-content');
     content.innerHTML = `
       <div class="dashboard-view">
         <h2>💬 GroupMe Dashboard</h2>
-        <div class="stats-grid">
-          <div class="stat-card clickable" data-target="groupme-groups">
-            <div class="stat-icon">👥</div>
-            <div class="stat-value">${data.groups}</div>
-            <div class="stat-label">Groups</div>
-          </div>
+        <div class="view-actions">
+          <button class="btn btn-secondary refresh-btn" id="refresh-groupme">🔄 Refresh Live Data</button>
         </div>
-        
-        <div id="groupme-details-container" style="margin-top: 20px;">
-          <div class="info-box">Select a card above to view details</div>
+        <div id="groupme-live-container" style="margin-top: 20px;">
+          <div class="loading-indicator">Loading live GroupMe data...</div>
         </div>
       </div>
     `;
     
-    // Add click listeners for cards
-    content.querySelectorAll('.stat-card.clickable').forEach(card => {
-      card.addEventListener('click', async () => {
-        const target = card.dataset.target;
-        await this.loadGroupMeDetails(target);
-      });
+    // Add refresh button listener
+    content.querySelector('#refresh-groupme').addEventListener('click', () => {
+      this.loadGroupMeLiveData();
     });
+    
+    // Load live data
+    this.loadGroupMeLiveData();
   }
   
-  async loadGroupMeDetails(target) {
-    const container = this.element.querySelector('#groupme-details-container');
-    container.innerHTML = '<div class="loading-indicator">Loading details...</div>';
+  async loadGroupMeLiveData() {
+    const container = this.element.querySelector('#groupme-live-container');
+    container.innerHTML = '<div class="loading-indicator">Loading live GroupMe data...</div>';
     
     try {
-      let html = '';
-      if (target === 'groupme-groups') {
-        const res = await fetch('/api/system-admin/groupme/groups');
-        const items = await res.json();
-        html = `
-          <h3>Groups</h3>
-          <table class="admin-table">
-            <thead><tr><th>Name</th><th>GroupMe ID</th><th>Description</th></tr></thead>
-            <tbody>
-              ${items.map(i => `<tr><td>${i.name}</td><td>${i.groupme_id}</td><td>${i.description}</td></tr>`).join('')}
-            </tbody>
-          </table>
+      const res = await fetch('/api/system-admin/groupme/live/groups');
+      if (!res.ok) {
+        throw new Error('Failed to fetch live GroupMe data');
+      }
+      
+      const groups = await res.json();
+      
+      if (!Array.isArray(groups)) {
+        throw new Error('Invalid response format');
+      }
+      
+      let html = '<div class="groupme-groups">';
+      
+      for (const groupData of groups) {
+        // GroupMe API returns: {"response": {"id": "...", "name": "...", "members": [...], "messages": {...}}}
+        const group = groupData.response || groupData;
+        const memberCount = group.members ? group.members.length : 0;
+        const messageCount = group.messages ? group.messages.count : 0;
+        
+        html += `
+          <div class="groupme-group-card" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px;">
+            <h3 style="margin: 0 0 10px 0;">📱 ${this.escapeHtml(group.name || 'Unknown Group')}</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px;">
+              <div class="stat-mini">
+                <div style="font-size: 24px; font-weight: bold;">${memberCount}</div>
+                <div style="color: #666; font-size: 12px;">Members</div>
+              </div>
+              <div class="stat-mini">
+                <div style="font-size: 24px; font-weight: bold;">${messageCount}</div>
+                <div style="color: #666; font-size: 12px;">Total Messages</div>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="adminSystemScreen.loadGroupMeMessages('${group.id || group.groupme_id}', '${this.escapeHtml(group.name)}')">
+              💬 View Recent Messages
+            </button>
+            <button class="btn btn-secondary" onclick="adminSystemScreen.loadGroupMeMembers('${group.id || group.groupme_id}', '${this.escapeHtml(group.name)}')">
+              👥 View Members
+            </button>
+          </div>
         `;
       }
+      
+      html += '</div>';
       container.innerHTML = html;
+      
     } catch (e) {
-      container.innerHTML = `<div class="error-message">Error: ${e.message}</div>`;
+      container.innerHTML = `<div class="error-message">Error loading GroupMe data: ${e.message}</div>`;
     }
+  }
+  
+  async loadGroupMeMessages(groupId, groupName) {
+    const container = this.element.querySelector('#groupme-live-container');
+    container.innerHTML = '<div class="loading-indicator">Loading messages...</div>';
+    
+    try {
+      const res = await fetch(`/api/system-admin/groupme/live/group/${groupId}/messages`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch messages');
+      }
+      
+      const data = await res.json();
+      const messages = data.response?.messages || [];
+      
+      let html = `
+        <div class="groupme-messages">
+          <h3>💬 Recent Messages from ${this.escapeHtml(groupName)}</h3>
+          <button class="btn btn-secondary" onclick="adminSystemScreen.loadGroupMeLiveData()" style="margin-bottom: 15px;">
+            ← Back to Groups
+          </button>
+          <div class="messages-list" style="max-height: 600px; overflow-y: auto;">
+      `;
+      
+      if (messages.length === 0) {
+        html += '<div class="info-box">No messages found</div>';
+      } else {
+        for (const msg of messages) {
+          const date = new Date(msg.created_at * 1000).toLocaleString();
+          const text = msg.text || '[No text]';
+          const attachments = msg.attachments?.length || 0;
+          
+          html += `
+            <div class="message-card" style="padding: 10px; margin-bottom: 10px; border: 1px solid #eee; border-radius: 4px; background: #f9f9f9;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <strong>${this.escapeHtml(msg.name || 'Unknown')}</strong>
+                <span style="color: #666; font-size: 12px;">${date}</span>
+              </div>
+              <div style="margin-bottom: 5px;">${this.escapeHtml(text)}</div>
+              ${attachments > 0 ? `<div style="color: #666; font-size: 12px;">📎 ${attachments} attachment(s)</div>` : ''}
+              ${msg.favorited_by?.length > 0 ? `<div style="color: #666; font-size: 12px;">❤️ ${msg.favorited_by.length} like(s)</div>` : ''}
+            </div>
+          `;
+        }
+      }
+      
+      html += '</div></div>';
+      container.innerHTML = html;
+      
+    } catch (e) {
+      container.innerHTML = `<div class="error-message">Error loading messages: ${e.message}</div>`;
+    }
+  }
+  
+  async loadGroupMeMembers(groupId, groupName) {
+    const container = this.element.querySelector('#groupme-live-container');
+    container.innerHTML = '<div class="loading-indicator">Loading members...</div>';
+    
+    try {
+      const res = await fetch(`/api/system-admin/groupme/live/group/${groupId}/members`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch members');
+      }
+      
+      const data = await res.json();
+      const group = data.response || data;
+      const members = group.members || [];
+      
+      let html = `
+        <div class="groupme-members">
+          <h3>👥 Members of ${this.escapeHtml(groupName)}</h3>
+          <button class="btn btn-secondary" onclick="adminSystemScreen.loadGroupMeLiveData()" style="margin-bottom: 15px;">
+            ← Back to Groups
+          </button>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Nickname</th>
+                <th>User ID</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+      
+      if (members.length === 0) {
+        html += '<tr><td colspan="4" style="text-align: center;">No members found</td></tr>';
+      } else {
+        for (const member of members) {
+          html += `
+            <tr>
+              <td>${this.escapeHtml(member.name || 'Unknown')}</td>
+              <td>${this.escapeHtml(member.nickname || 'N/A')}</td>
+              <td>${this.escapeHtml(member.user_id || 'N/A')}</td>
+              <td>${member.roles?.includes('admin') ? '👑 Admin' : 'Member'}</td>
+            </tr>
+          `;
+        }
+      }
+      
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+      container.innerHTML = html;
+      
+    } catch (e) {
+      container.innerHTML = `<div class="error-message">Error loading members: ${e.message}</div>`;
+    }
+  }
+  
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
   
   async loadUsers(offset = 0, limit = 100) {
