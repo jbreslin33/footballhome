@@ -2041,11 +2041,13 @@ Response SystemAdminController::handleGetCasaDashboard(const Request& request) {
             json += "\"players\":0,";
         }
         
-        // Matches (Linked via casa_teams)
+        // Matches (Linked via casa_teams) - Use LEFT JOIN to show all CASA matches
         auto matches = db_->query(
-            "SELECT COUNT(*) FROM matches m "
-            "JOIN casa_teams ct1 ON m.home_team_id = ct1.team_id "
-            "JOIN casa_teams ct2 ON m.away_team_id = ct2.team_id"
+            "SELECT COUNT(DISTINCT m.id) FROM matches m "
+            "JOIN events e ON m.id = e.id "
+            "LEFT JOIN casa_teams ct1 ON m.home_team_id = ct1.team_id "
+            "LEFT JOIN casa_teams ct2 ON m.away_team_id = ct2.team_id "
+            "WHERE ct1.team_id IS NOT NULL OR ct2.team_id IS NOT NULL"
         );
         if (!matches.empty()) {
             json += "\"matches\":" + std::to_string(matches[0][0].as<int>());
@@ -2138,12 +2140,17 @@ Response SystemAdminController::handleGetCasaPlayers(const Request& request) {
 Response SystemAdminController::handleGetCasaMatches(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT m.id, e.event_date, ct1.name as home_team, ct2.name as away_team, "
+            "SELECT m.id, e.event_date, "
+            "COALESCE(ct1.name, t1.name) as home_team, "
+            "COALESCE(ct2.name, t2.name) as away_team, "
             "m.home_team_score, m.away_team_score, m.match_status "
             "FROM matches m "
             "JOIN events e ON m.id = e.id "
-            "JOIN casa_teams ct1 ON m.home_team_id = ct1.team_id "
-            "JOIN casa_teams ct2 ON m.away_team_id = ct2.team_id "
+            "LEFT JOIN casa_teams ct1 ON m.home_team_id = ct1.team_id "
+            "LEFT JOIN casa_teams ct2 ON m.away_team_id = ct2.team_id "
+            "LEFT JOIN teams t1 ON m.home_team_id = t1.id "
+            "LEFT JOIN teams t2 ON m.away_team_id = t2.id "
+            "WHERE ct1.team_id IS NOT NULL OR ct2.team_id IS NOT NULL "
             "ORDER BY e.event_date DESC LIMIT 100"
         );
         std::string json = "[";

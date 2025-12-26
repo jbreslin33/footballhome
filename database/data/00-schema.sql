@@ -472,6 +472,9 @@ CREATE TABLE IF NOT EXISTS casa_teams (
     -- Link to internal FootballHome Team
     team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
     
+    -- CASA page node ID for tracking
+    page_node_id VARCHAR(255),
+    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

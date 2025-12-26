@@ -71,8 +71,43 @@ ON CONFLICT (id) DO UPDATE SET
   match_status = EXCLUDED.match_status;`;
   }
 
+  toEventParticipantsSQL() {
+    // Only create event_participants entries for teams that have been matched
+    // Skip entries where team_id is null (unmatched teams can be linked later)
+    const participants = [];
+    
+    if (this.home_team_id) {
+      const homeParticipantId = require('crypto').randomUUID();
+      participants.push(
+        `  (${SqlGenerator.escape(homeParticipantId)}, ${SqlGenerator.escape(this.event_id)}, ${SqlGenerator.escape(this.home_team_id)}, '550e8400-e29b-41d4-a716-446655440701')`
+      );
+    }
+    
+    if (this.away_team_id) {
+      const awayParticipantId = require('crypto').randomUUID();
+      participants.push(
+        `  (${SqlGenerator.escape(awayParticipantId)}, ${SqlGenerator.escape(this.event_id)}, ${SqlGenerator.escape(this.away_team_id)}, '550e8400-e29b-41d4-a716-446655440701')`
+      );
+    }
+    
+    // If no teams matched, return empty string (no SQL to execute)
+    if (participants.length === 0) {
+      return '';
+    }
+    
+    return `INSERT INTO event_participants (id, event_id, team_id, participation_status_id)
+VALUES 
+${participants.join(',\n')}
+ON CONFLICT (id) DO NOTHING;`;
+  }
+
   toSQL() {
-    return [this.toEventSQL(), this.toMatchSQL()].join('\n\n');
+    const parts = [this.toEventSQL(), this.toMatchSQL()];
+    const participants = this.toEventParticipantsSQL();
+    if (participants) {
+      parts.push(participants);
+    }
+    return parts.join('\n\n');
   }
 }
 

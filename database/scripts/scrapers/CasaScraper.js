@@ -186,8 +186,8 @@ class CasaScraper extends Scraper {
         
         // Fetch schedules if requested
         if (this.shouldScrapeSchedules()) {
-          this.log(`\n📅 Fetching ${divisionName} schedule...`);
-          await this.fetchSchedule(divData.schedule, divisionName);
+          // Fetch individual team schedules using extracted IDs
+          await this.fetchTeamSchedules(divisionId, divisionName);
         }
         
         // Fetch rosters from Google Sheets only in players/full mode
@@ -201,6 +201,81 @@ class CasaScraper extends Scraper {
 
   async fetchTeamsFromStandings(url, divisionId, divisionName) {
     const page = await this.browser.newPage();
+    const teamIdMap = new Map(); // Map Name -> ID
+
+    // Listen for network responses to find the hidden API data
+    page.on('response', async response => {
+        try {
+            const url = response.url();
+            const contentType = response.headers()['content-type'];
+            
+            if (contentType && contentType.includes('application/json')) {
+                this.log(`   DEBUG: JSON Response from ${url}`);
+                // Look for standings/team data
+                // SportsEngine often uses 'standings' or 'teams' in the API endpoint
+                if (url.includes('standings') || url.includes('teams') || url.includes('seasons') || url.includes('schedule')) {
+                    try {
+                        const data = await response.json();
+                        
+                        if (url.includes('standings')) {
+                             this.log(`   DEBUG: Standings API Data Structure: ${JSON.stringify(data).substring(0, 500)}...`);
+                             if (Array.isArray(data)) {
+                                 this.log(`   DEBUG: Standings is Array of length ${data.length}`);
+                                 if (data.length > 0) this.log(`   DEBUG: First item keys: ${Object.keys(data[0]).join(', ')}`);
+                             } else {
+                                 this.log(`   DEBUG: Standings keys: ${Object.keys(data).join(', ')}`);
+                             }
+                        }
+
+                        // Helper to process a team object
+                        const processTeam = (t) => {
+                            const name = t.team_name || t.name || t.title;
+                            
+                            // DEBUG: Log the team object if it looks like a V3 team record
+                            if (t.team_id && !this._loggedV3Team) {
+                                this.log(`   DEBUG: V3 Team Record: ${JSON.stringify(t)}`);
+                                this._loggedV3Team = true;
+                            }
+
+                            // Look for various ID fields
+                            const id = t.team_id || t.id || t.page_node_id || t.node_id;
+                            
+                            if (name && id) {
+                                teamIdMap.set(name.trim(), id);
+                                teamIdMap.set(name.trim().toLowerCase(), id);
+                            }
+                        };
+
+                        // Handle different response structures
+                        if (data.result && Array.isArray(data.result)) {
+                            // SportsEngine V3 Standings API
+                            data.result.forEach(group => {
+                                if (group.program_id) {
+                                    this.programId = group.program_id; // Store program ID (Season ID)
+                                }
+                                if (group.teamRecords && Array.isArray(group.teamRecords)) {
+                                    group.teamRecords.forEach(processTeam);
+                                }
+                            });
+                        } else if (Array.isArray(data)) {
+                            data.forEach(processTeam);
+                        } else if (data.teams && Array.isArray(data.teams)) {
+                            data.teams.forEach(processTeam);
+                        } else if (data.standings && Array.isArray(data.standings)) {
+                            data.standings.forEach(processTeam);
+                        } else if (data.data && Array.isArray(data.data)) {
+                            // Sometimes wrapped in 'data'
+                            data.data.forEach(processTeam);
+                        }
+                    } catch (e) {
+                        // Ignore JSON parse errors
+                    }
+                }
+            }
+        } catch (e) {
+            // Ignore response processing errors
+        }
+    });
     
     try {
       this.log(`   Navigating to ${url}...`);
@@ -221,17 +296,27 @@ class CasaScraper extends Scraper {
       
       for (const frame of frames) {
         try {
-            const html = await frame.content();
+            // Run extraction in the browser context
+            const extractedTeams = await frame.evaluate(() => {
+                const data = [];
+                const rows = document.querySelectorAll('table tbody tr');
+                
+                rows.forEach(row => {
+                    const teamCell = row.querySelector('.team-name');
+                    if (teamCell) {
+                        const name = teamCell.innerText.trim();
+                        // We don't need to look for URL here anymore if we catch it via network
+                        if (name) {
+                            data.push({ name, url: null });
+                        }
+                    }
+                });
+                return data;
+            });
             
-            // Quick check
-            if (!html.includes('table') && !html.includes('Table')) {
-                continue;
-            }
-            
-            const names = this.parseStandingsHtml(html);
-            if (names.length > 0) {
-                this.log(`   Found ${names.length} teams in frame ${frame.url()}`);
-                teamNames = teamNames.concat(names);
+            if (extractedTeams.length > 0) {
+                this.log(`   Found ${extractedTeams.length} teams in frame ${frame.url()}`);
+                teamNames = teamNames.concat(extractedTeams);
             }
         } catch (e) {
             // ignore
@@ -254,11 +339,32 @@ class CasaScraper extends Scraper {
       }
       
       // Deduplicate
-      teamNames = [...new Set(teamNames)];
+      const uniqueTeams = new Map();
+      teamNames.forEach(t => uniqueTeams.set(t.name, t));
       
-      this.log(`   Extracted ${teamNames.length} unique team names`);
+      this.log(`   Extracted ${uniqueTeams.size} unique team names`);
       
-      for (const teamName of teamNames) {
+      if (teamIdMap.size > 0) {
+          this.log(`   Captured ${teamIdMap.size} team IDs from network traffic`);
+      }
+
+      // Update teams with IDs found in network traffic
+      for (const team of uniqueTeams.values()) {
+          const id = teamIdMap.get(team.name) || teamIdMap.get(team.name.toLowerCase());
+          if (id) {
+              team.nodeId = id;
+              // Construct the URL using the ID
+              // Pattern: https://www.casasoccerleagues.com/team_page?team_id={ID}
+              // Or: https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id={ID}
+              // Let's try the standard SportsEngine team page URL
+              team.url = `https://www.casasoccerleagues.com/team_page?team_id=${id}`;
+              this.log(`   ✓ ${team.name} (ID: ${id})`);
+          } else {
+              this.log(`   DEBUG: No ID found for ${team.name}`);
+          }
+      }
+      
+      for (const [teamName, teamData] of uniqueTeams) {
         if (!this.matchesTeamFilter(teamName)) {
           this.log(`   ⊘ Skipping ${teamName} (filtered out)`);
           continue;
@@ -315,15 +421,46 @@ class CasaScraper extends Scraper {
             }
         }
 
+        // Extract page_node_id from url or API map
+        let pageNodeId = null;
+        
+        // Check API map first
+        if (teamIdMap.has(teamName)) {
+            pageNodeId = teamIdMap.get(teamName);
+            this.log(`   DEBUG: Found ID for ${teamName} in API map: ${pageNodeId}`);
+        } else if (teamIdMap.has(teamName.toLowerCase())) {
+            pageNodeId = teamIdMap.get(teamName.toLowerCase());
+            this.log(`   DEBUG: Found ID for ${teamName} (lowercase) in API map: ${pageNodeId}`);
+        } else {
+            this.log(`   DEBUG: No ID found for ${teamName}`);
+        }
+
+        if (!pageNodeId && teamData.url) {
+            this.log(`   DEBUG: URL for ${teamName} is ${teamData.url}`);
+            const match = teamData.url.match(/page_node_id=(\d+)/);
+            if (match) {
+                pageNodeId = match[1];
+            }
+        } else if (!pageNodeId) {
+            this.log(`   DEBUG: No URL found for ${teamName}`);
+        }
+
+        // Store program ID for this division if found
+        if (this.programId) {
+             if (!this.divisionProgramIds) this.divisionProgramIds = {};
+             this.divisionProgramIds[divisionId] = this.programId;
+        }
+
         this.data.casaTeams.set(casaTeamId, {
             id: casaTeamId,
             casa_id: `${normalizedName}-${divisionName}`.toLowerCase().replace(/\s+/g, '-'),
             name: normalizedName,
             casa_division_id: casaDivisionId,
-            team_id: teamId
+            team_id: teamId,
+            page_node_id: pageNodeId
         });
 
-        this.log(`   ✓ ${normalizedName}`);
+        this.log(`   ✓ ${normalizedName} (Node ID: ${pageNodeId || 'N/A'})`);
       }
       
     } catch (error) {
@@ -348,8 +485,33 @@ class CasaScraper extends Scraper {
           const rank = rankCell.textContent.trim();
           const teamName = teamCell.textContent.trim();
           
+          // Extract URL
+          let link = teamCell.querySelector('a');
+          
+          // Fallback: Check if the cell itself is a link
+          if (!link && teamCell.tagName === 'A') {
+              link = teamCell;
+          }
+
+          // Fallback: Search entire row for a link that looks like a team page
+          if (!link) {
+              const allLinks = row.querySelectorAll('a');
+              for (const l of allLinks) {
+                  if (l.href && (l.href.includes('page_node_id') || l.href.includes('team_home'))) {
+                      link = l;
+                      break;
+                  }
+              }
+          }
+
+          const url = link ? link.href : null;
+          
+          if (!url) {
+             console.log(`DEBUG: No link found in team cell. Cell HTML: ${teamCell.innerHTML.substring(0, 100)}...`);
+          }
+          
           if (/^\d+$/.test(rank) && teamName && teamName.length > 2) {
-              data.push(teamName);
+              data.push({ name: teamName, url: url });
               return;
           }
       }
@@ -361,9 +523,14 @@ class CasaScraper extends Scraper {
           // Check index 0 and 1
           let rank = cells[0].textContent.trim();
           let teamName = cells[1].textContent.trim();
+          let url = null;
+          
+          // Check for link in cell 1
+          const link1 = cells[1].querySelector('a');
+          if (link1) url = link1.href;
           
           if (/^\d+$/.test(rank) && teamName && teamName.length > 2) {
-              data.push(teamName);
+              data.push({ name: teamName, url: url });
               return;
           }
           
@@ -372,8 +539,12 @@ class CasaScraper extends Scraper {
               rank = cells[1].textContent.trim();
               teamName = cells[2].textContent.trim();
               
+              // Check for link in cell 2
+              const link2 = cells[2].querySelector('a');
+              if (link2) url = link2.href;
+              
               if (/^\d+$/.test(rank) && teamName && teamName.length > 2) {
-                  data.push(teamName);
+                  data.push({ name: teamName, url: url });
               }
           }
       }
@@ -383,66 +554,423 @@ class CasaScraper extends Scraper {
 
   async fetchSchedule(url, divisionName) {
     const page = await this.browser.newPage();
+    const apiMatches = [];
     
-    try {
-      this.log(`   Navigating to schedule...`);
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
-      
-      // Wait longer for iframe content to load (schedule loads slower than standings)
-      this.log(`   Waiting 10s for content to load...`);
-      await new Promise(resolve => setTimeout(resolve, 10000));
-      
-      // Get all frames
-      const frames = page.frames();
-      this.log(`   Found ${frames.length} frames. Scanning for schedule data...`);
-      
-      let allMatches = [];
-      
-      for (const frame of frames) {
-        try {
-            // Get content from frame
-            const html = await frame.content();
-            
-            // Quick check if this frame might contain schedule data
-            if (!html.includes('schedule') && !html.includes('Schedule') && !html.includes('sportsengine')) {
-                continue;
-            }
+    // Find divisionId from divisionName
+    let divisionId = null;
+    for (const [id, div] of this.data.divisions) {
+        if (div.display_name === divisionName || div.name === divisionName) {
+            divisionId = id;
+            break;
+        }
+    }
+    
+    if (!divisionId) {
+        this.logWarning(`Could not find division ID for ${divisionName}`);
+    }
 
-            // Parse HTML using JSDOM
-            const matches = this.parseScheduleHtml(html);
+    // Listen for network responses to find the hidden API data
+    let lastApiCallTime = Date.now();
+    page.on('response', async response => {
+        try {
+            const url = response.url();
+            const contentType = response.headers()['content-type'];
             
-            if (matches.length > 0) {
-                this.log(`   Found ${matches.length} matches in frame ${frame.url()}`);
-                allMatches = allMatches.concat(matches);
+            if (contentType && contentType.includes('application/json')) {
+                // Look for schedule data - specifically the events API
+                if (url.includes('/microsites/events?')) {
+                    lastApiCallTime = Date.now();
+                    const matchUrl = url.match(/page=(\d+)/);
+                    const pageNum = matchUrl ? matchUrl[1] : '1';
+                    
+                    try {
+                        const data = await response.json();
+                        
+                        // Helper to process matches
+                        const processMatches = (matches) => {
+                            if (!Array.isArray(matches)) return;
+                            
+                            let newMatches = 0;
+                            matches.forEach(m => {
+                                // Check for required fields
+                                if (m.start_date_time || m.date || m.game_date) {
+                                    apiMatches.push(m);
+                                    newMatches++;
+                                }
+                            });
+                            if (newMatches > 0) {
+                                this.log(`   📄 Captured page ${pageNum}: ${newMatches} matches (total: ${apiMatches.length})`);
+                            }
+                        };
+
+                        if (data.events && Array.isArray(data.events)) {
+                            processMatches(data.events);
+                        } else if (data.games && Array.isArray(data.games)) {
+                            processMatches(data.games);
+                        } else if (Array.isArray(data)) {
+                            processMatches(data);
+                        } else if (data.result && Array.isArray(data.result)) {
+                             // Sometimes wrapped in result
+                             processMatches(data.result);
+                        }
+                    } catch (e) {
+                        // Ignore
+                    }
+                }
             }
         } catch (e) {
-            // Ignore cross-origin frame errors or parsing errors
+            // Ignore
         }
+    });
+    
+    // Extract program_id from the URL to make direct API calls
+    let programId = null;
+    
+    try {
+      this.log(`   Navigating to schedule: ${url}`);
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+      
+      // Wait a moment for initial load
+      await new Promise(r => setTimeout(r, 2000));
+      
+      // Try to extract program_id from the page
+      const extractedData = await page.evaluate(() => {
+          // Look for program_id in the iframe src
+          const iframe = document.querySelector('iframe[src*="seasons"]');
+          if (iframe && iframe.src) {
+              const match = iframe.src.match(/seasons\/([a-f0-9]+)/);
+              if (match) return { programId: match[1] };
+          }
+          return null;
+      });
+      
+      if (extractedData && extractedData.programId) {
+          programId = extractedData.programId;
+          this.log(`   Found program_id: ${programId} - will use scrolling to load all matches`);
       }
       
-      if (allMatches.length === 0) {
-        this.logWarning(`No matches found in any frame for ${divisionName}`);
-        
-        // Fallback: Try main page content
-        const mainHtml = await page.content();
-        const mainMatches = this.parseScheduleHtml(mainHtml);
-        
-        if (mainMatches.length > 0) {
-             this.log(`   Found ${mainMatches.length} matches in main page`);
-             allMatches = mainMatches;
-        }
-      }
-      
-      this.log(`   Extracted total ${allMatches.length} matches`);
-      
-      // Process matches
+      // Use scrolling method (works best with the page's built-in pagination)
+      {
+          
+          // Get all frames
+          const frames = page.frames();
+          this.log(`   Found ${frames.length} frames. Scanning for schedule data...`);
+          
+          // Try to interact with the schedule frame to show all matches
+          const scheduleFrame = frames.find(f => f.url().includes('schedule') && f.url().includes('sportsengine'));
+          if (scheduleFrame) {
+              this.log(`   Found schedule frame: ${scheduleFrame.url()}`);
+              try {
+                  // 1. Try to click "View All" or "Show All" or "View Full Schedule"
+                  const clickedViewAll = await scheduleFrame.evaluate(() => {
+                  const buttons = Array.from(document.querySelectorAll('a, button, div[role="button"], span, .sm-button'));
+                  const viewAll = buttons.find(b => {
+                      const text = b.textContent.trim().toLowerCase();
+                      return text.includes('view all') || text.includes('show all') || text.includes('view full schedule');
+                  });
+                  if (viewAll) {
+                      viewAll.click();
+                      return true;
+                  }
+                  return false;
+              });
+
+              if (clickedViewAll) {
+                  this.log(`   Clicked "View All" button`);
+                  await new Promise(r => setTimeout(r, 1000));
+              }
+
+              // 2. CRITICAL: Try to find and click date/status filter to show ALL games
+              this.log(`   Looking for date filter to show all games...`);
+              
+              // Debug: See what's available
+              const availableControls = await scheduleFrame.evaluate(() => {
+                  const controls = [];
+                  document.querySelectorAll('select').forEach(s => {
+                      Array.from(s.options).forEach(o => controls.push(`SELECT_OPTION: "${o.textContent.trim()}"`));
+                  });
+                  document.querySelectorAll('button, [role="button"], [role="tab"]').forEach(b => {
+                      const text = b.textContent.trim();
+                      if (text && text.length < 40) controls.push(`BUTTON: "${text}"`);
+                  });
+                  return controls.slice(0, 15);
+              });
+              this.log(`   Debug - Available: ${availableControls.join(', ')}`);
+              
+              const filterResult = await scheduleFrame.evaluate(() => {
+                  // First, try to click "Jump To" dropdown
+                  const buttons = Array.from(document.querySelectorAll('button, a, .filter-button, [role="button"], [role="tab"]'));
+                  
+                  const jumpToButton = buttons.find(b => b.textContent.trim() === 'Jump To');
+                  if (jumpToButton) {
+                      jumpToButton.click();
+                      return 'opened_jump_to';
+                  }
+                  
+                  // Fallback: try to open Filters panel
+                  const filtersButton = buttons.find(b => b.textContent.trim().toLowerCase() === 'filters');
+                  if (filtersButton) {
+                      filtersButton.click();
+                      return 'opened_filters';
+                  }
+                  
+                  return null;
+              });
+
+              if (filterResult === 'opened_jump_to') {
+                  this.log(`   ✓ Opened "Jump To" dropdown - looking for Season Start...`);
+                  await new Promise(r => setTimeout(r, 500));
+                  
+                  // Now click "Season Start" option
+                  const seasonStartClicked = await scheduleFrame.evaluate(() => {
+                      // Look for "Season Start" in dropdown menu items
+                      const menuItems = Array.from(document.querySelectorAll('a, button, li, [role="menuitem"], .dropdown-item, .menu-item'));
+                      
+                      const seasonStart = menuItems.find(item => 
+                          item.textContent.trim().toLowerCase().includes('season start')
+                      );
+                      
+                      if (seasonStart) {
+                          seasonStart.click();
+                          return true;
+                      }
+                      
+                      return false;
+                  });
+                  
+                  if (seasonStartClicked) {
+                      this.log(`   ✓ Clicked "Season Start" - waiting for all matches to load...`);
+                      await new Promise(r => setTimeout(r, 3000));
+                  } else {
+                      this.log(`   ⚠ Could not find "Season Start" option in dropdown`);
+                  }
+              } else if (filterResult === 'opened_filters') {
+                  this.log(`   ✓ Opened Filters panel - now looking for date options...`);
+                  await new Promise(r => setTimeout(r, 1000));
+                  
+                  // Now look for Season Start or date range options
+                  const dateOption = await scheduleFrame.evaluate(() => {
+                      // Look for select dropdowns that appeared
+                      const selects = Array.from(document.querySelectorAll('select'));
+                      
+                      for (const select of selects) {
+                          const options = Array.from(select.options);
+                          const seasonStartOption = options.find(o => 
+                              o.textContent.trim().toLowerCase().includes('season start')
+                          );
+                          
+                          if (seasonStartOption) {
+                              select.value = seasonStartOption.value;
+                              select.dispatchEvent(new Event('change', { bubbles: true }));
+                              return 'season_start';
+                          }
+                      }
+                      
+                      // If no Season Start, try finding "All" in a newly visible section
+                      const allButtons = Array.from(document.querySelectorAll('button, [role="button"]'));
+                      const allBtn = allButtons.find(b => {
+                          const text = b.textContent.trim().toLowerCase();
+                          return text === 'all' || text === 'all games';
+                      });
+                      
+                      if (allBtn) {
+                          allBtn.click();
+                          return 'all';
+                      }
+                      
+                      return null;
+                  });
+                  
+                  if (dateOption) {
+                      this.log(`   ✓ Selected "${dateOption}" date filter`);
+                      await new Promise(r => setTimeout(r, 3000));
+                  }
+              } else if (filterResult) {
+                  this.log(`   ✓ Clicked "${filterResult}" filter - waiting for reload...`);
+                  await new Promise(r => setTimeout(r, 3000)); // Wait longer for matches to load
+              } else {
+                  this.log(`   ⚠ Could not find date filter - may only see upcoming games`);
+              }
+
+              // 3. Try to find and click "Season Start" option to show all games from the beginning
+              const dateFilterSet = await scheduleFrame.evaluate(() => {
+                  // First try select dropdowns
+                  const selects = Array.from(document.querySelectorAll('select'));
+                  
+                  for (const select of selects) {
+                      const options = Array.from(select.options);
+                      const seasonStartOption = options.find(o => 
+                          o.textContent.trim().toLowerCase().includes('season start')
+                      );
+                      
+                      if (seasonStartOption) {
+                          select.value = seasonStartOption.value;
+                          select.dispatchEvent(new Event('change', { bubbles: true }));
+                          return 'season_start';
+                      }
+                  }
+                  
+                  // Try clickable buttons - SportsEngine often has "Upcoming", "Past", "All", "Season Start"
+                  const buttons = Array.from(document.querySelectorAll('button, a, [role="button"], .filter-button, .option'));
+                  
+                  // Priority: Season Start > All > Past
+                  const seasonStartButton = buttons.find(b => {
+                      const text = b.textContent.trim().toLowerCase();
+                      return text.includes('season start');
+                  });
+                  
+                  if (seasonStartButton) {
+                      seasonStartButton.click();
+                      return 'season_start';
+                  }
+                  
+                  const allButton = buttons.find(b => {
+                      const text = b.textContent.trim().toLowerCase();
+                      return text === 'all' || text === 'all games' || text === 'all events';
+                  });
+                  
+                  if (allButton) {
+                      allButton.click();
+                      return 'all_games';
+                  }
+                  
+                  const pastButton = buttons.find(b => {
+                      const text = b.textContent.trim().toLowerCase();
+                      return text === 'past' || text === 'past games';
+                  });
+                  
+                  if (pastButton) {
+                      pastButton.click();
+                      return 'past_games';
+                  }
+                  
+                  return false;
+              });
+
+              if (dateFilterSet === 'season_start') {
+                  this.log(`   ✓ Clicked "Season Start" filter`);
+                  await new Promise(r => setTimeout(r, 2000));
+              } else if (dateFilterSet === 'all_games') {
+                  this.log(`   ✓ Clicked "All Games" filter`);
+                  await new Promise(r => setTimeout(r, 2000));
+              } else if (dateFilterSet === 'past_games') {
+                  this.log(`   ✓ Clicked "Past Games" filter`);
+                  await new Promise(r => setTimeout(r, 2000));
+              } else {
+                  this.log(`   ⚠ No date filter found - will see whatever the page shows by default`);
+              }
+
+              // 3. Try to find "Game Status" filter
+              // SportsEngine often has a dropdown for "Upcoming", "Past", "All"
+              const filterClicked = await scheduleFrame.evaluate(() => {
+                  // Look for a select or dropdown
+                  const selects = Array.from(document.querySelectorAll('select'));
+                  const statusSelect = selects.find(s => {
+                      const label = s.getAttribute('aria-label') || s.name || '';
+                      return label.toLowerCase().includes('status') || s.innerHTML.includes('Upcoming');
+                  });
+
+                  if (statusSelect) {
+                      // Try to set to 'All' or empty
+                      // Options usually: Scheduled, Final, All, etc.
+                      const options = Array.from(statusSelect.options);
+                      const allOption = options.find(o => o.text.toLowerCase().includes('all') || o.value === '');
+                      if (allOption) {
+                          statusSelect.value = allOption.value;
+                          statusSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                          return true;
+                      }
+                  }
+                  
+                  // Look for custom dropdowns (divs)
+                  const dropdowns = Array.from(document.querySelectorAll('.filter-container, .filters, .dropdown'));
+                  for (const d of dropdowns) {
+                      if (d.textContent.includes('Upcoming')) {
+                          // This might be the filter. Click it.
+                          const toggle = d.querySelector('.dropdown-toggle, button, [role="button"]');
+                          if (toggle) {
+                              toggle.click();
+                              // Now look for "All" in the menu that appeared (hopefully)
+                              // This is tricky in a single evaluate, but we can try
+                              return 'clicked_dropdown';
+                          }
+                      }
+                  }
+                  
+                  return false;
+              });
+
+              if (filterClicked === true) {
+                  this.log(`   Changed status filter to "All"`);
+                  await new Promise(r => setTimeout(r, 1000));
+              } else if (filterClicked === 'clicked_dropdown') {
+                  this.log(`   Clicked filter dropdown, trying to select "All"...`);
+                  await new Promise(r => setTimeout(r, 500));
+                  // Try to click "All"
+                  await scheduleFrame.evaluate(() => {
+                      const items = Array.from(document.querySelectorAll('li, .dropdown-item, div[role="option"]'));
+                      const allItem = items.find(i => i.textContent.trim().toLowerCase() === 'all' || i.textContent.trim().toLowerCase() === 'all games');
+                      if (allItem) allItem.click();
+                  });
+                  await new Promise(r => setTimeout(r, 1000));
+              }
+
+              this.log(`   Auto-scrolling to load all matches...`);
+              
+              // More aggressive scrolling to trigger pagination
+              let lastMatchCount = apiMatches.length;
+              let noNewMatchesCount = 0;
+              const maxScrollAttempts = 50; // Prevent infinite loop
+              
+              for (let i = 0; i < maxScrollAttempts; i++) {
+                  // Scroll to bottom
+                  await scheduleFrame.evaluate(() => {
+                      window.scrollTo(0, document.body.scrollHeight);
+                      
+                      // Also scroll any scrollable containers
+                      const containers = document.querySelectorAll('.sm-schedule__events, .scrollable, [style*="overflow"]');
+                      containers.forEach(c => {
+                          if (c.scrollHeight > c.clientHeight) {
+                              c.scrollTop = c.scrollHeight;
+                          }
+                      });
+                  });
+                  
+                  // Wait for potential API call
+                  await new Promise(r => setTimeout(r, 500));
+                  
+                  // Check if we got new matches
+                  if (apiMatches.length > lastMatchCount) {
+                      lastMatchCount = apiMatches.length;
+                      noNewMatchesCount = 0;
+                      this.log(`   🔄 Scrolling... ${apiMatches.length} matches so far`);
+                  } else {
+                      noNewMatchesCount++;
+                      // If no new matches after 5 scroll attempts, we're probably done
+                      if (noNewMatchesCount >= 5) {
+                          this.log(`   ✓ Scroll complete - no more matches loading`);
+                          break;
+                      }
+                  }
+              }
+              
+          } catch (e) {
+              this.logWarning(`   Error interacting with schedule frame: ${e.message}`);
+          }
+          } // End of scheduleFrame if block
+      } // End of scrolling method
+
+      // Process API matches
       let matchCount = 0;
-      for (const matchInfo of allMatches) {
-        const match = this.parseMatchFromDiv(matchInfo, divisionName);
-        if (match) {
-          this.data.matches.set(match.event_id, match);
-          matchCount++;
-        }
+      if (apiMatches.length > 0) {
+          this.log(`   Processing ${apiMatches.length} matches from API...`);
+          for (const apiMatch of apiMatches) {
+              const match = this.parseMatchFromApi(apiMatch, divisionName, divisionId);
+              if (match) {
+                  this.data.matches.set(match.event_id, match);
+                  matchCount++;
+              }
+          }
       }
       
       this.log(`   Saved ${matchCount} matches`);
@@ -452,6 +980,216 @@ class CasaScraper extends Scraper {
     } finally {
       await page.close();
     }
+  }
+
+  async fetchTeamSchedules(divisionId, divisionName) {
+    this.log(`\n🗓️ Fetching team schedules for ${divisionName}...`);
+    
+    // Find the division configuration to get the schedule URL
+    let scheduleUrl = null;
+    for (const [confKey, confData] of Object.entries(this.conferences)) {
+        for (const [divKey, divData] of Object.entries(confData.divisions)) {
+            const divId = this.divisionIds[`${confKey}_${divKey}`];
+            if (divId === divisionId) {
+                scheduleUrl = divData.schedule;
+                break;
+            }
+        }
+        if (scheduleUrl) break;
+    }
+    
+    if (!scheduleUrl) {
+        this.logWarning(`Could not find schedule URL for ${divisionName}`);
+        return;
+    }
+
+    // Fetch the division-level schedule page (contains all teams' matches)
+    this.log(`   Fetching from division schedule page...`);
+    await this.fetchSchedule(scheduleUrl, divisionName);
+  }
+
+  findTeam(name) {
+      const teamNames = Array.from(this.data.teams.values()).map(t => t.name);
+      
+      // Normalize the search name
+      const searchNormalized = this.normalizeTeamName(name);
+      
+      return teamNames.find(teamName => {
+        const normalized1 = this.normalizeTeamName(teamName).toLowerCase();
+        const normalized2 = searchNormalized.toLowerCase();
+        
+        // Exact match
+        if (normalized1 === normalized2) return true;
+        
+        // Generate variants for both names
+        const variants1 = this.generateTeamNameVariants(normalized1);
+        const variants2 = this.generateTeamNameVariants(normalized2);
+        
+        // Check if any variants match
+        for (const v1 of variants1) {
+            for (const v2 of variants2) {
+                if (v1 === v2 && v1.length > 0) return true;
+            }
+        }
+        
+        return false;
+      });
+  }
+  
+  generateTeamNameVariants(name) {
+      const lower = name.toLowerCase();
+      const variants = [lower];
+      
+      // Handle spacing variations (e.g., "BlackStars" vs "Black Stars")
+      variants.push(lower.replace(/\s+/g, ''));
+      
+      // Handle FC variations (with/without periods and spaces)
+      if (lower.includes(' fc') || lower.includes(' f.c.')) {
+          variants.push(lower.replace(/\s*f\.?c\.?\s*/g, ' ').trim());
+          variants.push(lower.replace(/\s*f\.?c\.?$/g, '').trim());
+      }
+      
+      // Handle United variations (but be careful - only if it's at the end)
+      if (lower.endsWith(' united')) {
+          variants.push(lower.replace(/\s+united$/g, '').trim());
+      }
+      
+      // Handle Roman numerals at the end (II, III, etc)
+      variants.push(lower.replace(/\s+i+$/g, '').trim());
+      
+      // Remove punctuation but keep spaces
+      variants.push(lower.replace(/[^\w\s]/g, '').trim());
+      
+      // Remove duplicate spaces
+      const cleaned = variants.map(v => v.replace(/\s+/g, ' ').trim());
+      
+      return [...new Set(cleaned)].filter(v => v.length > 0);
+  }
+
+  findTeamByNodeId(nodeId) {
+      // Find the casa_team record with this page_node_id
+      for (const casaTeam of this.data.casaTeams.values()) {
+          if (casaTeam.page_node_id === nodeId) {
+              // Return the actual team object
+              return this.data.teams.get(casaTeam.team_id);
+          }
+      }
+      return null;
+  }
+
+  findTeamInStandings(teamName, divisionId) {
+      // ONLY match teams that were scraped from standings
+      // DO NOT create new teams - all teams must come from standings
+      
+      // 1. Try to find existing team by name (search ALL teams, not just this division)
+      const existingName = this.findTeam(teamName);
+      if (existingName) {
+          // Find the team object by name
+          return Array.from(this.data.teams.values()).find(t => t.name === existingName);
+      }
+
+      // 2. Team not found - log warning and return null
+      this.log(`   ⚠️  Could not match schedule team to standings: "${teamName}"`);
+      return null;
+  }
+
+  parseMatchFromApi(apiMatch, divisionName, divisionId) {
+      const date = apiMatch.start_date_time || apiMatch.date || apiMatch.game_date;
+      if (!date) return null;
+      
+      let homeTeamName = '';
+      let awayTeamName = '';
+      let homeTeamId = null;
+      let awayTeamId = null;
+      let homeScore = null;
+      let awayScore = null;
+      
+      // Handle SportsEngine V3 Events API structure
+      if (apiMatch.game_details) {
+          const t1 = apiMatch.game_details.team_1;
+          const t2 = apiMatch.game_details.team_2;
+          
+          if (t1 && t2) {
+              if (t1.is_home_team) {
+                  homeTeamName = t1.name;
+                  homeTeamId = t1.id || t1.originator_id || t1.team_id;
+                  homeScore = t1.score;
+                  awayTeamName = t2.name;
+                  awayTeamId = t2.id || t2.originator_id || t2.team_id;
+                  awayScore = t2.score;
+              } else {
+                  homeTeamName = t2.name;
+                  homeTeamId = t2.id || t2.originator_id || t2.team_id;
+                  homeScore = t2.score;
+                  awayTeamName = t1.name;
+                  awayTeamId = t1.id || t1.originator_id || t1.team_id;
+                  awayScore = t1.score;
+              }
+          }
+      } 
+      // Legacy/Other structures
+      else {
+          if (apiMatch.home_team) {
+              homeTeamName = apiMatch.home_team.name || apiMatch.home_team.team_name || apiMatch.home_team.short_name;
+          }
+          
+          if (apiMatch.away_team) {
+              awayTeamName = apiMatch.away_team.name || apiMatch.away_team.team_name || apiMatch.away_team.short_name;
+          }
+          
+          // Fallback
+          if (!homeTeamName && apiMatch.home_team_name) homeTeamName = apiMatch.home_team_name;
+          if (!awayTeamName && apiMatch.away_team_name) awayTeamName = apiMatch.away_team_name;
+      }
+      
+      if (!homeTeamName || !awayTeamName) return null;
+      
+      // Try to find teams by ID first (most reliable), then fall back to name
+      let homeTeamObj = homeTeamId ? this.findTeamByNodeId(homeTeamId) : null;
+      if (!homeTeamObj) {
+          homeTeamObj = this.findTeamInStandings(homeTeamName, divisionId);
+      }
+      
+      let awayTeamObj = awayTeamId ? this.findTeamByNodeId(awayTeamId) : null;
+      if (!awayTeamObj) {
+          awayTeamObj = this.findTeamInStandings(awayTeamName, divisionId);
+      }
+      
+      // Log warnings but still create match - better to have match data with null teams than skip it
+      if (!homeTeamObj) {
+          this.log(`   ⚠️  Could not match home team to standings: "${homeTeamName}" - match will be created with null home_team_id`);
+      }
+      if (!awayTeamObj) {
+          this.log(`   ⚠️  Could not match away team to standings: "${awayTeamName}" - match will be created with null away_team_id`);
+      }
+      
+      // Use team names from API for match title, team IDs may be null if not matched
+      const homeDisplayName = homeTeamObj ? homeTeamObj.name : homeTeamName;
+      const awayDisplayName = awayTeamObj ? awayTeamObj.name : awayTeamName;
+      
+      const eventId = IdGenerator.fromComponents('casa', 'match', date, homeDisplayName, awayDisplayName);
+      
+      const match = new Match({
+          event_id: eventId,
+          name: `${homeDisplayName} vs ${awayDisplayName}`,
+          event_type_id: '550e8400-e29b-41d4-a716-446655440402',
+          start_time: date.replace('T', ' ').substring(0, 19),
+          home_team_id: homeTeamObj ? homeTeamObj.id : null,
+          away_team_id: awayTeamObj ? awayTeamObj.id : null,
+          created_by: '77d77471-1250-47e0-81ab-d4626595d63c',
+          source_app_id: '550e8400-e29b-41d4-a716-446655440311',
+          external_source: 'casa',
+          competition_name: divisionName
+      });
+
+      if (homeScore !== null && homeScore !== undefined && homeScore !== '') {
+          match.home_score = parseInt(homeScore);
+      }
+      if (awayScore !== null && awayScore !== undefined && awayScore !== '') {
+          match.away_score = parseInt(awayScore);
+      }
+
+      return match;
   }
 
   parseScheduleHtml(html) {
@@ -491,6 +1229,11 @@ class CasaScraper extends Scraper {
         const awayLink = child.querySelector('sm-nav-link[tag="away-team-name"] span');
         const homeLink = child.querySelector('sm-nav-link[tag="home-team-name"] span');
         
+        const awayNavLink = child.querySelector('sm-nav-link[tag="away-team-name"]');
+        if (awayNavLink) {
+             this.log(`   DEBUG: Away Nav Link HTML: ${awayNavLink.outerHTML}`);
+        }
+
         if (awayLink) awayTeam = awayLink.textContent.trim();
         if (homeLink) homeTeam = homeLink.textContent.trim();
         
@@ -704,7 +1447,8 @@ class CasaScraper extends Scraper {
       away_team_id: awayTeamObj.id,
       created_by: '77d77471-1250-47e0-81ab-d4626595d63c',
       source_app_id: '550e8400-e29b-41d4-a716-446655440311',
-      external_source: 'casa'
+      external_source: 'casa',
+      competition_name: divisionName
     });
   }
 
