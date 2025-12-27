@@ -31,7 +31,6 @@ class AdminSystemScreen extends Screen {
         <!-- Navigation Tabs -->
         <div class="admin-tabs">
           <button class="admin-tab active" data-view="dashboard">📊 Dashboard</button>
-          <button class="admin-tab" data-view="stats">📈 Stats</button>
           <button class="admin-tab" data-view="casa">⚽ CASA</button>
           <button class="admin-tab" data-view="apsl">🦅 APSL</button>
           <button class="admin-tab" data-view="groupme">💬 GroupMe</button>
@@ -105,9 +104,6 @@ class AdminSystemScreen extends Screen {
       switch(view) {
         case 'dashboard':
           await this.loadDashboard();
-          break;
-        case 'stats':
-          await this.loadStats();
           break;
         case 'casa':
           await this.loadCasaDashboard();
@@ -190,13 +186,11 @@ class AdminSystemScreen extends Screen {
     `;
   }
 
-  async loadStats() {
-    const content = this.element.querySelector('.admin-content');
-    
+  async loadApslStats(container) {
     // Create stats tabs
-    content.innerHTML = `
+    container.innerHTML = `
       <div class="stats-view">
-        <h2>📈 League Statistics</h2>
+        <h2>📈 APSL Statistics</h2>
         <div class="stats-tabs">
           <button class="stats-tab active" data-tab="standings">🏆 Standings</button>
           <button class="stats-tab" data-tab="players">⚽ Player Stats</button>
@@ -209,9 +203,9 @@ class AdminSystemScreen extends Screen {
     `;
     
     // Setup tab listeners
-    content.querySelectorAll('.stats-tab').forEach(tab => {
+    container.querySelectorAll('.stats-tab').forEach(tab => {
       tab.addEventListener('click', async () => {
-        content.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
+        container.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         await this.loadStatsTab(tab.dataset.tab);
       });
@@ -502,6 +496,11 @@ class AdminSystemScreen extends Screen {
       <div class="dashboard-view">
         <h2>🦅 APSL Dashboard</h2>
         <div class="stats-grid">
+          <div class="stat-card clickable" data-target="apsl-stats">
+            <div class="stat-icon">📈</div>
+            <div class="stat-value">View</div>
+            <div class="stat-label">Stats & Standings</div>
+          </div>
           <div class="stat-card clickable" data-target="apsl-divisions">
             <div class="stat-icon">🏆</div>
             <div class="stat-value">${data.divisions}</div>
@@ -545,7 +544,10 @@ class AdminSystemScreen extends Screen {
     
     try {
       let html = '';
-      if (target === 'apsl-divisions') {
+      if (target === 'apsl-stats') {
+        await this.loadApslStats(container);
+        return;
+      } else if (target === 'apsl-divisions') {
         const res = await fetch('/api/system-admin/apsl/divisions');
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}: ${await res.text()}`);
