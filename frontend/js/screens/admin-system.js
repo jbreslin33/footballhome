@@ -304,6 +304,7 @@ class AdminSystemScreen extends Screen {
                     <th>Rank</th>
                     <th>Player</th>
                     <th>Team</th>
+                    <th>Conference</th>
                     <th>GP</th>
                     <th>Goals</th>
                     <th>Assists</th>
@@ -317,6 +318,7 @@ class AdminSystemScreen extends Screen {
                       <td><strong>${idx + 1}</strong></td>
                       <td>${player.player_name}</td>
                       <td>${player.team_name}</td>
+                      <td>${player.conference_name || 'N/A'}</td>
                       <td>${player.games_played}</td>
                       <td><strong>${player.goals}</strong></td>
                       <td>${player.assists}</td>

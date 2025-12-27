@@ -130,6 +130,7 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
                 ap.name as player_name,
                 at.name as team_name,
                 ad.name as division_name,
+                lc.name as conference_name,
                 aps.season,
                 aps.games_played,
                 aps.goals,
@@ -140,6 +141,8 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
             JOIN apsl_players ap ON aps.apsl_player_id = ap.id
             JOIN apsl_teams at ON aps.apsl_team_id = at.id
             LEFT JOIN apsl_divisions ad ON aps.apsl_division_id = ad.id
+            LEFT JOIN league_divisions ld ON ad.league_division_id = ld.id
+            LEFT JOIN league_conferences lc ON ld.league_conference_id = lc.id
             WHERE aps.season = '2025-2026'
             ORDER BY aps.goals DESC, aps.assists DESC
         )";
@@ -157,12 +160,14 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
             std::string player_name = escapeJsonString(row["player_name"].c_str());
             std::string team_name = escapeJsonString(row["team_name"].c_str());
             std::string league_name = row["division_name"].is_null() ? "APSL" : escapeJsonString(row["division_name"].c_str());
+            std::string conference_name = row["conference_name"].is_null() ? "" : escapeJsonString(row["conference_name"].c_str());
             
             json_data << "{"
                 << "\"id\":\"" << row["id"].c_str() << "\","
                 << "\"player_name\":\"" << player_name << "\","
                 << "\"team_name\":\"" << team_name << "\","
                 << "\"league_name\":\"" << league_name << "\","
+                << "\"conference_name\":\"" << conference_name << "\","
                 << "\"season\":\"" << row["season"].c_str() << "\","
                 << "\"games_played\":" << row["games_played"].as<int>() << ","
                 << "\"goals\":" << row["goals"].as<int>() << ","
