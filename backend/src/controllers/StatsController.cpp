@@ -142,7 +142,7 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
             JOIN apsl_teams at ON aps.apsl_team_id = at.id
             LEFT JOIN apsl_divisions ad ON aps.apsl_division_id = ad.id
             LEFT JOIN league_divisions ld ON ad.league_division_id = ld.id
-            LEFT JOIN league_conferences lc ON ld.league_conference_id = lc.id
+            LEFT JOIN league_conferences lc ON ld.conference_id = lc.id
             WHERE aps.season = '2025-2026'
             ORDER BY aps.goals DESC, aps.assists DESC
         )";
