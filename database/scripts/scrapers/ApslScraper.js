@@ -146,9 +146,11 @@ class ApslScraper extends Scraper {
       // Find which APSL division this team belongs to
       // Check all conferences' tables for this team
       let apslDivisionId = null;
+      let conferenceForLog = null;
       for (const [confId, conf] of this.conferences) {
         if (conf.table && Array.isArray(conf.table) && conf.table.some(row => row.team === normalizedName)) {
-          apslDivisionId = confId;
+          apslDivisionId = conf.divisionId; // Use division ID, not conference ID
+          conferenceForLog = conf;
           break;
         }
       }
@@ -161,7 +163,7 @@ class ApslScraper extends Scraper {
           apsl_division_id: apslDivisionId
       });
 
-      this.log(`   ✓ ${normalizedName}${apslDivisionId ? ` (${this.conferences.get(apslDivisionId).name})` : ''}`);
+      this.log(`   ✓ ${normalizedName}${conferenceForLog ? ` (${conferenceForLog.name})` : ''}`);
     }
   }
 
