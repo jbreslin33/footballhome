@@ -1051,6 +1051,7 @@ CREATE TABLE IF NOT EXISTS venues (
     directions TEXT,
     notes TEXT,
     website VARCHAR(255),
+    google_maps_url TEXT,                       -- Google Maps direct link for navigation
     
     -- Ownership/management
     owned_by_team BOOLEAN DEFAULT false,
