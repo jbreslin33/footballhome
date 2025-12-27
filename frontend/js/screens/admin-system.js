@@ -265,7 +265,7 @@ class AdminSystemScreen extends Screen {
                       <td>${team.ties}</td>
                       <td>${team.goals_for}</td>
                       <td>${team.goals_against}</td>
-                      <td class="${team.goal_difference >= 0 ? 'positive' : 'negative'}">${team.goal_difference > 0 ? '+' : ''}${team.goal_difference}</td>
+                      <td class="${team.goal_differential >= 0 ? 'positive' : 'negative'}">${team.goal_differential > 0 ? '+' : ''}${team.goal_differential}</td>
                       <td><strong>${team.points}</strong></td>
                     </tr>
                   `).join('')}
