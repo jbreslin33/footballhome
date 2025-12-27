@@ -42,7 +42,7 @@ Response StatsController::handleGetStandings(const Request& request) {
         std::string query = R"(
             SELECT 
                 tss.id,
-                t.display_name as team_name,
+                t.name as team_name,
                 l.display_name as league_name,
                 ld.display_name as division_name,
                 tss.season,
@@ -106,8 +106,8 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
         std::string query = R"(
             SELECT 
                 pss.id,
-                p.display_name as player_name,
-                t.display_name as team_name,
+                p.name as player_name,
+                t.name as team_name,
                 l.display_name as league_name,
                 pss.season,
                 pss.games_played,
@@ -165,8 +165,8 @@ Response StatsController::handleGetMatches(const Request& request) {
         std::string query = R"(
             SELECT 
                 m.id,
-                ht.display_name as home_team,
-                at.display_name as away_team,
+                ht.name as home_team,
+                at.name as away_team,
                 m.home_team_score,
                 m.away_team_score,
                 m.match_date,
