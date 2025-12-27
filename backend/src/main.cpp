@@ -21,6 +21,7 @@
 #include "controllers/AvailabilityController.h"
 #include "controllers/SystemAdminController.h"
 #include "controllers/TacticalBoardController.h"
+#include "controllers/StatsController.h"
 
 class HttpServer {
 private:
@@ -38,6 +39,7 @@ private:
     std::shared_ptr<AvailabilityController> availability_controller_;
     std::shared_ptr<SystemAdminController> system_admin_controller_;
     std::shared_ptr<TacticalBoardController> tactical_board_controller_;
+    std::shared_ptr<StatsController> stats_controller_;
 
 public:
     HttpServer(int port = 3001) : port_(port) {
@@ -50,6 +52,7 @@ public:
         availability_controller_ = std::make_shared<AvailabilityController>();
         system_admin_controller_ = std::make_shared<SystemAdminController>();
         tactical_board_controller_ = std::make_shared<TacticalBoardController>();
+        stats_controller_ = std::make_shared<StatsController>();
     }
     
     bool initialize() {
@@ -129,6 +132,7 @@ private:
         router_.useController("/api", availability_controller_);
         router_.useController("/api/system-admin", system_admin_controller_);
         router_.useController("/api/tactical-boards", tactical_board_controller_);
+        router_.useController("/api/stats", stats_controller_);
         
         // Add basic health check endpoint
         router_.get("/health", [](const Request& request) {

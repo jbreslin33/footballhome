@@ -31,6 +31,7 @@ class AdminSystemScreen extends Screen {
         <!-- Navigation Tabs -->
         <div class="admin-tabs">
           <button class="admin-tab active" data-view="dashboard">📊 Dashboard</button>
+          <button class="admin-tab" data-view="stats">📈 Stats</button>
           <button class="admin-tab" data-view="casa">⚽ CASA</button>
           <button class="admin-tab" data-view="apsl">🦅 APSL</button>
           <button class="admin-tab" data-view="groupme">💬 GroupMe</button>
@@ -104,6 +105,9 @@ class AdminSystemScreen extends Screen {
       switch(view) {
         case 'dashboard':
           await this.loadDashboard();
+          break;
+        case 'stats':
+          await this.loadStats();
           break;
         case 'casa':
           await this.loadCasaDashboard();
@@ -185,6 +189,189 @@ class AdminSystemScreen extends Screen {
       </div>
     `;
   }
+
+  async loadStats() {
+    const content = this.element.querySelector('.admin-content');
+    
+    // Create stats tabs
+    content.innerHTML = `
+      <div class="stats-view">
+        <h2>📈 League Statistics</h2>
+        <div class="stats-tabs">
+          <button class="stats-tab active" data-tab="standings">🏆 Standings</button>
+          <button class="stats-tab" data-tab="players">⚽ Player Stats</button>
+          <button class="stats-tab" data-tab="matches">📅 Match Results</button>
+        </div>
+        <div class="stats-content">
+          <div class="loading-indicator">Loading...</div>
+        </div>
+      </div>
+    `;
+    
+    // Setup tab listeners
+    content.querySelectorAll('.stats-tab').forEach(tab => {
+      tab.addEventListener('click', async () => {
+        content.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        await this.loadStatsTab(tab.dataset.tab);
+      });
+    });
+    
+    // Load initial tab
+    await this.loadStatsTab('standings');
+  }
+
+  async loadStatsTab(tab) {
+    const statsContent = this.element.querySelector('.stats-content');
+    statsContent.innerHTML = '<div class="loading-indicator">Loading...</div>';
+    
+    try {
+      if (tab === 'standings') {
+        const response = await fetch('/api/stats/standings');
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.message);
+        }
+        
+        // Group by league and division
+        const grouped = {};
+        data.data.forEach(team => {
+          const key = `${team.league_name || 'Unknown'} - ${team.division_name || 'Unknown'}`;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(team);
+        });
+        
+        let html = '<div class="standings-container">';
+        Object.entries(grouped).forEach(([divisionName, teams]) => {
+          html += `
+            <div class="standings-table">
+              <h3>${divisionName}</h3>
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Team</th>
+                    <th>GP</th>
+                    <th>W</th>
+                    <th>L</th>
+                    <th>T</th>
+                    <th>GF</th>
+                    <th>GA</th>
+                    <th>GD</th>
+                    <th>Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${teams.map(team => `
+                    <tr>
+                      <td><strong>${team.team_name}</strong></td>
+                      <td>${team.games_played}</td>
+                      <td>${team.wins}</td>
+                      <td>${team.losses}</td>
+                      <td>${team.ties}</td>
+                      <td>${team.goals_for}</td>
+                      <td>${team.goals_against}</td>
+                      <td class="${team.goal_difference >= 0 ? 'positive' : 'negative'}">${team.goal_difference > 0 ? '+' : ''}${team.goal_difference}</td>
+                      <td><strong>${team.points}</strong></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        });
+        html += '</div>';
+        
+        statsContent.innerHTML = html;
+        
+      } else if (tab === 'players') {
+        const response = await fetch('/api/stats/players');
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.message);
+        }
+        
+        statsContent.innerHTML = `
+          <div class="player-stats-container">
+            <h3>Top Scorers (2025-2026 Season)</h3>
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Player</th>
+                  <th>Team</th>
+                  <th>GP</th>
+                  <th>Goals</th>
+                  <th>Assists</th>
+                  <th>Yellow</th>
+                  <th>Red</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.data.map((player, idx) => `
+                  <tr>
+                    <td><strong>${idx + 1}</strong></td>
+                    <td>${player.player_name}</td>
+                    <td>${player.team_name}</td>
+                    <td>${player.games_played}</td>
+                    <td><strong>${player.goals}</strong></td>
+                    <td>${player.assists}</td>
+                    <td>${player.yellow_cards}</td>
+                    <td>${player.red_cards}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        
+      } else if (tab === 'matches') {
+        const response = await fetch('/api/stats/matches');
+        const data = await response.json();
+        
+        if (!data.success) {
+          throw new Error(data.message);
+        }
+        
+        statsContent.innerHTML = `
+          <div class="matches-container">
+            <h3>Recent Match Results</h3>
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Home Team</th>
+                  <th>Score</th>
+                  <th>Away Team</th>
+                  <th>Venue</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.data.map(match => `
+                  <tr>
+                    <td>${match.match_date ? new Date(match.match_date).toLocaleDateString() : 'TBD'}</td>
+                    <td><strong>${match.home_team}</strong></td>
+                    <td class="match-score">${match.home_score} - ${match.away_score}</td>
+                    <td><strong>${match.away_team}</strong></td>
+                    <td>
+                      ${match.google_maps_url ? 
+                        `<a href="${match.google_maps_url}" target="_blank">${match.venue_name || 'View Map'}</a>` :
+                        (match.venue_name || 'N/A')
+                      }
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+    } catch (error) {
+      statsContent.innerHTML = `<div class="error-message">Error loading ${tab}: ${error.message}</div>`;
+    }
+  }
+
 
   async loadCasaDashboard() {
     const response = await fetch('/api/system-admin/casa');
