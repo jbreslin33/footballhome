@@ -38,28 +38,72 @@ std::string StatsController::createJSONResponse(bool success, const std::string&
 
 Response StatsController::handleGetStandings(const Request& request) {
     try {
-        // Query team_season_stats with team names, ordered by points desc
+        // Calculate team standings from apsl_matches (completed games only)
         std::string query = R"(
+            WITH team_stats AS (
+                -- Home games
+                SELECT 
+                    home_team_id as team_id,
+                    COUNT(*) as games_played,
+                    SUM(CASE 
+                        WHEN home_score > away_score THEN 1 
+                        ELSE 0 
+                    END) as wins,
+                    SUM(CASE 
+                        WHEN home_score < away_score THEN 1 
+                        ELSE 0 
+                    END) as losses,
+                    SUM(CASE 
+                        WHEN home_score = away_score THEN 1 
+                        ELSE 0 
+                    END) as ties,
+                    SUM(home_score) as goals_for,
+                    SUM(away_score) as goals_against
+                FROM apsl_matches
+                WHERE match_status = 'completed' AND home_team_id IS NOT NULL
+                GROUP BY home_team_id
+                
+                UNION ALL
+                
+                -- Away games
+                SELECT 
+                    away_team_id as team_id,
+                    COUNT(*) as games_played,
+                    SUM(CASE 
+                        WHEN away_score > home_score THEN 1 
+                        ELSE 0 
+                    END) as wins,
+                    SUM(CASE 
+                        WHEN away_score < home_score THEN 1 
+                        ELSE 0 
+                    END) as losses,
+                    SUM(CASE 
+                        WHEN away_score = home_score THEN 1 
+                        ELSE 0 
+                    END) as ties,
+                    SUM(away_score) as goals_for,
+                    SUM(home_score) as goals_against
+                FROM apsl_matches
+                WHERE match_status = 'completed' AND away_team_id IS NOT NULL
+                GROUP BY away_team_id
+            )
             SELECT 
-                tss.id,
-                t.name as team_name,
-                l.display_name as league_name,
-                ld.display_name as division_name,
-                tss.season,
-                tss.games_played,
-                tss.wins,
-                tss.losses,
-                tss.ties,
-                tss.goals_for,
-                tss.goals_against,
-                tss.goal_differential,
-                tss.points
-            FROM team_season_stats tss
-            JOIN teams t ON tss.team_id = t.id
-            LEFT JOIN leagues l ON tss.league_id = l.id
-            LEFT JOIN league_divisions ld ON tss.league_division_id = ld.id
-            WHERE tss.season = '2025-2026'
-            ORDER BY l.display_name, ld.display_name, tss.points DESC, tss.goal_differential DESC
+                at.id::text,
+                at.name as team_name,
+                ad.name as division_name,
+                SUM(ts.games_played)::int as games_played,
+                SUM(ts.wins)::int as wins,
+                SUM(ts.losses)::int as losses,
+                SUM(ts.ties)::int as ties,
+                SUM(ts.goals_for)::int as goals_for,
+                SUM(ts.goals_against)::int as goals_against,
+                (SUM(ts.goals_for) - SUM(ts.goals_against))::int as goal_differential,
+                (SUM(ts.wins) * 3 + SUM(ts.ties))::int as points
+            FROM team_stats ts
+            JOIN apsl_teams at ON ts.team_id = at.id
+            LEFT JOIN apsl_divisions ad ON at.apsl_division_id = ad.id
+            GROUP BY at.id, at.name, ad.name
+            ORDER BY ad.name, points DESC, goal_differential DESC, team_name
         )";
         
         pqxx::result result = db_->query(query);
@@ -75,9 +119,9 @@ Response StatsController::handleGetStandings(const Request& request) {
             json_data << "{"
                 << "\"id\":\"" << row["id"].c_str() << "\","
                 << "\"team_name\":\"" << row["team_name"].c_str() << "\","
-                << "\"league_name\":\"" << (row["league_name"].is_null() ? "" : row["league_name"].c_str()) << "\","
-                << "\"division_name\":\"" << (row["division_name"].is_null() ? "" : row["division_name"].c_str()) << "\","
-                << "\"season\":\"" << row["season"].c_str() << "\","
+                << "\"league_name\":\"APSL\","
+                << "\"division_name\":\"" << (row["division_name"].is_null() ? "Unknown" : row["division_name"].c_str()) << "\","
+                << "\"season\":\"2025-2026\","
                 << "\"games_played\":" << row["games_played"].as<int>() << ","
                 << "\"wins\":" << row["wins"].as<int>() << ","
                 << "\"losses\":" << row["losses"].as<int>() << ","
