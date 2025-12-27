@@ -281,6 +281,30 @@ CREATE TABLE IF NOT EXISTS teams (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Team season statistics (standings/records)
+CREATE TABLE IF NOT EXISTS team_season_stats (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    league_id UUID REFERENCES leagues(id),
+    league_division_id UUID REFERENCES league_divisions(id),
+    season VARCHAR(20) NOT NULL,
+    games_played INTEGER DEFAULT 0,
+    wins INTEGER DEFAULT 0,
+    losses INTEGER DEFAULT 0,
+    ties INTEGER DEFAULT 0,
+    goals_for INTEGER DEFAULT 0,
+    goals_against INTEGER DEFAULT 0,
+    goal_differential INTEGER DEFAULT 0,
+    points INTEGER DEFAULT 0,
+    win_percentage DECIMAL(5,4),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(team_id, league_id, league_division_id, season)
+);
+
+CREATE INDEX IF NOT EXISTS idx_team_season_stats_team ON team_season_stats(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_season_stats_league ON team_season_stats(league_id);
+CREATE INDEX IF NOT EXISTS idx_team_season_stats_season ON team_season_stats(season);
+
 -- Team external apps junction table (DEPRECATED - Replaced by specific provider tables)
 -- Kept commented out for reference or if needed for generic apps later
 -- CREATE TABLE IF NOT EXISTS team_external_apps ...

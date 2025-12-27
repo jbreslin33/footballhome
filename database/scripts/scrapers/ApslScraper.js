@@ -13,6 +13,7 @@ const TeamPlayer = require('../models/TeamPlayer');
 const Coach = require('../models/Coach');
 const TeamCoach = require('../models/TeamCoach');
 const Match = require('../models/Match');
+const TeamSeasonStats = require('../models/TeamSeasonStats');
 
 /**
  * APSL League Scraper
@@ -50,6 +51,7 @@ class ApslScraper extends Scraper {
     this.data.apslTeams = new Map();
     this.data.apslPlayers = new Map();
     this.data.apslTeamPlayers = new Map();
+    this.data.teamSeasonStats = new Map();
   }
 
   async initialize() {
@@ -90,6 +92,11 @@ class ApslScraper extends Scraper {
     // Step 4: Fetch schedules if needed
     if (this.shouldScrapeSchedules()) {
       await this.fetchSchedules();
+    }
+    
+    // Step 5: Fetch standings (team stats)
+    if (this.shouldScrapeTeams()) {
+      await this.fetchStandings();
     }
   }
 
@@ -320,6 +327,77 @@ class ApslScraper extends Scraper {
     }
   }
 
+  async fetchStandings() {
+    this.log('\n📊 Fetching team standings/stats...');
+    
+    // Fetch all division standings from the SportsEngine API
+    // This contains W/L/T, goals for/against, points for all teams
+    const standingsUrl = 'https://api.sportsengine.com/v1/organizations/61b906ec-39d2-4e4f-a9c3-7ab0ace97e4b/teams/standings';
+    
+    try {
+      const response = await this.fetcher.fetch(standingsUrl);
+      const standingsData = JSON.parse(response);
+      
+      if (!standingsData.result || !Array.isArray(standingsData.result)) {
+        this.logWarn('No standings data found in API response');
+        return;
+      }
+      
+      let statsCount = 0;
+      
+      // Process each division's standings
+      for (const division of standingsData.result) {
+        const divisionName = division.standings_node_name;
+        const teamRecords = division.teamRecords || [];
+        
+        for (const record of teamRecords) {
+          const teamName = record.team_name;
+          const values = record.values || {};
+          
+          // Find matching team in our data by name
+          let matchingTeamId = null;
+          for (const [teamId, team] of this.data.teams.entries()) {
+            if (team.name === teamName) {
+              matchingTeamId = teamId;
+              break;
+            }
+          }
+          
+          if (!matchingTeamId) {
+            continue; // Team not in our filtered list
+          }
+          
+          // Create team season stats record
+          const statsId = IdGenerator.fromComponents('stats', teamName, '2024-2025');
+          const stats = new TeamSeasonStats({
+            id: statsId,
+            team_id: matchingTeamId,
+            league_id: this.leagueId,
+            league_division_id: null, // Could map from divisionName if needed
+            season: '2024-2025',
+            games_played: values.games || 0,
+            wins: values.w || 0,
+            losses: values.l || 0,
+            ties: values.t || 0,
+            goals_for: values.pf || 0,
+            goals_against: values.pa || 0,
+            goal_differential: values.pd || 0,
+            points: values.st_pts || 0,
+            win_percentage: values.pct || null
+          });
+          
+          this.data.teamSeasonStats.set(statsId, stats);
+          statsCount++;
+        }
+      }
+      
+      this.log(`   Imported stats for ${statsCount} teams`);
+      
+    } catch (error) {
+      this.logError('Failed to fetch standings from API', error);
+    }
+  }
+
   async transformData() {
     // Apply team filter if specified
     if (this.hasTeamFilter()) {
@@ -431,6 +509,16 @@ class ApslScraper extends Scraper {
               tableName: 'apsl_team_players',
               useInserts: true,
               conflictColumns: ['apsl_team_id', 'apsl_player_id']
+          }
+      },
+      {
+          filename: '31a-team-season-stats-apsl.sql',
+          data: this.data.teamSeasonStats,
+          options: {
+              title: 'APSL Team Season Statistics',
+              tableName: 'team_season_stats',
+              useInserts: true,
+              conflictColumns: ['team_id', 'league_id', 'league_division_id', 'season']
           }
       }
     ]);
