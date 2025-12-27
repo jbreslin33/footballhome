@@ -102,26 +102,25 @@ Response StatsController::handleGetStandings(const Request& request) {
 
 Response StatsController::handleGetPlayerStats(const Request& request) {
     try {
-        // Query player_season_stats with player names from users table, ordered by goals desc
+        // Query apsl_player_stats with player names from apsl tables
         std::string query = R"(
             SELECT 
-                pss.id,
-                CONCAT(u.first_name, ' ', u.last_name) as player_name,
-                t.name as team_name,
-                l.display_name as league_name,
-                pss.season,
-                pss.games_played,
-                pss.goals,
-                pss.assists,
-                pss.yellow_cards,
-                pss.red_cards
-            FROM player_season_stats pss
-            JOIN players p ON pss.player_id = p.id
-            JOIN users u ON p.id = u.id
-            JOIN teams t ON pss.team_id = t.id
-            LEFT JOIN leagues l ON pss.league_id = l.id
-            WHERE pss.season = '2025-2026'
-            ORDER BY pss.goals DESC, pss.assists DESC
+                aps.id,
+                ap.name as player_name,
+                at.name as team_name,
+                ad.name as division_name,
+                aps.season,
+                aps.games_played,
+                aps.goals,
+                aps.assists,
+                aps.yellow_cards,
+                aps.red_cards
+            FROM apsl_player_stats aps
+            JOIN apsl_players ap ON aps.apsl_player_id = ap.id
+            JOIN apsl_teams at ON aps.apsl_team_id = at.id
+            LEFT JOIN apsl_divisions ad ON aps.apsl_division_id = ad.id
+            WHERE aps.season = '2025-2026'
+            ORDER BY aps.goals DESC, aps.assists DESC
             LIMIT 100
         )";
         
@@ -139,7 +138,7 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
                 << "\"id\":\"" << row["id"].c_str() << "\","
                 << "\"player_name\":\"" << row["player_name"].c_str() << "\","
                 << "\"team_name\":\"" << row["team_name"].c_str() << "\","
-                << "\"league_name\":\"" << (row["league_name"].is_null() ? "" : row["league_name"].c_str()) << "\","
+                << "\"league_name\":\"" << (row["division_name"].is_null() ? "APSL" : row["division_name"].c_str()) << "\","
                 << "\"season\":\"" << row["season"].c_str() << "\","
                 << "\"games_played\":" << row["games_played"].as<int>() << ","
                 << "\"goals\":" << row["goals"].as<int>() << ","
@@ -162,25 +161,23 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
 
 Response StatsController::handleGetMatches(const Request& request) {
     try {
-        // Query matches with scores, team names, venue
+        // Query apsl_matches with scores, team names, venue
         std::string query = R"(
             SELECT 
-                m.id,
+                am.id,
                 ht.name as home_team,
                 at.name as away_team,
-                m.home_team_score,
-                m.away_team_score,
-                e.event_date as match_date,
-                m.match_status,
-                v.name as venue_name,
-                v.google_maps_url
-            FROM matches m
-            JOIN events e ON m.id = e.id
-            JOIN teams ht ON m.home_team_id = ht.id
-            JOIN teams at ON m.away_team_id = at.id
-            LEFT JOIN venues v ON e.venue_id = v.id
-            WHERE m.match_status = 'completed'
-            ORDER BY e.event_date DESC
+                am.home_score,
+                am.away_score,
+                am.match_date,
+                am.match_status,
+                am.venue_name,
+                am.google_maps_url
+            FROM apsl_matches am
+            LEFT JOIN apsl_teams ht ON am.home_team_id = ht.id
+            LEFT JOIN apsl_teams at ON am.away_team_id = at.id
+            WHERE am.match_status = 'completed'
+            ORDER BY am.match_date DESC
             LIMIT 100
         )";
         
@@ -200,10 +197,10 @@ Response StatsController::handleGetMatches(const Request& request) {
             
             json_data << "{"
                 << "\"id\":\"" << row["id"].c_str() << "\","
-                << "\"home_team\":\"" << row["home_team"].c_str() << "\","
-                << "\"away_team\":\"" << row["away_team"].c_str() << "\","
-                << "\"home_score\":" << (row["home_team_score"].is_null() ? 0 : row["home_team_score"].as<int>()) << ","
-                << "\"away_score\":" << (row["away_team_score"].is_null() ? 0 : row["away_team_score"].as<int>()) << ","
+                << "\"home_team\":\"" << (row["home_team"].is_null() ? "" : row["home_team"].c_str()) << "\","
+                << "\"away_team\":\"" << (row["away_team"].is_null() ? "" : row["away_team"].c_str()) << "\","
+                << "\"home_score\":" << (row["home_score"].is_null() ? 0 : row["home_score"].as<int>()) << ","
+                << "\"away_score\":" << (row["away_score"].is_null() ? 0 : row["away_score"].as<int>()) << ","
                 << "\"match_date\":\"" << match_date << "\","
                 << "\"match_status\":\"" << row["match_status"].c_str() << "\","
                 << "\"venue_name\":\"" << venue_name << "\","

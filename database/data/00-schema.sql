@@ -539,6 +539,44 @@ CREATE TABLE IF NOT EXISTS apsl_team_players (
     UNIQUE(apsl_team_id, apsl_player_id)
 );
 
+-- APSL Matches (compartmentalized)
+CREATE TABLE IF NOT EXISTS apsl_matches (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    apsl_match_id VARCHAR(255) UNIQUE NOT NULL,
+    home_team_id UUID REFERENCES apsl_teams(id),
+    away_team_id UUID REFERENCES apsl_teams(id),
+    home_score INTEGER,
+    away_score INTEGER,
+    match_date TIMESTAMP,
+    match_status VARCHAR(20) DEFAULT 'scheduled', -- 'scheduled', 'completed', 'cancelled'
+    venue_name TEXT,
+    google_maps_url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- APSL Player Season Stats (compartmentalized)
+CREATE TABLE IF NOT EXISTS apsl_player_stats (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    apsl_player_id UUID NOT NULL REFERENCES apsl_players(id) ON DELETE CASCADE,
+    apsl_team_id UUID NOT NULL REFERENCES apsl_teams(id) ON DELETE CASCADE,
+    apsl_division_id UUID REFERENCES apsl_divisions(id),
+    season VARCHAR(20) NOT NULL,
+    games_played INTEGER DEFAULT 0,
+    goals INTEGER DEFAULT 0,
+    assists INTEGER DEFAULT 0,
+    yellow_cards INTEGER DEFAULT 0,
+    red_cards INTEGER DEFAULT 0,
+    minutes_played INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(apsl_player_id, apsl_team_id, apsl_division_id, season)
+);
+
+CREATE INDEX IF NOT EXISTS idx_apsl_player_stats_player ON apsl_player_stats(apsl_player_id);
+CREATE INDEX IF NOT EXISTS idx_apsl_player_stats_team ON apsl_player_stats(apsl_team_id);
+CREATE INDEX IF NOT EXISTS idx_apsl_player_stats_season ON apsl_player_stats(season);
+
 -- ==========================================
 -- CASA INTEGRATION (Specific Tables)
 -- ==========================================
