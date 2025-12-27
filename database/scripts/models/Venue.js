@@ -23,6 +23,7 @@ class Venue {
     
     // Google Places data
     this.place_id = data.place_id || null;
+    this.google_maps_url = data.google_maps_url || null;
     this.rating = data.rating || null;
     this.user_ratings_total = data.user_ratings_total || null;
     this.price_level = data.price_level || null;
@@ -37,7 +38,7 @@ class Venue {
   }
 
   toSQL() {
-    return `INSERT INTO venues (id, name, venue_type, formatted_address, city, state, postal_code, country, latitude, longitude, surface_type, phone, international_phone_number, website, place_id, rating, user_ratings_total, price_level, business_status, google_types, opening_hours, photos, data_source, last_google_update, is_active)
+    return `INSERT INTO venues (id, name, venue_type, formatted_address, city, state, postal_code, country, latitude, longitude, surface_type, phone, international_phone_number, website, place_id, google_maps_url, rating, user_ratings_total, price_level, business_status, google_types, opening_hours, photos, data_source, last_google_update, is_active)
 VALUES (
   ${SqlGenerator.escape(this.id)},
   ${SqlGenerator.escape(this.name)},
@@ -54,6 +55,7 @@ VALUES (
   ${SqlGenerator.escape(this.international_phone_number)},
   ${SqlGenerator.escape(this.website)},
   ${SqlGenerator.escape(this.place_id)},
+  ${SqlGenerator.escape(this.google_maps_url)},
   ${SqlGenerator.escape(this.rating)},
   ${SqlGenerator.escape(this.user_ratings_total)},
   ${SqlGenerator.escape(this.price_level)},
