@@ -3,6 +3,29 @@
 #include <iostream>
 #include <iomanip>
 
+// Helper function to escape JSON strings
+std::string escapeJsonString(const std::string& input) {
+    std::ostringstream output;
+    for (char c : input) {
+        switch (c) {
+            case '"': output << "\\\""; break;
+            case '\\': output << "\\\\"; break;
+            case '\b': output << "\\b"; break;
+            case '\f': output << "\\f"; break;
+            case '\n': output << "\\n"; break;
+            case '\r': output << "\\r"; break;
+            case '\t': output << "\\t"; break;
+            default:
+                if (c < 0x20) {
+                    output << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
+                } else {
+                    output << c;
+                }
+        }
+    }
+    return output.str();
+}
+
 StatsController::StatsController() {
     db_ = Database::getInstance();
 }
@@ -131,11 +154,15 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
             if (!first) json_data << ",";
             first = false;
             
+            std::string player_name = escapeJsonString(row["player_name"].c_str());
+            std::string team_name = escapeJsonString(row["team_name"].c_str());
+            std::string league_name = row["division_name"].is_null() ? "APSL" : escapeJsonString(row["division_name"].c_str());
+            
             json_data << "{"
                 << "\"id\":\"" << row["id"].c_str() << "\","
-                << "\"player_name\":\"" << row["player_name"].c_str() << "\","
-                << "\"team_name\":\"" << row["team_name"].c_str() << "\","
-                << "\"league_name\":\"" << (row["division_name"].is_null() ? "APSL" : row["division_name"].c_str()) << "\","
+                << "\"player_name\":\"" << player_name << "\","
+                << "\"team_name\":\"" << team_name << "\","
+                << "\"league_name\":\"" << league_name << "\","
                 << "\"season\":\"" << row["season"].c_str() << "\","
                 << "\"games_played\":" << row["games_played"].as<int>() << ","
                 << "\"goals\":" << row["goals"].as<int>() << ","
@@ -189,13 +216,15 @@ Response StatsController::handleGetMatches(const Request& request) {
             first = false;
             
             std::string match_date = row["match_date"].is_null() ? "" : row["match_date"].c_str();
-            std::string venue_name = row["venue_name"].is_null() ? "" : row["venue_name"].c_str();
-            std::string google_maps = row["google_maps_url"].is_null() ? "" : row["google_maps_url"].c_str();
+            std::string venue_name = row["venue_name"].is_null() ? "" : escapeJsonString(row["venue_name"].c_str());
+            std::string google_maps = row["google_maps_url"].is_null() ? "" : escapeJsonString(row["google_maps_url"].c_str());
+            std::string home_team = row["home_team"].is_null() ? "" : escapeJsonString(row["home_team"].c_str());
+            std::string away_team = row["away_team"].is_null() ? "" : escapeJsonString(row["away_team"].c_str());
             
             json_data << "{"
                 << "\"id\":\"" << row["id"].c_str() << "\","
-                << "\"home_team\":\"" << (row["home_team"].is_null() ? "" : row["home_team"].c_str()) << "\","
-                << "\"away_team\":\"" << (row["away_team"].is_null() ? "" : row["away_team"].c_str()) << "\","
+                << "\"home_team\":\"" << home_team << "\","
+                << "\"away_team\":\"" << away_team << "\","
                 << "\"home_score\":" << (row["home_score"].is_null() ? 0 : row["home_score"].as<int>()) << ","
                 << "\"away_score\":" << (row["away_score"].is_null() ? 0 : row["away_score"].as<int>()) << ","
                 << "\"match_date\":\"" << match_date << "\","
