@@ -4,7 +4,7 @@
 #include "../core/Controller.h"
 #include "../core/Response.h"
 #include "../core/Request.h"
-#include "../database/DatabaseConnection.h"
+#include "../database/Database.h"
 #include <memory>
 #include <pqxx/pqxx>
 
@@ -14,7 +14,7 @@ public:
     void registerRoutes(Router& router, const std::string& prefix) override;
 
 private:
-    std::shared_ptr<DatabaseConnection> db_connection_;
+    Database* db_;
     
     // Handlers
     Response handleGetStandings(const Request& request);

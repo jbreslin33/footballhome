@@ -6,7 +6,7 @@
 using json = nlohmann::json;
 
 StatsController::StatsController() {
-    db_connection_ = DatabaseConnection::getInstance();
+    db_ = Database::getInstance();
 }
 
 void StatsController::registerRoutes(Router& router, const std::string& prefix) {
@@ -40,7 +40,7 @@ std::string StatsController::createJSONResponse(bool success, const std::string&
 
 Response StatsController::handleGetStandings(const Request& request) {
     try {
-        auto conn = db_connection_->getConnection();
+        auto conn = db_->getConnection();
         pqxx::work txn(*conn);
         
         // Query team_season_stats with team names, ordered by points desc
@@ -102,7 +102,7 @@ Response StatsController::handleGetStandings(const Request& request) {
 
 Response StatsController::handleGetPlayerStats(const Request& request) {
     try {
-        auto conn = db_connection_->getConnection();
+        auto conn = db_->getConnection();
         pqxx::work txn(*conn);
         
         // Query player_season_stats with player names, ordered by goals desc
@@ -159,7 +159,7 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
 
 Response StatsController::handleGetMatches(const Request& request) {
     try {
-        auto conn = db_connection_->getConnection();
+        auto conn = db_->getConnection();
         pqxx::work txn(*conn);
         
         // Query matches with scores, team names, venue
