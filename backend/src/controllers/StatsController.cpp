@@ -169,7 +169,7 @@ Response StatsController::handleGetMatches(const Request& request) {
                 am.away_score,
                 am.match_date,
                 am.match_status,
-                am.venue_name,
+                INITCAP(am.venue_name) as venue_name,
                 am.google_maps_url
             FROM apsl_matches am
             LEFT JOIN apsl_teams ht ON am.home_team_id = ht.id
