@@ -119,7 +119,6 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
             LEFT JOIN apsl_divisions ad ON aps.apsl_division_id = ad.id
             WHERE aps.season = '2025-2026'
             ORDER BY aps.goals DESC, aps.assists DESC
-            LIMIT 100
         )";
         
         pqxx::result result = db_->query(query);
@@ -175,8 +174,8 @@ Response StatsController::handleGetMatches(const Request& request) {
             LEFT JOIN apsl_teams ht ON am.home_team_id = ht.id
             LEFT JOIN apsl_teams at ON am.away_team_id = at.id
             WHERE am.match_status = 'completed'
+              AND am.match_date >= '2025-09-01'
             ORDER BY am.match_date DESC
-            LIMIT 100
         )";
         
         pqxx::result result = db_->query(query);

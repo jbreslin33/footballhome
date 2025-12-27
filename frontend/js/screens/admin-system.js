@@ -286,39 +286,58 @@ class AdminSystemScreen extends Screen {
           throw new Error(data.message);
         }
         
-        statsContent.innerHTML = `
-          <div class="player-stats-container">
-            <h3>Top Scorers (2025-2026 Season)</h3>
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Rank</th>
-                  <th>Player</th>
-                  <th>Team</th>
-                  <th>GP</th>
-                  <th>Goals</th>
-                  <th>Assists</th>
-                  <th>Yellow</th>
-                  <th>Red</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.data.map((player, idx) => `
+        const allPlayers = data.data;
+        let displayCount = 50; // Default show 50
+        
+        const renderPlayers = () => {
+          const playersToShow = allPlayers.slice(0, displayCount);
+          const showMoreButton = displayCount < allPlayers.length 
+            ? `<button class="btn-primary" onclick="window.showMorePlayers()" style="margin: 20px auto; display: block;">Show More (${allPlayers.length - displayCount} remaining)</button>`
+            : '';
+          
+          statsContent.innerHTML = `
+            <div class="player-stats-container">
+              <h3>Top Scorers (2025-2026 Season) - Showing ${playersToShow.length} of ${allPlayers.length}</h3>
+              <table class="admin-table">
+                <thead>
                   <tr>
-                    <td><strong>${idx + 1}</strong></td>
-                    <td>${player.player_name}</td>
-                    <td>${player.team_name}</td>
-                    <td>${player.games_played}</td>
-                    <td><strong>${player.goals}</strong></td>
-                    <td>${player.assists}</td>
-                    <td>${player.yellow_cards}</td>
-                    <td>${player.red_cards}</td>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Team</th>
+                    <th>GP</th>
+                    <th>Goals</th>
+                    <th>Assists</th>
+                    <th>Yellow</th>
+                    <th>Red</th>
                   </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        `;
+                </thead>
+                <tbody>
+                  ${playersToShow.map((player, idx) => `
+                    <tr>
+                      <td><strong>${idx + 1}</strong></td>
+                      <td>${player.player_name}</td>
+                      <td>${player.team_name}</td>
+                      <td>${player.games_played}</td>
+                      <td><strong>${player.goals}</strong></td>
+                      <td>${player.assists}</td>
+                      <td>${player.yellow_cards}</td>
+                      <td>${player.red_cards}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+              ${showMoreButton}
+            </div>
+          `;
+        };
+        
+        // Make function accessible globally for onclick
+        window.showMorePlayers = () => {
+          displayCount += 50;
+          renderPlayers();
+        };
+        
+        renderPlayers();
         
       } else if (tab === 'matches') {
         const response = await fetch('/api/stats/matches');
@@ -328,21 +347,30 @@ class AdminSystemScreen extends Screen {
           throw new Error(data.message);
         }
         
-        statsContent.innerHTML = `
-          <div class="matches-container">
-            <h3>Recent Match Results</h3>
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Home Team</th>
-                  <th>Score</th>
-                  <th>Away Team</th>
-                  <th>Venue</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data.data.map(match => `
+        const allMatches = data.data;
+        let displayCount = 50; // Default show 50
+        
+        const renderMatches = () => {
+          const matchesToShow = allMatches.slice(0, displayCount);
+          const showMoreButton = displayCount < allMatches.length 
+            ? `<button class="btn-primary" onclick="window.showMoreMatches()" style="margin: 20px auto; display: block;">Show More (${allMatches.length - displayCount} remaining)</button>`
+            : '';
+          
+          statsContent.innerHTML = `
+            <div class="matches-container">
+              <h3>Match Results (Since Sept 1, 2025) - Showing ${matchesToShow.length} of ${allMatches.length}</h3>
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Home Team</th>
+                    <th>Score</th>
+                    <th>Away Team</th>
+                    <th>Venue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${matchesToShow.map(match => `
                   <tr>
                     <td>${match.match_date ? new Date(match.match_date).toLocaleDateString() : 'TBD'}</td>
                     <td><strong>${match.home_team}</strong></td>
@@ -358,8 +386,18 @@ class AdminSystemScreen extends Screen {
                 `).join('')}
               </tbody>
             </table>
+            ${showMoreButton}
           </div>
         `;
+        };
+        
+        // Make function accessible globally for onclick
+        window.showMoreMatches = () => {
+          displayCount += 50;
+          renderMatches();
+        };
+        
+        renderMatches();
       }
     } catch (error) {
       statsContent.innerHTML = `<div class="error-message">Error loading ${tab}: ${error.message}</div>`;
