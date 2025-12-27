@@ -1,9 +1,7 @@
 #include "StatsController.h"
 #include <sstream>
 #include <iostream>
-#include <nlohmann/json.hpp>
-
-using json = nlohmann::json;
+#include <iomanip>
 
 StatsController::StatsController() {
     db_ = Database::getInstance();
@@ -70,27 +68,33 @@ Response StatsController::handleGetStandings(const Request& request) {
         pqxx::result result = txn.exec(query);
         txn.commit();
         
-        json standings_array = json::array();
+        // Manually construct JSON array
+        std::ostringstream json_data;
+        json_data << "[";
+        bool first = true;
         for (const auto& row : result) {
-            json standing;
-            standing["id"] = row["id"].c_str();
-            standing["team_name"] = row["team_name"].c_str();
-            standing["league_name"] = row["league_name"].is_null() ? "" : row["league_name"].c_str();
-            standing["division_name"] = row["division_name"].is_null() ? "" : row["division_name"].c_str();
-            standing["season"] = row["season"].c_str();
-            standing["games_played"] = row["games_played"].as<int>();
-            standing["wins"] = row["wins"].as<int>();
-            standing["losses"] = row["losses"].as<int>();
-            standing["ties"] = row["ties"].as<int>();
-            standing["goals_for"] = row["goals_for"].as<int>();
-            standing["goals_against"] = row["goals_against"].as<int>();
-            standing["goal_difference"] = row["goal_difference"].as<int>();
-            standing["points"] = row["points"].as<int>();
-            standings_array.push_back(standing);
+            if (!first) json_data << ",";
+            first = false;
+            
+            json_data << "{"
+                << "\"id\":\"" << row["id"].c_str() << "\","
+                << "\"team_name\":\"" << row["team_name"].c_str() << "\","
+                << "\"league_name\":\"" << (row["league_name"].is_null() ? "" : row["league_name"].c_str()) << "\","
+                << "\"division_name\":\"" << (row["division_name"].is_null() ? "" : row["division_name"].c_str()) << "\","
+                << "\"season\":\"" << row["season"].c_str() << "\","
+                << "\"games_played\":" << row["games_played"].as<int>() << ","
+                << "\"wins\":" << row["wins"].as<int>() << ","
+                << "\"losses\":" << row["losses"].as<int>() << ","
+                << "\"ties\":" << row["ties"].as<int>() << ","
+                << "\"goals_for\":" << row["goals_for"].as<int>() << ","
+                << "\"goals_against\":" << row["goals_against"].as<int>() << ","
+                << "\"goal_difference\":" << row["goal_difference"].as<int>() << ","
+                << "\"points\":" << row["points"].as<int>()
+                << "}";
         }
+        json_data << "]";
         
-        std::string data = standings_array.dump();
-        std::string json_response = createJSONResponse(true, "Standings retrieved successfully", data);
+        std::string json_response = createJSONResponse(true, "Standings retrieved successfully", json_data.str());
         return Response(HttpStatus::OK, json_response);
         
     } catch (const std::exception& e) {
@@ -130,24 +134,30 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
         pqxx::result result = txn.exec(query);
         txn.commit();
         
-        json stats_array = json::array();
+        // Manually construct JSON array
+        std::ostringstream json_data;
+        json_data << "[";
+        bool first = true;
         for (const auto& row : result) {
-            json stat;
-            stat["id"] = row["id"].c_str();
-            stat["player_name"] = row["player_name"].c_str();
-            stat["team_name"] = row["team_name"].c_str();
-            stat["league_name"] = row["league_name"].is_null() ? "" : row["league_name"].c_str();
-            stat["season"] = row["season"].c_str();
-            stat["games_played"] = row["games_played"].as<int>();
-            stat["goals"] = row["goals"].as<int>();
-            stat["assists"] = row["assists"].as<int>();
-            stat["yellow_cards"] = row["yellow_cards"].as<int>();
-            stat["red_cards"] = row["red_cards"].as<int>();
-            stats_array.push_back(stat);
+            if (!first) json_data << ",";
+            first = false;
+            
+            json_data << "{"
+                << "\"id\":\"" << row["id"].c_str() << "\","
+                << "\"player_name\":\"" << row["player_name"].c_str() << "\","
+                << "\"team_name\":\"" << row["team_name"].c_str() << "\","
+                << "\"league_name\":\"" << (row["league_name"].is_null() ? "" : row["league_name"].c_str()) << "\","
+                << "\"season\":\"" << row["season"].c_str() << "\","
+                << "\"games_played\":" << row["games_played"].as<int>() << ","
+                << "\"goals\":" << row["goals"].as<int>() << ","
+                << "\"assists\":" << row["assists"].as<int>() << ","
+                << "\"yellow_cards\":" << row["yellow_cards"].as<int>() << ","
+                << "\"red_cards\":" << row["red_cards"].as<int>()
+                << "}";
         }
+        json_data << "]";
         
-        std::string data = stats_array.dump();
-        std::string json_response = createJSONResponse(true, "Player stats retrieved successfully", data);
+        std::string json_response = createJSONResponse(true, "Player stats retrieved successfully", json_data.str());
         return Response(HttpStatus::OK, json_response);
         
     } catch (const std::exception& e) {
@@ -186,23 +196,33 @@ Response StatsController::handleGetMatches(const Request& request) {
         pqxx::result result = txn.exec(query);
         txn.commit();
         
-        json matches_array = json::array();
+        // Manually construct JSON array
+        std::ostringstream json_data;
+        json_data << "[";
+        bool first = true;
         for (const auto& row : result) {
-            json match;
-            match["id"] = row["id"].c_str();
-            match["home_team"] = row["home_team"].c_str();
-            match["away_team"] = row["away_team"].c_str();
-            match["home_score"] = row["home_team_score"].is_null() ? 0 : row["home_team_score"].as<int>();
-            match["away_score"] = row["away_team_score"].is_null() ? 0 : row["away_team_score"].as<int>();
-            match["match_date"] = row["match_date"].is_null() ? "" : row["match_date"].c_str();
-            match["match_status"] = row["match_status"].c_str();
-            match["venue_name"] = row["venue_name"].is_null() ? "" : row["venue_name"].c_str();
-            match["google_maps_url"] = row["google_maps_url"].is_null() ? "" : row["google_maps_url"].c_str();
-            matches_array.push_back(match);
+            if (!first) json_data << ",";
+            first = false;
+            
+            std::string match_date = row["match_date"].is_null() ? "" : row["match_date"].c_str();
+            std::string venue_name = row["venue_name"].is_null() ? "" : row["venue_name"].c_str();
+            std::string google_maps = row["google_maps_url"].is_null() ? "" : row["google_maps_url"].c_str();
+            
+            json_data << "{"
+                << "\"id\":\"" << row["id"].c_str() << "\","
+                << "\"home_team\":\"" << row["home_team"].c_str() << "\","
+                << "\"away_team\":\"" << row["away_team"].c_str() << "\","
+                << "\"home_score\":" << (row["home_team_score"].is_null() ? 0 : row["home_team_score"].as<int>()) << ","
+                << "\"away_score\":" << (row["away_team_score"].is_null() ? 0 : row["away_team_score"].as<int>()) << ","
+                << "\"match_date\":\"" << match_date << "\","
+                << "\"match_status\":\"" << row["match_status"].c_str() << "\","
+                << "\"venue_name\":\"" << venue_name << "\","
+                << "\"google_maps_url\":\"" << google_maps << "\""
+                << "}";
         }
+        json_data << "]";
         
-        std::string data = matches_array.dump();
-        std::string json_response = createJSONResponse(true, "Matches retrieved successfully", data);
+        std::string json_response = createJSONResponse(true, "Matches retrieved successfully", json_data.str());
         return Response(HttpStatus::OK, json_response);
         
     } catch (const std::exception& e) {
