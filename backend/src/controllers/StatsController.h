@@ -1,7 +1,7 @@
 #ifndef STATS_CONTROLLER_H
 #define STATS_CONTROLLER_H
 
-#include "Controller.h"
+#include "../core/Controller.h"
 #include "../core/Response.h"
 #include "../core/Request.h"
 #include "../database/DatabaseConnection.h"
