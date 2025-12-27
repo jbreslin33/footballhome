@@ -667,10 +667,10 @@ class AdminSystemScreen extends Screen {
         html += '<div class="info-box">No calendar events found</div>';
       } else {
         for (const event of events) {
-          const startDate = new Date(event.starts_at).toLocaleString();
-          const endDate = event.ends_at ? new Date(event.ends_at).toLocaleString() : 'N/A';
-          const goingCount = event.rsvps?.filter(r => r.status === 'going').length || 0;
-          const notGoingCount = event.rsvps?.filter(r => r.status === 'not_going').length || 0;
+          const startDate = event.start_at ? new Date(event.start_at).toLocaleString() : 'N/A';
+          const endDate = event.end_at ? new Date(event.end_at).toLocaleString() : 'N/A';
+          const goingCount = event.going?.length || 0;
+          const notGoingCount = event.not_going?.length || 0;
           
           html += `
             <div class="event-card" style="padding: 15px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;">
@@ -685,7 +685,7 @@ class AdminSystemScreen extends Screen {
                 <span>✅ Going: ${goingCount}</span>
                 <span>❌ Not Going: ${notGoingCount}</span>
               </div>
-              <button class="btn btn-primary" onclick="adminSystemScreen.loadGroupMeEventRsvps('${groupId}', '${event.id}', '${this.escapeHtml(event.name || 'Event')}', '${this.escapeHtml(groupName)}')" style="margin-top: 10px;">
+              <button class="btn btn-primary" onclick="adminSystemScreen.loadGroupMeEventRsvps('${groupId}', '${event.event_id}', '${this.escapeHtml(event.name || 'Event')}', '${this.escapeHtml(groupName)}')" style="margin-top: 10px;">
                 View RSVPs
               </button>
             </div>
@@ -706,15 +706,58 @@ class AdminSystemScreen extends Screen {
     container.innerHTML = '<div class="loading-indicator">Loading RSVPs...</div>';
     
     try {
-      const res = await fetch(`/api/system-admin/groupme/live/group/${groupId}/events`);
-      if (!res.ok) {
+      // Fetch both events and group members to map user IDs to names
+      const [eventsRes, membersRes] = await Promise.all([
+        fetch(`/api/system-admin/groupme/live/group/${groupId}/events`),
+        fetch(`/api/system-admin/groupme/live/group/${groupId}/members`)
+      ]);
+      
+      if (!eventsRes.ok || !membersRes.ok) {
         throw new Error('Failed to fetch RSVPs');
       }
       
-      const data = await res.json();
-      const events = data.response?.events || [];
-      const event = events.find(e => e.id === eventId);
-      const rsvps = event?.rsvps || [];
+      const eventsData = await eventsRes.json();
+      const membersData = await membersRes.json();
+      const events = eventsData.response?.events || [];
+      const members = membersData.response?.members || [];
+      const event = events.find(e => e.event_id === eventId);
+      
+      // Create a map of user IDs to names
+      const memberMap = {};
+      for (const member of members) {
+        memberMap[member.user_id] = member.name || member.nickname || 'Unknown';
+      }
+      
+      // Build RSVP lists
+      const going = [];
+      const notGoing = [];
+      const respondedUserIds = new Set();
+      
+      if (event?.going) {
+        for (const userId of event.going) {
+          going.push(memberMap[userId] || userId);
+          respondedUserIds.add(userId);
+        }
+      }
+      if (event?.not_going) {
+        for (const userId of event.not_going) {
+          notGoing.push(memberMap[userId] || userId);
+          respondedUserIds.add(userId);
+        }
+      }
+      
+      // Find members who haven't responded
+      const noResponse = [];
+      for (const member of members) {
+        if (!respondedUserIds.has(member.user_id)) {
+          noResponse.push(member.name || member.nickname || 'Unknown');
+        }
+      }
+      
+      // Sort all lists alphabetically
+      going.sort();
+      notGoing.sort();
+      noResponse.sort();
       
       let html = `
         <div class="groupme-event-rsvps">
@@ -722,33 +765,31 @@ class AdminSystemScreen extends Screen {
           <button class="btn btn-secondary" onclick="adminSystemScreen.loadGroupMeCalendar('${groupId}', '${this.escapeHtml(groupName)}')" style="margin-bottom: 15px;">
             ← Back to Calendar
           </button>
-          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-            <thead>
-              <tr style="background: #f5f5f5; text-align: left;">
-                <th style="padding: 10px; border: 1px solid #ddd;">Name</th>
-                <th style="padding: 10px; border: 1px solid #ddd;">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-      
-      if (rsvps.length === 0) {
-        html += '<tr><td colspan="2" style="text-align: center; padding: 20px;">No RSVPs yet</td></tr>';
-      } else {
-        for (const rsvp of rsvps) {
-          const statusIcon = rsvp.status === 'going' ? '✅' : rsvp.status === 'not_going' ? '❌' : '❔';
-          html += `
-            <tr>
-              <td style="padding: 10px; border: 1px solid #ddd;">${this.escapeHtml(rsvp.name || 'Unknown')}</td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${statusIcon} ${this.escapeHtml(rsvp.status || 'unknown')}</td>
-            </tr>
-          `;
-        }
-      }
-      
-      html += `
-            </tbody>
-          </table>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px;">
+            <!-- Going Column -->
+            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #f0fff0;">
+              <h4 style="margin: 0 0 15px 0; color: #2d5016;">✅ Going (${going.length})</h4>
+              <ul style="list-style: none; padding: 0; margin: 0;">
+                ${going.length === 0 ? '<li style="color: #666; font-style: italic;">None yet</li>' : going.map(name => `<li style="padding: 5px 0; border-bottom: 1px solid #e0e0e0;">${this.escapeHtml(name)}</li>`).join('')}
+              </ul>
+            </div>
+            
+            <!-- Not Going Column -->
+            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #fff5f5;">
+              <h4 style="margin: 0 0 15px 0; color: #8b0000;">❌ Not Going (${notGoing.length})</h4>
+              <ul style="list-style: none; padding: 0; margin: 0;">
+                ${notGoing.length === 0 ? '<li style="color: #666; font-style: italic;">None yet</li>' : notGoing.map(name => `<li style="padding: 5px 0; border-bottom: 1px solid #e0e0e0;">${this.escapeHtml(name)}</li>`).join('')}
+              </ul>
+            </div>
+            
+            <!-- No Response Column -->
+            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #f9f9f9;">
+              <h4 style="margin: 0 0 15px 0; color: #666;">⏳ No Response (${noResponse.length})</h4>
+              <ul style="list-style: none; padding: 0; margin: 0;">
+                ${noResponse.length === 0 ? '<li style="color: #666; font-style: italic;">Everyone responded</li>' : noResponse.map(name => `<li style="padding: 5px 0; border-bottom: 1px solid #e0e0e0;">${this.escapeHtml(name)}</li>`).join('')}
+              </ul>
+            </div>
+          </div>
         </div>
       `;
       container.innerHTML = html;

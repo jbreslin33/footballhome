@@ -2530,8 +2530,8 @@ Response SystemAdminController::handleGetGroupMeLiveMessages(const Request& requ
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Missing group ID\"}");
         }
         
-        // Fetch recent messages (limit 50)
-        std::string apiResponse = callGroupMeAPI("/groups/" + groupId + "/messages?limit=50", token);
+        // Fetch recent messages (limit 100)
+        std::string apiResponse = callGroupMeAPI("/groups/" + groupId + "/messages?limit=100", token);
         return Response(HttpStatus::OK, apiResponse);
         
     } catch (const std::exception& e) {
