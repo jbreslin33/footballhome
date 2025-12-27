@@ -88,6 +88,10 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
     router.get(prefix + "/groupme/live/group/:id/members", [this](const Request& request) {
         return this->handleGetGroupMeLiveMembers(request);
     });
+    
+    router.get(prefix + "/groupme/live/group/:id/events", [this](const Request& request) {
+        return this->handleGetGroupMeLiveEvents(request);
+    });
 
     // Dashboard & Overview
     router.get(prefix + "/dashboard", [this](const Request& request) {
@@ -2489,7 +2493,11 @@ Response SystemAdminController::handleGetGroupMeLiveGroupDetails(const Request& 
             return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"GROUPME_ACCESS_TOKEN not set\"}");
         }
         
-        std::string groupId = getPathParam(request, "id");
+        // Extract group ID from path: /api/system-admin/groupme/live/group/:id
+        std::string path = request.getPath();
+        size_t lastSlash = path.rfind("/");
+        std::string groupId = path.substr(lastSlash + 1);
+        
         if (groupId.empty()) {
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Missing group ID\"}");
         }
@@ -2509,7 +2517,15 @@ Response SystemAdminController::handleGetGroupMeLiveMessages(const Request& requ
             return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"GROUPME_ACCESS_TOKEN not set\"}");
         }
         
-        std::string groupId = getPathParam(request, "id");
+        // Extract group ID from path: /api/system-admin/groupme/live/group/:id/messages
+        std::string path = request.getPath();
+        size_t lastSlash = path.rfind("/messages");
+        if (lastSlash == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        size_t secondLastSlash = path.rfind("/", lastSlash - 1);
+        std::string groupId = path.substr(secondLastSlash + 1, lastSlash - secondLastSlash - 1);
+        
         if (groupId.empty()) {
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Missing group ID\"}");
         }
@@ -2530,7 +2546,15 @@ Response SystemAdminController::handleGetGroupMeLiveMembers(const Request& reque
             return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"GROUPME_ACCESS_TOKEN not set\"}");
         }
         
-        std::string groupId = getPathParam(request, "id");
+        // Extract group ID from path: /api/system-admin/groupme/live/group/:id/members
+        std::string path = request.getPath();
+        size_t lastSlash = path.rfind("/members");
+        if (lastSlash == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        size_t secondLastSlash = path.rfind("/", lastSlash - 1);
+        std::string groupId = path.substr(secondLastSlash + 1, lastSlash - secondLastSlash - 1);
+        
         if (groupId.empty()) {
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Missing group ID\"}");
         }
@@ -2544,3 +2568,31 @@ Response SystemAdminController::handleGetGroupMeLiveMembers(const Request& reque
     }
 }
 
+Response SystemAdminController::handleGetGroupMeLiveEvents(const Request& request) {
+    try {
+        const char* token = std::getenv("GROUPME_ACCESS_TOKEN");
+        if (!token) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"GROUPME_ACCESS_TOKEN not set\"}");
+        }
+        
+        // Extract group ID from path: /api/system-admin/groupme/live/group/:id/events
+        std::string path = request.getPath();
+        size_t lastSlash = path.rfind("/events");
+        if (lastSlash == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid path\"}");
+        }
+        size_t secondLastSlash = path.rfind("/", lastSlash - 1);
+        std::string groupId = path.substr(secondLastSlash + 1, lastSlash - secondLastSlash - 1);
+        
+        if (groupId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Missing group ID\"}");
+        }
+        
+        // Fetch calendar events from GroupMe API
+        std::string apiResponse = callGroupMeAPI("/conversations/" + groupId + "/events/list", token);
+        return Response(HttpStatus::OK, apiResponse);
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}

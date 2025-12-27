@@ -72,6 +72,7 @@ private:
     Response handleGetGroupMeLiveGroupDetails(const Request& request);
     Response handleGetGroupMeLiveMessages(const Request& request);
     Response handleGetGroupMeLiveMembers(const Request& request);
+    Response handleGetGroupMeLiveEvents(const Request& request);
     
     // Audit Logs
     Response handleGetAuditLogs(const Request& request);

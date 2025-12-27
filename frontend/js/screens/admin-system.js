@@ -516,6 +516,9 @@ class AdminSystemScreen extends Screen {
             <button class="btn btn-secondary" onclick="adminSystemScreen.loadGroupMeMembers('${gid}', '${this.escapeHtml(dbGroup.name || live?.name || '')}')">
               👥 View Members
             </button>
+            <button class="btn btn-secondary" onclick="adminSystemScreen.loadGroupMeCalendar('${gid}', '${this.escapeHtml(dbGroup.name || live?.name || '')}')">
+              📅 View Calendar
+            </button>
           </div>
         `;
       }
@@ -636,6 +639,122 @@ class AdminSystemScreen extends Screen {
       
     } catch (e) {
       container.innerHTML = `<div class="error-message">Error loading members: ${e.message}</div>`;
+    }
+  }
+  
+  async loadGroupMeCalendar(groupId, groupName) {
+    const container = this.element.querySelector('#groupme-live-container');
+    container.innerHTML = '<div class="loading-indicator">Loading calendar events...</div>';
+    
+    try {
+      const res = await fetch(`/api/system-admin/groupme/live/group/${groupId}/events`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch calendar events');
+      }
+      
+      const data = await res.json();
+      const events = data.response?.events || [];
+      
+      let html = `
+        <div class="groupme-calendar">
+          <h3>📅 Calendar Events for ${this.escapeHtml(groupName)}</h3>
+          <button class="btn btn-secondary" onclick="adminSystemScreen.loadGroupMeLiveData()" style="margin-bottom: 15px;">
+            ← Back to Groups
+          </button>
+      `;
+      
+      if (events.length === 0) {
+        html += '<div class="info-box">No calendar events found</div>';
+      } else {
+        for (const event of events) {
+          const startDate = new Date(event.starts_at).toLocaleString();
+          const endDate = event.ends_at ? new Date(event.ends_at).toLocaleString() : 'N/A';
+          const goingCount = event.rsvps?.filter(r => r.status === 'going').length || 0;
+          const notGoingCount = event.rsvps?.filter(r => r.status === 'not_going').length || 0;
+          
+          html += `
+            <div class="event-card" style="padding: 15px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9;">
+              <h4 style="margin: 0 0 10px 0;">${this.escapeHtml(event.name || 'Untitled Event')}</h4>
+              ${event.description ? `<p style="margin: 0 0 10px 0;">${this.escapeHtml(event.description)}</p>` : ''}
+              <div style="display: grid; grid-template-columns: auto 1fr; gap: 5px 15px; font-size: 14px;">
+                <strong>📅 Start:</strong> <span>${startDate}</span>
+                <strong>⏰ End:</strong> <span>${endDate}</span>
+                ${event.location ? `<strong>📍 Location:</strong> <span>${this.escapeHtml(event.location)}</span>` : ''}
+              </div>
+              <div style="margin-top: 10px; display: flex; gap: 15px; font-size: 14px;">
+                <span>✅ Going: ${goingCount}</span>
+                <span>❌ Not Going: ${notGoingCount}</span>
+              </div>
+              <button class="btn btn-primary" onclick="adminSystemScreen.loadGroupMeEventRsvps('${groupId}', '${event.id}', '${this.escapeHtml(event.name || 'Event')}', '${this.escapeHtml(groupName)}')" style="margin-top: 10px;">
+                View RSVPs
+              </button>
+            </div>
+          `;
+        }
+      }
+      
+      html += '</div>';
+      container.innerHTML = html;
+      
+    } catch (e) {
+      container.innerHTML = `<div class="error-message">Error loading calendar: ${e.message}</div>`;
+    }
+  }
+  
+  async loadGroupMeEventRsvps(groupId, eventId, eventName, groupName) {
+    const container = this.element.querySelector('#groupme-live-container');
+    container.innerHTML = '<div class="loading-indicator">Loading RSVPs...</div>';
+    
+    try {
+      const res = await fetch(`/api/system-admin/groupme/live/group/${groupId}/events`);
+      if (!res.ok) {
+        throw new Error('Failed to fetch RSVPs');
+      }
+      
+      const data = await res.json();
+      const events = data.response?.events || [];
+      const event = events.find(e => e.id === eventId);
+      const rsvps = event?.rsvps || [];
+      
+      let html = `
+        <div class="groupme-event-rsvps">
+          <h3>📋 RSVPs for "${this.escapeHtml(eventName)}"</h3>
+          <button class="btn btn-secondary" onclick="adminSystemScreen.loadGroupMeCalendar('${groupId}', '${this.escapeHtml(groupName)}')" style="margin-bottom: 15px;">
+            ← Back to Calendar
+          </button>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <thead>
+              <tr style="background: #f5f5f5; text-align: left;">
+                <th style="padding: 10px; border: 1px solid #ddd;">Name</th>
+                <th style="padding: 10px; border: 1px solid #ddd;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+      
+      if (rsvps.length === 0) {
+        html += '<tr><td colspan="2" style="text-align: center; padding: 20px;">No RSVPs yet</td></tr>';
+      } else {
+        for (const rsvp of rsvps) {
+          const statusIcon = rsvp.status === 'going' ? '✅' : rsvp.status === 'not_going' ? '❌' : '❔';
+          html += `
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd;">${this.escapeHtml(rsvp.name || 'Unknown')}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${statusIcon} ${this.escapeHtml(rsvp.status || 'unknown')}</td>
+            </tr>
+          `;
+        }
+      }
+      
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+      container.innerHTML = html;
+      
+    } catch (e) {
+      container.innerHTML = `<div class="error-message">Error loading RSVPs: ${e.message}</div>`;
     }
   }
   
