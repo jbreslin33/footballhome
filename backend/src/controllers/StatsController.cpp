@@ -102,11 +102,11 @@ Response StatsController::handleGetStandings(const Request& request) {
 
 Response StatsController::handleGetPlayerStats(const Request& request) {
     try {
-        // Query player_season_stats with player names, ordered by goals desc
+        // Query player_season_stats with player names from users table, ordered by goals desc
         std::string query = R"(
             SELECT 
                 pss.id,
-                p.name as player_name,
+                CONCAT(u.first_name, ' ', u.last_name) as player_name,
                 t.name as team_name,
                 l.display_name as league_name,
                 pss.season,
@@ -117,6 +117,7 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
                 pss.red_cards
             FROM player_season_stats pss
             JOIN players p ON pss.player_id = p.id
+            JOIN users u ON p.id = u.id
             JOIN teams t ON pss.team_id = t.id
             LEFT JOIN leagues l ON pss.league_id = l.id
             WHERE pss.season = '2025-2026'
