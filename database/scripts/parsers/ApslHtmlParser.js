@@ -53,6 +53,45 @@ class ApslHtmlParser extends HtmlParser {
   }
 
   /**
+   * Parse standings table data from DOM element
+   */
+  parseStandingsTable(tableElement) {
+    const rows = [];
+    
+    if (!tableElement) return rows;
+    
+    const tbody = tableElement.querySelector('tbody') || tableElement;
+    const trs = tbody.querySelectorAll('tr');
+    
+    for (const tr of trs) {
+      const cells = tr.querySelectorAll('td, th');
+      if (cells.length < 10) continue; // Need at least 10 columns for full stats
+      
+      // APSL standings columns: Rank, Team, MP, W, D, L, GF, GA, GD, Pts
+      const teamName = cells[1].textContent.trim();
+      
+      // Skip header rows
+      if (!teamName || teamName === 'Team' || teamName === 'Rank' || cells[0].textContent.trim() === 'Rank') {
+        continue;
+      }
+      
+      rows.push({
+        team: teamName,
+        gp: parseInt(cells[2].textContent) || 0,  // MP (Matches Played)
+        w: parseInt(cells[3].textContent) || 0,    // W (Wins)
+        t: parseInt(cells[4].textContent) || 0,    // D (Draws/Ties)
+        l: parseInt(cells[5].textContent) || 0,    // L (Losses)
+        gf: parseInt(cells[6].textContent) || 0,   // GF (Goals For)
+        ga: parseInt(cells[7].textContent) || 0,   // GA (Goals Against)
+        gd: parseInt(cells[8].textContent) || 0,   // GD (Goal Differential)
+        pts: parseInt(cells[9].textContent) || 0   // Pts (Points)
+      });
+    }
+    
+    return rows;
+  }
+
+  /**
    * Parse team roster page
    */
   parseRoster() {

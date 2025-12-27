@@ -577,6 +577,29 @@ CREATE INDEX IF NOT EXISTS idx_apsl_player_stats_player ON apsl_player_stats(aps
 CREATE INDEX IF NOT EXISTS idx_apsl_player_stats_team ON apsl_player_stats(apsl_team_id);
 CREATE INDEX IF NOT EXISTS idx_apsl_player_stats_season ON apsl_player_stats(season);
 
+-- APSL Team Season Stats (compartmentalized - scraped from standings page)
+CREATE TABLE IF NOT EXISTS apsl_team_stats (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    apsl_team_id UUID NOT NULL REFERENCES apsl_teams(id) ON DELETE CASCADE,
+    apsl_division_id UUID REFERENCES apsl_divisions(id),
+    season VARCHAR(20) NOT NULL,
+    games_played INTEGER DEFAULT 0,
+    wins INTEGER DEFAULT 0,
+    losses INTEGER DEFAULT 0,
+    ties INTEGER DEFAULT 0,
+    goals_for INTEGER DEFAULT 0,
+    goals_against INTEGER DEFAULT 0,
+    goal_differential INTEGER DEFAULT 0,
+    points INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(apsl_team_id, apsl_division_id, season)
+);
+
+CREATE INDEX IF NOT EXISTS idx_apsl_team_stats_team ON apsl_team_stats(apsl_team_id);
+CREATE INDEX IF NOT EXISTS idx_apsl_team_stats_division ON apsl_team_stats(apsl_division_id);
+CREATE INDEX IF NOT EXISTS idx_apsl_team_stats_season ON apsl_team_stats(season);
+
 -- ==========================================
 -- CASA INTEGRATION (Specific Tables)
 -- ==========================================

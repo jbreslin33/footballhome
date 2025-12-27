@@ -42,6 +42,7 @@ class ApslScraper extends Scraper {
     this.data.apslPlayers = new Map();
     this.data.apslTeamPlayers = new Map();
     this.data.playerSeasonStats = new Map(); // Will hold apsl_player_stats records
+    this.data.teamSeasonStats = new Map(); // Will hold apsl_team_stats records
     // Note: matches Map will hold apsl_matches records
   }
 
@@ -101,14 +102,9 @@ class ApslScraper extends Scraper {
       const confName = confData.name;
       const confId = IdGenerator.fromComponents('apsl', 'conference', confName);
       
-      // Store conference data for team extraction
-      this.conferences.set(confId, {
-        id: confId,
-        name: confName,
-        season: confData.season,
-        table: confData.table
-      });
-
+      // Parse the standings table data
+      const tableRows = this.parser.parseStandingsTable(confData.table);
+      
       // Create APSL Division
       const apslDivisionId = IdGenerator.fromComponents('apsl', 'division', confName);
       this.data.apslDivisions.set(apslDivisionId, {
@@ -117,6 +113,15 @@ class ApslScraper extends Scraper {
         name: confName,
         season: confData.season,
         league_division_id: null // To be linked manually or via fuzzy match later
+      });
+      
+      // Store conference data for team extraction
+      this.conferences.set(confId, {
+        id: confId,
+        divisionId: apslDivisionId,  // Store division ID for standings
+        name: confName,
+        season: confData.season,
+        table: tableRows // Now an array of row objects instead of DOM element
       });
     }
     
@@ -321,10 +326,55 @@ class ApslScraper extends Scraper {
 
   async fetchStandings() {
     this.log('\n📊 Fetching team standings/stats...');
-    this.log('   NOTE: Team season stats not yet implemented for apsl_* compartmentalized tables');
-    this.log('   TODO: Create apsl_team_stats table and implement this method');
-    // Future: Parse standings.json and populate apsl_team_stats table
-    // For now, player stats and match results are sufficient
+    
+    // Parse standings from conference tables (already fetched in fetchStructure)
+    let statsCount = 0;
+    
+    for (const [confId, conf] of this.conferences) {
+      if (!conf.table || !Array.isArray(conf.table)) continue;
+      
+      const apslDivisionId = conf.divisionId; // Use division ID stored in conference
+      
+      for (const row of conf.table) {
+        const teamName = row.team;
+        
+        // Find matching apsl_team by name
+        let apslTeamId = null;
+        for (const [teamId, team] of this.data.apslTeams) {
+          if (team.name === teamName) {
+            apslTeamId = teamId;
+            break;
+          }
+        }
+        
+        if (!apslTeamId) {
+          this.log(`   ⚠ Team not found: ${teamName}`);
+          continue;
+        }
+        
+        // Create team stats record from standings table
+        const statsId = IdGenerator.fromComponents('apsl_team_stats', apslTeamId, apslDivisionId, '2025-2026');
+        const teamStats = {
+          id: statsId,
+          apsl_team_id: apslTeamId,
+          apsl_division_id: apslDivisionId,
+          season: '2025-2026',
+          games_played: row.gp || 0,
+          wins: row.w || 0,
+          losses: row.l || 0,
+          ties: row.t || 0,
+          goals_for: row.gf || 0,
+          goals_against: row.ga || 0,
+          goal_differential: row.gd || 0,
+          points: row.pts || 0
+        };
+        
+        this.data.teamSeasonStats.set(statsId, teamStats);
+        statsCount++;
+      }
+    }
+    
+    this.log(`   ✓ ${statsCount} team standings from ${this.conferences.size} conferences`);
   }
 
   async transformData() {
@@ -353,6 +403,7 @@ class ApslScraper extends Scraper {
     this.log(`   DEBUG: apslTeamPlayers: ${this.data.apslTeamPlayers.size}`);
     this.log(`   DEBUG: matches: ${this.data.matches.size}`);
     this.log(`   DEBUG: playerSeasonStats: ${this.data.playerSeasonStats.size}`);
+    this.log(`   DEBUG: teamSeasonStats: ${this.data.teamSeasonStats.size}`);
     
     const results = await this.sqlGenerator.generateMultiple([
       // APSL Divisions (conferences)
@@ -419,6 +470,17 @@ class ApslScraper extends Scraper {
               tableName: 'apsl_player_stats',
               useInserts: true,
               conflictColumns: ['apsl_player_id', 'apsl_team_id', 'apsl_division_id', 'season']
+          }
+      },
+      // APSL Team Stats (standings scraped from APSL)
+      {
+          filename: '31a-apsl-team-stats.sql',
+          data: this.data.teamSeasonStats,
+          options: {
+              title: 'APSL Team Season Statistics',
+              tableName: 'apsl_team_stats',
+              useInserts: true,
+              conflictColumns: ['apsl_team_id', 'apsl_division_id', 'season']
           }
       }
     ]);

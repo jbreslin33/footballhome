@@ -38,72 +38,26 @@ std::string StatsController::createJSONResponse(bool success, const std::string&
 
 Response StatsController::handleGetStandings(const Request& request) {
     try {
-        // Calculate team standings from apsl_matches (completed games only)
+        // Query apsl_team_stats (scraped from APSL standings page)
         std::string query = R"(
-            WITH team_stats AS (
-                -- Home games
-                SELECT 
-                    home_team_id as team_id,
-                    COUNT(*) as games_played,
-                    SUM(CASE 
-                        WHEN home_score > away_score THEN 1 
-                        ELSE 0 
-                    END) as wins,
-                    SUM(CASE 
-                        WHEN home_score < away_score THEN 1 
-                        ELSE 0 
-                    END) as losses,
-                    SUM(CASE 
-                        WHEN home_score = away_score THEN 1 
-                        ELSE 0 
-                    END) as ties,
-                    SUM(home_score) as goals_for,
-                    SUM(away_score) as goals_against
-                FROM apsl_matches
-                WHERE match_status = 'completed' AND home_team_id IS NOT NULL
-                GROUP BY home_team_id
-                
-                UNION ALL
-                
-                -- Away games
-                SELECT 
-                    away_team_id as team_id,
-                    COUNT(*) as games_played,
-                    SUM(CASE 
-                        WHEN away_score > home_score THEN 1 
-                        ELSE 0 
-                    END) as wins,
-                    SUM(CASE 
-                        WHEN away_score < home_score THEN 1 
-                        ELSE 0 
-                    END) as losses,
-                    SUM(CASE 
-                        WHEN away_score = home_score THEN 1 
-                        ELSE 0 
-                    END) as ties,
-                    SUM(away_score) as goals_for,
-                    SUM(home_score) as goals_against
-                FROM apsl_matches
-                WHERE match_status = 'completed' AND away_team_id IS NOT NULL
-                GROUP BY away_team_id
-            )
             SELECT 
-                at.id::text,
+                ats.id::text,
                 at.name as team_name,
                 ad.name as division_name,
-                SUM(ts.games_played)::int as games_played,
-                SUM(ts.wins)::int as wins,
-                SUM(ts.losses)::int as losses,
-                SUM(ts.ties)::int as ties,
-                SUM(ts.goals_for)::int as goals_for,
-                SUM(ts.goals_against)::int as goals_against,
-                (SUM(ts.goals_for) - SUM(ts.goals_against))::int as goal_differential,
-                (SUM(ts.wins) * 3 + SUM(ts.ties))::int as points
-            FROM team_stats ts
-            JOIN apsl_teams at ON ts.team_id = at.id
-            LEFT JOIN apsl_divisions ad ON at.apsl_division_id = ad.id
-            GROUP BY at.id, at.name, ad.name
-            ORDER BY ad.name, points DESC, goal_differential DESC, team_name
+                ats.season,
+                ats.games_played,
+                ats.wins,
+                ats.losses,
+                ats.ties,
+                ats.goals_for,
+                ats.goals_against,
+                ats.goal_differential,
+                ats.points
+            FROM apsl_team_stats ats
+            JOIN apsl_teams at ON ats.apsl_team_id = at.id
+            LEFT JOIN apsl_divisions ad ON ats.apsl_division_id = ad.id
+            WHERE ats.season = '2025-2026'
+            ORDER BY ad.name, ats.points DESC, ats.goal_differential DESC, at.name
         )";
         
         pqxx::result result = db_->query(query);
@@ -121,7 +75,7 @@ Response StatsController::handleGetStandings(const Request& request) {
                 << "\"team_name\":\"" << row["team_name"].c_str() << "\","
                 << "\"league_name\":\"APSL\","
                 << "\"division_name\":\"" << (row["division_name"].is_null() ? "Unknown" : row["division_name"].c_str()) << "\","
-                << "\"season\":\"2025-2026\","
+                << "\"season\":\"" << row["season"].c_str() << "\","
                 << "\"games_played\":" << row["games_played"].as<int>() << ","
                 << "\"wins\":" << row["wins"].as<int>() << ","
                 << "\"losses\":" << row["losses"].as<int>() << ","
