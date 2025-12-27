@@ -38,9 +38,6 @@ std::string StatsController::createJSONResponse(bool success, const std::string&
 
 Response StatsController::handleGetStandings(const Request& request) {
     try {
-        auto conn = db_->getConnection();
-        pqxx::work txn(*conn);
-        
         // Query team_season_stats with team names, ordered by points desc
         std::string query = R"(
             SELECT 
@@ -65,8 +62,7 @@ Response StatsController::handleGetStandings(const Request& request) {
             ORDER BY l.display_name, ld.display_name, tss.points DESC, tss.goal_difference DESC
         )";
         
-        pqxx::result result = txn.exec(query);
-        txn.commit();
+        pqxx::result result = db_->query(query);
         
         // Manually construct JSON array
         std::ostringstream json_data;
@@ -106,9 +102,6 @@ Response StatsController::handleGetStandings(const Request& request) {
 
 Response StatsController::handleGetPlayerStats(const Request& request) {
     try {
-        auto conn = db_->getConnection();
-        pqxx::work txn(*conn);
-        
         // Query player_season_stats with player names, ordered by goals desc
         std::string query = R"(
             SELECT 
@@ -131,8 +124,7 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
             LIMIT 100
         )";
         
-        pqxx::result result = txn.exec(query);
-        txn.commit();
+        pqxx::result result = db_->query(query);
         
         // Manually construct JSON array
         std::ostringstream json_data;
@@ -169,9 +161,6 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
 
 Response StatsController::handleGetMatches(const Request& request) {
     try {
-        auto conn = db_->getConnection();
-        pqxx::work txn(*conn);
-        
         // Query matches with scores, team names, venue
         std::string query = R"(
             SELECT 
@@ -193,8 +182,7 @@ Response StatsController::handleGetMatches(const Request& request) {
             LIMIT 100
         )";
         
-        pqxx::result result = txn.exec(query);
-        txn.commit();
+        pqxx::result result = db_->query(query);
         
         // Manually construct JSON array
         std::ostringstream json_data;
