@@ -330,16 +330,23 @@ class ApslScraper extends Scraper {
   async fetchStandings() {
     this.log('\n📊 Fetching team standings/stats...');
     
-    // Fetch all division standings from the SportsEngine API
-    // This contains W/L/T, goals for/against, points for all teams
-    const standingsUrl = 'https://api.sportsengine.com/v1/organizations/61b906ec-39d2-4e4f-a9c3-7ab0ace97e4b/teams/standings';
+    // Read standings data from local JSON file (scraped separately from SportsEngine)
+    // This file should be updated periodically: curl https://[actual-standings-api-url] > standings.json
+    const fs = require('fs');
+    const path = require('path');
+    const standingsPath = path.join(__dirname, '../../../standings.json');
+    
+    if (!fs.existsSync(standingsPath)) {
+      this.logWarn('standings.json not found - skipping stats. Run: curl [standings-api] > standings.json');
+      return;
+    }
     
     try {
-      const response = await this.fetcher.fetch(standingsUrl);
-      const standingsData = JSON.parse(response);
+      const standingsJson = fs.readFileSync(standingsPath, 'utf8');
+      const standingsData = JSON.parse(standingsJson);
       
       if (!standingsData.result || !Array.isArray(standingsData.result)) {
-        this.logWarn('No standings data found in API response');
+        this.logWarn('No standings data found in standings.json');
         return;
       }
       
@@ -394,7 +401,7 @@ class ApslScraper extends Scraper {
       this.log(`   Imported stats for ${statsCount} teams`);
       
     } catch (error) {
-      this.logError('Failed to fetch standings from API', error);
+      this.logError('Failed to parse standings.json', error);
     }
   }
 
