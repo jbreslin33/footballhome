@@ -14,6 +14,7 @@ const Coach = require('../models/Coach');
 const TeamCoach = require('../models/TeamCoach');
 const Match = require('../models/Match');
 const TeamSeasonStats = require('../models/TeamSeasonStats');
+const PlayerSeasonStats = require('../models/PlayerSeasonStats');
 
 /**
  * APSL League Scraper
@@ -52,6 +53,8 @@ class ApslScraper extends Scraper {
     this.data.apslPlayers = new Map();
     this.data.apslTeamPlayers = new Map();
     this.data.teamSeasonStats = new Map();
+    this.data.playerSeasonStats = new Map();
+    this.data.venues = new Map();
   }
 
   async initialize() {
@@ -223,7 +226,15 @@ class ApslScraper extends Scraper {
         this.parser.parse(html);
         
         const roster = this.parser.parseRoster();
+        const playerStats = this.parser.parsePlayerStats();
+        
         this.log(`   ${team.name}: ${roster.length} players`);
+        
+        // Create a map of player stats for quick lookup
+        const statsMap = new Map();
+        for (const stat of playerStats) {
+          statsMap.set(stat.name, stat);
+        }
         
         for (const playerData of roster) {
           const { first, last } = ApslHtmlParser.splitName(playerData.name);
@@ -256,6 +267,24 @@ class ApslScraper extends Scraper {
           });
           this.data.teamPlayers.set(teamPlayerKey, teamPlayer);
 
+          // Create player season stats if available
+          const stats = statsMap.get(playerData.name);
+          if (stats && (stats.goals > 0 || stats.assists > 0)) {
+            const statsId = IdGenerator.fromComponents('player_stats', playerId, teamId, '2025-2026');
+            const playerSeasonStats = new PlayerSeasonStats({
+              id: statsId,
+              player_id: playerId,
+              team_id: teamId,
+              league_id: this.leagueId,
+              league_division_id: null, // Will need to determine from team if needed
+              season: '2025-2026',
+              goals: stats.goals,
+              assists: stats.assists,
+              games_played: 0 // Not provided by APSL
+            });
+            this.data.playerSeasonStats.set(statsId, playerSeasonStats);
+          }
+
           // Create APSL Player
           // We use a composite ID of name because APSL might not give unique IDs per player easily
           // Or if playerData has an ID, use that. Assuming name is unique enough for now within context
@@ -285,6 +314,15 @@ class ApslScraper extends Scraper {
           });
 
         }
+        
+        // Log stats summary
+        const totalGoals = Array.from(this.data.playerSeasonStats.values())
+          .filter(s => s.team_id === teamId)
+          .reduce((sum, s) => sum + s.goals, 0);
+        if (totalGoals > 0) {
+          this.log(`   ${team.name}: ${totalGoals} total goals scored`);
+        }
+        
       } catch (error) {
         this.logError(`Failed to fetch roster for ${team.name}`, error);
       }
@@ -293,6 +331,9 @@ class ApslScraper extends Scraper {
 
   async fetchSchedules() {
     this.log('\n📅 Fetching schedules...');
+    
+    let completedMatches = 0;
+    let scheduledMatches = 0;
     
     for (const [teamId, team] of this.data.teams.entries()) {
       try {
@@ -306,25 +347,66 @@ class ApslScraper extends Scraper {
         for (const matchData of schedule) {
           const eventId = IdGenerator.fromComponents('match', team.name, matchData.date, matchData.opponent);
           
+          // Create or find venue if location provided
+          let venueId = null;
+          if (matchData.location) {
+            venueId = IdGenerator.fromComponents('venue', matchData.location);
+            
+            // Check if venue already exists
+            if (!this.data.venues.has(venueId)) {
+              // Extract place_id from Google Maps URL if available
+              // Format: https://maps.google.com/?q=place_id:ChIJ...
+              let placeId = null;
+              if (matchData.googleMapsUrl) {
+                const placeIdMatch = matchData.googleMapsUrl.match(/place_id[=:]([^&]+)/);
+                if (placeIdMatch) {
+                  placeId = placeIdMatch[1];
+                }
+              }
+              
+              this.data.venues.set(venueId, {
+                id: venueId,
+                name: matchData.location,
+                venue_type: 'field',
+                place_id: placeId,
+                data_source: 'apsl',
+                is_active: true
+              });
+            }
+          }
+          
           const match = new Match({
             event_id: eventId,
             name: `${team.name} vs ${matchData.opponent}`,
             event_type_id: '550e8400-e29b-41d4-a716-446655440402', // MATCH_EVENT_TYPE_ID
             start_time: matchData.date,
             end_time: null, // Calculate from start_time + 90 minutes
+            venue_id: venueId,
             home_team_id: matchData.isHome ? teamId : null,
             away_team_id: matchData.isHome ? null : teamId,
+            home_team_score: matchData.homeScore,
+            away_team_score: matchData.awayScore,
+            match_status: matchData.matchStatus,
             created_by: '77d77471-1250-47e0-81ab-d4626595d63c', // SYSTEM_USER_ID
             source_app_id: '550e8400-e29b-41d4-a716-446655440311',
             external_source: 'apsl'
           });
           
           this.data.matches.set(eventId, match);
+          
+          if (matchData.matchStatus === 'completed') {
+            completedMatches++;
+          } else {
+            scheduledMatches++;
+          }
         }
       } catch (error) {
         this.logError(`Failed to fetch schedule for ${team.name}`, error);
       }
     }
+    
+    this.log(`   ✓ ${completedMatches} completed matches with scores`);
+    this.log(`   ✓ ${scheduledMatches} scheduled matches`);
   }
 
   async fetchStandings() {
@@ -526,6 +608,16 @@ class ApslScraper extends Scraper {
               tableName: 'team_season_stats',
               useInserts: true,
               conflictColumns: ['team_id', 'league_id', 'league_division_id', 'season']
+          }
+      },
+      {
+          filename: '32a-player-season-stats-apsl.sql',
+          data: this.data.playerSeasonStats,
+          options: {
+              title: 'APSL Player Season Statistics',
+              tableName: 'player_season_stats',
+              useInserts: true,
+              conflictColumns: ['player_id', 'team_id', 'league_id', 'league_division_id', 'season']
           }
       }
     ]);

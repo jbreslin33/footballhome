@@ -150,25 +150,87 @@ class ApslHtmlParser extends HtmlParser {
       if (cells.length < 3) continue;
       
       // Cell 0: Date & Time (e.g., "Sunday, Sep 07 - 4:30 PM")
-      // Cell 1: Opponent
-      // Cell 2: Location/Venue
+      // Cell 1: Location (e.g., "Lighthouse Field") - may contain Google Maps link
+      // Cell 2: Match (e.g., "vs Philadelphia Soccer Club (4-3-2) (Regular Season)")
+      // Cell 3: Result (e.g., "Loss (2 - 3) (view)") - if match is completed
       
       const dateText = cells[0]?.textContent.trim();
-      const opponent = cells[1]?.textContent.trim();
-      const location = cells[2]?.textContent.trim();
+      const location = cells[1]?.textContent.trim();
+      const matchText = cells[2]?.textContent.trim();
+      const resultText = cells[3]?.textContent.trim();
       
-      if (!dateText || !opponent) continue;
+      // Extract Google Maps link if present
+      const locationLink = cells[1]?.querySelector('a');
+      const googleMapsUrl = locationLink?.getAttribute('href') || null;
       
-      // Determine if home or away
-      const isHome = location?.toLowerCase().includes('home') || 
-                     !location?.toLowerCase().includes('@');
+      if (!dateText || !matchText) continue;
+      
+      // Parse match text to extract opponent
+      // Format: "vs Philadelphia Soccer Club (4-3-2) (Regular Season)"
+      // or: "@ Sewell Old Boys FC (1-2-8) (Regular Season)"
+      
+      // Extract home/away and opponent
+      const isHome = matchText.includes('vs ');
+      const opponentMatch = matchText.match(/(?:vs|@)\s+([^(]+)/);
+      const opponent = opponentMatch ? opponentMatch[1].trim() : null;
+      
+      if (!opponent) continue;
+      
+      // Parse result from cells[3] if available
+      // Format: "Win (5 - 1) (view)" or "Loss (2 - 3) (view)" or "Draw (0 - 0) (view)"
+      let matchStatus = 'scheduled';
+      let homeScore = null;
+      let awayScore = null;
+      let resultType = null;
+      
+      if (resultText) {
+        const resultMatch = resultText.match(/(Win|Loss|Draw)\s*\((\d+)\s*-\s*(\d+)\)/i);
+        if (resultMatch) {
+          resultType = resultMatch[1].toLowerCase();
+          const score1 = parseInt(resultMatch[2]);
+          const score2 = parseInt(resultMatch[3]);
+          
+          // Determine which score is home/away based on result type and home/away status
+          if (isHome) {
+            // We are home team
+            if (resultType === 'win') {
+              homeScore = score1;
+              awayScore = score2;
+            } else if (resultType === 'loss') {
+              homeScore = score2;
+              awayScore = score1;
+            } else { // draw
+              homeScore = score1;
+              awayScore = score2;
+            }
+          } else {
+            // We are away team
+            if (resultType === 'win') {
+              awayScore = score1;
+              homeScore = score2;
+            } else if (resultType === 'loss') {
+              awayScore = score2;
+              homeScore = score1;
+            } else { // draw
+              awayScore = score1;
+              homeScore = score2;
+            }
+          }
+          
+          matchStatus = 'completed';
+        }
+      }
 
       matches.push({
         date: this.parseDate(dateText),
         opponent: opponent,
         location: location || null,
-        result: null,
-        isHome: isHome
+        googleMapsUrl: googleMapsUrl,
+        isHome: isHome,
+        matchStatus: matchStatus,
+        homeScore: homeScore,
+        awayScore: awayScore,
+        resultType: resultType
       });
     }
 
@@ -232,6 +294,61 @@ class ApslHtmlParser extends HtmlParser {
     }
 
     return teams;
+  }
+
+  /**
+   * Parse player season statistics from roster page
+   * Table has columns: Player, Goals, Assists
+   */
+  parsePlayerStats() {
+    const playerStats = [];
+    
+    // Find the Active Roster table
+    const tables = this.querySelectorAll('table.Table');
+    let rosterTable = null;
+    
+    for (const table of tables) {
+      const headerText = table.textContent;
+      if (headerText.includes('Active Roster') || headerText.includes('Player') && headerText.includes('Goals')) {
+        rosterTable = table;
+        break;
+      }
+    }
+    
+    if (!rosterTable) {
+      return playerStats;
+    }
+    
+    // Process each player row
+    const rows = rosterTable.querySelectorAll('tr.TableRow0, tr.TableRow1');
+    
+    for (const row of rows) {
+      const cells = row.querySelectorAll('td');
+      if (cells.length < 3) continue;
+      
+      // Cell 0: Player name (in a div)
+      // Cell 1: Goals
+      // Cell 2: Assists
+      
+      const nameDiv = cells[0]?.querySelector('div[style*="font-size:12px"]');
+      const playerName = nameDiv?.textContent.trim();
+      const goalsText = cells[1]?.textContent.trim();
+      const assistsText = cells[2]?.textContent.trim();
+      
+      if (!playerName || playerName.toLowerCase() === 'player') continue;
+      
+      // Parse goals and assists (empty cells mean 0)
+      const goals = goalsText ? parseInt(goalsText) : 0;
+      const assists = assistsText ? parseInt(assistsText) : 0;
+      
+      playerStats.push({
+        name: playerName,
+        goals: isNaN(goals) ? 0 : goals,
+        assists: isNaN(assists) ? 0 : assists
+      });
+    }
+    
+    return playerStats;
   }
 
   /**
