@@ -52,14 +52,14 @@ Response StatsController::handleGetStandings(const Request& request) {
                 tss.ties,
                 tss.goals_for,
                 tss.goals_against,
-                tss.goal_difference,
+                tss.goal_differential,
                 tss.points
             FROM team_season_stats tss
             JOIN teams t ON tss.team_id = t.id
             LEFT JOIN leagues l ON tss.league_id = l.id
             LEFT JOIN league_divisions ld ON tss.league_division_id = ld.id
             WHERE tss.season = '2025-2026'
-            ORDER BY l.display_name, ld.display_name, tss.points DESC, tss.goal_difference DESC
+            ORDER BY l.display_name, ld.display_name, tss.points DESC, tss.goal_differential DESC
         )";
         
         pqxx::result result = db_->query(query);
@@ -84,7 +84,7 @@ Response StatsController::handleGetStandings(const Request& request) {
                 << "\"ties\":" << row["ties"].as<int>() << ","
                 << "\"goals_for\":" << row["goals_for"].as<int>() << ","
                 << "\"goals_against\":" << row["goals_against"].as<int>() << ","
-                << "\"goal_difference\":" << row["goal_difference"].as<int>() << ","
+                << "\"goal_differential\":" << row["goal_differential"].as<int>() << ","
                 << "\"points\":" << row["points"].as<int>()
                 << "}";
         }
@@ -169,16 +169,17 @@ Response StatsController::handleGetMatches(const Request& request) {
                 at.name as away_team,
                 m.home_team_score,
                 m.away_team_score,
-                m.match_date,
+                e.event_date as match_date,
                 m.match_status,
                 v.name as venue_name,
                 v.google_maps_url
             FROM matches m
+            JOIN events e ON m.id = e.id
             JOIN teams ht ON m.home_team_id = ht.id
             JOIN teams at ON m.away_team_id = at.id
-            LEFT JOIN venues v ON m.venue_id = v.id
+            LEFT JOIN venues v ON e.venue_id = v.id
             WHERE m.match_status = 'completed'
-            ORDER BY m.match_date DESC
+            ORDER BY e.event_date DESC
             LIMIT 100
         )";
         
