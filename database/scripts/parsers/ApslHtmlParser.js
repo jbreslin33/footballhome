@@ -303,13 +303,23 @@ class ApslHtmlParser extends HtmlParser {
   parsePlayerStats() {
     const playerStats = [];
     
-    // Find the Active Roster table
+    // Find the Active Roster table - look for table with "Goals" and "Assists" headers
     const tables = this.querySelectorAll('table.Table');
     let rosterTable = null;
     
     for (const table of tables) {
-      const headerText = table.textContent;
-      if (headerText.includes('Active Roster') || headerText.includes('Player') && headerText.includes('Goals')) {
+      // Check if table has th elements containing Goals and Assists
+      const headers = table.querySelectorAll('th');
+      let hasGoals = false;
+      let hasAssists = false;
+      
+      for (const th of headers) {
+        const text = th.textContent.trim();
+        if (text === 'Goals') hasGoals = true;
+        if (text === 'Assists') hasAssists = true;
+      }
+      
+      if (hasGoals && hasAssists) {
         rosterTable = table;
         break;
       }
@@ -326,14 +336,15 @@ class ApslHtmlParser extends HtmlParser {
       const cells = row.querySelectorAll('td');
       if (cells.length < 3) continue;
       
-      // Cell 0: Player name (in a div)
-      // Cell 1: Goals
-      // Cell 2: Assists
+      // Cell 0: Empty or photo
+      // Cell 1: Player name (in a div)
+      // Cell 2: Goals
+      // Cell 3: Assists
       
-      const nameDiv = cells[0]?.querySelector('div[style*="font-size:12px"]');
+      const nameDiv = cells[1]?.querySelector('div[style*="font-size:12px"]');
       const playerName = nameDiv?.textContent.trim();
-      const goalsText = cells[1]?.textContent.trim();
-      const assistsText = cells[2]?.textContent.trim();
+      const goalsText = cells[2]?.textContent.trim();
+      const assistsText = cells[3]?.textContent.trim();
       
       if (!playerName || playerName.toLowerCase() === 'player') continue;
       
