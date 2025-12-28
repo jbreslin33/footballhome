@@ -747,3 +747,35 @@
   width: 100%;
   font-size: 0.9rem;
 }
+
+/* Fullscreen mode */
+.schema-view:fullscreen {
+  background: #f5f5f5;
+  padding: var(--space-3);
+}
+
+.schema-view:fullscreen .schema-network {
+  min-height: calc(100vh - 200px);
+}
+
+.schema-view:fullscreen .schema-controls {
+  background: #1976d2;
+  color: white;
+}
+
+.schema-view:fullscreen .schema-controls .btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.schema-view:fullscreen .schema-controls .btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.schema-view:fullscreen .schema-controls .btn-primary {
+  background: #0d47a1;
+}
+
+.schema-view:fullscreen .schema-info {
+  color: rgba(255, 255, 255, 0.9);
+}

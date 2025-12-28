@@ -579,6 +579,8 @@ class AdminSystemScreen extends Screen {
             <button id="schema-zoom-in" class="btn btn-secondary">🔍+ Zoom In</button>
             <button id="schema-zoom-out" class="btn btn-secondary">🔍- Zoom Out</button>
             <button id="schema-reset" class="btn btn-secondary">🔄 Reset</button>
+            <button id="schema-fullscreen" class="btn btn-primary">⛶ Fullscreen</button>
+            <button id="schema-new-window" class="btn btn-primary">🗗 New Window</button>
             <span class="schema-info">
               💡 <strong>Drag</strong> to pan, <strong>Scroll</strong> to zoom, <strong>Click</strong> table to highlight relationships
             </span>
@@ -711,6 +713,23 @@ class AdminSystemScreen extends Screen {
       
       document.getElementById('schema-reset').addEventListener('click', () => {
         network.fit({ animation: true });
+      });
+      
+      // Fullscreen toggle
+      document.getElementById('schema-fullscreen').addEventListener('click', () => {
+        const schemaView = document.querySelector('.schema-view');
+        if (!document.fullscreenElement) {
+          schemaView.requestFullscreen().catch(err => {
+            console.error('Error attempting to enable fullscreen:', err);
+          });
+        } else {
+          document.exitFullscreen();
+        }
+      });
+      
+      // Open in new window
+      document.getElementById('schema-new-window').addEventListener('click', () => {
+        window.open('/schema-viewer.html', 'SchemaViewer', 'width=1400,height=900,menubar=no,toolbar=no,location=no');
       });
       
       // Show table details on click

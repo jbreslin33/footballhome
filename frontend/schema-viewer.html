@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Schema - Football Home</title>
+    
+    <!-- vis.js for network diagrams -->
+    <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+    <link href="https://unpkg.com/vis-network@9.1.9/styles/vis-network.min.css" rel="stylesheet" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #1976d2;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            transition: background 0.2s;
+        }
+        
+        .btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .btn-primary {
+            background: #0d47a1;
+        }
+        
+        .btn-primary:hover {
+            background: #0a3d91;
+        }
+        
+        #schema-network {
+            width: 100%;
+            height: calc(100vh - 120px);
+            background: white;
+            border-top: 1px solid #ddd;
+        }
+        
+        #schema-details {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            border-top: 2px solid #1976d2;
+            padding: 16px;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+            display: none;
+        }
+        
+        #schema-details.visible {
+            display: block;
+        }
+        
+        #schema-details h3 {
+            margin-bottom: 12px;
+            color: #1976d2;
+        }
+        
+        #schema-details h4 {
+            margin: 12px 0 8px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        table th {
+            background: #f5f5f5;
+            padding: 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        table tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .info {
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗂️ Database Schema Viewer - Football Home</h1>
+        <div class="controls">
+            <button id="schema-fit" class="btn">📐 Fit</button>
+            <button id="schema-zoom-in" class="btn">🔍+</button>
+            <button id="schema-zoom-out" class="btn">🔍-</button>
+            <button id="schema-reset" class="btn">🔄 Reset</button>
+            <span class="info">Drag to pan • Scroll to zoom • Click table for details</span>
+        </div>
+    </div>
+    
+    <div id="schema-network"></div>
+    <div id="schema-details"></div>
+    
+    <script>
+        async function loadSchema() {
+            try {
+                const response = await fetch('/api/system-admin/schema');
+                if (!response.ok) throw new Error('Failed to load schema');
+                const data = await response.json();
+                
+                const nodes = [];
+                const edges = [];
+                const tableMap = {};
+                
+                data.tables.forEach(table => {
+                    // Build label with table name and all columns
+                    const columnLines = table.columns.map(col => {
+                        const pk = col.primary_key ? '🔑 ' : '  ';
+                        const fk = table.foreign_keys.some(f => f.column === col.name) ? ' →' : '';
+                        const type = col.type.length > 15 ? col.type.substring(0, 12) + '...' : col.type;
+                        return `${pk}${col.name}: ${type}${fk}`;
+                    });
+                    
+                    const fullLabel = `${table.name}\n${'─'.repeat(table.name.length)}\n${columnLines.join('\n')}`;
+                    
+                    // Tooltip with more details
+                    const columnDetails = table.columns.map(col => {
+                        const pk = col.primary_key ? '🔑 ' : '';
+                        const nullable = col.nullable === 'NO' ? ' NOT NULL' : '';
+                        const def = col.default ? ` DEFAULT ${col.default}` : '';
+                        return `${pk}${col.name}: ${col.type}${nullable}${def}`;
+                    }).join('\\n');
+                    
+                    nodes.push({
+                        id: table.name,
+                        label: fullLabel,
+                        title: `<b>${table.name}</b>\\n\\n${columnDetails}`,
+                        shape: 'box',
+                        color: {
+                            background: '#ffffff',
+                            border: '#2196F3',
+                            highlight: { background: '#e3f2fd', border: '#1976d2' }
+                        },
+                        font: { size: 11, face: 'Monaco, Consolas, "Courier New", monospace', align: 'left' },
+                        margin: 10,
+                        widthConstraint: { minimum: 200, maximum: 350 }
+                    });
+                    
+                    tableMap[table.name] = table;
+                    
+                    table.foreign_keys.forEach(fk => {
+                        edges.push({
+                            from: table.name,
+                            to: fk.foreign_table,
+                            label: fk.column,
+                            arrows: 'to',
+                            color: { color: '#2196F3', highlight: '#ff5722' },
+                            font: { size: 10, align: 'middle' },
+                            title: `${table.name}.${fk.column} → ${fk.foreign_table}.${fk.foreign_column}`
+                        });
+                    });
+                });
+                
+                const container = document.getElementById('schema-network');
+                const networkData = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+                
+                const options = {
+                    physics: {
+                        enabled: true,
+                        barnesHut: {
+                            gravitationalConstant: -15000,
+                            centralGravity: 0.2,
+                            springLength: 250,
+                            springConstant: 0.02,
+                            damping: 0.1,
+                            avoidOverlap: 0.5
+                        },
+                        stabilization: {
+                            enabled: true,
+                            iterations: 300
+                        }
+                    },
+                    interaction: {
+                        hover: true,
+                        tooltipDelay: 100,
+                        navigationButtons: true,
+                        keyboard: true
+                    },
+                    nodes: {
+                        borderWidth: 2,
+                        borderWidthSelected: 4,
+                        shapeProperties: {
+                            borderRadius: 4
+                        }
+                    },
+                    edges: {
+                        width: 2,
+                        smooth: {
+                            type: 'cubicBezier',
+                            forceDirection: 'horizontal',
+                            roundness: 0.4
+                        },
+                        arrows: {
+                            to: {
+                                enabled: true,
+                                scaleFactor: 0.5
+                            }
+                        }
+                    }
+                };
+                
+                const network = new vis.Network(container, networkData, options);
+                
+                // Event handlers
+                document.getElementById('schema-fit').addEventListener('click', () => {
+                    network.fit({ animation: true });
+                });
+                
+                document.getElementById('schema-zoom-in').addEventListener('click', () => {
+                    const scale = network.getScale();
+                    network.moveTo({ scale: scale * 1.2, animation: true });
+                });
+                
+                document.getElementById('schema-zoom-out').addEventListener('click', () => {
+                    const scale = network.getScale();
+                    network.moveTo({ scale: scale * 0.8, animation: true });
+                });
+                
+                document.getElementById('schema-reset').addEventListener('click', () => {
+                    network.fit({ animation: true });
+                });
+                
+                // Show table details on click
+                network.on('click', (params) => {
+                    const detailsDiv = document.getElementById('schema-details');
+                    
+                    if (params.nodes.length > 0) {
+                        const tableName = params.nodes[0];
+                        const table = tableMap[tableName];
+                        
+                        let detailsHTML = `
+                            <h3>📋 ${tableName}</h3>
+                            <h4>Columns (${table.columns.length})</h4>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Nullable</th>
+                                        <th>Default</th>
+                                        <th>Primary Key</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                        `;
+                        
+                        table.columns.forEach(col => {
+                            detailsHTML += `
+                                <tr>
+                                    <td><strong>${col.name}</strong></td>
+                                    <td>${col.type}</td>
+                                    <td>${col.nullable}</td>
+                                    <td>${col.default || '-'}</td>
+                                    <td>${col.primary_key ? '🔑 Yes' : 'No'}</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        detailsHTML += `</tbody></table>`;
+                        
+                        if (table.foreign_keys.length > 0) {
+                            detailsHTML += `
+                                <h4>Foreign Keys (${table.foreign_keys.length})</h4>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Column</th>
+                                            <th>References</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                            `;
+                            
+                            table.foreign_keys.forEach(fk => {
+                                detailsHTML += `
+                                    <tr>
+                                        <td><strong>${fk.column}</strong></td>
+                                        <td>${fk.foreign_table}.${fk.foreign_column}</td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            detailsHTML += `</tbody></table>`;
+                        }
+                        
+                        detailsDiv.innerHTML = detailsHTML;
+                        detailsDiv.classList.add('visible');
+                    } else {
+                        detailsDiv.classList.remove('visible');
+                    }
+                });
+                
+                // Auto-fit after stabilization
+                network.once('stabilizationIterationsDone', () => {
+                    network.fit({ animation: false });
+                });
+                
+            } catch (error) {
+                console.error('Error loading schema:', error);
+                document.getElementById('schema-network').innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: #666;">
+                        <h2>❌ Failed to Load Schema</h2>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Load on page load
+        loadSchema();
+    </script>
+</body>
+</html>
