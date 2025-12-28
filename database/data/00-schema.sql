@@ -210,15 +210,15 @@ CREATE TABLE casa_players (
     name VARCHAR(255) NOT NULL,
     jersey_number VARCHAR(10),
     position VARCHAR(50),
-    casa_player_id VARCHAR(100) UNIQUE,
+    casa_player_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE casa_matches (
     id SERIAL PRIMARY KEY,
     casa_division_id INTEGER NOT NULL REFERENCES casa_divisions(id) ON DELETE CASCADE,
-    home_team_id INTEGER NOT NULL REFERENCES casa_teams(id),
-    away_team_id INTEGER NOT NULL REFERENCES casa_teams(id),
+    home_team_id INTEGER REFERENCES casa_teams(id),
+    away_team_id INTEGER REFERENCES casa_teams(id),
     match_date DATE NOT NULL,
     match_time TIME,
     venue_id INTEGER REFERENCES venues(id),
@@ -231,7 +231,7 @@ CREATE TABLE casa_matches (
 
 CREATE TABLE casa_player_stats (
     id SERIAL PRIMARY KEY,
-    casa_match_id INTEGER NOT NULL REFERENCES casa_matches(id) ON DELETE CASCADE,
+    casa_match_id INTEGER REFERENCES casa_matches(id) ON DELETE CASCADE,
     casa_player_id INTEGER NOT NULL REFERENCES casa_players(id) ON DELETE CASCADE,
     goals INTEGER DEFAULT 0,
     assists INTEGER DEFAULT 0,
