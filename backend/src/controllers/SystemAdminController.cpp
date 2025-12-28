@@ -2079,14 +2079,8 @@ Response SystemAdminController::handleGetCasaDashboard(const Request& request) {
             json += "\"players\":0,";
         }
         
-        // Matches (Linked via casa_teams) - Use LEFT JOIN to show all CASA matches
-        auto matches = db_->query(
-            "SELECT COUNT(DISTINCT m.id) FROM matches m "
-            "JOIN events e ON m.id = e.id "
-            "LEFT JOIN casa_teams ct1 ON m.home_team_id = ct1.team_id "
-            "LEFT JOIN casa_teams ct2 ON m.away_team_id = ct2.team_id "
-            "WHERE ct1.team_id IS NOT NULL OR ct2.team_id IS NOT NULL"
-        );
+        // Matches - query casa_matches directly
+        auto matches = db_->query("SELECT COUNT(*) FROM casa_matches");
         if (!matches.empty()) {
             json += "\"matches\":" + std::to_string(matches[0][0].as<int>());
         } else {
@@ -2240,14 +2234,8 @@ Response SystemAdminController::handleGetApslDashboard(const Request& request) {
             json += "\"players\":0,";
         }
         
-        // Matches (Linked via apsl_teams) - Use LEFT JOIN to show all APSL matches
-        auto matches = db_->query(
-            "SELECT COUNT(DISTINCT m.id) FROM matches m "
-            "JOIN events e ON m.id = e.id "
-            "LEFT JOIN apsl_teams at1 ON m.home_team_id = at1.team_id "
-            "LEFT JOIN apsl_teams at2 ON m.away_team_id = at2.team_id "
-            "WHERE at1.team_id IS NOT NULL OR at2.team_id IS NOT NULL"
-        );
+        // Matches - query apsl_matches directly
+        auto matches = db_->query("SELECT COUNT(*) FROM apsl_matches");
         if (!matches.empty()) {
             json += "\"matches\":" + std::to_string(matches[0][0].as<int>());
         } else {
@@ -2263,14 +2251,20 @@ Response SystemAdminController::handleGetApslDashboard(const Request& request) {
 
 Response SystemAdminController::handleGetApslDivisions(const Request& request) {
     try {
-        auto result = db_->query("SELECT id, apsl_id, name, season FROM apsl_divisions ORDER BY name");
+        auto result = db_->query(
+            "SELECT ad.id, ad.name, ac.name as conference_name, al.season "
+            "FROM apsl_divisions ad "
+            "JOIN apsl_conferences ac ON ad.apsl_conference_id = ac.id "
+            "JOIN apsl_leagues al ON ac.apsl_league_id = al.id "
+            "ORDER BY ad.name"
+        );
         std::string json = "[";
         for (size_t i = 0; i < result.size(); ++i) {
             const auto& row = result[i];
             json += "{";
             json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
-            json += "\"apsl_id\":\"" + row["apsl_id"].as<std::string>() + "\",";
             json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"conference\":\"" + row["conference_name"].as<std::string>() + "\",";
             json += "\"season\":\"" + (row["season"].is_null() ? "" : row["season"].as<std::string>()) + "\"";
             json += "}";
             if (i < result.size() - 1) json += ",";
@@ -2285,7 +2279,7 @@ Response SystemAdminController::handleGetApslDivisions(const Request& request) {
 Response SystemAdminController::handleGetApslTeams(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT at.id, at.apsl_id, at.name, ad.name as division_name "
+            "SELECT at.id, at.apsl_team_id, at.name, at.city, ad.name as division_name "
             "FROM apsl_teams at "
             "LEFT JOIN apsl_divisions ad ON at.apsl_division_id = ad.id "
             "ORDER BY at.name"
@@ -2295,8 +2289,9 @@ Response SystemAdminController::handleGetApslTeams(const Request& request) {
             const auto& row = result[i];
             json += "{";
             json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
-            json += "\"apsl_id\":\"" + row["apsl_id"].as<std::string>() + "\",";
+            json += "\"apsl_team_id\":\"" + (row["apsl_team_id"].is_null() ? "" : row["apsl_team_id"].as<std::string>()) + "\",";
             json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"city\":\"" + (row["city"].is_null() ? "" : row["city"].as<std::string>()) + "\",";
             json += "\"division\":\"" + (row["division_name"].is_null() ? "" : row["division_name"].as<std::string>()) + "\"";
             json += "}";
             if (i < result.size() - 1) json += ",";
@@ -2311,10 +2306,9 @@ Response SystemAdminController::handleGetApslTeams(const Request& request) {
 Response SystemAdminController::handleGetApslPlayers(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT ap.id, ap.apsl_id, ap.name, at.name as team_name "
+            "SELECT ap.id, ap.apsl_player_id, ap.name, ap.position, ap.jersey_number, at.name as team_name "
             "FROM apsl_players ap "
-            "LEFT JOIN apsl_team_players atp ON ap.id = atp.apsl_player_id "
-            "LEFT JOIN apsl_teams at ON atp.apsl_team_id = at.id "
+            "LEFT JOIN apsl_teams at ON ap.apsl_team_id = at.id "
             "ORDER BY ap.name LIMIT 100"
         );
         std::string json = "[";
@@ -2322,8 +2316,10 @@ Response SystemAdminController::handleGetApslPlayers(const Request& request) {
             const auto& row = result[i];
             json += "{";
             json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
-            json += "\"apsl_id\":\"" + row["apsl_id"].as<std::string>() + "\",";
+            json += "\"apsl_player_id\":\"" + (row["apsl_player_id"].is_null() ? "" : row["apsl_player_id"].as<std::string>()) + "\",";
             json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"position\":\"" + (row["position"].is_null() ? "" : row["position"].as<std::string>()) + "\",";
+            json += "\"jersey_number\":\"" + (row["jersey_number"].is_null() ? "" : row["jersey_number"].as<std::string>()) + "\",";
             json += "\"team\":\"" + (row["team_name"].is_null() ? "" : row["team_name"].as<std::string>()) + "\"";
             json += "}";
             if (i < result.size() - 1) json += ",";
@@ -2338,30 +2334,29 @@ Response SystemAdminController::handleGetApslPlayers(const Request& request) {
 Response SystemAdminController::handleGetApslMatches(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT m.id, e.event_date, "
-            "COALESCE(at1.name, t1.name, 'Unknown Team') as home_team, "
-            "COALESCE(at2.name, t2.name, 'Unknown Team') as away_team, "
-            "m.home_team_score, m.away_team_score, m.match_status "
-            "FROM matches m "
-            "JOIN events e ON m.id = e.id "
-            "LEFT JOIN apsl_teams at1 ON m.home_team_id = at1.team_id "
-            "LEFT JOIN apsl_teams at2 ON m.away_team_id = at2.team_id "
-            "LEFT JOIN teams t1 ON m.home_team_id = t1.id "
-            "LEFT JOIN teams t2 ON m.away_team_id = t2.id "
-            "WHERE at1.team_id IS NOT NULL OR at2.team_id IS NOT NULL "
-            "ORDER BY e.event_date DESC LIMIT 100"
+            "SELECT am.id, am.match_date, "
+            "ht.name as home_team, "
+            "at.name as away_team, "
+            "am.home_score, am.away_score, am.status, "
+            "ad.name as division_name "
+            "FROM apsl_matches am "
+            "LEFT JOIN apsl_teams ht ON am.home_team_id = ht.id "
+            "LEFT JOIN apsl_teams at ON am.away_team_id = at.id "
+            "LEFT JOIN apsl_divisions ad ON am.apsl_division_id = ad.id "
+            "ORDER BY am.match_date DESC LIMIT 100"
         );
         std::string json = "[";
         for (size_t i = 0; i < result.size(); ++i) {
             const auto& row = result[i];
             json += "{";
             json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
-            json += "\"event_date\":\"" + (row["event_date"].is_null() ? "" : row["event_date"].as<std::string>()) + "\",";
-            json += "\"home_team\":\"" + row["home_team"].as<std::string>() + "\",";
-            json += "\"away_team\":\"" + row["away_team"].as<std::string>() + "\",";
-            json += "\"home_score\":\"" + (row["home_team_score"].is_null() ? "-" : row["home_team_score"].as<std::string>()) + "\",";
-            json += "\"away_score\":\"" + (row["away_team_score"].is_null() ? "-" : row["away_team_score"].as<std::string>()) + "\",";
-            json += "\"status\":\"" + (row["match_status"].is_null() ? "" : row["match_status"].as<std::string>()) + "\"";
+            json += "\"match_date\":\"" + (row["match_date"].is_null() ? "" : row["match_date"].as<std::string>()) + "\",";
+            json += "\"home_team\":\"" + (row["home_team"].is_null() ? "Unknown" : row["home_team"].as<std::string>()) + "\",";
+            json += "\"away_team\":\"" + (row["away_team"].is_null() ? "Unknown" : row["away_team"].as<std::string>()) + "\",";
+            json += "\"home_score\":\"" + (row["home_score"].is_null() ? "-" : row["home_score"].as<std::string>()) + "\",";
+            json += "\"away_score\":\"" + (row["away_score"].is_null() ? "-" : row["away_score"].as<std::string>()) + "\",";
+            json += "\"division\":\"" + (row["division_name"].is_null() ? "" : row["division_name"].as<std::string>()) + "\",";
+            json += "\"status\":\"" + (row["status"].is_null() ? "scheduled" : row["status"].as<std::string>()) + "\"";
             json += "}";
             if (i < result.size() - 1) json += ",";
         }

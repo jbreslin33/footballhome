@@ -36,8 +36,8 @@ class AdminLevelSelectionScreen extends Screen {
         
         // If only one entity at this level, go directly to it
         // Otherwise go to entity selection screen
-        if (levelType === 'system') {
-          // System admin - only one "entity" (the system itself)
+        if (levelType === 'system' || levelType === 'super') {
+          // System/Super admin - only one "entity" (the system itself)
           this.navigation.goTo('admin-system');
         } else if (entityCount === 1) {
           // Single entity - get it and navigate directly
@@ -104,6 +104,7 @@ class AdminLevelSelectionScreen extends Screen {
       
       // Define level configuration
       const levelConfig = {
+        super: { icon: '🛡️', label: 'Super Admin', description: 'Global administration' },
         system: { icon: '👨‍💼', label: 'System', description: 'Global administration' },
         club: { icon: '🏢', label: 'Club', description: 'Club management' },
         sport_division: { icon: '⚽', label: 'Sport Division', description: 'Sport division management' },
@@ -115,7 +116,7 @@ class AdminLevelSelectionScreen extends Screen {
       
       // Render level buttons
       const levels = Object.keys(grouped).sort((a, b) => {
-        const order = ['system', 'club', 'sport_division', 'league', 'conference', 'division', 'team'];
+        const order = ['super', 'system', 'club', 'sport_division', 'league', 'conference', 'division', 'team'];
         return order.indexOf(a) - order.indexOf(b);
       });
       

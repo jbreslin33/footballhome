@@ -19,8 +19,6 @@ class ApslScraper extends Scraper {
     });
 
     this.baseUrl = 'https://apslsoccer.com';
-    this.leagueId = '00000000-0000-0000-0001-000000000001';
-    this.sportId = '550e8400-e29b-41d4-a716-446655440101';
     
     // Fetcher and parser
     this.fetcher = new HttpFetcher({ timeout: 30000, maxRetries: 3 });
@@ -37,13 +35,14 @@ class ApslScraper extends Scraper {
     this.conferences = new Map();
 
     // Initialize APSL compartmentalized data stores
+    this.data.apslLeagues = new Map();
+    this.data.apslConferences = new Map();
     this.data.apslDivisions = new Map();
     this.data.apslTeams = new Map();
     this.data.apslPlayers = new Map();
-    this.data.apslTeamPlayers = new Map();
-    this.data.playerSeasonStats = new Map(); // Will hold apsl_player_stats records
-    this.data.teamSeasonStats = new Map(); // Will hold apsl_team_stats records
-    // Note: matches Map will hold apsl_matches records
+    this.data.apslMatches = new Map();
+    this.data.apslPlayerStats = new Map();
+    this.data.apslTeamStats = new Map();
   }
 
   async initialize() {
@@ -96,32 +95,57 @@ class ApslScraper extends Scraper {
     
     this.log(`   Found ${conferenceData.length} conferences`);
     
-    // Create conference and division entities
-    // APSL: Each conference is also treated as a division
+    // Create APSL League (single league for all APSL data)
+    const season = conferenceData[0]?.season || '2024-2025';
+    const apslLeagueId = 1; // Single league ID
+    this.data.apslLeagues.set(apslLeagueId, {
+      id: apslLeagueId,
+      name: 'APSL',
+      season: season,
+      website_url: this.baseUrl,
+      is_active: true
+    });
+    
+    // Create conferences and divisions
+    // APSL: Each conference is treated as both conference AND division (flat structure)
+    let conferenceCounter = 1;
+    let divisionCounter = 1;
+    
     for (const confData of conferenceData) {
       const confName = confData.name;
-      const confId = IdGenerator.fromComponents('apsl', 'conference', confName);
+      const apslConferenceId = conferenceCounter++;
       
       // Parse the standings table data
       const tableRows = this.parser.parseStandingsTable(confData.table);
       
-      // Create APSL Division
-      const apslDivisionId = IdGenerator.fromComponents('apsl', 'division', confName);
+      // Create APSL Conference
+      this.data.apslConferences.set(apslConferenceId, {
+        id: apslConferenceId,
+        apsl_league_id: apslLeagueId,
+        name: confName,
+        abbreviation: null,
+        sort_order: apslConferenceId
+      });
+      
+      // Create APSL Division (one division per conference in APSL)
+      const apslDivisionId = divisionCounter++;
       this.data.apslDivisions.set(apslDivisionId, {
         id: apslDivisionId,
-        apsl_id: confName, // Using name as ID since APSL doesn't expose a clear ID
+        apsl_conference_id: apslConferenceId,
         name: confName,
-        season: confData.season,
-        league_division_id: null // To be linked manually or via fuzzy match later
+        age_group: null,
+        skill_level: null,
+        gender: null,
+        sort_order: apslDivisionId
       });
       
       // Store conference data for team extraction
-      this.conferences.set(confId, {
-        id: confId,
-        divisionId: apslDivisionId,  // Store division ID for standings
+      this.conferences.set(apslConferenceId, {
+        id: apslConferenceId,
+        divisionId: apslDivisionId,
         name: confName,
         season: confData.season,
-        table: tableRows // Now an array of row objects instead of DOM element
+        table: tableRows
       });
     }
     
@@ -133,6 +157,8 @@ class ApslScraper extends Scraper {
     // Parse team links from standings page
     const teamLinks = this.parser.parseTeamLinks();
     
+    let teamCounter = 1;
+    
     for (const teamData of teamLinks) {
       if (!this.matchesTeamFilter(teamData.name)) {
         this.log(`   ⊘ Skipping ${teamData.name} (filtered out)`);
@@ -141,26 +167,27 @@ class ApslScraper extends Scraper {
       
       // Generate unique ID for APSL team
       const normalizedName = teamData.name.trim();
-      const apslTeamId = IdGenerator.fromComponents('apsl', 'team_record', teamData.apsl_team_id);
+      const apslTeamId = teamCounter++;
       
       // Find which APSL division this team belongs to
-      // Check all conferences' tables for this team
       let apslDivisionId = null;
       let conferenceForLog = null;
       for (const [confId, conf] of this.conferences) {
         if (conf.table && Array.isArray(conf.table) && conf.table.some(row => row.team === normalizedName)) {
-          apslDivisionId = conf.divisionId; // Use division ID, not conference ID
+          apslDivisionId = conf.divisionId;
           conferenceForLog = conf;
           break;
         }
       }
 
-      // Create APSL Team (compartmentalized - no FK to main DB)
+      // Create APSL Team
       this.data.apslTeams.set(apslTeamId, {
           id: apslTeamId,
-          apsl_id: teamData.apsl_team_id,
+          apsl_division_id: apslDivisionId,
           name: normalizedName,
-          apsl_division_id: apslDivisionId
+          city: null,
+          logo_url: null,
+          apsl_team_id: teamData.apsl_team_id  // Their external ID
       });
 
       this.log(`   ✓ ${normalizedName}${conferenceForLog ? ` (${conferenceForLog.name})` : ''}`);
@@ -170,8 +197,10 @@ class ApslScraper extends Scraper {
   async fetchRosters() {
     this.log('\n👥 Fetching rosters...');
     
+    let playerCounter = 1;
+    
     for (const [apslTeamId, apslTeam] of this.data.apslTeams.entries()) {
-      const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.apsl_id}`;
+      const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.apsl_team_id}`;
       
       try {
         const html = await this.fetcher.fetch(teamUrl);
@@ -191,55 +220,43 @@ class ApslScraper extends Scraper {
         for (const playerData of roster) {
           const { first, last } = ApslHtmlParser.splitName(playerData.name);
           
-          // Create APSL Player (use name-based ID since APSL doesn't provide unique player IDs)
-          const apslPlayerId = IdGenerator.fromComponents('apsl', 'player', first, last);
+          // Create APSL Player (each roster entry is unique to team)
+          const apslPlayerId = playerCounter++;
           
-          if (!this.data.apslPlayers.has(apslPlayerId)) {
-              this.data.apslPlayers.set(apslPlayerId, {
-                  id: apslPlayerId,
-                  apsl_id: `${first}-${last}`.toLowerCase(), // Generate a slug-like ID
-                  name: `${first} ${last}`,
-                  license_number: null,
-                  user_id: null // Users will be linked via UI later
-              });
-          }
-
-          // Create APSL Team Player (Junction)
-          const apslTeamPlayerId = IdGenerator.fromComponents('apsl', 'team_player', apslTeam.apsl_id, first, last);
-          
-          this.data.apslTeamPlayers.set(apslTeamPlayerId, {
-              id: apslTeamPlayerId,
+          this.data.apslPlayers.set(apslPlayerId, {
+              id: apslPlayerId,
               apsl_team_id: apslTeamId,
-              apsl_player_id: apslPlayerId,
+              name: `${first} ${last}`,
               jersey_number: playerData.jersey_number || null,
               position: playerData.position,
-              is_active: true
+              apsl_player_id: `${apslTeam.apsl_team_id}-${first}-${last}`.toLowerCase().replace(/\s+/g, '-')
           });
 
           // Create APSL player season stats if available
           const stats = statsMap.get(playerData.name);
           if (stats) {
-            const statsId = IdGenerator.fromComponents('apsl_player_stats', apslPlayerId, apslTeamId, '2025-2026');
+            // Stats are stored per match, but we're simplifying to season stats
+            // We'll need match-level stats later when we scrape individual matches
+            const statsId = apslPlayerId; // One stat record per player for now
             const apslPlayerStats = {
               id: statsId,
+              apsl_match_id: null, // Will be populated when we scrape match details
               apsl_player_id: apslPlayerId,
-              apsl_team_id: apslTeamId,
-              apsl_division_id: apslTeam.apsl_division_id, // Division from team
-              season: '2025-2026',
-              games_played: stats.games_played || 0,
               goals: stats.goals || 0,
               assists: stats.assists || 0,
               yellow_cards: stats.yellow_cards || 0,
-              red_cards: stats.red_cards || 0,
-              minutes_played: stats.minutes_played || 0
+              red_cards: stats.red_cards || 0
             };
-            this.data.playerSeasonStats.set(statsId, apslPlayerStats);
+            this.data.apslPlayerStats.set(statsId, apslPlayerStats);
           }
         }
         
         // Log stats summary
-        const totalGoals = Array.from(this.data.playerSeasonStats.values())
-          .filter(s => s.apsl_team_id === apslTeamId)
+        const totalGoals = Array.from(this.data.apslPlayerStats.values())
+          .filter(s => {
+            const player = this.data.apslPlayers.get(s.apsl_player_id);
+            return player && player.apsl_team_id === apslTeamId;
+          })
           .reduce((sum, s) => sum + s.goals, 0);
         if (totalGoals > 0) {
           this.log(`   ${apslTeam.name}: ${totalGoals} total goals scored`);
@@ -256,6 +273,7 @@ class ApslScraper extends Scraper {
     
     let completedMatches = 0;
     let scheduledMatches = 0;
+    let matchCounter = 1;
     
     // Build opponent name -> apsl_team lookup
     const teamsByName = new Map();
@@ -265,7 +283,7 @@ class ApslScraper extends Scraper {
     
     for (const [apslTeamId, apslTeam] of this.data.apslTeams.entries()) {
       try {
-        const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.apsl_id}`;
+        const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.apsl_team_id}`;
         const html = await this.fetcher.fetch(teamUrl);
         this.parser.parse(html);
         
@@ -274,10 +292,10 @@ class ApslScraper extends Scraper {
         
         for (const matchData of schedule) {
           // Create unique match ID from date + teams
-          const apslMatchId = IdGenerator.fromComponents('apsl_match', matchData.date, apslTeam.name, matchData.opponent);
+          const matchKey = `${matchData.date}-${apslTeam.name}-${matchData.opponent}`;
           
           // Skip if we've already added this match (will happen when both teams are in APSL)
-          if (this.data.matches.has(apslMatchId)) {
+          if (this.data.apslMatches.has(matchKey)) {
             continue;
           }
           
@@ -297,19 +315,22 @@ class ApslScraper extends Scraper {
           }
           
           // Create apsl_matches record
+          const apslMatchId = matchCounter++;
           const apslMatch = {
-            apsl_match_id: apslMatchId,
+            id: apslMatchId,
+            apsl_division_id: apslTeam.apsl_division_id,
             home_team_id: homeTeamId,
             away_team_id: awayTeamId,
+            match_date: matchData.date,
+            match_time: null, // APSL doesn't always provide time
+            venue_id: null, // Will need to match venue later
+            status: matchData.matchStatus || 'scheduled',
             home_score: matchData.homeScore,
             away_score: matchData.awayScore,
-            match_date: matchData.date,
-            match_status: matchData.matchStatus,
-            venue_name: matchData.location || null,
-            google_maps_url: matchData.googleMapsUrl || null
+            apsl_match_id: matchKey
           };
           
-          this.data.matches.set(apslMatchId, apslMatch);
+          this.data.apslMatches.set(matchKey, apslMatch);
           
           if (matchData.matchStatus === 'completed') {
             completedMatches++;
@@ -331,11 +352,12 @@ class ApslScraper extends Scraper {
     
     // Parse standings from conference tables (already fetched in fetchStructure)
     let statsCount = 0;
+    let statCounter = 1;
     
     for (const [confId, conf] of this.conferences) {
       if (!conf.table || !Array.isArray(conf.table)) continue;
       
-      const apslDivisionId = conf.divisionId; // Use division ID stored in conference
+      const apslDivisionId = conf.divisionId;
       
       for (const row of conf.table) {
         const teamName = row.team;
@@ -355,28 +377,25 @@ class ApslScraper extends Scraper {
         }
         
         // Create team stats record from standings table
-        const statsId = IdGenerator.fromComponents('apsl_team_stats', apslTeamId, apslDivisionId, '2025-2026');
+        const statsId = statCounter++;
         const teamStats = {
           id: statsId,
-          apsl_team_id: apslTeamId,
           apsl_division_id: apslDivisionId,
-          season: '2025-2026',
-          games_played: row.gp || 0,
+          apsl_team_id: apslTeamId,
           wins: row.w || 0,
           losses: row.l || 0,
           ties: row.t || 0,
           goals_for: row.gf || 0,
           goals_against: row.ga || 0,
-          goal_differential: row.gd || 0,
           points: row.pts || 0
         };
         
-        this.data.teamSeasonStats.set(statsId, teamStats);
+        this.data.apslTeamStats.set(statsId, teamStats);
         statsCount++;
       }
     }
     
-    this.log(`   ✓ ${statsCount} team standings from ${this.conferences.size} conferences`);
+    this.log(`   ✓ ${statsCount} team stat records`);
   }
 
   async transformData() {
@@ -396,66 +415,78 @@ class ApslScraper extends Scraper {
   }
 
   async generateOutput() {
-    this.log('\n💾 Generating SQL output (APSL compartmentalized tables only)...');
+    this.log('\n💾 Generating SQL output (APSL structure)...');
     
     // Debug: Check data sizes
+    this.log(`   DEBUG: apslLeagues: ${this.data.apslLeagues.size}`);
+    this.log(`   DEBUG: apslConferences: ${this.data.apslConferences.size}`);
     this.log(`   DEBUG: apslDivisions: ${this.data.apslDivisions.size}`);
     this.log(`   DEBUG: apslTeams: ${this.data.apslTeams.size}`);
     this.log(`   DEBUG: apslPlayers: ${this.data.apslPlayers.size}`);
-    this.log(`   DEBUG: apslTeamPlayers: ${this.data.apslTeamPlayers.size}`);
-    this.log(`   DEBUG: matches: ${this.data.matches.size}`);
-    this.log(`   DEBUG: playerSeasonStats: ${this.data.playerSeasonStats.size}`);
-    this.log(`   DEBUG: teamSeasonStats: ${this.data.teamSeasonStats.size}`);
+    this.log(`   DEBUG: apslMatches: ${this.data.apslMatches.size}`);
+    this.log(`   DEBUG: apslPlayerStats: ${this.data.apslPlayerStats.size}`);
+    this.log(`   DEBUG: apslTeamStats: ${this.data.apslTeamStats.size}`);
     
     const results = await this.sqlGenerator.generateMultiple([
-      // APSL Divisions (conferences)
+      // APSL Leagues
       {
-          filename: '04a-apsl-divisions.sql',
+          filename: '10a-apsl-1-leagues.sql',
+          data: this.data.apslLeagues,
+          options: {
+              title: 'APSL Leagues',
+              tableName: 'apsl_leagues',
+              useInserts: true,
+              conflictColumns: ['id']
+          }
+      },
+      // APSL Conferences
+      {
+          filename: '10a-apsl-2-conferences.sql',
+          data: this.data.apslConferences,
+          options: {
+              title: 'APSL Conferences',
+              tableName: 'apsl_conferences',
+              useInserts: true,
+              conflictColumns: ['id']
+          }
+      },
+      // APSL Divisions
+      {
+          filename: '10a-apsl-3-divisions.sql',
           data: this.data.apslDivisions,
           options: {
               title: 'APSL Divisions',
               tableName: 'apsl_divisions',
               useInserts: true,
-              conflictColumns: ['apsl_id']
+              conflictColumns: ['id']
           }
       },
       // APSL Teams
       {
-          filename: '21a-apsl-teams.sql',
+          filename: '10a-apsl-4-teams.sql',
           data: this.data.apslTeams,
           options: {
               title: 'APSL Teams',
               tableName: 'apsl_teams',
               useInserts: true,
-              conflictColumns: ['apsl_id']
+              conflictColumns: ['apsl_team_id']
           }
       },
       // APSL Players
       {
-          filename: '24a-apsl-players.sql',
+          filename: '10a-apsl-5-players.sql',
           data: this.data.apslPlayers,
           options: {
               title: 'APSL Players',
               tableName: 'apsl_players',
               useInserts: true,
-              conflictColumns: ['apsl_id']
-          }
-      },
-      // APSL Team Players (Rosters)
-      {
-          filename: '30a-apsl-rosters.sql',
-          data: this.data.apslTeamPlayers,
-          options: {
-              title: 'APSL Rosters',
-              tableName: 'apsl_team_players',
-              useInserts: true,
-              conflictColumns: ['apsl_team_id', 'apsl_player_id']
+              conflictColumns: ['apsl_player_id']
           }
       },
       // APSL Matches
       {
-          filename: '30b-apsl-matches.sql',
-          data: this.data.matches,
+          filename: '10a-apsl-6-matches.sql',
+          data: this.data.apslMatches,
           options: {
               title: 'APSL Matches',
               tableName: 'apsl_matches',
@@ -465,24 +496,24 @@ class ApslScraper extends Scraper {
       },
       // APSL Player Stats
       {
-          filename: '32a-apsl-player-stats.sql',
-          data: this.data.playerSeasonStats,
+          filename: '10a-apsl-7-player-stats.sql',
+          data: this.data.apslPlayerStats,
           options: {
-              title: 'APSL Player Season Statistics',
+              title: 'APSL Player Statistics',
               tableName: 'apsl_player_stats',
               useInserts: true,
-              conflictColumns: ['apsl_player_id', 'apsl_team_id', 'apsl_division_id', 'season']
+              conflictColumns: ['id']
           }
       },
-      // APSL Team Stats (standings scraped from APSL)
+      // APSL Team Stats
       {
-          filename: '31a-apsl-team-stats.sql',
-          data: this.data.teamSeasonStats,
+          filename: '10a-apsl-8-team-stats.sql',
+          data: this.data.apslTeamStats,
           options: {
-              title: 'APSL Team Season Statistics',
+              title: 'APSL Team Statistics',
               tableName: 'apsl_team_stats',
               useInserts: true,
-              conflictColumns: ['apsl_team_id', 'apsl_division_id', 'season']
+              conflictColumns: ['apsl_division_id', 'apsl_team_id']
           }
       }
     ]);

@@ -65,18 +65,16 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
     
     try {
         // Query database for user by email with admin info and club info
-        // Check user_emails table first, then join to users
-        std::string sql = "SELECT u.id, ue.email, u.first_name, u.last_name, u.preferred_name, u.password_hash, "
-                         "CASE WHEN sa.user_id IS NOT NULL THEN 'system' "
-                         "     WHEN ca.user_id IS NOT NULL THEN 'club' "
-                         "     ELSE 'user' END as admin_level, "
+        // In new schema: users table has email directly, admins table has admin_level
+        // club_admins links admins.id to clubs, not users.id
+        std::string sql = "SELECT u.id, u.email, u.first_name, u.last_name, u.password_hash, "
+                         "COALESCE(a.admin_level, 'user') as admin_level, "
                          "ca.club_id, c.display_name as club_name "
-                         "FROM user_emails ue "
-                         "JOIN users u ON ue.user_id = u.id "
-                         "LEFT JOIN system_admins sa ON u.id = sa.user_id AND sa.is_active = true "
-                         "LEFT JOIN club_admins ca ON u.id = ca.user_id AND ca.is_active = true "
+                         "FROM users u "
+                         "LEFT JOIN admins a ON u.id = a.user_id "
+                         "LEFT JOIN club_admins ca ON a.id = ca.admin_id AND ca.is_active = true "
                          "LEFT JOIN clubs c ON ca.club_id = c.id "
-                         "WHERE ue.email = $1 "
+                         "WHERE u.email = $1 "
                          "LIMIT 1";
         
         pqxx::result result = executeQuery(sql, {email});
@@ -94,11 +92,9 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
                 userData.email = row["email"].as<std::string>();
                 userData.first_name = row["first_name"].as<std::string>();
                 userData.last_name = row["last_name"].as<std::string>();
-                userData.preferred_name = row["preferred_name"].is_null() ? "" : row["preferred_name"].as<std::string>();
-                userData.name = userData.first_name + " " + userData.last_name; // Computed for compatibility
-                // Role is determined by admin junction tables
+                userData.preferred_name = ""; // New schema doesn't have preferred_name
+                userData.name = userData.first_name + " " + userData.last_name;
                 userData.role = row["admin_level"].as<std::string>();
-                // Get club info if user is a club admin
                 userData.club_id = row["club_id"].is_null() ? "" : row["club_id"].as<std::string>();
                 userData.club_name = row["club_name"].is_null() ? "" : row["club_name"].as<std::string>();
                 
@@ -164,25 +160,17 @@ UserData User::getUserById(const std::string& user_id) {
             userData.email = data[0]["email"];
             userData.first_name = data[0]["first_name"];
             userData.last_name = data[0]["last_name"];
-            userData.preferred_name = data[0].find("preferred_name") != data[0].end() ? data[0]["preferred_name"] : "";
-            userData.name = userData.first_name + " " + userData.last_name; // Computed
+            userData.preferred_name = ""; // New schema doesn't have preferred_name
+            userData.name = userData.first_name + " " + userData.last_name;
             userData.role = "user"; // Default role
             
-            // Check if user has any admin roles
-            std::string admin_check_sql = 
-                "SELECT 'system' as admin_type FROM system_admins WHERE user_id = $1 "
-                "UNION "
-                "SELECT 'club' as admin_type FROM club_admins WHERE user_id = $1 "
-                "UNION "
-                "SELECT 'sport_division' as admin_type FROM sport_division_admins WHERE user_id = $1 "
-                "UNION "
-                "SELECT 'team' as admin_type FROM team_admins WHERE user_id = $1 "
-                "LIMIT 1";
+            // Check if user has any admin roles (new schema uses admins table with admin_level column)
+            std::string admin_check_sql = "SELECT admin_level FROM admins WHERE user_id = $1";
             
             try {
                 pqxx::result admin_result = executeQuery(admin_check_sql, {user_id});
                 if (!admin_result.empty()) {
-                    userData.role = admin_result[0]["admin_type"].as<std::string>();
+                    userData.role = admin_result[0]["admin_level"].as<std::string>();
                 }
             } catch (const std::exception& admin_error) {
                 std::cerr << "Error checking admin roles: " << admin_error.what() << std::endl;

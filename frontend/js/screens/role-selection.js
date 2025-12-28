@@ -7,8 +7,8 @@ class RoleSelectionScreen extends Screen {
     const user = this.navigation.context.user;
     const userName = user?.name || user?.email || 'User';
     
-    // Check if user has admin role (club, sport division, or team level)
-    const isAdmin = user?.role && (user.role === 'club' || user.role === 'sport_division' || user.role === 'team' || user.role === 'system' || user.role === 'league');
+    // Check if user has admin role (club, sport division, team, super, or system level)
+    const isAdmin = user?.role && (user.role === 'club' || user.role === 'sport_division' || user.role === 'team' || user.role === 'super' || user.role === 'system' || user.role === 'league');
     const adminButtonDisplay = isAdmin ? 'flex' : 'none';
     
     div.innerHTML = `

@@ -505,13 +505,11 @@ npm install --silent
         # Convert mode to lowercase for OOP CLI
         MODE_LOWER=$(echo "$APSL_SCRAPE_MODE" | tr '[:upper:]' '[:lower:]')
         
-        # Build command with options
-        CMD="node database/scripts/index.js apsl $MODE_LOWER"
+        # Build command with options - always use 'full' mode for complete data
+        CMD="node database/scripts/index.js apsl full"
         
-        # Add --schedules if requested
-        if [ "$APSL_SCHEDULE" = true ]; then
-            CMD="$CMD --schedules"
-        fi
+        # Always include schedules for complete match data
+        CMD="$CMD --schedules"
         
         # Add --team filter if lighthouse mode
         if [ "$APSL_SCRAPE_MODE" = "LIGHTHOUSE" ]; then

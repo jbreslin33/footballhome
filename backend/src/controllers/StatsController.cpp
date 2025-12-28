@@ -67,20 +67,21 @@ Response StatsController::handleGetStandings(const Request& request) {
                 ats.id::text,
                 at.name as team_name,
                 ad.name as division_name,
-                ats.season,
-                ats.games_played,
-                ats.wins,
-                ats.losses,
-                ats.ties,
-                ats.goals_for,
-                ats.goals_against,
-                ats.goal_differential,
-                ats.points
+                al.season,
+                COALESCE(ats.wins, 0) + COALESCE(ats.losses, 0) + COALESCE(ats.ties, 0) as games_played,
+                COALESCE(ats.wins, 0) as wins,
+                COALESCE(ats.losses, 0) as losses,
+                COALESCE(ats.ties, 0) as ties,
+                COALESCE(ats.goals_for, 0) as goals_for,
+                COALESCE(ats.goals_against, 0) as goals_against,
+                COALESCE(ats.goals_for, 0) - COALESCE(ats.goals_against, 0) as goal_differential,
+                COALESCE(ats.points, 0) as points
             FROM apsl_team_stats ats
             JOIN apsl_teams at ON ats.apsl_team_id = at.id
-            LEFT JOIN apsl_divisions ad ON ats.apsl_division_id = ad.id
-            WHERE ats.season = '2025-2026'
-            ORDER BY ad.name, ats.points DESC, ats.goal_differential DESC, at.name
+            JOIN apsl_divisions ad ON ats.apsl_division_id = ad.id
+            JOIN apsl_conferences ac ON ad.apsl_conference_id = ac.id
+            JOIN apsl_leagues al ON ac.apsl_league_id = al.id
+            ORDER BY ad.name, ats.points DESC, goal_differential DESC, at.name
         )";
         
         pqxx::result result = db_->query(query);
@@ -98,7 +99,7 @@ Response StatsController::handleGetStandings(const Request& request) {
                 << "\"team_name\":\"" << row["team_name"].c_str() << "\","
                 << "\"league_name\":\"APSL\","
                 << "\"division_name\":\"" << (row["division_name"].is_null() ? "Unknown" : row["division_name"].c_str()) << "\","
-                << "\"season\":\"" << row["season"].c_str() << "\","
+                << "\"season\":\"" << (row["season"].is_null() ? "2025-2026" : row["season"].c_str()) << "\","
                 << "\"games_played\":" << row["games_played"].as<int>() << ","
                 << "\"wins\":" << row["wins"].as<int>() << ","
                 << "\"losses\":" << row["losses"].as<int>() << ","
@@ -123,28 +124,28 @@ Response StatsController::handleGetStandings(const Request& request) {
 
 Response StatsController::handleGetPlayerStats(const Request& request) {
     try {
-        // Query apsl_player_stats with player names from apsl tables
+        // Query apsl_player_stats - aggregated per-match stats
         std::string query = R"(
             SELECT 
-                aps.id,
+                ap.id,
                 ap.name as player_name,
                 at.name as team_name,
                 ad.name as division_name,
-                lc.name as conference_name,
-                aps.season,
-                aps.games_played,
-                aps.goals,
-                aps.assists,
-                aps.yellow_cards,
-                aps.red_cards
-            FROM apsl_player_stats aps
-            JOIN apsl_players ap ON aps.apsl_player_id = ap.id
-            JOIN apsl_teams at ON aps.apsl_team_id = at.id
-            LEFT JOIN apsl_divisions ad ON aps.apsl_division_id = ad.id
-            LEFT JOIN league_divisions ld ON ad.league_division_id = ld.id
-            LEFT JOIN league_conferences lc ON ld.conference_id = lc.id
-            WHERE aps.season = '2025-2026'
-            ORDER BY aps.goals DESC, aps.assists DESC
+                al.season,
+                COUNT(DISTINCT aps.apsl_match_id) as games_played,
+                COALESCE(SUM(aps.goals), 0) as goals,
+                COALESCE(SUM(aps.assists), 0) as assists,
+                COALESCE(SUM(aps.yellow_cards), 0) as yellow_cards,
+                COALESCE(SUM(aps.red_cards), 0) as red_cards
+            FROM apsl_players ap
+            JOIN apsl_teams at ON ap.apsl_team_id = at.id
+            JOIN apsl_divisions ad ON at.apsl_division_id = ad.id
+            JOIN apsl_conferences ac ON ad.apsl_conference_id = ac.id
+            JOIN apsl_leagues al ON ac.apsl_league_id = al.id
+            LEFT JOIN apsl_player_stats aps ON ap.id = aps.apsl_player_id
+            GROUP BY ap.id, ap.name, at.name, ad.name, al.season
+            HAVING COUNT(DISTINCT aps.apsl_match_id) > 0
+            ORDER BY goals DESC, assists DESC, player_name
         )";
         
         pqxx::result result = db_->query(query);
@@ -159,16 +160,16 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
             
             std::string player_name = escapeJsonString(row["player_name"].c_str());
             std::string team_name = escapeJsonString(row["team_name"].c_str());
-            std::string league_name = row["division_name"].is_null() ? "APSL" : escapeJsonString(row["division_name"].c_str());
-            std::string conference_name = row["conference_name"].is_null() ? "" : escapeJsonString(row["conference_name"].c_str());
+            std::string division_name = row["division_name"].is_null() ? "Unknown" : escapeJsonString(row["division_name"].c_str());
+            std::string season = row["season"].is_null() ? "2025/2026" : row["season"].c_str();
             
             json_data << "{"
                 << "\"id\":\"" << row["id"].c_str() << "\","
                 << "\"player_name\":\"" << player_name << "\","
                 << "\"team_name\":\"" << team_name << "\","
-                << "\"league_name\":\"" << league_name << "\","
-                << "\"conference_name\":\"" << conference_name << "\","
-                << "\"season\":\"" << row["season"].c_str() << "\","
+                << "\"league_name\":\"APSL\","
+                << "\"division_name\":\"" << division_name << "\","
+                << "\"season\":\"" << season << "\","
                 << "\"games_played\":" << row["games_played"].as<int>() << ","
                 << "\"goals\":" << row["goals"].as<int>() << ","
                 << "\"assists\":" << row["assists"].as<int>() << ","
@@ -199,13 +200,18 @@ Response StatsController::handleGetMatches(const Request& request) {
                 am.home_score,
                 am.away_score,
                 am.match_date,
-                am.match_status,
-                INITCAP(am.venue_name) as venue_name,
-                am.google_maps_url
+                am.status,
+                COALESCE(v.name, 'TBD') as venue_name,
+                CASE 
+                    WHEN v.google_place_id IS NOT NULL THEN 'https://www.google.com/maps/place/?q=place_id:' || v.google_place_id
+                    WHEN v.latitude IS NOT NULL AND v.longitude IS NOT NULL THEN 'https://www.google.com/maps/search/?api=1&query=' || v.latitude::text || ',' || v.longitude::text
+                    ELSE ''
+                END as google_maps_url
             FROM apsl_matches am
             LEFT JOIN apsl_teams ht ON am.home_team_id = ht.id
             LEFT JOIN apsl_teams at ON am.away_team_id = at.id
-            WHERE am.match_status = 'completed'
+            LEFT JOIN venues v ON am.venue_id = v.id
+            WHERE am.status = 'completed'
               AND am.match_date >= '2025-09-01'
             ORDER BY am.match_date DESC
         )";
@@ -233,7 +239,7 @@ Response StatsController::handleGetMatches(const Request& request) {
                 << "\"home_score\":" << (row["home_score"].is_null() ? 0 : row["home_score"].as<int>()) << ","
                 << "\"away_score\":" << (row["away_score"].is_null() ? 0 : row["away_score"].as<int>()) << ","
                 << "\"match_date\":\"" << match_date << "\","
-                << "\"match_status\":\"" << row["match_status"].c_str() << "\","
+                << "\"status\":\"" << row["status"].c_str() << "\","
                 << "\"venue_name\":\"" << venue_name << "\","
                 << "\"google_maps_url\":\"" << google_maps << "\""
                 << "}";

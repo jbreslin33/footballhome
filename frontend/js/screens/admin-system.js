@@ -154,8 +154,32 @@ class AdminSystemScreen extends Screen {
   }
   
   async loadDashboard() {
-    const response = await fetch('/api/system-admin/dashboard');
-    this.dashboardData = await response.json();
+    try {
+      const response = await fetch('/api/system-admin/dashboard');
+      if (response.ok) {
+        this.dashboardData = await response.json();
+      } else {
+        // API not implemented yet, use default values
+        this.dashboardData = {
+          stats: {
+            active_users: 0,
+            active_teams: 0,
+            active_clubs: 0,
+            upcoming_events: 0
+          }
+        };
+      }
+    } catch (error) {
+      // API not available, use default values
+      this.dashboardData = {
+        stats: {
+          active_users: 0,
+          active_teams: 0,
+          active_clubs: 0,
+          upcoming_events: 0
+        }
+      };
+    }
     
     const content = this.element.querySelector('.admin-content');
     content.innerHTML = `
@@ -528,54 +552,68 @@ class AdminSystemScreen extends Screen {
   }
 
   async loadApslDashboard() {
-    const response = await fetch('/api/system-admin/apsl');
-    const data = await response.json();
-    
-    const content = this.element.querySelector('.admin-content');
-    content.innerHTML = `
-      <div class="dashboard-view">
-        <h2>🦅 APSL Dashboard</h2>
-        <div class="stats-grid">
-          <div class="stat-card clickable" data-target="apsl-stats">
-            <div class="stat-icon">📈</div>
-            <div class="stat-value">View</div>
-            <div class="stat-label">Stats & Standings</div>
+    try {
+      console.log('Loading APSL dashboard...');
+      const response = await fetch('/api/system-admin/apsl');
+      console.log('Response status:', response.status);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const data = await response.json();
+      console.log('APSL data:', data);
+      
+      const content = this.element.querySelector('.admin-content');
+      console.log('Content element:', content);
+      content.innerHTML = `
+        <div class="dashboard-view">
+          <h2>🦅 APSL Dashboard</h2>
+          <div class="stats-grid">
+            <div class="stat-card clickable" data-target="apsl-stats">
+              <div class="stat-icon">📈</div>
+              <div class="stat-value">View</div>
+              <div class="stat-label">Stats & Standings</div>
+            </div>
+            <div class="stat-card clickable" data-target="apsl-divisions">
+              <div class="stat-icon">🏆</div>
+              <div class="stat-value">${data.divisions || 0}</div>
+              <div class="stat-label">Divisions</div>
+            </div>
+            <div class="stat-card clickable" data-target="apsl-teams">
+              <div class="stat-icon">👕</div>
+              <div class="stat-value">${data.teams || 0}</div>
+              <div class="stat-label">Teams</div>
+            </div>
+            <div class="stat-card clickable" data-target="apsl-players">
+              <div class="stat-icon">🏃</div>
+              <div class="stat-value">${data.players || 0}</div>
+              <div class="stat-label">Players</div>
+            </div>
+            <div class="stat-card clickable" data-target="apsl-matches">
+              <div class="stat-icon">📅</div>
+              <div class="stat-value">${data.matches || 0}</div>
+              <div class="stat-label">Matches</div>
+            </div>
           </div>
-          <div class="stat-card clickable" data-target="apsl-divisions">
-            <div class="stat-icon">🏆</div>
-            <div class="stat-value">${data.divisions}</div>
-            <div class="stat-label">Divisions</div>
-          </div>
-          <div class="stat-card clickable" data-target="apsl-teams">
-            <div class="stat-icon">👕</div>
-            <div class="stat-value">${data.teams}</div>
-            <div class="stat-label">Teams</div>
-          </div>
-          <div class="stat-card clickable" data-target="apsl-players">
-            <div class="stat-icon">🏃</div>
-            <div class="stat-value">${data.players}</div>
-            <div class="stat-label">Players</div>
-          </div>
-          <div class="stat-card clickable" data-target="apsl-matches">
-            <div class="stat-icon">📅</div>
-            <div class="stat-value">${data.matches}</div>
-            <div class="stat-label">Matches</div>
+          
+          <div id="apsl-details-container" style="margin-top: 20px;">
+            <div class="info-box">Select a card above to view details</div>
           </div>
         </div>
-        
-        <div id="apsl-details-container" style="margin-top: 20px;">
-          <div class="info-box">Select a card above to view details</div>
-        </div>
-      </div>
-    `;
-    
-    // Add click listeners for cards
-    content.querySelectorAll('.stat-card.clickable').forEach(card => {
-      card.addEventListener('click', async () => {
-        const target = card.dataset.target;
-        await this.loadApslDetails(target);
+      `;
+      console.log('Content rendered');
+      
+      // Add click listeners for cards
+      content.querySelectorAll('.stat-card.clickable').forEach(card => {
+        card.addEventListener('click', async () => {
+          const target = card.dataset.target;
+          await this.loadApslDetails(target);
+        });
       });
-    });
+    } catch (error) {
+      console.error('Error loading APSL dashboard:', error);
+      const content = this.element.querySelector('.admin-content');
+      content.innerHTML = `<div class="error-message">Error loading APSL dashboard: ${error.message}</div>`;
+    }
   }
   
   async loadApslDetails(target) {

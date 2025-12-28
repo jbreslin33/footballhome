@@ -15,7 +15,7 @@ RUN apt-get -o Acquire::Check-Valid-Until=false -o Acquire::Check-Date=false upd
 # Set working directory
 WORKDIR /app
 
-# Copy source code and build files
+# Copy backend source code and build files (context is already backend/)
 COPY . .
 
 # Build with CMake
@@ -26,9 +26,8 @@ RUN mkdir -p build && cd build && \
 # Expose port
 EXPOSE 3001
 
-# Copy wait-for-db script
-COPY wait-for-db.sh /wait-for-db.sh
-RUN chmod +x /wait-for-db.sh
+# wait-for-db.sh is already copied from backend/
+RUN chmod +x /app/wait-for-db.sh
 
 # Run the server with wait-for-db wrapper
-CMD ["/wait-for-db.sh", "db", "5432", "footballhome_user", "footballhome", "./build/server"]
+CMD ["/app/wait-for-db.sh", "db", "5432", "footballhome_user", "footballhome", "./build/server"]
