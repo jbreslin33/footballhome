@@ -25,6 +25,18 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
     });
 
     // Integration Dashboards
+    router.get(prefix + "/organizations", [this](const Request& request) {
+        return this->handleGetOrganizations(request);
+    });
+    
+    router.get(prefix + "/leagues", [this](const Request& request) {
+        return this->handleGetLeagues(request);
+    });
+    
+    router.get(prefix + "/schema", [this](const Request& request) {
+        return this->handleGetDatabaseSchema(request);
+    });
+    
     router.get(prefix + "/casa", [this](const Request& request) {
         return this->handleGetCasaDashboard(request);
     });
@@ -2051,6 +2063,112 @@ Response SystemAdminController::handleLinkIdentity(const Request& request) {
     }
 }
 
+Response SystemAdminController::handleGetDatabaseSchema(const Request& request) {
+    try {
+        std::string json = "{\"tables\":[";
+        
+        // Get all tables
+        auto tables = db_->query(R"(
+            SELECT 
+                t.table_name,
+                obj_description((quote_ident(t.table_schema)||'.'||quote_ident(t.table_name))::regclass, 'pg_class') as table_comment
+            FROM information_schema.tables t
+            WHERE t.table_schema = 'public'
+            AND t.table_type = 'BASE TABLE'
+            ORDER BY t.table_name
+        )");
+        
+        for (size_t i = 0; i < tables.size(); ++i) {
+            const auto& table = tables[i];
+            std::string table_name = table["table_name"].as<std::string>();
+            
+            json += "{";
+            json += "\"name\":\"" + table_name + "\",";
+            std::string table_comment = table["table_comment"].is_null() ? "" : std::string(table["table_comment"].c_str());
+            json += "\"comment\":\"" + table_comment + "\",";
+            
+            // Get columns for this table
+            json += "\"columns\":[";
+            auto columns = db_->query(
+                "SELECT "
+                "    c.column_name, "
+                "    c.data_type, "
+                "    c.is_nullable, "
+                "    c.column_default, "
+                "    CASE WHEN pk.column_name IS NOT NULL THEN true ELSE false END as is_primary_key "
+                "FROM information_schema.columns c "
+                "LEFT JOIN ( "
+                "    SELECT ku.column_name "
+                "    FROM information_schema.table_constraints tc "
+                "    JOIN information_schema.key_column_usage ku ON tc.constraint_name = ku.constraint_name "
+                "    WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_name = $1 "
+                ") pk ON c.column_name = pk.column_name "
+                "WHERE c.table_name = $1 "
+                "ORDER BY c.ordinal_position",
+                std::vector<std::string>{table_name}
+            );
+            
+            for (size_t j = 0; j < columns.size(); ++j) {
+                const auto& col = columns[j];
+                json += "{";
+                std::string col_name = std::string(col["column_name"].c_str());
+                std::string col_type = std::string(col["data_type"].c_str());
+                std::string col_nullable = std::string(col["is_nullable"].c_str());
+                std::string col_default = col["column_default"].is_null() ? "" : std::string(col["column_default"].c_str());
+                bool is_pk = col["is_primary_key"].as<bool>();
+                
+                json += "\"name\":\"" + col_name + "\",";
+                json += "\"type\":\"" + col_type + "\",";
+                json += "\"nullable\":\"" + col_nullable + "\",";
+                json += "\"default\":\"" + col_default + "\",";
+                json += "\"primary_key\":" + std::string(is_pk ? "true" : "false");
+                json += "}";
+                if (j < columns.size() - 1) json += ",";
+            }
+            json += "],";
+            
+            // Get foreign keys for this table
+            json += "\"foreign_keys\":[";
+            auto fks = db_->query(
+                "SELECT "
+                "    kcu.column_name, "
+                "    ccu.table_name AS foreign_table_name, "
+                "    ccu.column_name AS foreign_column_name "
+                "FROM information_schema.table_constraints AS tc "
+                "JOIN information_schema.key_column_usage AS kcu "
+                "    ON tc.constraint_name = kcu.constraint_name "
+                "JOIN information_schema.constraint_column_usage AS ccu "
+                "    ON ccu.constraint_name = tc.constraint_name "
+                "WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = $1",
+                std::vector<std::string>{table_name}
+            );
+            
+            for (size_t k = 0; k < fks.size(); ++k) {
+                const auto& fk = fks[k];
+                json += "{";
+                std::string fk_col = std::string(fk["column_name"].c_str());
+                std::string fk_table = std::string(fk["foreign_table_name"].c_str());
+                std::string fk_fk_col = std::string(fk["foreign_column_name"].c_str());
+                
+                json += "\"column\":\"" + fk_col + "\",";
+                json += "\"foreign_table\":\"" + fk_table + "\",";
+                json += "\"foreign_column\":\"" + fk_fk_col + "\"";
+                json += "}";
+                if (k < fks.size() - 1) json += ",";
+            }
+            json += "]";
+            
+            json += "}";
+            if (i < tables.size() - 1) json += ",";
+        }
+        
+        json += "]}";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
 Response SystemAdminController::handleGetCasaDashboard(const Request& request) {
     try {
         std::string json = "{";
@@ -2088,6 +2206,64 @@ Response SystemAdminController::handleGetCasaDashboard(const Request& request) {
         }
 
         json += "}";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetOrganizations(const Request& request) {
+    try {
+        auto result = db_->query("SELECT id, name, short_name, website_url, affiliation, description, is_active FROM organizations ORDER BY name");
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            json += "{";
+            json += "\"id\":" + row["id"].as<std::string>() + ",";
+            json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"short_name\":\"" + (row["short_name"].is_null() ? "" : row["short_name"].as<std::string>()) + "\",";
+            json += "\"website_url\":\"" + (row["website_url"].is_null() ? "" : row["website_url"].as<std::string>()) + "\",";
+            json += "\"affiliation\":\"" + (row["affiliation"].is_null() ? "" : row["affiliation"].as<std::string>()) + "\",";
+            json += "\"description\":\"" + (row["description"].is_null() ? "" : row["description"].as<std::string>()) + "\",";
+            json += "\"is_active\":" + std::string(row["is_active"].as<bool>() ? "true" : "false");
+            json += "}";
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
+        return Response(HttpStatus::OK, json);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetLeagues(const Request& request) {
+    try {
+        auto result = db_->query(
+            "SELECT l.id, l.name, l.season, l.organization_id, o.name as organization_name, "
+            "'APSL' as league_type "
+            "FROM apsl_leagues l "
+            "LEFT JOIN organizations o ON l.organization_id = o.id "
+            "UNION ALL "
+            "SELECT l.id, l.name, l.season, l.organization_id, o.name as organization_name, "
+            "'CASA' as league_type "
+            "FROM casa_leagues l "
+            "LEFT JOIN organizations o ON l.organization_id = o.id "
+            "ORDER BY league_type, name"
+        );
+        std::string json = "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            const auto& row = result[i];
+            json += "{";
+            json += "\"id\":" + row["id"].as<std::string>() + ",";
+            json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"season\":\"" + (row["season"].is_null() ? "" : row["season"].as<std::string>()) + "\",";
+            json += "\"organization_id\":" + (row["organization_id"].is_null() ? "null" : row["organization_id"].as<std::string>()) + ",";
+            json += "\"organization_name\":\"" + (row["organization_name"].is_null() ? "" : row["organization_name"].as<std::string>()) + "\",";
+            json += "\"league_type\":\"" + row["league_type"].as<std::string>() + "\"";
+            json += "}";
+            if (i < result.size() - 1) json += ",";
+        }
+        json += "]";
         return Response(HttpStatus::OK, json);
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
@@ -2144,12 +2320,11 @@ Response SystemAdminController::handleGetCasaTeams(const Request& request) {
 
 Response SystemAdminController::handleGetCasaPlayers(const Request& request) {
     try {
-        // Limit to 100 for performance, maybe add pagination later
         auto result = db_->query(
             "SELECT cp.id, cp.casa_player_id, cp.name, cp.jersey_number, cp.position, ct.name as team_name "
             "FROM casa_players cp "
             "LEFT JOIN casa_teams ct ON cp.casa_team_id = ct.id "
-            "ORDER BY cp.name LIMIT 100"
+            "ORDER BY cp.name"
         );
         std::string json = "[";
         for (size_t i = 0; i < result.size(); ++i) {

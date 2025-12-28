@@ -31,9 +31,12 @@ class AdminSystemScreen extends Screen {
         <!-- Navigation Tabs -->
         <div class="admin-tabs">
           <button class="admin-tab active" data-view="dashboard">📊 Dashboard</button>
+          <button class="admin-tab" data-view="organizations">🏢 Organizations</button>
+          <button class="admin-tab" data-view="leagues">🏆 Leagues</button>
           <button class="admin-tab" data-view="casa">⚽ CASA</button>
           <button class="admin-tab" data-view="apsl">🦅 APSL</button>
           <button class="admin-tab" data-view="groupme">💬 GroupMe</button>
+          <button class="admin-tab" data-view="schema">🗂️ Schema</button>
           <button class="admin-tab" data-view="users">👥 Users</button>
           <button class="admin-tab" data-view="identities">🔗 Identities</button>
           <button class="admin-tab" data-view="admins">🛡️ Admins</button>
@@ -105,6 +108,12 @@ class AdminSystemScreen extends Screen {
         case 'dashboard':
           await this.loadDashboard();
           break;
+        case 'organizations':
+          await this.loadOrganizations();
+          break;
+        case 'leagues':
+          await this.loadLeagues();
+          break;
         case 'casa':
           await this.loadCasaDashboard();
           break;
@@ -113,6 +122,9 @@ class AdminSystemScreen extends Screen {
           break;
         case 'groupme':
           await this.loadGroupMeDashboard();
+          break;
+        case 'schema':
+          await this.loadDatabaseSchema();
           break;
         case 'users':
           await this.loadUsers();
@@ -430,6 +442,362 @@ class AdminSystemScreen extends Screen {
     }
   }
 
+  async loadOrganizations() {
+    const content = this.element.querySelector('.admin-content');
+    
+    try {
+      const response = await fetch('/api/system-admin/organizations');
+      if (!response.ok) throw new Error('Failed to fetch organizations');
+      
+      const orgs = await response.json();
+      
+      content.innerHTML = `
+        <div class="stats-view">
+          <h2>🏢 Organizations</h2>
+          <p class="subtitle">All sports organizations in the system</p>
+          
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Short Name</th>
+                <th>Affiliation</th>
+                <th>Website</th>
+                <th>Active</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orgs.map(org => `
+                <tr>
+                  <td>${org.id}</td>
+                  <td><strong>${org.name}</strong></td>
+                  <td>${org.short_name || '-'}</td>
+                  <td>${org.affiliation || '-'}</td>
+                  <td>${org.website_url ? `<a href="${org.website_url}" target="_blank">🔗 View</a>` : '-'}</td>
+                  <td>${org.is_active ? '✅ Active' : '❌ Inactive'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading organizations: ${error.message}</div>`;
+    }
+  }
+
+  async loadLeagues() {
+    const content = this.element.querySelector('.admin-content');
+    
+    try {
+      const response = await fetch('/api/system-admin/leagues');
+      if (!response.ok) throw new Error('Failed to fetch leagues');
+      
+      const leagues = await response.json();
+      
+      // Group by league type
+      const apslLeagues = leagues.filter(l => l.league_type === 'APSL');
+      const casaLeagues = leagues.filter(l => l.league_type === 'CASA');
+      
+      content.innerHTML = `
+        <div class="stats-view">
+          <h2>🏆 Leagues</h2>
+          <p class="subtitle">All leagues across all organizations</p>
+          
+          <h3>🦅 APSL Leagues (${apslLeagues.length})</h3>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Season</th>
+                <th>Org ID</th>
+                <th>Organization</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${apslLeagues.map(league => `
+                <tr>
+                  <td>${league.id}</td>
+                  <td><strong>${league.name}</strong></td>
+                  <td>${league.season || '-'}</td>
+                  <td>${league.organization_id || '-'}</td>
+                  <td>${league.organization_name || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          <h3 style="margin-top: 2rem;">⚽ CASA Leagues (${casaLeagues.length})</h3>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Season</th>
+                <th>Org ID</th>
+                <th>Organization</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${casaLeagues.map(league => `
+                <tr>
+                  <td>${league.id}</td>
+                  <td><strong>${league.name}</strong></td>
+                  <td>${league.season || '-'}</td>
+                  <td>${league.organization_id || '-'}</td>
+                  <td>${league.organization_name || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading leagues: ${error.message}</div>`;
+    }
+  }
+
+  async loadDatabaseSchema() {
+    const content = this.element.querySelector('.admin-content');
+    
+    try {
+      const response = await fetch('/api/system-admin/schema', {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) throw new Error('Failed to load schema');
+      const data = await response.json();
+      
+      // Create container with instructions
+      content.innerHTML = `
+        <div class="schema-view">
+          <h2>🗂️ Database Schema Viewer</h2>
+          <div class="schema-controls">
+            <button id="schema-fit" class="btn btn-secondary">📐 Fit to Screen</button>
+            <button id="schema-zoom-in" class="btn btn-secondary">🔍+ Zoom In</button>
+            <button id="schema-zoom-out" class="btn btn-secondary">🔍- Zoom Out</button>
+            <button id="schema-reset" class="btn btn-secondary">🔄 Reset</button>
+            <span class="schema-info">
+              💡 <strong>Drag</strong> to pan, <strong>Scroll</strong> to zoom, <strong>Click</strong> table to highlight relationships
+            </span>
+          </div>
+          <div id="schema-network" class="schema-network"></div>
+          <div id="schema-details" class="schema-details"></div>
+        </div>
+      `;
+      
+      // Prepare nodes (tables) and edges (foreign keys)
+      const nodes = [];
+      const edges = [];
+      const tableMap = {};
+      
+      data.tables.forEach((table, index) => {
+        // Build label with table name and all columns
+        const columnLines = table.columns.map(col => {
+          const pk = col.primary_key ? '🔑 ' : '  ';
+          const fk = table.foreign_keys.some(f => f.column === col.name) ? ' →' : '';
+          const type = col.type.length > 15 ? col.type.substring(0, 12) + '...' : col.type;
+          return `${pk}${col.name}: ${type}${fk}`;
+        });
+        
+        const fullLabel = `${table.name}\n${'─'.repeat(table.name.length)}\n${columnLines.join('\n')}`;
+        
+        // Tooltip with more details
+        const columnDetails = table.columns.map(col => {
+          const pk = col.primary_key ? '🔑 ' : '';
+          const nullable = col.nullable === 'NO' ? ' NOT NULL' : '';
+          const def = col.default ? ` DEFAULT ${col.default}` : '';
+          return `${pk}${col.name}: ${col.type}${nullable}${def}`;
+        }).join('\\n');
+        
+        nodes.push({
+          id: table.name,
+          label: fullLabel,
+          title: `<b>${table.name}</b>\\n\\n${columnDetails}`,
+          shape: 'box',
+          color: {
+            background: '#ffffff',
+            border: '#2196F3',
+            highlight: { background: '#e3f2fd', border: '#1976d2' }
+          },
+          font: { size: 11, face: 'Monaco, Consolas, "Courier New", monospace', align: 'left' },
+          margin: 10,
+          widthConstraint: { minimum: 200, maximum: 350 }
+        });
+        
+        tableMap[table.name] = table;
+        
+        // Add foreign key relationships as edges
+        table.foreign_keys.forEach(fk => {
+          edges.push({
+            from: table.name,
+            to: fk.foreign_table,
+            label: fk.column,
+            arrows: 'to',
+            color: { color: '#2196F3', highlight: '#ff5722' },
+            font: { size: 10, align: 'middle' },
+            title: `${table.name}.${fk.column} → ${fk.foreign_table}.${fk.foreign_column}`
+          });
+        });
+      });
+      
+      // Create vis.js network
+      const container = document.getElementById('schema-network');
+      const networkData = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+      
+      const options = {
+        physics: {
+          enabled: true,
+          barnesHut: {
+            gravitationalConstant: -15000,
+            centralGravity: 0.2,
+            springLength: 250,
+            springConstant: 0.02,
+            damping: 0.1,
+            avoidOverlap: 0.5
+          },
+          stabilization: {
+            enabled: true,
+            iterations: 300
+          }
+        },
+        interaction: {
+          hover: true,
+          tooltipDelay: 100,
+          navigationButtons: true,
+          keyboard: true
+        },
+        nodes: {
+          borderWidth: 2,
+          borderWidthSelected: 4,
+          shapeProperties: {
+            borderRadius: 4
+          }
+        },
+        edges: {
+          width: 2,
+          smooth: {
+            type: 'cubicBezier',
+            forceDirection: 'horizontal',
+            roundness: 0.4
+          },
+          arrows: {
+            to: {
+              enabled: true,
+              scaleFactor: 0.5
+            }
+          }
+        }
+      };
+      
+      const network = new vis.Network(container, networkData, options);
+      
+      // Event handlers
+      document.getElementById('schema-fit').addEventListener('click', () => {
+        network.fit({ animation: true });
+      });
+      
+      document.getElementById('schema-zoom-in').addEventListener('click', () => {
+        const scale = network.getScale();
+        network.moveTo({ scale: scale * 1.2, animation: true });
+      });
+      
+      document.getElementById('schema-zoom-out').addEventListener('click', () => {
+        const scale = network.getScale();
+        network.moveTo({ scale: scale * 0.8, animation: true });
+      });
+      
+      document.getElementById('schema-reset').addEventListener('click', () => {
+        network.fit({ animation: true });
+      });
+      
+      // Show table details on click
+      network.on('click', (params) => {
+        const detailsDiv = document.getElementById('schema-details');
+        
+        if (params.nodes.length > 0) {
+          const tableName = params.nodes[0];
+          const table = tableMap[tableName];
+          
+          let detailsHTML = `
+            <h3>📋 ${tableName}</h3>
+            <h4>Columns (${table.columns.length})</h4>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Nullable</th>
+                  <th>Default</th>
+                  <th>Primary Key</th>
+                </tr>
+              </thead>
+              <tbody>
+          `;
+          
+          table.columns.forEach(col => {
+            detailsHTML += `
+              <tr>
+                <td><strong>${col.name}</strong></td>
+                <td>${col.type}</td>
+                <td>${col.nullable}</td>
+                <td>${col.default || '-'}</td>
+                <td>${col.primary_key ? '🔑 Yes' : 'No'}</td>
+              </tr>
+            `;
+          });
+          
+          detailsHTML += `
+              </tbody>
+            </table>
+          `;
+          
+          if (table.foreign_keys.length > 0) {
+            detailsHTML += `
+              <h4>Foreign Keys (${table.foreign_keys.length})</h4>
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Column</th>
+                    <th>References</th>
+                  </tr>
+                </thead>
+                <tbody>
+            `;
+            
+            table.foreign_keys.forEach(fk => {
+              detailsHTML += `
+                <tr>
+                  <td><strong>${fk.column}</strong></td>
+                  <td>→ ${fk.foreign_table}.${fk.foreign_column}</td>
+                </tr>
+              `;
+            });
+            
+            detailsHTML += `
+                </tbody>
+              </table>
+            `;
+          }
+          
+          detailsDiv.innerHTML = detailsHTML;
+        } else {
+          detailsDiv.innerHTML = '<p class="info-message">Click on a table to see details</p>';
+        }
+      });
+      
+      // Initial fit after network stabilizes
+      network.once('stabilizationIterationsDone', () => {
+        network.fit({ animation: false });
+      });
+      
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading schema: ${error.message}</div>`;
+    }
+  }
+
 
   async loadCasaDashboard() {
     const content = this.element.querySelector('.admin-content');
@@ -441,6 +809,7 @@ class AdminSystemScreen extends Screen {
         <div class="stats-tabs">
           <button class="stats-tab active" data-tab="standings">🏆 Standings</button>
           <button class="stats-tab" data-tab="teams">👕 Teams</button>
+          <button class="stats-tab" data-tab="players">⚽ Players</button>
           <button class="stats-tab" data-tab="divisions">📊 Divisions</button>
         </div>
         <div class="stats-content">
@@ -494,14 +863,14 @@ class AdminSystemScreen extends Screen {
                 <thead>
                   <tr>
                     <th>Team</th>
-                    <th>CASA ID</th>
+                    <th>CASA Team ID</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${divisionTeams.map(team => `
                     <tr>
                       <td><strong>${team.name}</strong></td>
-                      <td>${team.casa_id}</td>
+                      <td>${team.casa_team_id || ''}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -518,9 +887,22 @@ class AdminSystemScreen extends Screen {
         statsContent.innerHTML = `
           <h3>All Teams</h3>
           <table class="admin-table">
-            <thead><tr><th>Name</th><th>Division</th><th>CASA ID</th></tr></thead>
+            <thead><tr><th>Name</th><th>Division</th><th>CASA Team ID</th></tr></thead>
             <tbody>
-              ${items.map(i => `<tr><td>${i.name}</td><td>${i.division_name}</td><td>${i.casa_id}</td></tr>`).join('')}
+              ${items.map(i => `<tr><td>${i.name}</td><td>${i.division_name}</td><td>${i.casa_team_id || ''}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        `;
+        
+      } else if (tab === 'players') {
+        const res = await fetch('/api/system-admin/casa/players');
+        const items = await res.json();
+        statsContent.innerHTML = `
+          <h3>All Players (${items.length} total)</h3>
+          <table class="admin-table">
+            <thead><tr><th>Name</th><th>Team</th><th>Jersey #</th><th>Position</th></tr></thead>
+            <tbody>
+              ${items.map(i => `<tr><td>${i.name}</td><td>${i.team_name || 'No Team'}</td><td>${i.jersey_number || ''}</td><td>${i.position || ''}</td></tr>`).join('')}
             </tbody>
           </table>
         `;
@@ -531,9 +913,9 @@ class AdminSystemScreen extends Screen {
         statsContent.innerHTML = `
           <h3>All Divisions</h3>
           <table class="admin-table">
-            <thead><tr><th>Name</th><th>Season</th><th>CASA ID</th></tr></thead>
+            <thead><tr><th>Name</th><th>Age Group</th><th>Skill Level</th><th>Gender</th></tr></thead>
             <tbody>
-              ${items.map(i => `<tr><td>${i.name}</td><td>${i.season}</td><td>${i.casa_id}</td></tr>`).join('')}
+              ${items.map(i => `<tr><td>${i.name}</td><td>${i.age_group || ''}</td><td>${i.skill_level || ''}</td><td>${i.gender || ''}</td></tr>`).join('')}
             </tbody>
           </table>
         `;

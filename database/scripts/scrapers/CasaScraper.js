@@ -34,7 +34,6 @@ class CasaScraper extends Scraper {
     this.sportId = '550e8400-e29b-41d4-a716-446655440101';
     
     // CASA Conferences Configuration
-    // Starting simple with just Philadelphia Liga 1
     this.conferences = {
       philadelphia: {
         name: 'Philadelphia',
@@ -45,6 +44,13 @@ class CasaScraper extends Scraper {
             standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9090889',
             schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090889',
             rosterSheet: 'https://docs.google.com/spreadsheets/d/14eQOJ60T0XNru6twNp59rP4RNrAuO2Gf/htmlview?gid=732556598'
+          },
+          liga2: {
+            name: 'Liga 2',
+            tier: 2,
+            standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9096430',
+            schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9096430',
+            rosterSheet: 'https://docs.google.com/spreadsheets/d/195usWo3fmXLw4IUOY_vEdB4dAk7EVfTu/htmlview?gid=1361313939'
           }
         }
       }
@@ -1659,6 +1665,8 @@ class CasaScraper extends Scraper {
       .replace(/\bblack\s+stars\b/g, 'blackstars')
       .replace(/\bunited\b/g, '') // Remove "united" - it's often inconsistent
       .replace(/\bclub\b/g, '') // Remove "club"
+      .replace(/\bclub\s+de\s+futbol\b/g, 'cf') // "Club de Futbol" -> "cf"
+      .replace(/\bcf\b/g, '') // Then remove cf like other suffixes
       .replace(/\s+ii\b/g, ' 2') // Normalize II to 2
       .replace(/\s+i\b/g, ' 1'); // Normalize I to 1
     

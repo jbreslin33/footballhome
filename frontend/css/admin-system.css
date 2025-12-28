@@ -686,3 +686,64 @@
   color: var(--primary-color);
 }
 
+/* Schema Viewer Styles */
+.schema-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--space-3);
+}
+
+.schema-view h2 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.schema-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.schema-info {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.schema-network {
+  flex: 1;
+  min-height: 600px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: white;
+}
+
+.schema-details {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: var(--space-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.schema-details h3 {
+  margin-top: 0;
+  color: var(--primary-color);
+}
+
+.schema-details h4 {
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.schema-details table {
+  width: 100%;
+  font-size: 0.9rem;
+}

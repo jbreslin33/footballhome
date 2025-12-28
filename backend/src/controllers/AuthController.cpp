@@ -543,8 +543,11 @@ Response AuthController::handleAdminContexts(const Request& request) {
         contexts_json << "[";
         bool first = true;
         
-        // Check if user is a super admin (sees everything) - uses new admins table
-        std::string super_admin_sql = "SELECT user_id, admin_level FROM admins WHERE user_id = $1 AND admin_level = 'super'";
+        // Check if user is a super admin (sees everything) - join with admin_levels lookup table
+        std::string super_admin_sql = "SELECT a.user_id, al.name as admin_level "
+                                      "FROM admins a "
+                                      "JOIN admin_levels al ON a.admin_level_id = al.id "
+                                      "WHERE a.user_id = $1 AND al.name = 'super'";
         pqxx::result super_result = db_->query(super_admin_sql, {user_id});
         bool is_super_admin = !super_result.empty();
         

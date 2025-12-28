@@ -65,13 +65,14 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
     
     try {
         // Query database for user by email with admin info and club info
-        // In new schema: users table has email directly, admins table has admin_level
-        // club_admins links admins.id to clubs, not users.id
+        // New schema: users -> admins (admin_level_id FK) -> admin_levels (name)
+        // club_admins links admins.id to clubs
         std::string sql = "SELECT u.id, u.email, u.first_name, u.last_name, u.password_hash, "
-                         "COALESCE(a.admin_level, 'user') as admin_level, "
+                         "COALESCE(al.name, 'user') as admin_level, "
                          "ca.club_id, c.display_name as club_name "
                          "FROM users u "
                          "LEFT JOIN admins a ON u.id = a.user_id "
+                         "LEFT JOIN admin_levels al ON a.admin_level_id = al.id "
                          "LEFT JOIN club_admins ca ON a.id = ca.admin_id AND ca.is_active = true "
                          "LEFT JOIN clubs c ON ca.club_id = c.id "
                          "WHERE u.email = $1 "

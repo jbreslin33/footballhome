@@ -54,6 +54,10 @@ private:
     Response handleLinkIdentity(const Request& request);
 
     // Integration Dashboards
+    Response handleGetOrganizations(const Request& request);
+    Response handleGetLeagues(const Request& request);
+    Response handleGetDatabaseSchema(const Request& request);
+    
     Response handleGetCasaDashboard(const Request& request);
     Response handleGetCasaDivisions(const Request& request);
     Response handleGetCasaTeams(const Request& request);
