@@ -432,74 +432,91 @@ class AdminSystemScreen extends Screen {
 
 
   async loadCasaDashboard() {
-    const response = await fetch('/api/system-admin/casa');
-    const data = await response.json();
-    
     const content = this.element.querySelector('.admin-content');
+    
+    // Create stats tabs like APSL
     content.innerHTML = `
-      <div class="dashboard-view">
-        <h2>⚽ CASA Dashboard</h2>
-        <div class="stats-grid">
-          <div class="stat-card clickable" data-target="casa-divisions">
-            <div class="stat-icon">🏆</div>
-            <div class="stat-value">${data.divisions}</div>
-            <div class="stat-label">Divisions</div>
-          </div>
-          <div class="stat-card clickable" data-target="casa-teams">
-            <div class="stat-icon">👕</div>
-            <div class="stat-value">${data.teams}</div>
-            <div class="stat-label">Teams</div>
-          </div>
-          <div class="stat-card clickable" data-target="casa-players">
-            <div class="stat-icon">🏃</div>
-            <div class="stat-value">${data.players}</div>
-            <div class="stat-label">Players</div>
-          </div>
-          <div class="stat-card clickable" data-target="casa-matches">
-            <div class="stat-icon">📅</div>
-            <div class="stat-value">${data.matches}</div>
-            <div class="stat-label">Matches</div>
-          </div>
+      <div class="stats-view">
+        <h2>📈 CASA Statistics</h2>
+        <div class="stats-tabs">
+          <button class="stats-tab active" data-tab="standings">🏆 Standings</button>
+          <button class="stats-tab" data-tab="teams">👕 Teams</button>
+          <button class="stats-tab" data-tab="divisions">📊 Divisions</button>
         </div>
-        
-        <div id="casa-details-container" style="margin-top: 20px;">
-          <div class="info-box">Select a card above to view details</div>
+        <div class="stats-content">
+          <div class="loading-indicator">Loading...</div>
         </div>
       </div>
     `;
     
-    // Add click listeners for cards
-    content.querySelectorAll('.stat-card.clickable').forEach(card => {
-      card.addEventListener('click', async () => {
-        const target = card.dataset.target;
-        await this.loadCasaDetails(target);
+    // Setup tab listeners
+    content.querySelectorAll('.stats-tab').forEach(tab => {
+      tab.addEventListener('click', async () => {
+        content.querySelectorAll('.stats-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        await this.loadCasaStatsTab(tab.dataset.tab);
       });
     });
+    
+    // Load initial tab
+    await this.loadCasaStatsTab('standings');
   }
-  
-  async loadCasaDetails(target) {
-    const container = this.element.querySelector('#casa-details-container');
-    container.innerHTML = '<div class="loading-indicator">Loading details...</div>';
+
+  async loadCasaStatsTab(tab) {
+    const statsContent = this.element.querySelector('.stats-content');
+    statsContent.innerHTML = '<div class="loading-indicator">Loading...</div>';
     
     try {
-      let html = '';
-      if (target === 'casa-divisions') {
-        const res = await fetch('/api/system-admin/casa/divisions');
-        const items = await res.json();
-        html = `
-          <h3>Divisions</h3>
-          <table class="admin-table">
-            <thead><tr><th>Name</th><th>Season</th><th>CASA ID</th></tr></thead>
-            <tbody>
-              ${items.map(i => `<tr><td>${i.name}</td><td>${i.season}</td><td>${i.casa_id}</td></tr>`).join('')}
-            </tbody>
-          </table>
-        `;
-      } else if (target === 'casa-teams') {
+      if (tab === 'standings') {
+        // Fetch team stats which includes standings data
+        const response = await fetch('/api/system-admin/casa/teams');
+        const teams = await response.json();
+        
+        if (!teams || teams.length === 0) {
+          statsContent.innerHTML = '<div class="info-box">No standings data available yet.</div>';
+          return;
+        }
+        
+        // Group by division
+        const grouped = {};
+        teams.forEach(team => {
+          const divisionName = team.division_name || 'Unknown Division';
+          if (!grouped[divisionName]) grouped[divisionName] = [];
+          grouped[divisionName].push(team);
+        });
+        
+        let html = '<div class="standings-container">';
+        Object.entries(grouped).forEach(([divisionName, divisionTeams]) => {
+          html += `
+            <div class="standings-table">
+              <h3>${divisionName}</h3>
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Team</th>
+                    <th>CASA ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${divisionTeams.map(team => `
+                    <tr>
+                      <td><strong>${team.name}</strong></td>
+                      <td>${team.casa_id}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        });
+        html += '</div>';
+        statsContent.innerHTML = html;
+        
+      } else if (tab === 'teams') {
         const res = await fetch('/api/system-admin/casa/teams');
         const items = await res.json();
-        html = `
-          <h3>Teams</h3>
+        statsContent.innerHTML = `
+          <h3>All Teams</h3>
           <table class="admin-table">
             <thead><tr><th>Name</th><th>Division</th><th>CASA ID</th></tr></thead>
             <tbody>
@@ -507,50 +524,24 @@ class AdminSystemScreen extends Screen {
             </tbody>
           </table>
         `;
-      } else if (target === 'casa-players') {
-        const res = await fetch('/api/system-admin/casa/players');
+        
+      } else if (tab === 'divisions') {
+        const res = await fetch('/api/system-admin/casa/divisions');
         const items = await res.json();
-        html = `
-          <h3>Players (Top 100)</h3>
+        statsContent.innerHTML = `
+          <h3>All Divisions</h3>
           <table class="admin-table">
-            <thead><tr><th>Name</th><th>Team</th><th>CASA ID</th></tr></thead>
+            <thead><tr><th>Name</th><th>Season</th><th>CASA ID</th></tr></thead>
             <tbody>
-              ${items.map(i => `<tr><td>${i.name}</td><td>${i.team_name}</td><td>${i.casa_id}</td></tr>`).join('')}
-            </tbody>
-          </table>
-        `;
-      } else if (target === 'casa-matches') {
-        const res = await fetch('/api/system-admin/casa/matches');
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-        }
-        const items = await res.json();
-        if (!Array.isArray(items)) {
-          throw new Error(`Expected array but got: ${typeof items}`);
-        }
-        html = `
-          <h3>Recent Matches</h3>
-          <table class="admin-table">
-            <thead><tr><th>Date</th><th>Home</th><th>Away</th><th>Score</th><th>Status</th></tr></thead>
-            <tbody>
-              ${items.map(i => `
-                <tr>
-                  <td>${i.event_date}</td>
-                  <td>${i.home_team}</td>
-                  <td>${i.away_team}</td>
-                  <td>${i.home_score} - ${i.away_score}</td>
-                  <td>${i.status}</td>
-                </tr>`).join('')}
+              ${items.map(i => `<tr><td>${i.name}</td><td>${i.season}</td><td>${i.casa_id}</td></tr>`).join('')}
             </tbody>
           </table>
         `;
       }
-      container.innerHTML = html;
-    } catch (e) {
-      container.innerHTML = `<div class="error-message">Error: ${e.message}</div>`;
+    } catch (error) {
+      statsContent.innerHTML = `<div class="error-message">Error loading ${tab}: ${error.message}</div>`;
     }
   }
-
   async loadApslDashboard() {
     try {
       console.log('Loading APSL dashboard...');

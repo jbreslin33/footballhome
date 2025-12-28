@@ -34,7 +34,7 @@ class CasaScraper extends Scraper {
     this.sportId = '550e8400-e29b-41d4-a716-446655440101';
     
     // CASA Conferences Configuration
-    // Each conference can have multiple divisions (ligas)
+    // Starting simple with just Philadelphia Liga 1
     this.conferences = {
       philadelphia: {
         name: 'Philadelphia',
@@ -44,50 +44,7 @@ class CasaScraper extends Scraper {
             tier: 1,
             standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9090889',
             schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090889',
-            rosterSheet: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmsWzjTsLR81d-eQTLDM4EnaqzqUOy5OcWLy1Lna1NYVFY7gOj0nZAQdIk99e99g/pubhtml'
-          },
-          liga2: {
-            name: 'Liga 2',
-            tier: 2,
-            standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9096430',
-            schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9096430',
-            rosterSheet: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQsDtR6AQPgThg1105AinjkLqHMaWgQfCFJuWqfEtadH41k5OSKYZ2Hqb0N-CnO2Q/pubhtml'
-          }
-        }
-      },
-      boston: {
-        name: 'Boston',
-        divisions: {
-          liga1: {
-            name: 'Liga 1',
-            tier: 1,
-            standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9090891',
-            schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090891',
-            rosterSheet: 'https://docs.google.com/spreadsheets/d/1OnHnhrSRA3Wp2eCs_9-dJhDBlVhSEoobFDGTYvQTfvE/export?format=html'
-          }
-        }
-      },
-      lancaster: {
-        name: 'Lancaster',
-        divisions: {
-          liga1: {
-            name: 'Liga 1',
-            tier: 1,
-            standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9090893',
-            schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090893',
-            rosterSheet: 'https://docs.google.com/spreadsheets/d/1alzJMAccMT5IIBQ_YOAp6FMbADnfC77dxRMZtceMau4/export?format=html'
-          }
-        }
-      },
-      centralNJ: {
-        name: 'Central NJ',
-        divisions: {
-          liga1: {
-            name: 'Liga 1',
-            tier: 1,
-            standings: 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9124981',
-            schedule: 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9124981',
-            rosterSheet: 'https://docs.google.com/spreadsheets/d/1tStu09AvdhBJtYLXl49R-oa5XgFYDo9j/export?format=html'
+            rosterSheet: 'https://docs.google.com/spreadsheets/d/14eQOJ60T0XNru6twNp59rP4RNrAuO2Gf/htmlview?gid=732556598'
           }
         }
       }
@@ -1527,7 +1484,7 @@ class CasaScraper extends Scraper {
         let teamId = null;
         const normalizedTabName = this.normalizeTeamName(teamName);
         
-        for (const [id, team] of this.data.teams.entries()) {
+        for (const [id, team] of this.data.casaTeams) {
           const normalizedTeamName = this.normalizeTeamName(team.name);
           
           // Exact match
@@ -1629,38 +1586,36 @@ class CasaScraper extends Scraper {
 
           // Create CASA Player
           const casaPlayerId = IdGenerator.fromComponents('casa', 'player', firstName, lastName);
+          
+          // Find the casa_team_id for this team by comparing normalized names
+          let casaTeamId = null;
+          const normalizedRosterTeamName = this.normalizeTeamName(teamName);
+          
+          for (const [cId, cTeam] of this.data.casaTeams) {
+            const normalizedStandingsTeamName = this.normalizeTeamName(cTeam.name);
+            if (normalizedStandingsTeamName === normalizedRosterTeamName ||
+                normalizedStandingsTeamName.includes(normalizedRosterTeamName) ||
+                normalizedRosterTeamName.includes(normalizedStandingsTeamName)) {
+              casaTeamId = cId;
+              break;
+            }
+          }
+          
+          if (!casaTeamId) {
+            this.logWarning(`      Could not find CASA team ID for ${teamName}`);
+            continue;
+          }
+          
           if (!this.data.casaPlayers.has(casaPlayerId)) {
               this.data.casaPlayers.set(casaPlayerId, {
-                  id: casaPlayerId,
-                  casa_id: `${firstName}-${lastName}`.toLowerCase().replace(/\s+/g, '-'),
-                  name: `${firstName} ${lastName}`,
-                  user_id: null // Users will be linked via UI later
-              });
-          }
-
-          // Create CASA Team Player
-          let casaTeamId = null;
-          for (const [cId, cTeam] of this.data.casaTeams) {
-              if (cTeam.team_id === teamId) {
-                  casaTeamId = cId;
-                  break;
-              }
-          }
-
-          if (casaTeamId) {
-              const casaTeamPlayerId = IdGenerator.fromComponents('casa', 'team_player', casaTeamId, firstName, lastName);
-              this.data.casaTeamPlayers.set(casaTeamPlayerId, {
-                  id: casaTeamPlayerId,
                   casa_team_id: casaTeamId,
-                  casa_player_id: casaPlayerId,
-                  jersey_number: jerseyNumber || null,
-                  position: position || null,
-                  is_active: true
+                  casa_player_id: `${firstName}-${lastName}`.toLowerCase().replace(/\s+/g, '-'),
+                  name: `${firstName} ${lastName}`,
+                  jersey_number: null,
+                  position: null
               });
           }
 
-
-          
           playerCount++;
         }
         
@@ -1692,23 +1647,20 @@ class CasaScraper extends Scraper {
       .normalize('NFD') // Decompose accented characters
       .replace(/[\u0300-\u036f]/g, ''); // Remove diacritics
     
-    // Expand common abbreviations BEFORE removing suffixes
-    normalized = normalized
-      .replace(/\bphila\b/g, 'philadelphia')
-      .replace(/\bphl\b/g, 'philadelphia')
-      .replace(/\bphilly\b/g, 'philadelphia')
-      .replace(/\bcf\b/g, 'club de futbol')
-      .replace(/\bpsc\b/g, 'philadelphia');
-    
-    // Remove common team suffixes and variations (multiple passes)
-    const suffixes = ['fc', 'sc', 'united', 'ii', 'i', 'club', 'scm', 'scr', 'de futbol', 'soccer'];
+    // Remove common suffixes that don't add meaning
+    const suffixes = ['fc', 'sc', 'scm', 'scr'];
     for (const suffix of suffixes) {
       normalized = normalized.replace(new RegExp(`\\s+${suffix}\\b`, 'gi'), '');
     }
     
-    // Remove spaces between words for compound names
+    // Normalize variations
     normalized = normalized
-      .replace(/black\s+stars/g, 'blackstars');
+      .replace(/\bphilly\b/g, 'philadelphia')
+      .replace(/\bblack\s+stars\b/g, 'blackstars')
+      .replace(/\bunited\b/g, '') // Remove "united" - it's often inconsistent
+      .replace(/\bclub\b/g, '') // Remove "club"
+      .replace(/\s+ii\b/g, ' 2') // Normalize II to 2
+      .replace(/\s+i\b/g, ' 1'); // Normalize I to 1
     
     return normalized.replace(/\s+/g, ' ').trim();
   }

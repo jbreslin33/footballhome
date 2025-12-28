@@ -50,11 +50,27 @@ CREATE INDEX idx_audit_log_table_record ON audit_log(table_name, record_id);
 CREATE INDEX idx_audit_log_changed_at ON audit_log(changed_at DESC);
 
 -- ============================================================================
+-- ORGANIZATIONS (Parent entities for leagues)
+-- ============================================================================
+
+CREATE TABLE organizations (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    short_name VARCHAR(50),
+    website_url TEXT,
+    affiliation VARCHAR(100), -- e.g., "US Soccer", "Unaffiliated"
+    description TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================================
 -- 1. APSL LEAGUE SYSTEM (Source of Truth)
 -- ============================================================================
 
 CREATE TABLE apsl_leagues (
     id SERIAL PRIMARY KEY,
+    organization_id INTEGER REFERENCES organizations(id),
     name VARCHAR(255) NOT NULL,
     season VARCHAR(50) NOT NULL,
     website_url TEXT,
@@ -163,9 +179,11 @@ CREATE INDEX idx_apsl_matches_teams ON apsl_matches(home_team_id, away_team_id);
 
 CREATE TABLE casa_leagues (
     id SERIAL PRIMARY KEY,
+    organization_id INTEGER REFERENCES organizations(id),
     name VARCHAR(255) NOT NULL,
     season VARCHAR(50) NOT NULL,
     website_url TEXT,
+    affiliation VARCHAR(100), -- "US Soccer" for Select, "Unaffiliated" for Traditional
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(name, season)

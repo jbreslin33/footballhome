@@ -2096,15 +2096,16 @@ Response SystemAdminController::handleGetCasaDashboard(const Request& request) {
 
 Response SystemAdminController::handleGetCasaDivisions(const Request& request) {
     try {
-        auto result = db_->query("SELECT id, casa_id, name, season FROM casa_divisions ORDER BY name");
+        auto result = db_->query("SELECT id, name, age_group, skill_level, gender FROM casa_divisions ORDER BY name");
         std::string json = "[";
         for (size_t i = 0; i < result.size(); ++i) {
             const auto& row = result[i];
             json += "{";
             json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
-            json += "\"casa_id\":\"" + row["casa_id"].as<std::string>() + "\",";
             json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
-            json += "\"season\":\"" + (row["season"].is_null() ? "" : row["season"].as<std::string>()) + "\"";
+            json += "\"age_group\":\"" + (row["age_group"].is_null() ? "" : row["age_group"].as<std::string>()) + "\",";
+            json += "\"skill_level\":\"" + (row["skill_level"].is_null() ? "" : row["skill_level"].as<std::string>()) + "\",";
+            json += "\"gender\":\"" + (row["gender"].is_null() ? "" : row["gender"].as<std::string>()) + "\"";
             json += "}";
             if (i < result.size() - 1) json += ",";
         }
@@ -2118,7 +2119,7 @@ Response SystemAdminController::handleGetCasaDivisions(const Request& request) {
 Response SystemAdminController::handleGetCasaTeams(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT ct.id, ct.casa_id, ct.name, cd.name as division_name "
+            "SELECT ct.id, ct.casa_team_id, ct.name, cd.name as division_name "
             "FROM casa_teams ct "
             "LEFT JOIN casa_divisions cd ON ct.casa_division_id = cd.id "
             "ORDER BY ct.name"
@@ -2128,7 +2129,7 @@ Response SystemAdminController::handleGetCasaTeams(const Request& request) {
             const auto& row = result[i];
             json += "{";
             json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
-            json += "\"casa_id\":\"" + row["casa_id"].as<std::string>() + "\",";
+            json += "\"casa_team_id\":\"" + (row["casa_team_id"].is_null() ? "" : row["casa_team_id"].as<std::string>()) + "\",";
             json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
             json += "\"division_name\":\"" + (row["division_name"].is_null() ? "" : row["division_name"].as<std::string>()) + "\"";
             json += "}";
@@ -2145,10 +2146,9 @@ Response SystemAdminController::handleGetCasaPlayers(const Request& request) {
     try {
         // Limit to 100 for performance, maybe add pagination later
         auto result = db_->query(
-            "SELECT cp.id, cp.casa_id, cp.name, ct.name as team_name "
+            "SELECT cp.id, cp.casa_player_id, cp.name, cp.jersey_number, cp.position, ct.name as team_name "
             "FROM casa_players cp "
-            "LEFT JOIN casa_team_players ctp ON cp.id = ctp.casa_player_id "
-            "LEFT JOIN casa_teams ct ON ctp.casa_team_id = ct.id "
+            "LEFT JOIN casa_teams ct ON cp.casa_team_id = ct.id "
             "ORDER BY cp.name LIMIT 100"
         );
         std::string json = "[";
@@ -2156,8 +2156,10 @@ Response SystemAdminController::handleGetCasaPlayers(const Request& request) {
             const auto& row = result[i];
             json += "{";
             json += "\"id\":\"" + row["id"].as<std::string>() + "\",";
-            json += "\"casa_id\":\"" + row["casa_id"].as<std::string>() + "\",";
+            json += "\"casa_player_id\":\"" + (row["casa_player_id"].is_null() ? "" : row["casa_player_id"].as<std::string>()) + "\",";
             json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
+            json += "\"jersey_number\":\"" + (row["jersey_number"].is_null() ? "" : row["jersey_number"].as<std::string>()) + "\",";
+            json += "\"position\":\"" + (row["position"].is_null() ? "" : row["position"].as<std::string>()) + "\",";
             json += "\"team_name\":\"" + (row["team_name"].is_null() ? "" : row["team_name"].as<std::string>()) + "\"";
             json += "}";
             if (i < result.size() - 1) json += ",";
