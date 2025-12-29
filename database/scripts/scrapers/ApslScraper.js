@@ -46,7 +46,8 @@ class ApslScraper extends Scraper {
     this.data.apslPlayers = new Map();           // Normalized players table
     this.data.apslTeamPlayers = new Map();       // Junction: team_players
     this.data.apslMatches = new Map();
-    this.data.apslPlayerStats = new Map();
+    this.data.apslPlayerSeasonStats = new Map(); // Season totals from roster pages
+    this.data.apslMatchEvents = new Map();       // Individual match events (goals, cards, subs)
     this.data.apslTeamStats = new Map();
   }
 
@@ -256,29 +257,27 @@ class ApslScraper extends Scraper {
               position: playerData.position
           });
 
-          // Create player season stats if available
+          // Create player season stats if available (includes assists)
           const stats = statsMap.get(playerData.name);
           if (stats) {
-            // Stats are stored per match, but we're simplifying to season stats
-            // We'll need match-level stats later when we scrape individual matches
-            const statsId = playerId; // One stat record per player for now
-            const apslPlayerStats = {
+            const statsId = playerId; // One stat record per player
+            const apslPlayerSeasonStats = {
               id: statsId,
-              match_id: null, // Will be populated when we scrape match details
               player_id: playerId,  // References normalized player_id
               team_id: apslTeamId,
+              season: '2025/2026', // TODO: Extract from league data
               goals: stats.goals || 0,
               assists: stats.assists || 0,
               yellow_cards: stats.yellow_cards || 0,
               red_cards: stats.red_cards || 0,
               games_played: stats.games_played || 0
             };
-            this.data.apslPlayerStats.set(statsId, apslPlayerStats);
+            this.data.apslPlayerSeasonStats.set(statsId, apslPlayerSeasonStats);
           }
         }
         
         // Log stats summary
-        const totalGoals = Array.from(this.data.apslPlayerStats.values())
+        const totalGoals = Array.from(this.data.apslPlayerSeasonStats.values())
           .filter(s => {
             // Find team_player junction to check if player is on this team
             const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
@@ -303,7 +302,7 @@ class ApslScraper extends Scraper {
     let completedMatches = 0;
     let scheduledMatches = 0;
     let matchCounter = 1;
-    let playerStatCounter = 1;
+    let eventCounter = 1;
     let skippedDuplicates = 0;
     let fetchedMatchPages = 0;
 
@@ -393,19 +392,29 @@ class ApslScraper extends Scraper {
               const matchHtml = await this.fetcher.fetch(fullMatchUrl);
               const matchParser = new (require('../parsers/ApslHtmlParser'))();
               matchParser.parse(matchHtml);
-              const playerStats = matchParser.parseMatchPlayerStats();
+              const events = matchParser.parseMatchPlayerStats(); // Now returns event array
               
               const matchFetchTime = ((Date.now() - matchFetchStart) / 1000).toFixed(1);
               fetchedMatchPages++;
               
-              let matchedCount = 0;
+              let matchedEventCount = 0;
+              
+              // Map of event types to their IDs in match_event_types table
+              const eventTypeMap = {
+                'goal': 1,
+                'assist': 2,
+                'yellow_card': 3,
+                'red_card': 4,
+                'sub_in': 5,
+                'sub_out': 6
+              };
 
-              for (const stat of playerStats) {
+              for (const event of events) {
                 // Find which team this player belongs to based on teamName from parser
                 let playerTeamId = null;
                 
-                if (stat.teamName) {
-                  const teamMatch = teamsByName.get(stat.teamName);
+                if (event.team_name) {
+                  const teamMatch = teamsByName.get(event.team_name);
                   if (teamMatch) {
                     playerTeamId = teamMatch.id;
                   }
@@ -414,7 +423,7 @@ class ApslScraper extends Scraper {
                 // If we couldn't determine team from name, try matching to current team or opponent
                 if (!playerTeamId) {
                   // Try current team first
-                  const statNameNorm = stat.name.trim().toLowerCase().replace(/\s+/g, ' ');
+                  const eventNameNorm = event.player_name.trim().toLowerCase().replace(/\s+/g, ' ');
                   let player = Array.from(this.data.apslPlayers.values()).find(p => {
                     // Check if this player is on the current team
                     const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
@@ -423,7 +432,7 @@ class ApslScraper extends Scraper {
                     
                     const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
                     const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
-                    return statNameNorm === fullName || statNameNorm === altFullName;
+                    return eventNameNorm === fullName || eventNameNorm === altFullName;
                   });
                   
                   if (player) {
@@ -438,7 +447,7 @@ class ApslScraper extends Scraper {
                       
                       const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
                       const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
-                      return statNameNorm === fullName || statNameNorm === altFullName;
+                      return eventNameNorm === fullName || eventNameNorm === altFullName;
                     });
                     
                     if (player) {
@@ -450,7 +459,7 @@ class ApslScraper extends Scraper {
                 if (!playerTeamId) continue;
                 
                 // Now find the actual player on this team
-                const statNameNorm = stat.name.trim().toLowerCase().replace(/\s+/g, ' ');
+                const eventNameNorm = event.player_name.trim().toLowerCase().replace(/\s+/g, ' ');
                 const player = Array.from(this.data.apslPlayers.values()).find(p => {
                   // Check if this player is on the identified team
                   const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
@@ -459,30 +468,26 @@ class ApslScraper extends Scraper {
                   
                   const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
                   const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
-                  return statNameNorm === fullName || statNameNorm === altFullName;
+                  return eventNameNorm === fullName || eventNameNorm === altFullName;
                 });
                 
                 if (!player) continue;
-                matchedCount++;
+                matchedEventCount++;
                 
-                const apslPlayerStat = {
-                  id: playerStatCounter++,
+                // Create match event record
+                const matchEvent = {
+                  id: eventCounter++,
                   match_id: apslMatchId,
                   player_id: player.id,
                   team_id: playerTeamId,
-                  goals: stat.goals || 0,
-                  assists: stat.assists || 0,
-                  yellow_cards: stat.yellow_cards || 0,
-                  red_cards: stat.red_cards || 0,
-                  games_played: 1,
-                  is_starter: stat.is_starter,
-                  sub_in_minute: stat.sub_in_minute,
-                  sub_out_minute: stat.sub_out_minute
+                  event_type_id: eventTypeMap[event.event_type],
+                  minute: event.minute,
+                  assisted_by_player_id: null // TODO: Parse assist data if available
                 };
-                this.data.apslPlayerStats.set(apslPlayerStat.id, apslPlayerStat);
+                this.data.apslMatchEvents.set(matchEvent.id, matchEvent);
               }
               
-              this.log(`       → Match stats: ${playerStats.length} players, ${matchedCount} matched (${matchFetchTime}s)`);
+              this.log(`       → Match events: ${events.length} total, ${matchedEventCount} matched (${matchFetchTime}s)`);
             } catch (err) {
               this.logError(`Failed to fetch player stats for match ${matchKey}`, err);
             }
@@ -585,7 +590,8 @@ class ApslScraper extends Scraper {
     this.log(`   DEBUG: apslPlayers: ${this.data.apslPlayers.size}`);
     this.log(`   DEBUG: apslTeamPlayers: ${this.data.apslTeamPlayers.size}`);
     this.log(`   DEBUG: apslMatches: ${this.data.apslMatches.size}`);
-    this.log(`   DEBUG: apslPlayerStats: ${this.data.apslPlayerStats.size}`);
+    this.log(`   DEBUG: apslMatchEvents: ${this.data.apslMatchEvents.size}`);
+    this.log(`   DEBUG: apslPlayerSeasonStats: ${this.data.apslPlayerSeasonStats.size}`);
     this.log(`   DEBUG: apslTeamStats: ${this.data.apslTeamStats.size}`);
     
     const results = await this.sqlGenerator.generateMultiple([
@@ -666,20 +672,31 @@ class ApslScraper extends Scraper {
               conflictColumns: ['id']
           }
       },
-      // APSL Player Stats
+      // APSL Match Events (individual goal/card/sub records with minute)
       {
-          filename: '10a-apsl-7-player-stats.sql',
-          data: this.data.apslPlayerStats,
+          filename: '10a-apsl-7-match-events.sql',
+          data: this.data.apslMatchEvents,
           options: {
-              title: 'APSL Player Statistics',
-              tableName: 'player_stats',
+              title: 'APSL Match Events',
+              tableName: 'match_events',
               useInserts: true,
-              conflictColumns: ['player_id', 'match_id']
+              conflictColumns: ['id']
+          }
+      },
+      // APSL Player Season Stats (from roster pages, includes assists)
+      {
+          filename: '10a-apsl-8-player-season-stats.sql',
+          data: this.data.apslPlayerSeasonStats,
+          options: {
+              title: 'APSL Player Season Statistics',
+              tableName: 'player_season_stats',
+              useInserts: true,
+              conflictColumns: ['player_id', 'team_id', 'season']
           }
       },
       // APSL Team Stats
       {
-          filename: '10a-apsl-8-team-stats.sql',
+          filename: '10a-apsl-9-team-stats.sql',
           data: this.data.apslTeamStats,
           options: {
               title: 'APSL Team Statistics',
