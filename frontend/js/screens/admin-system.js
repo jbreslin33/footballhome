@@ -408,6 +408,7 @@ class AdminSystemScreen extends Screen {
                     <th>Score</th>
                     <th>Away Team</th>
                     <th>Venue</th>
+                    <th>Events</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -421,6 +422,12 @@ class AdminSystemScreen extends Screen {
                       ${match.google_maps_url ? 
                         `<a href="${match.google_maps_url}" target="_blank">${match.venue_name || 'View Map'}</a>` :
                         (match.venue_name || 'N/A')
+                      }
+                    </td>
+                    <td>
+                      ${match.event_count > 0 ? 
+                        `<button class="btn btn-sm btn-secondary" onclick="window.app.navigation.goTo('match-detail', {matchId: '${match.id}', matchTitle: '${match.home_team} vs ${match.away_team}'})">📊 View ${match.event_count} Events</button>` :
+                        '<span class="text-muted">No events</span>'
                       }
                     </td>
                   </tr>

@@ -36,103 +36,68 @@ class MatchDetailScreen extends Screen {
   
   loadMatchPlayerStats() {
     const container = this.find('#match-stats-container');
-    container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading player stats...</p></div>';
+    container.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Loading match events...</p></div>';
     
-    this.safeFetch(`/api/stats/matches/${this.matchId}/player-stats`, response => {
-      const data = response.data || {};
-      const teams = data.teams || [];
+    this.safeFetch(`/api/stats/matches/${this.matchId}/events`, response => {
+      const events = response.data || [];
       
-      if (teams.length === 0) {
-        container.innerHTML = '<div class="empty-state"><p>No player statistics available for this match.</p></div>';
+      if (events.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No events recorded for this match.</p></div>';
         return;
       }
       
-      this.renderPlayerStats(teams);
+      this.renderMatchEvents(events);
     });
   }
   
-  renderPlayerStats(teams) {
+  renderMatchEvents(events) {
     const container = this.find('#match-stats-container');
-    container.innerHTML = '';
-    
-    // Render each team
-    teams.forEach(team => {
-      const teamSection = document.createElement('div');
-      teamSection.className = 'team-stats-section';
-      
-      // Split players into starters and substitutes
-      const starters = team.players.filter(p => p.is_starter);
-      const substitutes = team.players.filter(p => !p.is_starter);
-      
-      teamSection.innerHTML = `
-        <h2 class="team-name">${this.escapeHtml(team.team_name)}</h2>
-        
-        ${starters.length > 0 ? `
-          <div class="player-group">
-            <h3 class="group-label">Starters</h3>
-            <table class="player-stats-table">
-              <thead>
-                <tr>
-                  <th>Player</th>
-                  <th>G</th>
-                  <th>A</th>
-                  <th>YC</th>
-                  <th>RC</th>
-                  <th>Sub</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${starters.map(player => this.renderPlayerRow(player)).join('')}
-              </tbody>
-            </table>
-          </div>
-        ` : ''}
-        
-        ${substitutes.length > 0 ? `
-          <div class="player-group">
-            <h3 class="group-label">Substitutes</h3>
-            <table class="player-stats-table">
-              <thead>
-                <tr>
-                  <th>Player</th>
-                  <th>G</th>
-                  <th>A</th>
-                  <th>YC</th>
-                  <th>RC</th>
-                  <th>Sub</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${substitutes.map(player => this.renderPlayerRow(player)).join('')}
-              </tbody>
-            </table>
-          </div>
-        ` : ''}
-      `;
-      
-      container.appendChild(teamSection);
-    });
+    container.innerHTML = `
+      <div class="match-events-list">
+        <h2>Match Events</h2>
+        <table class="events-table">
+          <thead>
+            <tr>
+              <th>Minute</th>
+              <th>Player</th>
+              <th>Team</th>
+              <th>Event</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${events.map(event => this.renderEventRow(event)).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
   }
   
-  renderPlayerRow(player) {
-    // Format substitution info
-    let subInfo = '-';
-    if (player.sub_in_minute !== null) {
-      subInfo = `⬆️${player.sub_in_minute}'`;
-    } else if (player.sub_out_minute !== null) {
-      subInfo = `⬇️${player.sub_out_minute}'`;
-    }
+  renderEventRow(event) {
+    const eventIcon = this.getEventIcon(event.event_type);
+    const details = event.assisted_by ? `Assist: ${this.escapeHtml(event.assisted_by)}` : '';
     
     return `
       <tr>
-        <td class="player-name">${this.escapeHtml(player.player_name)}</td>
-        <td class="stat-value">${player.goals || 0}</td>
-        <td class="stat-value">${player.assists || 0}</td>
-        <td class="stat-value">${player.yellow_cards || 0}</td>
-        <td class="stat-value">${player.red_cards || 0}</td>
-        <td class="stat-value sub-info">${subInfo}</td>
+        <td class="minute-cell">${event.minute}'</td>
+        <td class="player-cell">${this.escapeHtml(event.player_name)}</td>
+        <td class="team-cell">${this.escapeHtml(event.team_name)}</td>
+        <td class="event-cell">${eventIcon} ${this.escapeHtml(event.event_type)}</td>
+        <td class="details-cell">${details}</td>
       </tr>
     `;
+  }
+  
+  getEventIcon(eventType) {
+    const icons = {
+      'goal': '⚽',
+      'assist': '🎯',
+      'yellow_card': '🟨',
+      'red_card': '🟥',
+      'sub_in': '⬆️',
+      'sub_out': '⬇️'
+    };
+    return icons[eventType] || '•';
   }
   
   escapeHtml(text) {

@@ -48,6 +48,7 @@ class ApslScraper extends Scraper {
     this.data.apslMatches = new Map();
     this.data.apslPlayerSeasonStats = new Map(); // Season totals from roster pages
     this.data.apslMatchEvents = new Map();       // Individual match events (goals, cards, subs)
+    this.data.apslMatchLineups = new Map();      // Match lineups (starters vs subs)
     this.data.apslTeamStats = new Map();
   }
 
@@ -303,6 +304,7 @@ class ApslScraper extends Scraper {
     let scheduledMatches = 0;
     let matchCounter = 1;
     let eventCounter = 1;
+    let lineupCounter = 1;
     let skippedDuplicates = 0;
     let fetchedMatchPages = 0;
 
@@ -374,7 +376,10 @@ class ApslScraper extends Scraper {
           this.data.apslMatches.set(matchKey, apslMatch);
 
           // --- Fetch per-match player stats (only if not already fetched) ---
-          if (matchData.matchStatus === 'completed' && matchData.matchUrl) {
+          if (matchData.matchStatus === 'completed') {
+            if (!matchData.matchUrl) {
+              continue;
+            }
             const fullMatchUrl = matchData.matchUrl.startsWith('http') 
               ? matchData.matchUrl 
               : `${this.baseUrl}${matchData.matchUrl}`;
@@ -390,14 +395,16 @@ class ApslScraper extends Scraper {
               this.fetchedMatchUrls.add(fullMatchUrl);
               
               const matchHtml = await this.fetcher.fetch(fullMatchUrl);
+              
               const matchParser = new (require('../parsers/ApslHtmlParser'))();
               matchParser.parse(matchHtml);
-              const events = matchParser.parseMatchPlayerStats(); // Now returns event array
+              const { events, lineups } = matchParser.parseMatchPlayerStats(); // Now returns {events, lineups}
               
               const matchFetchTime = ((Date.now() - matchFetchStart) / 1000).toFixed(1);
               fetchedMatchPages++;
               
               let matchedEventCount = 0;
+              let matchedLineupCount = 0;
               
               // Map of event types to their IDs in match_event_types table
               const eventTypeMap = {
@@ -487,7 +494,44 @@ class ApslScraper extends Scraper {
                 this.data.apslMatchEvents.set(matchEvent.id, matchEvent);
               }
               
+              // Process lineups
+              for (const lineup of lineups) {
+                const eventNameNorm = lineup.player_name.trim().toLowerCase().replace(/\s+/g, ' ');
+                
+                // Find player by name
+                const player = Array.from(this.data.apslPlayers.values()).find(p => {
+                  const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
+                  const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
+                  return eventNameNorm === fullName || eventNameNorm === altFullName;
+                });
+                
+                if (!player) continue;
+                
+                // Find team by name
+                let lineupTeamId = null;
+                if (lineup.team_name) {
+                  const teamMatch = teamsByName.get(lineup.team_name);
+                  if (teamMatch) {
+                    lineupTeamId = teamMatch.id;
+                  }
+                }
+                
+                if (!lineupTeamId) continue;
+                
+                matchedLineupCount++;
+                const matchLineup = {
+                  id: lineupCounter++,
+                  match_id: apslMatchId,
+                  player_id: player.id,
+                  team_id: lineupTeamId,
+                  is_starter: lineup.is_starter,
+                  position: null // APSL doesn't provide positions in match pages
+                };
+                this.data.apslMatchLineups.set(matchLineup.id, matchLineup);
+              }
+              
               this.log(`       → Match events: ${events.length} total, ${matchedEventCount} matched (${matchFetchTime}s)`);
+              this.log(`       → Match lineups: ${lineups.length} total, ${matchedLineupCount} matched`);
             } catch (err) {
               this.logError(`Failed to fetch player stats for match ${matchKey}`, err);
             }
@@ -591,6 +635,7 @@ class ApslScraper extends Scraper {
     this.log(`   DEBUG: apslTeamPlayers: ${this.data.apslTeamPlayers.size}`);
     this.log(`   DEBUG: apslMatches: ${this.data.apslMatches.size}`);
     this.log(`   DEBUG: apslMatchEvents: ${this.data.apslMatchEvents.size}`);
+    this.log(`   DEBUG: apslMatchLineups: ${this.data.apslMatchLineups.size}`);
     this.log(`   DEBUG: apslPlayerSeasonStats: ${this.data.apslPlayerSeasonStats.size}`);
     this.log(`   DEBUG: apslTeamStats: ${this.data.apslTeamStats.size}`);
     
@@ -681,6 +726,17 @@ class ApslScraper extends Scraper {
               tableName: 'match_events',
               useInserts: true,
               conflictColumns: ['id']
+          }
+      },
+      // APSL Match Lineups (who started vs who was available substitute)
+      {
+          filename: '10a-apsl-7z-match-lineups.sql',
+          data: this.data.apslMatchLineups,
+          options: {
+              title: 'APSL Match Lineups',
+              tableName: 'match_lineups',
+              useInserts: true,
+              conflictColumns: ['match_id', 'player_id']
           }
       },
       // APSL Player Season Stats (from roster pages, includes assists)

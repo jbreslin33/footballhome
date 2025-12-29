@@ -685,6 +685,24 @@ CREATE INDEX idx_match_events_team ON match_events(team_id);
 CREATE INDEX idx_match_events_type ON match_events(event_type_id);
 CREATE INDEX idx_match_events_minute ON match_events(minute);
 
+-- Match lineups (who started vs who was available substitute)
+-- Separate from events because lineup is pre-match state, not an in-match action
+CREATE TABLE match_lineups (
+    id SERIAL PRIMARY KEY,
+    match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    team_id INTEGER NOT NULL REFERENCES teams(id),
+    is_starter BOOLEAN NOT NULL,
+    position VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(match_id, player_id)
+);
+
+CREATE INDEX idx_match_lineups_match ON match_lineups(match_id);
+CREATE INDEX idx_match_lineups_player ON match_lineups(player_id);
+CREATE INDEX idx_match_lineups_team ON match_lineups(team_id);
+CREATE INDEX idx_match_lineups_starter ON match_lineups(is_starter);
+
 -- Player season stats (aggregated from roster pages)
 -- Used for season totals including assists that aren't tracked per-match
 CREATE TABLE player_season_stats (

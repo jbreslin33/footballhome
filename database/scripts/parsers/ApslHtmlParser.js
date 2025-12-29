@@ -12,6 +12,7 @@ class ApslHtmlParser extends HtmlParser {
      */
     parseMatchPlayerStats() {
       const events = []; // Array of individual events
+      const lineups = []; // Array of {player_name, team_name, is_starter}
       const playerTeams = new Map(); // Track which team each player belongs to
       const playersInMatch = new Set(); // Track all players who played
       
@@ -19,13 +20,16 @@ class ApslHtmlParser extends HtmlParser {
       const allText = this.document.body.textContent;
       const starterIndex = allText.indexOf('Starter');
       
-      if (starterIndex === -1) return [];
+      if (starterIndex === -1) {
+        return { events: [], lineups: [] };
+      }
       
       // Find tables after "Starter" label
       const tables = this.querySelectorAll('table');
       let starterTable = null;
       let substituteTable = null;
       let playByPlayTable = null;
+      
       
       // Look for tables with team names as headers
       for (const table of tables) {
@@ -43,13 +47,16 @@ class ApslHtmlParser extends HtmlParser {
         }
       }
       
+      
       // Parse starters - track team membership
       if (starterTable) {
         const rows = starterTable.querySelectorAll('tr');
+        let currentTeamName = null; // Persist across rows
+        
         for (const row of rows) {
           const teamHeader = row.querySelector('th');
-          let currentTeamName = null;
           if (teamHeader) {
+            // Update team name when we encounter a header
             currentTeamName = teamHeader.textContent.trim();
           }
           
@@ -67,6 +74,11 @@ class ApslHtmlParser extends HtmlParser {
               playersInMatch.add(playerName);
               if (currentTeamName) {
                 playerTeams.set(playerName, currentTeamName);
+                lineups.push({
+                  player_name: playerName,
+                  team_name: currentTeamName,
+                  is_starter: true
+                });
               }
             }
           }
@@ -76,10 +88,12 @@ class ApslHtmlParser extends HtmlParser {
       // Parse substitutes - track team membership
       if (substituteTable) {
         const rows = substituteTable.querySelectorAll('tr');
+        let currentTeamName = null; // Persist across rows
+        
         for (const row of rows) {
           const teamHeader = row.querySelector('th');
-          let currentTeamName = null;
           if (teamHeader) {
+            // Update team name when we encounter a header
             currentTeamName = teamHeader.textContent.trim();
           }
           
@@ -97,6 +111,11 @@ class ApslHtmlParser extends HtmlParser {
               playersInMatch.add(playerName);
               if (currentTeamName) {
                 playerTeams.set(playerName, currentTeamName);
+                lineups.push({
+                  player_name: playerName,
+                  team_name: currentTeamName,
+                  is_starter: false
+                });
               }
             }
           }
@@ -106,93 +125,184 @@ class ApslHtmlParser extends HtmlParser {
       // Parse play-by-play for goals, cards, and substitutions
       if (playByPlayTable) {
         const rows = playByPlayTable.querySelectorAll('tr');
+        
         for (const row of rows) {
           const cells = Array.from(row.querySelectorAll('td'));
-          if (cells.length >= 3) {
-            const timeCell = cells[1]?.textContent.trim();
-            const minute = parseInt(timeCell) || 0;
+          if (cells.length >= 5) {
+            // Structure: Team1Player | Team1Action | Minute | Team2Action | Team2Player
+            const team1Player = cells[0]?.textContent.trim();
+            const team1ActionCell = cells[1];
+            const minute = parseInt(cells[2]?.textContent.trim()) || 0;
+            const team2ActionCell = cells[3];
+            const team2Player = cells[4]?.textContent.trim();
             
-            // Check all cells for player actions
-            for (const cell of cells) {
-              const text = cell.textContent.trim();
+            // Normalize player names: "Last, First" format from play-by-play
+            // We need to match against "First Last" format from rosters
+            const normalizePlayByPlayName = (name) => {
+              if (!name) return '';
+              // If name has comma, it's "Last, First" - convert to "First Last"
+              if (name.includes(',')) {
+                const parts = name.split(',').map(p => p.trim());
+                return `${parts[1]} ${parts[0]}`;  // "Last, First" -> "First Last"
+              }
+              return name;
+            };
+            
+            const team1PlayerNorm = normalizePlayByPlayName(team1Player);
+            const team2PlayerNorm = normalizePlayByPlayName(team2Player);
+            
+            // Skip header row
+            if (team1Player.toLowerCase().includes('play') || team2Player.toLowerCase().includes('play')) continue;
+            if (!minute) continue;
+            
+            // Process Team 1 events
+            if (team1PlayerNorm && playersInMatch.has(team1PlayerNorm)) {
+              const actionText = team1ActionCell?.textContent.trim().toLowerCase() || '';
+              const actionHTML = team1ActionCell?.innerHTML.toLowerCase() || '';
               
-              // Goal: "Player Name (Goal)"
-              if (text.includes('Goal') && text.includes('(')) {
-                const match = text.match(/^(.+?)\s*\(Goal\)/);
-                if (match) {
-                  const playerName = match[1].trim();
-                  if (playersInMatch.has(playerName)) {
-                    events.push({
-                      player_name: playerName,
-                      team_name: playerTeams.get(playerName) || null,
-                      event_type: 'goal',
-                      minute: minute,
-                      assisted_by: null
-                    });
-                  }
+              // Text-based actions
+              if (actionText.includes('assist')) {
+                events.push({
+                  player_name: team1PlayerNorm,
+                  team_name: playerTeams.get(team1PlayerNorm) || null,
+                  event_type: 'assist',
+                  minute: minute,
+                  assisted_by: null
+                });
+              } else if (actionText.includes('sub in')) {
+                events.push({
+                  player_name: team1PlayerNorm,
+                  team_name: playerTeams.get(team1PlayerNorm) || null,
+                  event_type: 'sub_in',
+                  minute: minute,
+                  assisted_by: null
+                });
+              } else if (actionText.includes('sub out')) {
+                events.push({
+                  player_name: team1PlayerNorm,
+                  team_name: playerTeams.get(team1PlayerNorm) || null,
+                  event_type: 'sub_out',
+                  minute: minute,
+                  assisted_by: null
+                });
+              }
+              // Icon-based actions - check for FontAwesome icons or SVG
+              else if (actionHTML.includes('fa-') || actionHTML.includes('<svg')) {
+                // Goal icons: fa-futbol, fa-soccer-ball, fa-circle
+                if (actionHTML.includes('futbol') || actionHTML.includes('soccer') || actionHTML.includes('ball')) {
+                  events.push({
+                    player_name: team1PlayerNorm,
+                    team_name: playerTeams.get(team1PlayerNorm) || null,
+                    event_type: 'goal',
+                    minute: minute,
+                    assisted_by: null
+                  });
+                }
+                // Yellow card: likely fa-square or specific yellow card icon
+                else if (actionHTML.includes('yellow') || (actionHTML.includes('square') && !actionHTML.includes('red'))) {
+                  events.push({
+                    player_name: team1PlayerNorm,
+                    team_name: playerTeams.get(team1PlayerNorm) || null,
+                    event_type: 'yellow_card',
+                    minute: minute,
+                    assisted_by: null
+                  });
+                }
+                // Red card
+                else if (actionHTML.includes('red')) {
+                  events.push({
+                    player_name: team1PlayerNorm,
+                    team_name: playerTeams.get(team1PlayerNorm) || null,
+                    event_type: 'red_card',
+                    minute: minute,
+                    assisted_by: null
+                  });
+                }
+                // Default to goal if we have an icon but no specific match
+                else {
+                  events.push({
+                    player_name: team1PlayerNorm,
+                    team_name: playerTeams.get(team1PlayerNorm) || null,
+                    event_type: 'goal',
+                    minute: minute,
+                    assisted_by: null
+                  });
                 }
               }
+            }
+            
+            // Process Team 2 events
+            if (team2PlayerNorm && playersInMatch.has(team2PlayerNorm)) {
+              const actionText = team2ActionCell?.textContent.trim().toLowerCase() || '';
+              const actionHTML = team2ActionCell?.innerHTML.toLowerCase() || '';
               
-              // Yellow card: "Player Name (Yellow Card)"
-              if (text.includes('Yellow Card')) {
-                const match = text.match(/^(.+?)\s*\(Yellow Card\)/);
-                if (match) {
-                  const playerName = match[1].trim();
-                  if (playersInMatch.has(playerName)) {
-                    events.push({
-                      player_name: playerName,
-                      team_name: playerTeams.get(playerName) || null,
-                      event_type: 'yellow_card',
-                      minute: minute,
-                      assisted_by: null
-                    });
-                  }
-                }
+              // Text-based actions
+              if (actionText.includes('assist')) {
+                events.push({
+                  player_name: team2PlayerNorm,
+                  team_name: playerTeams.get(team2PlayerNorm) || null,
+                  event_type: 'assist',
+                  minute: minute,
+                  assisted_by: null
+                });
+              } else if (actionText.includes('sub in')) {
+                events.push({
+                  player_name: team2PlayerNorm,
+                  team_name: playerTeams.get(team2PlayerNorm) || null,
+                  event_type: 'sub_in',
+                  minute: minute,
+                  assisted_by: null
+                });
+              } else if (actionText.includes('sub out')) {
+                events.push({
+                  player_name: team2PlayerNorm,
+                  team_name: playerTeams.get(team2PlayerNorm) || null,
+                  event_type: 'sub_out',
+                  minute: minute,
+                  assisted_by: null
+                });
               }
-              
-              // Red card: "Player Name (Red Card)"
-              if (text.includes('Red Card')) {
-                const match = text.match(/^(.+?)\s*\(Red Card\)/);
-                if (match) {
-                  const playerName = match[1].trim();
-                  if (playersInMatch.has(playerName)) {
-                    events.push({
-                      player_name: playerName,
-                      team_name: playerTeams.get(playerName) || null,
-                      event_type: 'red_card',
-                      minute: minute,
-                      assisted_by: null
-                    });
-                  }
+              // Icon-based actions
+              else if (actionHTML.includes('fa-') || actionHTML.includes('<svg')) {
+                // Goal icons
+                if (actionHTML.includes('futbol') || actionHTML.includes('soccer') || actionHTML.includes('ball')) {
+                  events.push({
+                    player_name: team2PlayerNorm,
+                    team_name: playerTeams.get(team2PlayerNorm) || null,
+                    event_type: 'goal',
+                    minute: minute,
+                    assisted_by: null
+                  });
                 }
-              }
-              
-              // Substitution: "Player Out for Player In"
-              if (text.includes(' for ')) {
-                const match = text.match(/^(.+?)\s+for\s+(.+?)$/);
-                if (match) {
-                  const playerOut = match[1].trim();
-                  const playerIn = match[2].trim();
-                  
-                  if (playersInMatch.has(playerOut)) {
-                    events.push({
-                      player_name: playerOut,
-                      team_name: playerTeams.get(playerOut) || null,
-                      event_type: 'sub_out',
-                      minute: minute,
-                      assisted_by: null
-                    });
-                  }
-                  
-                  if (playersInMatch.has(playerIn)) {
-                    events.push({
-                      player_name: playerIn,
-                      team_name: playerTeams.get(playerIn) || null,
-                      event_type: 'sub_in',
-                      minute: minute,
-                      assisted_by: null
-                    });
-                  }
+                // Yellow card
+                else if (actionHTML.includes('yellow') || (actionHTML.includes('square') && !actionHTML.includes('red'))) {
+                  events.push({
+                    player_name: team2PlayerNorm,
+                    team_name: playerTeams.get(team2PlayerNorm) || null,
+                    event_type: 'yellow_card',
+                    minute: minute,
+                    assisted_by: null
+                  });
+                }
+                // Red card
+                else if (actionHTML.includes('red')) {
+                  events.push({
+                    player_name: team2PlayerNorm,
+                    team_name: playerTeams.get(team2PlayerNorm) || null,
+                    event_type: 'red_card',
+                    minute: minute,
+                    assisted_by: null
+                  });
+                }
+                // Default to goal
+                else {
+                  events.push({
+                    player_name: team2PlayerNorm,
+                    team_name: playerTeams.get(team2PlayerNorm) || null,
+                    event_type: 'goal',
+                    minute: minute,
+                    assisted_by: null
+                  });
                 }
               }
             }
@@ -200,7 +310,7 @@ class ApslHtmlParser extends HtmlParser {
         }
       }
       
-      return events;
+      return { events, lineups };
     }
   /**
    * Parse standings page to extract conferences and divisions

@@ -1418,3 +1418,90 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
     font-size: var(--text-xs);
     color: var(--gray-500);
 }
+
+/* Match Events Table */
+.match-events-list {
+  padding: var(--space-2);
+}
+
+.match-events-list h2 {
+  margin-bottom: var(--space-3);
+  color: var(--text-color);
+}
+
+.events-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.events-table thead {
+  background: var(--primary-color);
+  color: white;
+}
+
+.events-table th {
+  padding: var(--space-3);
+  text-align: left;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+}
+
+.events-table td {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.events-table tbody tr:hover {
+  background: var(--gray-50);
+}
+
+.events-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.events-table .minute-cell {
+  font-weight: 700;
+  color: var(--primary-color);
+  width: 80px;
+  text-align: center;
+}
+
+.events-table .player-cell {
+  font-weight: 500;
+}
+
+.events-table .team-cell {
+  color: var(--gray-600);
+  font-size: var(--text-sm);
+}
+
+.events-table .event-cell {
+  font-weight: 600;
+}
+
+.events-table .details-cell {
+  color: var(--gray-600);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+/* Responsive table for mobile */
+@media (max-width: 768px) {
+  .events-table {
+    font-size: var(--text-sm);
+  }
+  
+  .events-table th,
+  .events-table td {
+    padding: var(--space-2);
+  }
+  
+  .events-table .team-cell {
+    display: none;
+  }
+}
