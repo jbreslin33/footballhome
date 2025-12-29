@@ -624,6 +624,47 @@ CREATE TABLE team_standings (
 CREATE INDEX idx_team_standings_division ON team_standings(division_id);
 CREATE INDEX idx_team_standings_team ON team_standings(team_id);
 
+-- Team stats (comprehensive season statistics)
+CREATE TABLE team_stats (
+    id SERIAL PRIMARY KEY,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    division_id INTEGER REFERENCES divisions(id),
+    match_id INTEGER REFERENCES matches(id),
+    wins INTEGER DEFAULT 0,
+    losses INTEGER DEFAULT 0,
+    ties INTEGER DEFAULT 0,
+    goals_for INTEGER DEFAULT 0,
+    goals_against INTEGER DEFAULT 0,
+    points INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(team_id, match_id)
+);
+
+CREATE INDEX idx_team_stats_team ON team_stats(team_id);
+CREATE INDEX idx_team_stats_division ON team_stats(division_id);
+CREATE INDEX idx_team_stats_match ON team_stats(match_id);
+
+-- Player stats (comprehensive player statistics)
+CREATE TABLE player_stats (
+    id SERIAL PRIMARY KEY,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    team_id INTEGER REFERENCES teams(id),
+    match_id INTEGER REFERENCES matches(id),
+    goals INTEGER DEFAULT 0,
+    assists INTEGER DEFAULT 0,
+    yellow_cards INTEGER DEFAULT 0,
+    red_cards INTEGER DEFAULT 0,
+    games_played INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(player_id, match_id)
+);
+
+CREATE INDEX idx_player_stats_player ON player_stats(player_id);
+CREATE INDEX idx_player_stats_team ON player_stats(team_id);
+CREATE INDEX idx_player_stats_match ON player_stats(match_id);
+
 -- ============================================================================
 -- 6. CHAT SYSTEM (Built-in messaging)
 -- ============================================================================

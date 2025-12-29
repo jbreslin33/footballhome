@@ -1,6 +1,6 @@
 -- APSL Team Statistics
 
-INSERT INTO apsl_team_stats (id, apsl_division_id, apsl_team_id, wins, losses, ties, goals_for, goals_against, points)
+INSERT INTO team_stats (id, division_id, team_id, wins, losses, ties, goals_for, goals_against, points)
 VALUES
   (1, 1, 1, 5, 2, 1, 20, 8, 16),
   (2, 1, 2, 4, 0, 2, 22, 4, 14),
@@ -55,8 +55,8 @@ VALUES
   (51, 6, 51, 2, 5, 0, 19, 31, 6),
   (52, 6, 52, 0, 7, 0, 1, 77, 0)
 ON CONFLICT (id) DO UPDATE SET
-  apsl_division_id = EXCLUDED.apsl_division_id,
-  apsl_team_id = EXCLUDED.apsl_team_id,
+  division_id = EXCLUDED.division_id,
+  team_id = EXCLUDED.team_id,
   wins = EXCLUDED.wins,
   losses = EXCLUDED.losses,
   ties = EXCLUDED.ties,

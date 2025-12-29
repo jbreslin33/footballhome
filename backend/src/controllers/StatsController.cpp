@@ -61,27 +61,28 @@ std::string StatsController::createJSONResponse(bool success, const std::string&
 
 Response StatsController::handleGetStandings(const Request& request) {
     try {
-        // Query apsl_team_stats (scraped from APSL standings page)
+        // Query team_stats (normalized table with source_system_id=1 for APSL)
         std::string query = R"(
             SELECT 
-                ats.id::text,
-                at.name as team_name,
-                ad.name as division_name,
-                al.season,
-                COALESCE(ats.wins, 0) + COALESCE(ats.losses, 0) + COALESCE(ats.ties, 0) as games_played,
-                COALESCE(ats.wins, 0) as wins,
-                COALESCE(ats.losses, 0) as losses,
-                COALESCE(ats.ties, 0) as ties,
-                COALESCE(ats.goals_for, 0) as goals_for,
-                COALESCE(ats.goals_against, 0) as goals_against,
-                COALESCE(ats.goals_for, 0) - COALESCE(ats.goals_against, 0) as goal_differential,
-                COALESCE(ats.points, 0) as points
-            FROM apsl_team_stats ats
-            JOIN apsl_teams at ON ats.apsl_team_id = at.id
-            JOIN apsl_divisions ad ON ats.apsl_division_id = ad.id
-            JOIN apsl_conferences ac ON ad.apsl_conference_id = ac.id
-            JOIN apsl_leagues al ON ac.apsl_league_id = al.id
-            ORDER BY ad.name, ats.points DESC, goal_differential DESC, at.name
+                ts.id::text,
+                t.name as team_name,
+                d.name as division_name,
+                l.season,
+                COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0) + COALESCE(ts.ties, 0) as games_played,
+                COALESCE(ts.wins, 0) as wins,
+                COALESCE(ts.losses, 0) as losses,
+                COALESCE(ts.ties, 0) as ties,
+                COALESCE(ts.goals_for, 0) as goals_for,
+                COALESCE(ts.goals_against, 0) as goals_against,
+                COALESCE(ts.goals_for, 0) - COALESCE(ts.goals_against, 0) as goal_differential,
+                COALESCE(ts.points, 0) as points
+            FROM team_stats ts
+            JOIN teams t ON ts.team_id = t.id
+            JOIN divisions d ON ts.division_id = d.id
+            JOIN conferences c ON d.conference_id = c.id
+            JOIN leagues l ON c.league_id = l.id
+            WHERE t.source_system_id = 1
+            ORDER BY d.name, ts.points DESC, goal_differential DESC, t.name
         )";
         
         pqxx::result result = db_->query(query);

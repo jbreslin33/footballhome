@@ -101,6 +101,7 @@ class ApslScraper extends Scraper {
     const apslLeagueId = 1; // Single league ID
     this.data.apslLeagues.set(apslLeagueId, {
       id: apslLeagueId,
+      organization_id: 1,  // APSL organization
       name: 'APSL',
       season: season,
       website_url: this.baseUrl,
@@ -122,7 +123,7 @@ class ApslScraper extends Scraper {
       // Create APSL Conference
       this.data.apslConferences.set(apslConferenceId, {
         id: apslConferenceId,
-        apsl_league_id: apslLeagueId,
+        league_id: apslLeagueId,
         name: confName,
         abbreviation: null,
         sort_order: apslConferenceId
@@ -132,11 +133,13 @@ class ApslScraper extends Scraper {
       const apslDivisionId = divisionCounter++;
       this.data.apslDivisions.set(apslDivisionId, {
         id: apslDivisionId,
-        apsl_conference_id: apslConferenceId,
+        league_id: apslLeagueId,
+        conference_id: apslConferenceId,
         name: confName,
-        age_group: null,
         skill_level: null,
-        gender: null,
+        skill_label: null,
+        source_system_id: 1,  // APSL
+        external_id: `apsl-conf-${apslConferenceId}`,
         sort_order: apslDivisionId
       });
       
@@ -184,12 +187,17 @@ class ApslScraper extends Scraper {
       // Create APSL Team
       this.data.apslTeams.set(apslTeamId, {
           id: apslTeamId,
-          apsl_division_id: apslDivisionId,
+          sport_division_id: null,  // Teams link to divisions via team_divisions junction
           name: normalizedName,
           city: null,
           logo_url: null,
-          apsl_team_id: teamData.apsl_team_id  // Their external ID
+          source_system_id: 1,  // APSL
+          external_id: teamData.apsl_team_id  // Their external ID
       });
+      
+      // Store team-division mapping separately for junction table
+      this.teamDivisions = this.teamDivisions || new Map();
+      this.teamDivisions.set(apslTeamId, apslDivisionId);
 
       this.log(`   ✓ ${normalizedName}${conferenceForLog ? ` (${conferenceForLog.name})` : ''}`);
     }
@@ -201,7 +209,7 @@ class ApslScraper extends Scraper {
     let playerCounter = 1;
     
     for (const [apslTeamId, apslTeam] of this.data.apslTeams.entries()) {
-      const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.apsl_team_id}`;
+      const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.external_id}`;
       
       try {
         const html = await this.fetcher.fetch(teamUrl);
@@ -223,7 +231,7 @@ class ApslScraper extends Scraper {
           
           // Create Player entity (normalized table)
           const playerId = playerCounter++;
-          const externalId = `${apslTeam.apsl_team_id}-${first}-${last}`.toLowerCase().replace(/\s+/g, '-');
+          const externalId = `${apslTeam.external_id}-${first}-${last}`.toLowerCase().replace(/\s+/g, '-');
           
           this.data.apslPlayers.set(playerId, {
               id: playerId,
@@ -252,12 +260,14 @@ class ApslScraper extends Scraper {
             const statsId = playerId; // One stat record per player for now
             const apslPlayerStats = {
               id: statsId,
-              apsl_match_id: null, // Will be populated when we scrape match details
-              apsl_player_id: playerId,  // Now references normalized player_id
+              match_id: null, // Will be populated when we scrape match details
+              player_id: playerId,  // References normalized player_id
+              team_id: apslTeamId,
               goals: stats.goals || 0,
               assists: stats.assists || 0,
               yellow_cards: stats.yellow_cards || 0,
-              red_cards: stats.red_cards || 0
+              red_cards: stats.red_cards || 0,
+              games_played: stats.games_played || 0
             };
             this.data.apslPlayerStats.set(statsId, apslPlayerStats);
           }
@@ -268,7 +278,7 @@ class ApslScraper extends Scraper {
           .filter(s => {
             // Find team_player junction to check if player is on this team
             const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
-              .find(tp => tp.player_id === s.apsl_player_id && tp.team_id === apslTeamId);
+              .find(tp => tp.player_id === s.player_id && tp.team_id === apslTeamId);
             return teamPlayer !== undefined;
           })
           .reduce((sum, s) => sum + s.goals, 0);
@@ -297,7 +307,7 @@ class ApslScraper extends Scraper {
     
     for (const [apslTeamId, apslTeam] of this.data.apslTeams.entries()) {
       try {
-        const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.apsl_team_id}`;
+        const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.external_id}`;
         const html = await this.fetcher.fetch(teamUrl);
         this.parser.parse(html);
         
@@ -332,16 +342,18 @@ class ApslScraper extends Scraper {
           const apslMatchId = matchCounter++;
           const apslMatch = {
             id: apslMatchId,
-            apsl_division_id: apslTeam.apsl_division_id,
+            division_id: this.teamDivisions.get(apslTeamId),
             home_team_id: homeTeamId,
             away_team_id: awayTeamId,
+            match_type_id: 1,  // League match
+            match_status_id: matchData.homeScore !== null ? 3 : 1,  // 3=completed, 1=scheduled  
             match_date: matchData.date,
             match_time: null, // APSL doesn't always provide time
             venue_id: null, // Will need to match venue later
-            status: matchData.matchStatus || 'scheduled',
             home_score: matchData.homeScore,
             away_score: matchData.awayScore,
-            apsl_match_id: matchKey
+            source_system_id: 1,  // APSL
+            external_id: matchKey
           };
           
           this.data.apslMatches.set(matchKey, apslMatch);
@@ -394,8 +406,8 @@ class ApslScraper extends Scraper {
         const statsId = statCounter++;
         const teamStats = {
           id: statsId,
-          apsl_division_id: apslDivisionId,
-          apsl_team_id: apslTeamId,
+          division_id: apslDivisionId,
+          team_id: apslTeamId,
           wins: row.w || 0,
           losses: row.l || 0,
           ties: row.t || 0,
@@ -449,7 +461,7 @@ class ApslScraper extends Scraper {
           data: this.data.apslLeagues,
           options: {
               title: 'APSL Leagues',
-              tableName: 'apsl_leagues',
+              tableName: 'leagues',
               useInserts: true,
               conflictColumns: ['id']
           }
@@ -460,7 +472,7 @@ class ApslScraper extends Scraper {
           data: this.data.apslConferences,
           options: {
               title: 'APSL Conferences',
-              tableName: 'apsl_conferences',
+              tableName: 'conferences',
               useInserts: true,
               conflictColumns: ['id']
           }
@@ -471,7 +483,7 @@ class ApslScraper extends Scraper {
           data: this.data.apslDivisions,
           options: {
               title: 'APSL Divisions',
-              tableName: 'apsl_divisions',
+              tableName: 'divisions',
               useInserts: true,
               conflictColumns: ['id']
           }
@@ -482,12 +494,12 @@ class ApslScraper extends Scraper {
           data: this.data.apslTeams,
           options: {
               title: 'APSL Teams',
-              tableName: 'apsl_teams',
+              tableName: 'teams',
               useInserts: true,
-              conflictColumns: ['apsl_team_id']
+              conflictColumns: ['id']
           }
       },
-      // Players (normalized)
+      // Players (normalized) - MUST come before team_players
       {
           filename: '10a-apsl-5-players.sql',
           data: this.data.apslPlayers,
@@ -498,9 +510,9 @@ class ApslScraper extends Scraper {
               conflictColumns: ['source_system_id', 'external_id']
           }
       },
-      // Team Players (roster junction)
+      // Team Players (roster junction) - MUST come after players
       {
-          filename: '10a-apsl-5b-team-players.sql',
+          filename: '10a-apsl-5z-team-players.sql',
           data: this.data.apslTeamPlayers,
           options: {
               title: 'APSL Team Rosters',
@@ -515,9 +527,9 @@ class ApslScraper extends Scraper {
           data: this.data.apslMatches,
           options: {
               title: 'APSL Matches',
-              tableName: 'apsl_matches',
+              tableName: 'matches',
               useInserts: true,
-              conflictColumns: ['apsl_match_id']
+              conflictColumns: ['id']
           }
       },
       // APSL Player Stats
@@ -526,9 +538,9 @@ class ApslScraper extends Scraper {
           data: this.data.apslPlayerStats,
           options: {
               title: 'APSL Player Statistics',
-              tableName: 'apsl_player_stats',
+              tableName: 'player_stats',
               useInserts: true,
-              conflictColumns: ['id']
+              conflictColumns: ['player_id', 'match_id']
           }
       },
       // APSL Team Stats
@@ -537,9 +549,9 @@ class ApslScraper extends Scraper {
           data: this.data.apslTeamStats,
           options: {
               title: 'APSL Team Statistics',
-              tableName: 'apsl_team_stats',
+              tableName: 'team_stats',
               useInserts: true,
-              conflictColumns: ['apsl_division_id', 'apsl_team_id']
+              conflictColumns: ['team_id', 'match_id']
           }
       }
     ]);
