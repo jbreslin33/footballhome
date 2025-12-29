@@ -2433,11 +2433,12 @@ Response SystemAdminController::handleGetApslDashboard(const Request& request) {
 Response SystemAdminController::handleGetApslDivisions(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT ad.id, ad.name, ac.name as conference_name, al.season "
-            "FROM apsl_divisions ad "
-            "JOIN apsl_conferences ac ON ad.apsl_conference_id = ac.id "
-            "JOIN apsl_leagues al ON ac.apsl_league_id = al.id "
-            "ORDER BY ad.name"
+            "SELECT d.id, d.name, c.name as conference_name, l.season "
+            "FROM divisions d "
+            "JOIN conferences c ON d.conference_id = c.id "
+            "JOIN leagues l ON c.league_id = l.id "
+            "WHERE d.source_system_id = 1 "
+            "ORDER BY d.name"
         );
         std::string json = "[";
         for (size_t i = 0; i < result.size(); ++i) {
@@ -2460,10 +2461,12 @@ Response SystemAdminController::handleGetApslDivisions(const Request& request) {
 Response SystemAdminController::handleGetApslTeams(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT at.id, at.apsl_team_id, at.name, at.city, ad.name as division_name "
-            "FROM apsl_teams at "
-            "LEFT JOIN apsl_divisions ad ON at.apsl_division_id = ad.id "
-            "ORDER BY at.name"
+            "SELECT t.id, t.external_id as apsl_team_id, t.name, t.city, d.name as division_name "
+            "FROM teams t "
+            "LEFT JOIN team_divisions td ON t.id = td.team_id "
+            "LEFT JOIN divisions d ON td.division_id = d.id "
+            "WHERE t.source_system_id = 1 "
+            "ORDER BY t.name"
         );
         std::string json = "[";
         for (size_t i = 0; i < result.size(); ++i) {
@@ -2487,10 +2490,12 @@ Response SystemAdminController::handleGetApslTeams(const Request& request) {
 Response SystemAdminController::handleGetApslPlayers(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT ap.id, ap.apsl_player_id, ap.name, ap.position, ap.jersey_number, at.name as team_name "
-            "FROM apsl_players ap "
-            "LEFT JOIN apsl_teams at ON ap.apsl_team_id = at.id "
-            "ORDER BY ap.name LIMIT 100"
+            "SELECT p.id, p.external_id as apsl_player_id, p.full_name as name, tp.position, tp.jersey_number, t.name as team_name "
+            "FROM players p "
+            "LEFT JOIN team_players tp ON p.id = tp.player_id "
+            "LEFT JOIN teams t ON tp.team_id = t.id "
+            "WHERE p.source_system_id = 1 "
+            "ORDER BY p.full_name LIMIT 100"
         );
         std::string json = "[";
         for (size_t i = 0; i < result.size(); ++i) {
@@ -2515,16 +2520,18 @@ Response SystemAdminController::handleGetApslPlayers(const Request& request) {
 Response SystemAdminController::handleGetApslMatches(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT am.id, am.match_date, "
+            "SELECT m.id, m.match_date, "
             "ht.name as home_team, "
             "at.name as away_team, "
-            "am.home_score, am.away_score, am.status, "
-            "ad.name as division_name "
-            "FROM apsl_matches am "
-            "LEFT JOIN apsl_teams ht ON am.home_team_id = ht.id "
-            "LEFT JOIN apsl_teams at ON am.away_team_id = at.id "
-            "LEFT JOIN apsl_divisions ad ON am.apsl_division_id = ad.id "
-            "ORDER BY am.match_date DESC LIMIT 100"
+            "m.home_score, m.away_score, ms.name as status, "
+            "d.name as division_name "
+            "FROM matches m "
+            "LEFT JOIN teams ht ON m.home_team_id = ht.id "
+            "LEFT JOIN teams at ON m.away_team_id = at.id "
+            "LEFT JOIN divisions d ON m.division_id = d.id "
+            "LEFT JOIN match_statuses ms ON m.match_status_id = ms.id "
+            "WHERE m.source_system_id = 1 "
+            "ORDER BY m.match_date DESC LIMIT 100"
         );
         std::string json = "[";
         for (size_t i = 0; i < result.size(); ++i) {
