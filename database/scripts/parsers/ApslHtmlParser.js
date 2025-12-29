@@ -8,10 +8,11 @@ class ApslHtmlParser extends HtmlParser {
 
     /**
      * Parse per-match player stats from APSL match event page
-     * Returns array of { name, goals, assists, yellow_cards, red_cards, is_starter, sub_in_minute, sub_out_minute, minutes_played }
+     * Returns array of { name, teamName, goals, assists, yellow_cards, red_cards, is_starter, sub_in_minute, sub_out_minute, minutes_played }
      */
     parseMatchPlayerStats() {
       const playerStats = new Map(); // Use map to accumulate stats per player
+      const playerTeams = new Map(); // Track which team each player belongs to
       
       // Step 1: Find "Starter" section and extract starting lineups
       const allText = this.document.body.textContent;
@@ -45,6 +46,13 @@ class ApslHtmlParser extends HtmlParser {
       if (starterTable) {
         const rows = starterTable.querySelectorAll('tr');
         for (const row of rows) {
+          // Check if this row has a team name header
+          const teamHeader = row.querySelector('th');
+          let currentTeamName = null;
+          if (teamHeader) {
+            currentTeamName = teamHeader.textContent.trim();
+          }
+          
           const cells = row.querySelectorAll('td');
           for (const cell of cells) {
             // Player names are separated by <br> tags
@@ -74,6 +82,9 @@ class ApslHtmlParser extends HtmlParser {
                   sub_out_minute: null,
                   minutes_played: 90 // Default for starters
                 });
+                if (currentTeamName) {
+                  playerTeams.set(playerName, currentTeamName);
+                }
               }
             }
           }
@@ -84,6 +95,13 @@ class ApslHtmlParser extends HtmlParser {
       if (substituteTable) {
         const rows = substituteTable.querySelectorAll('tr');
         for (const row of rows) {
+          // Check if this row has a team name header
+          const teamHeader = row.querySelector('th');
+          let currentTeamName = null;
+          if (teamHeader) {
+            currentTeamName = teamHeader.textContent.trim();
+          }
+          
           const cells = row.querySelectorAll('td');
           for (const cell of cells) {
             // Player names are separated by <br> tags
@@ -113,6 +131,9 @@ class ApslHtmlParser extends HtmlParser {
                   sub_out_minute: null,
                   minutes_played: 0
                 });
+                if (currentTeamName) {
+                  playerTeams.set(playerName, currentTeamName);
+                }
               }
             }
           }
@@ -188,7 +209,13 @@ class ApslHtmlParser extends HtmlParser {
         }
       }
       
-      return Array.from(playerStats.values());
+      // Add team name to each player stat
+      const result = Array.from(playerStats.values()).map(stat => ({
+        ...stat,
+        teamName: playerTeams.get(stat.name) || null
+      }));
+      
+      return result;
     }
   /**
    * Parse standings page to extract conferences and divisions

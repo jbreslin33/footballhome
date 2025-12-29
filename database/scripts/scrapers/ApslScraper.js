@@ -35,6 +35,9 @@ class ApslScraper extends Scraper {
     // Conference data cache (with tables for team extraction)
     this.conferences = new Map();
 
+    // Track fetched match URLs to avoid duplicates
+    this.fetchedMatchUrls = new Set();
+
     // Initialize APSL compartmentalized data stores
     this.data.apslLeagues = new Map();
     this.data.apslConferences = new Map();
@@ -295,10 +298,14 @@ class ApslScraper extends Scraper {
 
   async fetchSchedules() {
     this.log('\n📅 Fetching schedules...');
+    const startTime = Date.now();
+    
     let completedMatches = 0;
     let scheduledMatches = 0;
     let matchCounter = 1;
     let playerStatCounter = 1;
+    let skippedDuplicates = 0;
+    let fetchedMatchPages = 0;
 
     // Build opponent name -> apsl_team lookup
     const teamsByName = new Map();
@@ -306,14 +313,22 @@ class ApslScraper extends Scraper {
       teamsByName.set(apslTeam.name, apslTeam);
     }
 
+    let teamCount = 0;
+    const totalTeams = this.data.apslTeams.size;
+
     for (const [apslTeamId, apslTeam] of this.data.apslTeams.entries()) {
+      teamCount++;
+      const teamStartTime = Date.now();
+      
       try {
+        this.log(`   [${teamCount}/${totalTeams}] ${apslTeam.name}...`);
         const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.external_id}`;
         const html = await this.fetcher.fetch(teamUrl);
         this.parser.parse(html);
 
         const schedule = this.parser.parseSchedule();
-        this.log(`   ${apslTeam.name}: ${schedule.length} matches`);
+        const teamFetchTime = ((Date.now() - teamStartTime) / 1000).toFixed(1);
+        this.log(`       → Schedule fetched (${schedule.length} matches, ${teamFetchTime}s)`);
 
         for (const matchData of schedule) {
           // Create unique match ID from date + teams
@@ -359,36 +374,102 @@ class ApslScraper extends Scraper {
 
           this.data.apslMatches.set(matchKey, apslMatch);
 
-          // --- NEW: Fetch per-match player stats ---
+          // --- Fetch per-match player stats (only if not already fetched) ---
           if (matchData.matchStatus === 'completed' && matchData.matchUrl) {
+            const fullMatchUrl = matchData.matchUrl.startsWith('http') 
+              ? matchData.matchUrl 
+              : `${this.baseUrl}${matchData.matchUrl}`;
+            
+            // Skip if we already fetched this match URL
+            if (this.fetchedMatchUrls.has(fullMatchUrl)) {
+              skippedDuplicates++;
+              continue;
+            }
+            
             try {
-              // Ensure matchUrl is absolute
-              const fullMatchUrl = matchData.matchUrl.startsWith('http') 
-                ? matchData.matchUrl 
-                : `${this.baseUrl}${matchData.matchUrl}`;
+              const matchFetchStart = Date.now();
+              this.fetchedMatchUrls.add(fullMatchUrl);
               
               const matchHtml = await this.fetcher.fetch(fullMatchUrl);
               const matchParser = new (require('../parsers/ApslHtmlParser'))();
               matchParser.parse(matchHtml);
               const playerStats = matchParser.parseMatchPlayerStats();
               
-              let matchedCount = 0;
+              const matchFetchTime = ((Date.now() - matchFetchStart) / 1000).toFixed(1);
+              fetchedMatchPages++;
               
+              let matchedCount = 0;
+
               for (const stat of playerStats) {
-                // Robust player name matching (case-insensitive, ignore extra spaces)
+                // Find which team this player belongs to based on teamName from parser
+                let playerTeamId = null;
+                
+                if (stat.teamName) {
+                  const teamMatch = teamsByName.get(stat.teamName);
+                  if (teamMatch) {
+                    playerTeamId = teamMatch.id;
+                  }
+                }
+                
+                // If we couldn't determine team from name, try matching to current team or opponent
+                if (!playerTeamId) {
+                  // Try current team first
+                  const statNameNorm = stat.name.trim().toLowerCase().replace(/\s+/g, ' ');
+                  let player = Array.from(this.data.apslPlayers.values()).find(p => {
+                    // Check if this player is on the current team
+                    const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
+                      .find(tp => tp.player_id === p.id && tp.team_id === apslTeamId);
+                    if (!teamPlayer) return false;
+                    
+                    const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
+                    const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
+                    return statNameNorm === fullName || statNameNorm === altFullName;
+                  });
+                  
+                  if (player) {
+                    playerTeamId = apslTeamId;
+                  } else if (opponentTeam) {
+                    // Try opponent team
+                    player = Array.from(this.data.apslPlayers.values()).find(p => {
+                      // Check if this player is on the opponent team
+                      const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
+                        .find(tp => tp.player_id === p.id && tp.team_id === opponentTeam.id);
+                      if (!teamPlayer) return false;
+                      
+                      const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
+                      const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
+                      return statNameNorm === fullName || statNameNorm === altFullName;
+                    });
+                    
+                    if (player) {
+                      playerTeamId = opponentTeam.id;
+                    }
+                  }
+                }
+                
+                if (!playerTeamId) continue;
+                
+                // Now find the actual player on this team
                 const statNameNorm = stat.name.trim().toLowerCase().replace(/\s+/g, ' ');
                 const player = Array.from(this.data.apslPlayers.values()).find(p => {
+                  // Check if this player is on the identified team
+                  const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
+                    .find(tp => tp.player_id === p.id && tp.team_id === playerTeamId);
+                  if (!teamPlayer) return false;
+                  
                   const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
                   const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
                   return statNameNorm === fullName || statNameNorm === altFullName;
                 });
+                
                 if (!player) continue;
                 matchedCount++;
+                
                 const apslPlayerStat = {
                   id: playerStatCounter++,
                   match_id: apslMatchId,
                   player_id: player.id,
-                  team_id: apslTeamId,
+                  team_id: playerTeamId,
                   goals: stat.goals || 0,
                   assists: stat.assists || 0,
                   yellow_cards: stat.yellow_cards || 0,
@@ -401,6 +482,8 @@ class ApslScraper extends Scraper {
                 };
                 this.data.apslPlayerStats.set(apslPlayerStat.id, apslPlayerStat);
               }
+              
+              this.log(`       → Match stats: ${playerStats.length} players, ${matchedCount} matched (${matchFetchTime}s)`);
             } catch (err) {
               this.logError(`Failed to fetch player stats for match ${matchKey}`, err);
             }
@@ -417,8 +500,12 @@ class ApslScraper extends Scraper {
       }
     }
 
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
     this.log(`   ✓ ${completedMatches} completed matches with scores`);
     this.log(`   ✓ ${scheduledMatches} scheduled matches`);
+    this.log(`   ✓ ${fetchedMatchPages} match pages fetched`);
+    this.log(`   ✓ ${skippedDuplicates} duplicate matches skipped`);
+    this.log(`   ⏱ Total schedule fetch time: ${totalTime}s`);
   }
 
   async fetchStandings() {
@@ -610,6 +697,10 @@ class ApslScraper extends Scraper {
   }
 
   async cleanup() {
+    // Close Puppeteer browser if open
+    if (this.fetcher && this.fetcher.close) {
+      await this.fetcher.close();
+    }
     this.parser.destroy();
   }
 
