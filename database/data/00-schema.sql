@@ -1,22 +1,26 @@
 -- Football Home Database Schema - Fully Normalized Architecture
--- Version: 6.0 - Single Source of Truth + Chat System
+-- Version: 6.2 - Normalized Users/Players/Chats + External Integrations
 --
 -- Architecture:
--- 1. Lookup Tables - Reference data for all enums
+-- 1. Lookup Tables - Reference data for all enums (age calculation, chat providers, etc.)
 -- 2. Governing Body Hierarchy - FIFA → Confederations → National → Regional → State
--- 3. Organizations & Leagues - APSL, CASA, Custom leagues
--- 4. Football Home Identity - Users, clubs, sport divisions
--- 5. Unified League Data - Single tables for teams, players, matches, stats
--- 6. Chat System - Built-in messaging and communication
+-- 3. Organizations & Leagues - APSL, CASA, Custom leagues with age/sex attributes
+-- 4. Football Home Identity - Users (member/provisional/bot), clubs, sport divisions
+-- 5. Unified League Data - Teams, players (entities), rosters (junctions)
+-- 6. Chat System - Generic messaging with external platform integrations
 -- 7. Player Identity - Junction tables linking users to league players
--- 8. GroupMe Integration - External chat platform data
--- 9. Supporting Tables - Venues, audit log
+-- 8. Supporting Tables - Venues, audit log
 --
 -- Key Principles:
 -- - NO table duplication (no apsl_* vs casa_*) - differentiate by FKs
 -- - ALL text enums replaced with lookup tables
--- - Chat members = users only (no OR logic)
--- - Single matches table for all match types
+-- - Leagues = age + sex groupings, Divisions = skill tiers
+-- - Teams join divisions via team_divisions, rosters via team_players
+-- - Players = entities (data from scraping), Users = participants (can interact)
+-- - Users can have multiple emails/phones (junction tables)
+-- - External identities (GroupMe, Discord) link to provisional/member users
+-- - Chats are platform-agnostic with optional external integrations
+-- - Chat events (practices, games, social) with RSVPs
 -- - Source tracking via source_system_id + external_id
 
 -- Create database extensions
@@ -163,6 +167,38 @@ INSERT INTO source_systems (id, name, description, is_active) VALUES
     (4, 'groupme', 'GroupMe integration', true)
 ON CONFLICT (id) DO NOTHING;
 
+CREATE TABLE chat_providers (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    is_active BOOLEAN DEFAULT true
+);
+
+INSERT INTO chat_providers (id, name, description, is_active) VALUES
+    (1, 'groupme', 'GroupMe messaging platform', true),
+    (2, 'discord', 'Discord chat platform', true),
+    (3, 'slack', 'Slack workspace', true),
+    (4, 'teamsnap', 'TeamSnap messaging', true),
+    (5, 'whatsapp', 'WhatsApp groups', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE age_calculation_methods (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0
+);
+
+INSERT INTO age_calculation_methods (id, name, description, sort_order) VALUES
+    (1, 'birth_year', 'Age based on birth year (e.g., "Over 40" = born 1984 or earlier)', 1),
+    (2, 'age_on_date', 'Age as of specific cutoff date (e.g., Sept 1, Aug 1)', 2),
+    (3, 'calendar_year', 'Age during calendar year', 3),
+    (4, 'grade_based', 'Based on school grade level', 4),
+    (5, 'minimum_age', 'Minimum age requirement only (e.g., "Over 40")', 5),
+    (6, 'age_range', 'Specific age range (e.g., "U19" = under 19)', 6),
+    (7, 'open', 'No age restriction', 7)
+ON CONFLICT (id) DO NOTHING;
+
 -- ============================================================================
 -- 2. GOVERNING BODY HIERARCHY
 -- ============================================================================
@@ -238,6 +274,17 @@ CREATE TABLE leagues (
     season VARCHAR(50) NOT NULL,
     website_url TEXT,
     affiliation VARCHAR(100),
+    
+    -- Age attributes (leagues define age groupings)
+    age_calculation_method_id INTEGER REFERENCES age_calculation_methods(id),
+    age_min INTEGER,  -- For "Over 40" leagues (minimum age)
+    age_max INTEGER,  -- For "U19" leagues (maximum age)
+    age_cutoff_month_day VARCHAR(5),  -- '09-01', '08-01' for school year cutoffs
+    age_display_label VARCHAR(50),  -- 'Over 40', 'U19', 'Open', etc.
+    
+    -- Sex restriction (leagues define gender groupings)
+    sex_restriction VARCHAR(20) CHECK (sex_restriction IN ('men', 'women', 'coed', 'mixed', 'open')),
+    
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100),
     is_active BOOLEAN DEFAULT true,
@@ -247,6 +294,7 @@ CREATE TABLE leagues (
 
 CREATE INDEX idx_leagues_organization ON leagues(organization_id);
 CREATE INDEX idx_leagues_source ON leagues(source_system_id);
+CREATE INDEX idx_leagues_age_method ON leagues(age_calculation_method_id);
 
 CREATE TABLE conferences (
     id SERIAL PRIMARY KEY,
@@ -263,23 +311,26 @@ CREATE TABLE conferences (
 CREATE INDEX idx_conferences_league ON conferences(league_id);
 CREATE INDEX idx_conferences_source ON conferences(source_system_id);
 
-CREATE TABLE league_divisions (
+CREATE TABLE divisions (
     id SERIAL PRIMARY KEY,
     league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     conference_id INTEGER REFERENCES conferences(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    age_group VARCHAR(50),
-    skill_level VARCHAR(50),
-    gender VARCHAR(20),
+    
+    -- Skill level (divisions define competitive tiers)
+    skill_level INTEGER,  -- 1=highest (Premier/Division 1), 2=mid, 3=rec
+    skill_label VARCHAR(50),  -- 'Premier', 'Division 1', 'Championship', etc.
+    
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100),
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_league_divisions_league ON league_divisions(league_id);
-CREATE INDEX idx_league_divisions_conference ON league_divisions(conference_id);
-CREATE INDEX idx_league_divisions_source ON league_divisions(source_system_id);
+CREATE INDEX idx_divisions_league ON divisions(league_id);
+CREATE INDEX idx_divisions_conference ON divisions(conference_id);
+CREATE INDEX idx_divisions_source ON divisions(source_system_id);
+CREATE INDEX idx_divisions_skill ON divisions(skill_level);
 
 -- ============================================================================
 -- 4. FOOTBALLHOME IDENTITY SYSTEM
@@ -287,18 +338,71 @@ CREATE INDEX idx_league_divisions_source ON league_divisions(source_system_id);
 
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
+    user_type VARCHAR(20) NOT NULL DEFAULT 'member' CHECK (user_type IN ('member', 'provisional', 'bot')),
+    password_hash TEXT,  -- Nullable for provisional users
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20),
     is_active BOOLEAN DEFAULT true,
     last_login_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_type ON users(user_type);
+
+-- User emails (junction table)
+CREATE TABLE user_emails (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    email_type VARCHAR(20) CHECK (email_type IN ('personal', 'work', 'other')),
+    is_primary BOOLEAN DEFAULT false,
+    is_verified BOOLEAN DEFAULT false,
+    verified_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, email)
+);
+
+CREATE INDEX idx_user_emails_user ON user_emails(user_id);
+CREATE INDEX idx_user_emails_email ON user_emails(email);
+CREATE INDEX idx_user_emails_primary ON user_emails(user_id, is_primary) WHERE is_primary = true;
+
+-- User phone numbers (junction table)
+CREATE TABLE user_phones (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    phone_number VARCHAR(20) UNIQUE NOT NULL,
+    phone_type VARCHAR(20) CHECK (phone_type IN ('mobile', 'home', 'work', 'other')),
+    is_primary BOOLEAN DEFAULT false,
+    is_verified BOOLEAN DEFAULT false,
+    verified_at TIMESTAMP,
+    can_receive_sms BOOLEAN DEFAULT true,
+    can_receive_calls BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, phone_number)
+);
+
+CREATE INDEX idx_user_phones_user ON user_phones(user_id);
+CREATE INDEX idx_user_phones_number ON user_phones(phone_number);
+CREATE INDEX idx_user_phones_primary ON user_phones(user_id, is_primary) WHERE is_primary = true;
+
+-- External identities (GroupMe, Discord, etc.)
+CREATE TABLE external_identities (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider_id INTEGER NOT NULL REFERENCES chat_providers(id),
+    external_user_id VARCHAR(255) NOT NULL,
+    external_username VARCHAR(255),
+    external_display_name VARCHAR(255),
+    external_avatar_url TEXT,
+    last_synced_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(provider_id, external_user_id)
+);
+
+CREATE INDEX idx_external_identities_user ON external_identities(user_id);
+CREATE INDEX idx_external_identities_provider ON external_identities(provider_id);
+CREATE INDEX idx_external_identities_external ON external_identities(provider_id, external_user_id);
 
 CREATE TABLE admins (
     id SERIAL PRIMARY KEY,
@@ -371,34 +475,64 @@ CREATE INDEX idx_sport_division_groups_type ON sport_division_groups(group_type_
 -- 5. UNIFIED LEAGUE DATA (Replaces all apsl_*, casa_*, custom_* tables)
 -- ============================================================================
 
-CREATE TABLE league_teams (
+CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
-    division_id INTEGER NOT NULL REFERENCES league_divisions(id) ON DELETE CASCADE,
+    club_id INTEGER REFERENCES clubs(id),
+    sport_division_id INTEGER REFERENCES sport_divisions(id),
     name VARCHAR(255) NOT NULL,
     city VARCHAR(100),
     logo_url TEXT,
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100) UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(division_id, name)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_league_teams_division ON league_teams(division_id);
-CREATE INDEX idx_league_teams_source ON league_teams(source_system_id);
+CREATE INDEX idx_teams_club ON teams(club_id);
+CREATE INDEX idx_teams_sport_division ON teams(sport_division_id);
+CREATE INDEX idx_teams_source ON teams(source_system_id);
 
-CREATE TABLE league_players (
+-- Junction table linking teams to league divisions
+CREATE TABLE team_divisions (
     id SERIAL PRIMARY KEY,
-    team_id INTEGER NOT NULL REFERENCES league_teams(id) ON DELETE CASCADE,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
+    season_id INTEGER,  -- For future: track historical membership
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(team_id, division_id)
+);
+
+CREATE INDEX idx_team_divisions_team ON team_divisions(team_id);
+CREATE INDEX idx_team_divisions_division ON team_divisions(division_id);
+
+CREATE TABLE players (
+    id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    jersey_number VARCHAR(10),
-    position VARCHAR(50),
+    birth_year INTEGER,
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_league_players_team ON league_players(team_id);
-CREATE INDEX idx_league_players_source ON league_players(source_system_id);
+CREATE INDEX idx_players_source ON players(source_system_id);
+CREATE INDEX idx_players_birth_year ON players(birth_year);
+
+-- Team rosters (junction table)
+CREATE TABLE team_players (
+    id SERIAL PRIMARY KEY,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    jersey_number VARCHAR(10),
+    position VARCHAR(50),
+    is_active BOOLEAN DEFAULT true,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    left_at TIMESTAMP,
+    UNIQUE(team_id, player_id)
+);
+
+CREATE INDEX idx_team_players_team ON team_players(team_id);
+CREATE INDEX idx_team_players_player ON team_players(player_id);
+CREATE INDEX idx_team_players_active ON team_players(team_id, is_active) WHERE is_active = true;
 
 CREATE TABLE coaches (
     id SERIAL PRIMARY KEY,
@@ -416,7 +550,7 @@ CREATE INDEX idx_coaches_source ON coaches(source_system_id);
 
 CREATE TABLE team_coaches (
     id SERIAL PRIMARY KEY,
-    team_id INTEGER NOT NULL REFERENCES league_teams(id) ON DELETE CASCADE,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     coach_id INTEGER NOT NULL REFERENCES coaches(id) ON DELETE CASCADE,
     coach_role_id INTEGER REFERENCES coach_roles(id),
     is_active BOOLEAN DEFAULT true,
@@ -447,9 +581,9 @@ CREATE TABLE venues (
 CREATE TABLE matches (
     id SERIAL PRIMARY KEY,
     match_type_id INTEGER NOT NULL REFERENCES match_types(id),
-    division_id INTEGER REFERENCES league_divisions(id),
-    home_team_id INTEGER REFERENCES league_teams(id),
-    away_team_id INTEGER REFERENCES league_teams(id),
+    division_id INTEGER REFERENCES divisions(id),
+    home_team_id INTEGER REFERENCES teams(id),
+    away_team_id INTEGER REFERENCES teams(id),
     match_date DATE NOT NULL,
     match_time TIME,
     venue_id INTEGER REFERENCES venues(id),
@@ -475,7 +609,7 @@ CREATE INDEX idx_matches_source ON matches(source_system_id);
 CREATE TABLE player_match_stats (
     id SERIAL PRIMARY KEY,
     match_id INTEGER REFERENCES matches(id) ON DELETE CASCADE,
-    player_id INTEGER NOT NULL REFERENCES league_players(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     goals INTEGER DEFAULT 0,
     assists INTEGER DEFAULT 0,
     yellow_cards INTEGER DEFAULT 0,
@@ -489,8 +623,8 @@ CREATE INDEX idx_player_match_stats_player ON player_match_stats(player_id);
 
 CREATE TABLE team_standings (
     id SERIAL PRIMARY KEY,
-    division_id INTEGER NOT NULL REFERENCES league_divisions(id) ON DELETE CASCADE,
-    team_id INTEGER NOT NULL REFERENCES league_teams(id) ON DELETE CASCADE,
+    division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     wins INTEGER DEFAULT 0,
     losses INTEGER DEFAULT 0,
     ties INTEGER DEFAULT 0,
@@ -511,6 +645,7 @@ CREATE INDEX idx_team_standings_team ON team_standings(team_id);
 
 CREATE TABLE chats (
     id SERIAL PRIMARY KEY,
+    team_id INTEGER REFERENCES teams(id),  -- Optional: link to team if chat is for a team
     name VARCHAR(255) NOT NULL,
     description TEXT,
     chat_type_id INTEGER REFERENCES chat_types(id),
@@ -520,8 +655,29 @@ CREATE TABLE chats (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX idx_chats_team ON chats(team_id);
 CREATE INDEX idx_chats_type ON chats(chat_type_id);
 CREATE INDEX idx_chats_created_by ON chats(created_by_user_id);
+
+-- Chat integrations with external platforms
+CREATE TABLE chat_integrations (
+    id SERIAL PRIMARY KEY,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    provider_id INTEGER NOT NULL REFERENCES chat_providers(id),
+    external_id VARCHAR(255) NOT NULL,  -- GroupMe group_id, Discord channel_id, etc.
+    external_name VARCHAR(255),
+    is_primary BOOLEAN DEFAULT false,  -- Which system is source of truth
+    sync_messages BOOLEAN DEFAULT false,
+    sync_members BOOLEAN DEFAULT false,
+    sync_events BOOLEAN DEFAULT false,
+    last_synced_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(provider_id, external_id)
+);
+
+CREATE INDEX idx_chat_integrations_chat ON chat_integrations(chat_id);
+CREATE INDEX idx_chat_integrations_provider ON chat_integrations(provider_id);
+CREATE INDEX idx_chat_integrations_primary ON chat_integrations(chat_id, is_primary) WHERE is_primary = true;
 
 -- Simple: chat members are users, that's it
 CREATE TABLE chat_members (
@@ -549,19 +705,41 @@ CREATE INDEX idx_chat_messages_chat ON chat_messages(chat_id);
 CREATE INDEX idx_chat_messages_user ON chat_messages(user_id);
 CREATE INDEX idx_chat_messages_created ON chat_messages(created_at DESC);
 
--- RSVPs for ANY match (league, custom, practice)
-CREATE TABLE match_rsvps (
+-- Chat events (games, practices, social events posted in chats)
+CREATE TABLE chat_events (
     id SERIAL PRIMARY KEY,
-    match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    rsvp_status_id INTEGER NOT NULL REFERENCES rsvp_statuses(id),
-    responded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(match_id, user_id)
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    match_id INTEGER REFERENCES matches(id),  -- Optional: link to official match
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    location VARCHAR(255),
+    event_date DATE,
+    event_time TIME,
+    created_by_user_id INTEGER REFERENCES users(id),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_match_rsvps_match ON match_rsvps(match_id);
-CREATE INDEX idx_match_rsvps_user ON match_rsvps(user_id);
-CREATE INDEX idx_match_rsvps_status ON match_rsvps(rsvp_status_id);
+CREATE INDEX idx_chat_events_chat ON chat_events(chat_id);
+CREATE INDEX idx_chat_events_match ON chat_events(match_id);
+CREATE INDEX idx_chat_events_date ON chat_events(event_date);
+CREATE INDEX idx_chat_events_created_by ON chat_events(created_by_user_id);
+
+-- RSVPs for chat events
+CREATE TABLE chat_event_rsvps (
+    id SERIAL PRIMARY KEY,
+    chat_event_id INTEGER NOT NULL REFERENCES chat_events(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    rsvp_status_id INTEGER NOT NULL REFERENCES rsvp_statuses(id),
+    response_note TEXT,
+    responded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(chat_event_id, user_id)
+);
+
+CREATE INDEX idx_chat_event_rsvps_event ON chat_event_rsvps(chat_event_id);
+CREATE INDEX idx_chat_event_rsvps_user ON chat_event_rsvps(user_id);
+CREATE INDEX idx_chat_event_rsvps_status ON chat_event_rsvps(rsvp_status_id);
 
 -- Now add the FK for created_by_chat_id
 ALTER TABLE matches ADD CONSTRAINT fk_matches_chat 
@@ -576,7 +754,7 @@ CREATE INDEX idx_matches_chat ON matches(created_by_chat_id);
 -- Link users to league players (user claims "I am this player")
 CREATE TABLE player_users (
     id SERIAL PRIMARY KEY,
-    player_id INTEGER NOT NULL REFERENCES league_players(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     verified BOOLEAN DEFAULT false,
     verified_by INTEGER REFERENCES users(id),
@@ -591,102 +769,17 @@ CREATE INDEX idx_player_users_user ON player_users(user_id);
 CREATE TABLE group_teams (
     id SERIAL PRIMARY KEY,
     sport_division_group_id INTEGER NOT NULL REFERENCES sport_division_groups(id) ON DELETE CASCADE,
-    league_team_id INTEGER NOT NULL REFERENCES league_teams(id) ON DELETE CASCADE,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(sport_division_group_id, league_team_id)
+    UNIQUE(sport_division_group_id, team_id)
 );
 
 CREATE INDEX idx_group_teams_group ON group_teams(sport_division_group_id);
-CREATE INDEX idx_group_teams_team ON group_teams(league_team_id);
+CREATE INDEX idx_group_teams_team ON group_teams(team_id);
 
 -- ============================================================================
--- 8. GROUPME INTEGRATION
+-- 8. SUPPORTING TABLES
 -- ============================================================================
-
-CREATE TABLE groupme_groups (
-    id SERIAL PRIMARY KEY,
-    groupme_group_id VARCHAR(100) NOT NULL UNIQUE,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    image_url TEXT,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_groupme_groups_active ON groupme_groups(is_active);
-
-CREATE TABLE groupme_members (
-    id SERIAL PRIMARY KEY,
-    groupme_group_id INTEGER NOT NULL REFERENCES groupme_groups(id) ON DELETE CASCADE,
-    groupme_user_id VARCHAR(100) NOT NULL,
-    user_id INTEGER REFERENCES users(id),
-    nickname VARCHAR(255),
-    image_url TEXT,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(groupme_group_id, groupme_user_id)
-);
-
-CREATE INDEX idx_groupme_members_group ON groupme_members(groupme_group_id);
-CREATE INDEX idx_groupme_members_user ON groupme_members(user_id);
-
-CREATE TABLE groupme_messages (
-    id SERIAL PRIMARY KEY,
-    groupme_message_id VARCHAR(100) NOT NULL UNIQUE,
-    groupme_group_id INTEGER NOT NULL REFERENCES groupme_groups(id) ON DELETE CASCADE,
-    groupme_member_id INTEGER REFERENCES groupme_members(id),
-    text TEXT,
-    created_at_groupme TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_groupme_messages_group ON groupme_messages(groupme_group_id);
-CREATE INDEX idx_groupme_messages_created ON groupme_messages(created_at_groupme DESC);
-
-CREATE TABLE groupme_events (
-    id SERIAL PRIMARY KEY,
-    groupme_event_id VARCHAR(100) NOT NULL UNIQUE,
-    groupme_group_id INTEGER NOT NULL REFERENCES groupme_groups(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    location VARCHAR(255),
-    start_time TIMESTAMP,
-    end_time TIMESTAMP,
-    created_by_member_id INTEGER REFERENCES groupme_members(id),
-    match_id INTEGER REFERENCES matches(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_groupme_events_group ON groupme_events(groupme_group_id);
-CREATE INDEX idx_groupme_events_match ON groupme_events(match_id);
-CREATE INDEX idx_groupme_events_start ON groupme_events(start_time);
-
-CREATE TABLE groupme_event_rsvps (
-    id SERIAL PRIMARY KEY,
-    groupme_event_id INTEGER NOT NULL REFERENCES groupme_events(id) ON DELETE CASCADE,
-    groupme_member_id INTEGER NOT NULL REFERENCES groupme_members(id) ON DELETE CASCADE,
-    rsvp_status_id INTEGER NOT NULL REFERENCES rsvp_statuses(id),
-    responded_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(groupme_event_id, groupme_member_id)
-);
-
-CREATE INDEX idx_groupme_rsvps_event ON groupme_event_rsvps(groupme_event_id);
-CREATE INDEX idx_groupme_rsvps_status ON groupme_event_rsvps(rsvp_status_id);
-
--- Link GroupMe groups to sport division groups
-CREATE TABLE group_groupme_groups (
-    id SERIAL PRIMARY KEY,
-    sport_division_group_id INTEGER NOT NULL REFERENCES sport_division_groups(id) ON DELETE CASCADE,
-    groupme_group_id INTEGER NOT NULL REFERENCES groupme_groups(id) ON DELETE CASCADE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(sport_division_group_id, groupme_group_id)
-);
-
-CREATE INDEX idx_group_groupme_groups_group ON group_groupme_groups(sport_division_group_id);
-CREATE INDEX idx_group_groupme_groups_groupme ON group_groupme_groups(groupme_group_id);
 
 -- ============================================================================
 -- 9. SUPPORTING TABLES
@@ -709,14 +802,25 @@ CREATE INDEX idx_audit_log_changed_at ON audit_log(changed_at DESC);
 -- ============================================================================
 -- SUMMARY
 -- ============================================================================
--- Lookup Tables: 10 (match_types, match_statuses, rsvp_statuses, etc.)
+-- SCHEMA SUMMARY (Version 6.2 - Normalized Users/Players/Chats)
+-- ============================================================================
+-- Lookup Tables: 12 (match_types, match_statuses, rsvp_statuses, age_calculation_methods, chat_providers, etc.)
 -- Governing Bodies: 3 tables
--- Organizations & Leagues: 4 tables (organizations, leagues, conferences, league_divisions)
--- FootballHome Identity: 7 tables (users, admins, clubs, club_admins, sport_divisions, sport_division_groups)
--- Unified League Data: 8 tables (league_teams, league_players, coaches, team_coaches, matches, player_match_stats, team_standings, venues)
--- Chat System: 4 tables (chats, chat_members, chat_messages, match_rsvps)
+-- Organizations & Leagues: 4 tables (organizations, leagues, conferences, divisions)
+-- FootballHome Identity: 10 tables (users, user_emails, user_phones, external_identities, admins, clubs, club_admins, sport_divisions, sport_division_groups)
+-- Unified League Data: 10 tables (teams, team_divisions, players, team_players, coaches, team_coaches, matches, player_match_stats, team_standings, venues)
+-- Chat System: 7 tables (chats, chat_integrations, chat_members, chat_messages, chat_events, chat_event_rsvps)
 -- Player Identity: 2 junction tables (player_users, group_teams)
--- GroupMe Integration: 6 tables
 -- Supporting: 1 table (audit_log)
--- TOTAL: ~45 tables (down from 54!) - Eliminated all duplication!
+-- TOTAL: ~49 tables
+--
+-- Key Architecture:
+-- - Leagues = Age + Sex groupings (e.g., "Men's Over 40", "Women's U19")
+-- - Divisions = Skill tiers within leagues (Premier, Division 1, 2, 3)
+-- - Players = roster entities (from scraping), Users = participants (interact with system)
+-- - Users have provisional/member/bot types, multiple emails/phones via junctions
+-- - Teams → team_divisions (league membership), team_players (rosters)
+-- - Chats are platform-agnostic with chat_integrations to external providers
+-- - Chat events with optional match_id link + chat_event_rsvps
+-- - No platform-specific tables (GroupMe, Discord data in generic structure)
 -- ============================================================================

@@ -65,17 +65,18 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
     
     try {
         // Query database for user by email with admin info and club info
-        // New schema: users -> admins (admin_level_id FK) -> admin_levels (name)
+        // New schema: users -> user_emails (junction) -> admins (admin_level_id FK) -> admin_levels (name)
         // club_admins links admins.id to clubs
-        std::string sql = "SELECT u.id, u.email, u.first_name, u.last_name, u.password_hash, "
+        std::string sql = "SELECT u.id, ue.email, u.first_name, u.last_name, u.password_hash, "
                          "COALESCE(al.name, 'user') as admin_level, "
                          "ca.club_id, c.display_name as club_name "
                          "FROM users u "
+                         "JOIN user_emails ue ON u.id = ue.user_id "
                          "LEFT JOIN admins a ON u.id = a.user_id "
                          "LEFT JOIN admin_levels al ON a.admin_level_id = al.id "
                          "LEFT JOIN club_admins ca ON a.id = ca.admin_id AND ca.is_active = true "
                          "LEFT JOIN clubs c ON ca.club_id = c.id "
-                         "WHERE u.email = $1 "
+                         "WHERE ue.email = $1 AND ue.is_verified = true "
                          "LIMIT 1";
         
         pqxx::result result = executeQuery(sql, {email});
