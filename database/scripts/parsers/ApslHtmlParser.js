@@ -7,12 +7,13 @@ const HtmlParser = require('./HtmlParser');
 class ApslHtmlParser extends HtmlParser {
 
     /**
-     * Parse per-match player stats from APSL match event page
-     * Returns array of { name, teamName, goals, assists, yellow_cards, red_cards, is_starter, sub_in_minute, sub_out_minute, minutes_played }
+     * Parse per-match events from APSL match event page
+     * Returns array of individual events: { player_name, team_name, event_type, minute, assisted_by }
      */
     parseMatchPlayerStats() {
-      const playerStats = new Map(); // Use map to accumulate stats per player
+      const events = []; // Array of individual events
       const playerTeams = new Map(); // Track which team each player belongs to
+      const playersInMatch = new Set(); // Track all players who played
       
       // Step 1: Find "Starter" section and extract starting lineups
       const allText = this.document.body.textContent;
@@ -42,11 +43,10 @@ class ApslHtmlParser extends HtmlParser {
         }
       }
       
-      // Parse starters
+      // Parse starters - track team membership
       if (starterTable) {
         const rows = starterTable.querySelectorAll('tr');
         for (const row of rows) {
-          // Check if this row has a team name header
           const teamHeader = row.querySelector('th');
           let currentTeamName = null;
           if (teamHeader) {
@@ -55,47 +55,28 @@ class ApslHtmlParser extends HtmlParser {
           
           const cells = row.querySelectorAll('td');
           for (const cell of cells) {
-            // Player names are separated by <br> tags
             const html = cell.innerHTML;
             const playerNames = html.split('<br>')
-              .map(name => name.replace(/<[^>]*>/g, '').trim())
-              .filter(name => {
-                // Filter out team names, headers, and short strings
-                return name && 
-                       name.length > 2 && 
-                       name !== 'Starter' &&
-                       !name.includes(' SC') && 
-                       !name.includes(' FC') && 
-                       !name.includes('Soccer Club') &&
-                       !name.includes('United');
-              });
+              .map(n => n.replace(/<[^>]*>/g, '').trim())
+              .filter(n => n && 
+                       n !== currentTeamName &&
+                       !n.includes('SC') && 
+                       !n.includes('FC') && 
+                       !n.includes('United'));
             for (const playerName of playerNames) {
-              if (!playerStats.has(playerName)) {
-                playerStats.set(playerName, {
-                  name: playerName,
-                  goals: 0,
-                  assists: 0,
-                  yellow_cards: 0,
-                  red_cards: 0,
-                  is_starter: true,
-                  sub_in_minute: null,
-                  sub_out_minute: null,
-                  minutes_played: null
-                });
-                if (currentTeamName) {
-                  playerTeams.set(playerName, currentTeamName);
-                }
+              playersInMatch.add(playerName);
+              if (currentTeamName) {
+                playerTeams.set(playerName, currentTeamName);
               }
             }
           }
         }
       }
       
-      // Parse substitutes
+      // Parse substitutes - track team membership
       if (substituteTable) {
         const rows = substituteTable.querySelectorAll('tr');
         for (const row of rows) {
-          // Check if this row has a team name header
           const teamHeader = row.querySelector('th');
           let currentTeamName = null;
           if (teamHeader) {
@@ -104,36 +85,18 @@ class ApslHtmlParser extends HtmlParser {
           
           const cells = row.querySelectorAll('td');
           for (const cell of cells) {
-            // Player names are separated by <br> tags
             const html = cell.innerHTML;
             const playerNames = html.split('<br>')
-              .map(name => name.replace(/<[^>]*>/g, '').trim())
-              .filter(name => {
-                // Filter out team names, headers, and short strings
-                return name && 
-                       name.length > 2 && 
-                       name !== 'Substitute' &&
-                       !name.includes(' SC') && 
-                       !name.includes(' FC') && 
-                       !name.includes('Soccer Club') &&
-                       !name.includes('United');
-              });
+              .map(n => n.replace(/<[^>]*>/g, '').trim())
+              .filter(n => n && 
+                       n !== currentTeamName &&
+                       !n.includes('SC') && 
+                       !n.includes('FC') && 
+                       !n.includes('United'));
             for (const playerName of playerNames) {
-              if (!playerStats.has(playerName)) {
-                playerStats.set(playerName, {
-                  name: playerName,
-                  goals: 0,
-                  assists: 0,
-                  yellow_cards: 0,
-                  red_cards: 0,
-                  is_starter: false,
-                  sub_in_minute: null,
-                  sub_out_minute: null,
-                  minutes_played: null
-                });
-                if (currentTeamName) {
-                  playerTeams.set(playerName, currentTeamName);
-                }
+              playersInMatch.add(playerName);
+              if (currentTeamName) {
+                playerTeams.set(playerName, currentTeamName);
               }
             }
           }
@@ -154,12 +117,18 @@ class ApslHtmlParser extends HtmlParser {
               const text = cell.textContent.trim();
               
               // Goal: "Player Name (Goal)"
-              if (text.includes('Goal')) {
+              if (text.includes('Goal') && text.includes('(')) {
                 const match = text.match(/^(.+?)\s*\(Goal\)/);
                 if (match) {
                   const playerName = match[1].trim();
-                  if (playerStats.has(playerName)) {
-                    playerStats.get(playerName).goals++;
+                  if (playersInMatch.has(playerName)) {
+                    events.push({
+                      player_name: playerName,
+                      team_name: playerTeams.get(playerName) || null,
+                      event_type: 'goal',
+                      minute: minute,
+                      assisted_by: null
+                    });
                   }
                 }
               }
@@ -169,8 +138,14 @@ class ApslHtmlParser extends HtmlParser {
                 const match = text.match(/^(.+?)\s*\(Yellow Card\)/);
                 if (match) {
                   const playerName = match[1].trim();
-                  if (playerStats.has(playerName)) {
-                    playerStats.get(playerName).yellow_cards++;
+                  if (playersInMatch.has(playerName)) {
+                    events.push({
+                      player_name: playerName,
+                      team_name: playerTeams.get(playerName) || null,
+                      event_type: 'yellow_card',
+                      minute: minute,
+                      assisted_by: null
+                    });
                   }
                 }
               }
@@ -180,8 +155,14 @@ class ApslHtmlParser extends HtmlParser {
                 const match = text.match(/^(.+?)\s*\(Red Card\)/);
                 if (match) {
                   const playerName = match[1].trim();
-                  if (playerStats.has(playerName)) {
-                    playerStats.get(playerName).red_cards++;
+                  if (playersInMatch.has(playerName)) {
+                    events.push({
+                      player_name: playerName,
+                      team_name: playerTeams.get(playerName) || null,
+                      event_type: 'red_card',
+                      minute: minute,
+                      assisted_by: null
+                    });
                   }
                 }
               }
@@ -193,12 +174,24 @@ class ApslHtmlParser extends HtmlParser {
                   const playerOut = match[1].trim();
                   const playerIn = match[2].trim();
                   
-                  if (playerStats.has(playerOut)) {
-                    playerStats.get(playerOut).sub_out_minute = minute;
+                  if (playersInMatch.has(playerOut)) {
+                    events.push({
+                      player_name: playerOut,
+                      team_name: playerTeams.get(playerOut) || null,
+                      event_type: 'sub_out',
+                      minute: minute,
+                      assisted_by: null
+                    });
                   }
                   
-                  if (playerStats.has(playerIn)) {
-                    playerStats.get(playerIn).sub_in_minute = minute;
+                  if (playersInMatch.has(playerIn)) {
+                    events.push({
+                      player_name: playerIn,
+                      team_name: playerTeams.get(playerIn) || null,
+                      event_type: 'sub_in',
+                      minute: minute,
+                      assisted_by: null
+                    });
                   }
                 }
               }
@@ -207,13 +200,7 @@ class ApslHtmlParser extends HtmlParser {
         }
       }
       
-      // Add team name to each player stat
-      const result = Array.from(playerStats.values()).map(stat => ({
-        ...stat,
-        teamName: playerTeams.get(stat.name) || null
-      }));
-      
-      return result;
+      return events;
     }
   /**
    * Parse standings page to extract conferences and divisions

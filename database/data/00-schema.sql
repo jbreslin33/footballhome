@@ -645,12 +645,53 @@ CREATE INDEX idx_team_stats_team ON team_stats(team_id);
 CREATE INDEX idx_team_stats_division ON team_stats(division_id);
 CREATE INDEX idx_team_stats_match ON team_stats(match_id);
 
--- Player stats (comprehensive player statistics)
-CREATE TABLE player_stats (
+-- ============================================================================
+-- 5d. MATCH EVENTS (Event Sourcing Architecture)
+-- ============================================================================
+
+-- Lookup table for event types (normalized)
+CREATE TABLE match_event_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    icon VARCHAR(10),
+    sort_order INTEGER DEFAULT 0
+);
+
+INSERT INTO match_event_types (id, name, description, icon, sort_order) VALUES
+    (1, 'goal', 'Goal scored', '⚽', 1),
+    (2, 'assist', 'Assist on goal', '🅰️', 2),
+    (3, 'yellow_card', 'Yellow card received', '🟨', 3),
+    (4, 'red_card', 'Red card received', '🟥', 4),
+    (5, 'sub_in', 'Substituted into match', '⬆️', 5),
+    (6, 'sub_out', 'Substituted out of match', '⬇️', 6)
+ON CONFLICT (id) DO NOTHING;
+
+-- Individual match events (atomic records)
+CREATE TABLE match_events (
+    id SERIAL PRIMARY KEY,
+    match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    team_id INTEGER NOT NULL REFERENCES teams(id),
+    event_type_id INTEGER NOT NULL REFERENCES match_event_types(id),
+    minute INTEGER NOT NULL,
+    assisted_by_player_id INTEGER REFERENCES players(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_match_events_match ON match_events(match_id);
+CREATE INDEX idx_match_events_player ON match_events(player_id);
+CREATE INDEX idx_match_events_team ON match_events(team_id);
+CREATE INDEX idx_match_events_type ON match_events(event_type_id);
+CREATE INDEX idx_match_events_minute ON match_events(minute);
+
+-- Player season stats (aggregated from roster pages)
+-- Used for season totals including assists that aren't tracked per-match
+CREATE TABLE player_season_stats (
     id SERIAL PRIMARY KEY,
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     team_id INTEGER REFERENCES teams(id),
-    match_id INTEGER REFERENCES matches(id),
+    season VARCHAR(20),
     goals INTEGER DEFAULT 0,
     assists INTEGER DEFAULT 0,
     yellow_cards INTEGER DEFAULT 0,
@@ -658,12 +699,12 @@ CREATE TABLE player_stats (
     games_played INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(player_id, match_id)
+    UNIQUE(player_id, team_id, season)
 );
 
-CREATE INDEX idx_player_stats_player ON player_stats(player_id);
-CREATE INDEX idx_player_stats_team ON player_stats(team_id);
-CREATE INDEX idx_player_stats_match ON player_stats(match_id);
+CREATE INDEX idx_player_season_stats_player ON player_season_stats(player_id);
+CREATE INDEX idx_player_season_stats_team ON player_season_stats(team_id);
+CREATE INDEX idx_player_season_stats_season ON player_season_stats(season);
 
 -- ============================================================================
 -- 6. CHAT SYSTEM (Built-in messaging)
