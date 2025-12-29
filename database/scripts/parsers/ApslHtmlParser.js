@@ -5,6 +5,191 @@ const HtmlParser = require('./HtmlParser');
  * Knows how to parse APSL website structure
  */
 class ApslHtmlParser extends HtmlParser {
+
+    /**
+     * Parse per-match player stats from APSL match event page
+     * Returns array of { name, goals, assists, yellow_cards, red_cards, is_starter, sub_in_minute, sub_out_minute, minutes_played }
+     */
+    parseMatchPlayerStats() {
+      const playerStats = new Map(); // Use map to accumulate stats per player
+      
+      // Step 1: Find "Starter" section and extract starting lineups
+      const allText = this.document.body.textContent;
+      const starterIndex = allText.indexOf('Starter');
+      
+      if (starterIndex === -1) return [];
+      
+      // Find tables after "Starter" label
+      const tables = this.querySelectorAll('table');
+      let starterTable = null;
+      let substituteTable = null;
+      let playByPlayTable = null;
+      
+      // Look for tables with team names as headers
+      for (const table of tables) {
+        const text = table.textContent;
+        if (text.includes('Starter') || text.includes('Substitute')) {
+          if (!starterTable && text.includes('Starter')) {
+            starterTable = table;
+          } else if (!substituteTable && text.includes('Substitute')) {
+            substituteTable = table;
+          }
+        }
+        // Play-by-play table has "Play" "Time" "Play" structure
+        if (text.includes('Play') && text.includes('Time')) {
+          playByPlayTable = table;
+        }
+      }
+      
+      // Parse starters
+      if (starterTable) {
+        const rows = starterTable.querySelectorAll('tr');
+        for (const row of rows) {
+          const cells = row.querySelectorAll('td');
+          for (const cell of cells) {
+            // Player names are separated by <br> tags
+            const html = cell.innerHTML;
+            const playerNames = html.split('<br>')
+              .map(name => name.replace(/<[^>]*>/g, '').trim())
+              .filter(name => {
+                // Filter out team names, headers, and short strings
+                return name && 
+                       name.length > 2 && 
+                       name !== 'Starter' &&
+                       !name.includes(' SC') && 
+                       !name.includes(' FC') && 
+                       !name.includes('Soccer Club') &&
+                       !name.includes('United');
+              });
+            for (const playerName of playerNames) {
+              if (!playerStats.has(playerName)) {
+                playerStats.set(playerName, {
+                  name: playerName,
+                  goals: 0,
+                  assists: 0,
+                  yellow_cards: 0,
+                  red_cards: 0,
+                  is_starter: true,
+                  sub_in_minute: null,
+                  sub_out_minute: null,
+                  minutes_played: 90 // Default for starters
+                });
+              }
+            }
+          }
+        }
+      }
+      
+      // Parse substitutes
+      if (substituteTable) {
+        const rows = substituteTable.querySelectorAll('tr');
+        for (const row of rows) {
+          const cells = row.querySelectorAll('td');
+          for (const cell of cells) {
+            // Player names are separated by <br> tags
+            const html = cell.innerHTML;
+            const playerNames = html.split('<br>')
+              .map(name => name.replace(/<[^>]*>/g, '').trim())
+              .filter(name => {
+                // Filter out team names, headers, and short strings
+                return name && 
+                       name.length > 2 && 
+                       name !== 'Substitute' &&
+                       !name.includes(' SC') && 
+                       !name.includes(' FC') && 
+                       !name.includes('Soccer Club') &&
+                       !name.includes('United');
+              });
+            for (const playerName of playerNames) {
+              if (!playerStats.has(playerName)) {
+                playerStats.set(playerName, {
+                  name: playerName,
+                  goals: 0,
+                  assists: 0,
+                  yellow_cards: 0,
+                  red_cards: 0,
+                  is_starter: false,
+                  sub_in_minute: null,
+                  sub_out_minute: null,
+                  minutes_played: 0
+                });
+              }
+            }
+          }
+        }
+      }
+      
+      // Parse play-by-play for goals, cards, and substitutions
+      if (playByPlayTable) {
+        const rows = playByPlayTable.querySelectorAll('tr');
+        for (const row of rows) {
+          const cells = Array.from(row.querySelectorAll('td'));
+          if (cells.length >= 3) {
+            const timeCell = cells[1]?.textContent.trim();
+            const minute = parseInt(timeCell) || 0;
+            
+            // Check all cells for player actions
+            for (const cell of cells) {
+              const text = cell.textContent.trim();
+              
+              // Goal: "Player Name (Goal)"
+              if (text.includes('Goal')) {
+                const match = text.match(/^(.+?)\s*\(Goal\)/);
+                if (match) {
+                  const playerName = match[1].trim();
+                  if (playerStats.has(playerName)) {
+                    playerStats.get(playerName).goals++;
+                  }
+                }
+              }
+              
+              // Yellow card: "Player Name (Yellow Card)"
+              if (text.includes('Yellow Card')) {
+                const match = text.match(/^(.+?)\s*\(Yellow Card\)/);
+                if (match) {
+                  const playerName = match[1].trim();
+                  if (playerStats.has(playerName)) {
+                    playerStats.get(playerName).yellow_cards++;
+                  }
+                }
+              }
+              
+              // Red card: "Player Name (Red Card)"
+              if (text.includes('Red Card')) {
+                const match = text.match(/^(.+?)\s*\(Red Card\)/);
+                if (match) {
+                  const playerName = match[1].trim();
+                  if (playerStats.has(playerName)) {
+                    playerStats.get(playerName).red_cards++;
+                  }
+                }
+              }
+              
+              // Substitution: "Player Out for Player In"
+              if (text.includes(' for ')) {
+                const match = text.match(/^(.+?)\s+for\s+(.+?)$/);
+                if (match) {
+                  const playerOut = match[1].trim();
+                  const playerIn = match[2].trim();
+                  
+                  if (playerStats.has(playerOut)) {
+                    playerStats.get(playerOut).sub_out_minute = minute;
+                    playerStats.get(playerOut).minutes_played = minute;
+                  }
+                  
+                  if (playerStats.has(playerIn)) {
+                    playerStats.get(playerIn).sub_in_minute = minute;
+                    playerStats.get(playerIn).minutes_played = 90 - minute;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      return Array.from(playerStats.values());
+    }
   /**
    * Parse standings page to extract conferences and divisions
    */
@@ -187,21 +372,30 @@ class ApslHtmlParser extends HtmlParser {
     for (const row of rows) {
       const cells = row.querySelectorAll('td');
       if (cells.length < 3) continue;
-      
+
       // Cell 0: Date & Time (e.g., "Sunday, Sep 07 - 4:30 PM")
       // Cell 1: Location (e.g., "Lighthouse Field") - may contain Google Maps link
       // Cell 2: Match (e.g., "vs Philadelphia Soccer Club (4-3-2) (Regular Season)")
       // Cell 3: Result (e.g., "Loss (2 - 3) (view)") - if match is completed
-      
+
       const dateText = cells[0]?.textContent.trim();
       const location = cells[1]?.textContent.trim();
       const matchText = cells[2]?.textContent.trim();
       const resultText = cells[3]?.textContent.trim();
-      
+
       // Extract Google Maps link if present
       const locationLink = cells[1]?.querySelector('a');
       const googleMapsUrl = locationLink?.getAttribute('href') || null;
-      
+
+      // Extract match URL from "view" link in result cell (cell 3)
+      let matchUrl = null;
+      if (cells[3]) {
+        const viewLink = Array.from(cells[3].querySelectorAll('a')).find(a => a.textContent.toLowerCase().includes('view'));
+        if (viewLink) {
+          matchUrl = viewLink.getAttribute('href');
+        }
+      }
+
       if (!dateText || !matchText) continue;
       
       // Parse match text to extract opponent
@@ -269,7 +463,8 @@ class ApslHtmlParser extends HtmlParser {
         matchStatus: matchStatus,
         homeScore: homeScore,
         awayScore: awayScore,
-        resultType: resultType
+        resultType: resultType,
+        matchUrl: matchUrl
       });
     }
 

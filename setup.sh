@@ -293,6 +293,18 @@ if [ -f "package.json" ]; then
 fi
 
 # ============================================================
+# Step 3.5: Ensure Puppeteer and plugins are installed
+# ============================================================
+print_status "Ensuring Puppeteer and plugins are installed..."
+if [ -f "package.json" ]; then
+    npm install --silent puppeteer puppeteer-extra puppeteer-extra-plugin-stealth || {
+        print_error "Failed to install Puppeteer dependencies. Please check your npm setup."
+        exit 1
+    }
+    print_success "Puppeteer and plugins installed"
+fi
+
+# ============================================================
 # Step 4: Verify Podman is Running
 # ============================================================
 print_status "Verifying Podman..."

@@ -1,5 +1,6 @@
 const Scraper = require('../base/Scraper');
 const HttpFetcher = require('../fetchers/HttpFetcher');
+const PuppeteerFetcher = require('../fetchers/PuppeteerFetcher');
 const ApslHtmlParser = require('../parsers/ApslHtmlParser');
 const IdGenerator = require('../services/IdGenerator');
 const SqlGenerator = require('../services/SqlGenerator');
@@ -20,8 +21,8 @@ class ApslScraper extends Scraper {
 
     this.baseUrl = 'https://apslsoccer.com';
     
-    // Fetcher and parser
-    this.fetcher = new HttpFetcher({ timeout: 30000, maxRetries: 3 });
+    // Use PuppeteerFetcher for dynamic pages (schedule, match events)
+    this.fetcher = new PuppeteerFetcher({ timeout: 30000 });
     this.parser = new ApslHtmlParser();
     
     // Services
@@ -294,42 +295,42 @@ class ApslScraper extends Scraper {
 
   async fetchSchedules() {
     this.log('\n📅 Fetching schedules...');
-    
     let completedMatches = 0;
     let scheduledMatches = 0;
     let matchCounter = 1;
-    
+    let playerStatCounter = 1;
+
     // Build opponent name -> apsl_team lookup
     const teamsByName = new Map();
     for (const [_, apslTeam] of this.data.apslTeams.entries()) {
       teamsByName.set(apslTeam.name, apslTeam);
     }
-    
+
     for (const [apslTeamId, apslTeam] of this.data.apslTeams.entries()) {
       try {
         const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.external_id}`;
         const html = await this.fetcher.fetch(teamUrl);
         this.parser.parse(html);
-        
+
         const schedule = this.parser.parseSchedule();
         this.log(`   ${apslTeam.name}: ${schedule.length} matches`);
-        
+
         for (const matchData of schedule) {
           // Create unique match ID from date + teams
           const matchKey = `${matchData.date}-${apslTeam.name}-${matchData.opponent}`;
-          
+
           // Skip if we've already added this match (will happen when both teams are in APSL)
           if (this.data.apslMatches.has(matchKey)) {
             continue;
           }
-          
+
           // Find opponent's apsl_team_id
           const opponentTeam = teamsByName.get(matchData.opponent);
-          
+
           // Determine home/away team IDs
           let homeTeamId = null;
           let awayTeamId = null;
-          
+
           if (matchData.isHome) {
             homeTeamId = apslTeamId;
             awayTeamId = opponentTeam ? opponentTeam.id : null;
@@ -337,7 +338,7 @@ class ApslScraper extends Scraper {
             homeTeamId = opponentTeam ? opponentTeam.id : null;
             awayTeamId = apslTeamId;
           }
-          
+
           // Create apsl_matches record
           const apslMatchId = matchCounter++;
           const apslMatch = {
@@ -355,9 +356,56 @@ class ApslScraper extends Scraper {
             source_system_id: 1,  // APSL
             external_id: matchKey
           };
-          
+
           this.data.apslMatches.set(matchKey, apslMatch);
-          
+
+          // --- NEW: Fetch per-match player stats ---
+          if (matchData.matchStatus === 'completed' && matchData.matchUrl) {
+            try {
+              // Ensure matchUrl is absolute
+              const fullMatchUrl = matchData.matchUrl.startsWith('http') 
+                ? matchData.matchUrl 
+                : `${this.baseUrl}${matchData.matchUrl}`;
+              
+              const matchHtml = await this.fetcher.fetch(fullMatchUrl);
+              const matchParser = new (require('../parsers/ApslHtmlParser'))();
+              matchParser.parse(matchHtml);
+              const playerStats = matchParser.parseMatchPlayerStats();
+              
+              let matchedCount = 0;
+              
+              for (const stat of playerStats) {
+                // Robust player name matching (case-insensitive, ignore extra spaces)
+                const statNameNorm = stat.name.trim().toLowerCase().replace(/\s+/g, ' ');
+                const player = Array.from(this.data.apslPlayers.values()).find(p => {
+                  const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
+                  const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
+                  return statNameNorm === fullName || statNameNorm === altFullName;
+                });
+                if (!player) continue;
+                matchedCount++;
+                const apslPlayerStat = {
+                  id: playerStatCounter++,
+                  match_id: apslMatchId,
+                  player_id: player.id,
+                  team_id: apslTeamId,
+                  goals: stat.goals || 0,
+                  assists: stat.assists || 0,
+                  yellow_cards: stat.yellow_cards || 0,
+                  red_cards: stat.red_cards || 0,
+                  games_played: 1,
+                  is_starter: stat.is_starter,
+                  sub_in_minute: stat.sub_in_minute,
+                  sub_out_minute: stat.sub_out_minute,
+                  minutes_played: stat.minutes_played
+                };
+                this.data.apslPlayerStats.set(apslPlayerStat.id, apslPlayerStat);
+              }
+            } catch (err) {
+              this.logError(`Failed to fetch player stats for match ${matchKey}`, err);
+            }
+          }
+
           if (matchData.matchStatus === 'completed') {
             completedMatches++;
           } else {
@@ -368,7 +416,7 @@ class ApslScraper extends Scraper {
         this.logError(`Failed to fetch schedule for ${apslTeam.name}`, error);
       }
     }
-    
+
     this.log(`   ✓ ${completedMatches} completed matches with scores`);
     this.log(`   ✓ ${scheduledMatches} scheduled matches`);
   }

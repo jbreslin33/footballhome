@@ -54,7 +54,8 @@ async function main() {
 
     // 1. Aggregate Flags
     if (runApsl) {
-      scrapersToRun.push(new ApslScraper(mode, { includeSchedules, teamFilter }));
+      // Always include schedules for APSL to enable per-match player stats
+      scrapersToRun.push(new ApslScraper(mode, { includeSchedules: true, teamFilter }));
     }
 
     if (runCasa) {

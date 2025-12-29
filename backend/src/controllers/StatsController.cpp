@@ -125,32 +125,33 @@ Response StatsController::handleGetStandings(const Request& request) {
 
 Response StatsController::handleGetPlayerStats(const Request& request) {
     try {
-        // Query apsl_player_stats - aggregated per-match stats
+        // Query normalized player_stats for APSL (source_system_id=1)
         std::string query = R"(
             SELECT 
-                ap.id,
-                ap.name as player_name,
-                at.name as team_name,
-                ad.name as division_name,
-                al.season,
-                COUNT(DISTINCT aps.apsl_match_id) as games_played,
-                COALESCE(SUM(aps.goals), 0) as goals,
-                COALESCE(SUM(aps.assists), 0) as assists,
-                COALESCE(SUM(aps.yellow_cards), 0) as yellow_cards,
-                COALESCE(SUM(aps.red_cards), 0) as red_cards
-            FROM apsl_players ap
-            JOIN apsl_teams at ON ap.apsl_team_id = at.id
-            JOIN apsl_divisions ad ON at.apsl_division_id = ad.id
-            JOIN apsl_conferences ac ON ad.apsl_conference_id = ac.id
-            JOIN apsl_leagues al ON ac.apsl_league_id = al.id
-            LEFT JOIN apsl_player_stats aps ON ap.id = aps.apsl_player_id
-            GROUP BY ap.id, ap.name, at.name, ad.name, al.season
-            HAVING COUNT(DISTINCT aps.apsl_match_id) > 0
+                p.id,
+                (p.first_name || ' ' || p.last_name) as player_name,
+                t.name as team_name,
+                d.name as division_name,
+                l.season,
+                COUNT(DISTINCT ps.match_id) as games_played,
+                COALESCE(SUM(ps.goals), 0) as goals,
+                COALESCE(SUM(ps.assists), 0) as assists,
+                COALESCE(SUM(ps.yellow_cards), 0) as yellow_cards,
+                COALESCE(SUM(ps.red_cards), 0) as red_cards
+            FROM players p
+            JOIN player_stats ps ON p.id = ps.player_id
+            JOIN teams t ON ps.team_id = t.id
+            JOIN divisions d ON t.division_id = d.id OR ps.match_id IS NOT NULL
+            JOIN conferences c ON d.conference_id = c.id
+            JOIN leagues l ON c.league_id = l.id
+            WHERE t.source_system_id = 1
+            GROUP BY p.id, player_name, t.name, d.name, l.season
+            HAVING COUNT(DISTINCT ps.match_id) > 0
             ORDER BY goals DESC, assists DESC, player_name
         )";
-        
+
         pqxx::result result = db_->query(query);
-        
+
         // Manually construct JSON array
         std::ostringstream json_data;
         json_data << "[";
