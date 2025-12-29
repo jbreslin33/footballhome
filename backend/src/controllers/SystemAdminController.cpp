@@ -2391,32 +2391,32 @@ Response SystemAdminController::handleGetApslDashboard(const Request& request) {
     try {
         std::string json = "{";
         
-        // Divisions
-        auto divisions = db_->query("SELECT COUNT(*) FROM apsl_divisions");
+        // Divisions (from normalized divisions table, filtered by source_system_id=1 for APSL)
+        auto divisions = db_->query("SELECT COUNT(*) FROM divisions WHERE source_system_id = 1");
         if (!divisions.empty()) {
             json += "\"divisions\":" + std::to_string(divisions[0][0].as<int>()) + ",";
         } else {
             json += "\"divisions\":0,";
         }
 
-        // Teams
-        auto teams = db_->query("SELECT COUNT(*) FROM apsl_teams");
+        // Teams (from normalized teams table, filtered by source_system_id=1 for APSL)
+        auto teams = db_->query("SELECT COUNT(*) FROM teams WHERE source_system_id = 1");
         if (!teams.empty()) {
             json += "\"teams\":" + std::to_string(teams[0][0].as<int>()) + ",";
         } else {
             json += "\"teams\":0,";
         }
 
-        // Players
-        auto players = db_->query("SELECT COUNT(*) FROM apsl_players");
+        // Players (from normalized players table, filtered by source_system_id=1 for APSL)
+        auto players = db_->query("SELECT COUNT(*) FROM players WHERE source_system_id = 1");
         if (!players.empty()) {
             json += "\"players\":" + std::to_string(players[0][0].as<int>()) + ",";
         } else {
             json += "\"players\":0,";
         }
         
-        // Matches - query apsl_matches directly
-        auto matches = db_->query("SELECT COUNT(*) FROM apsl_matches");
+        // Matches (from normalized matches table, filtered by source_system_id=1 for APSL)
+        auto matches = db_->query("SELECT COUNT(*) FROM matches WHERE source_system_id = 1");
         if (!matches.empty()) {
             json += "\"matches\":" + std::to_string(matches[0][0].as<int>());
         } else {
