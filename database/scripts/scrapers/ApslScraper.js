@@ -1,10 +1,7 @@
 const Scraper = require('../base/Scraper');
-const HttpFetcher = require('../fetchers/HttpFetcher');
 const PuppeteerFetcher = require('../fetchers/PuppeteerFetcher');
 const ApslHtmlParser = require('../parsers/ApslHtmlParser');
-const IdGenerator = require('../services/IdGenerator');
 const SqlGenerator = require('../services/SqlGenerator');
-const DuplicateDetector = require('../services/DuplicateDetector');
 
 /**
  * APSL League Scraper
@@ -20,17 +17,12 @@ class ApslScraper extends Scraper {
     });
 
     this.baseUrl = 'https://apslsoccer.com';
+    this.SOURCE_SYSTEM_ID = 1; // APSL source system ID
     
     // Use PuppeteerFetcher for dynamic pages (schedule, match events)
     this.fetcher = new PuppeteerFetcher({ timeout: 30000 });
     this.parser = new ApslHtmlParser();
-    
-    // Services
-    this.duplicateDetector = new DuplicateDetector();
     this.sqlGenerator = new SqlGenerator();
-    
-    // Authentication
-    this.authCookies = '';
     
     // Conference data cache (with tables for team extraction)
     this.conferences = new Map();
@@ -54,16 +46,7 @@ class ApslScraper extends Scraper {
 
   async initialize() {
     this.log('Initializing APSL scraper...');
-    this.log('Scraping to compartmentalized apsl_* tables only');
-  }
-
-  async authenticate() {
-    // APSL TeamPass authentication if needed for rosters
-    if (this.shouldScrapePlayers()) {
-      this.log('Authenticating with TeamPass...');
-      // TODO: Implement TeamPass login if required
-      // For now, rosters are publicly accessible
-    }
+    this.log('Generating normalized SQL files with source_system_id=1 (APSL)');
   }
 
   async fetchData() {
@@ -144,7 +127,7 @@ class ApslScraper extends Scraper {
         name: confName,
         skill_level: null,
         skill_label: null,
-        source_system_id: 1,  // APSL
+        source_system_id: this.SOURCE_SYSTEM_ID,
         external_id: `apsl-conf-${apslConferenceId}`,
         sort_order: apslDivisionId
       });
@@ -197,8 +180,8 @@ class ApslScraper extends Scraper {
           name: normalizedName,
           city: null,
           logo_url: null,
-          source_system_id: 1,  // APSL
-          external_id: teamData.apsl_team_id  // Their external ID
+          source_system_id: this.SOURCE_SYSTEM_ID,
+          external_id: teamData.apsl_team_id
       });
       
       // Store team-division mapping separately for junction table
@@ -244,7 +227,7 @@ class ApslScraper extends Scraper {
               full_name: `${first} ${last}`,
               first_name: first,
               last_name: last,
-              source_system_id: 1,  // APSL
+              source_system_id: this.SOURCE_SYSTEM_ID,
               external_id: externalId
           });
           
@@ -366,10 +349,10 @@ class ApslScraper extends Scraper {
             match_status_id: matchData.homeScore !== null ? 3 : 1,  // 3=completed, 1=scheduled  
             match_date: matchData.date,
             match_time: null, // APSL doesn't always provide time
-            venue_id: null, // Will need to match venue later
+            venue_id: null,
             home_score: matchData.homeScore,
             away_score: matchData.awayScore,
-            source_system_id: 1,  // APSL
+            source_system_id: this.SOURCE_SYSTEM_ID,
             external_id: matchKey
           };
 
@@ -419,66 +402,30 @@ class ApslScraper extends Scraper {
               for (const event of events) {
                 // Find which team this player belongs to based on teamName from parser
                 let playerTeamId = null;
+                let player = null;
                 
                 if (event.team_name) {
                   const teamMatch = teamsByName.get(event.team_name);
                   if (teamMatch) {
                     playerTeamId = teamMatch.id;
+                    player = this.findPlayerByName(event.player_name, playerTeamId);
                   }
                 }
                 
-                // If we couldn't determine team from name, try matching to current team or opponent
-                if (!playerTeamId) {
-                  // Try current team first
-                  const eventNameNorm = event.player_name.trim().toLowerCase().replace(/\s+/g, ' ');
-                  let player = Array.from(this.data.apslPlayers.values()).find(p => {
-                    // Check if this player is on the current team
-                    const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
-                      .find(tp => tp.player_id === p.id && tp.team_id === apslTeamId);
-                    if (!teamPlayer) return false;
-                    
-                    const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
-                    const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
-                    return eventNameNorm === fullName || eventNameNorm === altFullName;
-                  });
-                  
+                // If we couldn't determine team from name, try current team then opponent
+                if (!player) {
+                  player = this.findPlayerByName(event.player_name, apslTeamId);
                   if (player) {
                     playerTeamId = apslTeamId;
                   } else if (opponentTeam) {
-                    // Try opponent team
-                    player = Array.from(this.data.apslPlayers.values()).find(p => {
-                      // Check if this player is on the opponent team
-                      const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
-                        .find(tp => tp.player_id === p.id && tp.team_id === opponentTeam.id);
-                      if (!teamPlayer) return false;
-                      
-                      const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
-                      const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
-                      return eventNameNorm === fullName || eventNameNorm === altFullName;
-                    });
-                    
+                    player = this.findPlayerByName(event.player_name, opponentTeam.id);
                     if (player) {
                       playerTeamId = opponentTeam.id;
                     }
                   }
                 }
                 
-                if (!playerTeamId) continue;
-                
-                // Now find the actual player on this team
-                const eventNameNorm = event.player_name.trim().toLowerCase().replace(/\s+/g, ' ');
-                const player = Array.from(this.data.apslPlayers.values()).find(p => {
-                  // Check if this player is on the identified team
-                  const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
-                    .find(tp => tp.player_id === p.id && tp.team_id === playerTeamId);
-                  if (!teamPlayer) return false;
-                  
-                  const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
-                  const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
-                  return eventNameNorm === fullName || eventNameNorm === altFullName;
-                });
-                
-                if (!player) continue;
+                if (!player || !playerTeamId) continue;
                 matchedEventCount++;
                 
                 // Create match event record
@@ -496,17 +443,6 @@ class ApslScraper extends Scraper {
               
               // Process lineups
               for (const lineup of lineups) {
-                const eventNameNorm = lineup.player_name.trim().toLowerCase().replace(/\s+/g, ' ');
-                
-                // Find player by name
-                const player = Array.from(this.data.apslPlayers.values()).find(p => {
-                  const fullName = (p.first_name + ' ' + p.last_name).trim().toLowerCase().replace(/\s+/g, ' ');
-                  const altFullName = p.full_name.trim().toLowerCase().replace(/\s+/g, ' ');
-                  return eventNameNorm === fullName || eventNameNorm === altFullName;
-                });
-                
-                if (!player) continue;
-                
                 // Find team by name
                 let lineupTeamId = null;
                 if (lineup.team_name) {
@@ -517,6 +453,10 @@ class ApslScraper extends Scraper {
                 }
                 
                 if (!lineupTeamId) continue;
+                
+                // Find player by name on that team
+                const player = this.findPlayerByName(lineup.player_name, lineupTeamId);
+                if (!player) continue;
                 
                 matchedLineupCount++;
                 const matchLineup = {
@@ -776,13 +716,25 @@ class ApslScraper extends Scraper {
     this.parser.destroy();
   }
 
-  slugify(text) {
-    return text.toString().toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^\w\-]+/g, '')
-      .replace(/\-\-+/g, '-')
-      .replace(/^-+/, '')
-      .replace(/-+$/, '');
+  // Helper method: Normalize player name for matching
+  normalizePlayerName(name) {
+    return name.trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  // Helper method: Find player by name on a specific team
+  findPlayerByName(playerName, teamId) {
+    const normalizedName = this.normalizePlayerName(playerName);
+    
+    return Array.from(this.data.apslPlayers.values()).find(p => {
+      // Check if this player is on the specified team
+      const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
+        .find(tp => tp.player_id === p.id && tp.team_id === teamId);
+      if (!teamPlayer) return false;
+      
+      const fullName = this.normalizePlayerName(p.first_name + ' ' + p.last_name);
+      const altFullName = this.normalizePlayerName(p.full_name);
+      return normalizedName === fullName || normalizedName === altFullName;
+    });
   }
 }
 
