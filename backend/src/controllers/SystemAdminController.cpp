@@ -2804,21 +2804,45 @@ Response SystemAdminController::handleGetTableData(const Request& request) {
             }
         }
         
-        // Get limit from query parameter (default 100, max 1000)
+        // Get limit from query parameter (default 100, 0 = no limit)
         int limit = 100;
         std::string limitParam = request.getQueryParam("limit");
         if (!limitParam.empty()) {
             try {
                 limit = std::stoi(limitParam);
-                if (limit < 1) limit = 1;
-                if (limit > 1000) limit = 1000;
+                if (limit < 0) limit = 0; // 0 means no limit
             } catch (...) {
                 limit = 100;
             }
         }
         
-        // Query the table
-        std::string sql = "SELECT * FROM " + tableName + " LIMIT " + std::to_string(limit);
+        // Get sort column and direction from query parameters
+        std::string sortColumn = request.getQueryParam("sort");
+        std::string sortDir = request.getQueryParam("dir");
+        
+        // Sanitize sort column (must be alphanumeric + underscore)
+        if (!sortColumn.empty()) {
+            for (char c : sortColumn) {
+                if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
+                    sortColumn.clear();
+                    break;
+                }
+            }
+        }
+        
+        // Validate sort direction
+        if (sortDir != "ASC" && sortDir != "DESC") {
+            sortDir = "ASC";
+        }
+        
+        // Build query
+        std::string sql = "SELECT * FROM " + tableName;
+        if (!sortColumn.empty()) {
+            sql += " ORDER BY " + sortColumn + " " + sortDir;
+        }
+        if (limit > 0) {
+            sql += " LIMIT " + std::to_string(limit);
+        }
         pqxx::result result = db_->query(sql);
         
         // Build JSON response

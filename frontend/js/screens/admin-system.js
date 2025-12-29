@@ -569,30 +569,71 @@ class AdminSystemScreen extends Screen {
     }
   }
 
-  async viewTableData(tableName) {
+  async viewTableData(tableName, limit = 100, sortColumn = '', sortDir = 'ASC') {
     try {
-      const response = await fetch(`/api/system-admin/schema/${tableName}/data?limit=100`);
+      console.log('Fetching data for:', tableName, 'limit:', limit, 'sort:', sortColumn, sortDir);
+      let url = `/api/system-admin/schema/${tableName}/data?limit=${limit}`;
+      if (sortColumn) {
+        url += `&sort=${sortColumn}&dir=${sortDir}`;
+      }
+      
+      console.log('Fetching URL:', url);
+      const response = await fetch(url);
+      console.log('Response status:', response.status);
       if (!response.ok) throw new Error('Failed to load table data');
       const data = await response.json();
+      console.log('Data received:', data.count, 'rows');
       
       // Create modal
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
+      modal.style.cssText = 'position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; background: rgba(0,0,0,0.8) !important; z-index: 999999 !important; display: flex !important; align-items: center !important; justify-content: center !important;';
       modal.innerHTML = `
-        <div class="modal-content table-data-modal">
-          <div class="modal-header">
-            <h2>📊 ${tableName} - Sample Data (${data.count} rows)</h2>
-            <button class="modal-close">✕</button>
+        <div class="modal-content table-data-modal" style="background: white !important; padding: 20px !important; border-radius: 8px !important; max-width: 90vw !important; max-height: 90vh !important; overflow: auto !important;">
+          <div class="modal-header" style="background: #2196F3 !important; color: white !important; padding: 15px !important; margin: -20px -20px 15px -20px !important;">
+            <h2 style="margin: 0 !important; color: white !important;">📊 ${tableName}</h2>
+            <button class="modal-close" style="background: white !important; color: #2196F3 !important; border: none !important; padding: 5px 10px !important; cursor: pointer !important; font-size: 20px !important;">✕</button>
+          </div>
+          <div class="modal-controls">
+            <label>
+              Rows: 
+              <select class="limit-selector">
+                <option value="100" ${limit === 100 ? 'selected' : ''}>100</option>
+                <option value="500" ${limit === 500 ? 'selected' : ''}>500</option>
+                <option value="1000" ${limit === 1000 ? 'selected' : ''}>1000</option>
+                <option value="0" ${limit === 0 ? 'selected' : ''}>All</option>
+              </select>
+            </label>
+            <span class="row-count">${data.count} rows ${limit > 0 ? '(limited)' : ''}</span>
           </div>
           <div class="modal-body">
             <div class="table-data-container">
-              ${this.renderTableData(data)}
+              ${(() => {
+                try {
+                  console.log('Calling renderTableData...');
+                  const result = this.renderTableData(data, sortColumn, sortDir);
+                  console.log('renderTableData returned:', result.substring(0, 100) + '...');
+                  return result;
+                } catch (err) {
+                  console.error('Error in renderTableData:', err);
+                  return '<p style="color: red;">Error rendering table: ' + err.message + '</p>';
+                }
+              })()}
             </div>
           </div>
         </div>
       `;
       
-      document.body.appendChild(modal);
+      console.log('About to append modal...');
+      console.log('Modal HTML length:', modal.innerHTML.length);
+      
+      // Append to fullscreen element if in fullscreen, otherwise to body
+      const targetElement = document.fullscreenElement || document.body;
+      console.log('Appending to:', targetElement === document.body ? 'body' : 'fullscreen element');
+      targetElement.appendChild(modal);
+      
+      console.log('Modal appended to body');
+      console.log('Modal visible in DOM?', targetElement.contains(modal));
       
       // Close handlers
       modal.querySelector('.modal-close').onclick = () => modal.remove();
@@ -600,12 +641,29 @@ class AdminSystemScreen extends Screen {
         if (e.target === modal) modal.remove();
       };
       
+      // Limit selector handler
+      modal.querySelector('.limit-selector').onchange = (e) => {
+        const newLimit = parseInt(e.target.value);
+        modal.remove();
+        this.viewTableData(tableName, newLimit, sortColumn, sortDir);
+      };
+      
+      // Column header click handlers for sorting
+      modal.querySelectorAll('.sortable-header').forEach(th => {
+        th.onclick = () => {
+          const column = th.dataset.column;
+          const newDir = (sortColumn === column && sortDir === 'ASC') ? 'DESC' : 'ASC';
+          modal.remove();
+          this.viewTableData(tableName, limit, column, newDir);
+        };
+      });
+      
     } catch (error) {
       alert(`Error loading table data: ${error.message}`);
     }
   }
   
-  renderTableData(data) {
+  renderTableData(data, sortColumn = '', sortDir = 'ASC') {
     if (data.rows.length === 0) {
       return '<p class="no-data">No data in this table</p>';
     }
@@ -614,7 +672,9 @@ class AdminSystemScreen extends Screen {
     
     let html = '<table class="data-table"><thead><tr>';
     columns.forEach(col => {
-      html += `<th>${col}</th>`;
+      const isSorted = col === sortColumn;
+      const sortIcon = isSorted ? (sortDir === 'ASC' ? ' ▲' : ' ▼') : '';
+      html += `<th class="sortable-header" data-column="${col}" title="Click to sort">${col}${sortIcon}</th>`;
     });
     html += '</tr></thead><tbody>';
     
