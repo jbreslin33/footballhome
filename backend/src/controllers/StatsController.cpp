@@ -267,24 +267,28 @@ Response StatsController::handleGetMatchPlayerStats(const Request& request) {
     try {
         std::string match_id = request.params.at("id");
         
-        // Query per-match player stats with raw data (no calculated minutes)
+        // Query match_events and aggregate per player
         std::string query = R"(
             SELECT 
-                ps.id,
+                p.id,
                 (p.first_name || ' ' || p.last_name) as player_name,
                 t.name as team_name,
-                ps.goals,
-                ps.assists,
-                ps.yellow_cards,
-                ps.red_cards,
-                ps.is_starter,
-                ps.sub_in_minute,
-                ps.sub_out_minute
-            FROM player_stats ps
-            JOIN players p ON ps.player_id = p.id
-            JOIN teams t ON ps.team_id = t.id
-            WHERE ps.match_id = )" + match_id + R"(
-            ORDER BY t.name, ps.is_starter DESC NULLS LAST, player_name
+                -- Aggregate events by type
+                COUNT(CASE WHEN me.event_type_id = 1 THEN 1 END) as goals,
+                COUNT(CASE WHEN me.event_type_id = 2 THEN 1 END) as assists,
+                COUNT(CASE WHEN me.event_type_id = 3 THEN 1 END) as yellow_cards,
+                COUNT(CASE WHEN me.event_type_id = 4 THEN 1 END) as red_cards,
+                -- Get sub minutes
+                MIN(CASE WHEN me.event_type_id = 5 THEN me.minute END) as sub_in_minute,
+                MIN(CASE WHEN me.event_type_id = 6 THEN me.minute END) as sub_out_minute,
+                -- Check if player started (has no sub_in event)
+                CASE WHEN COUNT(CASE WHEN me.event_type_id = 5 THEN 1 END) = 0 THEN true ELSE false END as is_starter
+            FROM match_events me
+            JOIN players p ON me.player_id = p.id
+            JOIN teams t ON me.team_id = t.id
+            WHERE me.match_id = )" + match_id + R"(
+            GROUP BY p.id, player_name, t.name, t.id
+            ORDER BY t.name, is_starter DESC, player_name
         )";
         
         pqxx::result result = db_->query(query);
@@ -300,7 +304,7 @@ Response StatsController::handleGetMatchPlayerStats(const Request& request) {
         for (const auto& row : result) {
             std::string team_name = row["team_name"].is_null() ? "Unknown" : escapeJsonString(row["team_name"].c_str());
             std::string player_name = escapeJsonString(row["player_name"].c_str());
-            bool is_starter = !row["is_starter"].is_null() && row["is_starter"].as<bool>();
+            bool is_starter = row["is_starter"].as<bool>();
             
             // Start new team section if team changed
             if (team_name != current_team) {
@@ -322,10 +326,10 @@ Response StatsController::handleGetMatchPlayerStats(const Request& request) {
                 << "\"id\":\"" << row["id"].c_str() << "\","
                 << "\"player_name\":\"" << player_name << "\","
                 << "\"is_starter\":" << (is_starter ? "true" : "false") << ","
-                << "\"goals\":" << (row["goals"].is_null() ? 0 : row["goals"].as<int>()) << ","
-                << "\"assists\":" << (row["assists"].is_null() ? 0 : row["assists"].as<int>()) << ","
-                << "\"yellow_cards\":" << (row["yellow_cards"].is_null() ? 0 : row["yellow_cards"].as<int>()) << ","
-                << "\"red_cards\":" << (row["red_cards"].is_null() ? 0 : row["red_cards"].as<int>()) << ","
+                << "\"goals\":" << row["goals"].as<int>() << ","
+                << "\"assists\":" << row["assists"].as<int>() << ","
+                << "\"yellow_cards\":" << row["yellow_cards"].as<int>() << ","
+                << "\"red_cards\":" << row["red_cards"].as<int>() << ","
                 << "\"sub_in_minute\":" << (row["sub_in_minute"].is_null() ? "null" : std::to_string(row["sub_in_minute"].as<int>())) << ","
                 << "\"sub_out_minute\":" << (row["sub_out_minute"].is_null() ? "null" : std::to_string(row["sub_out_minute"].as<int>()))
                 << "}";
