@@ -37,6 +37,10 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
         return this->handleGetDatabaseSchema(request);
     });
     
+    router.get(prefix + "/schema/:table/data", [this](const Request& request) {
+        return this->handleGetTableData(request);
+    });
+    
     router.get(prefix + "/casa", [this](const Request& request) {
         return this->handleGetCasaDashboard(request);
     });
@@ -2763,6 +2767,88 @@ Response SystemAdminController::handleGetGroupMeLiveEvents(const Request& reques
         // Fetch calendar events from GroupMe API
         std::string apiResponse = callGroupMeAPI("/conversations/" + groupId + "/events/list", token);
         return Response(HttpStatus::OK, apiResponse);
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetTableData(const Request& request) {
+    try {
+        // Extract table name from path
+        std::string path = request.getPath();
+        std::string tableName;
+        
+        // Match /schema/{table}/data
+        std::regex pattern("/schema/([a-zA-Z0-9_]+)/data");
+        std::smatch matches;
+        if (std::regex_search(path, matches, pattern) && matches.size() > 1) {
+            tableName = matches[1].str();
+        }
+        
+        if (tableName.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid table name\"}");
+        }
+        
+        // Additional sanitization - table name must be alphanumeric and underscore only
+        for (char c : tableName) {
+            if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
+                return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"Invalid table name\"}");
+            }
+        }
+        
+        // Get limit from query parameter (default 100, max 1000)
+        int limit = 100;
+        std::string limitParam = request.getQueryParam("limit");
+        if (!limitParam.empty()) {
+            try {
+                limit = std::stoi(limitParam);
+                if (limit < 1) limit = 1;
+                if (limit > 1000) limit = 1000;
+            } catch (...) {
+                limit = 100;
+            }
+        }
+        
+        // Query the table
+        std::string sql = "SELECT * FROM " + tableName + " LIMIT " + std::to_string(limit);
+        pqxx::result result = db_->query(sql);
+        
+        // Build JSON response
+        std::ostringstream json;
+        json << "{\"table\":\"" << tableName << "\",\"count\":" << result.size() << ",\"rows\":[";
+        
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json << ",";
+            json << "{";
+            
+            for (size_t j = 0; j < result.columns(); ++j) {
+                if (j > 0) json << ",";
+                json << "\"" << result.column_name(j) << "\":";
+                
+                if (result[static_cast<int>(i)][static_cast<int>(j)].is_null()) {
+                    json << "null";
+                } else {
+                    std::string value = result[static_cast<int>(i)][static_cast<int>(j)].c_str();
+                    // Escape special characters
+                    json << "\"";
+                    for (char ch : value) {
+                        if (ch == '"') json << "\\\"";
+                        else if (ch == '\\') json << "\\\\";
+                        else if (ch == '\n') json << "\\n";
+                        else if (ch == '\r') json << "\\r";
+                        else if (ch == '\t') json << "\\t";
+                        else json << ch;
+                    }
+                    json << "\"";
+                }
+            }
+            
+            json << "}";
+        }
+        
+        json << "]}";
+        return Response(HttpStatus::OK, json.str());
         
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");

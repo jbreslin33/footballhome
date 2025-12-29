@@ -389,7 +389,7 @@ if [ "$BUILD_BACKEND_ONLY" = true ]; then
     echo ""
     
     echo -e "${YELLOW}🔨 Rebuilding backend container...${NC}"
-    $DOCKER_COMPOSE build --no-cache backend
+    $DOCKER_COMPOSE build backend
     
     echo -e "${YELLOW}🚀 Restarting backend container...${NC}"
     # Force remove backend and frontend to avoid dependency errors with Podman
@@ -414,7 +414,7 @@ if [ "$SAVE_MANUAL" = true ]; then
 fi
 echo "  ✓ Delete all containers and volumes (fresh database)"
 echo "  ✓ Clear Docker build cache"
-echo "  ✓ Rebuild all images (no cache)"
+echo "  ✓ Rebuild all images (cache dependencies, rebuild app code)"
 echo "  ✓ All database init scripts will run (including admin data)"
 if [ -n "$APSL_SCRAPE_MODE" ]; then
     echo "  ✓ Scrape APSL (Mode: $APSL_SCRAPE_MODE)"
@@ -576,8 +576,8 @@ echo "  ✓ Stopping and removing containers and volumes..."
 $DOCKER_COMPOSE down 2>&1 | grep -v "no container with" | grep -v "Error:" || true
 
 # Force remove any remaining containers
-$DOCKER stop footballhome_db footballhome_backend footballhome_frontend footballhome_pgadmin 2>/dev/null || true
-$DOCKER rm -f footballhome_db footballhome_backend footballhome_frontend footballhome_pgadmin 2>/dev/null || true
+$DOCKER stop footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
+$DOCKER rm -f footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
 
 # Remove volumes explicitly
 $DOCKER volume rm footballhome_db_data 2>/dev/null || true
@@ -589,8 +589,9 @@ $DOCKER network rm footballhome_footballhome_network 2>/dev/null || true
 # Remove pod if it exists
 $DOCKER pod rm -f pod_footballhome 2>/dev/null || true
 
-echo "  ✓ Clearing build cache..."
-$DOCKER builder prune -af 2>&1 | grep -v "^$" || true
+# Only remove dangling/unused footballhome images, keep base images (postgres, gcc, nginx)
+echo "  ✓ Removing old footballhome images..."
+$DOCKER images | grep footballhome | awk '{print $3}' | xargs -r $DOCKER rmi -f 2>/dev/null || true
 echo -e "${GREEN}✓ Cleanup complete (fresh start guaranteed)${NC}"
 echo ""
 
@@ -715,7 +716,7 @@ echo ""
 MONITOR_PID=$!
 
 # Run the build
-$DOCKER_COMPOSE build --no-cache
+$DOCKER_COMPOSE build
 
 # Stop monitoring
 kill $MONITOR_PID 2>/dev/null
@@ -962,6 +963,5 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 echo "Frontend:  http://localhost:3000"
 echo "Backend:   http://localhost:3001"
-echo "pgAdmin:   http://localhost:5050"
 echo ""
 echo "Login: soccer@lighthouse1893.org / 1893Soccer!"

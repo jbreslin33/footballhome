@@ -140,19 +140,6 @@ INSERT INTO coach_roles (id, name, description, sort_order) VALUES
     (3, 'trainer', 'Athletic trainer', 3)
 ON CONFLICT (id) DO NOTHING;
 
-CREATE TABLE group_types (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description TEXT,
-    sort_order INTEGER DEFAULT 0
-);
-
-INSERT INTO group_types (id, name, description, sort_order) VALUES
-    (1, 'team', 'Competitive team', 1),
-    (2, 'training', 'Training group', 2),
-    (3, 'social', 'Social group', 3)
-ON CONFLICT (id) DO NOTHING;
-
 CREATE TABLE source_systems (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
@@ -456,21 +443,6 @@ CREATE TABLE sport_divisions (
 
 CREATE INDEX idx_sport_divisions_club ON sport_divisions(club_id);
 
-CREATE TABLE sport_division_groups (
-    id SERIAL PRIMARY KEY,
-    sport_division_id INTEGER NOT NULL REFERENCES sport_divisions(id) ON DELETE CASCADE,
-    group_name VARCHAR(255) NOT NULL,
-    group_type_id INTEGER REFERENCES group_types(id),
-    age_group VARCHAR(50),
-    skill_level VARCHAR(50),
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(sport_division_id, group_name)
-);
-
-CREATE INDEX idx_sport_division_groups_division ON sport_division_groups(sport_division_id);
-CREATE INDEX idx_sport_division_groups_type ON sport_division_groups(group_type_id);
-
 -- ============================================================================
 -- 5. UNIFIED LEAGUE DATA (Replaces all apsl_*, casa_*, custom_* tables)
 -- ============================================================================
@@ -766,17 +738,6 @@ CREATE INDEX idx_player_users_player ON player_users(player_id);
 CREATE INDEX idx_player_users_user ON player_users(user_id);
 
 -- Link sport division groups to league teams
-CREATE TABLE group_teams (
-    id SERIAL PRIMARY KEY,
-    sport_division_group_id INTEGER NOT NULL REFERENCES sport_division_groups(id) ON DELETE CASCADE,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(sport_division_group_id, team_id)
-);
-
-CREATE INDEX idx_group_teams_group ON group_teams(sport_division_group_id);
-CREATE INDEX idx_group_teams_team ON group_teams(team_id);
-
 -- ============================================================================
 -- 8. SUPPORTING TABLES
 -- ============================================================================
@@ -807,10 +768,10 @@ CREATE INDEX idx_audit_log_changed_at ON audit_log(changed_at DESC);
 -- Lookup Tables: 12 (match_types, match_statuses, rsvp_statuses, age_calculation_methods, chat_providers, etc.)
 -- Governing Bodies: 3 tables
 -- Organizations & Leagues: 4 tables (organizations, leagues, conferences, divisions)
--- FootballHome Identity: 10 tables (users, user_emails, user_phones, external_identities, admins, clubs, club_admins, sport_divisions, sport_division_groups)
+-- FootballHome Identity: 9 tables (users, user_emails, user_phones, external_identities, admins, clubs, club_admins, sport_divisions)
 -- Unified League Data: 10 tables (teams, team_divisions, players, team_players, coaches, team_coaches, matches, player_match_stats, team_standings, venues)
 -- Chat System: 7 tables (chats, chat_integrations, chat_members, chat_messages, chat_events, chat_event_rsvps)
--- Player Identity: 2 junction tables (player_users, group_teams)
+-- Player Identity: 1 junction table (player_users)
 -- Supporting: 1 table (audit_log)
 -- TOTAL: ~49 tables
 --

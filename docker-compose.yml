@@ -40,29 +40,6 @@ services:
       -c log_line_prefix='%t [%p] %u@%d '
       -c client_min_messages=notice
 
-  # pgAdmin - Database Administration Interface
-  pgadmin:
-    image: docker.io/dpage/pgadmin4:latest
-    container_name: footballhome_pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
-    ports:
-      - "5050:80"
-    volumes:
-      # Persistent pgAdmin data
-      - pgadmin_data:/var/lib/pgadmin
-      # Pre-configure database connection
-      - ./.docker/pgadmin-servers.json:/pgadmin4/servers.json:ro
-    networks:
-      - footballhome_network
-    depends_on:
-      db:
-        condition: service_healthy
-
   # C++ Backend
   backend:
     build:
@@ -118,8 +95,6 @@ services:
 # Named volumes for persistent data
 volumes:
   db_data:
-    driver: local
-  pgadmin_data:
     driver: local
 
 # Custom network for service communication

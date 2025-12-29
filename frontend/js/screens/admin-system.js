@@ -62,6 +62,9 @@ class AdminSystemScreen extends Screen {
   }
   
   async onEnter(params) {
+    // Store global reference for onclick handlers
+    window.adminSystemScreen = this;
+    
     this.setupEventListeners();
     await this.loadView(this.currentView);
   }
@@ -559,6 +562,81 @@ class AdminSystemScreen extends Screen {
     }
   }
 
+  async viewTableData(tableName) {
+    try {
+      const response = await fetch(`/api/system-admin/schema/${tableName}/data?limit=100`);
+      if (!response.ok) throw new Error('Failed to load table data');
+      const data = await response.json();
+      
+      // Create modal
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content table-data-modal">
+          <div class="modal-header">
+            <h2>📊 ${tableName} - Sample Data (${data.count} rows)</h2>
+            <button class="modal-close">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="table-data-container">
+              ${this.renderTableData(data)}
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Close handlers
+      modal.querySelector('.modal-close').onclick = () => modal.remove();
+      modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+      };
+      
+    } catch (error) {
+      alert(`Error loading table data: ${error.message}`);
+    }
+  }
+  
+  renderTableData(data) {
+    if (data.rows.length === 0) {
+      return '<p class="no-data">No data in this table</p>';
+    }
+    
+    const columns = Object.keys(data.rows[0]);
+    
+    let html = '<table class="data-table"><thead><tr>';
+    columns.forEach(col => {
+      html += `<th>${col}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    
+    data.rows.forEach(row => {
+      html += '<tr>';
+      columns.forEach(col => {
+        const value = row[col];
+        const displayValue = value === null ? '<em>null</em>' : this.formatValue(value);
+        html += `<td>${displayValue}</td>`;
+      });
+      html += '</tr>';
+    });
+    
+    html += '</tbody></table>';
+    return html;
+  }
+  
+  formatValue(value) {
+    if (typeof value === 'string') {
+      // Truncate long strings
+      if (value.length > 100) {
+        return value.substring(0, 97) + '...';
+      }
+      // Escape HTML
+      return value.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    return String(value);
+  }
+  
   async loadDatabaseSchema() {
     const content = this.element.querySelector('.admin-content');
     
@@ -586,7 +664,11 @@ class AdminSystemScreen extends Screen {
             </span>
           </div>
           <div id="schema-network" class="schema-network"></div>
-          <div id="schema-details" class="schema-details"></div>
+          <div id="schema-details" class="schema-details">
+            <p style="color: var(--text-secondary); text-align: center; padding: var(--space-4);">
+              👆 Click on any table above to view its columns and data
+            </p>
+          </div>
         </div>
       `;
       
@@ -732,7 +814,7 @@ class AdminSystemScreen extends Screen {
         window.open('/schema-viewer.html', 'SchemaViewer', 'width=1400,height=900,menubar=no,toolbar=no,location=no');
       });
       
-      // Show table details on click
+      // Show table details on single click
       network.on('click', (params) => {
         const detailsDiv = document.getElementById('schema-details');
         
@@ -742,6 +824,7 @@ class AdminSystemScreen extends Screen {
           
           let detailsHTML = `
             <h3>📋 ${tableName}</h3>
+            <p style="color: var(--text-secondary); margin: var(--space-2) 0;">💡 Double-click this table to view its data</p>
             <h4>Columns (${table.columns.length})</h4>
             <table class="data-table">
               <thead>
@@ -804,6 +887,14 @@ class AdminSystemScreen extends Screen {
           detailsDiv.innerHTML = detailsHTML;
         } else {
           detailsDiv.innerHTML = '<p class="info-message">Click on a table to see details</p>';
+        }
+      });
+      
+      // Double-click to view table data
+      network.on('doubleClick', (params) => {
+        if (params.nodes.length > 0) {
+          const tableName = params.nodes[0];
+          this.viewTableData(tableName);
         }
       });
       

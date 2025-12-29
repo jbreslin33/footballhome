@@ -95,24 +95,28 @@ pqxx::result Database::query(const std::string& sql, const std::vector<std::stri
     }
     
     try {
-        pqxx::nontransaction work(*connection_);
+        pqxx::work work(*connection_);
         
-        // Simple parameter substitution (for production, use proper prepared statements)
-        // Replace in reverse order to avoid $1 matching $10, $11, etc.
-        std::string parameterized_sql = sql;
-        for (int i = params.size() - 1; i >= 0; --i) {
-            std::string placeholder = "$" + std::to_string(i + 1);
-            std::string escaped_param = connection_->quote(params[i]);
-            
-            // Replace ALL occurrences of this placeholder
-            size_t pos = 0;
-            while ((pos = parameterized_sql.find(placeholder, pos)) != std::string::npos) {
-                parameterized_sql.replace(pos, placeholder.length(), escaped_param);
-                pos += escaped_param.length();
-            }
+        // Use pqxx::work::exec_params for parameterized queries
+        pqxx::result result;
+        
+        if (params.size() == 0) {
+            result = work.exec(sql);
+        } else if (params.size() == 1) {
+            result = work.exec_params(sql, params[0]);
+        } else if (params.size() == 2) {
+            result = work.exec_params(sql, params[0], params[1]);
+        } else if (params.size() == 3) {
+            result = work.exec_params(sql, params[0], params[1], params[2]);
+        } else if (params.size() == 4) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3]);
+        } else if (params.size() == 5) {
+            result = work.exec_params(sql, params[0], params[1], params[2], params[3], params[4]);
+        } else {
+            throw std::runtime_error("Too many parameters (max 5 supported)");
         }
         
-        pqxx::result result = work.exec(parameterized_sql);
+        work.commit();
         return result;
     } catch (const std::exception& e) {
         std::cerr << "❌ Parameterized query error: " << e.what() << std::endl;
