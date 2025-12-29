@@ -899,9 +899,13 @@ class AdminSystemScreen extends Screen {
       
       // Double-click to view table data
       network.on('doubleClick', (params) => {
+        console.log('Double-click detected:', params);
         if (params.nodes.length > 0) {
           const tableName = params.nodes[0];
+          console.log('Opening table:', tableName);
           this.viewTableData(tableName);
+        } else {
+          console.log('No node selected');
         }
       });
       
