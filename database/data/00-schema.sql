@@ -454,6 +454,7 @@ CREATE TABLE teams (
     name VARCHAR(255) NOT NULL,
     city VARCHAR(100),
     logo_url TEXT,
+    is_active BOOLEAN DEFAULT true,
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100) UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
