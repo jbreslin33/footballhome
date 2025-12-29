@@ -80,7 +80,7 @@ class ApslHtmlParser extends HtmlParser {
                   is_starter: true,
                   sub_in_minute: null,
                   sub_out_minute: null,
-                  minutes_played: 90 // Default for starters
+                  minutes_played: null
                 });
                 if (currentTeamName) {
                   playerTeams.set(playerName, currentTeamName);
@@ -129,7 +129,7 @@ class ApslHtmlParser extends HtmlParser {
                   is_starter: false,
                   sub_in_minute: null,
                   sub_out_minute: null,
-                  minutes_played: 0
+                  minutes_played: null
                 });
                 if (currentTeamName) {
                   playerTeams.set(playerName, currentTeamName);
@@ -195,12 +195,10 @@ class ApslHtmlParser extends HtmlParser {
                   
                   if (playerStats.has(playerOut)) {
                     playerStats.get(playerOut).sub_out_minute = minute;
-                    playerStats.get(playerOut).minutes_played = minute;
                   }
                   
                   if (playerStats.has(playerIn)) {
                     playerStats.get(playerIn).sub_in_minute = minute;
-                    playerStats.get(playerIn).minutes_played = 90 - minute;
                   }
                 }
               }

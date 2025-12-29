@@ -477,8 +477,7 @@ class ApslScraper extends Scraper {
                   games_played: 1,
                   is_starter: stat.is_starter,
                   sub_in_minute: stat.sub_in_minute,
-                  sub_out_minute: stat.sub_out_minute,
-                  minutes_played: stat.minutes_played
+                  sub_out_minute: stat.sub_out_minute
                 };
                 this.data.apslPlayerStats.set(apslPlayerStat.id, apslPlayerStat);
               }

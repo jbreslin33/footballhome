@@ -20,6 +20,7 @@ private:
     Response handleGetStandings(const Request& request);
     Response handleGetPlayerStats(const Request& request);
     Response handleGetMatches(const Request& request);
+    Response handleGetMatchPlayerStats(const Request& request);
     
     // Helper methods
     std::string createJSONResponse(bool success, const std::string& message, const std::string& data = "");

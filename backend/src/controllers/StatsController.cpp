@@ -45,6 +45,11 @@ void StatsController::registerRoutes(Router& router, const std::string& prefix) 
     router.get(prefix + "/matches", [this](const Request& request) {
         return this->handleGetMatches(request);
     });
+    
+    // Get per-match player statistics
+    router.get(prefix + "/matches/:id/player-stats", [this](const Request& request) {
+        return this->handleGetMatchPlayerStats(request);
+    });
 }
 
 std::string StatsController::createJSONResponse(bool success, const std::string& message, const std::string& data) {
@@ -254,6 +259,89 @@ Response StatsController::handleGetMatches(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting matches: " << e.what() << std::endl;
         std::string json = createJSONResponse(false, "Failed to retrieve matches");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+Response StatsController::handleGetMatchPlayerStats(const Request& request) {
+    try {
+        std::string match_id = request.params.at("id");
+        
+        // Query per-match player stats with raw data (no calculated minutes)
+        std::string query = R"(
+            SELECT 
+                ps.id,
+                (p.first_name || ' ' || p.last_name) as player_name,
+                t.name as team_name,
+                ps.goals,
+                ps.assists,
+                ps.yellow_cards,
+                ps.red_cards,
+                ps.is_starter,
+                ps.sub_in_minute,
+                ps.sub_out_minute
+            FROM player_stats ps
+            JOIN players p ON ps.player_id = p.id
+            JOIN teams t ON ps.team_id = t.id
+            WHERE ps.match_id = )" + match_id + R"(
+            ORDER BY t.name, ps.is_starter DESC NULLS LAST, player_name
+        )";
+        
+        pqxx::result result = db_->query(query);
+        
+        // Manually construct JSON array grouped by team
+        std::ostringstream json_data;
+        json_data << "{\"teams\":[";
+        
+        std::string current_team;
+        bool first_team = true;
+        bool first_player = true;
+        
+        for (const auto& row : result) {
+            std::string team_name = row["team_name"].is_null() ? "Unknown" : escapeJsonString(row["team_name"].c_str());
+            std::string player_name = escapeJsonString(row["player_name"].c_str());
+            bool is_starter = !row["is_starter"].is_null() && row["is_starter"].as<bool>();
+            
+            // Start new team section if team changed
+            if (team_name != current_team) {
+                if (!first_team) {
+                    json_data << "]}"; // Close previous team's players array
+                }
+                if (!first_team) json_data << ",";
+                first_team = false;
+                current_team = team_name;
+                first_player = true;
+                
+                json_data << "{\"team_name\":\"" << team_name << "\",\"players\":[";
+            }
+            
+            if (!first_player) json_data << ",";
+            first_player = false;
+            
+            json_data << "{"
+                << "\"id\":\"" << row["id"].c_str() << "\","
+                << "\"player_name\":\"" << player_name << "\","
+                << "\"is_starter\":" << (is_starter ? "true" : "false") << ","
+                << "\"goals\":" << (row["goals"].is_null() ? 0 : row["goals"].as<int>()) << ","
+                << "\"assists\":" << (row["assists"].is_null() ? 0 : row["assists"].as<int>()) << ","
+                << "\"yellow_cards\":" << (row["yellow_cards"].is_null() ? 0 : row["yellow_cards"].as<int>()) << ","
+                << "\"red_cards\":" << (row["red_cards"].is_null() ? 0 : row["red_cards"].as<int>()) << ","
+                << "\"sub_in_minute\":" << (row["sub_in_minute"].is_null() ? "null" : std::to_string(row["sub_in_minute"].as<int>())) << ","
+                << "\"sub_out_minute\":" << (row["sub_out_minute"].is_null() ? "null" : std::to_string(row["sub_out_minute"].as<int>()))
+                << "}";
+        }
+        
+        if (!first_team) {
+            json_data << "]}"; // Close last team's players array
+        }
+        json_data << "]}"; // Close teams array and root object
+        
+        std::string json_response = createJSONResponse(true, "Match player stats retrieved successfully", json_data.str());
+        return Response(HttpStatus::OK, json_response);
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error getting match player stats: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve match player stats");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }

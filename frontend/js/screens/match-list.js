@@ -28,6 +28,19 @@ class MatchListScreen extends Screen {
         return;
       }
       
+      // Stats button
+      const statsBtn = e.target.closest('[data-action="stats"]');
+      if (statsBtn) {
+        const matchId = statsBtn.getAttribute('data-id');
+        const matchTitle = statsBtn.getAttribute('data-title');
+        
+        this.navigation.goTo('match-detail', { 
+          matchId: matchId,
+          matchTitle: matchTitle
+        });
+        return;
+      }
+      
       // Tactics button
       const tacticsBtn = e.target.closest('[data-action="tactics"]');
       if (tacticsBtn) {
@@ -219,14 +232,20 @@ class MatchListScreen extends Screen {
               </button>
             </div>
             
-            <div class="match-card-actions" style="margin-top: var(--space-2); border-top: 1px solid var(--border-color); padding-top: var(--space-2);">
+            <div class="match-card-actions" style="margin-top: var(--space-2); border-top: 1px solid var(--border-color); padding-top: var(--space-2); display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2);">
+              <button 
+                data-action="stats" 
+                data-id="${m.id}" 
+                data-title="${m.title}"
+                class="btn btn-secondary">
+                📊 View Stats
+              </button>
               <button 
                 data-action="tactics" 
                 data-id="${m.id}" 
                 data-title="${m.title}"
-                class="btn btn-secondary"
-                style="width: 100%;">
-                📋 Tactics Board
+                class="btn btn-secondary">
+                📋 Tactics
               </button>
             </div>
           </div>
