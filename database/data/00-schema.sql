@@ -477,17 +477,29 @@ CREATE TABLE team_divisions (
 CREATE INDEX idx_team_divisions_team ON team_divisions(team_id);
 CREATE INDEX idx_team_divisions_division ON team_divisions(division_id);
 
+-- Players (roster entities from scraping or manual entry)
 CREATE TABLE players (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    birth_year INTEGER,
+    full_name VARCHAR(255) NOT NULL,        -- ALWAYS populated (display name)
+    first_name VARCHAR(100),                -- OPTIONAL (parsed if available)
+    middle_name VARCHAR(100),               -- OPTIONAL (rarely used but available)
+    last_name VARCHAR(100),                 -- OPTIONAL (parsed if available)
+    preferred_name VARCHAR(100),            -- OPTIONAL (nickname: "Johnny", "JR")
+    birth_date DATE,                        -- Full date when available
+    birth_year INTEGER,                     -- Fallback when only year known
+    height_cm INTEGER,                      -- Height in centimeters
+    nationality VARCHAR(3),                 -- ISO 3166-1 alpha-3 (USA, BRA, MEX)
+    photo_url TEXT,
     source_system_id INTEGER REFERENCES source_systems(id),
-    external_id VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    external_id VARCHAR(100),               -- External system's player ID
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_players_source ON players(source_system_id);
 CREATE INDEX idx_players_birth_year ON players(birth_year);
+CREATE INDEX idx_players_full_name ON players(full_name);
+CREATE INDEX idx_players_external ON players(source_system_id, external_id);
 
 -- Team rosters (junction table)
 CREATE TABLE team_players (

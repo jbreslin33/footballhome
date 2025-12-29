@@ -39,7 +39,8 @@ class ApslScraper extends Scraper {
     this.data.apslConferences = new Map();
     this.data.apslDivisions = new Map();
     this.data.apslTeams = new Map();
-    this.data.apslPlayers = new Map();
+    this.data.apslPlayers = new Map();           // Normalized players table
+    this.data.apslTeamPlayers = new Map();       // Junction: team_players
     this.data.apslMatches = new Map();
     this.data.apslPlayerStats = new Map();
     this.data.apslTeamStats = new Map();
@@ -220,28 +221,39 @@ class ApslScraper extends Scraper {
         for (const playerData of roster) {
           const { first, last } = ApslHtmlParser.splitName(playerData.name);
           
-          // Create APSL Player (each roster entry is unique to team)
-          const apslPlayerId = playerCounter++;
+          // Create Player entity (normalized table)
+          const playerId = playerCounter++;
+          const externalId = `${apslTeam.apsl_team_id}-${first}-${last}`.toLowerCase().replace(/\s+/g, '-');
           
-          this.data.apslPlayers.set(apslPlayerId, {
-              id: apslPlayerId,
-              apsl_team_id: apslTeamId,
-              name: `${first} ${last}`,
+          this.data.apslPlayers.set(playerId, {
+              id: playerId,
+              full_name: `${first} ${last}`,
+              first_name: first,
+              last_name: last,
+              source_system_id: 1,  // APSL
+              external_id: externalId
+          });
+          
+          // Create Team-Player junction (roster membership)
+          const teamPlayerId = playerCounter;  // Reuse same counter for junction ID
+          this.data.apslTeamPlayers.set(teamPlayerId, {
+              id: teamPlayerId,
+              team_id: apslTeamId,
+              player_id: playerId,
               jersey_number: playerData.jersey_number || null,
-              position: playerData.position,
-              apsl_player_id: `${apslTeam.apsl_team_id}-${first}-${last}`.toLowerCase().replace(/\s+/g, '-')
+              position: playerData.position
           });
 
-          // Create APSL player season stats if available
+          // Create player season stats if available
           const stats = statsMap.get(playerData.name);
           if (stats) {
             // Stats are stored per match, but we're simplifying to season stats
             // We'll need match-level stats later when we scrape individual matches
-            const statsId = apslPlayerId; // One stat record per player for now
+            const statsId = playerId; // One stat record per player for now
             const apslPlayerStats = {
               id: statsId,
               apsl_match_id: null, // Will be populated when we scrape match details
-              apsl_player_id: apslPlayerId,
+              apsl_player_id: playerId,  // Now references normalized player_id
               goals: stats.goals || 0,
               assists: stats.assists || 0,
               yellow_cards: stats.yellow_cards || 0,
@@ -254,8 +266,10 @@ class ApslScraper extends Scraper {
         // Log stats summary
         const totalGoals = Array.from(this.data.apslPlayerStats.values())
           .filter(s => {
-            const player = this.data.apslPlayers.get(s.apsl_player_id);
-            return player && player.apsl_team_id === apslTeamId;
+            // Find team_player junction to check if player is on this team
+            const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
+              .find(tp => tp.player_id === s.apsl_player_id && tp.team_id === apslTeamId);
+            return teamPlayer !== undefined;
           })
           .reduce((sum, s) => sum + s.goals, 0);
         if (totalGoals > 0) {
@@ -423,6 +437,7 @@ class ApslScraper extends Scraper {
     this.log(`   DEBUG: apslDivisions: ${this.data.apslDivisions.size}`);
     this.log(`   DEBUG: apslTeams: ${this.data.apslTeams.size}`);
     this.log(`   DEBUG: apslPlayers: ${this.data.apslPlayers.size}`);
+    this.log(`   DEBUG: apslTeamPlayers: ${this.data.apslTeamPlayers.size}`);
     this.log(`   DEBUG: apslMatches: ${this.data.apslMatches.size}`);
     this.log(`   DEBUG: apslPlayerStats: ${this.data.apslPlayerStats.size}`);
     this.log(`   DEBUG: apslTeamStats: ${this.data.apslTeamStats.size}`);
@@ -472,15 +487,26 @@ class ApslScraper extends Scraper {
               conflictColumns: ['apsl_team_id']
           }
       },
-      // APSL Players
+      // Players (normalized)
       {
           filename: '10a-apsl-5-players.sql',
           data: this.data.apslPlayers,
           options: {
               title: 'APSL Players',
-              tableName: 'apsl_players',
+              tableName: 'players',
               useInserts: true,
-              conflictColumns: ['apsl_player_id']
+              conflictColumns: ['source_system_id', 'external_id']
+          }
+      },
+      // Team Players (roster junction)
+      {
+          filename: '10a-apsl-5b-team-players.sql',
+          data: this.data.apslTeamPlayers,
+          options: {
+              title: 'APSL Team Rosters',
+              tableName: 'team_players',
+              useInserts: true,
+              conflictColumns: ['team_id', 'player_id']
           }
       },
       // APSL Matches
