@@ -35,6 +35,9 @@ const includeSchedules = args.includes('--schedules');
 const teamIndex = args.indexOf('--team');
 const teamFilter = teamIndex >= 0 && args[teamIndex + 1] ? args[teamIndex + 1] : null;
 
+// Extract --force-refresh parameter (bypass cache)
+const forceRefresh = args.includes('--force-refresh');
+
 // Extract --location parameter (lat,lng)
 const locationIndex = args.indexOf('--location');
 const location = locationIndex >= 0 && args[locationIndex + 1] 
@@ -55,11 +58,11 @@ async function main() {
     // 1. Aggregate Flags
     if (runApsl) {
       // Always include schedules for APSL to enable per-match player stats
-      scrapersToRun.push(new ApslScraper(mode, { includeSchedules: true, teamFilter }));
+      scrapersToRun.push(new ApslScraper(mode, { includeSchedules: true, teamFilter, forceRefresh }));
     }
 
     if (runCasa) {
-      scrapersToRun.push(new CasaScraper(mode, { includeSchedules, teamFilter }));
+      scrapersToRun.push(new CasaScraper(mode, { includeSchedules, teamFilter, forceRefresh }));
     }
 
     if (runGroupMe) {
@@ -73,11 +76,11 @@ async function main() {
     if (scrapersToRun.length === 0 && scraper) {
       switch (scraper) {
         case 'apsl':
-          scrapersToRun.push(new ApslScraper(mode, { includeSchedules, teamFilter }));
+          scrapersToRun.push(new ApslScraper(mode, { includeSchedules, teamFilter, forceRefresh }));
           break;
           
         case 'casa':
-          scrapersToRun.push(new CasaScraper(mode, { includeSchedules, teamFilter }));
+          scrapersToRun.push(new CasaScraper(mode, { includeSchedules, teamFilter, forceRefresh }));
           break;
           
         case 'groupme-training':

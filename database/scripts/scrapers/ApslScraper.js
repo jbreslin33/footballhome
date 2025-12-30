@@ -1,7 +1,9 @@
 const Scraper = require('../base/Scraper');
 const PuppeteerFetcher = require('../fetchers/PuppeteerFetcher');
+const CacheManager = require('../services/CacheManager');
 const ApslHtmlParser = require('../parsers/ApslHtmlParser');
 const SqlGenerator = require('../services/SqlGenerator');
+const path = require('path');
 
 /**
  * APSL League Scraper
@@ -19,10 +21,15 @@ class ApslScraper extends Scraper {
     this.baseUrl = 'https://apslsoccer.com';
     this.SOURCE_SYSTEM_ID = 1; // APSL source system ID
     
-    // Use PuppeteerFetcher for dynamic pages (schedule, match events)
-    this.fetcher = new PuppeteerFetcher({ timeout: 30000 });
+    // Use PuppeteerFetcher with CacheManager to avoid bot detection
+    const puppeteerFetcher = new PuppeteerFetcher({ timeout: 0 });
+    const cacheDir = path.join(__dirname, '../../scraped-html/apsl');
+    this.cache = new CacheManager(cacheDir, puppeteerFetcher, 24);
     this.parser = new ApslHtmlParser();
     this.sqlGenerator = new SqlGenerator();
+    
+    // Track force-refresh flag from options
+    this.forceRefresh = options.forceRefresh || false;
     
     // Conference data cache (with tables for team extraction)
     this.conferences = new Map();
@@ -77,7 +84,9 @@ class ApslScraper extends Scraper {
   async fetchStructure() {
     this.log('\n📊 Fetching APSL structure...');
     
-    const html = await this.fetcher.fetch(`${this.baseUrl}/standings/`);
+    // Use CacheManager to fetch standings page
+    const html = await this.cache.fetch(`${this.baseUrl}/standings/`, this.forceRefresh);
+    
     this.parser.parse(html);
     
     // Parse structure (returns array of conference data with tables)
@@ -201,7 +210,7 @@ class ApslScraper extends Scraper {
       const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.external_id}`;
       
       try {
-        const html = await this.fetcher.fetch(teamUrl);
+        const html = await this.cache.fetch(teamUrl, this.forceRefresh);
         this.parser.parse(html);
         
         const roster = this.parser.parseRoster();
@@ -307,7 +316,7 @@ class ApslScraper extends Scraper {
       try {
         this.log(`   [${teamCount}/${totalTeams}] ${apslTeam.name}...`);
         const teamUrl = `${this.baseUrl}/APSL/Team/${apslTeam.external_id}`;
-        const html = await this.fetcher.fetch(teamUrl);
+        const html = await this.cache.fetch(teamUrl, this.forceRefresh);
         this.parser.parse(html);
 
         const schedule = this.parser.parseSchedule();
@@ -377,7 +386,7 @@ class ApslScraper extends Scraper {
               const matchFetchStart = Date.now();
               this.fetchedMatchUrls.add(fullMatchUrl);
               
-              const matchHtml = await this.fetcher.fetch(fullMatchUrl);
+              const matchHtml = await this.cache.fetch(fullMatchUrl, this.forceRefresh);
               
               const matchParser = new (require('../parsers/ApslHtmlParser'))();
               matchParser.parse(matchHtml);
@@ -709,9 +718,9 @@ class ApslScraper extends Scraper {
   }
 
   async cleanup() {
-    // Close Puppeteer browser if open
-    if (this.fetcher && this.fetcher.close) {
-      await this.fetcher.close();
+    // Close Puppeteer browser if open (accessed via CacheManager)
+    if (this.cache && this.cache.fetcher && this.cache.fetcher.close) {
+      await this.cache.fetcher.close();
     }
     this.parser.destroy();
   }
