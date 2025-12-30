@@ -589,9 +589,9 @@ class ApslScraper extends Scraper {
     this.log(`   DEBUG: apslTeamStats: ${this.data.apslTeamStats.size}`);
     
     const results = await this.sqlGenerator.generateMultiple([
-      // APSL Leagues
+      // APSL Leagues (table 016)
       {
-          filename: '10a-apsl-1-leagues.sql',
+          filename: '016a-leagues.sql',
           data: this.data.apslLeagues,
           options: {
               title: 'APSL Leagues',
@@ -600,9 +600,9 @@ class ApslScraper extends Scraper {
               conflictColumns: ['id']
           }
       },
-      // APSL Conferences
+      // APSL Conferences (table 017)
       {
-          filename: '10a-apsl-2-conferences.sql',
+          filename: '017a-conferences.sql',
           data: this.data.apslConferences,
           options: {
               title: 'APSL Conferences',
@@ -611,9 +611,9 @@ class ApslScraper extends Scraper {
               conflictColumns: ['id']
           }
       },
-      // APSL Divisions
+      // APSL Divisions (table 018)
       {
-          filename: '10a-apsl-3-divisions.sql',
+          filename: '018a-divisions.sql',
           data: this.data.apslDivisions,
           options: {
               title: 'APSL Divisions',
@@ -622,9 +622,9 @@ class ApslScraper extends Scraper {
               conflictColumns: ['id']
           }
       },
-      // APSL Teams
+      // APSL Teams (table 027)
       {
-          filename: '10a-apsl-4-teams.sql',
+          filename: '027a-teams.sql',
           data: this.data.apslTeams,
           options: {
               title: 'APSL Teams',
@@ -633,9 +633,9 @@ class ApslScraper extends Scraper {
               conflictColumns: ['id']
           }
       },
-      // Players (normalized) - MUST come before team_players
+      // Players (table 029) - MUST come before team_players
       {
-          filename: '10a-apsl-5-players.sql',
+          filename: '029a-players.sql',
           data: this.data.apslPlayers,
           options: {
               title: 'APSL Players',
@@ -644,9 +644,9 @@ class ApslScraper extends Scraper {
               conflictColumns: ['source_system_id', 'external_id']
           }
       },
-      // Team Players (roster junction) - MUST come after players
+      // Team Players (table 030) - MUST come after players
       {
-          filename: '10a-apsl-5z-team-players.sql',
+          filename: '030a-team-players.sql',
           data: this.data.apslTeamPlayers,
           options: {
               title: 'APSL Team Rosters',
@@ -655,9 +655,9 @@ class ApslScraper extends Scraper {
               conflictColumns: ['team_id', 'player_id']
           }
       },
-      // APSL Matches
+      // APSL Matches (table 034)
       {
-          filename: '10a-apsl-6-matches.sql',
+          filename: '034a-matches.sql',
           data: this.data.apslMatches,
           options: {
               title: 'APSL Matches',
@@ -666,20 +666,9 @@ class ApslScraper extends Scraper {
               conflictColumns: ['id']
           }
       },
-      // APSL Match Events (individual goal/card/sub records with minute)
+      // APSL Match Lineups (table 035)
       {
-          filename: '10a-apsl-7-match-events.sql',
-          data: this.data.apslMatchEvents,
-          options: {
-              title: 'APSL Match Events',
-              tableName: 'match_events',
-              useInserts: true,
-              conflictColumns: ['id']
-          }
-      },
-      // APSL Match Lineups (who started vs who was available substitute)
-      {
-          filename: '10a-apsl-7z-match-lineups.sql',
+          filename: '035a-match-lineups.sql',
           data: this.data.apslMatchLineups,
           options: {
               title: 'APSL Match Lineups',
@@ -688,26 +677,37 @@ class ApslScraper extends Scraper {
               conflictColumns: ['match_id', 'player_id']
           }
       },
-      // APSL Player Season Stats (from roster pages, includes assists)
+      // APSL Match Events (table 036)
       {
-          filename: '10a-apsl-8-player-season-stats.sql',
-          data: this.data.apslPlayerSeasonStats,
+          filename: '036a-match-events.sql',
+          data: this.data.apslMatchEvents,
           options: {
-              title: 'APSL Player Season Statistics',
-              tableName: 'player_season_stats',
+              title: 'APSL Match Events',
+              tableName: 'match_events',
               useInserts: true,
-              conflictColumns: ['player_id', 'team_id', 'season']
+              conflictColumns: ['id']
           }
       },
-      // APSL Team Stats
+      // APSL Team Stats (table 037)
       {
-          filename: '10a-apsl-9-team-stats.sql',
+          filename: '037a-team-stats.sql',
           data: this.data.apslTeamStats,
           options: {
               title: 'APSL Team Statistics',
               tableName: 'team_stats',
               useInserts: true,
               conflictColumns: ['team_id', 'match_id']
+          }
+      },
+      // APSL Player Season Stats (table 038)
+      {
+          filename: '038a-player-season-stats.sql',
+          data: this.data.apslPlayerSeasonStats,
+          options: {
+              title: 'APSL Player Season Statistics',
+              tableName: 'player_season_stats',
+              useInserts: true,
+              conflictColumns: ['player_id', 'team_id', 'season']
           }
       }
     ]);
