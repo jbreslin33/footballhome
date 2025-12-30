@@ -1755,7 +1755,7 @@ class CasaScraper extends Scraper {
     const results = await this.sqlGenerator.generateMultiple([
       // Leagues (normalized table)
       {
-        filename: '03b-leagues-casa.sql',
+        filename: '016-casa-leagues.sql',
         data: this.data.leagues,
         options: {
           title: 'CASA Leagues',
@@ -1766,7 +1766,7 @@ class CasaScraper extends Scraper {
       },
       // Conferences (normalized table)
       {
-        filename: '04b-conferences-casa.sql',
+        filename: '017-casa-conferences.sql',
         data: this.data.conferences,
         options: {
           title: 'CASA Conferences',
@@ -1777,7 +1777,7 @@ class CasaScraper extends Scraper {
       },
       // Divisions (normalized table)
       {
-        filename: '05b-league-divisions-casa.sql',
+        filename: '018-casa-divisions.sql',
         data: this.data.divisions,
         options: {
           title: 'CASA Divisions',
@@ -1788,7 +1788,7 @@ class CasaScraper extends Scraper {
       },
       // Teams (normalized table)
       {
-        filename: '21b-teams-casa.sql',
+        filename: '030-casa-teams.sql',
         data: this.data.teams,
         options: {
           title: 'CASA Teams',
@@ -1799,7 +1799,7 @@ class CasaScraper extends Scraper {
       },
       // Team Divisions (junction table linking teams to league divisions)
       {
-        filename: '22b-team-divisions-casa.sql',
+        filename: '031-casa-team-divisions.sql',
         data: this.data.teamDivisions,
         options: {
           title: 'CASA Team Divisions',
@@ -1810,7 +1810,7 @@ class CasaScraper extends Scraper {
       },
       // Players (normalized table)
       {
-        filename: '24b-players-casa.sql',
+        filename: '032-casa-players.sql',
         data: this.data.players,
         options: {
           title: 'CASA Players',
@@ -1821,7 +1821,7 @@ class CasaScraper extends Scraper {
       },
       // Team Players (normalized junction table)
       {
-        filename: '26b-team-players-casa.sql',
+        filename: '033-casa-team-players.sql',
         data: this.data.teamPlayers,
         options: {
           title: 'CASA Team Players',
@@ -1832,7 +1832,7 @@ class CasaScraper extends Scraper {
       },
       // Matches (normalized table)
       {
-        filename: '30b-schedule-casa.sql',
+        filename: '037-casa-matches.sql',
         data: this.data.matches,
         options: {
           title: 'CASA Schedule',
