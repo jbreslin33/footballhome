@@ -70,6 +70,7 @@ class CasaScraper extends Scraper {
     this.data.divisions = new Map();
     this.data.teams = new Map();
     this.data.players = new Map();
+    this.data.teamPlayers = new Map();
     this.data.matches = new Map();
     
     // Source system IDs
@@ -1597,63 +1598,57 @@ class CasaScraper extends Scraper {
           
           if (!firstName || !lastName) continue;
           
-          // Check for duplicates
-          if (this.duplicateDetector.isDuplicate('player', { firstName, lastName }, ['firstName', 'lastName'])) {
-            continue;
-          }
+          // Generate player ID and external ID
+          if (!this.playerSeq) this.playerSeq = 1;
+          const playerId = this.playerSeq++;
+          const fullName = `${firstName} ${lastName}`;
+          const externalPlayerId = `casa-player-${firstName.toLowerCase()}-${lastName.toLowerCase()}`.replace(/\s+/g, '-');
           
-          const playerId = IdGenerator.fromComponents('player', firstName, lastName);
-          const player = new Player({
-            id: playerId,
-            first_name: firstName,
-            last_name: lastName,
-            position: position || null
-          });
-          
-          this.data.players.set(playerId, player);
-          this.duplicateDetector.markSeen('player', { firstName, lastName }, ['firstName', 'lastName']);
-          
-          // Create team-player association
-          const teamPlayerKey = `${teamId}_${playerId}`;
-          const teamPlayer = new TeamPlayer({
-            team_id: teamId,
-            player_id: playerId,
-            jersey_number: jerseyNumber || null,
-            is_active: true
-          });
-          this.data.teamPlayers.set(teamPlayerKey, teamPlayer);
-
-          // Create CASA Player
-          const casaPlayerId = IdGenerator.fromComponents('casa', 'player', firstName, lastName);
-          
-          // Find the casa_team_id for this team by comparing normalized names
-          let casaTeamId = null;
-          const normalizedRosterTeamName = this.normalizeTeamName(teamName);
-          
-          for (const [cId, cTeam] of this.data.teams) {
-            const normalizedStandingsTeamName = this.normalizeTeamName(cTeam.name);
-            if (normalizedStandingsTeamName === normalizedRosterTeamName ||
-                normalizedStandingsTeamName.includes(normalizedRosterTeamName) ||
-                normalizedRosterTeamName.includes(normalizedStandingsTeamName)) {
-              casaTeamId = cId;
+          // Check if player already exists (by external_id)
+          let existingPlayerId = null;
+          for (const [id, player] of this.data.players) {
+            if (player.external_id === externalPlayerId) {
+              existingPlayerId = id;
               break;
             }
           }
           
-          if (!casaTeamId) {
-            this.logWarning(`      Could not find CASA team ID for ${teamName}`);
-            continue;
+          // Create or update player in normalized players table
+          if (!existingPlayerId) {
+            this.data.players.set(playerId, {
+              id: playerId,
+              full_name: fullName,
+              first_name: firstName,
+              middle_name: null,
+              last_name: lastName,
+              preferred_name: null,
+              birth_date: null,
+              birth_year: null,
+              height_cm: null,
+              nationality: null,
+              photo_url: null,
+              source_system_id: this.SOURCE_SYSTEM_ID,
+              external_id: externalPlayerId
+            });
           }
           
-          if (!this.data.players.has(casaPlayerId)) {
-              this.data.players.set(casaPlayerId, {
-                  casa_team_id: casaTeamId,
-                  casa_player_id: `${firstName}-${lastName}`.toLowerCase().replace(/\s+/g, '-'),
-                  name: `${firstName} ${lastName}`,
-                  jersey_number: null,
-                  position: null
-              });
-          }
+          const finalPlayerId = existingPlayerId || playerId;
+          
+          // Create team-player association in team_players junction table
+          if (!this.teamPlayerSeq) this.teamPlayerSeq = 1;
+          const teamPlayerId = this.teamPlayerSeq++;
+          
+          this.data.teamPlayers = this.data.teamPlayers || new Map();
+          this.data.teamPlayers.set(teamPlayerId, {
+            id: teamPlayerId,
+            team_id: teamId,
+            player_id: finalPlayerId,
+            jersey_number: jerseyNumber || null,
+            position: position || null,
+            is_active: true,
+            joined_at: null,
+            left_at: null
+          });
 
           playerCount++;
         }
@@ -1779,6 +1774,17 @@ class CasaScraper extends Scraper {
           tableName: 'players',
           useInserts: true,
           conflictColumns: ['external_id', 'source_system_id']
+        }
+      },
+      // Team Players (normalized junction table)
+      {
+        filename: '26b-team-players-casa.sql',
+        data: this.data.teamPlayers,
+        options: {
+          title: 'CASA Team Players',
+          tableName: 'team_players',
+          useInserts: true,
+          conflictColumns: ['team_id', 'player_id']
         }
       },
       // Matches (normalized table)
