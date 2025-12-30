@@ -69,6 +69,7 @@ class CasaScraper extends Scraper {
     this.data.conferences = new Map();
     this.data.divisions = new Map();
     this.data.teams = new Map();
+    this.data.teamDivisions = new Map();
     this.data.players = new Map();
     this.data.teamPlayers = new Map();
     this.data.matches = new Map();
@@ -368,18 +369,36 @@ class CasaScraper extends Scraper {
         // Extract CASA team ID (their external ID)
         const casaTeamId = teamIdMap.get(teamName) || teamIdMap.get(teamName.toLowerCase());
         
-        // Create Team in normalized teams table
+        // Create Team in normalized teams table (no division_id - use junction table instead)
         this.data.teams.set(teamId, {
           id: teamId,
-          division_id: divisionId,  // Normalized: division_id instead of casa_division_id
+          club_id: null,  // League teams don't belong to Football Home clubs
+          sport_division_id: null,  // League teams don't belong to Football Home sport divisions
           name: teamName.trim(),
-          display_name: teamName.trim(),
           city: null,
-          state: null,
           logo_url: null,
+          is_active: true,
           source_system_id: this.SOURCE_SYSTEM_ID,  // 2 = CASA
-          external_id: casaTeamId || `casa-team-${teamId}`,  // Use CASA's team ID or generate one
-          page_node_id: casaTeamId  // Store for matching with schedules
+          external_id: casaTeamId || `casa-team-${teamId}`  // Use CASA's team ID or generate one
+        });
+        
+        // Store page_node_id in a lookup map for matching with schedules
+        if (casaTeamId) {
+          this.teamNodeIdMap = this.teamNodeIdMap || new Map();
+          this.teamNodeIdMap.set(casaTeamId, teamId);
+        }
+        
+        // Create team_divisions junction record to link team to league division
+        if (!this.teamDivisionSeq) this.teamDivisionSeq = 1;
+        const teamDivisionId = this.teamDivisionSeq++;
+        
+        this.data.teamDivisions = this.data.teamDivisions || new Map();
+        this.data.teamDivisions.set(teamDivisionId, {
+          id: teamDivisionId,
+          team_id: teamId,
+          division_id: divisionId,
+          season_id: null,
+          is_active: true
         });
 
         this.log(`   ✓ ${teamName} (Node ID: ${casaTeamId || 'N/A'})`);
@@ -1763,6 +1782,17 @@ class CasaScraper extends Scraper {
           tableName: 'teams',
           useInserts: true,
           conflictColumns: ['external_id', 'source_system_id']
+        }
+      },
+      // Team Divisions (junction table linking teams to league divisions)
+      {
+        filename: '22b-team-divisions-casa.sql',
+        data: this.data.teamDivisions,
+        options: {
+          title: 'CASA Team Divisions',
+          tableName: 'team_divisions',
+          useInserts: true,
+          conflictColumns: ['team_id', 'division_id']
         }
       },
       // Players (normalized table)
