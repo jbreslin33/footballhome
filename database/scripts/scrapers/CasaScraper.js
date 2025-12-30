@@ -908,10 +908,23 @@ class CasaScraper extends Scraper {
           for (const apiMatch of apiMatches) {
               const match = this.parseMatchFromApi(apiMatch, divisionName, divisionId);
               if (match) {
-                  if (!this.matchSeq) this.matchSeq = 1;
-                  const matchId = this.matchSeq++;
-                  this.data.matches.set(matchId, match);
-                  matchCount++;
+                  // Check for duplicate by external_id
+                  let isDuplicate = false;
+                  if (match.external_id) {
+                      for (const existingMatch of this.data.matches.values()) {
+                          if (existingMatch.external_id === match.external_id) {
+                              isDuplicate = true;
+                              break;
+                          }
+                      }
+                  }
+                  
+                  if (!isDuplicate) {
+                      if (!this.matchSeq) this.matchSeq = 1;
+                      const matchId = this.matchSeq++;
+                      this.data.matches.set(matchId, match);
+                      matchCount++;
+                  }
               }
           }
       }

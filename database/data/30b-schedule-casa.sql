@@ -30,8 +30,8 @@ VALUES
   (1, NULL, 11, 5, '2025-11-02', '19:45:00', NULL, NULL, NULL, 3, 1, 2, 2, 'casa-match-5e17f40f-dcc5-4cf4-973d-287136f16897', NULL, NULL),
   (1, NULL, 11, 4, '2025-10-31', '00:45:00', NULL, NULL, NULL, 3, 1, NULL, 2, 'casa-match-a365caf9-9070-445c-9c83-3d7bcdba5a96', NULL, NULL),
   (1, NULL, 7, 5, '2025-10-29', '23:30:00', NULL, NULL, NULL, 3, 3, 2, 2, 'casa-match-142af24c-dc95-4f62-bf2b-8ec8a3c4e62d', NULL, NULL),
-  (1, NULL, 4, 12, '2025-10-12', '18:45:00', NULL, NULL, NULL, 3, 8, 0, 2, 'casa-match-d4060108-b706-4f5f-a165-8a93b1d36f75', NULL, NULL),
   (1, NULL, 11, 6, '2025-10-12', '18:45:00', NULL, NULL, NULL, 3, 2, 2, 2, 'casa-match-50c7a4a7-b9dd-45fa-8573-c5b746b466ed', NULL, NULL),
+  (1, NULL, 4, 12, '2025-10-12', '18:45:00', NULL, NULL, NULL, 3, 8, 0, 2, 'casa-match-d4060108-b706-4f5f-a165-8a93b1d36f75', NULL, NULL),
   (1, NULL, 5, 11, '2025-09-07', '16:00:00', NULL, NULL, NULL, 3, 1, 3, 2, 'casa-match-ef489f44-88bf-4caa-a0ea-979dd2d20f8f', NULL, NULL),
   (1, NULL, 5, 12, '2025-09-14', '16:00:00', NULL, NULL, NULL, 3, 2, 0, 2, 'casa-match-f3ec8843-5439-41e1-90fc-411a4055eff7', NULL, NULL),
   (1, NULL, 11, NULL, '2025-09-14', '18:45:00', NULL, NULL, NULL, 3, 2, 2, 2, 'casa-match-65e764a6-ef1c-40c6-903c-7866c89c2867', NULL, NULL),
@@ -40,8 +40,7 @@ VALUES
   (1, NULL, 5, 4, '2025-09-28', '16:00:00', NULL, NULL, NULL, 3, 0, 8, 2, 'casa-match-4ae7d921-eb35-4bd5-973d-4542c5c9caf0', NULL, NULL),
   (1, NULL, 1, 12, '2025-09-28', '16:30:00', NULL, NULL, NULL, 3, 5, 0, 2, 'casa-match-f0de1594-558a-459f-96e9-bd85082c30c7', NULL, NULL),
   (1, NULL, 12, 8, '2025-10-05', '15:00:00', NULL, NULL, NULL, 3, 2, 0, 2, 'casa-match-19d9976a-3d19-43d6-a7ce-8f1b95593a1d', NULL, NULL),
-  (1, NULL, 11, 4, '2025-10-05', '18:45:00', NULL, NULL, NULL, 3, 0, 3, 2, 'casa-match-03728c1d-369d-4ed4-af53-f54f0993d190', NULL, NULL),
-  (1, NULL, 11, 6, '2025-10-12', '18:45:00', NULL, NULL, NULL, 3, 2, 2, 2, 'casa-match-50c7a4a7-b9dd-45fa-8573-c5b746b466ed', NULL, NULL)
+  (1, NULL, 11, 4, '2025-10-05', '18:45:00', NULL, NULL, NULL, 3, 0, 3, 2, 'casa-match-03728c1d-369d-4ed4-af53-f54f0993d190', NULL, NULL)
 ON CONFLICT (id) DO UPDATE SET
   match_type_id = EXCLUDED.match_type_id,
   division_id = EXCLUDED.division_id,
