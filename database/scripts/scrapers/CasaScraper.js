@@ -367,14 +367,18 @@ class CasaScraper extends Scraper {
         // Extract CASA team ID (their external ID)
         const casaTeamId = teamIdMap.get(teamName) || teamIdMap.get(teamName.toLowerCase());
         
-        // Create CASA Team directly in casa_teams table
+        // Create Team in normalized teams table
         this.data.teams.set(teamId, {
           id: teamId,
-          casa_division_id: divisionId,
+          division_id: divisionId,  // Normalized: division_id instead of casa_division_id
           name: teamName.trim(),
-          city: null, // CASA doesn't provide city data
+          display_name: teamName.trim(),
+          city: null,
+          state: null,
           logo_url: null,
-          casa_team_id: casaTeamId || null
+          source_system_id: this.SOURCE_SYSTEM_ID,  // 2 = CASA
+          external_id: casaTeamId || `casa-team-${teamId}`,  // Use CASA's team ID or generate one
+          page_node_id: casaTeamId  // Store for matching with schedules
         });
 
         this.log(`   ✓ ${teamName} (Node ID: ${casaTeamId || 'N/A'})`);
@@ -1092,21 +1096,33 @@ class CasaScraper extends Scraper {
           status = 'completed';
       }
       
-      // Generate CASA match ID from API data
-      const casaMatchId = apiMatch.id || apiMatch.game_id || apiMatch.event_id || null;
+      // Generate external match ID from API data
+      const externalMatchId = apiMatch.id || apiMatch.game_id || apiMatch.event_id || null;
       
-      // Return casa_matches row object
+      // Map status to match_status_id (1=scheduled, 2=in_progress, 3=completed, 4=cancelled, 5=postponed)
+      let matchStatusId = 1; // Default to scheduled
+      if (status === 'completed') matchStatusId = 3;
+      else if (status === 'cancelled') matchStatusId = 4;
+      else if (status === 'postponed') matchStatusId = 5;
+      
+      // Return normalized matches table row object
       return {
-          casa_division_id: divisionId,
+          match_type_id: 1, // 1 = league match
+          division_id: divisionId,
           home_team_id: homeTeamObj ? homeTeamObj.id : null,
           away_team_id: awayTeamObj ? awayTeamObj.id : null,
           match_date: matchDate,
           match_time: matchTime,
           venue_id: null, // CASA doesn't provide venue IDs
-          status: status,
+          title: null,
+          description: null,
+          match_status_id: matchStatusId,
           home_score: (homeScore !== null && homeScore !== undefined && homeScore !== '') ? parseInt(homeScore) : null,
           away_score: (awayScore !== null && awayScore !== undefined && awayScore !== '') ? parseInt(awayScore) : null,
-          casa_match_id: casaMatchId
+          source_system_id: this.SOURCE_SYSTEM_ID,
+          external_id: externalMatchId ? `casa-match-${externalMatchId}` : null,
+          created_by_user_id: null,
+          created_by_chat_id: null
       };
   }
 
