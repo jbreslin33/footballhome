@@ -2843,6 +2843,8 @@ Response SystemAdminController::handleGetTableData(const Request& request) {
         if (limit > 0) {
             sql += " LIMIT " + std::to_string(limit);
         }
+        
+        std::cout << "[DEBUG] Table data query: " << sql << std::endl;
         pqxx::result result = db_->query(sql);
         
         // Build JSON response

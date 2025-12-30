@@ -571,6 +571,9 @@ class AdminSystemScreen extends Screen {
 
   async viewTableData(tableName, limit = 100, sortColumn = '', sortDir = 'ASC') {
     try {
+      // Remove any existing modals first
+      document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+      
       console.log('Fetching data for:', tableName, 'limit:', limit, 'sort:', sortColumn, sortDir);
       let url = `/api/system-admin/schema/${tableName}/data?limit=${limit}`;
       if (sortColumn) {
