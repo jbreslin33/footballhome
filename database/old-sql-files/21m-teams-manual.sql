@@ -1,2 +1,0 @@
--- Manual Team Additions
--- Add teams not in scraped data

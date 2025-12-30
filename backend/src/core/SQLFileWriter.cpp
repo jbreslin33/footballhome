@@ -5,16 +5,37 @@
 #include <iomanip>
 #include <sstream>
 
-// Map entity types to their file number prefixes
+// Map entity types to their file number prefixes (3-digit, matching schema table order)
 const std::unordered_map<std::string, std::string> SQLFileWriter::entityFileMap_ = {
-    {"users", "08"},
-    {"teams", "21"},
-    {"players", "22"},
-    {"team_players", "23"},
-    {"coaches", "24"},
-    {"team_coaches", "25"},
-    {"schedule", "30"},
-    {"practices", "72"}
+    {"users", "019"},
+    {"user_emails", "020"},
+    {"user_phones", "021"},
+    {"external_identities", "022"},
+    {"admins", "023"},
+    {"clubs", "024"},
+    {"club_admins", "025"},
+    {"sport_divisions", "026"},
+    {"teams", "027"},
+    {"team_divisions", "028"},
+    {"players", "029"},
+    {"team_players", "030"},
+    {"coaches", "031"},
+    {"team_coaches", "032"},
+    {"venues", "033"},
+    {"matches", "034"},
+    {"player_match_stats", "035"},
+    {"team_standings", "036"},
+    {"team_stats", "037"},
+    {"match_events", "039"},
+    {"match_lineups", "040"},
+    {"player_season_stats", "041"},
+    {"chats", "042"},
+    {"chat_integrations", "043"},
+    {"chat_members", "044"},
+    {"chat_messages", "045"},
+    {"chat_events", "046"},
+    {"chat_event_rsvps", "047"},
+    {"player_users", "048"}
 };
 
 SQLFileWriter& SQLFileWriter::getInstance() {
@@ -55,17 +76,13 @@ bool SQLFileWriter::writeInsert(const std::string& entityType, const std::string
         return false;
     }
     
-    // Add timestamp comment
-    auto now = std::chrono::system_clock::now();
-    auto time = std::chrono::system_clock::to_time_t(now);
-    std::stringstream ss;
-    ss << "\n-- Generated: " << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M:%S") << "\n";
-    ss << sql;
-    if (sql.back() != '\n') {
-        ss << "\n";
+    // Format SQL statement
+    std::string formattedSql = sql;
+    if (formattedSql.back() != '\n') {
+        formattedSql += "\n";
     }
     
-    return appendToFile(filePath, ss.str());
+    return appendToFile(filePath, formattedSql);
 }
 
 bool SQLFileWriter::appendToFile(const std::string& filePath, const std::string& sql) {

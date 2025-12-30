@@ -1,2 +1,0 @@
--- Manual Club Additions
--- Add clubs not in scraped data

@@ -13,13 +13,13 @@ for file in /app/data/*.sql; do
         filename=$(basename "$file")
         
         # Skip u files if in production
-        if [[ $filename =~ u-.*-app\.sql ]] && [[ "${ENVIRONMENT:-dev}" == "production" ]]; then
+        if [[ $filename =~ [0-9]+u- ]] && [[ "${ENVIRONMENT:-dev}" == "production" ]]; then
             echo "  Skipping (dev only): $filename"
             continue
         fi
         
         # Skip p files if in dev
-        if [[ $filename =~ p-.*-app\.sql ]] && [[ "${ENVIRONMENT:-dev}" == "dev" ]]; then
+        if [[ $filename =~ [0-9]+p- ]] && [[ "${ENVIRONMENT:-dev}" == "dev" ]]; then
             echo "  Skipping (production only): $filename"
             continue
         fi

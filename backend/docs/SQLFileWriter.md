@@ -11,18 +11,29 @@ OOP-based system for persisting app-generated data to SQL files, ensuring data s
 - **Location**: `backend/src/core/SQLFileWriter.{h,cpp}`
 
 ### File Naming Convention
-- `##u-<entity>-app.sql`: Development/update environment
-- `##p-<entity>-app.sql`: Production environment
+- `NNNu-<entity>.sql`: Development/update environment
+- `NNNp-<entity>.sql`: Production environment
 
-Where `##` is:
-- `08` = users
-- `21` = teams
-- `22` = players
-- `23` = team_players (rosters)
-- `24` = coaches
-- `25` = team_coaches
-- `30` = schedule (matches)
-- `72` = practices
+Where `NNN` is the 3-digit table number matching schema creation order:
+- `019` = users
+- `020` = user_emails
+- `021` = user_phones
+- `022` = external_identities
+- `023` = admins
+- `024` = clubs
+- `025` = club_admins
+- `026` = sport_divisions
+- `027` = teams
+- `028` = team_divisions
+- `029` = players
+- `030` = team_players (rosters)
+- `031` = coaches
+- `032` = team_coaches
+- `033` = venues
+- `034` = matches
+- `042` = chats
+- `046` = chat_events
+- `047` = chat_event_rsvps
 
 ## Usage
 
@@ -52,15 +63,26 @@ SQLFileWriter::getInstance().writeInsert("practices", sql + ";");
 ```
 
 ### 3. Entity Types
-Available entity types:
-- `"users"` → `08u-users-app.sql` or `08p-users-app.sql`
-- `"teams"` → `21u-teams-app.sql` or `21p-teams-app.sql`  
-- `"players"` → `22u-players-app.sql` or `22p-players-app.sql`
-- `"team_players"` → `23u-team-players-app.sql` or `23p-team-players-app.sql`
-- `"coaches"` → `24u-coaches-app.sql` or `24p-coaches-app.sql`
-- `"team_coaches"` → `25u-team-coaches-app.sql` or `25p-team-coaches-app.sql`
-- `"schedule"` → `30u-schedule-app.sql` or `30p-schedule-app.sql`
-- `"practices"` → `72u-practices-app.sql` or `72p-practices-app.sql`
+Available entity types (automatically mapped to correct file numbers):
+- `"users"` → `019u-users.sql` or `019p-users.sql`
+- `"user_emails"` → `020u-user-emails.sql` or `020p-user-emails.sql`
+- `"user_phones"` → `021u-user-phones.sql` or `021p-user-phones.sql`
+- `"external_identities"` → `022u-external-identities.sql` or `022p-external-identities.sql`
+- `"admins"` → `023u-admins.sql` or `023p-admins.sql`
+- `"clubs"` → `024u-clubs.sql` or `024p-clubs.sql`
+- `"club_admins"` → `025u-club-admins.sql` or `025p-club-admins.sql`
+- `"sport_divisions"` → `026u-sport-divisions.sql` or `026p-sport-divisions.sql`
+- `"teams"` → `027u-teams.sql` or `027p-teams.sql`
+- `"team_divisions"` → `028u-team-divisions.sql` or `028p-team-divisions.sql`
+- `"players"` → `029u-players.sql` or `029p-players.sql`
+- `"team_players"` → `030u-team-players.sql` or `030p-team-players.sql`
+- `"coaches"` → `031u-coaches.sql` or `031p-coaches.sql`
+- `"team_coaches"` → `032u-team-coaches.sql` or `032p-team-coaches.sql`
+- `"venues"` → `033u-venues.sql` or `033p-venues.sql`
+- `"matches"` → `034u-matches.sql` or `034p-matches.sql`
+- `"chats"` → `042u-chats.sql` or `042p-chats.sql`
+- `"chat_events"` → `046u-chat-events.sql` or `046p-chat-events.sql`
+- `"chat_event_rsvps"` → `047u-chat-event-rsvps.sql` or `047p-chat-event-rsvps.sql`
 
 ## How It Works
 
@@ -85,14 +107,14 @@ environment:
 
 **Dev Environment:**
 1. Create practice → INSERT executed
-2. SQLFileWriter appends to `72u-practices-app.sql`
+2. SQLFileWriter appends to `034u-matches.sql`
 3. `git status` shows modified file
 4. Commit the change
 5. Next `./dev.sh` rebuild loads the practice
 
 **Production Environment:**
 1. Create practice → INSERT executed  
-2. SQLFileWriter appends to `72p-practices-app.sql`
+2. SQLFileWriter appends to `034p-matches.sql`
 3. Data persists independently from dev data
 
 ## Thread Safety

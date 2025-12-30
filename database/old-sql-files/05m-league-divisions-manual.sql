@@ -1,2 +1,0 @@
--- Manual League Division Additions
--- Add league divisions not in scraped data

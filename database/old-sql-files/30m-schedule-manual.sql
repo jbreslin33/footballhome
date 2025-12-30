@@ -1,2 +1,0 @@
--- Manual Schedule Additions
--- Add matches/games not in scraped schedules

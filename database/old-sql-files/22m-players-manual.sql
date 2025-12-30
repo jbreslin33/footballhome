@@ -1,2 +1,0 @@
--- Manual Player Additions
--- Add players not in scraped rosters
