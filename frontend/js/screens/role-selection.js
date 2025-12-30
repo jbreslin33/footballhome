@@ -43,6 +43,7 @@ class RoleSelectionScreen extends Screen {
         </button>
         
         <button class="btn btn-text logout-btn" style="margin-top: var(--space-4);">Logout</button>
+        <button class="btn btn-outline-secondary open-tactical-btn" style="margin-top: var(--space-2);">Open Tactical Board</button>
       </div>
     `;
     
@@ -62,6 +63,23 @@ class RoleSelectionScreen extends Screen {
       // Handle logout
       if (e.target.closest('.logout-btn')) {
         this.handleLogout();
+      }
+
+      // Open tactical board (direct)
+      if (e.target.closest('.open-tactical-btn')) {
+        // If we already have a selected team in navigation context, open tactical board directly
+        const team = this.navigation.context?.team;
+        const club = this.navigation.context?.club;
+
+        if (team && team.id) {
+          this.navigation.goTo('tactical-board', { teamId: team.id, teamName: team.name, clubId: team.clubId || club?.id });
+        } else if (club && club.id) {
+          // open at club level
+          this.navigation.goTo('tactical-board', { clubId: club.id, clubName: club.name });
+        } else {
+          // Open tactical board without a specific context so user can work freely
+          this.navigation.goTo('tactical-board');
+        }
       }
     });
   }

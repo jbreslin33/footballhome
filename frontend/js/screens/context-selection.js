@@ -21,6 +21,7 @@ class ContextSelectionScreen extends Screen {
   
   onEnter(params) {
     this.role = params?.role || 'coach';
+    this.redirectTo = params?.redirectTo || null;
     this.navigation.context.role = this.role;
     
     // Set title based on role
@@ -57,6 +58,27 @@ class ContextSelectionScreen extends Screen {
         const context = { id: contextId, name: contextName, type: contextType };
         this.navigation.context.selectedContext = context;
         
+        // If a redirect was requested (e.g., to open the tactical board), handle it first
+        if (this.redirectTo === 'tactical-board') {
+          if (contextType === 'team') {
+            // Open tactical board for selected team
+            this.navigation.goTo('tactical-board', {
+              teamId: contextId,
+              teamName: contextName,
+              clubId: clubId
+            });
+            return;
+          }
+          if (contextType === 'club') {
+            // Open tactical board at club level
+            this.navigation.goTo('tactical-board', {
+              clubId: contextId,
+              clubName: contextName
+            });
+            return;
+          }
+        }
+
         // Route based on context type and role
         if (this.role === 'admin') {
           // Admin role - go to level selection screen

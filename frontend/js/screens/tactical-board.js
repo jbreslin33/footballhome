@@ -139,13 +139,7 @@ class TacticalBoardScreen extends Screen {
     this.practiceId = params?.practiceId || null;
     this.practiceTitle = params?.practiceTitle || null;
     
-    // Validate we have at least one context
-    if (!this.teamId && !this.clubId && !this.matchId && !this.practiceId) {
-      console.error('No context provided for tactical board');
-      alert('No team, club, match, or practice selected');
-      this.navigation.goBack();
-      return;
-    }
+    // No required context: tactical board can be used without team/club/match/practice
     
     // Update header title based on most specific context
     const titleEl = this.find('h1');
