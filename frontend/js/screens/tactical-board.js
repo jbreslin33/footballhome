@@ -7,12 +7,18 @@ class TacticalBoardScreen extends Screen {
     this.homePlayers = [];
     this.opponentPlayers = [];
     this.selectedPlayer = null;
+    this.selectedBall = null;
     this.isDragging = false;
     this.arrows = [];
     this.drawingArrow = null;
-    this.mode = 'move'; // 'move' or 'draw'
+    this.balls = [];
+    this.mode = 'move'; // 'move', 'draw', or 'ball'
     this.scale = 1;
     this.activeTeam = 'home'; // 'home' or 'opponent'
+    this.fieldHeight = 0;
+    this.fieldWidth = 0;
+    this.editingPlayer = null;
+    this.editInputs = null;
   }
 
   render() {
@@ -39,10 +45,19 @@ class TacticalBoardScreen extends Screen {
           <div class="card">
             <h3 style="margin: 0 0 var(--space-2) 0; font-size: 0.9rem;">Tools</h3>
             <button class="btn btn-sm mode-btn" data-mode="move" style="width: 100%; justify-content: flex-start;">
-              🖱️ Move Players
+              🖱️ Move
             </button>
             <button class="btn btn-sm mode-btn" data-mode="draw" style="width: 100%; justify-content: flex-start; margin-top: var(--space-1);">
               ✏️ Draw Arrows
+            </button>
+            <button class="btn btn-sm mode-btn" data-mode="ball" style="width: 100%; justify-content: flex-start; margin-top: var(--space-1);">
+              ⚽ Draw Ball
+            </button>
+            <button class="btn btn-sm mode-btn" data-mode="draw-player" style="width: 100%; justify-content: flex-start; margin-top: var(--space-1);">
+              👤 Draw Player
+            </button>
+            <button class="btn btn-sm mode-btn" data-mode="delete" style="width: 100%; justify-content: flex-start; margin-top: var(--space-1);">
+              🗑️ Delete
             </button>
             <button class="btn btn-sm clear-arrows-btn" style="width: 100%; justify-content: flex-start; margin-top: var(--space-1);">
               🗑️ Clear Arrows
@@ -231,6 +246,7 @@ class TacticalBoardScreen extends Screen {
         this.homePlayers = [];
         this.opponentPlayers = [];
         this.arrows = [];
+        this.balls = [];
         this.drawAll();
       }
     });
@@ -293,6 +309,7 @@ class TacticalBoardScreen extends Screen {
     this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
     this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
     this.canvas.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
+    this.canvas.addEventListener('dblclick', (e) => this.handleCanvasDoubleClick(e));
     
     // Player details events
     this.find('#update-player-btn').addEventListener('click', () => {
@@ -471,6 +488,89 @@ class TacticalBoardScreen extends Screen {
     this.drawAll();
   }
   
+  deleteElementAt(x, y) {
+    // Check if clicking on a ball first
+    const ballIndex = this.balls.findIndex(b => {
+      const dx = b.x - x;
+      const dy = b.y - y;
+      return Math.sqrt(dx * dx + dy * dy) < 15;
+    });
+    
+    if (ballIndex !== -1) {
+      this.balls.splice(ballIndex, 1);
+      this.drawAll();
+      return;
+    }
+    
+    // Check if clicking on a player
+    const allPlayers = this.getAllPlayers();
+    const playerIndex = allPlayers.findIndex(p => {
+      const dx = p.x - x;
+      const dy = p.y - y;
+      return Math.sqrt(dx * dx + dy * dy) < 20;
+    });
+    
+    if (playerIndex !== -1) {
+      const player = allPlayers[playerIndex];
+      if (player.team === 'home') {
+        const idx = this.homePlayers.indexOf(player);
+        if (idx !== -1) this.homePlayers.splice(idx, 1);
+      } else {
+        const idx = this.opponentPlayers.indexOf(player);
+        if (idx !== -1) this.opponentPlayers.splice(idx, 1);
+      }
+      this.updatePlayerList();
+      this.drawAll();
+      return;
+    }
+    
+    // Check if clicking on an arrow
+    const arrowIndex = this.findArrowAt(x, y);
+    if (arrowIndex !== -1) {
+      this.arrows.splice(arrowIndex, 1);
+      this.drawAll();
+    }
+  }
+  
+  findArrowAt(x, y, threshold = 10) {
+    // Find the closest arrow to the click point within threshold
+    let closest = -1;
+    let minDistance = threshold;
+    
+    this.arrows.forEach((arrow, index) => {
+      const distance = this.distanceToLine(x, y, arrow.startX, arrow.startY, arrow.endX, arrow.endY);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closest = index;
+      }
+    });
+    
+    return closest;
+  }
+  
+  distanceToLine(px, py, x1, y1, x2, y2) {
+    // Calculate distance from point (px, py) to line segment from (x1, y1) to (x2, y2)
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lengthSquared = dx * dx + dy * dy;
+    
+    if (lengthSquared === 0) {
+      // Line segment is a point
+      return Math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1));
+    }
+    
+    // Calculate t (parameter along line segment)
+    let t = ((px - x1) * dx + (py - y1) * dy) / lengthSquared;
+    t = Math.max(0, Math.min(1, t));
+    
+    // Find closest point on line segment
+    const closestX = x1 + t * dx;
+    const closestY = y1 + t * dy;
+    
+    // Return distance to closest point
+    return Math.sqrt((px - closestX) * (px - closestX) + (py - closestY) * (py - closestY));
+  }
+  
   editPlayer(index) {
     const players = this.getActivePlayers();
     const player = players[index];
@@ -501,19 +601,20 @@ class TacticalBoardScreen extends Screen {
     const availableHeight = h - (padding * 2);
     const aspectRatio = 105 / 68;
     
-    let fieldWidth, fieldHeight;
+    
     if (availableWidth / availableHeight > aspectRatio) {
       // Height constrained
-      fieldHeight = availableHeight;
-      fieldWidth = fieldHeight * aspectRatio;
+      this.fieldHeight = availableHeight;
+      this.fieldWidth = this.fieldHeight * aspectRatio;
     } else {
       // Width constrained
-      fieldWidth = availableWidth;
-      fieldHeight = fieldWidth / aspectRatio;
+      this.fieldWidth = availableWidth;
+      this.fieldHeight = this.fieldWidth / aspectRatio;
     }
-    
-    const offsetX = (w - fieldWidth) / 2;
-    const offsetY = (h - fieldHeight) / 2;
+    const fieldWidth = this.fieldWidth;
+    const fieldHeight = this.fieldHeight;
+    const offsetX = (w - this.fieldWidth) / 2;
+    const offsetY = (h - this.fieldHeight) / 2;
     
     // Field lines (white)
     ctx.strokeStyle = 'white';
@@ -640,19 +741,19 @@ class TacticalBoardScreen extends Screen {
   drawPlayers() {
     const ctx = this.ctx;
     const allPlayers = this.getAllPlayers();
-    
+    const size = 10;
     allPlayers.forEach(player => {
       // Draw player circle
       ctx.fillStyle = player.color;
       ctx.beginPath();
-      ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
+      ctx.arc(player.x, player.y, size, 0, Math.PI * 2);
       ctx.fill();
       
       // Always draw a border for visibility (especially for white players)
       ctx.strokeStyle = this.selectedPlayer === player ? 'yellow' : '#333';
       ctx.lineWidth = this.selectedPlayer === player ? 3 : 2;
       ctx.beginPath();
-      ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
+      ctx.arc(player.x, player.y, size, 0, Math.PI * 2);
       ctx.stroke();
       
       // Draw jersey number (black for white players, white for others)
@@ -694,6 +795,39 @@ class TacticalBoardScreen extends Screen {
     }
   }
   
+  drawBalls() {
+    const ctx = this.ctx;
+    
+    // Draw all balls
+    this.balls.forEach(ball => {
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Add black pattern lines for soccer ball look
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, 6, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Draw pentagon pattern
+      for (let i = 0; i < 5; i++) {
+        const angle = (i * Math.PI * 2) / 5;
+        const x1 = ball.x + Math.cos(angle) * 4;
+        const y1 = ball.y + Math.sin(angle) * 4;
+        const angle2 = ((i + 2) * Math.PI * 2) / 5;
+        const x2 = ball.x + Math.cos(angle2) * 4;
+        const y2 = ball.y + Math.sin(angle2) * 4;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+    });
+  }
+  
   drawArrow(startX, startY, endX, endY, color) {
     const ctx = this.ctx;
     const headLength = 15;
@@ -727,6 +861,7 @@ class TacticalBoardScreen extends Screen {
   drawAll() {
     this.drawField();
     this.drawArrows();
+    this.drawBalls();
     this.drawPlayers();
   }
   
@@ -736,6 +871,21 @@ class TacticalBoardScreen extends Screen {
     const y = e.clientY - rect.top;
     
     if (this.mode === 'move') {
+      // Check if clicking on a ball first
+      this.selectedBall = this.balls.find(b => {
+        const dx = b.x - x;
+        const dy = b.y - y;
+        return Math.sqrt(dx * dx + dy * dy) < 15;
+      });
+      
+      if (this.selectedBall) {
+        this.isDragging = true;
+        this.selectedPlayer = null;
+        const detailsPanel = document.getElementById('player-details');
+        if (detailsPanel) detailsPanel.style.display = 'none';
+        return;
+      }
+      
       // Check if clicking on a player from all players
       const allPlayers = this.getAllPlayers();
       this.selectedPlayer = allPlayers.find(p => {
@@ -746,8 +896,10 @@ class TacticalBoardScreen extends Screen {
       
       if (this.selectedPlayer) {
         this.isDragging = true;
+        this.selectedBall = null;
         this.populatePlayerDetails(this.selectedPlayer);
       } else {
+        this.selectedBall = null;
         const detailsPanel = document.getElementById('player-details');
         if (detailsPanel) detailsPanel.style.display = 'none';
       }
@@ -759,6 +911,34 @@ class TacticalBoardScreen extends Screen {
         currentX: x,
         currentY: y
       };
+    } else if (this.mode === 'ball') {
+      // Place ball at click location
+      this.balls.push({
+        x: x,
+        y: y
+      });
+      this.drawAll();
+    } else if (this.mode === 'draw-player') {
+      // Place player at click location
+      const color = this.activeTeam === 'home' ? '#0066CC' : '#FFFFFF';
+      const players = this.getActivePlayers();
+      const jerseyNumber = players.length + 1;
+      
+      players.push({
+        id: Date.now(),
+        name: '',
+        jerseyNumber: jerseyNumber,
+        x: x,
+        y: y,
+        color: color,
+        team: this.activeTeam
+      });
+      
+      this.updatePlayerList();
+      this.drawAll();
+    } else if (this.mode === 'delete') {
+      // Delete ball, player, or arrow at click location
+      this.deleteElementAt(x, y);
     }
   }
   
@@ -767,10 +947,16 @@ class TacticalBoardScreen extends Screen {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    if (this.mode === 'move' && this.isDragging && this.selectedPlayer) {
-      this.selectedPlayer.x = x;
-      this.selectedPlayer.y = y;
-      this.drawAll();
+    if (this.mode === 'move' && this.isDragging) {
+      if (this.selectedBall) {
+        this.selectedBall.x = x;
+        this.selectedBall.y = y;
+        this.drawAll();
+      } else if (this.selectedPlayer) {
+        this.selectedPlayer.x = x;
+        this.selectedPlayer.y = y;
+        this.drawAll();
+      }
     } else if (this.mode === 'draw' && this.drawingArrow) {
       this.drawingArrow.currentX = x;
       this.drawingArrow.currentY = y;
@@ -781,6 +967,7 @@ class TacticalBoardScreen extends Screen {
   handleMouseUp(e) {
     if (this.mode === 'move') {
       this.isDragging = false;
+      this.selectedBall = null;
     } else if (this.mode === 'draw' && this.drawingArrow) {
       // Complete arrow
       const rect = this.canvas.getBoundingClientRect();
@@ -800,70 +987,204 @@ class TacticalBoardScreen extends Screen {
     }
   }
   
+  handleCanvasDoubleClick(e) {
+    // Close any existing edit inputs
+    this.closePlayerEdit();
+    
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Find if double-clicking on a player
+    const allPlayers = this.getAllPlayers();
+    const player = allPlayers.find(p => {
+      const dx = p.x - x;
+      const dy = p.y - y;
+      return Math.sqrt(dx * dx + dy * dy) < 20;
+    });
+    
+    if (player) {
+      this.openPlayerEdit(player, e);
+    }
+  }
+  
+  openPlayerEdit(player, event) {
+    this.editingPlayer = player;
+    const rect = this.canvas.getBoundingClientRect();
+    
+    // Create container for inputs
+    const container = document.createElement('div');
+    container.style.cssText = `
+      position: fixed;
+      left: ${rect.left + player.x - 50}px;
+      top: ${rect.top + player.y - 50}px;
+      display: flex;
+      gap: 8px;
+      z-index: 1000;
+      background: white;
+      padding: 8px;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    `;
+    
+    // Name input
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = player.name || '';
+    nameInput.placeholder = 'Name';
+    nameInput.style.cssText = `
+      width: 80px;
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: 12px;
+    `;
+    
+    // Number input
+    const numberInput = document.createElement('input');
+    numberInput.type = 'number';
+    numberInput.value = player.jerseyNumber || '';
+    numberInput.placeholder = '#';
+    numberInput.style.cssText = `
+      width: 40px;
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      font-size: 12px;
+    `;
+    
+    container.appendChild(nameInput);
+    container.appendChild(numberInput);
+    document.body.appendChild(container);
+    
+    // Focus on name input
+    nameInput.focus();
+    nameInput.select();
+    
+    // Save and close helpers
+    const saveAndClose = () => {
+      player.name = nameInput.value || player.name;
+      player.jerseyNumber = parseInt(numberInput.value) || player.jerseyNumber;
+      this.closePlayerEdit();
+      this.drawAll();
+    };
+    
+    // Enter to save
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        saveAndClose();
+      } else if (e.key === 'Escape') {
+        this.closePlayerEdit();
+      }
+    };
+    
+    nameInput.addEventListener('keydown', handleKeyDown);
+    numberInput.addEventListener('keydown', handleKeyDown);
+    
+    // Use focusout on the container instead of blur on individual inputs
+    // This way switching between inputs won't trigger save/close
+    container.addEventListener('focusout', () => {
+      // Use setTimeout to allow focus to move to the other input first
+      setTimeout(() => {
+        if (document.activeElement !== nameInput && document.activeElement !== numberInput) {
+          saveAndClose();
+        }
+      }, 50);
+    });
+    
+    this.editInputs = {
+      container,
+      nameInput,
+      numberInput,
+      cleanup: () => {
+        nameInput.removeEventListener('keydown', handleKeyDown);
+        numberInput.removeEventListener('keydown', handleKeyDown);
+      }
+    };
+  }
+  
+  closePlayerEdit() {
+    if (this.editInputs) {
+      this.editInputs.cleanup();
+      document.body.removeChild(this.editInputs.container);
+      this.editInputs = null;
+    }
+    this.editingPlayer = null;
+  }
+  
   applyFormation(formation) {
     console.log('Applying formation:', formation);
     const w = this.canvas.width;
     const h = this.canvas.height;
-    const margin = 80;
-    
+    const margin = {x:(w - this.fieldWidth) / 2,  y:(h - this.fieldHeight) / 2};
     let positions = [];
     
     if (formation === '4-4-2') {
       positions = [
         // GK
-        { x: margin, y: h / 2 },
+        { x: 0, y: 0.5},
         // Defense
-        { x: w * 0.2, y: h * 0.25 },
-        { x: w * 0.2, y: h * 0.42 },
-        { x: w * 0.2, y: h * 0.58 },
-        { x: w * 0.2, y: h * 0.75 },
+        { x:  0.2, y: 0.25 },
+        { x: 0.2, y: 0.42 },
+        { x:  0.2, y: 0.58 },
+        { x: 0.2, y:  0.75 },
         // Midfield
-        { x: w * 0.5, y: h * 0.25 },
-        { x: w * 0.5, y: h * 0.42 },
-        { x: w * 0.5, y: h * 0.58 },
-        { x: w * 0.5, y: h * 0.75 },
+        { x: 0.48, y: 0.25 },
+        { x: 0.48, y:  0.42 },
+        { x: 0.48, y: 0.58 },
+        { x: 0.48, y: 0.75 },
         // Attack
-        { x: w * 0.75, y: h * 0.4 },
-        { x: w * 0.75, y: h * 0.6 }
+        { x: 0.75, y: 0.4 },
+        { x: 0.75, y: 0.6 }
       ];
     } else if (formation === '4-3-3') {
       positions = [
         // GK
-        { x: margin, y: h / 2 },
+        { x: 0, y: 0.5},
         // Defense
-        { x: w * 0.2, y: h * 0.25 },
-        { x: w * 0.2, y: h * 0.42 },
-        { x: w * 0.2, y: h * 0.58 },
-        { x: w * 0.2, y: h * 0.75 },
+        { x: 0.2, y:  0.25 },
+        { x: 0.2, y:0.42 },
+        { x: 0.2, y: 0.58 },
+        { x: 0.2, y:  0.75 },
         // Midfield
-        { x: w * 0.5, y: h * 0.33 },
-        { x: w * 0.5, y: h * 0.5 },
-        { x: w * 0.5, y: h * 0.67 },
+        { x:  0.48, y:  0.33 },
+        { x: 0.48, y: 0.5 },
+        { x: 0.48, y:  0.67 },
         // Attack
-        { x: w * 0.75, y: h * 0.25 },
-        { x: w * 0.75, y: h * 0.5 },
-        { x: w * 0.75, y: h * 0.75 }
+        { x: 0.75, y: 0.25 },
+        { x: 0.75, y: 0.5 },
+        { x: 0.75, y: 0.75 }
       ];
     } else if (formation === '3-5-2') {
       positions = [
         // GK
-        { x: margin, y: h / 2 },
+        { x: 0, y: 0.5 },
         // Defense
-        { x: w * 0.2, y: h * 0.33 },
-        { x: w * 0.2, y: h * 0.5 },
-        { x: w * 0.2, y: h * 0.67 },
+        { x: 0.2, y: 0.33 },
+        { x: 0.2, y: 0.5 },
+        { x: 0.2, y: 0.67 },
         // Midfield
-        { x: w * 0.5, y: h * 0.2 },
-        { x: w * 0.5, y: h * 0.35 },
-        { x: w * 0.5, y: h * 0.5 },
-        { x: w * 0.5, y: h * 0.65 },
-        { x: w * 0.5, y: h * 0.8 },
+        { x: 0.48, y: 0.2 },
+        { x: 0.48, y: 0.35 },
+        { x: 0.48, y: 0.5 },
+        { x: 0.48, y: 0.65 },
+        { x: 0.48, y: 0.8 },
         // Attack
-        { x: w * 0.75, y: h * 0.4 },
-        { x: w * 0.75, y: h * 0.6 }
+        { x: 0.75, y: 0.4 },
+        { x: 0.75, y: 0.6 }
       ];
     }
-    
+    if (this.activeTeam === 'opponent') {
+      for (let pos of positions) {
+        pos.x = 1 - pos.x;
+        pos.y = 1 - pos.y;
+      }
+    }
+    for (let pos of positions) {
+        pos.x = margin.x + pos.x * this.fieldWidth;
+        pos.y = margin.y + pos.y * this.fieldHeight;
+    }
+
     const players = this.getActivePlayers();
     const color = this.activeTeam === 'home' ? '#0066CC' : '#FFFFFF';  // Blue for home, white for away
     
