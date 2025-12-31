@@ -449,18 +449,15 @@ CREATE INDEX idx_sport_divisions_club ON sport_divisions(club_id);
 
 CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
-    club_id INTEGER REFERENCES clubs(id),
-    sport_division_id INTEGER REFERENCES sport_divisions(id),
+    sport_division_id INTEGER NOT NULL REFERENCES sport_divisions(id),
     name VARCHAR(255) NOT NULL,
     city VARCHAR(100),
     logo_url TEXT,
-    is_active BOOLEAN DEFAULT true,
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100) UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_teams_club ON teams(club_id);
 CREATE INDEX idx_teams_sport_division ON teams(sport_division_id);
 CREATE INDEX idx_teams_source ON teams(source_system_id);
 
