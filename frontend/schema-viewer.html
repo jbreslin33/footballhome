@@ -187,9 +187,9 @@
                             highlight: { background: '#e3f2fd', border: '#1976d2' }
                         },
                         font: { size: 11, face: 'Monaco, Consolas, "Courier New", monospace', align: 'left' },
-                        margin: 15,
-                        widthConstraint: { minimum: 200, maximum: 350 },
-                        heightConstraint: { minimum: 80 }
+                        margin: 20,
+                        widthConstraint: { minimum: 220, maximum: 350 },
+                        heightConstraint: { minimum: 100 }
                     });
                     
                     tableMap[table.name] = table;
@@ -220,19 +220,19 @@
                     physics: {
                         enabled: true,
                         barnesHut: {
-                            gravitationalConstant: -350000,
+                            gravitationalConstant: -500000,
                             centralGravity: 0,
-                            springLength: 500,
-                            springConstant: 0.0005,
-                            damping: 0.5,
-                            avoidOverlap: 5
+                            springLength: 600,
+                            springConstant: 0.0003,
+                            damping: 0.6,
+                            avoidOverlap: 8
                         },
                         stabilization: {
                             enabled: true,
-                            iterations: 3000,
+                            iterations: 4000,
                             updateInterval: 50
                         },
-                        minVelocity: 0.75
+                        minVelocity: 1
                     },
                     interaction: {
                         hover: true,
