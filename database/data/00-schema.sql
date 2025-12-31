@@ -588,7 +588,6 @@ CREATE TABLE matches (
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100) UNIQUE,
     created_by_user_id INTEGER REFERENCES users(id),
-    created_by_chat_id INTEGER,  -- Will reference chats(id) after that table is created
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
