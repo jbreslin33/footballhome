@@ -452,7 +452,7 @@ CREATE INDEX idx_sport_divisions_club ON sport_divisions(club_id);
 
 CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
-    sport_division_id INTEGER NOT NULL REFERENCES sport_divisions(id),
+    sport_division_id INTEGER REFERENCES sport_divisions(id),  -- Nullable for external league teams
     name VARCHAR(255) NOT NULL,
     city VARCHAR(100),
     logo_url TEXT,
@@ -613,7 +613,7 @@ CREATE INDEX idx_match_divisions_division ON match_divisions(division_id);
 -- player_match_stats table removed - see 99-stats-views.sql for player_match_performance view
 -- Statistics are calculated on-the-fly from match_events for accuracy
 
-CREATE TABLE team_standings {
+CREATE TABLE team_standings (
     id SERIAL PRIMARY KEY,
     team_division_id INTEGER NOT NULL REFERENCES team_divisions(id) ON DELETE CASCADE,
     wins INTEGER DEFAULT 0,
@@ -923,11 +923,7 @@ CREATE INDEX idx_chat_event_rsvps_event ON chat_event_rsvps(chat_event_id);
 CREATE INDEX idx_chat_event_rsvps_user ON chat_event_rsvps(user_id);
 CREATE INDEX idx_chat_event_rsvps_status ON chat_event_rsvps(rsvp_status_id);
 
--- Now add the FK for created_by_chat_id
-ALTER TABLE matches ADD CONSTRAINT fk_matches_chat 
-    FOREIGN KEY (created_by_chat_id) REFERENCES chats(id) ON DELETE SET NULL;
-
-CREATE INDEX idx_matches_chat ON matches(created_by_chat_id);
+-- created_by_chat_id column removed - use chat_events junction table instead
 
 -- ============================================================================
 -- 7. PLAYER IDENTITY (Junction Tables - Users claiming league players)

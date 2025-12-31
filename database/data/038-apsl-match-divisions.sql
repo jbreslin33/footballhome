@@ -479,8 +479,6 @@ VALUES
   (475, 6),
   (476, 6),
   (477, 6)
-ON CONFLICT (id) DO UPDATE SET
-  match_id = EXCLUDED.match_id,
-  division_id = EXCLUDED.division_id
+ON CONFLICT (match_id, division_id) DO NOTHING
 ;
 
