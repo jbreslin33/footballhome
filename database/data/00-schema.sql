@@ -605,8 +605,7 @@ CREATE INDEX idx_player_match_stats_player ON player_match_stats(player_id);
 
 CREATE TABLE team_standings (
     id SERIAL PRIMARY KEY,
-    division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    team_division_id INTEGER NOT NULL REFERENCES team_divisions(id) ON DELETE CASCADE,
     wins INTEGER DEFAULT 0,
     losses INTEGER DEFAULT 0,
     ties INTEGER DEFAULT 0,
@@ -615,11 +614,10 @@ CREATE TABLE team_standings (
     points INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(division_id, team_id)
+    UNIQUE(team_division_id)
 );
 
-CREATE INDEX idx_team_standings_division ON team_standings(division_id);
-CREATE INDEX idx_team_standings_team ON team_standings(team_id);
+CREATE INDEX idx_team_standings_team_division ON team_standings(team_division_id);
 
 -- Team stats (comprehensive season statistics)
 CREATE TABLE team_stats (
