@@ -23,7 +23,7 @@ const std::unordered_map<std::string, std::string> SQLFileWriter::entityFileMap_
     {"team_coaches", "032"},
     {"venues", "033"},
     {"matches", "034"},
-    {"player_match_stats", "035"},
+    // player_match_stats removed - replaced by player_match_performance view
     {"team_standings", "036"},
     // team_stats removed - replaced by team_season_standings view
     {"match_events", "039"},

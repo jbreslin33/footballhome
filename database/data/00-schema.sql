@@ -610,22 +610,10 @@ CREATE TABLE match_divisions (
 CREATE INDEX idx_match_divisions_match ON match_divisions(match_id);
 CREATE INDEX idx_match_divisions_division ON match_divisions(division_id);
 
-CREATE TABLE player_match_stats (
-    id SERIAL PRIMARY KEY,
-    match_id INTEGER REFERENCES matches(id) ON DELETE CASCADE,
-    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-    goals INTEGER DEFAULT 0,
-    assists INTEGER DEFAULT 0,
-    yellow_cards INTEGER DEFAULT 0,
-    red_cards INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(match_id, player_id)
-);
+-- player_match_stats table removed - see 99-stats-views.sql for player_match_performance view
+-- Statistics are calculated on-the-fly from match_events for accuracy
 
-CREATE INDEX idx_player_match_stats_match ON player_match_stats(match_id);
-CREATE INDEX idx_player_match_stats_player ON player_match_stats(player_id);
-
-CREATE TABLE team_standings (
+CREATE TABLE team_standings {
     id SERIAL PRIMARY KEY,
     team_division_id INTEGER NOT NULL REFERENCES team_divisions(id) ON DELETE CASCADE,
     wins INTEGER DEFAULT 0,
