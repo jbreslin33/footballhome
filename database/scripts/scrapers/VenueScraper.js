@@ -233,7 +233,7 @@ class VenueScraper extends Scraper {
   }
 
   async generateOutput() {
-    this.log('\n💾 Generating SQL output...');
+    this.log('\n� Writing SQL files...');
     
     const results = await this.sqlGenerator.generateMultiple([
       {

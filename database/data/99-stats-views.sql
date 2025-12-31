@@ -206,7 +206,7 @@ SELECT
     COUNT(CASE WHEN me.event_type_id = 4 THEN 1 END) as red_cards,
     
     -- Lineup info
-    MAX(ml.position) as position,
+    MAX(ml.position_id) as position_id,
     BOOL_OR(ml.is_starter) as was_starter
 
 FROM matches m

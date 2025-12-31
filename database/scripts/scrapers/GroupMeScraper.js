@@ -322,7 +322,7 @@ class GroupMeScraper extends Scraper {
   }
 
   async generateOutput() {
-    this.log('\n💾 Generating SQL output...');
+    this.log('\n� Writing SQL files (GroupMe data)...');
     
     const results = await this.sqlGenerator.generateMultiple([
       {

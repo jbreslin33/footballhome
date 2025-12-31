@@ -103,7 +103,7 @@ class CacheManager {
             return null;
         }
 
-        console.log(`  ✓ Reading from cache: ${path.basename(cachePath)}`);
+        console.log(`  💾 Reading from cache: ${path.basename(cachePath)}`);
         return fs.readFileSync(cachePath, 'utf8');
     }
 
@@ -139,7 +139,7 @@ class CacheManager {
         }
 
         // Fetch from source
-        console.log(`  → Fetching from source: ${url}`);
+        console.log(`  ⬇️  Downloading from source: ${url}`);
         const html = await this.fetcher.fetch(url);
         
         // Save to cache

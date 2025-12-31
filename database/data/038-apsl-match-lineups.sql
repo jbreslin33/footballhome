@@ -1,6 +1,6 @@
 -- APSL Match Lineups
 
-INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, position)
+INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, position_id)
 VALUES
   (4, 36, 2, true, NULL),
   (4, 41, 2, true, NULL),
