@@ -140,6 +140,32 @@ INSERT INTO coach_roles (id, name, description, sort_order) VALUES
     (3, 'trainer', 'Athletic trainer', 3)
 ON CONFLICT (id) DO NOTHING;
 
+CREATE TABLE positions (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    abbreviation VARCHAR(5) NOT NULL,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0
+);
+
+INSERT INTO positions (id, name, abbreviation, description, sort_order) VALUES
+    (1, 'Goalkeeper', 'GK', 'Goalkeeper', 1),
+    (2, 'Right Back', 'RB', 'Right defender', 2),
+    (3, 'Center Back', 'CB', 'Central defender', 3),
+    (4, 'Left Back', 'LB', 'Left defender', 4),
+    (5, 'Defensive Midfielder', 'CDM', 'Defensive midfielder', 5),
+    (6, 'Central Midfielder', 'CM', 'Central midfielder', 6),
+    (7, 'Attacking Midfielder', 'CAM', 'Attacking midfielder', 7),
+    (8, 'Right Winger', 'RW', 'Right wing/forward', 8),
+    (9, 'Striker', 'ST', 'Center forward', 9),
+    (10, 'Left Winger', 'LW', 'Left wing/forward', 10),
+    (11, 'Right Midfielder', 'RM', 'Right midfielder', 11),
+    (12, 'Left Midfielder', 'LM', 'Left midfielder', 12),
+    (13, 'Wing Back', 'WB', 'Wing back (defensive winger)', 13),
+    (14, 'Sweeper', 'SW', 'Sweeper (libero)', 14),
+    (15, 'Forward', 'FW', 'Forward (general)', 15)
+ON CONFLICT (id) DO NOTHING;
+
 CREATE TABLE source_systems (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
@@ -502,13 +528,27 @@ CREATE INDEX idx_players_birth_year ON players(birth_year);
 CREATE INDEX idx_players_full_name ON players(full_name);
 CREATE INDEX idx_players_external ON players(source_system_id, external_id);
 
+-- Player positions (player profile - multiple positions a player CAN play)
+CREATE TABLE player_positions (
+    id SERIAL PRIMARY KEY,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    position_id INTEGER NOT NULL REFERENCES positions(id),
+    is_primary BOOLEAN DEFAULT false,  -- Primary/preferred position
+    sort_order INTEGER DEFAULT 0,
+    UNIQUE(player_id, position_id)
+);
+
+CREATE INDEX idx_player_positions_player ON player_positions(player_id);
+CREATE INDEX idx_player_positions_position ON player_positions(position_id);
+CREATE INDEX idx_player_positions_primary ON player_positions(player_id, is_primary) WHERE is_primary = true;
+
 -- Team rosters (junction table)
 CREATE TABLE team_players (
     id SERIAL PRIMARY KEY,
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     jersey_number VARCHAR(10),
-    position VARCHAR(50),
+    position_id INTEGER REFERENCES positions(id),  -- Primary position on this team (optional)
     is_active BOOLEAN DEFAULT true,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     left_at TIMESTAMP,
@@ -522,7 +562,7 @@ CREATE INDEX idx_team_players_active ON team_players(team_id, is_active) WHERE i
 CREATE TABLE coaches (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255),  -- Nullable: compute from users table when user_id is set, or store directly for non-users
     license_level VARCHAR(50),
     certifications TEXT,
     source_system_id INTEGER REFERENCES source_systems(id),
@@ -613,21 +653,8 @@ CREATE INDEX idx_match_divisions_division ON match_divisions(division_id);
 -- player_match_stats table removed - see 99-stats-views.sql for player_match_performance view
 -- Statistics are calculated on-the-fly from match_events for accuracy
 
-CREATE TABLE team_standings (
-    id SERIAL PRIMARY KEY,
-    team_division_id INTEGER NOT NULL REFERENCES team_divisions(id) ON DELETE CASCADE,
-    wins INTEGER DEFAULT 0,
-    losses INTEGER DEFAULT 0,
-    ties INTEGER DEFAULT 0,
-    goals_for INTEGER DEFAULT 0,
-    goals_against INTEGER DEFAULT 0,
-    points INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(team_division_id)
-);
-
-CREATE INDEX idx_team_standings_team_division ON team_standings(team_division_id);
+-- team_standings table removed - see 99-stats-views.sql for team_season_standings view
+-- Standings are calculated on-the-fly from match results for accuracy and consistency
 
 -- Team stats (comprehensive season statistics)
 -- team_stats table removed - see 99-stats-views.sql for team_season_standings view
@@ -806,7 +833,7 @@ CREATE TABLE match_lineups (
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     team_id INTEGER NOT NULL REFERENCES teams(id),
     is_starter BOOLEAN NOT NULL,
-    position VARCHAR(50),
+    position_id INTEGER REFERENCES positions(id),  -- Position played in this match (single position)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(match_id, player_id)
 );
