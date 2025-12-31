@@ -341,7 +341,30 @@ class ApslScraper extends Scraper {
           }
 
           // Find opponent's apsl_team_id
-          const opponentTeam = teamsByName.get(matchData.opponent);
+          let opponentTeam = teamsByName.get(matchData.opponent);
+
+          // If opponent team not found, create stub team (likely removed/defunct team)
+          if (!opponentTeam && matchData.opponent) {
+            const stubTeamId = this.data.apslTeams.size + 1;
+            const stubExternalId = `STUB-${matchData.opponent.replace(/\s+/g, '')}`;
+            
+            // Create stub team record
+            const stubTeam = {
+              id: stubTeamId,
+              sport_division_id: null,  // Unknown division for defunct/removed teams
+              name: matchData.opponent,
+              city: null,
+              logo_url: null,
+              source_system_id: this.SOURCE_SYSTEM_ID,
+              external_id: stubExternalId
+            };
+            
+            this.data.apslTeams.set(stubTeamId, stubTeam);
+            teamsByName.set(matchData.opponent, stubTeam);
+            opponentTeam = stubTeam;
+            
+            this.log(`       → Created stub team: ${matchData.opponent} (ID: ${stubTeamId})`);
+          }
 
           // Determine home/away team IDs
           let homeTeamId = null;
@@ -593,7 +616,7 @@ class ApslScraper extends Scraper {
   }
 
   async generateOutput() {
-    this.log('\n💾 Generating SQL output (APSL structure)...');
+    this.log('\n� Writing SQL files (APSL structure)...');
     
     // Debug: Check data sizes
     this.log(`   DEBUG: apslLeagues: ${this.data.apslLeagues.size}`);
