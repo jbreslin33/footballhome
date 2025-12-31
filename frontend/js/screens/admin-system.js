@@ -805,19 +805,19 @@ class AdminSystemScreen extends Screen {
         physics: {
           enabled: true,
           barnesHut: {
-            gravitationalConstant: -800000,
-            centralGravity: 0,
-            springLength: 700,
-            springConstant: 0.0001,
-            damping: 0.7,
-            avoidOverlap: 12
+            gravitationalConstant: -120000,
+            centralGravity: 0.1,
+            springLength: 400,
+            springConstant: 0.001,
+            damping: 0.5,
+            avoidOverlap: 3
           },
           stabilization: {
             enabled: true,
-            iterations: 5000,
+            iterations: 2000,
             updateInterval: 50
           },
-          minVelocity: 1.5
+          minVelocity: 1.0
         },
         interaction: {
           hover: true,
@@ -831,8 +831,8 @@ class AdminSystemScreen extends Screen {
           shapeProperties: {
             borderRadius: 4
           },
-          margin: 20,
-          heightConstraint: { minimum: 100 }
+          margin: 15,
+          heightConstraint: { minimum: 80 }
         },
         edges: {
           width: 2,
