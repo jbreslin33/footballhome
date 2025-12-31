@@ -210,20 +210,28 @@
                 const networkData = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
                 
                 const options = {
+                    layout: {
+                        improvedLayout: true,
+                        hierarchical: {
+                            enabled: false
+                        }
+                    },
                     physics: {
                         enabled: true,
                         barnesHut: {
-                            gravitationalConstant: -80000,
-                            centralGravity: 0.05,
-                            springLength: 600,
-                            springConstant: 0.005,
-                            damping: 0.2,
-                            avoidOverlap: 1.5
+                            gravitationalConstant: -200000,
+                            centralGravity: 0.01,
+                            springLength: 800,
+                            springConstant: 0.002,
+                            damping: 0.3,
+                            avoidOverlap: 2
                         },
                         stabilization: {
                             enabled: true,
-                            iterations: 1000
-                        }
+                            iterations: 2000,
+                            updateInterval: 50
+                        },
+                        minVelocity: 0.75
                     },
                     interaction: {
                         hover: true,
