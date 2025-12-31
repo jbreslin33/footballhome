@@ -71,28 +71,25 @@ std::string StatsController::createJSONResponse(bool success, const std::string&
 
 Response StatsController::handleGetStandings(const Request& request) {
     try {
-        // Query team_stats (normalized table with source_system_id=1 for APSL)
+        // Query team_season_standings VIEW (calculated from matches)
         std::string query = R"(
             SELECT 
-                ts.id::text,
-                t.name as team_name,
-                d.name as division_name,
-                l.season,
-                COALESCE(ts.wins, 0) + COALESCE(ts.losses, 0) + COALESCE(ts.ties, 0) as games_played,
-                COALESCE(ts.wins, 0) as wins,
-                COALESCE(ts.losses, 0) as losses,
-                COALESCE(ts.ties, 0) as ties,
-                COALESCE(ts.goals_for, 0) as goals_for,
-                COALESCE(ts.goals_against, 0) as goals_against,
-                COALESCE(ts.goals_for, 0) - COALESCE(ts.goals_against, 0) as goal_differential,
-                COALESCE(ts.points, 0) as points
-            FROM team_stats ts
-            JOIN teams t ON ts.team_id = t.id
-            JOIN divisions d ON ts.division_id = d.id
-            JOIN conferences c ON d.conference_id = c.id
-            JOIN leagues l ON c.league_id = l.id
+                tss.team_id::text as id,
+                tss.team_name,
+                tss.division_name,
+                '2025-2026' as season,
+                tss.games_played,
+                tss.wins,
+                tss.losses,
+                tss.ties,
+                tss.goals_for,
+                tss.goals_against,
+                tss.goal_differential,
+                tss.points
+            FROM team_season_standings tss
+            JOIN teams t ON tss.team_id = t.id
             WHERE t.source_system_id = 1
-            ORDER BY d.name, ts.points DESC, goal_differential DESC, t.name
+            ORDER BY tss.division_name, tss.points DESC, tss.goal_differential DESC, tss.team_name
         )";
         
         pqxx::result result = db_->query(query);

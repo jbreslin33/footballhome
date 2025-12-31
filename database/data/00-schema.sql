@@ -642,25 +642,8 @@ CREATE TABLE team_standings (
 CREATE INDEX idx_team_standings_team_division ON team_standings(team_division_id);
 
 -- Team stats (comprehensive season statistics)
-CREATE TABLE team_stats (
-    id SERIAL PRIMARY KEY,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    division_id INTEGER REFERENCES divisions(id),
-    match_id INTEGER REFERENCES matches(id),
-    wins INTEGER DEFAULT 0,
-    losses INTEGER DEFAULT 0,
-    ties INTEGER DEFAULT 0,
-    goals_for INTEGER DEFAULT 0,
-    goals_against INTEGER DEFAULT 0,
-    points INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(team_id, match_id)
-);
-
-CREATE INDEX idx_team_stats_team ON team_stats(team_id);
-CREATE INDEX idx_team_stats_division ON team_stats(division_id);
-CREATE INDEX idx_team_stats_match ON team_stats(match_id);
+-- team_stats table removed - see 99-stats-views.sql for team_season_standings view
+-- Statistics are calculated on-the-fly from matches table for accuracy
 
 -- ============================================================================
 -- 5d. SCHEDULING SYSTEM (Fully Normalized)
@@ -847,24 +830,8 @@ CREATE INDEX idx_match_lineups_starter ON match_lineups(is_starter);
 
 -- Player season stats (aggregated from roster pages)
 -- Used for season totals including assists that aren't tracked per-match
-CREATE TABLE player_season_stats (
-    id SERIAL PRIMARY KEY,
-    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-    team_id INTEGER REFERENCES teams(id),
-    season VARCHAR(20),
-    goals INTEGER DEFAULT 0,
-    assists INTEGER DEFAULT 0,
-    yellow_cards INTEGER DEFAULT 0,
-    red_cards INTEGER DEFAULT 0,
-    games_played INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(player_id, team_id, season)
-);
-
-CREATE INDEX idx_player_season_stats_player ON player_season_stats(player_id);
-CREATE INDEX idx_player_season_stats_team ON player_season_stats(team_id);
-CREATE INDEX idx_player_season_stats_season ON player_season_stats(season);
+-- player_season_stats table removed - see 99-stats-views.sql for player_season_stats_view
+-- Statistics are calculated on-the-fly from match_events for accuracy
 
 -- ============================================================================
 -- 6. CHAT SYSTEM (Built-in messaging)

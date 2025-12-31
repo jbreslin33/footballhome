@@ -25,10 +25,10 @@ const std::unordered_map<std::string, std::string> SQLFileWriter::entityFileMap_
     {"matches", "034"},
     {"player_match_stats", "035"},
     {"team_standings", "036"},
-    {"team_stats", "037"},
+    // team_stats removed - replaced by team_season_standings view
     {"match_events", "039"},
     {"match_lineups", "040"},
-    {"player_season_stats", "041"},
+    // player_season_stats removed - replaced by player_season_stats_view
     {"chats", "042"},
     {"chat_integrations", "043"},
     {"chat_members", "044"},
