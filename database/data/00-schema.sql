@@ -304,6 +304,9 @@ CREATE TABLE divisions (
     conference_id INTEGER REFERENCES conferences(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     
+    -- Division type (league play vs tournament structures)
+    division_type VARCHAR(20) DEFAULT 'league' CHECK (division_type IN ('league', 'tournament_group', 'knockout_round')),
+    
     -- Skill level (divisions define competitive tiers)
     skill_level INTEGER,  -- 1=highest (Premier/Division 1), 2=mid, 3=rec
     skill_label VARCHAR(50),  -- 'Premier', 'Division 1', 'Championship', etc.
@@ -563,7 +566,6 @@ CREATE TABLE venues (
 CREATE TABLE matches (
     id SERIAL PRIMARY KEY,
     match_type_id INTEGER NOT NULL REFERENCES match_types(id),
-    division_id INTEGER REFERENCES divisions(id),
     home_team_id INTEGER REFERENCES teams(id),
     away_team_id INTEGER REFERENCES teams(id),
     match_date DATE NOT NULL,
@@ -574,6 +576,15 @@ CREATE TABLE matches (
     match_status_id INTEGER REFERENCES match_statuses(id) DEFAULT 1,
     home_score INTEGER,
     away_score INTEGER,
+    
+    -- Bracket tournament support (NULL for league games)
+    round_name VARCHAR(50),  -- 'Quarterfinals', 'Semifinals', 'Final', 'Third Place', etc.
+    bracket_position VARCHAR(20),  -- 'A1', 'B2', 'W1', 'L2', etc.
+    next_match_id INTEGER REFERENCES matches(id),  -- Winner advances to this match
+    loser_next_match_id INTEGER REFERENCES matches(id),  -- Loser advances here (double elimination)
+    seed_home INTEGER,  -- Tournament seeding for home team
+    seed_away INTEGER,  -- Tournament seeding for away team
+    
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100) UNIQUE,
     created_by_user_id INTEGER REFERENCES users(id),
@@ -582,11 +593,23 @@ CREATE TABLE matches (
 );
 
 CREATE INDEX idx_matches_type ON matches(match_type_id);
-CREATE INDEX idx_matches_division ON matches(division_id);
 CREATE INDEX idx_matches_date ON matches(match_date);
 CREATE INDEX idx_matches_teams ON matches(home_team_id, away_team_id);
 CREATE INDEX idx_matches_status ON matches(match_status_id);
 CREATE INDEX idx_matches_source ON matches(source_system_id);
+CREATE INDEX idx_matches_next_match ON matches(next_match_id);
+CREATE INDEX idx_matches_loser_next ON matches(loser_next_match_id);
+
+-- Match-Division association (supports cross-division games)
+CREATE TABLE match_divisions (
+    match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
+    counts_for_standings BOOLEAN DEFAULT true,  -- Whether this match counts toward division standings
+    PRIMARY KEY (match_id, division_id)
+);
+
+CREATE INDEX idx_match_divisions_match ON match_divisions(match_id);
+CREATE INDEX idx_match_divisions_division ON match_divisions(division_id);
 
 CREATE TABLE player_match_stats (
     id SERIAL PRIMARY KEY,
@@ -641,7 +664,132 @@ CREATE INDEX idx_team_stats_division ON team_stats(division_id);
 CREATE INDEX idx_team_stats_match ON team_stats(match_id);
 
 -- ============================================================================
--- 5d. MATCH EVENTS (Event Sourcing Architecture)
+-- 5d. SCHEDULING SYSTEM (Fully Normalized)
+-- ============================================================================
+
+-- Parent table for a schedule generation job
+CREATE TABLE schedule_generations (
+    id SERIAL PRIMARY KEY,
+    division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
+    season_start_date DATE NOT NULL,
+    season_end_date DATE NOT NULL,
+    algorithm_used VARCHAR(50),  -- 'round_robin', 'balanced_unbalanced', 'tournament_seeded'
+    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'failed')),
+    generated_match_count INTEGER DEFAULT 0,
+    error_message TEXT,
+    created_by_user_id INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP
+);
+
+CREATE INDEX idx_schedule_generations_division ON schedule_generations(division_id);
+CREATE INDEX idx_schedule_generations_status ON schedule_generations(status);
+
+-- Key-value configuration options for schedule generation
+CREATE TABLE schedule_generation_options (
+    id SERIAL PRIMARY KEY,
+    schedule_generation_id INTEGER NOT NULL REFERENCES schedule_generations(id) ON DELETE CASCADE,
+    option_key VARCHAR(100) NOT NULL,  -- 'games_per_team', 'home_away_balanced', 'bye_weeks_allowed', etc.
+    option_value TEXT NOT NULL,  -- JSON string or simple value
+    UNIQUE(schedule_generation_id, option_key)
+);
+
+CREATE INDEX idx_schedule_options_generation ON schedule_generation_options(schedule_generation_id);
+
+-- Rivalry pairs for unbalanced schedules (teams that should play multiple times)
+CREATE TABLE schedule_rivalry_pairs (
+    id SERIAL PRIMARY KEY,
+    schedule_generation_id INTEGER NOT NULL REFERENCES schedule_generations(id) ON DELETE CASCADE,
+    team_id_1 INTEGER NOT NULL REFERENCES teams(id),
+    team_id_2 INTEGER NOT NULL REFERENCES teams(id),
+    games_count INTEGER DEFAULT 2,  -- How many times these teams should play
+    UNIQUE(schedule_generation_id, team_id_1, team_id_2),
+    CONSTRAINT check_different_rivalry_teams CHECK (team_id_1 < team_id_2)
+);
+
+CREATE INDEX idx_schedule_rivalries_generation ON schedule_rivalry_pairs(schedule_generation_id);
+CREATE INDEX idx_schedule_rivalries_teams ON schedule_rivalry_pairs(team_id_1, team_id_2);
+
+-- Tournament group assignments (for group stage scheduling)
+CREATE TABLE schedule_group_assignments (
+    id SERIAL PRIMARY KEY,
+    schedule_generation_id INTEGER NOT NULL REFERENCES schedule_generations(id) ON DELETE CASCADE,
+    team_id INTEGER NOT NULL REFERENCES teams(id),
+    group_name VARCHAR(10) NOT NULL,  -- 'A', 'B', 'C', etc.
+    seed INTEGER,  -- Seeding within the group
+    UNIQUE(schedule_generation_id, team_id)
+);
+
+CREATE INDEX idx_schedule_groups_generation ON schedule_group_assignments(schedule_generation_id);
+CREATE INDEX idx_schedule_groups_team ON schedule_group_assignments(team_id);
+CREATE INDEX idx_schedule_groups_name ON schedule_group_assignments(group_name);
+
+-- Venue availability constraints (hard constraints)
+CREATE TABLE schedule_venue_constraints (
+    id SERIAL PRIMARY KEY,
+    schedule_generation_id INTEGER NOT NULL REFERENCES schedule_generations(id) ON DELETE CASCADE,
+    venue_id INTEGER NOT NULL REFERENCES venues(id),
+    blocked_date DATE NOT NULL,
+    blocked_start_time TIME,
+    blocked_end_time TIME,
+    reason VARCHAR(255),
+    UNIQUE(schedule_generation_id, venue_id, blocked_date, blocked_start_time)
+);
+
+CREATE INDEX idx_schedule_venue_constraints_generation ON schedule_venue_constraints(schedule_generation_id);
+CREATE INDEX idx_schedule_venue_constraints_venue ON schedule_venue_constraints(venue_id);
+
+-- Team blackout dates (teams unavailable to play)
+CREATE TABLE schedule_team_blackouts (
+    id SERIAL PRIMARY KEY,
+    schedule_generation_id INTEGER NOT NULL REFERENCES schedule_generations(id) ON DELETE CASCADE,
+    team_id INTEGER NOT NULL REFERENCES teams(id),
+    blackout_date DATE NOT NULL,
+    reason VARCHAR(255),
+    UNIQUE(schedule_generation_id, team_id, blackout_date)
+);
+
+CREATE INDEX idx_schedule_team_blackouts_generation ON schedule_team_blackouts(schedule_generation_id);
+CREATE INDEX idx_schedule_team_blackouts_team ON schedule_team_blackouts(team_id);
+
+-- Day-of-week constraints (e.g., "Division A always plays on Tuesdays")
+CREATE TABLE schedule_day_constraints (
+    id SERIAL PRIMARY KEY,
+    schedule_generation_id INTEGER NOT NULL REFERENCES schedule_generations(id) ON DELETE CASCADE,
+    day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),  -- 0=Sunday, 6=Saturday
+    preferred_time TIME,
+    is_required BOOLEAN DEFAULT false,  -- Hard constraint vs soft preference
+    UNIQUE(schedule_generation_id, day_of_week)
+);
+
+CREATE INDEX idx_schedule_day_constraints_generation ON schedule_day_constraints(schedule_generation_id);
+
+-- Division weights for unbalanced scheduling (how many games against each division)
+CREATE TABLE schedule_division_weights (
+    id SERIAL PRIMARY KEY,
+    schedule_generation_id INTEGER NOT NULL REFERENCES schedule_generations(id) ON DELETE CASCADE,
+    opponent_division_id INTEGER NOT NULL REFERENCES divisions(id),
+    games_per_opponent INTEGER DEFAULT 1,  -- How many games to play vs each team in that division
+    UNIQUE(schedule_generation_id, opponent_division_id)
+);
+
+CREATE INDEX idx_schedule_division_weights_generation ON schedule_division_weights(schedule_generation_id);
+CREATE INDEX idx_schedule_division_weights_opponent ON schedule_division_weights(opponent_division_id);
+
+-- Soft preferences for scheduling (non-blocking)
+CREATE TABLE schedule_preferences (
+    id SERIAL PRIMARY KEY,
+    schedule_generation_id INTEGER NOT NULL REFERENCES schedule_generations(id) ON DELETE CASCADE,
+    preference_type VARCHAR(50) NOT NULL,  -- 'avoid_back_to_back', 'prefer_home_field_parity', 'minimize_travel', etc.
+    preference_value TEXT,  -- JSON or simple value
+    weight INTEGER DEFAULT 1  -- Priority/importance of this preference
+);
+
+CREATE INDEX idx_schedule_preferences_generation ON schedule_preferences(schedule_generation_id);
+CREATE INDEX idx_schedule_preferences_type ON schedule_preferences(preference_type);
+
+-- ============================================================================
+-- 5e. MATCH EVENTS (Event Sourcing Architecture)
 -- ============================================================================
 
 -- Lookup table for event types (normalized)
