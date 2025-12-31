@@ -45,6 +45,7 @@ class ApslScraper extends Scraper {
     this.data.apslPlayers = new Map();           // Normalized players table
     this.data.apslTeamPlayers = new Map();       // Junction: team_players
     this.data.apslMatches = new Map();
+    this.data.apslMatchDivisions = new Map();    // Junction: match_divisions
     this.data.apslPlayerSeasonStats = new Map(); // Season totals from roster pages
     this.data.apslMatchEvents = new Map();       // Individual match events (goals, cards, subs)
     this.data.apslMatchLineups = new Map();      // Match lineups (starters vs subs)
@@ -250,6 +251,9 @@ class ApslScraper extends Scraper {
               position: playerData.position
           });
 
+          // NOTE: player_season_stats table removed - stats now calculated via views
+          // from match_events table. Season stats collection code commented out.
+          /*
           // Create player season stats if available (includes assists)
           const stats = statsMap.get(playerData.name);
           if (stats) {
@@ -267,8 +271,11 @@ class ApslScraper extends Scraper {
             };
             this.data.apslPlayerSeasonStats.set(statsId, apslPlayerSeasonStats);
           }
+          */
         }
         
+        // NOTE: Stats summary logging removed since player_season_stats table no longer exists
+        /*
         // Log stats summary
         const totalGoals = Array.from(this.data.apslPlayerSeasonStats.values())
           .filter(s => {
@@ -281,6 +288,7 @@ class ApslScraper extends Scraper {
         if (totalGoals > 0) {
           this.log(`   ${apslTeam.name}: ${totalGoals} total goals scored`);
         }
+        */
         
       } catch (error) {
         this.logError(`Failed to fetch roster for ${apslTeam.name}`, error);
@@ -351,7 +359,6 @@ class ApslScraper extends Scraper {
           const apslMatchId = matchCounter++;
           const apslMatch = {
             id: apslMatchId,
-            division_id: this.teamDivisions.get(apslTeamId),
             home_team_id: homeTeamId,
             away_team_id: awayTeamId,
             match_type_id: 1,  // League match
@@ -366,6 +373,15 @@ class ApslScraper extends Scraper {
           };
 
           this.data.apslMatches.set(matchKey, apslMatch);
+
+          // Store match-division relationship for junction table
+          const divisionId = this.teamDivisions.get(apslTeamId);
+          if (divisionId) {
+            this.data.apslMatchDivisions.set(`${apslMatchId}-${divisionId}`, {
+              match_id: apslMatchId,
+              division_id: divisionId
+            });
+          }
 
           // --- Fetch per-match player stats (only if not already fetched) ---
           if (matchData.matchStatus === 'completed') {
@@ -534,6 +550,9 @@ class ApslScraper extends Scraper {
           continue;
         }
         
+        // NOTE: team_stats table removed - stats now calculated via team_season_standings view
+        // from matches table. Team stats collection code commented out.
+        /*
         // Create team stats record from standings table
         const statsId = statCounter++;
         const teamStats = {
@@ -550,10 +569,11 @@ class ApslScraper extends Scraper {
         
         this.data.apslTeamStats.set(statsId, teamStats);
         statsCount++;
+        */
       }
     }
     
-    this.log(`   ✓ ${statsCount} team stat records`);
+    // this.log(`   ✓ ${statsCount} team stat records`);
   }
 
   async transformData() {
@@ -583,10 +603,9 @@ class ApslScraper extends Scraper {
     this.log(`   DEBUG: apslPlayers: ${this.data.apslPlayers.size}`);
     this.log(`   DEBUG: apslTeamPlayers: ${this.data.apslTeamPlayers.size}`);
     this.log(`   DEBUG: apslMatches: ${this.data.apslMatches.size}`);
+    this.log(`   DEBUG: apslMatchDivisions: ${this.data.apslMatchDivisions.size}`);
     this.log(`   DEBUG: apslMatchEvents: ${this.data.apslMatchEvents.size}`);
     this.log(`   DEBUG: apslMatchLineups: ${this.data.apslMatchLineups.size}`);
-    this.log(`   DEBUG: apslPlayerSeasonStats: ${this.data.apslPlayerSeasonStats.size}`);
-    this.log(`   DEBUG: apslTeamStats: ${this.data.apslTeamStats.size}`);
     
     const results = await this.sqlGenerator.generateMultiple([
       // APSL Leagues (table 016)
@@ -666,9 +685,20 @@ class ApslScraper extends Scraper {
               conflictColumns: ['id']
           }
       },
-      // APSL Match Lineups (table 038)
+      // APSL Match Divisions (table 038) - Junction table
       {
-          filename: '038-apsl-match-lineups.sql',
+          filename: '038-apsl-match-divisions.sql',
+          data: this.data.apslMatchDivisions,
+          options: {
+              title: 'APSL Match-Division Relationships',
+              tableName: 'match_divisions',
+              useInserts: true,
+              conflictColumns: ['match_id', 'division_id']
+          }
+      },
+      // APSL Match Lineups (table 039)
+      {
+          filename: '039-apsl-match-lineups.sql',
           data: this.data.apslMatchLineups,
           options: {
               title: 'APSL Match Lineups',
@@ -677,37 +707,15 @@ class ApslScraper extends Scraper {
               conflictColumns: ['match_id', 'player_id']
           }
       },
-      // APSL Match Events (table 039)
+      // APSL Match Events (table 040)
       {
-          filename: '039-apsl-match-events.sql',
+          filename: '040-apsl-match-events.sql',
           data: this.data.apslMatchEvents,
           options: {
               title: 'APSL Match Events',
               tableName: 'match_events',
               useInserts: true,
               conflictColumns: ['id']
-          }
-      },
-      // APSL Team Stats (table 040)
-      {
-          filename: '040-apsl-team-stats.sql',
-          data: this.data.apslTeamStats,
-          options: {
-              title: 'APSL Team Statistics',
-              tableName: 'team_stats',
-              useInserts: true,
-              conflictColumns: ['team_id', 'match_id']
-          }
-      },
-      // APSL Player Season Stats (table 041)
-      {
-          filename: '041-apsl-player-season-stats.sql',
-          data: this.data.apslPlayerSeasonStats,
-          options: {
-              title: 'APSL Player Season Statistics',
-              tableName: 'player_season_stats',
-              useInserts: true,
-              conflictColumns: ['player_id', 'team_id', 'season']
           }
       }
     ]);
