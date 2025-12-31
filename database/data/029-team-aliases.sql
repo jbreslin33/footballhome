@@ -1,0 +1,3 @@
+-- Team-aliases - Foundation Data
+-- This file contains core/foundational data for team-aliases that always loads.
+-- Populated via scrapers and manual entry to handle team name variations.

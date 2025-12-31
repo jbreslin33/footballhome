@@ -504,6 +504,30 @@ CREATE TABLE team_divisions (
 CREATE INDEX idx_team_divisions_team ON team_divisions(team_id);
 CREATE INDEX idx_team_divisions_division ON team_divisions(division_id);
 
+-- Lookup table for team alias types
+CREATE TABLE alias_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Team aliases for name variations
+CREATE TABLE team_aliases (
+    id SERIAL PRIMARY KEY,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    alias_name VARCHAR(255) NOT NULL,
+    alias_type_id INTEGER NOT NULL REFERENCES alias_types(id),
+    source_system_id INTEGER REFERENCES source_systems(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(team_id, alias_name)
+);
+
+CREATE INDEX idx_team_aliases_team ON team_aliases(team_id);
+CREATE INDEX idx_team_aliases_name ON team_aliases(alias_name);
+CREATE INDEX idx_team_aliases_type ON team_aliases(alias_type_id);
+
+
 -- Players (roster entities from scraping or manual entry)
 CREATE TABLE players (
     id SERIAL PRIMARY KEY,
@@ -626,9 +650,18 @@ CREATE TABLE matches (
     seed_away INTEGER,  -- Tournament seeding for away team
     
     source_system_id INTEGER REFERENCES source_systems(id),
-    external_id VARCHAR(100) UNIQUE,
+    external_id VARCHAR(100),  -- Unique per source system
     created_by_user_id INTEGER REFERENCES users(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Validation: league/cup matches require both teams, practice/tournament can be NULL (for TBD)
+    CONSTRAINT check_match_teams CHECK (
+        (match_type_id IN (3, 5)) OR  -- Practice (3) or Tournament (5) can have NULL teams
+        (home_team_id IS NOT NULL AND away_team_id IS NOT NULL)  -- League/Cup require both teams
+    ),
+    
+    -- External ID is unique per source system (APSL match 123 != CASA match 123)
+    UNIQUE(source_system_id, external_id)
 );
 
 CREATE INDEX idx_matches_type ON matches(match_type_id);
@@ -773,17 +806,33 @@ CREATE TABLE schedule_division_weights (
 CREATE INDEX idx_schedule_division_weights_generation ON schedule_division_weights(schedule_generation_id);
 CREATE INDEX idx_schedule_division_weights_opponent ON schedule_division_weights(opponent_division_id);
 
+-- Lookup table for schedule preference types (normalized)
+CREATE TABLE schedule_preference_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0
+);
+
+INSERT INTO schedule_preference_types (id, name, description, sort_order) VALUES
+    (1, 'avoid_back_to_back', 'Avoid scheduling teams on consecutive days', 1),
+    (2, 'prefer_home_field_parity', 'Balance home/away games evenly', 2),
+    (3, 'minimize_travel', 'Minimize travel distance between venues', 3),
+    (4, 'cluster_bye_weeks', 'Group bye weeks together', 4),
+    (5, 'avoid_early_rematches', 'Avoid rematches in first half of season', 5)
+ON CONFLICT (id) DO NOTHING;
+
 -- Soft preferences for scheduling (non-blocking)
 CREATE TABLE schedule_preferences (
     id SERIAL PRIMARY KEY,
     schedule_generation_id INTEGER NOT NULL REFERENCES schedule_generations(id) ON DELETE CASCADE,
-    preference_type VARCHAR(50) NOT NULL,  -- 'avoid_back_to_back', 'prefer_home_field_parity', 'minimize_travel', etc.
+    preference_type_id INTEGER NOT NULL REFERENCES schedule_preference_types(id),
     preference_value TEXT,  -- JSON or simple value
     weight INTEGER DEFAULT 1  -- Priority/importance of this preference
 );
 
 CREATE INDEX idx_schedule_preferences_generation ON schedule_preferences(schedule_generation_id);
-CREATE INDEX idx_schedule_preferences_type ON schedule_preferences(preference_type);
+CREATE INDEX idx_schedule_preferences_type ON schedule_preferences(preference_type_id);
 
 -- ============================================================================
 -- 5e. MATCH EVENTS (Event Sourcing Architecture)
@@ -814,7 +863,7 @@ CREATE TABLE match_events (
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     team_id INTEGER NOT NULL REFERENCES teams(id),
     event_type_id INTEGER NOT NULL REFERENCES match_event_types(id),
-    minute INTEGER NOT NULL,
+    minute INTEGER NOT NULL CHECK (minute BETWEEN 0 AND 150),  -- Allow up to 150 for extra time
     assisted_by_player_id INTEGER REFERENCES players(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -963,6 +1012,7 @@ CREATE TABLE player_users (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     verified BOOLEAN DEFAULT false,
     verified_by INTEGER REFERENCES users(id),
+    verified_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(player_id, user_id)
 );
