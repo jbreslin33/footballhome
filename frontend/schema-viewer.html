@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Database Schema - Football Home</title>
     
-    <!-- vis.js for network diagrams -->
-    <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
-    <link href="https://unpkg.com/vis-network@9.1.9/styles/vis-network.min.css" rel="stylesheet" />
-    
     <style>
         * {
             margin: 0;
@@ -18,140 +14,652 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: #f5f5f5;
-            overflow: hidden;
+            background: #f8f9fa;
+            color: #212529;
         }
         
         .header {
             background: #1976d2;
             color: white;
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            padding: 16px 24px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
         
         .header h1 {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 600;
+            margin-bottom: 8px;
         }
         
-        .controls {
+        .search-bar {
             display: flex;
-            gap: 8px;
-            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
         }
         
         .btn {
-            padding: 6px 12px;
+            padding: 8px 16px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 14px;
             background: rgba(255,255,255,0.2);
             color: white;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
         
         .btn:hover {
             background: rgba(255,255,255,0.3);
         }
         
-        .btn-primary {
-            background: #0d47a1;
-        }
-        
-        .btn-primary:hover {
-            background: #0a3d91;
-        }
-        
-        #schema-network {
-            width: 100%;
+        .container {
+            display: grid;
+            grid-template-columns: 550px 1fr;
             height: calc(100vh - 120px);
-            background: white;
-            border-top: 1px solid #ddd;
+            gap: 0;
         }
         
-        #schema-details {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            max-height: 300px;
-            overflow-y: auto;
+        .sidebar {
             background: white;
-            border-top: 2px solid #1976d2;
-            padding: 16px;
-            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+            padding: 40px;
+        }
+        
+        .category {
+            margin-bottom: 48px;
+        }
+        
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 24px;
+            background: #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 17px;
+            color: #495057;
+            margin-bottom: 16px;
+            user-select: none;
+        }
+        
+        .category-header:hover {
+            background: #dee2e6;
+        }
+        
+        .category-toggle {
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+        
+        .category.collapsed .category-toggle {
+            transform: rotate(-90deg);
+        }
+        
+        .category-tables {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-left: 20px;
+        }
+        
+        .category.collapsed .category-tables {
             display: none;
         }
         
-        #schema-details.visible {
-            display: block;
+        .table-item {
+            padding: 16px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            color: #495057;
+            transition: all 0.2s;
+            border-left: 4px solid transparent;
         }
         
-        #schema-details h3 {
-            margin-bottom: 12px;
+        .table-item:hover {
+            background: #f8f9fa;
+            border-left-color: #1976d2;
+        }
+        
+        .table-item.active {
+            background: #e3f2fd;
+            border-left-color: #1976d2;
             color: #1976d2;
+            font-weight: 500;
         }
         
-        #schema-details h4 {
-            margin: 12px 0 8px 0;
-            font-size: 14px;
-            color: #666;
+        .table-count {
+            float: right;
+            font-size: 12px;
+            color: #6c757d;
+            background: #e9ecef;
+            padding: 3px 8px;
+            border-radius: 12px;
+        }
+        
+        .detail-panel {
+            background: white;
+            overflow-y: auto;
+            padding: 60px 80px;
+        }
+        
+        .detail-panel.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 20px;
+        }
+        
+        .table-header {
+            margin-bottom: 60px;
+            padding-bottom: 32px;
+            border-bottom: 4px solid #1976d2;
+        }
+        
+        .table-name {
+            font-size: 40px;
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 16px;
+        }
+        
+        .table-meta {
+            color: #6c757d;
+            font-size: 16px;
+        }
+        
+        .section {
+            margin-bottom: 64px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
         
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: 15px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
         }
         
         table th {
-            background: #f5f5f5;
-            padding: 8px;
+            background: #f8f9fa;
+            padding: 18px 20px;
             text-align: left;
             font-weight: 600;
-            border-bottom: 2px solid #ddd;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
         }
         
         table td {
-            padding: 6px 8px;
-            border-bottom: 1px solid #eee;
+            padding: 18px 20px;
+            border-bottom: 1px solid #f1f3f5;
+        }
+        
+        table tr:last-child td {
+            border-bottom: none;
         }
         
         table tr:hover {
-            background: #f9f9f9;
+            background: #f8f9fa;
         }
         
-        .info {
-            color: #666;
+        table tr.fk-row {
+            background: #fff8e1;
+        }
+        
+        table tr.fk-row:hover {
+            background: #fff3cd;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 5px;
             font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-right: 6px;
+        }
+        
+        .badge-primary {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .badge-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .badge-warning {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        
+        .badge-info {
+            background: #e1f5fe;
+            color: #0277bd;
+        }
+        
+        .code {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        
+        .no-results {
+            padding: 48px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 15px;
+        }
+        
+        /* Start with categories collapsed */
+        .category.collapsed .category-tables {
+            display: none;
+        }
+        
+        /* Relationship Cards */
+        .relationship-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 32px;
+            margin-top: 24px;
+        }
+        
+        .relationship-card {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 12px;
+            padding: 32px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .relationship-card:hover {
+            background: #e3f2fd;
+            border-color: #1976d2;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+        
+        .relationship-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .relationship-arrow {
+            font-size: 32px;
+            color: #1976d2;
+            font-weight: bold;
+        }
+        
+        .relationship-table {
+            font-size: 20px;
+            font-weight: 600;
+            color: #212529;
+            flex: 1;
+        }
+        
+        .relationship-details {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .relationship-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+        
+        .relationship-label {
+            color: #6c757d;
+            font-weight: 600;
+            min-width: 80px;
+        }
+        
+        .relationship-value {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 15px;
+            color: #212529;
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-radius: 6px;
+            flex: 1;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🗂️ Database Schema Viewer - Football Home</h1>
-        <div class="controls">
-            <button id="schema-fit" class="btn">📐 Fit</button>
-            <button id="schema-zoom-in" class="btn">🔍+</button>
-            <button id="schema-zoom-out" class="btn">🔍-</button>
-            <button id="schema-reset" class="btn">🔄 Reset</button>
-            <span class="info">Drag to pan • Scroll to zoom • Click table for details</span>
+        <h1>🗂️ Database Schema - Football Home</h1>
+        <div class="search-bar">
+            <input type="text" id="search-input" class="search-input" placeholder="Search tables...">
+            <button id="expand-all" class="btn">Expand All</button>
+            <button id="collapse-all" class="btn">Collapse All</button>
         </div>
     </div>
     
-    <div id="schema-network"></div>
-    <div id="schema-details"></div>
+    <div class="container">
+        <div class="sidebar" id="sidebar"></div>
+        <div class="detail-panel empty" id="detail-panel">
+            <div>👈 Select a table to view details</div>
+        </div>
+    </div>
     
     <script>
+        let schemaData = null;
+        let currentTable = null;
+        
+        const categories = {
+            'Core System': ['source_systems', 'governing_bodies', 'organizations'],
+            'League Structure': ['leagues', 'conferences', 'divisions', 'seasons'],
+            'Clubs & Teams': ['clubs', 'sport_divisions', 'teams', 'team_divisions'],
+            'Players & People': ['users', 'admins', 'club_admins', 'players', 'coaches', 'team_coaches', 'team_players'],
+            'Venues': ['venues', 'venue_availability'],
+            'Matches & Games': ['match_types', 'match_statuses', 'matches', 'match_divisions', 'match_lineups', 'match_event_types', 'match_events'],
+            'Statistics': ['player_match_stats', 'player_season_stats', 'team_standings', 'team_stats'],
+            'Scheduling': ['schedule_generations', 'schedule_generation_options', 'schedule_rivalry_pairs', 'schedule_group_assignments', 'schedule_venue_constraints', 'schedule_team_blackouts', 'schedule_day_constraints', 'schedule_division_weights', 'schedule_preferences'],
+            'Communication': ['chats', 'chat_members', 'chat_messages'],
+            'External Identity': ['external_identity_types', 'external_identities']
+        };
+        
         async function loadSchema() {
             try {
                 const response = await fetch('/api/system-admin/schema');
                 if (!response.ok) throw new Error('Failed to load schema');
-                const data = await response.json();
+                schemaData = await response.json();
+                renderSidebar();
+            } catch (error) {
+                console.error('Error loading schema:', error);
+                document.getElementById('sidebar').innerHTML = 
+                    '<div class="no-results">❌ Failed to load schema</div>';
+            }
+        }
+        
+        function renderSidebar(filter = '') {
+            const sidebar = document.getElementById('sidebar');
+            const filterLower = filter.toLowerCase();
+            
+            let html = '';
+            let hasResults = false;
+            
+            for (const [categoryName, tableNames] of Object.entries(categories)) {
+                const categoryTables = tableNames
+                    .filter(name => {
+                        const table = schemaData.tables.find(t => t.name === name);
+                        return table && (!filter || table.name.toLowerCase().includes(filterLower));
+                    })
+                    .map(name => schemaData.tables.find(t => t.name === name))
+                    .filter(t => t);
+                
+                if (categoryTables.length === 0) continue;
+                hasResults = true;
+                
+                html += `
+                    <div class="category collapsed">
+                        <div class="category-header" onclick="toggleCategory(this)">
+                            <span class="category-toggle">▼</span>
+                            <span>${categoryName}</span>
+                            <span class="table-count">${categoryTables.length}</span>
+                        </div>
+                        <div class="category-tables">
+                            ${categoryTables.map(table => `
+                                <div class="table-item" onclick="selectTable('${table.name}')" data-table="${table.name}">
+                                    ${table.name}
+                                    <span class="table-count">${table.columns.length}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Uncategorized tables
+            const categorizedTables = Object.values(categories).flat();
+            const uncategorized = schemaData.tables
+                .filter(t => !categorizedTables.includes(t.name))
+                .filter(t => !filter || t.name.toLowerCase().includes(filterLower));
+            
+            if (uncategorized.length > 0) {
+                hasResults = true;
+                html += `
+                    <div class="category collapsed">
+                        <div class="category-header" onclick="toggleCategory(this)">
+                            <span class="category-toggle">▼</span>
+                            <span>Other Tables</span>
+                            <span class="table-count">${uncategorized.length}</span>
+                        </div>
+                        <div class="category-tables">
+                            ${uncategorized.map(table => `
+                                <div class="table-item" onclick="selectTable('${table.name}')" data-table="${table.name}">
+                                    ${table.name}
+                                    <span class="table-count">${table.columns.length}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            sidebar.innerHTML = hasResults ? html : '<div class="no-results">No tables found</div>';
+        }
+        
+        function toggleCategory(header) {
+            header.parentElement.classList.toggle('collapsed');
+        }
+        
+        function selectTable(tableName) {
+            currentTable = schemaData.tables.find(t => t.name === tableName);
+            if (!currentTable) return;
+            
+            // Update active state
+            document.querySelectorAll('.table-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.table === tableName);
+            });
+            
+            renderTableDetails();
+        }
+        
+        function renderTableDetails() {
+            const panel = document.getElementById('detail-panel');
+            if (!currentTable) {
+                panel.className = 'detail-panel empty';
+                panel.innerHTML = '<div>👈 Select a table to view details</div>';
+                return;
+            }
+            
+            panel.className = 'detail-panel';
+            
+            const primaryKeys = currentTable.columns.filter(c => c.primary_key).map(c => c.name);
+            const foreignKeys = currentTable.foreign_keys || [];
+            const indexes = currentTable.indexes || [];
+            
+            // Find reverse foreign keys (tables that reference this table)
+            const referencedBy = schemaData.tables
+                .filter(t => t.foreign_keys?.some(fk => fk.foreign_table === currentTable.name))
+                .map(t => ({
+                    table: t.name,
+                    keys: t.foreign_keys.filter(fk => fk.foreign_table === currentTable.name)
+                }));
+            
+            panel.innerHTML = `
+                <div class="table-header">
+                    <div class="table-name">${currentTable.name}</div>
+                    <div class="table-meta">
+                        ${currentTable.columns.length} columns
+                        ${primaryKeys.length > 0 ? `• PK: ${primaryKeys.join(', ')}` : ''}
+                        ${foreignKeys.length > 0 ? `• ${foreignKeys.length} foreign keys` : ''}
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">📋 Columns</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Nullable</th>
+                                <th>Default</th>
+                                <th>Attributes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${currentTable.columns.map(col => {
+                                const isFk = foreignKeys.some(fk => fk.column === col.name);
+                                return `
+                                <tr class="${isFk ? 'fk-row' : ''}">
+                                    <td><span class="code">${col.name}</span></td>
+                                    <td>${col.type}</td>
+                                    <td>${col.nullable === 'YES' ? '✓' : '✗'}</td>
+                                    <td>${col.default || '—'}</td>
+                                    <td>
+                                        ${col.primary_key ? '<span class="badge badge-primary">PK</span> ' : ''}
+                                        ${isFk ? '<span class="badge badge-info">FK</span>' : ''}
+                                    </td>
+                                </tr>
+                            `}).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                
+                ${foreignKeys.length > 0 ? `
+                    <div class="section">
+                        <div class="section-title">🔗 Foreign Keys (References)</div>
+                        <div class="relationship-grid">
+                            ${foreignKeys.map(fk => `
+                                <div class="relationship-card" onclick="selectTable('${fk.foreign_table}')">
+                                    <div class="relationship-header">
+                                        <div class="relationship-table">${currentTable.name}</div>
+                                        <div class="relationship-arrow">→</div>
+                                        <div class="relationship-table">${fk.foreign_table}</div>
+                                    </div>
+                                    <div class="relationship-details">
+                                        <div class="relationship-row">
+                                            <span class="relationship-label">Column:</span>
+                                            <span class="relationship-value">${fk.column}</span>
+                                        </div>
+                                        <div class="relationship-row">
+                                            <span class="relationship-label">References:</span>
+                                            <span class="relationship-value">${fk.foreign_table}.${fk.foreign_column}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${referencedBy.length > 0 ? `
+                    <div class="section">
+                        <div class="section-title">🔙 Referenced By (Incoming)</div>
+                        <div class="relationship-grid">
+                            ${referencedBy.map(ref => `
+                                <div class="relationship-card" onclick="selectTable('${ref.table}')">
+                                    <div class="relationship-header">
+                                        <div class="relationship-table">${ref.table}</div>
+                                        <div class="relationship-arrow">→</div>
+                                        <div class="relationship-table">${currentTable.name}</div>
+                                    </div>
+                                    <div class="relationship-details">
+                                        ${ref.keys.map(k => `
+                                            <div class="relationship-row">
+                                                <span class="relationship-label">Via:</span>
+                                                <span class="relationship-value">${ref.table}.${k.column} → ${currentTable.name}.${k.foreign_column}</span>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${indexes.length > 0 ? `
+                    <div class="section">
+                        <div class="section-title">🔍 Indexes</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Columns</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${indexes.map(idx => `
+                                    <tr>
+                                        <td><span class="code">${idx.name}</span></td>
+                                        <td>${idx.columns.join(', ')}</td>
+                                        <td>
+                                            ${idx.unique ? '<span class="badge badge-warning">UNIQUE</span>' : '<span class="badge badge-success">INDEX</span>'}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : ''}
+            `;
+        }
+        
+        // Event listeners
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            renderSidebar(e.target.value);
+        });
+        
+        document.getElementById('expand-all').addEventListener('click', () => {
+            document.querySelectorAll('.category').forEach(cat => {
+                cat.classList.remove('collapsed');
+            });
+        });
+        
+        document.getElementById('collapse-all').addEventListener('click', () => {
+            document.querySelectorAll('.category').forEach(cat => {
+                cat.classList.add('collapsed');
+            });
+        });
+        
+        // Load schema on page load
+        loadSchema();
+    </script>
+</body>
+</html>
                 
                 const nodes = [];
                 const edges = [];
