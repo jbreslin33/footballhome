@@ -486,7 +486,6 @@ VALUES
   (476, 47, 52, 1, 3, '2025-11-16T15:00:00.000Z', NULL, NULL, 18, 0, 1, '2025-11-16T15:00:00.000Z-SC Gwinnett-Majestic SC'),
   (477, 50, 52, 1, 3, '2025-11-23T18:00:00.000Z', NULL, NULL, 13, 0, 1, '2025-11-23T18:00:00.000Z-SC Gwinnett-Buckhead SC')
 ON CONFLICT (id) DO UPDATE SET
-  division_id = EXCLUDED.division_id,
   home_team_id = EXCLUDED.home_team_id,
   away_team_id = EXCLUDED.away_team_id,
   match_type_id = EXCLUDED.match_type_id,
