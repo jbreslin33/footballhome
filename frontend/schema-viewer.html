@@ -220,19 +220,19 @@
                     physics: {
                         enabled: true,
                         barnesHut: {
-                            gravitationalConstant: -500000,
+                            gravitationalConstant: -800000,
                             centralGravity: 0,
-                            springLength: 600,
-                            springConstant: 0.0003,
-                            damping: 0.6,
-                            avoidOverlap: 8
+                            springLength: 700,
+                            springConstant: 0.0001,
+                            damping: 0.7,
+                            avoidOverlap: 12
                         },
                         stabilization: {
                             enabled: true,
-                            iterations: 4000,
+                            iterations: 5000,
                             updateInterval: 50
                         },
-                        minVelocity: 1
+                        minVelocity: 1.5
                     },
                     interaction: {
                         hover: true,
@@ -250,16 +250,17 @@
                     edges: {
                         width: 2,
                         smooth: {
-                            type: 'cubicBezier',
-                            forceDirection: 'horizontal',
-                            roundness: 0.4
+                            type: 'curvedCW',
+                            roundness: 0.6
                         },
                         arrows: {
                             to: {
                                 enabled: true,
                                 scaleFactor: 0.5
                             }
-                        }
+                        },
+                        length: 400,
+                        avoidOverlap: true
                     }
                 };
                 
