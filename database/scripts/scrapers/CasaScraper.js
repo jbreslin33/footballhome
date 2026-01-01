@@ -1034,9 +1034,6 @@ class CasaScraper extends Scraper {
   }
 
   findTeamInStandings(teamName, divisionId) {
-      // ONLY match teams that were scraped from standings
-      // DO NOT create new teams - all teams must come from standings
-      
       // 1. Try to find existing team by name (search ALL teams, not just this division)
       const existingName = this.findTeam(teamName);
       if (existingName) {
@@ -1044,9 +1041,32 @@ class CasaScraper extends Scraper {
           return Array.from(this.data.teams.values()).find(t => t.name === existingName);
       }
 
-      // 2. Team not found - log warning and return null
-      this.log(`   ⚠️  Could not match schedule team to standings: "${teamName}"`);
-      return null;
+      // 2. Team not found in standings - auto-create stub team
+      // This handles teams that have been disbanded, removed from the league,
+      // or renamed after the standings were published
+      this.log(`   ⚠️  Team "${teamName}" not found in standings - creating stub team`);
+      
+      if (!this.teamSeq) this.teamSeq = 1;
+      const teamId = this.teamSeq++;
+      
+      // Create stub team with NULL sport_division_id (not in any division's standings)
+      const stubTeam = {
+          id: teamId,
+          name: teamName,
+          source_system_id: 2, // CASA
+          sport_division_id: null, // No division assignment
+          external_id: `STUB-${teamName.replace(/[^a-zA-Z0-9]/g, '')}`,
+          abbreviation: null,
+          logo_url: null,
+          primary_color: null,
+          secondary_color: null,
+          tertiary_color: null
+      };
+      
+      this.data.teams.set(teamId, stubTeam);
+      this.log(`   ✓ Created stub team: "${teamName}" (ID: ${teamId})`);
+      
+      return stubTeam;
   }
 
   parseMatchFromApi(apiMatch, divisionName, divisionId) {
@@ -1738,6 +1758,35 @@ class CasaScraper extends Scraper {
     if (this.hasTeamFilter()) {
       this.applyTeamFilter();
     }
+    
+    // Migrate CASA teams to registry for club linking
+    this.log('\n📦 Migrating CASA teams to registry...');
+    for (const [id, team] of this.data.teams.entries()) {
+      this.registry.addTeam({
+        id: team.id,
+        name: team.name,
+        sport_division_id: team.sport_division_id || null,
+        city: team.city || null,
+        logo_url: team.logo_url || null,
+        is_active: team.is_active !== false,
+        source_system_id: this.SOURCE_SYSTEM_ID,
+        external_id: team.external_id
+      });
+    }
+    
+    // Link teams to clubs and sport_divisions
+    await this.linkTeamsToClubs(this.SOURCE_SYSTEM_ID, 'CASA Soccer League');
+    
+    // Sync registry teams back to data.teams
+    this.log('\n📥 Syncing linked teams back to data store...');
+    for (const team of this.registry.getAllTeams()) {
+      if (team.source_system_id === this.SOURCE_SYSTEM_ID) {
+        const existingTeam = this.data.teams.get(team.id);
+        if (existingTeam) {
+          existingTeam.sport_division_id = team.sport_division_id;
+        }
+      }
+    }
   }
 
   applyTeamFilter() {
@@ -1751,6 +1800,25 @@ class CasaScraper extends Scraper {
 
   async generateOutput() {
     this.log('\n� Writing SQL files (CASA structure)...');
+    
+    // Debug: Check registry sizes
+    this.log(`   DEBUG: registry clubs: ${this.registry.clubs.size}`);
+    this.log(`   DEBUG: registry sportDivisions: ${this.registry.sportDivisions.size}`);
+    this.log(`   DEBUG: registry teams: ${this.registry.getAllTeams().filter(t => t.source_system_id === this.SOURCE_SYSTEM_ID).length}`);
+    
+    // Write clubs and sport_divisions SQL (from registry)
+    const path = require('path');
+    const clubsSql = this.sqlWriter.generateClubsSQL(this.registry.getAllClubs());
+    const sportDivsSql = this.sqlWriter.generateSportDivisionsSQL(this.registry.getAllSportDivisions());
+    
+    await this.sqlWriter.writeFile(
+      path.join(__dirname, '../../data/014-casa-clubs.sql'),
+      clubsSql
+    );
+    await this.sqlWriter.writeFile(
+      path.join(__dirname, '../../data/015-casa-sport-divisions.sql'),
+      sportDivsSql
+    );
     
     const results = await this.sqlGenerator.generateMultiple([
       // Leagues (normalized table)

@@ -1,3 +1,10 @@
+const DataRegistry = require('../services/DataRegistry');
+const ClubManager = require('../services/ClubManager');
+const SportDivisionManager = require('../services/SportDivisionManager');
+const TeamLinker = require('../services/TeamLinker');
+const SqlFileWriter = require('../services/SqlFileWriter');
+const DataLoader = require('../services/DataLoader');
+
 /**
  * Abstract Base Scraper Class
  * 
@@ -9,6 +16,8 @@ class Scraper {
     this.config = config;
     this.mode = config.mode || 'full';
     this.teamFilter = config.teamFilter || null; // Filter teams by name substring
+    
+    // Legacy data structure (for backward compatibility)
     this.data = {
       leagues: new Map(),
       conferences: new Map(),
@@ -25,6 +34,13 @@ class Scraper {
       matches: new Map(),
       externalIdentities: new Map()
     };
+    
+    // New OOP services
+    this.registry = new DataRegistry();
+    this.clubManager = new ClubManager(this.registry, this);
+    this.sportDivisionManager = new SportDivisionManager(this.registry, this);
+    this.teamLinker = new TeamLinker(this.registry, this.clubManager, this.sportDivisionManager, this);
+    this.sqlWriter = new SqlFileWriter(this);
   }
 
   /**
@@ -69,6 +85,24 @@ class Scraper {
 
   async generateOutput() {
     throw new Error(`${this.constructor.name} must implement generateOutput()`);
+  }
+  
+  /**
+   * Link teams to clubs and sport_divisions
+   * Should be called in transformData() after all teams are loaded
+   * 
+   * @param {number} sourceSystemId - Source system ID
+   * @param {string} leagueName - League name for context
+   */
+  async linkTeamsToClubs(sourceSystemId, leagueName) {
+    this.log(`\n🔗 Linking teams to clubs and sport_divisions...`);
+    
+    // Load existing clubs/sport_divisions from SQL files first
+    const dataLoader = new DataLoader(this.registry, this);
+    dataLoader.loadAllExistingData();
+    
+    // Now link teams
+    this.teamLinker.linkAllTeams(sourceSystemId, leagueName);
   }
 
   /**

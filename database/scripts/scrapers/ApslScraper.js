@@ -604,6 +604,35 @@ class ApslScraper extends Scraper {
     if (this.hasTeamFilter()) {
       this.applyTeamFilter();
     }
+    
+    // Migrate APSL teams to registry for club linking
+    this.log('\n📦 Migrating APSL teams to registry...');
+    for (const [id, team] of this.data.apslTeams.entries()) {
+      this.registry.addTeam({
+        id: team.id,
+        name: team.name,
+        sport_division_id: team.sport_division_id || null,
+        city: team.city || null,
+        logo_url: team.logo_url || null,
+        is_active: team.is_active !== false,
+        source_system_id: this.SOURCE_SYSTEM_ID,
+        external_id: team.external_id
+      });
+    }
+    
+    // Link teams to clubs and sport_divisions
+    await this.linkTeamsToClubs(this.SOURCE_SYSTEM_ID, 'APSL');
+    
+    // Sync registry teams back to data.apslTeams
+    this.log('\n📥 Syncing linked teams back to data store...');
+    for (const team of this.registry.getAllTeams()) {
+      if (team.source_system_id === this.SOURCE_SYSTEM_ID) {
+        const existingTeam = this.data.apslTeams.get(team.id);
+        if (existingTeam) {
+          existingTeam.sport_division_id = team.sport_division_id;
+        }
+      }
+    }
   }
 
   applyTeamFilter() {
@@ -629,6 +658,22 @@ class ApslScraper extends Scraper {
     this.log(`   DEBUG: apslMatchDivisions: ${this.data.apslMatchDivisions.size}`);
     this.log(`   DEBUG: apslMatchEvents: ${this.data.apslMatchEvents.size}`);
     this.log(`   DEBUG: apslMatchLineups: ${this.data.apslMatchLineups.size}`);
+    this.log(`   DEBUG: registry clubs: ${this.registry.clubs.size}`);
+    this.log(`   DEBUG: registry sportDivisions: ${this.registry.sportDivisions.size}`);
+    
+    // Write clubs and sport_divisions SQL (from registry)
+    const path = require('path');
+    const clubsSql = this.sqlWriter.generateClubsSQL(this.registry.getAllClubs());
+    const sportDivsSql = this.sqlWriter.generateSportDivisionsSQL(this.registry.getAllSportDivisions());
+    
+    await this.sqlWriter.writeFile(
+      path.join(__dirname, '../../data/014-apsl-clubs.sql'),
+      clubsSql
+    );
+    await this.sqlWriter.writeFile(
+      path.join(__dirname, '../../data/015-apsl-sport-divisions.sql'),
+      sportDivsSql
+    );
     
     const results = await this.sqlGenerator.generateMultiple([
       // APSL Leagues (table 016)
