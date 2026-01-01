@@ -4,21 +4,32 @@ class TacticalBoardScreen extends Screen {
     super(navigation, auth);
     this.canvas = null;
     this.ctx = null;
-    this.homePlayers = [];
-    this.opponentPlayers = [];
-    this.selectedPlayer = null;
-    this.selectedBall = null;
+    this.entities = {
+      homePlayers: [],
+      opponentPlayers: [],
+      balls: [],
+      goals: [],
+      cones: [],
+      zones: [],
+      arrows: []
+    };
+    this.selectedEntity = null;
     this.isDragging = false;
-    this.arrows = [];
     this.drawingArrow = null;
-    this.balls = [];
-    this.mode = 'move'; // 'move', 'draw', or 'ball'
+    this.drawingZone = null;
+    this.mode = 'move';
     this.scale = 1;
-    this.activeTeam = 'home'; // 'home' or 'opponent'
+    this.activeTeam = 'home';
     this.fieldHeight = 0;
     this.fieldWidth = 0;
     this.editingPlayer = null;
     this.editInputs = null;
+    this.editingGoal = null;
+    this.editingZone = null;
+    this.resizingZoneCorner = null;
+    this.zoneDragOffset = null;
+    this.history = [];
+    this.maxHistorySize = 5;
   }
 
   render() {
@@ -33,6 +44,7 @@ class TacticalBoardScreen extends Screen {
       <div class="toolbar" style="display: flex; gap: var(--space-2); margin-bottom: var(--space-3);">
             <button class="btn btn-secondary load-btn">📂 Load</button>
             <button class="btn btn-secondary save-btn">💾 Save</button>
+            <button class="btn btn-secondary undo-btn">↶ Undo</button>
             <button class="btn btn-secondary link-btn">🔗 Link</button>
             <button class="btn btn-secondary clear-btn">🗑️ Clear</button>
             <button class="btn btn-secondary export-btn">📷 Export Image</button>
@@ -45,7 +57,7 @@ class TacticalBoardScreen extends Screen {
           <div class="card">
             <h3 style="margin: 0 0 var(--space-2) 0; font-size: 0.9rem;">Tools</h3>
             <button class="btn btn-sm mode-btn" data-mode="move" style="width: 100%; justify-content: flex-start;">
-              🖱️ Move
+              🖱️ Move (shift)
             </button>
             <button class="btn btn-sm mode-btn" data-mode="draw" style="width: 100%; justify-content: flex-start; margin-top: var(--space-1);">
               ✏️ Draw Arrows
@@ -55,6 +67,15 @@ class TacticalBoardScreen extends Screen {
             </button>
             <button class="btn btn-sm mode-btn" data-mode="draw-player" style="width: 100%; justify-content: flex-start; margin-top: var(--space-1);">
               👤 Draw Player
+            </button>
+            <button class="btn btn-sm mode-btn" data-mode="draw-goal" style="width: 100%; justify-content: flex-start; margin-top: var(--space-1);">
+              🥅 Draw Goal
+            </button>
+            <button class="btn btn-sm mode-btn" data-mode="cones" style="width: 100%; justify-content: flex-start; margin-top: var(--space-1);">
+              🚧 Draw Cone
+            </button>
+            <button class="btn btn-sm mode-btn" data-mode="draw-zone" style="width: 100%; justify-content: flex-start; margin-top: var(--space-1);">
+              ⬜ Draw Zone
             </button>
             <button class="btn btn-sm mode-btn" data-mode="delete" style="width: 100%; justify-content: flex-start; margin-top: var(--space-1);">
               🗑️ Delete
@@ -237,10 +258,14 @@ class TacticalBoardScreen extends Screen {
     // Clear button
     this.find('.clear-btn').addEventListener('click', () => {
       if(confirm('Are you sure you want to clear the board?')) {
-        this.homePlayers = [];
-        this.opponentPlayers = [];
-        this.arrows = [];
-        this.balls = [];
+        this.saveState();
+        this.entities.homePlayers = [];
+        this.entities.opponentPlayers = [];
+        this.entities.arrows = [];
+        this.entities.balls = [];
+        this.entities.goals = [];
+        this.entities.cones = [];
+        this.entities.zones = [];
         this.drawAll();
       }
     });
@@ -253,6 +278,18 @@ class TacticalBoardScreen extends Screen {
       link.click();
     });
     
+    this.find('.undo-btn').addEventListener('click', () => {
+      this.undo();
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        this.undo();
+      }
+    });
+    
     // Mode buttons
     this.element.querySelectorAll('.mode-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -263,7 +300,8 @@ class TacticalBoardScreen extends Screen {
     
     // Clear arrows
     this.find('.clear-arrows-btn').addEventListener('click', () => {
-      this.arrows = [];
+      this.saveState();
+      this.entities.arrows = [];
       this.drawAll();
     });
     
@@ -304,6 +342,7 @@ class TacticalBoardScreen extends Screen {
     this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
     this.canvas.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
     this.canvas.addEventListener('dblclick', (e) => this.handleCanvasDoubleClick(e));
+    this.canvas.addEventListener('wheel', (e) => this.handleMouseWheel(e));
     
     // Player details events
     this.find('#update-player-btn').addEventListener('click', () => {
@@ -359,11 +398,59 @@ class TacticalBoardScreen extends Screen {
   }
   
   getActivePlayers() {
-    return this.activeTeam === 'home' ? this.homePlayers : this.opponentPlayers;
+    return this.activeTeam === 'home' ? this.entities.homePlayers : this.entities.opponentPlayers;
   }
   
   getAllPlayers() {
-    return [...this.homePlayers, ...this.opponentPlayers];
+    return [...this.entities.homePlayers, ...this.entities.opponentPlayers];
+  }
+  
+  saveState() {
+    // Capture current state
+    const state = {
+      homePlayers: this.entities.homePlayers.map(p => p.toJSON()),
+      opponentPlayers: this.entities.opponentPlayers.map(p => p.toJSON()),
+      balls: this.entities.balls.map(b => b.toJSON()),
+      goals: this.entities.goals.map(g => g.toJSON()),
+      cones: this.entities.cones.map(c => c.toJSON()),
+      zones: this.entities.zones.map(z => z.toJSON()),
+      arrows: this.entities.arrows.map(a => a.toJSON())
+    };
+    
+    this.history.push(state);
+    
+    // Keep only last 5 states
+    if (this.history.length > this.maxHistorySize) {
+      this.history.shift();
+    }
+  }
+  
+  undo() {
+    if (this.history.length === 0) {
+      console.log('Nothing to undo');
+      return;
+    }
+    
+    // Get previous state
+    const previousState = this.history.pop();
+    
+    // Restore entities from previous state
+    this.entities.homePlayers = previousState.homePlayers.map(p => Player.fromJSON(p));
+    this.entities.opponentPlayers = previousState.opponentPlayers.map(p => Player.fromJSON(p));
+    this.entities.balls = previousState.balls.map(b => Ball.fromJSON(b));
+    this.entities.goals = previousState.goals.map(g => Goal.fromJSON(g));
+    this.entities.cones = previousState.cones.map(c => Cone.fromJSON(c));
+    this.entities.zones = previousState.zones.map(z => Zone.fromJSON(z));
+    this.entities.arrows = previousState.arrows.map(a => Arrow.fromJSON(a));
+    
+    // Clear any selection
+    this.selectedEntity = null;
+    this.editingGoal = null;
+    this.editingZone = null;
+    
+    this.updatePlayerList();
+    this.drawAll();
+    console.log(`Undo complete. ${this.history.length} states remaining`);
   }
   
   addPlayer() {
@@ -373,28 +460,26 @@ class TacticalBoardScreen extends Screen {
     const number = prompt('Jersey number:', String(this.getActivePlayers().length + 1));
     if (!number) return;
     
-    const color = this.activeTeam === 'home' ? '#0066CC' : '#FFFFFF';  // Blue for home, white for away
+    this.saveState();
     const players = this.getActivePlayers();
+    const player = new Player(
+      this.canvas.width / 2,
+      this.canvas.height / 2,
+      parseInt(number) || players.length + 1,
+      name,
+      this.activeTeam
+    );
     
-    players.push({
-      id: Date.now(),
-      name: name,
-      jerseyNumber: parseInt(number) || players.length + 1,
-      x: this.canvas.width / 2,
-      y: this.canvas.height / 2,
-      color: color,
-      team: this.activeTeam
-    });
-    
+    players.push(player);
     this.updatePlayerList();
     this.drawAll();
   }
   
   clearPlayers() {
     if (this.activeTeam === 'home') {
-      this.homePlayers = [];
+      this.entities.homePlayers = [];
     } else {
-      this.opponentPlayers = [];
+      this.entities.opponentPlayers = [];
     }
     this.updatePlayerList();
     this.drawAll();
@@ -410,24 +495,23 @@ class TacticalBoardScreen extends Screen {
       console.log('Roster data:', roster);
       
       // Clear current home players
-      this.homePlayers = [];
+      this.entities.homePlayers = [];
       
       // Initialize players on field
       roster
         .filter(p => p.roster_status === 'active')
         .forEach((p, index) => {
-          this.homePlayers.push({
-            id: p.player_id,
-            name: p.preferred_name || p.first_name,
-            jerseyNumber: p.jersey_number || index + 1,
-            x: this.canvas.width / 2,
-            y: this.canvas.height / 2 + (index * 30) - 150,
-            color: '#0066CC',  // Blue for home team
-            team: 'home'
-          });
+          this.entities.homePlayers.push(new Player(
+            this.canvas.width / 2,
+            this.canvas.height / 2 + (index * 30) - 150,
+            p.jersey_number || index + 1,
+            p.preferred_name || p.first_name,
+            'home',
+            p.player_id
+          ));
         });
       
-      console.log('Home players loaded:', this.homePlayers.length);
+      console.log('Home players loaded:', this.entities.homePlayers.length);
       
       // Update player list
       this.updatePlayerList();
@@ -483,15 +567,16 @@ class TacticalBoardScreen extends Screen {
   }
   
   deleteElementAt(x, y) {
+    this.saveState();
     // Check if clicking on a ball first
-    const ballIndex = this.balls.findIndex(b => {
+    const ballIndex = this.entities.balls.findIndex(b => {
       const dx = b.x - x;
       const dy = b.y - y;
       return Math.sqrt(dx * dx + dy * dy) < 15;
     });
     
     if (ballIndex !== -1) {
-      this.balls.splice(ballIndex, 1);
+      this.entities.balls.splice(ballIndex, 1);
       this.drawAll();
       return;
     }
@@ -507,13 +592,55 @@ class TacticalBoardScreen extends Screen {
     if (playerIndex !== -1) {
       const player = allPlayers[playerIndex];
       if (player.team === 'home') {
-        const idx = this.homePlayers.indexOf(player);
-        if (idx !== -1) this.homePlayers.splice(idx, 1);
+        const idx = this.entities.homePlayers.indexOf(player);
+        if (idx !== -1) this.entities.homePlayers.splice(idx, 1);
       } else {
-        const idx = this.opponentPlayers.indexOf(player);
-        if (idx !== -1) this.opponentPlayers.splice(idx, 1);
+        const idx = this.entities.opponentPlayers.indexOf(player);
+        if (idx !== -1) this.entities.opponentPlayers.splice(idx, 1);
       }
       this.updatePlayerList();
+      this.drawAll();
+      return;
+    }
+
+    // Check if clicking on a goal
+    const goalIndex = this.entities.goals.findIndex(g => {
+      const gw = g.width || 40;
+      const gh = g.height || 20;
+      return x >= (g.x - gw/2) && x <= (g.x + gw/2) && y >= (g.y - gh/2) && y <= (g.y + gh/2);
+    });
+
+    if (goalIndex !== -1) {
+      this.entities.goals.splice(goalIndex, 1);
+      this.drawAll();
+      return;
+    }
+
+    // Check if clicking on a cone
+    const coneIndex = this.entities.cones.findIndex(c => {
+      const dx = c.x - x;
+      const dy = c.y - y;
+      const size = c.size || 8;
+      return Math.sqrt(dx * dx + dy * dy) < size;
+    });
+
+    if (coneIndex !== -1) {
+      this.entities.cones.splice(coneIndex, 1);
+      this.drawAll();
+      return;
+    }
+
+    // Check if clicking on a zone
+    const zoneIndex = this.entities.zones.findIndex(z => {
+      const minX = Math.min(z.startX, z.endX);
+      const maxX = Math.max(z.startX, z.endX);
+      const minY = Math.min(z.startY, z.endY);
+      const maxY = Math.max(z.startY, z.endY);
+      return x >= minX && x <= maxX && y >= minY && y <= maxY;
+    });
+
+    if (zoneIndex !== -1) {
+      this.entities.zones.splice(zoneIndex, 1);
       this.drawAll();
       return;
     }
@@ -521,7 +648,7 @@ class TacticalBoardScreen extends Screen {
     // Check if clicking on an arrow
     const arrowIndex = this.findArrowAt(x, y);
     if (arrowIndex !== -1) {
-      this.arrows.splice(arrowIndex, 1);
+      this.entities.arrows.splice(arrowIndex, 1);
       this.drawAll();
     }
   }
@@ -531,8 +658,8 @@ class TacticalBoardScreen extends Screen {
     let closest = -1;
     let minDistance = threshold;
     
-    this.arrows.forEach((arrow, index) => {
-      const distance = this.distanceToLine(x, y, arrow.startX, arrow.startY, arrow.endX, arrow.endY);
+    this.entities.arrows.forEach((arrow, index) => {
+      const distance = arrow.distanceToPoint(x, y);
       if (distance < minDistance) {
         minDistance = distance;
         closest = index;
@@ -733,93 +860,54 @@ class TacticalBoardScreen extends Screen {
   }
   
   drawPlayers() {
-    const ctx = this.ctx;
     const allPlayers = this.getAllPlayers();
-    const size = 10;
     allPlayers.forEach(player => {
-      // Draw player circle
-      ctx.fillStyle = player.color;
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, size, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Always draw a border for visibility (especially for white players)
-      ctx.strokeStyle = this.selectedPlayer === player ? 'yellow' : '#333';
-      ctx.lineWidth = this.selectedPlayer === player ? 3 : 2;
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, size, 0, Math.PI * 2);
-      ctx.stroke();
-      
-      // Draw jersey number (black for white players, white for others)
-      ctx.fillStyle = player.color === '#FFFFFF' ? '#000000' : '#FFFFFF';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(player.jerseyNumber, player.x, player.y);
-      
-      // Draw name below (with background for visibility)
-      if (player.name) {
-        ctx.font = '11px sans-serif';
-        const textWidth = ctx.measureText(player.name).width;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(player.x - textWidth/2 - 2, player.y + 22, textWidth + 4, 14);
-        ctx.fillStyle = 'white';
-        ctx.fillText(player.name, player.x, player.y + 29);
-      }
+      const isSelected = this.selectedEntity === player;
+      player.draw(this.ctx, isSelected);
     });
   }
   
   drawArrows() {
-    const ctx = this.ctx;
-    
     // Draw completed arrows
-    this.arrows.forEach(arrow => {
-      this.drawArrow(arrow.startX, arrow.startY, arrow.endX, arrow.endY, arrow.color || '#FFD700');
-    });
+    this.entities.arrows.forEach(arrow => arrow.draw(this.ctx));
     
     // Draw arrow being drawn
     if (this.drawingArrow) {
-      this.drawArrow(
+      const tempArrow = new Arrow(
         this.drawingArrow.startX,
         this.drawingArrow.startY,
         this.drawingArrow.currentX,
-        this.drawingArrow.currentY,
-        '#FFD700'
+        this.drawingArrow.currentY
       );
+      tempArrow.draw(this.ctx);
     }
   }
   
   drawBalls() {
-    const ctx = this.ctx;
+    this.entities.balls.forEach(ball => ball.draw(this.ctx));
+  }
+
+  drawZones() {
+    this.entities.zones.forEach(zone => zone.draw(this.ctx));
     
-    // Draw all balls
-    this.balls.forEach(ball => {
-      ctx.fillStyle = '#FFD700';
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, 6, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Add black pattern lines for soccer ball look
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(ball.x, ball.y, 6, 0, Math.PI * 2);
-      ctx.stroke();
-      
-      // Draw pentagon pattern
-      for (let i = 0; i < 5; i++) {
-        const angle = (i * Math.PI * 2) / 5;
-        const x1 = ball.x + Math.cos(angle) * 4;
-        const y1 = ball.y + Math.sin(angle) * 4;
-        const angle2 = ((i + 2) * Math.PI * 2) / 5;
-        const x2 = ball.x + Math.cos(angle2) * 4;
-        const y2 = ball.y + Math.sin(angle2) * 4;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-      }
-    });
+    // Draw zone being drawn
+    if (this.drawingZone) {
+      const tempZone = new Zone(
+        this.drawingZone.startX,
+        this.drawingZone.startY,
+        this.drawingZone.currentX,
+        this.drawingZone.currentY
+      );
+      tempZone.draw(this.ctx);
+    }
+  }
+
+  drawCones() {
+    this.entities.cones.forEach(cone => cone.draw(this.ctx));
+  }
+
+  drawGoals() {
+    this.entities.goals.forEach(goal => goal.draw(this.ctx, this.editingGoal === goal));
   }
   
   drawArrow(startX, startY, endX, endY, color) {
@@ -856,6 +944,9 @@ class TacticalBoardScreen extends Screen {
     this.drawField();
     this.drawArrows();
     this.drawBalls();
+    this.drawZones();
+    this.drawCones();
+    this.drawGoals();
     this.drawPlayers();
   }
   
@@ -864,17 +955,83 @@ class TacticalBoardScreen extends Screen {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    if (this.mode === 'move') {
-      // Check if clicking on a ball first
-      this.selectedBall = this.balls.find(b => {
+    // If we're editing a goal, clicking exits rotation mode
+    if (this.editingGoal) {
+      this.editingGoal = null;
+      this.drawAll();
+      return;
+    }
+    
+    // Shift key enables temporary move mode
+    const isMoveMode = this.mode === 'move' || e.shiftKey;
+    
+    if (isMoveMode) {
+      // Save state before starting any drag operation
+      let willDrag = false;
+      
+      // Check if clicking on a zone corner handle in resize mode
+      const handleSize = 8;
+      for (const zone of this.entities.zones) {
+        if (zone.resizeMode) {
+          const corners = [
+            { x: zone.startX, y: zone.startY, type: 'start' },
+            { x: zone.endX, y: zone.startY, type: 'endX-startY' },
+            { x: zone.endX, y: zone.endY, type: 'end' },
+            { x: zone.startX, y: zone.endY, type: 'startX-endY' }
+          ];
+          
+          for (const corner of corners) {
+            if (Math.abs(x - corner.x) <= handleSize/2 && Math.abs(y - corner.y) <= handleSize/2) {
+              this.saveState();
+              this.resizingZoneCorner = { zone, corner: corner.type };
+              this.isDragging = true;
+              return;
+            }
+          }
+        }
+      }
+      
+      // Check if clicking on a goal first
+      this.selectedEntity = this.entities.goals.find(g => {
+        const gw = g.width || 40;
+        const gh = g.height || 20;
+        return x >= (g.x - gw/2) && x <= (g.x + gw/2) && y >= (g.y - gh/2) && y <= (g.y + gh/2);
+      });
+      
+      if (this.selectedEntity) {
+        this.saveState();
+        this.isDragging = true;
+        const detailsPanel = document.getElementById('player-details');
+        if (detailsPanel) detailsPanel.style.display = 'none';
+        return;
+      }
+      
+      // Check if clicking on a cone
+      this.selectedEntity = this.entities.cones.find(c => {
+        const dx = c.x - x;
+        const dy = c.y - y;
+        const size = c.size || 8;
+        return Math.sqrt(dx * dx + dy * dy) < size;
+      });
+      
+      if (this.selectedEntity) {
+        this.saveState();
+        this.isDragging = true;
+        const detailsPanel = document.getElementById('player-details');
+        if (detailsPanel) detailsPanel.style.display = 'none';
+        return;
+      }
+      
+      // Check if clicking on a ball
+      this.selectedEntity = this.entities.balls.find(b => {
         const dx = b.x - x;
         const dy = b.y - y;
         return Math.sqrt(dx * dx + dy * dy) < 15;
       });
       
-      if (this.selectedBall) {
+      if (this.selectedEntity) {
+        this.saveState();
         this.isDragging = true;
-        this.selectedPlayer = null;
         const detailsPanel = document.getElementById('player-details');
         if (detailsPanel) detailsPanel.style.display = 'none';
         return;
@@ -882,20 +1039,41 @@ class TacticalBoardScreen extends Screen {
       
       // Check if clicking on a player from all players
       const allPlayers = this.getAllPlayers();
-      this.selectedPlayer = allPlayers.find(p => {
+      this.selectedEntity = allPlayers.find(p => {
         const dx = p.x - x;
         const dy = p.y - y;
         return Math.sqrt(dx * dx + dy * dy) < 20;
       });
       
-      if (this.selectedPlayer) {
+      if (this.selectedEntity) {
+        this.saveState();
         this.isDragging = true;
-        this.selectedBall = null;
-        this.populatePlayerDetails(this.selectedPlayer);
+        this.populatePlayerDetails(this.selectedEntity);
+        return;
       } else {
-        this.selectedBall = null;
         const detailsPanel = document.getElementById('player-details');
         if (detailsPanel) detailsPanel.style.display = 'none';
+      }
+      
+      // Check if clicking on a zone (only if nothing else was clicked)
+      this.selectedEntity = this.entities.zones.find(z => {
+        const minX = Math.min(z.startX, z.endX);
+        const maxX = Math.max(z.startX, z.endX);
+        const minY = Math.min(z.startY, z.endY);
+        const maxY = Math.max(z.startY, z.endY);
+        return x >= minX && x <= maxX && y >= minY && y <= maxY;
+      });
+      
+      if (this.selectedEntity) {
+        this.saveState();
+        this.isDragging = true;
+        // Store offset from click to zone's top-left corner for proper dragging
+        const minX = Math.min(this.selectedEntity.startX, this.selectedEntity.endX);
+        const minY = Math.min(this.selectedEntity.startY, this.selectedEntity.endY);
+        this.zoneDragOffset = { x: x - minX, y: y - minY };
+        const detailsPanel = document.getElementById('player-details');
+        if (detailsPanel) detailsPanel.style.display = 'none';
+        return;
       }
     } else if (this.mode === 'draw') {
       // Start drawing arrow
@@ -905,30 +1083,42 @@ class TacticalBoardScreen extends Screen {
         currentX: x,
         currentY: y
       };
+    } else if (this.mode === 'draw-zone') {
+      // Start drawing zone
+      this.drawingZone = {
+        startX: x,
+        startY: y,
+        currentX: x,
+        currentY: y
+      };
     } else if (this.mode === 'ball') {
       // Place ball at click location
-      this.balls.push({
-        x: x,
-        y: y
-      });
+      this.saveState();
+      this.entities.balls.push(new Ball(x, y));
       this.drawAll();
     } else if (this.mode === 'draw-player') {
       // Place player at click location
-      const color = this.activeTeam === 'home' ? '#0066CC' : '#FFFFFF';
+      this.saveState();
+      console.log('Drawing player at', x, y, 'team:', this.activeTeam);
       const players = this.getActivePlayers();
       const jerseyNumber = players.length + 1;
       
-      players.push({
-        id: Date.now(),
-        name: '',
-        jerseyNumber: jerseyNumber,
-        x: x,
-        y: y,
-        color: color,
-        team: this.activeTeam
-      });
+      const newPlayer = new Player(x, y, jerseyNumber, '', this.activeTeam);
+      console.log('Created player:', newPlayer);
+      players.push(newPlayer);
+      console.log('Players array now has', players.length, 'players');
       
       this.updatePlayerList();
+      this.drawAll();
+    } else if (this.mode === 'draw-goal') {
+      // Place a small practice goal centered at click
+      this.saveState();
+      this.entities.goals.push(new Goal(x, y, 0));
+      this.drawAll();
+    } else if (this.mode === 'cones') {
+      // Place a training cone at click location
+      this.saveState();
+      this.entities.cones.push(new Cone(x, y));
       this.drawAll();
     } else if (this.mode === 'delete') {
       // Delete ball, player, or arrow at click location
@@ -941,42 +1131,97 @@ class TacticalBoardScreen extends Screen {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    if (this.mode === 'move' && this.isDragging) {
-      if (this.selectedBall) {
-        this.selectedBall.x = x;
-        this.selectedBall.y = y;
+    // Shift key enables temporary move mode
+    const isMoveMode = this.mode === 'move' || e.shiftKey;
+    
+    if (isMoveMode && this.isDragging) {
+      if (this.resizingZoneCorner) {
+        const zone = this.resizingZoneCorner.zone;
+        const corner = this.resizingZoneCorner.corner;
+        
+        if (corner === 'start') {
+          zone.startX = x;
+          zone.startY = y;
+        } else if (corner === 'end') {
+          zone.endX = x;
+          zone.endY = y;
+        } else if (corner === 'endX-startY') {
+          zone.endX = x;
+          zone.startY = y;
+        } else if (corner === 'startX-endY') {
+          zone.startX = x;
+          zone.endY = y;
+        }
+        
         this.drawAll();
-      } else if (this.selectedPlayer) {
-        this.selectedPlayer.x = x;
-        this.selectedPlayer.y = y;
+      } else if (this.selectedEntity && this.selectedEntity instanceof Zone) {
+        // Move zone while maintaining its dimensions
+        const width = this.selectedEntity.endX - this.selectedEntity.startX;
+        const height = this.selectedEntity.endY - this.selectedEntity.startY;
+        const newStartX = x - this.zoneDragOffset.x;
+        const newStartY = y - this.zoneDragOffset.y;
+        this.selectedEntity.startX = newStartX;
+        this.selectedEntity.startY = newStartY;
+        this.selectedEntity.endX = newStartX + width;
+        this.selectedEntity.endY = newStartY + height;
+        this.drawAll();
+      } else if (this.selectedEntity) {
+        this.selectedEntity.x = x;
+        this.selectedEntity.y = y;
         this.drawAll();
       }
     } else if (this.mode === 'draw' && this.drawingArrow) {
       this.drawingArrow.currentX = x;
       this.drawingArrow.currentY = y;
       this.drawAll();
+    } else if (this.mode === 'draw-zone' && this.drawingZone) {
+      this.drawingZone.currentX = x;
+      this.drawingZone.currentY = y;
+      this.drawAll();
     }
   }
   
   handleMouseUp(e) {
-    if (this.mode === 'move') {
+    if (this.mode === 'move' || e.shiftKey) {
       this.isDragging = false;
-      this.selectedBall = null;
+      this.selectedEntity = null;
+      this.zoneDragOffset = null;
+      this.resizingZoneCorner = null;
     } else if (this.mode === 'draw' && this.drawingArrow) {
       // Complete arrow
+      this.saveState();
       const rect = this.canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       
-      this.arrows.push({
-        startX: this.drawingArrow.startX,
-        startY: this.drawingArrow.startY,
-        endX: x,
-        endY: y,
-        color: '#FFD700'
-      });
+      this.entities.arrows.push(new Arrow(
+        this.drawingArrow.startX,
+        this.drawingArrow.startY,
+        x,
+        y,
+        '#FFD700'
+      ));
       
       this.drawingArrow = null;
+      this.drawAll();
+    } else if (this.mode === 'draw-zone' && this.drawingZone) {
+      // Complete zone
+      const rect = this.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Only add zone if it has some size
+      if (Math.abs(x - this.drawingZone.startX) > 5 && Math.abs(y - this.drawingZone.startY) > 5) {
+        this.saveState();
+        this.entities.zones.push(new Zone(
+          this.drawingZone.startX,
+          this.drawingZone.startY,
+          x,
+          y
+        ));
+      }
+      
+      this.drawingZone = null;
       this.drawAll();
     }
   }
@@ -984,10 +1229,39 @@ class TacticalBoardScreen extends Screen {
   handleCanvasDoubleClick(e) {
     // Close any existing edit inputs
     this.closePlayerEdit();
+    this.closeZoneEdit();
     
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    
+    // Check if double-clicking on a zone first
+    const zone = this.entities.zones.find(z => {
+      const minX = Math.min(z.startX, z.endX);
+      const maxX = Math.max(z.startX, z.endX);
+      const minY = Math.min(z.startY, z.endY);
+      const maxY = Math.max(z.startY, z.endY);
+      return x >= minX && x <= maxX && y >= minY && y <= maxY;
+    });
+    
+    if (zone) {
+      this.openZoneEdit(zone, e);
+      return;
+    }
+    
+    // Check if double-clicking on a goal
+    const goal = this.entities.goals.find(g => {
+      const gw = g.width || 40;
+      const gh = g.height || 20;
+      return x >= (g.x - gw/2) && x <= (g.x + gw/2) && y >= (g.y - gh/2) && y <= (g.y + gh/2);
+    });
+    
+    if (goal) {
+      // Enable rotation mode for this goal
+      this.editingGoal = goal;
+      this.drawAll();
+      return;
+    }
     
     // Find if double-clicking on a player
     const allPlayers = this.getAllPlayers();
@@ -1106,7 +1380,122 @@ class TacticalBoardScreen extends Screen {
     this.editingPlayer = null;
   }
   
+  openZoneEdit(zone, event) {
+    this.editingZone = zone;
+    zone.resizeMode = true; // Automatically enable resize mode
+    const rect = this.canvas.getBoundingClientRect();
+    
+    const minX = Math.min(zone.startX, zone.endX);
+    const minY = Math.min(zone.startY, zone.endY);
+    
+    // Create edit menu
+    const menu = document.createElement('div');
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.left + minX}px;
+      top: ${rect.top + minY - 60}px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 1000;
+      background: white;
+      padding: 12px;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      min-width: 160px;
+    `;
+    
+    menu.innerHTML = `
+      <div style="font-weight: bold; font-size: 12px; margin-bottom: 4px;">Edit Zone</div>
+      <div style="display: flex; gap: 4px; align-items: center;">
+        <label style="font-size: 12px; flex: 1;">Color:</label>
+        <input type="color" id="zone-color-picker" value="${this.rgbaToHex(zone.color || 'rgba(255, 255, 0, 0.3)')}" style="width: 40px; height: 24px; border: none; cursor: pointer;">
+      </div>
+      <button id="close-zone-edit-btn" class="btn btn-sm btn-secondary" style="width: 100%; font-size: 11px;">Close</button>
+    `;
+    
+    document.body.appendChild(menu);
+    
+    // Event handlers
+    const colorPicker = menu.querySelector('#zone-color-picker');
+    colorPicker.addEventListener('change', (e) => {
+      const hex = e.target.value;
+      zone.color = this.hexToRgba(hex, 0.3);
+      zone.borderColor = this.hexToRgba(hex, 0.8);
+      this.drawAll();
+    });
+    
+    menu.querySelector('#close-zone-edit-btn').addEventListener('click', () => {
+      this.closeZoneEdit();
+    });
+    
+    // Click outside to close (but not on canvas)
+    const closeOnClickOutside = (e) => {
+      if (!menu.contains(e.target) && e.target !== this.canvas) {
+        this.closeZoneEdit();
+        document.removeEventListener('mousedown', closeOnClickOutside);
+      }
+    };
+    setTimeout(() => {
+      document.addEventListener('mousedown', closeOnClickOutside);
+    }, 100);
+    
+    this.zoneEditMenu = menu;
+    this.zoneEditCloseHandler = closeOnClickOutside;
+    this.drawAll(); // Redraw to show resize handles
+  }
+  
+  closeZoneEdit() {
+    if (this.zoneEditMenu) {
+      document.body.removeChild(this.zoneEditMenu);
+      this.zoneEditMenu = null;
+    }
+    if (this.zoneEditCloseHandler) {
+      document.removeEventListener('mousedown', this.zoneEditCloseHandler);
+      this.zoneEditCloseHandler = null;
+    }
+    if (this.editingZone) {
+      this.editingZone.resizeMode = false;
+      this.editingZone = null;
+    }
+    this.resizingZoneCorner = null;
+    this.drawAll();
+  }
+  
+  rgbaToHex(rgba) {
+    // Extract RGB values from rgba string
+    const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!match) return '#ffff00';
+    const r = parseInt(match[1]);
+    const g = parseInt(match[2]);
+    const b = parseInt(match[3]);
+    return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+  
+  hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  
+  handleMouseWheel(e) {
+    // Only rotate if we're editing a goal
+    if (!this.editingGoal) return;
+    
+    e.preventDefault();
+    
+    // Rotate based on wheel delta (deltaY)
+    const rotationSpeed = 0.05;
+    const delta = e.deltaY > 0 ? rotationSpeed : -rotationSpeed;
+    
+    this.editingGoal.angle = (this.editingGoal.angle || 0) + delta;
+    
+    this.drawAll();
+  }
+  
   applyFormation(formation) {
+    this.saveState();
     console.log('Applying formation:', formation);
     const w = this.canvas.width;
     const h = this.canvas.height;
@@ -1180,21 +1569,18 @@ class TacticalBoardScreen extends Screen {
     }
 
     const players = this.getActivePlayers();
-    const color = this.activeTeam === 'home' ? '#0066CC' : '#FFFFFF';  // Blue for home, white for away
     
     // If we don't have enough players, create them
     while (players.length < positions.length) {
       const playerNum = players.length + 1;
       const positionName = playerNum === 1 ? 'GK' : playerNum <= 5 ? 'DEF' : playerNum <= 9 ? 'MID' : 'ATT';
-      players.push({
-        id: Date.now() + players.length,
-        name: `${positionName} ${playerNum}`,
-        jerseyNumber: playerNum,
-        x: this.canvas.width / 2,
-        y: this.canvas.height / 2,
-        color: color,
-        team: this.activeTeam
-      });
+      players.push(new Player(
+        this.canvas.width / 2,
+        this.canvas.height / 2,
+        playerNum,
+        `${positionName} ${playerNum}`,
+        this.activeTeam
+      ));
     }
     
     // Apply positions to players
@@ -1242,7 +1628,7 @@ class TacticalBoardScreen extends Screen {
         isPublic: false,
         isTemplate: false,
         players: allPlayers,
-        arrows: this.arrows,
+        arrows: this.entities.arrows.map(a => a.toJSON()),
         teamId: this.teamId,
         matchId: this.matchId,
         practiceId: this.practiceId,
@@ -1300,9 +1686,13 @@ class TacticalBoardScreen extends Screen {
   saveToLocalStorage(boardId) {
     const data = {
       boardId,
-      homePlayers: this.homePlayers,
-      opponentPlayers: this.opponentPlayers,
-      arrows: this.arrows,
+      homePlayers: this.entities.homePlayers.map(p => p.toJSON()),
+      opponentPlayers: this.entities.opponentPlayers.map(p => p.toJSON()),
+      arrows: this.entities.arrows.map(a => a.toJSON()),
+      balls: this.entities.balls.map(b => b.toJSON()),
+      goals: this.entities.goals.map(g => g.toJSON()),
+      cones: this.entities.cones.map(c => c.toJSON()),
+      zones: this.entities.zones.map(z => z.toJSON()),
       timestamp: Date.now()
     };
     localStorage.setItem(`tactical-board-${boardId}`, JSON.stringify(data));
@@ -1311,13 +1701,24 @@ class TacticalBoardScreen extends Screen {
   loadFromLocalStorage(boardId) {
     const data = localStorage.getItem(`tactical-board-${boardId}`);
     if (data) {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      // Convert JSON back to entity instances
+      if (parsed) {
+        if (parsed.homePlayers) parsed.homePlayers = parsed.homePlayers.map(p => Player.fromJSON(p));
+        if (parsed.opponentPlayers) parsed.opponentPlayers = parsed.opponentPlayers.map(p => Player.fromJSON(p));
+        if (parsed.arrows) parsed.arrows = parsed.arrows.map(a => Arrow.fromJSON(a));
+        if (parsed.balls) parsed.balls = parsed.balls.map(b => Ball.fromJSON(b));
+        if (parsed.goals) parsed.goals = parsed.goals.map(g => Goal.fromJSON(g));
+        if (parsed.cones) parsed.cones = parsed.cones.map(c => Cone.fromJSON(c));
+        if (parsed.zones) parsed.zones = parsed.zones.map(z => Zone.fromJSON(z));
+      }
+      return parsed;
     }
     return null;
   }
   
   getFormationString(team) {
-    const players = team === 'home' ? this.homePlayers : this.opponentPlayers;
+    const players = team === 'home' ? this.entities.homePlayers : this.entities.opponentPlayers;
     // Simple formation detection based on player count
     if (players.length === 11) return '4-4-2';
     if (players.length === 10) return '4-3-3';
@@ -1342,37 +1743,37 @@ class TacticalBoardScreen extends Screen {
       console.log('Loaded board:', board);
       
       // Clear current board
-      this.homePlayers = [];
-      this.opponentPlayers = [];
-      this.arrows = [];
+      this.entities.homePlayers = [];
+      this.entities.opponentPlayers = [];
+      this.entities.arrows = [];
       
       // Load players
       for (const player of board.players) {
-        const playerObj = {
-          x: parseFloat(player.positionX),
-          y: parseFloat(player.positionY),
-          jerseyNumber: player.jerseyNumber,
-          name: player.name || '',
-          color: player.color,
-          playerId: player.playerId
-        };
+        const playerObj = new Player(
+          parseFloat(player.positionX),
+          parseFloat(player.positionY),
+          player.jerseyNumber,
+          player.name || '',
+          player.team,
+          player.playerId
+        );
         
         if (player.team === 'home') {
-          this.homePlayers.push(playerObj);
+          this.entities.homePlayers.push(playerObj);
         } else {
-          this.opponentPlayers.push(playerObj);
+          this.entities.opponentPlayers.push(playerObj);
         }
       }
       
       // Load arrows
       for (const arrow of board.arrows) {
-        this.arrows.push({
-          startX: parseFloat(arrow.startX),
-          startY: parseFloat(arrow.startY),
-          endX: parseFloat(arrow.endX),
-          endY: parseFloat(arrow.endY),
-          color: arrow.color || '#000000'
-        });
+        this.entities.arrows.push(new Arrow(
+          parseFloat(arrow.startX),
+          parseFloat(arrow.startY),
+          parseFloat(arrow.endX),
+          parseFloat(arrow.endY),
+          arrow.color || '#FFD700'
+        ));
       }
       
       this.currentBoardId = boardId;
