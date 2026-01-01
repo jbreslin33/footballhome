@@ -53,9 +53,8 @@ VALUES
   (50, 50, 'Buckhead SC Soccer', 'soccer', true),
   (51, 51, 'Alliance SC Soccer', 'soccer', true),
   (52, 52, 'SC Gwinnett Soccer', 'soccer', true),
-  (53, 53, 'Sete Setembro Usa (APSL)', 'soccer', true),
-  (54, 54, 'Strictly Nos (APSL)', 'soccer', true),
-  (55, 55, 'Lithonia City (APSL)', 'soccer', true)
+  (53, 53, 'Strictly Nos (APSL)', 'soccer', true),
+  (54, 54, 'Lithonia City (APSL)', 'soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   display_name = EXCLUDED.display_name,
