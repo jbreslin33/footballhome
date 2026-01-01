@@ -53,7 +53,17 @@ VALUES
   (49, 49, 'Bel Calcio FC', NULL, NULL, 1, '115106'),
   (50, 50, 'Buckhead SC', NULL, NULL, 1, '115104'),
   (51, 51, 'Alliance SC', NULL, NULL, 1, '115107'),
-  (52, 52, 'SC Gwinnett', NULL, NULL, 1, '119159')
+  (52, 52, 'SC Gwinnett', NULL, NULL, 1, '119159'),
+  (53, 53, 'Sete Setembro USA', NULL, NULL, 1, 'STUB-SeteSetembroUSA'),
+  (54, 53, 'Sete Setembro USA 
+
+
+				
+
+			
+				APSL New England Cup', NULL, NULL, 1, 'STUB-SeteSetembroUSAAPSLNewEnglandCup'),
+  (55, 54, 'Strictly Nos FC', NULL, NULL, 1, 'STUB-StrictlyNosFC'),
+  (56, 55, 'Lithonia City FC', NULL, NULL, 1, 'STUB-LithoniaCityFC')
 ON CONFLICT (id) DO UPDATE SET
   sport_division_id = EXCLUDED.sport_division_id,
   name = EXCLUDED.name,

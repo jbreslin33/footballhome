@@ -52,7 +52,10 @@ VALUES
   (49, 'Bel Calcio FC', 'bel-calcio-fc', 1, true),
   (50, 'Buckhead SC', 'buckhead-sc', 1, true),
   (51, 'Alliance SC', 'alliance-sc', 1, true),
-  (52, 'SC Gwinnett', 'sc-gwinnett', 1, true)
+  (52, 'SC Gwinnett', 'sc-gwinnett', 1, true),
+  (53, 'Sete Setembro Usa', 'sete-setembro-usa', 1, true),
+  (54, 'Strictly Nos', 'strictly-nos', 1, true),
+  (55, 'Lithonia City', 'lithonia-city', 1, true)
 ON CONFLICT (id) DO UPDATE SET
   display_name = EXCLUDED.display_name,
   slug = EXCLUDED.slug,
