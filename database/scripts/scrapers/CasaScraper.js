@@ -371,15 +371,13 @@ class CasaScraper extends Scraper {
         // Extract CASA team ID (their external ID)
         const casaTeamId = teamIdMap.get(teamName) || teamIdMap.get(teamName.toLowerCase());
         
-        // Create Team in normalized teams table (club_id and sport_division_id will be set by linkTeamsToClubs)
+        // Create Team in normalized teams table (sport_division_id will be set by linkTeamsToClubs)
         this.data.teams.set(teamId, {
           id: teamId,
-          club_id: null,  // Will be set by linkTeamsToClubs in transformData()
           sport_division_id: null,  // Will be set by linkTeamsToClubs in transformData()
           name: teamName.trim(),
           city: null,
           logo_url: null,
-          is_active: true,
           source_system_id: this.SOURCE_SYSTEM_ID,  // 2 = CASA
           external_id: casaTeamId || `casa-team-${teamId}`  // Use CASA's team ID or generate one
         });
@@ -1786,13 +1784,12 @@ class CasaScraper extends Scraper {
       if (team.source_system_id === this.SOURCE_SYSTEM_ID) {
         const existingTeam = this.data.teams.get(team.id);
         if (existingTeam) {
-          existingTeam.club_id = team.club_id;
           existingTeam.sport_division_id = team.sport_division_id;
-          if (team.club_id && team.sport_division_id) linkedCount++;
+          if (team.sport_division_id) linkedCount++;
         }
       }
     }
-    this.log(`   ✓ Linked ${linkedCount} teams to clubs/sport_divisions`);
+    this.log(`   ✓ Linked ${linkedCount} teams to sport_divisions`);
     
     // Sync clubs from registry
     for (const club of this.registry.getAllClubs()) {
