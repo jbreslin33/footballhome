@@ -3,18 +3,16 @@
 -- Password: same as before (bcrypt hash)
 -- Role: super admin
 
--- Insert user (no email/phone on users table anymore)
-INSERT INTO users (id, user_type, password_hash, first_name, last_name, is_active)
+-- Insert user (no email/phone on users table anymore - they're in junction tables)
+INSERT INTO users (id, password_hash, first_name, last_name, is_active)
 VALUES (
     1,
-    'member',
     crypt('1893Soccer!', gen_salt('bf')),  -- Password: 1893Soccer!
     'James',
     'Breslin',
     true
 )
 ON CONFLICT (id) DO UPDATE SET
-    user_type = EXCLUDED.user_type,
     password_hash = EXCLUDED.password_hash,
     first_name = EXCLUDED.first_name,
     last_name = EXCLUDED.last_name,

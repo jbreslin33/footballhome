@@ -354,8 +354,7 @@ CREATE INDEX idx_divisions_skill ON divisions(skill_level);
 
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    user_type VARCHAR(20) NOT NULL DEFAULT 'member' CHECK (user_type IN ('member', 'provisional', 'bot')),
-    password_hash TEXT,  -- Nullable for provisional users
+    password_hash TEXT,  -- Nullable for unclaimed users (email IS NULL)
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     is_active BOOLEAN DEFAULT true,
@@ -363,8 +362,6 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE INDEX idx_users_type ON users(user_type);
 
 -- User emails (junction table)
 CREATE TABLE user_emails (
@@ -528,9 +525,12 @@ CREATE INDEX idx_team_aliases_name ON team_aliases(alias_name);
 CREATE INDEX idx_team_aliases_type ON team_aliases(alias_type_id);
 
 
--- Players (roster entities from scraping or manual entry)
+-- Players (soccer identity - 1:1 with users)
+-- Every player must have a user account (can be unclaimed stub if email IS NULL)
+-- Scrapers create user+player pairs liberally - merge duplicates later via admin tools
 CREATE TABLE players (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,  -- 1:1 relationship
     full_name VARCHAR(255) NOT NULL,        -- ALWAYS populated (display name)
     first_name VARCHAR(100),                -- OPTIONAL (parsed if available)
     middle_name VARCHAR(100),               -- OPTIONAL (rarely used but available)
@@ -541,12 +541,13 @@ CREATE TABLE players (
     height_cm INTEGER,                      -- Height in centimeters
     nationality VARCHAR(3),                 -- ISO 3166-1 alpha-3 (USA, BRA, MEX)
     photo_url TEXT,
-    source_system_id INTEGER REFERENCES source_systems(id),
-    external_id VARCHAR(100),               -- External system's player ID
+    source_system_id INTEGER REFERENCES source_systems(id),  -- Where we FIRST learned about this player
+    external_id VARCHAR(100),               -- External system's player ID (first source)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX idx_players_user ON players(user_id);
 CREATE INDEX idx_players_source ON players(source_system_id);
 CREATE INDEX idx_players_birth_year ON players(birth_year);
 CREATE INDEX idx_players_full_name ON players(full_name);
@@ -566,13 +567,17 @@ CREATE INDEX idx_player_positions_player ON player_positions(player_id);
 CREATE INDEX idx_player_positions_position ON player_positions(position_id);
 CREATE INDEX idx_player_positions_primary ON player_positions(player_id, is_primary) WHERE is_primary = true;
 
--- Team rosters (junction table)
+-- Team rosters (junction table - THE ATOMIC UNIT)
+-- team_id is always correct (from scraping), player_id may initially be wrong and corrected later
+-- source_system_id tracks WHERE we learned about this roster entry (not the player identity)
 CREATE TABLE team_players (
     id SERIAL PRIMARY KEY,
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     jersey_number VARCHAR(10),
     position_id INTEGER REFERENCES positions(id),  -- Primary position on this team (optional)
+    source_system_id INTEGER REFERENCES source_systems(id),  -- APSL, CASA, Manual, etc.
+    external_id VARCHAR(100),  -- External roster entry ID (if source system provides one)
     is_active BOOLEAN DEFAULT true,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     left_at TIMESTAMP,
@@ -581,6 +586,7 @@ CREATE TABLE team_players (
 
 CREATE INDEX idx_team_players_team ON team_players(team_id);
 CREATE INDEX idx_team_players_player ON team_players(player_id);
+CREATE INDEX idx_team_players_source ON team_players(source_system_id);
 CREATE INDEX idx_team_players_active ON team_players(team_id, is_active) WHERE is_active = true;
 
 CREATE TABLE coaches (
