@@ -33,9 +33,9 @@ class DataLoader {
      */
     loadExistingClubs() {
         const clubFiles = [
-            '019-clubs.sql',      // Base clubs (APSL + manually added) - LOAD FIRST
-            '024m-clubs.sql'      // Manual clubs
-            // NOTE: Don't load scraper-generated files (014-casa-clubs.sql, etc.) 
+            '025-clubs.sql',      // Base clubs (APSL + manually added) - LOAD FIRST
+            '025m-clubs.sql'      // Manual clubs
+            // NOTE: Don't load scraper-generated files (025-casa-clubs.sql, etc.) 
             // because we want to regenerate those
         ];
 
@@ -52,8 +52,8 @@ class DataLoader {
      */
     loadExistingSportDivisions() {
         const sportDivFiles = [
-            '027-sport-divisions.sql'      // Base sport_divisions (APSL clubs)
-            // NOTE: Don't load scraper-generated files (015-casa-sport-divisions.sql, etc.)
+            '027-sport-divisions-base.sql'      // Base sport_divisions (APSL clubs)
+            // NOTE: Don't load scraper-generated files (027-casa-sport-divisions.sql, etc.)
             // because we want to regenerate those
         ];
 

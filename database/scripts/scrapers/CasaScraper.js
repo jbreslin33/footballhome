@@ -1812,11 +1812,11 @@ class CasaScraper extends Scraper {
     const sportDivsSql = this.sqlWriter.generateSportDivisionsSQL(this.registry.getAllSportDivisions());
     
     await this.sqlWriter.writeFile(
-      path.join(__dirname, '../../data/014-casa-clubs.sql'),
+      path.join(__dirname, '../../data/025-casa-clubs.sql'),
       clubsSql
     );
     await this.sqlWriter.writeFile(
-      path.join(__dirname, '../../data/015-casa-sport-divisions.sql'),
+      path.join(__dirname, '../../data/027-casa-sport-divisions.sql'),
       sportDivsSql
     );
     
@@ -1856,7 +1856,7 @@ class CasaScraper extends Scraper {
       },
       // Teams (normalized table)
       {
-        filename: '030-casa-teams.sql',
+        filename: '028-casa-teams.sql',
         data: this.data.teams,
         options: {
           title: 'CASA Teams',
@@ -1867,7 +1867,7 @@ class CasaScraper extends Scraper {
       },
       // Team Divisions (junction table linking teams to league divisions)
       {
-        filename: '031-casa-team-divisions.sql',
+        filename: '029-casa-team-divisions.sql',
         data: this.data.teamDivisions,
         options: {
           title: 'CASA Team Divisions',
@@ -1889,7 +1889,7 @@ class CasaScraper extends Scraper {
       },
       // Team Players (normalized junction table)
       {
-        filename: '033-casa-team-players.sql',
+        filename: '034-casa-team-players.sql',
         data: this.data.teamPlayers,
         options: {
           title: 'CASA Team Players',
@@ -1900,7 +1900,7 @@ class CasaScraper extends Scraper {
       },
       // Matches (normalized table)
       {
-        filename: '037-casa-matches.sql',
+        filename: '038-casa-matches.sql',
         data: this.data.matches,
         options: {
           title: 'CASA Schedule',

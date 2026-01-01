@@ -667,11 +667,11 @@ class ApslScraper extends Scraper {
     const sportDivsSql = this.sqlWriter.generateSportDivisionsSQL(this.registry.getAllSportDivisions());
     
     await this.sqlWriter.writeFile(
-      path.join(__dirname, '../../data/014-apsl-clubs.sql'),
+      path.join(__dirname, '../../data/025-apsl-clubs.sql'),
       clubsSql
     );
     await this.sqlWriter.writeFile(
-      path.join(__dirname, '../../data/015-apsl-sport-divisions.sql'),
+      path.join(__dirname, '../../data/027-apsl-sport-divisions.sql'),
       sportDivsSql
     );
     
@@ -711,7 +711,7 @@ class ApslScraper extends Scraper {
       },
       // APSL Teams (table 030)
       {
-          filename: '030-apsl-teams.sql',
+          filename: '028-apsl-teams.sql',
           data: this.data.apslTeams,
           options: {
               title: 'APSL Teams',
@@ -733,7 +733,7 @@ class ApslScraper extends Scraper {
       },
       // Team Players (table 033) - MUST come after players
       {
-          filename: '033-apsl-team-players.sql',
+          filename: '034-apsl-team-players.sql',
           data: this.data.apslTeamPlayers,
           options: {
               title: 'APSL Team Rosters',
@@ -744,7 +744,7 @@ class ApslScraper extends Scraper {
       },
       // APSL Matches (table 037)
       {
-          filename: '037-apsl-matches.sql',
+          filename: '038-apsl-matches.sql',
           data: this.data.apslMatches,
           options: {
               title: 'APSL Matches',
@@ -755,7 +755,7 @@ class ApslScraper extends Scraper {
       },
       // APSL Match Divisions (table 038) - Junction table
       {
-          filename: '038-apsl-match-divisions.sql',
+          filename: '039-apsl-match-divisions.sql',
           data: this.data.apslMatchDivisions,
           options: {
               title: 'APSL Match-Division Relationships',
@@ -766,7 +766,7 @@ class ApslScraper extends Scraper {
       },
       // APSL Match Lineups (table 039)
       {
-          filename: '039-apsl-match-lineups.sql',
+          filename: '052-apsl-match-lineups.sql',
           data: this.data.apslMatchLineups,
           options: {
               title: 'APSL Match Lineups',
@@ -777,7 +777,7 @@ class ApslScraper extends Scraper {
       },
       // APSL Match Events (table 040)
       {
-          filename: '040-apsl-match-events.sql',
+          filename: '051-apsl-match-events.sql',
           data: this.data.apslMatchEvents,
           options: {
               title: 'APSL Match Events',
