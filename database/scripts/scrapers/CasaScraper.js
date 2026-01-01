@@ -33,6 +33,9 @@ class CasaScraper extends Scraper {
     this.leagueId = '00000000-0000-0000-0001-000000000002';
     this.sportId = '550e8400-e29b-41d4-a716-446655440101';
     
+    // Discovery mode flag
+    this.isDiscoveryMode = options.discover || false;
+    
     // CASA Conferences Configuration
     this.conferences = {
       philadelphia: {
@@ -83,6 +86,10 @@ class CasaScraper extends Scraper {
 
   async initialize() {
     this.log('Initializing CASA scraper...');
+    
+    if (this.isDiscoveryMode) {
+      this.log('🔍 DISCOVERY MODE: Will scrape structure only (no DB writes)');
+    }
     
     // Launch Puppeteer with macOS-friendly settings
     this.browser = await puppeteer.launch({
@@ -166,6 +173,15 @@ class CasaScraper extends Scraper {
   }
 
   async fetchData() {
+    // Discovery mode: Run DiscoveryMode class for structure extraction
+    if (this.isDiscoveryMode) {
+      const DiscoveryMode = require('../modes/DiscoveryMode');
+      const discovery = new DiscoveryMode(this);
+      await discovery.discover();
+      return; // Exit early - no transformData or SQL generation
+    }
+    
+    // Normal enrichment mode: fetch all data
     // Loop through all conferences and divisions
     for (const [confKey, confData] of Object.entries(this.conferences)) {
       this.log(`\n📍 Processing ${confData.name} Conference...`);

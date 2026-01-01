@@ -121,6 +121,7 @@ APSL_SCRAPE_MODE=""
 CASA_SCRAPE_MODE=""
 GROUPME_MODE=""
 VENUE_SCRAPE=false
+DISCOVER_MODE=false
 ENVIRONMENT="dev"
 WIPE_U=false
 WIPE_P=false
@@ -129,6 +130,10 @@ BUILD_BACKEND_ONLY=false
 # Parse arguments
 for arg in "$@"; do
     case $arg in
+        --discover)
+            # Discovery mode: scrape structure only, output to console/templates (no DB writes)
+            DISCOVER_MODE=true
+            ;;
         --lighthouse)
             # Convenience flag: All Lighthouse data (structure + rosters + GroupMe)
             APSL_SCRAPE_MODE="lighthouse"
@@ -290,6 +295,11 @@ npm install --silent
         # Build command with actual mode (always include schedules)
         CMD="node database/scripts/index.js apsl $MODE_LOWER --schedules"
         
+        # Add --discover flag if discovery mode
+        if [ "$DISCOVER_MODE" = true ]; then
+            CMD="$CMD --discover"
+        fi
+        
         # Add --team filter if lighthouse mode
         if [ "$APSL_SCRAPE_MODE" = "lighthouse" ]; then
             CMD="$CMD --team Lighthouse"
@@ -315,6 +325,11 @@ npm install --silent
         
         # Always include schedules for CASA (has calendar data)
         CMD="$CMD --schedules"
+        
+        # Add --discover flag if discovery mode
+        if [ "$DISCOVER_MODE" = true ]; then
+            CMD="$CMD --discover"
+        fi
         
         # Add --team filter if lighthouse mode
         if [ "$CASA_SCRAPE_MODE" = "lighthouse" ]; then

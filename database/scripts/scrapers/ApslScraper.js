@@ -21,6 +21,9 @@ class ApslScraper extends Scraper {
     this.baseUrl = 'https://apslsoccer.com';
     this.SOURCE_SYSTEM_ID = 1; // APSL source system ID
     
+    // Discovery mode flag
+    this.isDiscoveryMode = options.discover || false;
+    
     // Use PuppeteerFetcher with CacheManager to avoid bot detection
     const puppeteerFetcher = new PuppeteerFetcher({ timeout: 0 });
     const cacheDir = path.join(__dirname, '../../scraped-html/apsl');
@@ -54,10 +57,23 @@ class ApslScraper extends Scraper {
 
   async initialize() {
     this.log('Initializing APSL scraper...');
-    this.log('Generating normalized SQL files with source_system_id=1 (APSL)');
+    if (this.isDiscoveryMode) {
+      this.log('🔍 DISCOVERY MODE: Will scrape structure only (no DB writes)');
+    } else {
+      this.log('Generating normalized SQL files with source_system_id=1 (APSL)');
+    }
   }
 
   async fetchData() {
+    // Discovery mode: Run DiscoveryMode class for structure extraction
+    if (this.isDiscoveryMode) {
+      const DiscoveryMode = require('../modes/DiscoveryMode');
+      const discovery = new DiscoveryMode(this);
+      await discovery.discover();
+      return; // Exit early - no transformData or SQL generation
+    }
+    
+    // Normal enrichment mode: fetch all data
     // Step 1: Fetch structure (conferences, divisions)
     await this.fetchStructure();
     
