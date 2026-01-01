@@ -52,13 +52,7 @@ VALUES
   (49, 49, 'Bel Calcio FC Soccer', 'soccer', true),
   (50, 50, 'Buckhead SC Soccer', 'soccer', true),
   (51, 51, 'Alliance SC Soccer', 'soccer', true),
-  (52, 52, 'SC Gwinnett Soccer', 'soccer', true),
-  (53, 53, 'Ad (CASA Soccer League)', 'soccer', true),
-  (54, 54, 'Persepolis (CASA Soccer League)', 'soccer', true),
-  (55, 55, 'Phoenix Scm (CASA Soccer League)', 'soccer', true),
-  (56, 56, 'Philly Blackstars (CASA Soccer League)', 'soccer', true),
-  (57, 57, 'Illyrians (CASA Soccer League)', 'soccer', true),
-  (58, 58, 'Futbol Armada (CASA Soccer League)', 'soccer', true)
+  (52, 52, 'SC Gwinnett Soccer', 'soccer', true)
 ON CONFLICT (id) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   display_name = EXCLUDED.display_name,

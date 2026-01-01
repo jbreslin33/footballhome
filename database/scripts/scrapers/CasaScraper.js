@@ -68,6 +68,8 @@ class CasaScraper extends Scraper {
     this.data.leagues = new Map();
     this.data.conferences = new Map();
     this.data.divisions = new Map();
+    this.data.clubs = new Map();
+    this.data.sportDivisions = new Map();
     this.data.teams = new Map();
     this.data.teamDivisions = new Map();
     this.data.players = new Map();
@@ -369,11 +371,11 @@ class CasaScraper extends Scraper {
         // Extract CASA team ID (their external ID)
         const casaTeamId = teamIdMap.get(teamName) || teamIdMap.get(teamName.toLowerCase());
         
-        // Create Team in normalized teams table (no division_id - use junction table instead)
+        // Create Team in normalized teams table (club_id and sport_division_id will be set by linkTeamsToClubs)
         this.data.teams.set(teamId, {
           id: teamId,
-          club_id: null,  // League teams don't belong to Football Home clubs
-          sport_division_id: null,  // League teams don't belong to Football Home sport divisions
+          club_id: null,  // Will be set by linkTeamsToClubs in transformData()
+          sport_division_id: null,  // Will be set by linkTeamsToClubs in transformData()
           name: teamName.trim(),
           city: null,
           logo_url: null,
@@ -1777,16 +1779,36 @@ class CasaScraper extends Scraper {
     // Link teams to clubs and sport_divisions
     await this.linkTeamsToClubs(this.SOURCE_SYSTEM_ID, 'CASA Soccer League');
     
-    // Sync registry teams back to data.teams
+    // Sync registry teams, clubs, and sport_divisions back to data stores
     this.log('\n📥 Syncing linked teams back to data store...');
+    let linkedCount = 0;
     for (const team of this.registry.getAllTeams()) {
       if (team.source_system_id === this.SOURCE_SYSTEM_ID) {
         const existingTeam = this.data.teams.get(team.id);
         if (existingTeam) {
+          existingTeam.club_id = team.club_id;
           existingTeam.sport_division_id = team.sport_division_id;
+          if (team.club_id && team.sport_division_id) linkedCount++;
         }
       }
     }
+    this.log(`   ✓ Linked ${linkedCount} teams to clubs/sport_divisions`);
+    
+    // Sync clubs from registry
+    for (const club of this.registry.getAllClubs()) {
+      if (!this.data.clubs.has(club.id)) {
+        this.data.clubs.set(club.id, club);
+      }
+    }
+    this.log(`   ✓ ${this.data.clubs.size} clubs in data store`);
+    
+    // Sync sport_divisions from registry
+    for (const sportDiv of this.registry.getAllSportDivisions()) {
+      if (!this.data.sportDivisions.has(sportDiv.id)) {
+        this.data.sportDivisions.set(sportDiv.id, sportDiv);
+      }
+    }
+    this.log(`   ✓ ${this.data.sportDivisions.size} sport_divisions in data store`);
   }
 
   applyTeamFilter() {
