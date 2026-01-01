@@ -65,18 +65,19 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
     
     try {
         // Query database for user by email with admin info and club info
-        // New schema: users -> user_emails (junction) -> admins (admin_level_id FK) -> admin_levels (name)
+        // Schema: persons (identity) -> users (auth) -> person_emails (contact) -> admins (privileges) -> admin_levels (name)
         // club_admins links admins.id to clubs
-        std::string sql = "SELECT u.id, ue.email, u.first_name, u.last_name, u.password_hash, "
+        std::string sql = "SELECT u.id, pe.email, p.first_name, p.last_name, u.password_hash, "
                          "COALESCE(al.name, 'user') as admin_level, "
                          "ca.club_id, c.display_name as club_name "
                          "FROM users u "
-                         "JOIN user_emails ue ON u.id = ue.user_id "
+                         "JOIN persons p ON u.person_id = p.id "
+                         "JOIN person_emails pe ON p.id = pe.person_id "
                          "LEFT JOIN admins a ON u.id = a.user_id "
                          "LEFT JOIN admin_levels al ON a.admin_level_id = al.id "
                          "LEFT JOIN club_admins ca ON a.id = ca.admin_id AND ca.is_active = true "
                          "LEFT JOIN clubs c ON ca.club_id = c.id "
-                         "WHERE ue.email = $1 AND ue.is_verified = true "
+                         "WHERE pe.email = $1 AND pe.is_verified = true "
                          "LIMIT 1";
         
         pqxx::result result = executeQuery(sql, {email});
@@ -94,7 +95,7 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
                 userData.email = row["email"].as<std::string>();
                 userData.first_name = row["first_name"].as<std::string>();
                 userData.last_name = row["last_name"].as<std::string>();
-                userData.preferred_name = ""; // New schema doesn't have preferred_name
+                userData.preferred_name = ""; // Preferred name not in current schema
                 userData.name = userData.first_name + " " + userData.last_name;
                 userData.role = row["admin_level"].as<std::string>();
                 userData.club_id = row["club_id"].is_null() ? "" : row["club_id"].as<std::string>();

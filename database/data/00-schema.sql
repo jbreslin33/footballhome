@@ -422,18 +422,42 @@ CREATE INDEX idx_divisions_skill ON divisions(skill_level);
 -- 4. FOOTBALLHOME IDENTITY SYSTEM
 -- ============================================================================
 
-CREATE TABLE users (
+-- Persons: Core identity table (everyone in the system is a person)
+-- A person may have multiple roles: player, coach, admin, etc.
+CREATE TABLE persons (
     id SERIAL PRIMARY KEY,
-    password_hash TEXT,  -- Nullable for unclaimed users (email IS NULL)
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
+    birth_date DATE,  -- Required for age verification/safety
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_persons_name ON persons(first_name, last_name);
+CREATE INDEX idx_persons_birth_date ON persons(birth_date);
+
+COMMENT ON TABLE persons IS 'Core identity for all people in the system (players, coaches, admins, etc.)';
+COMMENT ON COLUMN persons.birth_date IS 'Birth date for age verification and safety compliance';
+
+-- Users: Authentication entity (represents "can log in")
+-- Links to a person but adds authentication capability
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    person_id INTEGER UNIQUE NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+    password_hash TEXT NOT NULL,
     is_active BOOLEAN DEFAULT true,
     last_login_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Email types lookup (must come BEFORE user_emails)
+CREATE INDEX idx_users_person ON users(person_id);
+CREATE INDEX idx_users_active ON users(is_active);
+
+COMMENT ON TABLE users IS 'Authentication entity - a person who can log in';
+COMMENT ON COLUMN users.person_id IS 'FK to persons table - every user must be a person';
+
+-- Email types lookup (must come BEFORE person_emails)
 CREATE TABLE email_types (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
@@ -447,7 +471,7 @@ INSERT INTO email_types (id, name, description, sort_order) VALUES
     (3, 'other', 'Other email address', 3)
 ON CONFLICT (id) DO NOTHING;
 
--- Phone types lookup (must come BEFORE user_phones)
+-- Phone types lookup (must come BEFORE person_phones)
 CREATE TABLE phone_types (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
@@ -462,27 +486,29 @@ INSERT INTO phone_types (id, name, description, sort_order) VALUES
     (4, 'other', 'Other phone type', 4)
 ON CONFLICT (id) DO NOTHING;
 
--- User emails (junction table)
-CREATE TABLE user_emails (
+-- Person emails (junction table - emails belong to persons, not users)
+CREATE TABLE person_emails (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    person_id INTEGER NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
     email VARCHAR(255) UNIQUE NOT NULL,
     email_type_id INTEGER REFERENCES email_types(id),
     is_primary BOOLEAN DEFAULT false,
     is_verified BOOLEAN DEFAULT false,
     verified_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, email)
+    UNIQUE(person_id, email)
 );
 
-CREATE INDEX idx_user_emails_user ON user_emails(user_id);
-CREATE INDEX idx_user_emails_email ON user_emails(email);
-CREATE INDEX idx_user_emails_primary ON user_emails(user_id, is_primary) WHERE is_primary = true;
+CREATE INDEX idx_person_emails_person ON person_emails(person_id);
+CREATE INDEX idx_person_emails_email ON person_emails(email);
+CREATE INDEX idx_person_emails_primary ON person_emails(person_id, is_primary) WHERE is_primary = true;
 
--- User phone numbers (junction table)
-CREATE TABLE user_phones (
+COMMENT ON TABLE person_emails IS 'Email addresses belong to persons (used for login when person has a user account)';
+
+-- Person phone numbers (junction table - phones belong to persons, not users)
+CREATE TABLE person_phones (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    person_id INTEGER NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
     phone_number VARCHAR(20) UNIQUE NOT NULL,
     phone_type_id INTEGER REFERENCES phone_types(id),
     is_primary BOOLEAN DEFAULT false,
@@ -491,18 +517,22 @@ CREATE TABLE user_phones (
     can_receive_sms BOOLEAN DEFAULT true,
     can_receive_calls BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, phone_number)
+    UNIQUE(person_id, phone_number)
 );
 
-CREATE INDEX idx_user_phones_user ON user_phones(user_id);
-CREATE INDEX idx_user_phones_number ON user_phones(phone_number);
-CREATE INDEX idx_user_phones_type ON user_phones(phone_type_id);
-CREATE INDEX idx_user_phones_primary ON user_phones(user_id, is_primary) WHERE is_primary = true;
+CREATE INDEX idx_person_phones_person ON person_phones(person_id);
+CREATE INDEX idx_person_phones_number ON person_phones(phone_number);
+CREATE INDEX idx_person_phones_type ON person_phones(phone_type_id);
+CREATE INDEX idx_person_phones_primary ON person_phones(person_id, is_primary) WHERE is_primary = true;
 
--- External identities (GroupMe, Discord, etc.)
+COMMENT ON TABLE person_phones IS 'Phone numbers belong to persons';
+
+COMMENT ON TABLE person_phones IS 'Phone numbers belong to persons';
+
+-- External identities (GroupMe, Discord, etc.) - link to persons
 CREATE TABLE external_identities (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    person_id INTEGER NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
     provider_id INTEGER NOT NULL REFERENCES chat_providers(id),
     external_user_id VARCHAR(255) NOT NULL,
     external_username VARCHAR(255),
@@ -513,9 +543,11 @@ CREATE TABLE external_identities (
     UNIQUE(provider_id, external_user_id)
 );
 
-CREATE INDEX idx_external_identities_user ON external_identities(user_id);
+CREATE INDEX idx_external_identities_person ON external_identities(person_id);
 CREATE INDEX idx_external_identities_provider ON external_identities(provider_id);
 CREATE INDEX idx_external_identities_external ON external_identities(provider_id, external_user_id);
+
+COMMENT ON TABLE external_identities IS 'Links persons to external chat provider accounts';
 
 CREATE TABLE admins (
     id SERIAL PRIMARY KEY,
@@ -635,19 +667,12 @@ CREATE INDEX idx_team_aliases_name ON team_aliases(alias_name);
 CREATE INDEX idx_team_aliases_type ON team_aliases(alias_type_id);
 
 
--- Players (soccer identity - 1:1 with users)
--- player.user_id nullable = unclaimed scraped player (no account yet)
--- player.user_id not null = claimed player (linked to user account)
--- Scrapers create user+player pairs liberally - merge duplicates later via admin tools
+-- Players (sports role - links to persons)
+-- player.person_id references the person's identity (name, birth_date)
+-- A person can be a player without having a user account (scraped players)
 CREATE TABLE players (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,  -- 1:1 relationship, NULL = unclaimed
-    first_name VARCHAR(100) NOT NULL,       -- Required for display
-    middle_name VARCHAR(100),               -- OPTIONAL (rarely used but available)
-    last_name VARCHAR(100) NOT NULL,        -- Required for display
-    preferred_name VARCHAR(100),            -- OPTIONAL (nickname: "Johnny", "JR")
-    birth_date DATE,                        -- Full date when available
-    birth_year INTEGER,                     -- Fallback when only year known
+    person_id INTEGER UNIQUE NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
     height_cm INTEGER,                      -- Height in centimeters
     nationality VARCHAR(3),                 -- ISO 3166-1 alpha-3 (USA, BRA, MEX)
     photo_url TEXT,
@@ -657,13 +682,12 @@ CREATE TABLE players (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_players_user ON players(user_id);
+CREATE INDEX idx_players_person ON players(person_id);
 CREATE INDEX idx_players_source ON players(source_system_id);
-CREATE INDEX idx_players_birth_year ON players(birth_year);
-CREATE INDEX idx_players_name ON players(first_name, last_name);
 CREATE INDEX idx_players_external ON players(source_system_id, external_id);
 
-COMMENT ON COLUMN players.user_id IS 'FK to users table (nullable). NULL = unclaimed scraped player, NOT NULL = player linked to user account';
+COMMENT ON TABLE players IS 'Sports role - links persons to soccer player data. Person may or may not have user account.';
+COMMENT ON COLUMN players.person_id IS 'FK to persons table - name and birth_date stored in persons';
 
 -- Player positions (player profile - multiple positions a player CAN play)
 CREATE TABLE player_positions (
@@ -721,7 +745,7 @@ COMMENT ON TABLE team_player_positions IS 'Position assignment for specific team
 
 CREATE TABLE coaches (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    person_id INTEGER UNIQUE NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
     license_level VARCHAR(50),
     certifications TEXT,
     source_system_id INTEGER REFERENCES source_systems(id),
@@ -729,8 +753,9 @@ CREATE TABLE coaches (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-COMMENT ON COLUMN coaches.user_id IS 'FK to users table. Coach name derived from users.first_name + users.last_name (no redundant name storage)';
-CREATE INDEX idx_coaches_user ON coaches(user_id);
+COMMENT ON TABLE coaches IS 'Coaching role - links persons to coach-specific data. Person may or may not have user account.';
+COMMENT ON COLUMN coaches.person_id IS 'FK to persons table - name stored in persons table';
+CREATE INDEX idx_coaches_person ON coaches(person_id);
 CREATE INDEX idx_coaches_source ON coaches(source_system_id);
 
 CREATE TABLE team_coaches (

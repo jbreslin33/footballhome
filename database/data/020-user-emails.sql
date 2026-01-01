@@ -1,9 +1,8 @@
--- User-emails - Foundation Data
--- This file contains core/foundational data for user-emails that always loads.
--- Tables 001-012 (lookup tables) have data inline in schema, this file is optional.
+-- Person-emails - Foundation Data
+-- Emails belong to persons (used for login when person has user account)
 
 -- Email for James Breslin
-INSERT INTO user_emails (user_id, email, email_type_id, is_primary, is_verified)
+INSERT INTO person_emails (person_id, email, email_type_id, is_primary, is_verified)
 VALUES (
     1,
     'soccer@lighthouse1893.org',

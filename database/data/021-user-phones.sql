@@ -1,9 +1,8 @@
--- User-phones - Foundation Data
--- This file contains core/foundational data for user-phones that always loads.
--- Tables 001-012 (lookup tables) have data inline in schema, this file is optional.
+-- Person-phones - Foundation Data
+-- Phones belong to persons
 
 -- Phone for James Breslin
-INSERT INTO user_phones (user_id, phone_number, phone_type_id, is_primary, is_verified, can_receive_sms, can_receive_calls)
+INSERT INTO person_phones (person_id, phone_number, phone_type_id, is_primary, is_verified, can_receive_sms, can_receive_calls)
 VALUES (
     1,
     '+12158284924',
