@@ -227,6 +227,55 @@ for arg in "$@"; do
 done
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# FAST PATH: DISCOVERY MODE (scrape structure only, skip rebuild)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+if [ "$DISCOVER_MODE" = true ]; then
+    echo -e "${BLUE}========================================${NC}"
+    echo -e "${BLUE}Football Home - Discovery Mode${NC}"
+    echo -e "${BLUE}========================================${NC}"
+    echo ""
+    echo -e "${YELLOW}🔍 Discovery mode: Scraping structure only (no DB writes)${NC}"
+    echo ""
+    
+    # Install dependencies
+    echo -e "${YELLOW}📦 Installing npm dependencies...${NC}"
+    npm install --silent
+    
+    # Run scraper(s) in discovery mode
+    if [ -n "$APSL_SCRAPE_MODE" ]; then
+        echo -e "${YELLOW}📊 Discovering APSL structure...${NC}"
+        MODE_LOWER=$(echo "$APSL_SCRAPE_MODE" | tr '[:upper:]' '[:lower:]')
+        CMD="node database/scripts/index.js apsl $MODE_LOWER --discover"
+        if [ "$APSL_SCRAPE_MODE" = "lighthouse" ]; then
+            CMD="$CMD --team Lighthouse"
+        fi
+        echo "  Running: $CMD"
+        $CMD
+        echo ""
+    fi
+    
+    if [ -n "$CASA_SCRAPE_MODE" ]; then
+        echo -e "${YELLOW}📋 Discovering CASA structure...${NC}"
+        MODE_LOWER=$(echo "$CASA_SCRAPE_MODE" | tr '[:upper:]' '[:lower:]')
+        CMD="node database/scripts/index.js casa $MODE_LOWER --discover"
+        if [ "$CASA_SCRAPE_MODE" = "lighthouse" ]; then
+            CMD="$CMD --team Lighthouse"
+        fi
+        echo "  Running: $CMD"
+        $CMD
+        echo ""
+    fi
+    
+    echo -e "${GREEN}✓ Discovery complete${NC}"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Review the structure output above"
+    echo "  2. Create/update static SQL files (020-023) manually"
+    echo "  3. Run normal scrape mode to populate match/roster data"
+    exit 0
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # FAST PATH: BACKEND REBUILD ONLY
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 if [ "$BUILD_BACKEND_ONLY" = true ]; then

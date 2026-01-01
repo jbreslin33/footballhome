@@ -1,5 +1,4 @@
 #include "EventController.h"
-#include "../core/SQLFileWriter.h"
 #include "../core/TwilioSMSService.h"
 #include "../database/SqlFileLogger.h"
 #include "../database/SqlBuilder.h"
@@ -246,7 +245,7 @@ Response EventController::handleCreateEvent(const Request& request) {
             file_query << "'" << notes << "'";
         }
         file_query << ");";
-        SQLFileWriter::getInstance().writeInsert("practices", file_query.str());
+        // SQL file writer removed - data persists in database only
         
         std::cout << "✅ Event created successfully: " << inserted_event_id << std::endl;
         

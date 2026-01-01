@@ -232,14 +232,69 @@ INSERT INTO governing_body_scopes (id, name, description, sort_order) VALUES
     (6, 'Local', 'Local organization', 6)
 ON CONFLICT (id) DO NOTHING;
 
+CREATE TABLE countries (
+    id SERIAL PRIMARY KEY,
+    code CHAR(3) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    fifa_code CHAR(3),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_countries_code ON countries(code);
+CREATE INDEX idx_countries_fifa ON countries(fifa_code);
+
+INSERT INTO countries (code, name, fifa_code) VALUES
+    ('USA', 'United States', 'USA'),
+    ('CAN', 'Canada', 'CAN'),
+    ('MEX', 'Mexico', 'MEX'),
+    ('BRA', 'Brazil', 'BRA'),
+    ('ARG', 'Argentina', 'ARG'),
+    ('GBR', 'United Kingdom', 'ENG'),
+    ('ESP', 'Spain', 'ESP'),
+    ('FRA', 'France', 'FRA'),
+    ('DEU', 'Germany', 'GER'),
+    ('ITA', 'Italy', 'ITA'),
+    ('PRT', 'Portugal', 'POR'),
+    ('NLD', 'Netherlands', 'NED')
+ON CONFLICT (code) DO NOTHING;
+
+CREATE TABLE states (
+    id SERIAL PRIMARY KEY,
+    country_id INTEGER NOT NULL REFERENCES countries(id),
+    code CHAR(2) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(country_id, code)
+);
+
+CREATE INDEX idx_states_country ON states(country_id);
+CREATE INDEX idx_states_code ON states(code);
+
+INSERT INTO states (country_id, code, name) VALUES
+    ((SELECT id FROM countries WHERE code = 'USA'), 'PA', 'Pennsylvania'),
+    ((SELECT id FROM countries WHERE code = 'USA'), 'NJ', 'New Jersey'),
+    ((SELECT id FROM countries WHERE code = 'USA'), 'NY', 'New York'),
+    ((SELECT id FROM countries WHERE code = 'USA'), 'CA', 'California'),
+    ((SELECT id FROM countries WHERE code = 'USA'), 'TX', 'Texas'),
+    ((SELECT id FROM countries WHERE code = 'USA'), 'FL', 'Florida'),
+    ((SELECT id FROM countries WHERE code = 'USA'), 'IL', 'Illinois'),
+    ((SELECT id FROM countries WHERE code = 'USA'), 'OH', 'Ohio'),
+    ((SELECT id FROM countries WHERE code = 'USA'), 'MA', 'Massachusetts'),
+    ((SELECT id FROM countries WHERE code = 'USA'), 'MD', 'Maryland'),
+    ((SELECT id FROM countries WHERE code = 'USA'), 'VA', 'Virginia'),
+    ((SELECT id FROM countries WHERE code = 'USA'), 'DE', 'Delaware')
+ON CONFLICT (country_id, code) DO NOTHING;
+
 CREATE TABLE governing_bodies (
     id SERIAL PRIMARY KEY,
     scope_id INTEGER NOT NULL REFERENCES governing_body_scopes(id),
     name VARCHAR(255) NOT NULL,
     short_name VARCHAR(50),
     website_url TEXT,
-    country_code CHAR(3),
-    state_code CHAR(2),
+    country_id INTEGER REFERENCES countries(id),
+    state_id INTEGER REFERENCES states(id),
     description TEXT,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -247,7 +302,8 @@ CREATE TABLE governing_bodies (
 );
 
 CREATE INDEX idx_governing_bodies_scope ON governing_bodies(scope_id);
-CREATE INDEX idx_governing_bodies_country ON governing_bodies(country_code);
+CREATE INDEX idx_governing_bodies_country ON governing_bodies(country_id);
+CREATE INDEX idx_governing_bodies_state ON governing_bodies(state_id);
 
 CREATE TABLE governing_body_relationships (
     id SERIAL PRIMARY KEY,
@@ -324,6 +380,19 @@ CREATE TABLE conferences (
 CREATE INDEX idx_conferences_league ON conferences(league_id);
 CREATE INDEX idx_conferences_source ON conferences(source_system_id);
 
+CREATE TABLE division_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0
+);
+
+INSERT INTO division_types (id, name, description, sort_order) VALUES
+    (1, 'league', 'Standard league play with home/away schedule', 1),
+    (2, 'tournament_group', 'Tournament group stage (round-robin within group)', 2),
+    (3, 'knockout_round', 'Knockout/elimination tournament bracket', 3)
+ON CONFLICT (id) DO NOTHING;
+
 CREATE TABLE divisions (
     id SERIAL PRIMARY KEY,
     league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
@@ -331,7 +400,7 @@ CREATE TABLE divisions (
     name VARCHAR(255) NOT NULL,
     
     -- Division type (league play vs tournament structures)
-    division_type VARCHAR(20) DEFAULT 'league' CHECK (division_type IN ('league', 'tournament_group', 'knockout_round')),
+    division_type_id INTEGER REFERENCES division_types(id) DEFAULT 1,
     
     -- Skill level (divisions define competitive tiers)
     skill_level INTEGER,  -- 1=highest (Premier/Division 1), 2=mid, 3=rec
@@ -345,6 +414,7 @@ CREATE TABLE divisions (
 
 CREATE INDEX idx_divisions_league ON divisions(league_id);
 CREATE INDEX idx_divisions_conference ON divisions(conference_id);
+CREATE INDEX idx_divisions_type ON divisions(division_type_id);
 CREATE INDEX idx_divisions_source ON divisions(source_system_id);
 CREATE INDEX idx_divisions_skill ON divisions(skill_level);
 
@@ -363,12 +433,41 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Email types lookup (must come BEFORE user_emails)
+CREATE TABLE email_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0
+);
+
+INSERT INTO email_types (id, name, description, sort_order) VALUES
+    (1, 'personal', 'Personal email address', 1),
+    (2, 'work', 'Work/business email address', 2),
+    (3, 'other', 'Other email address', 3)
+ON CONFLICT (id) DO NOTHING;
+
+-- Phone types lookup (must come BEFORE user_phones)
+CREATE TABLE phone_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0
+);
+
+INSERT INTO phone_types (id, name, description, sort_order) VALUES
+    (1, 'mobile', 'Mobile/cell phone', 1),
+    (2, 'home', 'Home phone', 2),
+    (3, 'work', 'Work phone', 3),
+    (4, 'other', 'Other phone type', 4)
+ON CONFLICT (id) DO NOTHING;
+
 -- User emails (junction table)
 CREATE TABLE user_emails (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     email VARCHAR(255) UNIQUE NOT NULL,
-    email_type VARCHAR(20) CHECK (email_type IN ('personal', 'work', 'other')),
+    email_type_id INTEGER REFERENCES email_types(id),
     is_primary BOOLEAN DEFAULT false,
     is_verified BOOLEAN DEFAULT false,
     verified_at TIMESTAMP,
@@ -385,7 +484,7 @@ CREATE TABLE user_phones (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     phone_number VARCHAR(20) UNIQUE NOT NULL,
-    phone_type VARCHAR(20) CHECK (phone_type IN ('mobile', 'home', 'work', 'other')),
+    phone_type_id INTEGER REFERENCES phone_types(id),
     is_primary BOOLEAN DEFAULT false,
     is_verified BOOLEAN DEFAULT false,
     verified_at TIMESTAMP,
@@ -397,6 +496,7 @@ CREATE TABLE user_phones (
 
 CREATE INDEX idx_user_phones_user ON user_phones(user_id);
 CREATE INDEX idx_user_phones_number ON user_phones(phone_number);
+CREATE INDEX idx_user_phones_type ON user_phones(phone_type_id);
 CREATE INDEX idx_user_phones_primary ON user_phones(user_id, is_primary) WHERE is_primary = true;
 
 -- External identities (GroupMe, Discord, etc.)
@@ -509,6 +609,16 @@ CREATE TABLE alias_types (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+INSERT INTO alias_types (name, description) VALUES
+    ('abbreviation', 'Abbreviated team name (e.g., "LFC" for "Liverpool FC")'),
+    ('alternate_spelling', 'Alternative spelling or formatting'),
+    ('historical_name', 'Previous team name (rebranding, merger)'),
+    ('nickname', 'Informal nickname (e.g., "The Reds")'),
+    ('translation', 'Name in different language'),
+    ('social_media', 'Name used on social media platforms'),
+    ('common_misspelling', 'Common misspelling to help with search/matching')
+ON CONFLICT (name) DO NOTHING;
+
 -- Team aliases for name variations
 CREATE TABLE team_aliases (
     id SERIAL PRIMARY KEY,
@@ -526,15 +636,15 @@ CREATE INDEX idx_team_aliases_type ON team_aliases(alias_type_id);
 
 
 -- Players (soccer identity - 1:1 with users)
--- Every player must have a user account (can be unclaimed stub if email IS NULL)
+-- player.user_id nullable = unclaimed scraped player (no account yet)
+-- player.user_id not null = claimed player (linked to user account)
 -- Scrapers create user+player pairs liberally - merge duplicates later via admin tools
 CREATE TABLE players (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,  -- 1:1 relationship
-    full_name VARCHAR(255) NOT NULL,        -- ALWAYS populated (display name)
-    first_name VARCHAR(100),                -- OPTIONAL (parsed if available)
+    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,  -- 1:1 relationship, NULL = unclaimed
+    first_name VARCHAR(100) NOT NULL,       -- Required for display
     middle_name VARCHAR(100),               -- OPTIONAL (rarely used but available)
-    last_name VARCHAR(100),                 -- OPTIONAL (parsed if available)
+    last_name VARCHAR(100) NOT NULL,        -- Required for display
     preferred_name VARCHAR(100),            -- OPTIONAL (nickname: "Johnny", "JR")
     birth_date DATE,                        -- Full date when available
     birth_year INTEGER,                     -- Fallback when only year known
@@ -550,8 +660,10 @@ CREATE TABLE players (
 CREATE INDEX idx_players_user ON players(user_id);
 CREATE INDEX idx_players_source ON players(source_system_id);
 CREATE INDEX idx_players_birth_year ON players(birth_year);
-CREATE INDEX idx_players_full_name ON players(full_name);
+CREATE INDEX idx_players_name ON players(first_name, last_name);
 CREATE INDEX idx_players_external ON players(source_system_id, external_id);
+
+COMMENT ON COLUMN players.user_id IS 'FK to users table (nullable). NULL = unclaimed scraped player, NOT NULL = player linked to user account';
 
 -- Player positions (player profile - multiple positions a player CAN play)
 CREATE TABLE player_positions (
@@ -567,6 +679,8 @@ CREATE INDEX idx_player_positions_player ON player_positions(player_id);
 CREATE INDEX idx_player_positions_position ON player_positions(position_id);
 CREATE INDEX idx_player_positions_primary ON player_positions(player_id, is_primary) WHERE is_primary = true;
 
+COMMENT ON TABLE player_positions IS 'Positions a player CAN play (general profile across all teams)';
+
 -- Team rosters (junction table - THE ATOMIC UNIT)
 -- team_id is always correct (from scraping), player_id may initially be wrong and corrected later
 -- source_system_id tracks WHERE we learned about this roster entry (not the player identity)
@@ -575,7 +689,6 @@ CREATE TABLE team_players (
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     jersey_number VARCHAR(10),
-    position_id INTEGER REFERENCES positions(id),  -- Primary position on this team (optional)
     source_system_id INTEGER REFERENCES source_systems(id),  -- APSL, CASA, Manual, etc.
     external_id VARCHAR(100),  -- External roster entry ID (if source system provides one)
     is_active BOOLEAN DEFAULT true,
@@ -589,10 +702,26 @@ CREATE INDEX idx_team_players_player ON team_players(player_id);
 CREATE INDEX idx_team_players_source ON team_players(source_system_id);
 CREATE INDEX idx_team_players_active ON team_players(team_id, is_active) WHERE is_active = true;
 
+-- Position assignments for team rosters (what position they play for THIS specific team)
+CREATE TABLE team_player_positions (
+    id SERIAL PRIMARY KEY,
+    team_player_id INTEGER NOT NULL REFERENCES team_players(id) ON DELETE CASCADE,
+    position_id INTEGER NOT NULL REFERENCES positions(id),
+    is_primary BOOLEAN DEFAULT false,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(team_player_id, position_id)
+);
+
+CREATE INDEX idx_team_player_positions_team_player ON team_player_positions(team_player_id);
+CREATE INDEX idx_team_player_positions_position ON team_player_positions(position_id);
+CREATE INDEX idx_team_player_positions_primary ON team_player_positions(team_player_id, is_primary) WHERE is_primary = true;
+
+COMMENT ON TABLE team_player_positions IS 'Position assignment for specific team roster (what position they play for THIS team)';
+
 CREATE TABLE coaches (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    name VARCHAR(255),  -- Nullable: compute from users table when user_id is set, or store directly for non-users
     license_level VARCHAR(50),
     certifications TEXT,
     source_system_id INTEGER REFERENCES source_systems(id),
@@ -600,6 +729,7 @@ CREATE TABLE coaches (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+COMMENT ON COLUMN coaches.user_id IS 'FK to users table. Coach name derived from users.first_name + users.last_name (no redundant name storage)';
 CREATE INDEX idx_coaches_user ON coaches(user_id);
 CREATE INDEX idx_coaches_source ON coaches(source_system_id);
 
@@ -856,10 +986,21 @@ CREATE TABLE match_event_types (
 INSERT INTO match_event_types (id, name, description, icon, sort_order) VALUES
     (1, 'goal', 'Goal scored', '⚽', 1),
     (2, 'assist', 'Assist on goal', '🅰️', 2),
-    (3, 'yellow_card', 'Yellow card received', '🟨', 3),
-    (4, 'red_card', 'Red card received', '🟥', 4),
-    (5, 'sub_in', 'Substituted into match', '⬆️', 5),
-    (6, 'sub_out', 'Substituted out of match', '⬇️', 6)
+    (3, 'yellow_card', 'Yellow card received', '🟨', 12),
+    (4, 'red_card', 'Red card received', '🟥', 13),
+    (5, 'sub_in', 'Substituted into match', '⬆️', 14),
+    (6, 'sub_out', 'Substituted out of match', '⬇️', 15),
+    (7, 'shot_on_target', 'Shot on target (requires save or goal)', '🎯', 6),
+    (8, 'shot_off_target', 'Shot off target (missed)', '↗️', 7),
+    (9, 'save', 'Goalkeeper save', '🧤', 8),
+    (10, 'corner', 'Corner kick awarded', '📐', 9),
+    (11, 'foul', 'Foul committed', '🚫', 10),
+    (12, 'offside', 'Offside call', '🚩', 11),
+    (13, 'penalty_awarded', 'Penalty kick awarded', '⚡', 3),
+    (14, 'penalty_missed', 'Penalty kick missed/saved', '❌', 4),
+    (15, 'own_goal', 'Own goal (credited against team)', '⚽', 5),
+    (16, 'injury', 'Player injured/treatment', '🚑', 16),
+    (17, 'captain', 'Captain for this match', '©️', 17)
 ON CONFLICT (id) DO NOTHING;
 
 -- Individual match events (atomic records)
@@ -1008,27 +1149,7 @@ CREATE INDEX idx_chat_event_rsvps_status ON chat_event_rsvps(rsvp_status_id);
 -- created_by_chat_id column removed - use chat_events junction table instead
 
 -- ============================================================================
--- 7. PLAYER IDENTITY (Junction Tables - Users claiming league players)
--- ============================================================================
-
--- Link users to league players (user claims "I am this player")
-CREATE TABLE player_users (
-    id SERIAL PRIMARY KEY,
-    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    verified BOOLEAN DEFAULT false,
-    verified_by INTEGER REFERENCES users(id),
-    verified_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(player_id, user_id)
-);
-
-CREATE INDEX idx_player_users_player ON player_users(player_id);
-CREATE INDEX idx_player_users_user ON player_users(user_id);
-
--- Link sport division groups to league teams
--- ============================================================================
--- 8. SUPPORTING TABLES
+-- 7. SUPPORTING TABLES
 -- ============================================================================
 
 -- ============================================================================

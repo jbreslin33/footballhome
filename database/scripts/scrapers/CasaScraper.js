@@ -88,10 +88,12 @@ class CasaScraper extends Scraper {
     this.log('Initializing CASA scraper...');
     
     if (this.isDiscoveryMode) {
-      this.log('🔍 DISCOVERY MODE: Will scrape structure only (no DB writes)');
+      this.log('🔍 DISCOVERY MODE: Will extract structure from config (no scraping)');
+      // Skip Puppeteer launch in discovery mode - structure is already in config
+      return;
     }
     
-    // Launch Puppeteer with macOS-friendly settings
+    // Launch Puppeteer with macOS-friendly settings (only for enrichment mode)
     this.browser = await puppeteer.launch({
       headless: true,
       args: [
@@ -173,11 +175,33 @@ class CasaScraper extends Scraper {
   }
 
   async fetchData() {
-    // Discovery mode: Run DiscoveryMode class for structure extraction
+    // Discovery mode: Extract structure from configuration (no browser scraping)
     if (this.isDiscoveryMode) {
-      const DiscoveryMode = require('../modes/DiscoveryMode');
-      const discovery = new DiscoveryMode(this);
-      await discovery.discover();
+      this.log('\n📋 CASA League Structure (from configuration):');
+      this.log('='.repeat(60));
+      
+      this.log('\n🏆 League: CASA Soccer League (2024-2025)');
+      this.log('   Website: https://www.casasoccerleagues.com');
+      
+      for (const [confKey, confData] of Object.entries(this.conferences)) {
+        this.log(`\n📍 Conference: ${confData.name}`);
+        
+        for (const [divKey, divData] of Object.entries(confData.divisions)) {
+          this.log(`   ⚽ Division: ${divData.name} (Tier ${divData.tier})`);
+          this.log(`      Standings: ${divData.standings}`);
+          this.log(`      Schedule: ${divData.schedule}`);
+          if (divData.rosterSheet) {
+            this.log(`      Roster Sheet: ${divData.rosterSheet}`);
+          }
+        }
+      }
+      
+      this.log('\n' + '='.repeat(60));
+      this.log('\n💡 Next Steps:');
+      this.log('   1. Teams are dynamically scraped from standings pages');
+      this.log('   2. To see actual teams, run without --discover flag');
+      this.log('   3. Consider creating static team definitions if structure is stable');
+      
       return; // Exit early - no transformData or SQL generation
     }
     
