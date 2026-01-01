@@ -364,6 +364,34 @@ class CasaScraper extends Scraper {
           continue;
         }
         
+        // Check if team already exists (prevent duplicates when teams appear in multiple divisions)
+        let existingTeam = null;
+        for (const [id, team] of this.data.teams) {
+          if (team.name === teamName.trim()) {
+            existingTeam = { id, team };
+            break;
+          }
+        }
+        
+        if (existingTeam) {
+          this.log(`   ↻ Team "${teamName}" already exists (ID: ${existingTeam.id}), skipping duplicate`);
+          
+          // Still create team_divisions junction for this division
+          if (!this.teamDivisionSeq) this.teamDivisionSeq = 1;
+          const teamDivisionId = this.teamDivisionSeq++;
+          
+          this.data.teamDivisions = this.data.teamDivisions || new Map();
+          this.data.teamDivisions.set(teamDivisionId, {
+            id: teamDivisionId,
+            team_id: existingTeam.id,
+            division_id: divisionId,
+            season_id: null,
+            is_active: true
+          });
+          
+          continue;
+        }
+        
         // Generate sequential team ID
         if (!this.teamSeq) this.teamSeq = 1;
         const teamId = this.teamSeq++;

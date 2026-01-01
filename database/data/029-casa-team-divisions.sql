@@ -12,9 +12,9 @@ VALUES
   (8, 8, 1, NULL, true),
   (9, 12, 2, NULL, true),
   (10, 13, 2, NULL, true),
-  (11, 14, 2, NULL, true),
-  (12, 15, 2, NULL, true),
-  (13, 16, 2, NULL, true)
+  (11, 11, 2, NULL, true),
+  (12, 10, 2, NULL, true),
+  (13, 14, 2, NULL, true)
 ON CONFLICT (id) DO UPDATE SET
   team_id = EXCLUDED.team_id,
   division_id = EXCLUDED.division_id,

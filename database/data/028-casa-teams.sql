@@ -15,11 +15,9 @@ VALUES
   (11, 3, 'Philadelphia SC II', NULL, NULL, 2, 'STUB-PhiladelphiaSCII'),
   (12, 4, 'Persepolis United FC II', NULL, NULL, 2, '68b9ec8f562f54017935a21b'),
   (13, 5, 'Phoenix SCR', NULL, NULL, 2, '68b9ec8f562f5400fd35a5dc'),
-  (14, 3, 'Philadelphia SC II', NULL, NULL, 2, '68b9ec8fb3eb08013b755a47'),
-  (15, 8, 'Lighthouse Old Timers Club', NULL, NULL, 2, '68b9ec8fb3eb0800fd755db8'),
-  (16, 9, 'Club de Futbol Armada', NULL, NULL, 2, '68b9ec8f1ff01d00fc20f6d3'),
-  (17, 2, 'Oaklyn United Nor’Easters II', NULL, NULL, 2, 'STUB-OaklynUnitedNorEastersII'),
-  (18, 5, 'Phoenix Majors', NULL, NULL, 2, 'STUB-PhoenixMajors')
+  (14, 9, 'Club de Futbol Armada', NULL, NULL, 2, '68b9ec8f1ff01d00fc20f6d3'),
+  (15, 2, 'Oaklyn United Nor’Easters II', NULL, NULL, 2, 'STUB-OaklynUnitedNorEastersII'),
+  (16, 5, 'Phoenix Majors', NULL, NULL, 2, 'STUB-PhoenixMajors')
 ON CONFLICT (id) DO UPDATE SET
   sport_division_id = EXCLUDED.sport_division_id,
   name = EXCLUDED.name,
