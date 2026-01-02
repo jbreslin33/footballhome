@@ -501,12 +501,12 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
   allLines.push('-- ====================');
   allLines.push('');
   
-  // Generate team_players junction table (depends on both teams and players existing)
+  // Generate team_division_players junction table (depends on both teams and players existing)
   if (allPlayers.length > 0) {
     const lines = [];
     lines.push('-- Link players to teams via team_divisions');
     lines.push('-- Rosters are competition-specific (team_division_id not team_id)');
-    lines.push('-- Source tracking: team_players → team_divisions → team_division_external_ids');
+    lines.push('-- Source tracking: team_division_players → team_divisions → team_division_external_ids');
     lines.push('');
     
     const allPlayerRecords = [];
@@ -547,7 +547,7 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
       lines.push('  JOIN teams t ON td.team_id = t.id');
       lines.push('  WHERE td.is_active = true');
       lines.push(')');
-      lines.push('INSERT INTO team_players (team_division_id, player_id)');
+      lines.push('INSERT INTO team_division_players (team_division_id, player_id)');
       lines.push('SELECT');
       lines.push('  tdl.id,');
       lines.push('  ipl.id');
@@ -694,7 +694,7 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
       matchEventLines.push('JOIN matches m ON m.external_id = e.match_external_id AND m.source_system_id = 1');
       matchEventLines.push('JOIN teams t ON t.name = e.team_name');
       matchEventLines.push('JOIN match_event_types met ON met.name = e.event_type');
-      matchEventLines.push('JOIN team_players tp ON tp.team_division_id IN (');
+      matchEventLines.push('JOIN team_division_players tp ON tp.team_division_id IN (');
       matchEventLines.push('  SELECT td.id FROM team_divisions td WHERE td.team_id = t.id');
       matchEventLines.push(')');
       matchEventLines.push('JOIN players p ON p.id = tp.player_id');
@@ -747,7 +747,7 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
       matchLineupLines.push(') AS l(match_external_id, player_name, team_name, is_starter)');
       matchLineupLines.push('JOIN matches m ON m.external_id = l.match_external_id AND m.source_system_id = 1');
       matchLineupLines.push('JOIN teams t ON t.name = l.team_name');
-      matchLineupLines.push('JOIN team_players tp ON tp.team_division_id IN (');
+      matchLineupLines.push('JOIN team_division_players tp ON tp.team_division_id IN (');
       matchLineupLines.push('  SELECT td.id FROM team_divisions td WHERE td.team_id = t.id');
       matchLineupLines.push(')');
       matchLineupLines.push('JOIN players p ON p.id = tp.player_id');

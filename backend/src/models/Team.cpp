@@ -141,7 +141,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "  rs.show_in_rsvp, "
             "  rs.show_in_official_roster, "
             "  DATE(tp.joined_at) as joined_date "
-            "FROM team_players tp "
+            "FROM team_division_players tp "
             "JOIN players pl ON tp.player_id = pl.id "
             "JOIN users u ON pl.id = u.id "
             "LEFT JOIN positions p ON tp.position_id = p.id "
@@ -299,19 +299,19 @@ bool Team::updateRosterMember(const std::string& team_id, const std::string& pla
     try {
         // If setting this player as captain, first unset any existing captain
         if (is_captain) {
-            std::string unset_sql = "UPDATE team_players SET is_captain = false WHERE team_id = $1 AND is_captain = true";
+            std::string unset_sql = "UPDATE team_division_players SET is_captain = false WHERE team_id = $1 AND is_captain = true";
             executeQuery(unset_sql, {team_id});
         }
         
         // If setting this player as vice captain, first unset any existing vice captain
         if (is_vice_captain) {
-            std::string unset_sql = "UPDATE team_players SET is_vice_captain = false WHERE team_id = $1 AND is_vice_captain = true";
+            std::string unset_sql = "UPDATE team_division_players SET is_vice_captain = false WHERE team_id = $1 AND is_vice_captain = true";
             executeQuery(unset_sql, {team_id});
         }
         
         // Build the update query with hard-coded booleans (pqxx string params don't work for bool)
         std::ostringstream sql;
-        sql << "UPDATE team_players SET ";
+        sql << "UPDATE team_division_players SET ";
         
         std::vector<std::string> params;
         int param_num = 1;
@@ -348,9 +348,9 @@ bool Team::updateRosterMember(const std::string& team_id, const std::string& pla
         if (!roster_status_id.empty()) tp_columns["roster_status_id"] = roster_status_id;
         tp_columns["is_captain"] = is_captain ? "true" : "false";
         tp_columns["is_vice_captain"] = is_vice_captain ? "true" : "false";
-        std::string tp_upsert = SqlBuilder::buildUpsert("team_players", 
+        std::string tp_upsert = SqlBuilder::buildUpsert("team_division_players", 
             team_id + "',player_id='" + player_id, tp_columns, "team_id, player_id");
-        SqlFileLogger::log("team_players", tp_upsert);
+        SqlFileLogger::log("team_division_players", tp_upsert);
 
         // Update user name if provided
         if (!first_name.empty() && !last_name.empty()) {
@@ -378,7 +378,7 @@ bool Team::updateRosterMember(const std::string& team_id, const std::string& pla
 bool Team::removeRosterMember(const std::string& team_id, const std::string& player_id) {
     try {
         // Soft delete - set is_active to false
-        std::string sql = "UPDATE team_players SET is_active = false WHERE team_id = $1 AND player_id = $2";
+        std::string sql = "UPDATE team_division_players SET is_active = false WHERE team_id = $1 AND player_id = $2";
         executeQuery(sql, {team_id, player_id});
         
         std::cout << "✅ Removed roster member: " << player_id << " from team: " << team_id << std::endl;

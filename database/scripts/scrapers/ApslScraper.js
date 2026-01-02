@@ -46,7 +46,7 @@ class ApslScraper extends Scraper {
     this.data.apslDivisions = new Map();
     this.data.apslTeams = new Map();
     this.data.apslPlayers = new Map();           // Normalized players table
-    this.data.apslTeamPlayers = new Map();       // Junction: team_players
+    this.data.apslTeamPlayers = new Map();       // Junction: team_division_players
     this.data.apslMatches = new Map();
     this.data.apslMatchDivisions = new Map();    // Junction: match_divisions
     this.data.apslPlayerSeasonStats = new Map(); // Season totals from roster pages
@@ -295,7 +295,7 @@ class ApslScraper extends Scraper {
         // Log stats summary
         const totalGoals = Array.from(this.data.apslPlayerSeasonStats.values())
           .filter(s => {
-            // Find team_player junction to check if player is on this team
+            // Find team_division_player junction to check if player is on this team
             const teamPlayer = Array.from(this.data.apslTeamPlayers.values())
               .find(tp => tp.player_id === s.player_id && tp.team_id === apslTeamId);
             return teamPlayer !== undefined;
@@ -736,7 +736,7 @@ class ApslScraper extends Scraper {
               conflictColumns: ['id']
           }
       },
-      // Players (table 032) - MUST come before team_players
+      // Players (table 032) - MUST come before team_division_players
       {
           filename: '032-apsl-players.sql',
           data: this.data.apslPlayers,
@@ -753,7 +753,7 @@ class ApslScraper extends Scraper {
           data: this.data.apslTeamPlayers,
           options: {
               title: 'APSL Team Rosters',
-              tableName: 'team_players',
+              tableName: 'team_division_players',
               useInserts: true,
               conflictColumns: ['team_id', 'player_id']
           }

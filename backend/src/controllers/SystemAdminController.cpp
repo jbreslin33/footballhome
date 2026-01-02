@@ -678,11 +678,11 @@ Response SystemAdminController::handleGetAllUsers(const Request& request) {
         std::string where_clause = "WHERE 1=1 ";
         
         if (!team_id.empty()) {
-            query += "JOIN team_players tp ON u.id = tp.player_id ";
+            query += "JOIN team_division_players tp ON u.id = tp.player_id ";
             where_clause += "AND tp.team_id = $" + std::to_string(param_idx++) + " AND tp.is_active = true ";
             params.push_back(team_id);
         } else if (!club_id.empty()) {
-            query += "JOIN team_players tp ON u.id = tp.player_id JOIN teams t ON tp.team_id = t.id ";
+            query += "JOIN team_division_players tp ON u.id = tp.player_id JOIN teams t ON tp.team_id = t.id ";
             where_clause += "AND t.club_id = $" + std::to_string(param_idx++) + " AND tp.is_active = true ";
             params.push_back(club_id);
         }
@@ -850,7 +850,7 @@ Response SystemAdminController::handleGetUser(const Request& request) {
         std::string teams_query = R"(
             SELECT t.id as team_id, t.name as team_name, sd.display_name as division_name, 
                    tp.jersey_number, tp.is_active as team_active
-            FROM team_players tp
+            FROM team_division_players tp
             JOIN teams t ON tp.team_id = t.id
             JOIN sport_divisions sd ON t.sport_division_id = sd.id
             WHERE tp.player_id = $1
@@ -1046,14 +1046,14 @@ Response SystemAdminController::handleRemoveUserFromTeam(const Request& request)
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"User ID and Team ID are required\"}");
         }
         
-        // Soft delete from team_players
-        std::string query = "UPDATE team_players SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE player_id = $1 AND team_id = $2";
+        // Soft delete from team_division_players
+        std::string query = "UPDATE team_division_players SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE player_id = $1 AND team_id = $2";
         std::vector<std::string> params = {user_id, team_id};
         db_->query(query, params);
         
         // Log audit action
         std::string admin_id = "311ee799-a6a1-450f-8bad-5140a021c92b";
-        logAuditAction(admin_id, "remove_from_team", "team_players", user_id,
+        logAuditAction(admin_id, "remove_from_team", "team_division_players", user_id,
                       "Removed user from team", team_id, "");
         
         return Response(HttpStatus::OK, "{\"success\":true}");
@@ -2492,7 +2492,7 @@ Response SystemAdminController::handleGetApslPlayers(const Request& request) {
         auto result = db_->query(
             "SELECT p.id, p.external_id as apsl_player_id, p.full_name as name, tp.position, tp.jersey_number, t.name as team_name "
             "FROM players p "
-            "LEFT JOIN team_players tp ON p.id = tp.player_id "
+            "LEFT JOIN team_division_players tp ON p.id = tp.player_id "
             "LEFT JOIN teams t ON tp.team_id = t.id "
             "WHERE p.source_system_id = 1 "
             "ORDER BY p.full_name LIMIT 100"

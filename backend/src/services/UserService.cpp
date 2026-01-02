@@ -40,7 +40,7 @@ std::vector<UserService::UserDetails> UserService::getUsersByClub(const std::str
         SELECT DISTINCT u.id, u.first_name, u.last_name, u.email, u.phone, 
                u.date_of_birth, u.is_active, u.created_at, u.updated_at
         FROM users u
-        JOIN team_players tp ON u.id = tp.player_id
+        JOIN team_division_players tp ON u.id = tp.player_id
         JOIN teams t ON tp.team_id = t.id
         JOIN sport_divisions sd ON t.sport_division_id = sd.id
         WHERE sd.club_id = $1
@@ -151,7 +151,7 @@ std::vector<UserService::TeamMembership> UserService::getUserTeams(const std::st
                sd.display_name as sport_division_name,
                tp.jersey_number,
                p.id as position_id, p.display_name as position_name
-        FROM team_players tp
+        FROM team_division_players tp
         JOIN teams t ON tp.team_id = t.id
         JOIN sport_divisions sd ON t.sport_division_id = sd.id
         LEFT JOIN players pl ON pl.id = tp.player_id
@@ -183,12 +183,12 @@ bool UserService::addUserToTeam(const std::string& user_id,
                                 const std::string& jersey_number,
                                 const std::string& admin_id) {
     try {
-        std::string query = "INSERT INTO team_players (team_id, player_id, jersey_number) VALUES ($1, $2, $3) "
+        std::string query = "INSERT INTO team_division_players (team_id, player_id, jersey_number) VALUES ($1, $2, $3) "
                           "ON CONFLICT (team_id, player_id) DO UPDATE SET jersey_number = EXCLUDED.jersey_number";
         std::vector<std::string> params = {team_id, user_id, jersey_number};
         db_->query(query, params);
         
-        logAuditAction(admin_id, "team_player_add", "team_players", user_id,
+        logAuditAction(admin_id, "team_player_add", "team_division_players", user_id,
                       "Added user to team " + team_id);
         
         return true;
@@ -201,11 +201,11 @@ bool UserService::removeUserFromTeam(const std::string& user_id,
                                      const std::string& team_id,
                                      const std::string& admin_id) {
     try {
-        std::string query = "DELETE FROM team_players WHERE team_id = $1 AND player_id = $2";
+        std::string query = "DELETE FROM team_division_players WHERE team_id = $1 AND player_id = $2";
         std::vector<std::string> params = {team_id, user_id};
         db_->query(query, params);
         
-        logAuditAction(admin_id, "team_player_remove", "team_players", user_id,
+        logAuditAction(admin_id, "team_player_remove", "team_division_players", user_id,
                       "Removed user from team " + team_id);
         
         return true;
@@ -226,7 +226,7 @@ bool UserService::canUserManageUser(const std::string& admin_id,
     if (permission_level == "club_admin") {
         std::string query = R"(
             SELECT COUNT(*) as count
-            FROM team_players tp
+            FROM team_division_players tp
             JOIN teams t ON tp.team_id = t.id
             JOIN sport_divisions sd ON t.sport_division_id = sd.id
             JOIN club_admins ca ON ca.club_id = sd.club_id

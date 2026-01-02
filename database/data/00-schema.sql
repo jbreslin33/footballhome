@@ -15,7 +15,7 @@
 -- - NO table duplication (no apsl_* vs casa_*) - differentiate by FKs
 -- - ALL text enums replaced with lookup tables
 -- - Leagues = age + sex groupings, Divisions = skill tiers
--- - Teams join divisions via team_divisions, rosters via team_players
+-- - Teams join divisions via team_divisions, rosters via team_division_players
 -- - Players = entities (data from scraping), Users = participants (can interact)
 -- - Users can have multiple emails/phones (junction tables)
 -- - External identities (GroupMe, Discord) link to provisional/member users
@@ -722,7 +722,7 @@ COMMENT ON TABLE player_positions IS 'Positions a player CAN play (general profi
 -- Team rosters (junction table - THE ATOMIC UNIT)
 -- team_id is always correct (from scraping), player_id may initially be wrong and corrected later
 -- source_system_id tracks WHERE we learned about this roster entry (not the player identity)
-CREATE TABLE team_players (
+CREATE TABLE team_division_players (
     id SERIAL PRIMARY KEY,
     team_division_id INTEGER NOT NULL REFERENCES team_divisions(id) ON DELETE CASCADE,
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
@@ -733,14 +733,14 @@ CREATE TABLE team_players (
     UNIQUE(team_division_id, player_id)
 );
 
-CREATE INDEX idx_team_players_team_division ON team_players(team_division_id);
-CREATE INDEX idx_team_players_player ON team_players(player_id);
-CREATE INDEX idx_team_players_active ON team_players(team_division_id, is_active) WHERE is_active = true;
+CREATE INDEX idx_team_division_players_team_division ON team_division_players(team_division_id);
+CREATE INDEX idx_team_division_players_player ON team_division_players(player_id);
+CREATE INDEX idx_team_division_players_active ON team_division_players(team_division_id, is_active) WHERE is_active = true;
 
 -- Track external IDs for roster entries
-CREATE TABLE team_player_external_ids (
+CREATE TABLE team_division_player_external_ids (
     id SERIAL PRIMARY KEY,
-    team_player_id INTEGER NOT NULL REFERENCES team_players(id) ON DELETE CASCADE,
+    team_division_player_id INTEGER NOT NULL REFERENCES team_division_players(id) ON DELETE CASCADE,
     source_system_id INTEGER NOT NULL REFERENCES source_systems(id),
     external_id VARCHAR(255) NOT NULL,
     metadata JSONB,
@@ -749,28 +749,28 @@ CREATE TABLE team_player_external_ids (
     UNIQUE(source_system_id, external_id)
 );
 
-CREATE INDEX idx_team_player_external_ids_team_player ON team_player_external_ids(team_player_id);
-CREATE INDEX idx_team_player_external_ids_source ON team_player_external_ids(source_system_id, external_id);
+CREATE INDEX idx_team_division_player_external_ids_team_division_player ON team_division_player_external_ids(team_division_player_id);
+CREATE INDEX idx_team_division_player_external_ids_source ON team_division_player_external_ids(source_system_id, external_id);
 
-COMMENT ON TABLE team_player_external_ids IS 'Tracks external identifiers (e.g., APSL roster entry) for team-player relationships';
-COMMENT ON COLUMN team_player_external_ids.external_id IS 'Source system roster entry identifier (e.g., "114808-chris-richards" from APSL)';
+COMMENT ON TABLE team_division_player_external_ids IS 'Tracks external identifiers (e.g., APSL roster entry) for team-player relationships';
+COMMENT ON COLUMN team_division_player_external_ids.external_id IS 'Source system roster entry identifier (e.g., "114808-chris-richards" from APSL)';
 
 -- Position assignments for team rosters (what position they play for THIS specific team)
-CREATE TABLE team_player_positions (
+CREATE TABLE team_division_player_positions (
     id SERIAL PRIMARY KEY,
-    team_player_id INTEGER NOT NULL REFERENCES team_players(id) ON DELETE CASCADE,
+    team_division_player_id INTEGER NOT NULL REFERENCES team_division_players(id) ON DELETE CASCADE,
     position_id INTEGER NOT NULL REFERENCES positions(id),
     is_primary BOOLEAN DEFAULT false,
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(team_player_id, position_id)
+    UNIQUE(team_division_player_id, position_id)
 );
 
-CREATE INDEX idx_team_player_positions_team_player ON team_player_positions(team_player_id);
-CREATE INDEX idx_team_player_positions_position ON team_player_positions(position_id);
-CREATE INDEX idx_team_player_positions_primary ON team_player_positions(team_player_id, is_primary) WHERE is_primary = true;
+CREATE INDEX idx_team_division_player_positions_team_division_player ON team_division_player_positions(team_division_player_id);
+CREATE INDEX idx_team_division_player_positions_position ON team_division_player_positions(position_id);
+CREATE INDEX idx_team_division_player_positions_primary ON team_division_player_positions(team_division_player_id, is_primary) WHERE is_primary = true;
 
-COMMENT ON TABLE team_player_positions IS 'Position assignment for specific team roster (what position they play for THIS team)';
+COMMENT ON TABLE team_division_player_positions IS 'Position assignment for specific team roster (what position they play for THIS team)';
 
 CREATE TABLE coaches (
     id SERIAL PRIMARY KEY,
@@ -1233,7 +1233,7 @@ CREATE INDEX idx_audit_log_changed_at ON audit_log(changed_at DESC);
 -- Governing Bodies: 3 tables
 -- Organizations & Leagues: 4 tables (organizations, leagues, conferences, divisions)
 -- FootballHome Identity: 9 tables (users, user_emails, user_phones, external_identities, admins, clubs, club_admins, sport_divisions)
--- Unified League Data: 10 tables (teams, team_divisions, players, team_players, coaches, team_coaches, matches, player_match_stats, team_standings, venues)
+-- Unified League Data: 10 tables (teams, team_divisions, players, team_division_players, coaches, team_coaches, matches, player_match_stats, team_standings, venues)
 -- Chat System: 7 tables (chats, chat_integrations, chat_members, chat_messages, chat_events, chat_event_rsvps)
 -- Player Identity: 1 junction table (player_users)
 -- Supporting: 1 table (audit_log)
@@ -1244,7 +1244,7 @@ CREATE INDEX idx_audit_log_changed_at ON audit_log(changed_at DESC);
 -- - Divisions = Skill tiers within leagues (Premier, Division 1, 2, 3)
 -- - Players = roster entities (from scraping), Users = participants (interact with system)
 -- - Users have provisional/member/bot types, multiple emails/phones via junctions
--- - Teams → team_divisions (league membership), team_players (rosters)
+-- - Teams → team_divisions (league membership), team_division_players (rosters)
 -- - Chats are platform-agnostic with chat_integrations to external providers
 -- - Chat events with optional match_id link + chat_event_rsvps
 -- - No platform-specific tables (GroupMe, Discord data in generic structure)

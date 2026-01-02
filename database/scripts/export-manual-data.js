@@ -54,9 +54,9 @@ async function exportManualData() {
 
     // 2. Export Manual Roster Entries
     // This is trickier - how do we know which are manual?
-    // For now, we'll export ALL team_players for specific "Manual" teams if needed,
+    // For now, we'll export ALL team_division_players for specific "Manual" teams if needed,
     // or we can rely on the fact that scraped data is re-imported anyway.
-    // A better approach for the future: add a 'source' column to team_players.
+    // A better approach for the future: add a 'source' column to team_division_players.
     
     // For this proof of concept, we'll skip overwriting 23m unless we have a way to identify manual entries.
     console.log('Skipping roster export (requires schema update to track source)');

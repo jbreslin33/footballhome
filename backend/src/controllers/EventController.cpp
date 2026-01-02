@@ -1596,7 +1596,7 @@ Response EventController::handleGetGameRoster(const Request& request) {
                 pos.abbreviation as position,
                 mr.created_at
             FROM match_rosters mr
-            JOIN team_players tp ON mr.player_id = tp.player_id AND tp.team_id = (SELECT home_team_id FROM matches WHERE id = $1)
+            JOIN team_division_players tp ON mr.player_id = tp.player_id AND tp.team_id = (SELECT home_team_id FROM matches WHERE id = $1)
             JOIN players p ON mr.player_id = p.id
             JOIN users u ON p.id = u.id
             LEFT JOIN positions pos ON p.preferred_position_id = pos.id
@@ -1754,7 +1754,7 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
                 CASE WHEN mr.id IS NOT NULL THEN true ELSE false END as on_game_roster,
                 CASE WHEN rs.name = 'yes' THEN 0 ELSE 1 END as rsvp_order
             FROM matches m
-            JOIN team_players tp ON tp.team_id = m.home_team_id
+            JOIN team_division_players tp ON tp.team_id = m.home_team_id
             JOIN players p ON tp.player_id = p.id
             JOIN users u ON p.id = u.id
             LEFT JOIN positions pos ON p.preferred_position_id = pos.id

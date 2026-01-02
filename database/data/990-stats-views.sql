@@ -107,7 +107,7 @@ SELECT
     COUNT(DISTINCT COALESCE(me.match_id, ml.match_id)) as games_played
 
 FROM players p
-LEFT JOIN team_players tp ON tp.player_id = p.id
+LEFT JOIN team_division_players tp ON tp.player_id = p.id
 LEFT JOIN teams t ON t.id = tp.team_id
 LEFT JOIN match_events me ON me.player_id = p.id
 LEFT JOIN match_events me2 ON me2.assisted_by_player_id = p.id  -- Count assists via assisted_by

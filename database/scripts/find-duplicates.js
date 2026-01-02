@@ -116,7 +116,7 @@ async function findDuplicateRosters() {
       u.first_name,
       u.last_name,
       COUNT(*) as times_on_roster
-    FROM team_players tp
+    FROM team_division_players tp
     JOIN teams t ON tp.team_id = t.id
     JOIN players p ON tp.player_id = p.id
     JOIN users u ON p.id = u.id
@@ -152,7 +152,7 @@ async function findUsersWithoutExternalIds() {
     FROM users u
     LEFT JOIN user_external_identities uei ON u.id = uei.user_id
     LEFT JOIN players p ON u.id = p.id
-    LEFT JOIN team_players tp ON p.id = tp.player_id AND tp.is_active = true
+    LEFT JOIN team_division_players tp ON p.id = tp.player_id AND tp.is_active = true
     WHERE uei.id IS NULL
     GROUP BY u.id, u.first_name, u.last_name, u.date_of_birth
     ORDER BY team_count DESC, u.last_name, u.first_name
@@ -181,7 +181,7 @@ async function findTeamsWithTooManyPlayers() {
       t.name as team_name,
       COUNT(DISTINCT tp.player_id) as player_count
     FROM teams t
-    JOIN team_players tp ON t.id = tp.team_id
+    JOIN team_division_players tp ON t.id = tp.team_id
     WHERE tp.is_active = true
     GROUP BY t.id, t.name
     HAVING COUNT(DISTINCT tp.player_id) > 50 OR COUNT(DISTINCT tp.player_id) < 10
@@ -209,7 +209,7 @@ async function generateSummary() {
       (SELECT COUNT(*) FROM users) as total_users,
       (SELECT COUNT(*) FROM user_external_identities) as total_external_ids,
       (SELECT COUNT(*) FROM teams) as total_teams,
-      (SELECT COUNT(*) FROM team_players WHERE is_active = true) as total_roster_entries,
+      (SELECT COUNT(*) FROM team_division_players WHERE is_active = true) as total_roster_entries,
       (SELECT COUNT(DISTINCT provider) FROM user_external_identities) as providers_count
   `);
   

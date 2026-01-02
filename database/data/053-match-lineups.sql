@@ -14958,7 +14958,7 @@ FROM (VALUES
 ) AS l(match_external_id, player_name, team_name, is_starter)
 JOIN matches m ON m.external_id = l.match_external_id AND m.source_system_id = 1
 JOIN teams t ON t.name = l.team_name
-JOIN team_players tp ON tp.team_division_id IN (
+JOIN team_division_players tp ON tp.team_division_id IN (
   SELECT td.id FROM team_divisions td WHERE td.team_id = t.id
 )
 JOIN players p ON p.id = tp.player_id

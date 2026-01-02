@@ -411,7 +411,7 @@ Response AuthController::handleUserTeams(const Request& request) {
               << "     WHEN tc.coach_id IS NOT NULL THEN 'coach' "
               << "     ELSE 'unknown' END as role "
               << "FROM teams t "
-              << "LEFT JOIN team_players tp ON t.id = tp.team_id AND tp.is_active = true "
+              << "LEFT JOIN team_division_players tp ON t.id = tp.team_id AND tp.is_active = true "
               << "LEFT JOIN players p ON tp.player_id = p.id "
               << "LEFT JOIN team_coaches tc ON t.id = tc.team_id AND tc.is_active = true "
               << "LEFT JOIN coaches c ON tc.coach_id = c.id "
@@ -460,7 +460,7 @@ Response AuthController::handleCoachTeams(const Request& request) {
                          "JOIN team_coaches tc ON co.id = tc.coach_id "
                          "JOIN teams t ON tc.team_id = t.id "
                          "JOIN sport_divisions sd ON t.sport_division_id = sd.id "
-                         "LEFT JOIN team_players tp ON t.id = tp.team_id "
+                         "LEFT JOIN team_division_players tp ON t.id = tp.team_id "
                          "WHERE co.id = $1 "
                          "GROUP BY t.id, t.name, sd.club_id "
                          "ORDER BY t.name";
@@ -499,7 +499,7 @@ Response AuthController::handlePlayerTeams(const Request& request) {
         }
         
         std::string sql = "SELECT DISTINCT t.id, t.name, sd.display_name as division_name, sd.club_id "
-                         "FROM team_players tp "
+                         "FROM team_division_players tp "
                          "JOIN teams t ON tp.team_id = t.id "
                          "JOIN sport_divisions sd ON t.sport_division_id = sd.id "
                          "JOIN players p ON tp.player_id = p.id "

@@ -43,7 +43,7 @@ async function getLighthousePlayers() {
           STRING_AGG(t.name, ', ' ORDER BY t.name) as teams,
           COUNT(*) as team_count,
           BOOL_OR(tp.is_active) as on_any_active_team
-        FROM team_players tp
+        FROM team_division_players tp
         JOIN teams t ON tp.team_id = t.id
         JOIN lighthouse_division ld ON t.division_id = ld.division_id
         ${ACTIVE_ONLY ? 'WHERE tp.is_active = true' : ''}

@@ -1754,7 +1754,7 @@ class CasaScraper extends Scraper {
           
           const finalPlayerId = existingPlayerId || playerId;
           
-          // Create team-player association in team_players junction table
+          // Create team-player association in team_division_players junction table
           if (!this.teamPlayerSeq) this.teamPlayerSeq = 1;
           const teamPlayerId = this.teamPlayerSeq++;
           
@@ -1980,7 +1980,7 @@ class CasaScraper extends Scraper {
         data: this.data.teamPlayers,
         options: {
           title: 'CASA Team Players',
-          tableName: 'team_players',
+          tableName: 'team_division_players',
           useInserts: true,
           conflictColumns: ['team_id', 'player_id']
         }

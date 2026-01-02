@@ -106,7 +106,7 @@ void SqlFileLogger::initializeTableMap() {
     table_file_map_["player_academic_status_history"] = "22";
     
     // Team rosters
-    table_file_map_["team_players"] = "23";
+    table_file_map_["team_division_players"] = "23";
     table_file_map_["team_players_status_history"] = "23";
     
     // Coaches

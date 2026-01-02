@@ -34,7 +34,7 @@ WHERE uei.user_id IS NULL
   AND uei.first_name IS NOT NULL
   AND uei.last_name IS NOT NULL
   AND EXISTS (
-    SELECT 1 FROM team_players tp
+    SELECT 1 FROM team_division_players tp
     WHERE tp.team_id = uei.team_id
       AND tp.player_id = u.id
   )

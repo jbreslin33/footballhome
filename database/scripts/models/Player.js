@@ -4,7 +4,7 @@ const SqlGenerator = require('../services/SqlGenerator');
  * Player Model
  * Represents a player (extends User)
  * Schema: players table has: id, preferred_position_id, photo_url, height_cm, weight_kg, dominant_foot, player_rating, notes
- * Note: jersey_number is in team_players table (players can have different numbers on different teams)
+ * Note: jersey_number is in team_division_players table (players can have different numbers on different teams)
  */
 class Player {
   constructor(data) {

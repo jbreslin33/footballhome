@@ -1914,7 +1914,7 @@ SELECT COUNT(*) as players_inserted FROM inserted_players;
 
 -- Link players to teams via team_divisions
 -- Rosters are competition-specific (team_division_id not team_id)
--- Source tracking: team_players → team_divisions → team_division_external_ids
+-- Source tracking: team_division_players → team_divisions → team_division_external_ids
 
 WITH indexed_players AS (
   SELECT p.id, ROW_NUMBER() OVER (ORDER BY p.id) as row_num
@@ -1929,7 +1929,7 @@ team_division_lookup AS (
   JOIN teams t ON td.team_id = t.id
   WHERE td.is_active = true
 )
-INSERT INTO team_players (team_division_id, player_id)
+INSERT INTO team_division_players (team_division_id, player_id)
 SELECT
   tdl.id,
   ipl.id
