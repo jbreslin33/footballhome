@@ -17,6 +17,7 @@ const BoysClubLiga1Scraper = require('./scrapers/BoysClubLiga1Scraper');
 const OldTimersLiga2Scraper = require('./scrapers/OldTimersLiga2Scraper');
 const ApslLighthouseScraper = require('./scrapers/ApslLighthouseScraper');
 const VenueScraper = require('./scrapers/VenueScraper');
+const { getScrapeTargets } = require('./utils/database');
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -65,15 +66,36 @@ async function main() {
       console.log('\n🎯 Database-driven mode');
       console.log('📋 Reading scrape targets from database...\n');
       
-      // TODO: Read scrape_targets table from database
-      // TODO: For --fetch: Download HTML for each active target
-      // TODO: For --parse: Parse cached HTML and generate SQL
+      try {
+        const targets = await getScrapeTargets();
+        
+        if (targets.length === 0) {
+          console.log('⚠️  No active scrape targets found in database');
+          console.log('    Check: database/data/005-scrape-targets.sql');
+          process.exit(1);
+        }
+        
+        console.log(`Found ${targets.length} active scrape targets:\n`);
+        targets.forEach(t => {
+          console.log(`  • ${t.source_system_name || 'N/A'} - ${t.target_type}: ${t.description}`);
+        });
+        
+        console.log('\n⚠️  Scraping logic not yet implemented');
+        console.log('    Next steps:');
+        console.log('    1. Map target URLs to appropriate scrapers');
+        console.log('    2. For --fetch: Download HTML using fetchers');
+        console.log('    3. For --parse: Parse HTML using parsers');
+        console.log('\n    Current workaround:');
+        console.log('    node index.js apsl full --schedules');
+        console.log('    node index.js casa full --schedules\n');
+        
+      } catch (error) {
+        console.error(`\n❌ Database error: ${error.message}`);
+        console.error('    Make sure database is running: ./dev.sh');
+        process.exit(1);
+      }
       
-      console.error('\n⚠️  Database-driven scraping not yet implemented');
-      console.error('    Current implementation uses hardcoded league names');
-      console.error('    Use: node index.js apsl full --schedules');
-      console.error('         node index.js casa full --schedules');
-      process.exit(1);
+      process.exit(0);
     }
 
     // LEGACY HARDCODED MODE
