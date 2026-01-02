@@ -293,8 +293,8 @@ CREATE TABLE governing_bodies (
     name VARCHAR(255) NOT NULL,
     short_name VARCHAR(50),
     website_url TEXT,
-    country_code VARCHAR(3),  -- ISO 3166-1 alpha-3 country code
-    state_code VARCHAR(10),   -- State/province code
+    country_id INTEGER REFERENCES countries(id),
+    state_id INTEGER REFERENCES states(id),
     description TEXT,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -302,7 +302,7 @@ CREATE TABLE governing_bodies (
 );
 
 CREATE INDEX idx_governing_bodies_scope ON governing_bodies(scope_id);
-CREATE INDEX idx_governing_bodies_country ON governing_bodies(country_code);
+CREATE INDEX idx_governing_bodies_country ON governing_bodies(country_id);
 CREATE INDEX idx_governing_bodies_state ON governing_bodies(state_id);
 
 CREATE TABLE governing_body_relationships (
@@ -624,14 +624,18 @@ CREATE TABLE team_divisions (
     id SERIAL PRIMARY KEY,
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
+    source_system_id INTEGER REFERENCES source_systems(id),
+    external_id VARCHAR(100),  -- Source system's identifier for this team-division relationship
     season_id INTEGER,  -- For future: track historical membership
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(team_id, division_id)
+    UNIQUE(team_id, division_id),
+    UNIQUE(source_system_id, external_id)  -- Prevent duplicate external IDs within same source
 );
 
 CREATE INDEX idx_team_divisions_team ON team_divisions(team_id);
 CREATE INDEX idx_team_divisions_division ON team_divisions(division_id);
+CREATE INDEX idx_team_divisions_external ON team_divisions(source_system_id, external_id);
 
 -- Lookup table for team alias types
 CREATE TABLE alias_types (
