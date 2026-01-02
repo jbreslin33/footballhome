@@ -419,7 +419,7 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
       
       lines.push('    END');
       lines.push('  FROM inserted_persons ip');
-      lines.push('  ON CONFLICT (external_id) DO UPDATE SET');
+      lines.push('  ON CONFLICT (source_system_id, external_id) DO UPDATE SET');
       lines.push('    person_id = EXCLUDED.person_id');
       lines.push('  RETURNING id, external_id');
       lines.push('),');

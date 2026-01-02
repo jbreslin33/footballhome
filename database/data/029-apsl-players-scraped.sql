@@ -3161,7 +3161,7 @@ inserted_players AS (
       WHEN ip.first_name = 'Myles' AND ip.last_name = 'Williams' THEN '119159-myles-williams'
     END
   FROM inserted_persons ip
-  ON CONFLICT (external_id) DO UPDATE SET
+  ON CONFLICT (source_system_id, external_id) DO UPDATE SET
     person_id = EXCLUDED.person_id
   RETURNING id, external_id
 ),
