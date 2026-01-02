@@ -340,7 +340,9 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
     lines.push('-- This file is regenerated on each scrape - do not edit manually');
     lines.push('');
     
+    let personIdCounter = 50000;
     let playerIdCounter = 10000;
+    const personLines = [];
     const playerLines = [];
     const teamPlayerLines = [];
     
@@ -351,30 +353,49 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
         continue;
       }
       
+      // Split name into first/last (simple split on last space)
+      const nameParts = player.name.trim().split(' ');
+      const firstName = nameParts.slice(0, -1).join(' ') || nameParts[0];
+      const lastName = nameParts[nameParts.length - 1];
+      
+      const personId = personIdCounter++;
       const playerId = playerIdCounter++;
       
-      // Player record
-      playerLines.push(`  (${playerId}, '${player.name.replace(/'/g, "''")}', 1)`);
+      // Person record
+      personLines.push(`  (${personId}, '${firstName.replace(/'/g, "''")}', '${lastName.replace(/'/g, "''")}')`);
       
-      // Team-player association with stats
-      teamPlayerLines.push(`  (${teamId}, ${playerId}, ${player.goals || 0}, ${player.assists || 0})`);
+      // Player record (links to person)
+      playerLines.push(`  (${playerId}, ${personId}, 1)`);
+      
+      // Team-player association (no stats in team_players table - would need separate stats table)
+      teamPlayerLines.push(`  (${teamId}, ${playerId}, 1)`);
     }
     
-    if (playerLines.length > 0) {
+    if (personLines.length > 0) {
+      lines.push('-- Insert persons');
+      lines.push('INSERT INTO persons (id, first_name, last_name) VALUES');
+      lines.push(personLines.map((line, idx) => line + (idx === personLines.length - 1 ? '' : ',')).join('\n'));
+      lines.push('ON CONFLICT (id) DO UPDATE SET');
+      lines.push('  first_name = EXCLUDED.first_name,');
+      lines.push('  last_name = EXCLUDED.last_name;');
+      lines.push('');
+      
       lines.push('-- Insert players');
-      lines.push('INSERT INTO players (id, full_name, source_system_id) VALUES');
+      lines.push('INSERT INTO players (id, person_id, source_system_id) VALUES');
       lines.push(playerLines.map((line, idx) => line + (idx === playerLines.length - 1 ? '' : ',')).join('\n'));
       lines.push('ON CONFLICT (id) DO UPDATE SET');
-      lines.push('  full_name = EXCLUDED.full_name,');
+      lines.push('  person_id = EXCLUDED.person_id,');
       lines.push('  source_system_id = EXCLUDED.source_system_id;');
       lines.push('');
       
-      lines.push('-- Link players to teams with season stats');
-      lines.push('INSERT INTO team_players (team_id, player_id, goals, assists) VALUES');
+      lines.push('-- Link players to teams');
+      lines.push('INSERT INTO team_players (team_id, player_id, source_system_id) VALUES');
       lines.push(teamPlayerLines.map((line, idx) => line + (idx === teamPlayerLines.length - 1 ? '' : ',')).join('\n'));
       lines.push('ON CONFLICT (team_id, player_id) DO UPDATE SET');
-      lines.push('  goals = EXCLUDED.goals,');
-      lines.push('  assists = EXCLUDED.assists;');
+      lines.push('  source_system_id = EXCLUDED.source_system_id;');
+      lines.push('');
+      lines.push('-- TODO: Add player season stats to separate player_season_stats table');
+      lines.push('-- Stats available: goals, assists from roster pages');
       lines.push('');
       
       const sqlPath = path.join(dataDir, '029-apsl-players-scraped.sql');
