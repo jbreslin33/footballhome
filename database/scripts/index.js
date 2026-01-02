@@ -109,7 +109,6 @@ async function fetchTargets(targets) {
  */
 async function parseTargets(targets) {
   const ApslHtmlParser = require('./parsers/ApslHtmlParser');
-  const CasaHtmlParser = require('./parsers/CasaHtmlParser');
   const SqlGenerator = require('./services/SqlGenerator');
   const path = require('path');
   const fs = require('fs').promises;
@@ -157,9 +156,9 @@ async function parseApslTargets(targets, sqlGenerator) {
   }
   
   try {
-    // Find the cached HTML file
+    // Find the cached HTML file (look for standings*.html)
     const files = await fs.readdir(cacheDir);
-    const htmlFile = files.find(f => f.includes('league_structure') && f.endsWith('.html'));
+    const htmlFile = files.find(f => f.startsWith('standings') && f.endsWith('.html'));
     
     if (!htmlFile) {
       console.log('   ❌ No cached HTML found. Run with --fetch first.');
@@ -171,10 +170,21 @@ async function parseApslTargets(targets, sqlGenerator) {
     
     console.log(`   📄 Parsing: ${htmlFile}`);
     
-    // Parse structure
-    const structure = parser.parseStandings(html);
+    // Parse HTML into DOM
+    parser.parse(html);
     
-    console.log(`   ✅ Parsed: ${structure.conferences?.length || 0} conferences, ${structure.divisions?.length || 0} divisions`);
+    // Extract structure
+    const conferences = parser.parseStandingsStructure();
+    
+    if (conferences && conferences.length > 0) {
+      console.log(`   ✅ Parsed ${conferences.length} conferences:`);
+      conferences.forEach(conf => {
+        console.log(`      • ${conf.name} (${conf.season})`);
+      });
+    } else {
+      console.log(`   ⚠️  No conferences found in HTML`);
+    }
+    
     console.log(`   ⚠️  SQL generation not yet implemented`);
     
   } catch (error) {
@@ -186,15 +196,22 @@ async function parseApslTargets(targets, sqlGenerator) {
  * Parse CASA targets (rosters, schedules, standings)
  */
 async function parseCasaTargets(targets, sqlGenerator) {
-  const CasaHtmlParser = require('./parsers/CasaHtmlParser');
   const path = require('path');
   const fs = require('fs').promises;
   
-  const parser = new CasaHtmlParser();
   const cacheDir = path.join(__dirname, '../scraped-html/casa');
   
   console.log(`   ⚠️  CASA parser not yet implemented`);
   console.log(`   TODO: Parse ${targets.length} targets (rosters, schedules, standings)`);
+  
+  // Check cached files
+  try {
+    const files = await fs.readdir(cacheDir);
+    const htmlFiles = files.filter(f => f.endsWith('.html'));
+    console.log(`   💾 Found ${htmlFiles.length} cached HTML files`);
+  } catch (error) {
+    console.log(`   ⚠️  No cache directory found`);
+  }
 }
 
 async function main() {
