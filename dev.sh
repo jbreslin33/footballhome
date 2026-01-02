@@ -114,9 +114,6 @@ fi
 
 RESCRAPE=false
 REPARSE=false
-ENVIRONMENT="dev"
-WIPE_U=false
-WIPE_P=false
 BUILD_BACKEND_ONLY=false
 
 # Parse arguments
@@ -132,15 +129,6 @@ for arg in "$@"; do
         --backend-only)
             BUILD_BACKEND_ONLY=true
             ;;
-        --production)
-            ENVIRONMENT="production"
-            ;;
-        --wipe-u)
-            WIPE_U=true
-            ;;
-        --wipe-p)
-            WIPE_P=true
-            ;;
         --help|-h)
             echo "Football Home Development Script"
             echo ""
@@ -153,14 +141,7 @@ for arg in "$@"; do
             echo "  ./dev.sh                       Full rebuild from committed SQL (fastest)"
             echo "  ./dev.sh --reparse             Parse cached HTML → regenerate SQL → rebuild"
             echo "  ./dev.sh --rescrape            Fetch websites → parse → regenerate SQL → rebuild"
-            echo ""
-            echo "Environment Flags:"
-            echo "  --production                   Load production app data (##p files)"
-            echo "  --wipe-u                       Wipe dev app data before rebuild"
-            echo "  --wipe-p                       Wipe production app data before rebuild"
-            echo ""
-            echo "Workflow Flags:"
-            echo "  --backend-only                 Rebuild and restart backend container only"
+            echo "  ./dev.sh --backend-only        Rebuild backend container only (fast iteration)"
             echo ""
             echo "Examples:"
             echo "  ./dev.sh"
@@ -170,12 +151,12 @@ for arg in "$@"; do
             echo "    → After fixing HTML parsers: Re-generate SQL from cached HTML"
             echo ""
             echo "  ./dev.sh --rescrape"
-            echo "    → Weekly update: Fetch fresh data from APSL/CASA websites"
+            echo "    → Weekly update: Fetch fresh data from websites (reads scrape_targets table)"
             exit 0
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --rescrape, --reparse, --backend-only, --production, --wipe-u, --wipe-p, --help"
+            echo "Valid options: --rescrape, --reparse, --backend-only, --help"
             exit 1
             ;;
     esac
@@ -237,20 +218,16 @@ npm install --silent
 
 if [ "$RESCRAPE" = true ]; then
     echo -e "${YELLOW}🌐 Step 1: Scraping live websites...${NC}"
-    echo "  → APSL: Fetching from apslsoccer.com..."
-    node database/scripts/index.js apsl full --fetch
-    echo "  → CASA: Fetching from casasoccerleagues.com..."
-    node database/scripts/index.js casa full --fetch
+    echo "  → Reading targets from scrape_targets table..."
+    node database/scripts/index.js --fetch
     echo -e "${GREEN}✓ HTML cached to database/scraped-html/${NC}"
     echo ""
 fi
 
 if [ "$REPARSE" = true ]; then
     echo -e "${YELLOW}🔍 Step 1b: Parsing HTML → generating SQL...${NC}"
-    echo "  → APSL: Parsing cached HTML..."
-    node database/scripts/index.js apsl full --parse
-    echo "  → CASA: Parsing cached HTML..."
-    node database/scripts/index.js casa full --parse
+    echo "  → Processing cached HTML files..."
+    node database/scripts/index.js --parse
     echo -e "${GREEN}✓ SQL files regenerated in database/data/${NC}"
     echo ""
 fi
@@ -288,95 +265,6 @@ echo -e "${GREEN}✓ Cleanup complete (fresh start guaranteed)${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 2.5: WIPE APP DATA (if requested)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-if [ "$WIPE_U" = true ]; then
-    echo -e "${YELLOW}🗑️  Wiping dev app data (##u files)...${NC}"
-    # Truncate all u files
-    for file in database/data/*u-*-app.sql; do
-        [ -f "$file" ] && : > "$file"
-    done
-    
-    # Ensure standard placeholders exist if they were deleted
-    for num in 02 03 04 05 06 07 08 21 22 23 24 25 30 31 50 51 54 55 56 75 76; do
-        # Find if any file starts with this number and has u-*-app.sql pattern
-        if ! ls database/data/${num}u-*-app.sql 1> /dev/null 2>&1; then
-            # Create a default one if missing
-            case $num in
-                02) name="venues" ;;
-                03) name="leagues" ;;
-                04) name="conferences" ;;
-                05) name="league-divisions" ;;
-                06) name="clubs" ;;
-                07) name="sport-divisions" ;;
-                08) name="users" ;;
-                21) name="teams" ;;
-                22) name="players" ;;
-                23) name="team_players" ;;
-                24) name="coaches" ;;
-                25) name="team_coaches" ;;
-                30) name="schedule" ;;
-                31) name="tactical-boards" ;;
-                50) name="auth-credentials" ;;
-                51) name="admins" ;;
-                54) name="parents" ;;
-                55) name="player-parents" ;;
-                56) name="sport-admins" ;;
-                75) name="club-admins" ;;
-                76) name="team-admins" ;;
-            esac
-            touch "database/data/${num}u-${name}-app.sql"
-        fi
-    done
-    echo -e "${GREEN}✓ Dev app data wiped${NC}"
-    echo ""
-fi
-
-if [ "$WIPE_P" = true ]; then
-    echo -e "${YELLOW}🗑️  Wiping production app data (##p files)...${NC}"
-    # Truncate all p files
-    for file in database/data/*p-*-app.sql; do
-        [ -f "$file" ] && : > "$file"
-    done
-
-    # Ensure standard placeholders exist if they were deleted
-    for num in 02 03 04 05 06 07 08 21 22 23 24 25 30 31 50 51 54 55 56 75 76; do
-        # Find if any file starts with this number and has p-*-app.sql pattern
-        if ! ls database/data/${num}p-*-app.sql 1> /dev/null 2>&1; then
-            # Create a default one if missing
-            case $num in
-                02) name="venues" ;;
-                03) name="leagues" ;;
-                04) name="conferences" ;;
-                05) name="league-divisions" ;;
-                06) name="clubs" ;;
-                07) name="sport-divisions" ;;
-                08) name="users" ;;
-                21) name="teams" ;;
-                22) name="players" ;;
-                23) name="team_players" ;;
-                24) name="coaches" ;;
-                25) name="team_coaches" ;;
-                30) name="schedule" ;;
-                31) name="tactical-boards" ;;
-                50) name="auth-credentials" ;;
-                51) name="admins" ;;
-                54) name="parents" ;;
-                55) name="player-parents" ;;
-                56) name="sport-admins" ;;
-                75) name="club-admins" ;;
-                76) name="team-admins" ;;
-            esac
-            touch "database/data/${num}p-${name}-app.sql"
-        fi
-    done
-
-    echo -e "${GREEN}✓ Production app data wiped${NC}"
-    echo ""
-fi
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 3: BUILD (ALWAYS)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -409,10 +297,7 @@ echo ""
 # STEP 4: START
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# Export ENVIRONMENT for docker-compose
-export ENVIRONMENT
-
-echo -e "${YELLOW}🚀 Step 4: Starting containers (Environment: $ENVIRONMENT)...${NC}"
+echo -e "${YELLOW}🚀 Step 4: Starting containers...${NC}"
 
 # Start database first
 echo -n "  Starting database"
@@ -520,14 +405,13 @@ echo "Login: soccer@lighthouse1893.org / 1893Soccer!"
 echo ""
 if [ "$RESCRAPE" = true ]; then
     echo -e "${YELLOW}📁 Generated files:${NC}"
-    echo "  → database/scraped-html/apsl/ (HTML cache)"
-    echo "  → database/scraped-html/casa/ (HTML cache)"
+    echo "  → database/scraped-html/ (HTML cache from live websites)"
     echo "  → database/data/028-*.sql (teams)"
-    echo "  → database/data/040-*.sql (players)"
+    echo "  → database/data/032-*.sql (players)"
     echo "  → database/data/050-*.sql (matches)"
 elif [ "$REPARSE" = true ]; then
     echo -e "${YELLOW}📁 Regenerated files:${NC}"
     echo "  → database/data/028-*.sql (teams)"
-    echo "  → database/data/040-*.sql (players)"
+    echo "  → database/data/032-*.sql (players)"
     echo "  → database/data/050-*.sql (matches)"
 fi
