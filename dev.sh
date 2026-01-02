@@ -3,44 +3,39 @@
 # Football Home - Development Script
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# OOP SCRAPER ARCHITECTURE:
-#   All scrapers use database/scripts/index.js with unified OOP base classes:
+# THREE-TIER DATA PIPELINE:
+#   
+#   1. ./dev.sh (default)
+#      → Use committed SQL files (fastest, no network/parsing)
+#      → Data: database/data/*.sql files in git
+#   
+#   2. ./dev.sh --reparse
+#      → Parse cached HTML → regenerate SQL files
+#      → Data: database/scraped-html/ (HTML cache)
+#      → Medium speed: no network, but re-parsing HTML
+#   
+#   3. ./dev.sh --rescrape
+#      → Fetch live websites → save HTML → parse → generate SQL
+#      → Data: Live APSL/CASA websites
+#      → Slowest: network calls + parsing (auto-implies --reparse)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# SCRAPERS (database/scripts/index.js):
 #   - ApslScraper       → APSL league (apslsoccer.com)
 #   - CasaScraper       → CASA league (casasoccerleagues.com + Google Sheets)
 #   - GroupMeScraper    → 4 chat implementations (Training, APSL, Boys Club, Old Timers)
 #   - VenueScraper      → Google Places API
 #
-#   Benefits: Reusable components, consistent SQL output, team filters, mode support
-#
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Usage:
-#   ./dev.sh                                      # FULL REBUILD: Delete volumes/cache, rebuild from committed SQL files (no scraping)
-#   ./dev.sh --apsl --casa                        # Re-scrape APSL + CASA, then rebuild
-#   ./dev.sh --lighthouse                         # Re-scrape Lighthouse teams + GroupMe, then rebuild
-#
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Aggregate Flags (Convenience):
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#   ./dev.sh --lighthouse                         # All Lighthouse data (APSL/CASA + GroupMe: 4 chats)
-#   ./dev.sh --apsl                               # All APSL data (all teams + rosters + schedules)
-#   ./dev.sh --casa                               # All CASA data (all teams + rosters)
-#   ./dev.sh --groupme                            # All GroupMe data (4 chats: Training, APSL, Boys Club, Old Timers)
-#   ./dev.sh --venues                             # Venue details from Google Places API
-#   ./dev.sh --groupme-old-timers-external        # Lighthouse Old Timers Club Liga 2 chat → external_identities
-#   ./dev.sh --groupme-old-timers-schedule        # Lighthouse Old Timers Club Liga 2 game schedule
-#   ./dev.sh --groupme-old-timers-rsvps           # Lighthouse Old Timers Club Liga 2 game RSVPs
-#   ./dev.sh --venues                             # Scrape Google Places venues
-
-#
 # Typical Workflows:
 #   ./dev.sh
-#     → Daily development: Full rebuild (wipes DB, loads all SQL files from scratch)
+#     → Daily development: Full rebuild from committed SQL
 #
-#   ./dev.sh --lighthouse
-#     → Lighthouse update: Re-scrape structure + rosters + schedules + GroupMe for 4 teams
+#   ./dev.sh --reparse
+#     → Re-generate SQL from cached HTML (after manual HTML fixes)
 #
-#   ./dev.sh --apsl --casa
-#     → New season: Full APSL + CASA scrape (all teams)
+#   ./dev.sh --rescrape
+#     → Fetch fresh data from websites (weekly/new season)
 
 set -e
 
@@ -117,11 +112,8 @@ else
     exit 1
 fi
 
-APSL_SCRAPE_MODE=""
-CASA_SCRAPE_MODE=""
-GROUPME_MODE=""
-VENUE_SCRAPE=false
-DISCOVER_MODE=false
+RESCRAPE=false
+REPARSE=false
 ENVIRONMENT="dev"
 WIPE_U=false
 WIPE_P=false
@@ -130,30 +122,12 @@ BUILD_BACKEND_ONLY=false
 # Parse arguments
 for arg in "$@"; do
     case $arg in
-        --discover)
-            # Discovery mode: scrape structure only, output to console/templates (no DB writes)
-            DISCOVER_MODE=true
+        --rescrape)
+            RESCRAPE=true
+            REPARSE=true  # Rescraping auto-implies reparsing
             ;;
-        --lighthouse)
-            # Convenience flag: All Lighthouse data (structure + rosters + GroupMe)
-            APSL_SCRAPE_MODE="lighthouse"
-            CASA_SCRAPE_MODE="lighthouse"
-            GROUPME_MODE="all"
-            ;;
-        --groupme)
-            # All GroupMe data for all Lighthouse chats
-            GROUPME_MODE="all"
-            ;;
-        --apsl)
-            # Full APSL scrape: all teams + rosters + schedules
-            APSL_SCRAPE_MODE="players"
-            ;;
-        --casa)
-            # Full CASA scrape (all teams + rosters)
-            CASA_SCRAPE_MODE="full"
-            ;;
-        --venues)
-            VENUE_SCRAPE=true
+        --reparse)
+            REPARSE=true
             ;;
         --backend-only)
             BUILD_BACKEND_ONLY=true
@@ -170,110 +144,42 @@ for arg in "$@"; do
         --help|-h)
             echo "Football Home Development Script"
             echo ""
+            echo "THREE-TIER DATA PIPELINE:"
+            echo "  1. ./dev.sh              → Use committed SQL files (fastest)"
+            echo "  2. ./dev.sh --reparse    → Parse cached HTML → regenerate SQL"
+            echo "  3. ./dev.sh --rescrape   → Fetch websites → parse → regenerate SQL"
+            echo ""
             echo "Usage:"
-            echo "  ./dev.sh                                   Full rebuild (dev mode, loads ##u files)"
-            echo "  ./dev.sh --production                      Full rebuild (production mode, loads ##p files)"
-            echo "  ./dev.sh --wipe-u                          Wipe dev app data before rebuild"
-            echo "  ./dev.sh --wipe-p                          Wipe production app data before rebuild"
-            echo "  ./dev.sh --apsl --casa                     Re-scrape all leagues, then rebuild"
-            echo "  ./dev.sh --lighthouse                      Re-scrape Lighthouse teams + GroupMe, then rebuild"
+            echo "  ./dev.sh                       Full rebuild from committed SQL (fastest)"
+            echo "  ./dev.sh --reparse             Parse cached HTML → regenerate SQL → rebuild"
+            echo "  ./dev.sh --rescrape            Fetch websites → parse → regenerate SQL → rebuild"
             echo ""
-            echo "Aggregate Flags (Convenience):"
-            echo "  --lighthouse                               All Lighthouse data (APSL/CASA structure + rosters + schedules + GroupMe)"
-            echo "  --apsl                                     All APSL data (structure + all teams + rosters + schedules)"
-            echo "  --casa                                     All CASA data (structure + all teams + rosters)"
-            echo "  --groupme                                  All GroupMe data (all 4 Lighthouse chats)"
-            echo ""
-            echo "APSL Scraping Flags:"
-            echo "  --apsl                                     Scrape all APSL data (structure + all teams + rosters + schedules)"
-            echo ""
-            echo "CASA Scraping Flags:"
-            echo "  --casa                                     Scrape all CASA data (structure + all teams + rosters)"
-            echo ""
-            echo "Other Scraping:"
-            echo "  --venues                                   Scrape Google Places venues (rarely needed)"
-            echo ""
-            echo "GroupMe Flags:"
-            echo "  --groupme-apsl-external                    APSL Lighthouse: users → external_identities"
-            echo "  --groupme-apsl-schedule                    APSL Lighthouse: schedule"
-            echo "  --groupme-apsl-rsvps                       APSL Lighthouse: game RSVPs"
-            echo "  --groupme-training-lighthouse-external     Training Lighthouse: users → external_identities (division context)"
-            echo "  --groupme-training-lighthouse-schedule     Training Lighthouse: practices/events schedule"
-            echo "  --groupme-training-lighthouse-rsvps        Training Lighthouse: RSVPs for trainings"
-            echo "  --groupme-boys-club-external               Lighthouse Boys Club Liga 1: users → external_identities"
-            echo "  --groupme-boys-club-schedule               Lighthouse Boys Club Liga 1: game schedule"
-            echo "  --groupme-boys-club-rsvps                  Lighthouse Boys Club Liga 1: game RSVPs"
-            echo "  --groupme-old-timers-external              Lighthouse Old Timers Club Liga 2: users → external_identities"
-            echo "  --groupme-old-timers-schedule              Lighthouse Old Timers Club Liga 2: game schedule"
-            echo "  --groupme-old-timers-rsvps                 Lighthouse Old Timers Club Liga 2: game RSVPs"
+            echo "Environment Flags:"
+            echo "  --production                   Load production app data (##p files)"
+            echo "  --wipe-u                       Wipe dev app data before rebuild"
+            echo "  --wipe-p                       Wipe production app data before rebuild"
             echo ""
             echo "Workflow Flags:"
-            echo "  --backend-only                             Rebuild and restart backend container only"
+            echo "  --backend-only                 Rebuild and restart backend container only"
             echo ""
             echo "Examples:"
-            echo "  ./dev.sh --apsl --casa"
-            echo "    → New season: Full APSL + Full CASA scrape"
+            echo "  ./dev.sh"
+            echo "    → Daily development: Load from committed SQL (no network)"
             echo ""
-            echo "  ./dev.sh --lighthouse"
-            echo "    → Weekly update: Lighthouse rosters + Training/GroupMe sync"
+            echo "  ./dev.sh --reparse"
+            echo "    → After fixing HTML parsers: Re-generate SQL from cached HTML"
+            echo ""
+            echo "  ./dev.sh --rescrape"
+            echo "    → Weekly update: Fetch fresh data from APSL/CASA websites"
             exit 0
             ;;
         *)
             echo -e "${RED}Unknown option: $arg${NC}"
-            echo "Valid options: --lighthouse, --apsl, --casa, --groupme, --venues, --backend-only, --production, --wipe-u, --help"
+            echo "Valid options: --rescrape, --reparse, --backend-only, --production, --wipe-u, --wipe-p, --help"
             exit 1
             ;;
     esac
 done
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# FAST PATH: DISCOVERY MODE (scrape structure only, skip rebuild)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-if [ "$DISCOVER_MODE" = true ]; then
-    echo -e "${BLUE}========================================${NC}"
-    echo -e "${BLUE}Football Home - Discovery Mode${NC}"
-    echo -e "${BLUE}========================================${NC}"
-    echo ""
-    echo -e "${YELLOW}🔍 Discovery mode: Scraping structure only (no DB writes)${NC}"
-    echo ""
-    
-    # Install dependencies
-    echo -e "${YELLOW}📦 Installing npm dependencies...${NC}"
-    npm install --silent
-    
-    # Run scraper(s) in discovery mode
-    if [ -n "$APSL_SCRAPE_MODE" ]; then
-        echo -e "${YELLOW}📊 Discovering APSL structure...${NC}"
-        MODE_LOWER=$(echo "$APSL_SCRAPE_MODE" | tr '[:upper:]' '[:lower:]')
-        CMD="node database/scripts/index.js apsl $MODE_LOWER --discover"
-        if [ "$APSL_SCRAPE_MODE" = "lighthouse" ]; then
-            CMD="$CMD --team Lighthouse"
-        fi
-        echo "  Running: $CMD"
-        $CMD
-        echo ""
-    fi
-    
-    if [ -n "$CASA_SCRAPE_MODE" ]; then
-        echo -e "${YELLOW}📋 Discovering CASA structure...${NC}"
-        MODE_LOWER=$(echo "$CASA_SCRAPE_MODE" | tr '[:upper:]' '[:lower:]')
-        CMD="node database/scripts/index.js casa $MODE_LOWER --discover"
-        if [ "$CASA_SCRAPE_MODE" = "lighthouse" ]; then
-            CMD="$CMD --team Lighthouse"
-        fi
-        echo "  Running: $CMD"
-        $CMD
-        echo ""
-    fi
-    
-    echo -e "${GREEN}✓ Discovery complete${NC}"
-    echo ""
-    echo "Next steps:"
-    echo "  1. Review the structure output above"
-    echo "  2. Create/update static SQL files (020-023) manually"
-    echo "  3. Run normal scrape mode to populate match/roster data"
-    exit 0
-fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # FAST PATH: BACKEND REBUILD ONLY
@@ -308,19 +214,15 @@ echo -e "${YELLOW}📋 Plan:${NC}"
 echo "  ✓ Delete all containers and volumes (fresh database)"
 echo "  ✓ Clear Docker build cache"
 echo "  ✓ Rebuild all images (cache dependencies, rebuild app code)"
-echo "  ✓ All database init scripts will run (including admin data)"
-if [ -n "$APSL_SCRAPE_MODE" ]; then
-    echo "  ✓ Scrape APSL (Mode: $APSL_SCRAPE_MODE, includes schedules)"
+if [ "$RESCRAPE" = true ]; then
+    echo "  ✓ Fetch live websites → save HTML cache"
+    echo "  ✓ Parse HTML → regenerate SQL files"
+elif [ "$REPARSE" = true ]; then
+    echo "  ✓ Parse cached HTML → regenerate SQL files"
+else
+    echo "  ✓ Use committed SQL files (no scraping/parsing)"
 fi
-if [ -n "$CASA_SCRAPE_MODE" ]; then
-    echo "  ✓ Scrape CASA (Mode: $CASA_SCRAPE_MODE)"
-fi
-if [ "$VENUE_SCRAPE" = true ]; then
-    echo "  ✓ Scrape Google venues"
-fi
-if [ "$GROUPME_MODE" = "all" ]; then
-    echo "  ✓ GroupMe: All 4 Lighthouse chats (Training, APSL, Boys Club, Old Timers)"
-fi
+echo "  ✓ Load all database init scripts"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -330,81 +232,28 @@ echo -e "${YELLOW}📦 Installing npm dependencies...${NC}"
 npm install --silent
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 1: SCRAPE (if requested)
+# STEP 1: SCRAPE/PARSE (if requested)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # ──────────────────────────────────────────────────────────────────
-    # APSL League Scraping (OOP)
-    # ──────────────────────────────────────────────────────────────────
-    if [ -n "$APSL_SCRAPE_MODE" ]; then
-        echo -e "${YELLOW}📊 Step 1a: Scraping APSL (Mode: $APSL_SCRAPE_MODE)...${NC}"
-        
-        # Convert mode to lowercase for OOP CLI
-        MODE_LOWER=$(echo "$APSL_SCRAPE_MODE" | tr '[:upper:]' '[:lower:]')
-        
-        # Build command with actual mode (always include schedules)
-        CMD="node database/scripts/index.js apsl $MODE_LOWER --schedules"
-        
-        # Add --discover flag if discovery mode
-        if [ "$DISCOVER_MODE" = true ]; then
-            CMD="$CMD --discover"
-        fi
-        
-        # Add --team filter if lighthouse mode
-        if [ "$APSL_SCRAPE_MODE" = "lighthouse" ]; then
-            CMD="$CMD --team Lighthouse"
-        fi
-        
-        echo "  Running: $CMD"
-        $CMD
-        echo -e "${GREEN}✓ APSL scraping complete ($APSL_SCRAPE_MODE)${NC}"
-        echo ""
-    fi
 
-    # ──────────────────────────────────────────────────────────────────
-    # CASA League Scraping (OOP)
-    # ──────────────────────────────────────────────────────────────────
-    if [ -n "$CASA_SCRAPE_MODE" ]; then
-        echo -e "${YELLOW}📋 Step 1b: Scraping CASA (Mode: $CASA_SCRAPE_MODE)...${NC}"
-        
-        # Convert mode to lowercase for OOP CLI
-        MODE_LOWER=$(echo "$CASA_SCRAPE_MODE" | tr '[:upper:]' '[:lower:]')
-        
-        # Build command with options
-        CMD="node database/scripts/index.js casa $MODE_LOWER"
-        
-        # Always include schedules for CASA (has calendar data)
-        CMD="$CMD --schedules"
-        
-        # Add --discover flag if discovery mode
-        if [ "$DISCOVER_MODE" = true ]; then
-            CMD="$CMD --discover"
-        fi
-        
-        # Add --team filter if lighthouse mode
-        if [ "$CASA_SCRAPE_MODE" = "lighthouse" ]; then
-            CMD="$CMD --team Lighthouse"
-        fi
-        
-        echo "  Running: $CMD"
-        $CMD
-        echo -e "${GREEN}✓ CASA scraping complete ($CASA_SCRAPE_MODE)${NC}"
-        echo ""
-    fi
+if [ "$RESCRAPE" = true ]; then
+    echo -e "${YELLOW}🌐 Step 1: Scraping live websites...${NC}"
+    echo "  → APSL: Fetching from apslsoccer.com..."
+    node database/scripts/index.js apsl full --fetch
+    echo "  → CASA: Fetching from casasoccerleagues.com..."
+    node database/scripts/index.js casa full --fetch
+    echo -e "${GREEN}✓ HTML cached to database/scraped-html/${NC}"
+    echo ""
+fi
 
-    # ──────────────────────────────────────────────────────────────────
-    # Google Places Venue Scraping (OOP)
-    # ──────────────────────────────────────────────────────────────────
-    if [ "$VENUE_SCRAPE" = true ]; then
-        echo -e "${YELLOW}📍 Step 1c: Scraping Google Places Venues...${NC}"
-        
-        # Philadelphia area default
-        CMD="node database/scripts/index.js venues full --location 39.9526,-75.1652 --radius 50000"
-        
-        echo "  Running: $CMD"
-        $CMD
-        echo -e "${GREEN}✓ Venue scraping complete${NC}"
-        echo ""
-    fi
+if [ "$REPARSE" = true ]; then
+    echo -e "${YELLOW}🔍 Step 1b: Parsing HTML → generating SQL...${NC}"
+    echo "  → APSL: Parsing cached HTML..."
+    node database/scripts/index.js apsl full --parse
+    echo "  → CASA: Parsing cached HTML..."
+    node database/scripts/index.js casa full --parse
+    echo -e "${GREEN}✓ SQL files regenerated in database/data/${NC}"
+    echo ""
+fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # STEP 2: CLEAN EVERYTHING (ALWAYS - ensures fresh database on every run)
@@ -652,48 +501,9 @@ echo ""
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 echo -e "${YELLOW}⏰ Step 6: Setting up pg_cron...${NC}"
-$DOCKER_COMPOSE exec -T db bash /docker-entrypoint-initdb.d/ZZ-pg-cron-setup.sh 2>/dev/null || true
+$DOCKER_COMPOSE exec -T db bash /docker-entrypoint-initdb.d/999-pg-cron-setup.sh 2>/dev/null || true
 echo -e "${GREEN}✓ pg_cron configured${NC}"
 echo ""
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 7: GROUPME CHAT IMPORTS (Chat-specific)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-if [ "$GROUPME_MODE" = "all" ]; then
-    echo -e "${YELLOW}💬 Step 7: GroupMe Chats (4 Lighthouse chats)...${NC}"
-    
-    # Check GroupMe token
-    GROUPME_TOKEN_EXISTS=false
-    if grep -q "GROUPME_ACCESS_TOKEN=" env 2>/dev/null; then
-        GROUPME_TOKEN_EXISTS=true
-    fi
-    
-    if [ "$GROUPME_TOKEN_EXISTS" = true ]; then
-        # APSL Lighthouse Chat (Group ID: 109785985)
-        echo "  7a: APSL Lighthouse Chat..."
-        node database/scripts/index.js groupme-apsl full --schedules
-        echo -e "${GREEN}  ✓ APSL Lighthouse chat imported${NC}"
-        
-        # Training Lighthouse Chat (Group ID: 108640377)
-        echo "  7b: Training Lighthouse Chat..."
-        node database/scripts/index.js groupme-training full --schedules
-        echo -e "${GREEN}  ✓ Training Lighthouse chat imported${NC}"
-        
-        # Lighthouse Boys Club Liga 1 Chat (Group ID: 109786182)
-        echo "  7c: Lighthouse Boys Club Liga 1 Chat..."
-        node database/scripts/index.js groupme-boys-club full --schedules
-        echo -e "${GREEN}  ✓ Boys Club chat imported${NC}"
-        
-        # Lighthouse Old Timers Club Liga 2 Chat (Group ID: 109786278)
-        echo "  7d: Lighthouse Old Timers Club Liga 2 Chat..."
-        node database/scripts/index.js groupme-old-timers full --schedules
-        echo -e "${GREEN}  ✓ Old Timers chat imported${NC}"
-    else
-        echo -e "${YELLOW}⚠ GROUPME_ACCESS_TOKEN not set in env - skipping GroupMe imports${NC}"
-    fi
-    echo ""
-fi
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # DONE
@@ -707,3 +517,17 @@ echo "Frontend:  http://localhost:3000"
 echo "Backend:   http://localhost:3001"
 echo ""
 echo "Login: soccer@lighthouse1893.org / 1893Soccer!"
+echo ""
+if [ "$RESCRAPE" = true ]; then
+    echo -e "${YELLOW}📁 Generated files:${NC}"
+    echo "  → database/scraped-html/apsl/ (HTML cache)"
+    echo "  → database/scraped-html/casa/ (HTML cache)"
+    echo "  → database/data/028-*.sql (teams)"
+    echo "  → database/data/040-*.sql (players)"
+    echo "  → database/data/050-*.sql (matches)"
+elif [ "$REPARSE" = true ]; then
+    echo -e "${YELLOW}📁 Regenerated files:${NC}"
+    echo "  → database/data/028-*.sql (teams)"
+    echo "  → database/data/040-*.sql (players)"
+    echo "  → database/data/050-*.sql (matches)"
+fi
