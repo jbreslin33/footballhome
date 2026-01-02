@@ -719,6 +719,53 @@ class ApslHtmlParser extends HtmlParser {
   }
 
   /**
+   * Parse match info from APSL event page
+   * Returns: { homeTeam, awayTeam, homeScore, awayScore, matchDate }
+   */
+  parseMatchInfo() {
+    try {
+      // Find team names and scores
+      const clubBoxes = this.querySelectorAll('.Club_Box_Name');
+      if (clubBoxes.length < 2) {
+        return null;
+      }
+      
+      const homeTeam = clubBoxes[0]?.textContent.trim();
+      const awayTeam = clubBoxes[1]?.textContent.trim();
+      
+      // Find score (format: "1-1" or "0-0")
+      const scoreElements = this.querySelectorAll('div[style*="border:1px solid #ccc"]');
+      let homeScore = null;
+      let awayScore = null;
+      
+      for (const el of scoreElements) {
+        const text = el.textContent.trim();
+        const scoreMatch = text.match(/(\d+)-(\d+)/);
+        if (scoreMatch) {
+          homeScore = parseInt(scoreMatch[1]);
+          awayScore = parseInt(scoreMatch[2]);
+          break;
+        }
+      }
+      
+      if (!homeTeam || !awayTeam) {
+        return null;
+      }
+      
+      return {
+        homeTeam,
+        awayTeam,
+        homeScore,
+        awayScore,
+        matchDate: null // APSL event pages don't show date; we'll need to get from external source or filename
+      };
+    } catch (error) {
+      console.error(`Failed to parse match info: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
    * Split player name into first/last
    */
   static splitName(fullName) {
