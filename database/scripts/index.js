@@ -59,6 +59,144 @@ const location = locationIndex >= 0 && args[locationIndex + 1]
 const radiusIndex = args.indexOf('--radius');
 const radius = radiusIndex >= 0 && args[radiusIndex + 1] ? parseInt(args[radiusIndex + 1]) : null;
 
+/**
+ * Fetch HTML from live websites for all targets
+ */
+async function fetchTargets(targets) {
+  const PuppeteerFetcher = require('./fetchers/PuppeteerFetcher');
+  const CacheManager = require('./services/CacheManager');
+  const path = require('path');
+  
+  const fetcher = new PuppeteerFetcher({ timeout: 30000 });
+  
+  let successCount = 0;
+  let failCount = 0;
+  
+  for (const target of targets) {
+    try {
+      // Determine cache directory based on source system
+      const sourceDir = target.source_system_name ? target.source_system_name.toLowerCase() : 'reference';
+      const cacheDir = path.join(__dirname, '../scraped-html', sourceDir);
+      const cache = new CacheManager(cacheDir, fetcher, 24);
+      
+      // Generate filename from URL
+      const urlObj = new URL(target.url);
+      const filename = `${target.target_type}-${urlObj.pathname.replace(/\//g, '_').replace(/^_/, '')}-${urlObj.search.replace(/\?/, '').replace(/[&=]/g, '_')}.html`;
+      
+      console.log(`📥 Fetching: ${target.description}`);
+      console.log(`   URL: ${target.url}`);
+      console.log(`   Cache: ${filename}`);
+      
+      // Fetch with force refresh (forceRefresh=true)
+      const html = await cache.fetch(target.url, true);
+      
+      console.log(`   ✅ Downloaded ${(html.length / 1024).toFixed(1)} KB\n`);
+      successCount++;
+      
+    } catch (error) {
+      console.error(`   ❌ Failed: ${error.message}\n`);
+      failCount++;
+    }
+  }
+  
+  await fetcher.close();
+  
+  console.log(`\n📊 Fetch Summary: ${successCount} succeeded, ${failCount} failed`);
+}
+
+/**
+ * Parse cached HTML and generate SQL files
+ */
+async function parseTargets(targets) {
+  const ApslHtmlParser = require('./parsers/ApslHtmlParser');
+  const CasaHtmlParser = require('./parsers/CasaHtmlParser');
+  const SqlGenerator = require('./services/SqlGenerator');
+  const path = require('path');
+  const fs = require('fs').promises;
+  
+  const sqlGenerator = new SqlGenerator();
+  
+  // Group targets by source system
+  const targetsBySource = targets.reduce((acc, target) => {
+    const source = target.source_system_name || 'reference';
+    if (!acc[source]) acc[source] = [];
+    acc[source].push(target);
+    return acc;
+  }, {});
+  
+  // Process each source system
+  for (const [sourceName, sourceTargets] of Object.entries(targetsBySource)) {
+    console.log(`\n📊 Processing ${sourceName.toUpperCase()} (${sourceTargets.length} targets)`);
+    
+    if (sourceName === 'apsl') {
+      await parseApslTargets(sourceTargets, sqlGenerator);
+    } else if (sourceName === 'casa') {
+      await parseCasaTargets(sourceTargets, sqlGenerator);
+    } else {
+      console.log(`   ⚠️  No parser implemented for ${sourceName} yet`);
+    }
+  }
+}
+
+/**
+ * Parse APSL targets (standings page contains all data)
+ */
+async function parseApslTargets(targets, sqlGenerator) {
+  const ApslHtmlParser = require('./parsers/ApslHtmlParser');
+  const path = require('path');
+  const fs = require('fs').promises;
+  
+  const parser = new ApslHtmlParser();
+  const cacheDir = path.join(__dirname, '../scraped-html/apsl');
+  
+  // APSL only has one target: the standings page
+  const standingsTarget = targets.find(t => t.target_type === 'league_structure');
+  if (!standingsTarget) {
+    console.log('   ⚠️  No league_structure target found for APSL');
+    return;
+  }
+  
+  try {
+    // Find the cached HTML file
+    const files = await fs.readdir(cacheDir);
+    const htmlFile = files.find(f => f.includes('league_structure') && f.endsWith('.html'));
+    
+    if (!htmlFile) {
+      console.log('   ❌ No cached HTML found. Run with --fetch first.');
+      return;
+    }
+    
+    const htmlPath = path.join(cacheDir, htmlFile);
+    const html = await fs.readFile(htmlPath, 'utf-8');
+    
+    console.log(`   📄 Parsing: ${htmlFile}`);
+    
+    // Parse structure
+    const structure = parser.parseStandings(html);
+    
+    console.log(`   ✅ Parsed: ${structure.conferences?.length || 0} conferences, ${structure.divisions?.length || 0} divisions`);
+    console.log(`   ⚠️  SQL generation not yet implemented`);
+    
+  } catch (error) {
+    console.error(`   ❌ Parse error: ${error.message}`);
+  }
+}
+
+/**
+ * Parse CASA targets (rosters, schedules, standings)
+ */
+async function parseCasaTargets(targets, sqlGenerator) {
+  const CasaHtmlParser = require('./parsers/CasaHtmlParser');
+  const path = require('path');
+  const fs = require('fs').promises;
+  
+  const parser = new CasaHtmlParser();
+  const cacheDir = path.join(__dirname, '../scraped-html/casa');
+  
+  console.log(`   ⚠️  CASA parser not yet implemented`);
+  console.log(`   TODO: Parse ${targets.length} targets (rosters, schedules, standings)`);
+}
+
 async function main() {
   try {
     // NEW DATABASE-DRIVEN MODE
@@ -75,19 +213,19 @@ async function main() {
           process.exit(1);
         }
         
-        console.log(`Found ${targets.length} active scrape targets:\n`);
-        targets.forEach(t => {
-          console.log(`  • ${t.source_system_name || 'N/A'} - ${t.target_type}: ${t.description}`);
-        });
+        console.log(`Found ${targets.length} active scrape targets`);
         
-        console.log('\n⚠️  Scraping logic not yet implemented');
-        console.log('    Next steps:');
-        console.log('    1. Map target URLs to appropriate scrapers');
-        console.log('    2. For --fetch: Download HTML using fetchers');
-        console.log('    3. For --parse: Parse HTML using parsers');
-        console.log('\n    Current workaround:');
-        console.log('    node index.js apsl full --schedules');
-        console.log('    node index.js casa full --schedules\n');
+        if (fetchMode) {
+          console.log('\n📥 FETCH MODE: Downloading HTML from live websites...\n');
+          await fetchTargets(targets);
+        }
+        
+        if (parseMode) {
+          console.log('\n📊 PARSE MODE: Parsing cached HTML and generating SQL...\n');
+          await parseTargets(targets);
+        }
+        
+        console.log('\n✨ Database-driven scraping completed successfully.');
         
       } catch (error) {
         console.error(`\n❌ Database error: ${error.message}`);
