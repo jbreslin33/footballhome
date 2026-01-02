@@ -293,8 +293,8 @@ CREATE TABLE governing_bodies (
     name VARCHAR(255) NOT NULL,
     short_name VARCHAR(50),
     website_url TEXT,
-    country_id INTEGER REFERENCES countries(id),
-    state_id INTEGER REFERENCES states(id),
+    country_code VARCHAR(3),  -- ISO 3166-1 alpha-3 country code
+    state_code VARCHAR(10),   -- State/province code
     description TEXT,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -302,7 +302,7 @@ CREATE TABLE governing_bodies (
 );
 
 CREATE INDEX idx_governing_bodies_scope ON governing_bodies(scope_id);
-CREATE INDEX idx_governing_bodies_country ON governing_bodies(country_id);
+CREATE INDEX idx_governing_bodies_country ON governing_bodies(country_code);
 CREATE INDEX idx_governing_bodies_state ON governing_bodies(state_id);
 
 CREATE TABLE governing_body_relationships (

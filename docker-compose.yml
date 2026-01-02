@@ -18,7 +18,7 @@ services:
       # Mount data folder to neutral location to prevent auto-loading
       - ./database/data:/app/data:ro
       # Mount only the loader script to initdb.d
-      - ./database/data/01-load-data.sh:/docker-entrypoint-initdb.d/01-load-data.sh:ro
+      - ./database/data/001-load-data.sh:/docker-entrypoint-initdb.d/001-load-data.sh:ro
       # Persistent data storage
       - db_data:/var/lib/postgresql/data
     networks:

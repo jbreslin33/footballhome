@@ -1,5 +1,28 @@
--- Link external_identities to users based on team context and name/email matching
--- This script runs after all data is loaded and handles auto-linking of external records
+-- Post-Load Processing
+-- This script runs after all scraped data is loaded
+-- Handles: external identity linking, coach assignments, and other post-scrape setup
+
+-- ============================================================================
+-- SECTION 1: Assign Coaches to Teams
+-- ============================================================================
+
+-- Assign James Breslin as head coach to all Lighthouse teams
+INSERT INTO team_coaches (team_id, coach_id, coach_role_id, is_active)
+SELECT 
+    t.id,
+    1,  -- coach_id=1 (James Breslin from coaches table)
+    1,  -- coach_role_id=1 (head_coach from coach_roles lookup)
+    true
+FROM teams t
+JOIN sport_divisions sd ON t.sport_division_id = sd.id
+JOIN clubs c ON sd.club_id = c.id
+WHERE c.slug = 'lighthouse-1893-sc'
+ON CONFLICT (team_id, coach_id) DO NOTHING;
+
+-- ============================================================================
+-- SECTION 2: Link External Identities to Users
+-- ============================================================================
+-- Auto-link external records (GroupMe, etc.) to Football Home users
 -- Priority order: team+name match, then email match, then leave unlinked for manual resolution
 
 -- Priority 1: Link by team_id + first_name + last_name match (most reliable)
