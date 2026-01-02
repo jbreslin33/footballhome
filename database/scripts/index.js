@@ -406,40 +406,29 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
       });
       
       lines.push(...personLines);
-      lines.push('  RETURNING id, first_name, last_name');
+      lines.push('  RETURNING id');
       lines.push('),');
-      lines.push('numbered_persons AS (');
-      lines.push('  SELECT id, first_name, last_name,');
-      lines.push('    ROW_NUMBER() OVER (ORDER BY id) as row_num');
+      lines.push('indexed_persons AS (');
+      lines.push('  SELECT id, ROW_NUMBER() OVER (ORDER BY id) as row_num');
       lines.push('  FROM inserted_persons');
-      lines.push('),');
-      lines.push('player_data AS (');
-      lines.push('  VALUES');
-      
-      allPlayerRecords.forEach((p, idx) => {
-        const rowNum = idx + 1;
-        const isLast = idx === allPlayerRecords.length - 1;
-        lines.push(`    (${rowNum}, '${p.firstName}', '${p.lastName}', '${p.externalId}')${isLast ? '' : ','}`);
-      });
-      
       lines.push('),');
       lines.push('inserted_players AS (');
       lines.push('  INSERT INTO players (person_id, source_system_id, external_id)');
       lines.push('  SELECT');
-      lines.push('    np.id,');
+      lines.push('    ip.id,');
       lines.push('    1,  -- source_system_id (APSL)');
-      lines.push('    pd.external_id');
-      lines.push('  FROM numbered_persons np');
-      lines.push('  JOIN (SELECT * FROM (VALUES');
+      lines.push('    external_ids.external_id');
+      lines.push('  FROM indexed_persons ip');
+      lines.push('  JOIN (');
+      lines.push('    SELECT ROW_NUMBER() OVER () as row_num, external_id FROM (VALUES');
       
       allPlayerRecords.forEach((p, idx) => {
-        const rowNum = idx + 1;
         const isLast = idx === allPlayerRecords.length - 1;
-        lines.push(`    (${rowNum}, '${p.firstName}', '${p.lastName}', '${p.externalId}')${isLast ? '' : ','}`);
+        lines.push(`      ('${p.externalId}')${isLast ? '' : ','}`);
       });
       
-      lines.push('  ) AS t(row_num, first_name, last_name, external_id)) pd');
-      lines.push('  ON np.row_num = pd.row_num');
+      lines.push('    ) AS t(external_id)');
+      lines.push('  ) external_ids ON ip.row_num = external_ids.row_num');
       lines.push('  ON CONFLICT (source_system_id, external_id) DO UPDATE SET');
       lines.push('    person_id = EXCLUDED.person_id');
       lines.push('  RETURNING id, external_id');
