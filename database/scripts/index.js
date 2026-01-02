@@ -142,6 +142,8 @@ async function parseTargets(targets) {
  */
 async function parseApslTargets(targets, sqlGenerator) {
   const ApslHtmlParser = require('./parsers/ApslHtmlParser');
+  const PuppeteerFetcher = require('./fetchers/PuppeteerFetcher');
+  const CacheManager = require('./services/CacheManager');
   const path = require('path');
   const fs = require('fs').promises;
   
@@ -183,8 +185,49 @@ async function parseApslTargets(targets, sqlGenerator) {
     
     console.log(`   ✅ Parsed ${conferences.length} conferences`);
     
-    // Generate SQL for conferences, divisions, and teams
-    await generateApslSql(conferences, parser);
+    // Extract team links from standings page
+    const teamLinks = parser.parseTeamLinks();
+    console.log(`   📋 Found ${teamLinks.length} team links to fetch`);
+    
+    // Fetch and parse each team's roster and schedule
+    const fetcher = new PuppeteerFetcher({ timeout: 30000 });
+    const cache = new CacheManager(cacheDir, fetcher, 24);
+    const allPlayers = [];
+    const allMatches = [];
+    
+    for (let i = 0; i < teamLinks.length; i++) {
+      const team = teamLinks[i];
+      console.log(`   [${i + 1}/${teamLinks.length}] ${team.name}...`);
+      
+      try {
+        // Fetch roster page
+        const rosterUrl = `https://apslsoccer.com${team.url}`;
+        const rosterHtml = await cache.fetch(rosterUrl, false); // Use cache if available
+        
+        // Parse roster
+        const rosterParser = new ApslHtmlParser();
+        rosterParser.parse(rosterHtml);
+        const playerStats = rosterParser.parsePlayerStats();
+        
+        // Add team context to players
+        playerStats.forEach(p => {
+          p.team_name = team.name;
+          p.apsl_team_id = team.apsl_team_id;
+        });
+        
+        allPlayers.push(...playerStats);
+        
+      } catch (error) {
+        console.log(`      ⚠️  Failed to fetch roster: ${error.message}`);
+      }
+    }
+    
+    await fetcher.close();
+    
+    console.log(`   ✅ Collected ${allPlayers.length} players from ${teamLinks.length} teams`);
+    
+    // Generate SQL for teams, players, and matches
+    await generateApslSql(conferences, parser, allPlayers, allMatches);
     
   } catch (error) {
     console.error(`   ❌ Parse error: ${error.message}`);
@@ -195,7 +238,7 @@ async function parseApslTargets(targets, sqlGenerator) {
 /**
  * Generate SQL files for APSL scraped data
  */
-async function generateApslSql(conferences, parser) {
+async function generateApslSql(conferences, parser, allPlayers, allMatches) {
   const path = require('path');
   const fs = require('fs').promises;
   
@@ -216,20 +259,14 @@ async function generateApslSql(conferences, parser) {
   
   // Division IDs (match existing manual SQL IDs 1-8)
   const divisionMap = {
-    1: 1, // Mayflower -> Division 1
-    2: 2, // Constitution -> Division 2
-    3: 3, // Metropolitan -> Division 3
-    4: 4, // Delaware River -> Division 4
-    5: 5, // Mid-Atlantic -> Division 5
-    6: 6, // Terminus -> Division 6
-    7: 7, // Pine Tree -> Division 7
-    8: 8  // Trinity -> Division 8
+    1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8
   };
   
   const teams = [];
   let teamIdCounter = 1000; // Start team IDs at 1000 to avoid conflicts
+  const teamNameToId = new Map(); // Map team names to IDs
   
-  // Process each conference
+  // Process each conference to build teams list
   for (const conf of conferences) {
     const conferenceId = conferenceMap[conf.name];
     if (!conferenceId) {
@@ -238,19 +275,17 @@ async function generateApslSql(conferences, parser) {
     }
     
     const divisionId = divisionMap[conferenceId];
-    
-    // Parse standings table to get teams
     const standings = parser.parseStandingsTable(conf.table);
     
     console.log(`      • ${conf.name}: ${standings.length} teams`);
     
-    // Generate team records
     for (const standing of standings) {
+      const teamId = teamIdCounter++;
+      teamNameToId.set(standing.team, teamId);
       teams.push({
-        id: teamIdCounter++,
+        id: teamId,
         division_id: divisionId,
         name: standing.team,
-        // Store standings stats (will need separate team_stats table in future)
         notes: `GP:${standing.gp} W:${standing.w} T:${standing.t} L:${standing.l} GF:${standing.gf} GA:${standing.ga} Pts:${standing.pts}`
       });
     }
@@ -291,14 +326,62 @@ async function generateApslSql(conferences, parser) {
     lines.push('  is_active = EXCLUDED.is_active;');
     lines.push('');
     
-    // TODO: Store standings stats in a separate team_stats table
-    lines.push('-- TODO: Store standings stats (GP, W, T, L, GF, GA, Pts) in team_stats table');
-    lines.push('');
-    
     const sqlPath = path.join(dataDir, '028-apsl-teams-scraped.sql');
     await fs.writeFile(sqlPath, lines.join('\n'), 'utf-8');
     
     console.log(`   ✅ Generated SQL: 028-apsl-teams-scraped.sql (${teams.length} teams)`);
+  }
+  
+  // Generate players SQL file
+  if (allPlayers.length > 0) {
+    const lines = [];
+    lines.push('-- APSL Players (Scraped Data)');
+    lines.push('-- Generated by database-driven scraper from apslsoccer.com');
+    lines.push('-- This file is regenerated on each scrape - do not edit manually');
+    lines.push('');
+    
+    let playerIdCounter = 10000;
+    const playerLines = [];
+    const teamPlayerLines = [];
+    
+    for (const player of allPlayers) {
+      const teamId = teamNameToId.get(player.team_name);
+      if (!teamId) {
+        console.log(`   ⚠️  Unknown team for player: ${player.team_name}`);
+        continue;
+      }
+      
+      const playerId = playerIdCounter++;
+      
+      // Player record
+      playerLines.push(`  (${playerId}, '${player.name.replace(/'/g, "''")}', 1)`);
+      
+      // Team-player association with stats
+      teamPlayerLines.push(`  (${teamId}, ${playerId}, ${player.goals || 0}, ${player.assists || 0})`);
+    }
+    
+    if (playerLines.length > 0) {
+      lines.push('-- Insert players');
+      lines.push('INSERT INTO players (id, full_name, source_system_id) VALUES');
+      lines.push(playerLines.map((line, idx) => line + (idx === playerLines.length - 1 ? '' : ',')).join('\n'));
+      lines.push('ON CONFLICT (id) DO UPDATE SET');
+      lines.push('  full_name = EXCLUDED.full_name,');
+      lines.push('  source_system_id = EXCLUDED.source_system_id;');
+      lines.push('');
+      
+      lines.push('-- Link players to teams with season stats');
+      lines.push('INSERT INTO team_players (team_id, player_id, goals, assists) VALUES');
+      lines.push(teamPlayerLines.map((line, idx) => line + (idx === teamPlayerLines.length - 1 ? '' : ',')).join('\n'));
+      lines.push('ON CONFLICT (team_id, player_id) DO UPDATE SET');
+      lines.push('  goals = EXCLUDED.goals,');
+      lines.push('  assists = EXCLUDED.assists;');
+      lines.push('');
+      
+      const sqlPath = path.join(dataDir, '029-apsl-players-scraped.sql');
+      await fs.writeFile(sqlPath, lines.join('\n'), 'utf-8');
+      
+      console.log(`   ✅ Generated SQL: 029-apsl-players-scraped.sql (${playerLines.length} players)`);
+    }
   }
 }
 

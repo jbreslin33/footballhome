@@ -116,5 +116,3 @@ INSERT INTO team_divisions (team_id, division_id, is_active) VALUES
   (1051, 6, true)
 ON CONFLICT (team_id, division_id) DO UPDATE SET
   is_active = EXCLUDED.is_active;
-
--- TODO: Store standings stats (GP, W, T, L, GF, GA, Pts) in team_stats table
