@@ -16,15 +16,15 @@
 #   
 #   3. ./dev.sh --rescrape
 #      → Fetch live websites → save HTML → parse → generate SQL
-#      → Data: Live APSL/CASA websites
+#      → Data: Live websites (defined in scrape_targets table)
 #      → Slowest: network calls + parsing (auto-implies --reparse)
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# SCRAPERS (database/scripts/index.js):
-#   - ApslScraper       → APSL league (apslsoccer.com)
-#   - CasaScraper       → CASA league (casasoccerleagues.com + Google Sheets)
-#   - GroupMeScraper    → 4 chat implementations (Training, APSL, Boys Club, Old Timers)
-#   - VenueScraper      → Google Places API
+# DATABASE-DRIVEN SCRAPING:
+#   Scrapers read from scrape_targets table (005-scrape-targets.sql)
+#   - No hardcoded league names in dev.sh
+#   - Add new leagues by updating SQL table, not code
+#   - Single source of truth for what to scrape
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Typical Workflows:
@@ -349,7 +349,7 @@ for i in $(seq 1 60); do
     sleep 1
 done
 
-# Wait for backend (includes DB init time - can take 3+ minutes with APSL data)
+# Wait for backend (includes DB init time)
 echo -n "  Backend: "
 for i in $(seq 1 240); do
     if curl -s http://localhost:3001/health > /dev/null 2>&1; then
