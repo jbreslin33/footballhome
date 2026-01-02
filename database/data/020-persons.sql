@@ -13,3 +13,5 @@ VALUES (
     last_name = EXCLUDED.last_name,
     birth_date = EXCLUDED.birth_date;
 
+-- Reset sequence to continue from highest manual ID
+SELECT setval('persons_id_seq', (SELECT MAX(id) FROM persons));
