@@ -395,13 +395,23 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
     const allPlayerRecords = Object.values(playersByTeam).flat();
     
     if (allPlayerRecords.length > 0) {
+      // Deduplicate persons (multiple players can have same name)
+      const uniquePersonsMap = new Map();
+      allPlayerRecords.forEach(p => {
+        const key = `${p.firstName}|${p.lastName}`;
+        if (!uniquePersonsMap.has(key)) {
+          uniquePersonsMap.set(key, { firstName: p.firstName, lastName: p.lastName });
+        }
+      });
+      const uniquePersons = Array.from(uniquePersonsMap.values());
+      
       lines.push('-- Get or create persons');
       lines.push('WITH person_lookup AS (');
       lines.push('  SELECT id, first_name, last_name FROM persons');
       lines.push('  WHERE (first_name, last_name) IN (');
       
-      const personPairs = allPlayerRecords.map((p, idx) => {
-        const isLast = idx === allPlayerRecords.length - 1;
+      const personPairs = uniquePersons.map((p, idx) => {
+        const isLast = idx === uniquePersons.length - 1;
         return `    ('${p.firstName}', '${p.lastName}')${isLast ? '' : ','}`;
       });
       
@@ -412,8 +422,8 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
       lines.push('  INSERT INTO persons (first_name, last_name)');
       lines.push('  SELECT first_name, last_name FROM (VALUES');
       
-      const personValues = allPlayerRecords.map((p, idx) => {
-        const isLast = idx === allPlayerRecords.length - 1;
+      const personValues = uniquePersons.map((p, idx) => {
+        const isLast = idx === uniquePersons.length - 1;
         return `    ('${p.firstName}', '${p.lastName}')${isLast ? '' : ','}`;
       });
       
