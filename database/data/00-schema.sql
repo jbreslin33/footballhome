@@ -608,7 +608,7 @@ CREATE INDEX idx_sport_divisions_club ON sport_divisions(club_id);
 CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
     sport_division_id INTEGER REFERENCES sport_divisions(id),  -- Nullable for external league teams
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
     city VARCHAR(100),
     logo_url TEXT,
     source_system_id INTEGER REFERENCES source_systems(id),
@@ -624,18 +624,32 @@ CREATE TABLE team_divisions (
     id SERIAL PRIMARY KEY,
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
-    source_system_id INTEGER REFERENCES source_systems(id),
-    external_id VARCHAR(100),  -- Source system's identifier for this team-division relationship
     season_id INTEGER,  -- For future: track historical membership
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(team_id, division_id),
-    UNIQUE(source_system_id, external_id)  -- Prevent duplicate external IDs within same source
+    UNIQUE(team_id, division_id)
 );
 
 CREATE INDEX idx_team_divisions_team ON team_divisions(team_id);
 CREATE INDEX idx_team_divisions_division ON team_divisions(division_id);
-CREATE INDEX idx_team_divisions_external ON team_divisions(source_system_id, external_id);
+
+-- Track external IDs for team-division relationships
+CREATE TABLE team_division_external_ids (
+    id SERIAL PRIMARY KEY,
+    team_division_id INTEGER NOT NULL REFERENCES team_divisions(id) ON DELETE CASCADE,
+    source_system_id INTEGER NOT NULL REFERENCES source_systems(id),
+    external_id VARCHAR(255) NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_system_id, external_id)
+);
+
+CREATE INDEX idx_team_division_external_ids_team_division ON team_division_external_ids(team_division_id);
+CREATE INDEX idx_team_division_external_ids_source ON team_division_external_ids(source_system_id, external_id);
+
+COMMENT ON TABLE team_division_external_ids IS 'Tracks external identifiers (e.g., APSL team ID) for team-division relationships';
+COMMENT ON COLUMN team_division_external_ids.external_id IS 'Source system identifier (e.g., "114808" from APSL)';
 
 -- Lookup table for team alias types
 CREATE TABLE alias_types (
@@ -680,16 +694,11 @@ CREATE TABLE players (
     height_cm INTEGER,                      -- Height in centimeters
     nationality VARCHAR(3),                 -- ISO 3166-1 alpha-3 (USA, BRA, MEX)
     photo_url TEXT,
-    source_system_id INTEGER REFERENCES source_systems(id),  -- Where we FIRST learned about this player
-    external_id VARCHAR(100),               -- External system's player ID (first source)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(source_system_id, external_id)  -- Prevent duplicate external IDs within same source
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_players_person ON players(person_id);
-CREATE INDEX idx_players_source ON players(source_system_id);
-CREATE INDEX idx_players_external ON players(source_system_id, external_id);
 
 COMMENT ON TABLE players IS 'Sports role - links persons to soccer player data. Person may or may not have user account.';
 COMMENT ON COLUMN players.person_id IS 'FK to persons table - name and birth_date stored in persons';
@@ -715,21 +724,36 @@ COMMENT ON TABLE player_positions IS 'Positions a player CAN play (general profi
 -- source_system_id tracks WHERE we learned about this roster entry (not the player identity)
 CREATE TABLE team_players (
     id SERIAL PRIMARY KEY,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    team_division_id INTEGER NOT NULL REFERENCES team_divisions(id) ON DELETE CASCADE,
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     jersey_number VARCHAR(10),
-    source_system_id INTEGER REFERENCES source_systems(id),  -- APSL, CASA, Manual, etc.
-    external_id VARCHAR(100),  -- External roster entry ID (if source system provides one)
     is_active BOOLEAN DEFAULT true,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     left_at TIMESTAMP,
-    UNIQUE(team_id, player_id)
+    UNIQUE(team_division_id, player_id)
 );
 
-CREATE INDEX idx_team_players_team ON team_players(team_id);
+CREATE INDEX idx_team_players_team_division ON team_players(team_division_id);
 CREATE INDEX idx_team_players_player ON team_players(player_id);
-CREATE INDEX idx_team_players_source ON team_players(source_system_id);
-CREATE INDEX idx_team_players_active ON team_players(team_id, is_active) WHERE is_active = true;
+CREATE INDEX idx_team_players_active ON team_players(team_division_id, is_active) WHERE is_active = true;
+
+-- Track external IDs for roster entries
+CREATE TABLE team_player_external_ids (
+    id SERIAL PRIMARY KEY,
+    team_player_id INTEGER NOT NULL REFERENCES team_players(id) ON DELETE CASCADE,
+    source_system_id INTEGER NOT NULL REFERENCES source_systems(id),
+    external_id VARCHAR(255) NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_system_id, external_id)
+);
+
+CREATE INDEX idx_team_player_external_ids_team_player ON team_player_external_ids(team_player_id);
+CREATE INDEX idx_team_player_external_ids_source ON team_player_external_ids(source_system_id, external_id);
+
+COMMENT ON TABLE team_player_external_ids IS 'Tracks external identifiers (e.g., APSL roster entry) for team-player relationships';
+COMMENT ON COLUMN team_player_external_ids.external_id IS 'Source system roster entry identifier (e.g., "114808-chris-richards" from APSL)';
 
 -- Position assignments for team rosters (what position they play for THIS specific team)
 CREATE TABLE team_player_positions (
