@@ -21,7 +21,11 @@ const VenueScraper = require('./scrapers/VenueScraper');
 // Parse command line arguments
 const args = process.argv.slice(2);
 
-// Check for aggregate flags
+// Check for new database-driven flags
+const fetchMode = args.includes('--fetch');
+const parseMode = args.includes('--parse');
+
+// Check for aggregate flags (legacy support)
 const runApsl = args.includes('--apsl');
 const runCasa = args.includes('--casa');
 const runGroupMe = args.includes('--groupme');
@@ -56,6 +60,23 @@ const radius = radiusIndex >= 0 && args[radiusIndex + 1] ? parseInt(args[radiusI
 
 async function main() {
   try {
+    // NEW DATABASE-DRIVEN MODE
+    if (fetchMode || parseMode) {
+      console.log('\n🎯 Database-driven mode');
+      console.log('📋 Reading scrape targets from database...\n');
+      
+      // TODO: Read scrape_targets table from database
+      // TODO: For --fetch: Download HTML for each active target
+      // TODO: For --parse: Parse cached HTML and generate SQL
+      
+      console.error('\n⚠️  Database-driven scraping not yet implemented');
+      console.error('    Current implementation uses hardcoded league names');
+      console.error('    Use: node index.js apsl full --schedules');
+      console.error('         node index.js casa full --schedules');
+      process.exit(1);
+    }
+
+    // LEGACY HARDCODED MODE
     const scrapersToRun = [];
 
     // 1. Aggregate Flags
@@ -140,10 +161,11 @@ async function main() {
 
 function printUsage() {
   console.log('\nUsage: node index.js [scraper] [mode] [options]');
-  console.log('       node index.js --apsl [mode] [options]');
-  console.log('       node index.js --casa [mode] [options]');
-  console.log('       node index.js --groupme [mode] [options]');
-  console.log('\nScrapers:');
+  console.log('       node index.js --fetch              # Database-driven: fetch HTML (not yet implemented)');
+  console.log('       node index.js --parse              # Database-driven: parse HTML (not yet implemented)');
+  console.log('       node index.js --apsl [mode]        # Legacy: hardcoded APSL');
+  console.log('       node index.js --casa [mode]        # Legacy: hardcoded CASA');
+  console.log('\nScrapers (Legacy):');
   console.log('  apsl                - APSL Soccer League');
   console.log('  casa                - CASA Soccer League');
   console.log('  groupme-training    - Training Lighthouse chat');
@@ -151,7 +173,7 @@ function printUsage() {
   console.log('  groupme-old-timers  - Lighthouse Old Timers Liga 2 chat');
   console.log('  groupme-apsl        - APSL Lighthouse chat');
   console.log('  venues              - Google Places venues');
-  console.log('\nAggregate Flags:');
+  console.log('\nAggregate Flags (Legacy):');
   console.log('  --apsl              - Run APSL scraper');
   console.log('  --casa              - Run CASA scraper');
   console.log('  --groupme           - Run all GroupMe scrapers');
