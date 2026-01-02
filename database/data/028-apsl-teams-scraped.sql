@@ -57,7 +57,6 @@ WITH inserted_teams AS (
     ('Buckhead SC'),
     ('Alliance SC'),
     ('SC Gwinnett')
-  ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
   RETURNING id, name
 )
 INSERT INTO team_divisions (team_id, division_id, source_system_id, external_id, is_active)

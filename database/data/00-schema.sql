@@ -683,7 +683,8 @@ CREATE TABLE players (
     source_system_id INTEGER REFERENCES source_systems(id),  -- Where we FIRST learned about this player
     external_id VARCHAR(100),               -- External system's player ID (first source)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_system_id, external_id)  -- Prevent duplicate external IDs within same source
 );
 
 CREATE INDEX idx_players_person ON players(person_id);

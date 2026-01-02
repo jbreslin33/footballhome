@@ -117,7 +117,7 @@ async function parseTargets(targets) {
   
   // Group targets by source system
   const targetsBySource = targets.reduce((acc, target) => {
-    const source = target.source_system_name || 'reference';
+    const source = (target.source_system_name || 'reference').toLowerCase();
     if (!acc[source]) acc[source] = [];
     acc[source].push(target);
     return acc;
@@ -480,41 +480,52 @@ async function parseCasaTargets(targets, sqlGenerator) {
   }
 }
 
+/**
+ * Load scrape targets from config file (source of truth)
+ */
+async function loadTargetsFromConfig() {
+  const path = require('path');
+  const fs = require('fs').promises;
+  
+  const configPath = path.join(__dirname, '../scrape-targets.json');
+  
+  try {
+    const configData = await fs.readFile(configPath, 'utf-8');
+    const config = JSON.parse(configData);
+    return config.targets.filter(t => t.is_active);
+  } catch (error) {
+    console.error(`❌ Failed to load scrape-targets.json: ${error.message}`);
+    return [];
+  }
+}
+
 async function main() {
   try {
     // NEW DATABASE-DRIVEN MODE
     if (fetchMode || parseMode) {
       console.log('\n🎯 Database-driven mode');
-      console.log('📋 Reading scrape targets from database...\n');
+      console.log('📋 Reading scrape targets from config...\n');
       
-      try {
-        const targets = await getScrapeTargets();
-        
-        if (targets.length === 0) {
-          console.log('⚠️  No active scrape targets found in database');
-          console.log('    Check: database/data/005-scrape-targets.sql');
-          process.exit(1);
-        }
-        
-        console.log(`Found ${targets.length} active scrape targets`);
-        
-        if (fetchMode) {
-          console.log('\n📥 FETCH MODE: Downloading HTML from live websites...\n');
-          await fetchTargets(targets);
-        }
-        
-        if (parseMode) {
-          console.log('\n📊 PARSE MODE: Parsing cached HTML and generating SQL...\n');
-          await parseTargets(targets);
-        }
-        
-        console.log('\n✨ Database-driven scraping completed successfully.');
-        
-      } catch (error) {
-        console.error(`\n❌ Database error: ${error.message}`);
-        console.error('    Make sure database is running: ./dev.sh');
+      const targets = await loadTargetsFromConfig();
+      
+      if (targets.length === 0) {
+        console.error('❌ No active scrape targets found in database/scrape-targets.json');
         process.exit(1);
       }
+      
+      console.log(`Found ${targets.length} active scrape targets\n`);
+      
+      if (fetchMode) {
+        console.log('📥 FETCH MODE: Downloading HTML from live websites...\n');
+        await fetchTargets(targets);
+      }
+      
+      if (parseMode) {
+        console.log('📊 PARSE MODE: Parsing cached HTML and generating SQL...\n');
+        await parseTargets(targets);
+      }
+      
+      console.log('\n✨ Database-driven scraping completed successfully.');
       
       process.exit(0);
     }
