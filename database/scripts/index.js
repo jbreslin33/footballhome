@@ -395,30 +395,54 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
     const allPlayerRecords = Object.values(playersByTeam).flat();
     
     if (allPlayerRecords.length > 0) {
-      lines.push('WITH inserted_persons AS (');
-      lines.push('  INSERT INTO persons (first_name, last_name) VALUES');
+      lines.push('-- Get or create persons');
+      lines.push('WITH person_lookup AS (');
+      lines.push('  SELECT id, first_name, last_name FROM persons');
+      lines.push('  WHERE (first_name, last_name) IN (');
       
-      const personLines = allPlayerRecords.map((p, idx) => {
+      const personPairs = allPlayerRecords.map((p, idx) => {
         const isLast = idx === allPlayerRecords.length - 1;
         return `    ('${p.firstName}', '${p.lastName}')${isLast ? '' : ','}`;
       });
       
-      lines.push(...personLines);
+      lines.push(...personPairs);
+      lines.push('  )');
+      lines.push('),');
+      lines.push('inserted_persons AS (');
+      lines.push('  INSERT INTO persons (first_name, last_name)');
+      lines.push('  SELECT first_name, last_name FROM (VALUES');
+      
+      const personValues = allPlayerRecords.map((p, idx) => {
+        const isLast = idx === allPlayerRecords.length - 1;
+        return `    ('${p.firstName}', '${p.lastName}')${isLast ? '' : ','}`;
+      });
+      
+      lines.push(...personValues);
+      lines.push('  ) AS v(first_name, last_name)');
+      lines.push('  WHERE NOT EXISTS (');
+      lines.push('    SELECT 1 FROM person_lookup pl');
+      lines.push('    WHERE pl.first_name = v.first_name AND pl.last_name = v.last_name');
+      lines.push('  )');
       lines.push('  RETURNING id, first_name, last_name');
+      lines.push('),');
+      lines.push('all_persons AS (');
+      lines.push('  SELECT * FROM person_lookup');
+      lines.push('  UNION ALL');
+      lines.push('  SELECT * FROM inserted_persons');
       lines.push('),');
       lines.push('inserted_players AS (');
       lines.push('  INSERT INTO players (person_id, source_system_id, external_id)');
       lines.push('  SELECT');
-      lines.push('    ip.id,');
+      lines.push('    ap.id,');
       lines.push('    1,  -- source_system_id (APSL)');
       lines.push('    CASE');
       
       allPlayerRecords.forEach((p, idx) => {
-        lines.push(`      WHEN ip.first_name = '${p.firstName}' AND ip.last_name = '${p.lastName}' THEN '${p.externalId}'`);
+        lines.push(`      WHEN ap.first_name = '${p.firstName}' AND ap.last_name = '${p.lastName}' THEN '${p.externalId}'`);
       });
       
       lines.push('    END');
-      lines.push('  FROM inserted_persons ip');
+      lines.push('  FROM all_persons ap');
       lines.push('  ON CONFLICT (source_system_id, external_id) DO UPDATE SET');
       lines.push('    person_id = EXCLUDED.person_id');
       lines.push('  RETURNING id, external_id');

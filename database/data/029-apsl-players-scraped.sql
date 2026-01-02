@@ -3,8 +3,10 @@
 -- Uses CTEs with RETURNING to get auto-generated IDs
 -- external_id on players tracks source-specific player identity
 
-WITH inserted_persons AS (
-  INSERT INTO persons (first_name, last_name) VALUES
+-- Get or create persons
+WITH person_lookup AS (
+  SELECT id, first_name, last_name FROM persons
+  WHERE (first_name, last_name) IN (
     ('Sahil', 'Banerjee'),
     ('Massimiliano', 'Bruno'),
     ('Kevin Alves', 'Cruz'),
@@ -1578,1589 +1580,3177 @@ WITH inserted_persons AS (
     ('Manuel', 'Simental'),
     ('Mahmoud', 'Tasslak'),
     ('Myles', 'Williams')
+  )
+),
+inserted_persons AS (
+  INSERT INTO persons (first_name, last_name)
+  SELECT first_name, last_name FROM (VALUES
+    ('Sahil', 'Banerjee'),
+    ('Massimiliano', 'Bruno'),
+    ('Kevin Alves', 'Cruz'),
+    ('Ryan', 'Cura'),
+    ('Emilano De La Macorra', 'Cardoso'),
+    ('Jeffery', 'Dietrich'),
+    ('Claudio', 'Dragonetti'),
+    ('Miguel', 'Enriquez'),
+    ('Charles Esber', 'Tavares'),
+    ('Kaven', 'Fitch'),
+    ('Vincenzo', 'Fuentes'),
+    ('Payson', 'Goyette'),
+    ('Pano', 'Haseotes'),
+    ('Aidan', 'Hayes'),
+    ('Samuel', 'Hong'),
+    ('Santiago', 'Kadadihi'),
+    ('George', 'Karafilidis'),
+    ('Jeremy', 'Kim'),
+    ('Eduardo', 'Marquez'),
+    ('Nicolas', 'Martignoni'),
+    ('Evan', 'Mendonca'),
+    ('Pablo', 'Montilla'),
+    ('Lucas Ortega', 'Morales'),
+    ('Nicholas Stephen', 'Pierangeli'),
+    ('Mario Ruiz', 'Perez'),
+    ('Edwin', 'Saravia'),
+    ('Caio', 'Soares'),
+    ('Johner', 'Soe'),
+    ('Luka', 'Szymanski'),
+    ('Ross Lamont', 'Watson'),
+    ('Moises De pina', 'Alves'),
+    ('Jack', 'Aronson'),
+    ('Joao P', 'Carvalho'),
+    ('Mana', 'Chavali'),
+    ('Suri', 'Chavali'),
+    ('Brendan', 'Claflin'),
+    ('Matthew Daniel', 'Cosentino'),
+    ('Patrick', 'Davison'),
+    ('Joao Paulo De Mattos', 'Almeida'),
+    ('Manuel António', 'Depina'),
+    ('Michael', 'Eve'),
+    ('Nicholas', 'Falcone'),
+    ('Jackson', 'Faulx'),
+    ('Luke', 'Hanchar'),
+    ('Oswaldo', 'Hernandez'),
+    ('Martin', 'Konstantinov'),
+    ('Kyle', 'Lasewicz'),
+    ('Surya', 'Mani'),
+    ('Christian', 'Martins'),
+    ('Gilson', 'Martins'),
+    ('Stephen Denis Silva', 'Mendes'),
+    ('Chad', 'Meyers'),
+    ('Charles', 'Miller'),
+    ('Jonathan Ernesto', 'Rodriguez'),
+    ('Carlos', 'Rojas'),
+    ('Jaderson', 'Rutsatz'),
+    ('Alexander', 'Shanley'),
+    ('Griffin', 'Sisk'),
+    ('Daniel', 'Soto'),
+    ('Elisandro', 'Tavares'),
+    ('Nick', 'Winn'),
+    ('Jackson', 'Yager'),
+    ('Mario', 'Amado'),
+    ('Brenner', 'Cardoso'),
+    ('Wendy', 'Celestin'),
+    ('Denilson Barros', 'Centeio'),
+    ('Jacinto', 'Correia'),
+    ('Edson Andarade Da', 'Silva'),
+    ('Fabio Pires Da', 'Silva'),
+    ('Rivaldo Baessa Da', 'Silva'),
+    ('Heracles De Pina', 'Fernandes'),
+    ('Paulo De Pina', 'Goncalves'),
+    ('Valdir', 'Depina'),
+    ('Isandro Fernandes', 'Lopes'),
+    ('Mario Figueroa', 'Garcia'),
+    ('Adilson', 'Gomes'),
+    ('Clayton', 'Gomes'),
+    ('Estevao', 'Gomes'),
+    ('Jair Gomes De', 'Pina'),
+    ('Jose Gomes', 'Rodrigues'),
+    ('Papa', 'Ndiaye'),
+    ('Lucas Nogueira', 'Monteiro'),
+    ('Nima Norouzi', 'Behjat'),
+    ('Imauro', 'Pina'),
+    ('Mauro Pires', 'Amado'),
+    ('Anthony', 'Ramos'),
+    ('Jose Rodrigues', 'Teixeira'),
+    ('Djeison Rodrigues', 'Vieira'),
+    ('Tahir Akil', 'Scott'),
+    ('Ronilson', 'Semedo'),
+    ('Francisco M', 'Silveira'),
+    ('Yassine', 'Smissame'),
+    ('Kevin Sos Santos', 'Barbisa'),
+    ('Domingos', 'Tavares'),
+    ('Edson Irlandino Tavares', 'Dossantos'),
+    ('Elton J', 'Teixeira'),
+    ('Daniel', 'Andrade'),
+    ('Edmilson', 'Andrade'),
+    ('Damian', 'Anerdson'),
+    ('Ronis', 'Ayala'),
+    ('Dominique', 'Baessa'),
+    ('Gio', 'Barros'),
+    ('Justin', 'Barros'),
+    ('Dominek', 'Borden'),
+    ('Edemilson', 'Candida'),
+    ('Kevin', 'Correia'),
+    ('Neil', 'Cunha'),
+    ('Mason', 'Dealmeida'),
+    ('Clayton', 'Demelo'),
+    ('Ethan', 'Demelo'),
+    ('Dawson', 'Dosvais'),
+    ('Zajdele', 'Dulcine'),
+    ('Augustin', 'Edwin'),
+    ('Austin', 'Eugenio'),
+    ('Malaquias Tavares', 'Garcia'),
+    ('Michael', 'Garcia'),
+    ('Damon', 'Greene'),
+    ('Ricardo', 'Macedo'),
+    ('Sam', 'Matias'),
+    ('Dylan', 'Mendes'),
+    ('Jose Carlos "Ze"', 'Mendes'),
+    ('Ethan', 'Paiva'),
+    ('Joey', 'Paiva'),
+    ('Colin', 'Pereira'),
+    ('Jacob', 'Ramos'),
+    ('Rafael', 'Raposo'),
+    ('Dylan', 'Senra'),
+    ('Flavio Joel Soares', 'Carvalho'),
+    ('Christian', 'Sousa'),
+    ('Wilson Omar Amaya', 'Lara'),
+    ('Jessiel Alexander', 'Amparo'),
+    ('Minor Ojanny Angel', 'Merida'),
+    ('Yaw', 'Bediako'),
+    ('Elvino Tavares Da', 'Silva'),
+    ('Delvino Tavares', 'Dasilva'),
+    ('Jamel Anch', 'David'),
+    ('Henry', 'Edeko'),
+    ('Ayoub', 'Essaoui'),
+    ('Jackson', 'Fernandes'),
+    ('Carlos Augusto Gomez', 'Hernandez'),
+    ('Braulio Gonzalez', 'Oliveria'),
+    ('Alejandro Alfonso Guerrero', 'Vargas'),
+    ('Kenneth Jared Ibarra', 'Suarez'),
+    ('Aeshan', 'Kapil'),
+    ('Jesus Gilberto', 'Martinez'),
+    ('Ricosta', 'Mede'),
+    ('Sheventz', 'Multy'),
+    ('Samuel Armando', 'Perez'),
+    ('Aiden Thor', 'Perry'),
+    ('Alex Andrade', 'Pina'),
+    ('Connor', 'Poliquin'),
+    ('Timothy', 'Singleton'),
+    ('Francisco Aron', 'Villacorta'),
+    ('Benjamin', 'Watts'),
+    ('Mo Amine', 'Faleh'),
+    ('Ludwin Daniel', 'Carranza'),
+    ('Albert', 'Daniels'),
+    ('Yassine', 'ElBasli'),
+    ('Eduardo', 'Engst-Mansilla'),
+    ('Kerllon Silva', 'Felipe'),
+    ('Cole', 'Fergusson'),
+    ('Joao Victor', 'Ferreira'),
+    ('Carl', 'Foming'),
+    ('Jackson C', 'Gilstrap'),
+    ('Bernadin', 'Herard'),
+    ('Juan camilo', 'Hernández'),
+    ('Delices', 'Keyri'),
+    ('Hindolo Brima', 'Mansaray'),
+    ('John', 'Massaquoi'),
+    ('Vincent', 'Miller'),
+    ('Hassan', 'Mutaasa'),
+    ('Amadou Moustapha', 'Ndiaye'),
+    ('Carl', 'Olivier'),
+    ('Roodchyl Samuel', 'Pauleon'),
+    ('Jaydon', 'Perez'),
+    ('Joseph', 'Saidu'),
+    ('Destin', 'Sleeter'),
+    ('Pierre St', 'Simon'),
+    ('Isaiah', 'Stessman'),
+    ('Carlos', 'Teixeira'),
+    ('Hamza', 'Tribia'),
+    ('Luiz Gustavo', 'Zanellato'),
+    ('Abraham', 'Zepeda'),
+    ('Mustapha Ait', 'Zbair'),
+    ('Joshua', 'Atemkeng'),
+    ('Ousmane', 'balde'),
+    ('John', 'Brewer'),
+    ('Oscar', 'Castillo'),
+    ('Edmond', 'Charles'),
+    ('Dimitri', 'Costa'),
+    ('Hamza El', 'Amane'),
+    ('Mohamed', 'El-Rhoufi'),
+    ('Hyacinth', 'Fongang'),
+    ('Metayer', 'Gassamar'),
+    ('Abubakar Sidiq', 'Hamidu'),
+    ('Diallo', 'Ibrahima'),
+    ('Ralph Jean', 'Baptiste'),
+    ('Root-mael Jean', 'Baptiste'),
+    ('Cedrick', 'Labah'),
+    ('Bruno', 'Lana'),
+    ('Longtse Mofor', 'Landoh'),
+    ('Roberto', 'Martinez'),
+    ('Quang', 'Milligan'),
+    ('Bonjoh', 'Ngoasong'),
+    ('Sydiney', 'Nyabiosi'),
+    ('Pedro', 'Pedrine'),
+    ('Marc Hattley', 'Pierre'),
+    ('Luvensky', 'Polycarpe'),
+    ('Angelo', 'Ramirez'),
+    ('Emerson', 'Roman'),
+    ('Yostin', 'Roman'),
+    ('Shelton', 'Sidelca'),
+    ('Redwane', 'Tinfle'),
+    ('Nelvin', 'Vando'),
+    ('Jonathan', 'Vazquez'),
+    ('Ethan', 'Vitello'),
+    ('Trevor', 'Voisine'),
+    ('Zamy Youri ', 'Ansley'),
+    ('Meysar', 'Abdulkadir'),
+    ('Joel', 'Agebtossou'),
+    ('Davaughn', 'Anderson'),
+    ('Deante', 'Anderson'),
+    ('Jimmy', 'Arita'),
+    ('Ben', 'Awashie'),
+    ('Alessandro', 'Bacabac'),
+    ('Dejaun', 'Beckford'),
+    ('Joseph', 'Boakye'),
+    ('Alexander', 'Clarke'),
+    ('Caleb', 'Ennin'),
+    ('Tim', 'Ennin'),
+    ('Shaquan', 'Facey'),
+    ('Jahvanni', 'Grant'),
+    ('Elian', 'Guaman'),
+    ('Dax', 'Hoffman'),
+    ('George', 'Jimenez'),
+    ('Gideon', 'Kadiri'),
+    ('Jaheim', 'Kennedy'),
+    ('Brenden', 'Landry'),
+    ('Shani', 'Miller'),
+    ('Kwesi', 'Mills-Odoi'),
+    ('Shemar', 'Moore'),
+    ('Andre', 'Morrison'),
+    ('Yaw', 'Nimo-Agyare'),
+    ('Kenny', 'Ofori'),
+    ('Diwash', 'Pun'),
+    ('Shamar', 'Smith'),
+    ('Sholay', 'Sock'),
+    ('Dane', 'Stephens'),
+    ('Romaine', 'Walters'),
+    ('Colin', 'Branigan'),
+    ('Colin', 'Brocksieper'),
+    ('Nick', 'Burkle'),
+    ('Rocco', 'D’Arcangelo'),
+    ('Massimo', 'Eichner'),
+    ('Eddy', 'Enowbi'),
+    ('Sean', 'Gannon'),
+    ('Andrew Hayden', 'Geres'),
+    ('Donovan', 'Harris'),
+    ('John', 'Hess'),
+    ('Jalen', 'Jean'),
+    ('Eric-Bertin', 'Kalumbwe'),
+    ('Sevon Komlan', 'Koudaya'),
+    ('Senan', 'Lonergan'),
+    ('Luke', 'McNabb'),
+    ('Aidan', 'Nolan'),
+    ('Aidan', 'O''Brien'),
+    ('Liam', 'O''Brien'),
+    ('Ronan', 'O''Brien'),
+    ('Marco', 'Parisi'),
+    ('Christian', 'Rivas-Plata'),
+    ('Colm', 'Ryan'),
+    ('Ian', 'Slattery'),
+    ('Marcris', 'Webb'),
+    ('Nick', 'Wlodarcyk'),
+    ('Kaio Ramos', 'Araujo'),
+    ('Luciano', 'Artaza'),
+    ('Luke', 'Bello'),
+    ('Marc', 'Calle'),
+    ('Leonardo Da', 'Graca'),
+    ('Ricardo', 'Dias'),
+    ('Matthew', 'Evora'),
+    ('Anthony', 'Faienza'),
+    ('Thomas', 'Fernandez-Wolff'),
+    ('Nicholas', 'Fernández-Wolff'),
+    ('Abdulmohaymen', 'Gadoush'),
+    ('Eurico', 'Gomes'),
+    ('Javier', 'Hernandez'),
+    ('Joni', 'Kadrioski'),
+    ('Chavez', 'Mbeki'),
+    ('Kenan', 'Mujic'),
+    ('Ermis', 'Paguada'),
+    ('Paulo', 'Paris'),
+    ('Juan', 'Saca'),
+    ('Bruno', 'Silva'),
+    ('Matthew', 'Silva'),
+    ('Michel', 'Souza'),
+    ('Kadin', 'Talho'),
+    ('Diego', 'Vasquez'),
+    ('Jannik', 'Wille'),
+    ('Caleb', 'Wu'),
+    ('Alan', 'Xavier'),
+    ('Bright', 'Agyemang'),
+    ('Wander', 'Alves'),
+    ('Guilherme', 'Andrade'),
+    ('Hayllan', 'Batista'),
+    ('Gabriel', 'Berthoud'),
+    ('Gabriel', 'Carrelo'),
+    ('Rodney', 'Delgado'),
+    ('Gregorio', 'Espinoza'),
+    ('Wilmer', 'Flores'),
+    ('Zouhair', 'Khal'),
+    ('Shamar J', 'Kingston'),
+    ('Bruno', 'Luiz'),
+    ('Colton', 'Lukuc'),
+    ('Abdessamad', 'Machi'),
+    ('David', 'Mollenthiel'),
+    ('Phila', 'Nxumalo'),
+    ('Johan', 'Pineda'),
+    ('Patrick', 'Pineda'),
+    ('Andrew', 'Ranieri'),
+    ('Anthony', 'Ranieri'),
+    ('Steven', 'Rivera'),
+    ('Maynor', 'Robles'),
+    ('Michael', 'Rodriguez'),
+    ('Walter', 'Romero'),
+    ('Edwin', 'Rosano'),
+    ('Bairon', 'Tejada'),
+    ('Diego Vega', 'Toledo'),
+    ('Oscar Eduardo Velasquez', 'Centeno'),
+    ('Anderson', 'Velez'),
+    ('Tristan', 'Vincent'),
+    ('Tyler', 'Wrenn'),
+    ('Javier', 'Yanez'),
+    ('Hermanus', 'Achterkamp'),
+    ('Christopher Diego', 'Anderson'),
+    ('Daniel', 'Bedoya'),
+    ('Etienne', 'Botty'),
+    ('Daniel', 'Burko'),
+    ('Stefano', 'Campisi'),
+    ('Francesco', 'Caorsi'),
+    ('Roc Carles', 'Puig'),
+    ('Myson', 'Colo'),
+    ('Rodrigo Descalzo', 'Rocca'),
+    ('Miguel Mauricio Diaz', 'Cubas'),
+    ('Timothy Joseph Gallagher-De', 'Meij'),
+    ('Miguel Soto', 'Gonzalez'),
+    ('Pierce John', 'Infuso'),
+    ('Adam', 'Marcu'),
+    ('Patrick', 'McCann'),
+    ('Paul', 'McVeigh'),
+    ('James', 'Nealis'),
+    ('Jack', 'O''Malley'),
+    ('George', 'O`Malley'),
+    ('Nicholas', 'Oberrauch'),
+    ('Alberto', 'Pangrazzi'),
+    ('Francesco', 'Perinelli'),
+    ('Nicholas', 'Petridis'),
+    ('Cormac', 'Pike'),
+    ('Saeed', 'Robinson'),
+    ('John', 'Sabal'),
+    ('Brian Sousa', 'Saramago'),
+    ('Joshua', 'Schaffer'),
+    ('Barakatulla', 'Sharifi'),
+    ('Yacine Sidi', 'Aissa'),
+    ('Gabriel Villanueva', 'Pacheco'),
+    ('Leo Wei', 'Pinto'),
+    ('Joseph', 'Wright'),
+    ('El Mahdi', 'Youssoufi'),
+    ('Santiago', 'Arroyave'),
+    ('Tristan', 'Barquin'),
+    ('Ethan', 'Bazan'),
+    ('Steven', 'Bednarsky'),
+    ('Isimohi Mike', 'Bello'),
+    ('Kouadio', 'Bolaty'),
+    ('Andrew', 'Bortey'),
+    ('Kelvin', 'Brito'),
+    ('Dorgeles', 'Coulibaly'),
+    ('Tyler', 'Diaz'),
+    ('Samuel', 'Epitime'),
+    ('Adam', 'Garner'),
+    ('Matthew', 'Gotrell'),
+    ('Ivan Enrique', 'Hurtado'),
+    ('Stefan', 'Koroman'),
+    ('Joseph', 'Kresse'),
+    ('Keeroy', 'Lionel'),
+    ('Yamil', 'Macias'),
+    ('Cameron', 'McGregor'),
+    ('Coby', 'Mcgregor'),
+    ('Joseph', 'Moon'),
+    ('Israel', 'Neto'),
+    ('Abdoul', 'Ouedraogo'),
+    ('Brian', 'Paredes'),
+    ('Jung', 'Park'),
+    ('Ewan', 'Sanchez'),
+    ('Kevin', 'Santamaria'),
+    ('Rodrigo', 'Santiago'),
+    ('Miguel', 'Sencion'),
+    ('Toheeb', 'Shodimu'),
+    ('Luc', 'Smith'),
+    ('Ramchwy St', 'Vil'),
+    ('Mohamed', 'Tall'),
+    ('Christian Villegas', 'Libreros'),
+    ('Andrew', 'Weiner'),
+    ('Pablo Ablanedo', 'Llaneza'),
+    ('Jordan', 'Bailon'),
+    ('Filip', 'Basili'),
+    ('Axel', 'Berglund'),
+    ('Christopher', 'Bermudez'),
+    ('Victor', 'Castel'),
+    ('Rikard', 'Cederberg'),
+    ('Nicolas Cifuentes', 'DIaz'),
+    ('Sergio', 'Diaz'),
+    ('Eric', 'Frimpong'),
+    ('George', 'Gantalis'),
+    ('Gonzalo Gil de', 'Pareja'),
+    ('Ede Mateo', 'Gramberg'),
+    ('Thomas', 'Gray'),
+    ('Antreas', 'Hadjigavriel'),
+    ('Harri', 'Hawkins'),
+    ('Devin', 'Heanue'),
+    ('Christopher', 'Heckenberg'),
+    ('Kevin', 'Hernandez'),
+    ('Jens Mannhart', 'Hoff'),
+    ('Joseph', 'Holland'),
+    ('Filip', 'Jauk'),
+    ('Konstantinos', 'Karousis'),
+    ('Benny', 'Lafortune'),
+    ('Joshua', 'Levine'),
+    ('Juan Martinez', 'Moreno'),
+    ('Filip', 'Mirkovic'),
+    ('Christoforos', 'Moulinos'),
+    ('Stephen O’', 'Connell'),
+    ('Alex', 'Palas'),
+    ('Sebastian', 'Ruiz'),
+    ('Athanasis', 'Shehadeh'),
+    ('James', 'Thristino'),
+    ('Sean', 'Towey'),
+    ('John', 'Bernardi'),
+    ('James Peter', 'Boote'),
+    ('Aidan', 'Borra'),
+    ('Marco', 'Charnas'),
+    ('Constantine', 'Christodoulou'),
+    ('Stefan', 'Copetti'),
+    ('Carlos', 'Cortes'),
+    ('Musa Bala', 'Danso'),
+    ('Ali', 'Dawha'),
+    ('Daniel', 'Dimarco'),
+    ('Sean', 'Doran'),
+    ('Dino', 'Feratovic'),
+    ('Ethan', 'Furphy'),
+    ('Michael', 'Gallagher'),
+    ('Kyle', 'Galloway'),
+    ('Henry', 'Hamilton'),
+    ('Cillian', 'Heaney'),
+    ('Michael', 'Hewes'),
+    ('Ethan', 'Homler'),
+    ('Jared', 'Juleau'),
+    ('Andy', 'Kasza'),
+    ('Daryl', 'Kavanagh'),
+    ('Seamus', 'Keogh'),
+    ('Sean', 'Kerrigan'),
+    ('Danu', 'Kinsella-Bishop'),
+    ('Nicolas Macri', 'Badessich'),
+    ('Luis Puchol Del', 'Pozo'),
+    ('Sebastian', 'Rojek'),
+    ('Liam', 'Salmon'),
+    ('Harry', 'Sankey'),
+    ('Edward', 'Speed'),
+    ('Benjamin', 'Stitz'),
+    ('Liam', 'Walsh'),
+    ('Oskar', 'Zywiec'),
+    ('Adrian', 'Aguilera'),
+    ('Julian', 'Anderson'),
+    ('Balint', 'Barabas'),
+    ('Vasilios', 'Brisnovalis'),
+    ('Robert', 'Cabrera'),
+    ('Murat Edgar', 'Calkap'),
+    ('Daniel', 'Curmi'),
+    ('Duga', 'Dambelly'),
+    ('Khaled', 'Daoud'),
+    ('Mohamed', 'Diaw'),
+    ('Julio', 'Espinal'),
+    ('Jeison Gonzalez', 'Sanchez'),
+    ('James', 'Greco'),
+    ('Grady', 'Kozak'),
+    ('Antonio', 'Linge'),
+    ('Tyrone', 'Malango'),
+    ('William', 'Marment'),
+    ('Augustus Manuel', 'Mcgiff'),
+    ('Christopher', 'Morandi'),
+    ('Richard', 'Morel'),
+    ('Peter', 'Myrianthopoulos'),
+    ('Stefen', 'Nikolic'),
+    ('Martin', 'Nikprelaj'),
+    ('Sergio', 'Peralta'),
+    ('Marco', 'Primavera'),
+    ('Paolo Cerruto', 'Primavera'),
+    ('Chris', 'Riordan'),
+    ('David', 'Rodriguez'),
+    ('Ronaldo Rodriguez', 'Jurado'),
+    ('Fredy', 'Rosales'),
+    ('Duvan', 'Sanchez'),
+    ('Giuliano', 'Santucci'),
+    ('Navruz', 'Shukroev'),
+    ('Milorad', 'Sobot'),
+    ('Michalis', 'Stylianou'),
+    ('Keirol', 'Aaron'),
+    ('Matthais', 'Adamek'),
+    ('Yohance', 'Alexander'),
+    ('Andrea', 'Andreou'),
+    ('Luis', 'Argudo'),
+    ('Theodore', 'Bernhard'),
+    ('Antonio', 'Biggs'),
+    ('Mason', 'Chetti'),
+    ('Jarvis', 'Cleal'),
+    ('Joel', 'Cunningham'),
+    ('Caleb', 'Danquah'),
+    ('Eric', 'Danquah'),
+    ('Sameer', 'Fathazada'),
+    ('Leo', 'Folla'),
+    ('Jakob', 'Friedman'),
+    ('Sebastian', 'Goicochea'),
+    ('Juan Antonio', 'Gomez'),
+    ('Alessio', 'Hernandez'),
+    ('Benjamin', 'Jones'),
+    ('Selcuk', 'Kahveci'),
+    ('Chad', 'Mark'),
+    ('Eoin', 'Martin'),
+    ('Leonardo', 'Martinelli'),
+    ('Alexander', 'McLachlan'),
+    ('Giovanny', 'Morales'),
+    ('Bradley', 'Nestor'),
+    ('Godwin', 'Partey'),
+    ('Junior', 'Rosero'),
+    ('Karim', 'Russell'),
+    ('Sanoussi', 'Sangary'),
+    ('Shaquille', 'Saunchez'),
+    ('Kendell', 'Thomas'),
+    ('Dillon', 'Woods'),
+    ('George', 'Yusuff'),
+    ('Joshua', 'Adejokun'),
+    ('Saad', 'Afif'),
+    ('Youssef', 'Afif'),
+    ('Osama Al', 'Sahybi'),
+    ('Eric', 'Anderson'),
+    ('Raphael', 'Carvalho'),
+    ('Oscar', 'Champigneulle'),
+    ('Ryan', 'Chuang'),
+    ('Michael', 'Dempsey'),
+    ('Byran', 'Dia'),
+    ('Yohance', 'Douglas'),
+    ('Jeffrey', 'Gad'),
+    ('Jahdea', 'Gildin'),
+    ('Ross', 'Holden'),
+    ('Hugo', 'Howard'),
+    ('Ikrom', 'Husanov'),
+    ('Geireann', 'Lindfield'),
+    ('Sean', 'Molloy'),
+    ('Shamir', 'Mullings'),
+    ('Ridwan', 'Olawin'),
+    ('Gary', 'Philpott'),
+    ('Sean', 'Reilly'),
+    ('Faissal', 'Sanfo'),
+    ('Ensa', 'Sanneh'),
+    ('Avinash', 'Singh'),
+    ('John', 'Stevens'),
+    ('Alexandru', 'Teodorescu'),
+    ('Maurice', 'Vermeulen'),
+    ('Hermes', 'Ademovi'),
+    ('Mamadou', 'Bah'),
+    ('Bljedi', 'Bardic'),
+    ('Giuseppe', 'Barone'),
+    ('Salvatore', 'Barone'),
+    ('Kemal', 'Brkanovic'),
+    ('Cesare', 'Cali'),
+    ('Keithlend', 'Cesar'),
+    ('Kyaire', 'Clarke'),
+    ('Luis', 'Cueva'),
+    ('Bradley', 'Espejo'),
+    ('Roberto', 'Gioffre'),
+    ('Pietro', 'Giove'),
+    ('Christopher', 'Gjini'),
+    ('Peter', 'Gjini'),
+    ('Armando', 'Guarnera'),
+    ('James', 'Haddad'),
+    ('Yassin', 'Hairane'),
+    ('Amir', 'Islami'),
+    ('Timothy Francis', 'Kane'),
+    ('Brian', 'Kerliu'),
+    ('Peterson', 'Larose'),
+    ('Dylan', 'Meadows'),
+    ('Gerald', 'Mehja'),
+    ('Michael', 'Mollica'),
+    ('Anthony', 'Oliveira'),
+    ('Cristiano', 'Oliveira'),
+    ('Andrea', 'Ruggiero'),
+    ('Leutrim', 'Saiti'),
+    ('Valeriy', 'Saramoutin'),
+    ('Mark', 'Shnadshteyn'),
+    ('Demyan', 'Turiy'),
+    ('Dominik', 'Urban'),
+    ('Bryant', 'Vidals'),
+    ('Dani', 'Villa'),
+    ('Richard', 'Bastian'),
+    ('Tal', 'Benhamou'),
+    ('Nathan', 'Bennett'),
+    ('Jason', 'Budhai'),
+    ('Dennis Coke', 'Jr'),
+    ('Sully', 'Corneille'),
+    ('Dario Giovanni', 'Cruz'),
+    ('Juan', 'Cruz'),
+    ('Tomas de Andrade', 'Gomes'),
+    ('Felix', 'Dyckerhoff'),
+    ('Salim', 'Dziri'),
+    ('Glenford', 'Gentle'),
+    ('Boris', 'Grubic'),
+    ('Wisdom', 'Hountondji'),
+    ('Tom', 'Hultsch'),
+    ('Raphael', 'John'),
+    ('Ryo', 'Koiso'),
+    ('Michael', 'Laret'),
+    ('Jason', 'Lee'),
+    ('Cesare', 'Marconi'),
+    ('Denny', 'Morinigo-Arce'),
+    ('Mateo', 'Munoz'),
+    ('Deniz', 'Oncu'),
+    ('Mubarak', 'Ouro'),
+    ('Jean Carlo', 'Perez'),
+    ('Mario', 'Ramirez'),
+    ('Paul', 'Restrepo'),
+    ('Ely', 'Schartz'),
+    ('Diego', 'Silva'),
+    ('Tyler', 'Swaby'),
+    ('Andrade', 'Wright'),
+    ('Abdul Karim', 'Bah'),
+    ('Ibrahima', 'Bah'),
+    ('Matthew', 'Baringer'),
+    ('Cesar', 'Buitrago'),
+    ('Saul', 'Cardozo'),
+    ('Elhadj', 'Diallo'),
+    ('Youssouf', 'Diallo'),
+    ('Ighoghoe', 'Erediauwa'),
+    ('Vincent', 'Galia'),
+    ('Luis', 'Granados'),
+    ('Radouane', 'Guissi'),
+    ('Joseph', 'Kalilwa'),
+    ('Nicholas', 'King'),
+    ('Jonathan', 'Lima'),
+    ('Anyolo', 'Makatiani'),
+    ('Matthew', 'McDonnell'),
+    ('Mohamad', 'Miri'),
+    ('Eoghan', 'Morgan'),
+    ('Ezekiel', 'Omosanya'),
+    ('Maynor', 'Palacios'),
+    ('Justin', 'Peters'),
+    ('Alec', 'Pineda'),
+    ('Alejandro', 'Sanchez'),
+    ('Jaidon', 'Selden'),
+    ('James', 'Terpak'),
+    ('Dominic', 'Tomety'),
+    ('Samuel', 'Urban'),
+    ('Christopher', 'Valentine'),
+    ('Marcial', 'Viveros'),
+    ('Timothy', 'Williams'),
+    ('Johannes', 'Alvarez'),
+    ('Jason', 'Alves'),
+    ('Christopher', 'Barnas'),
+    ('Sebastian', 'Capozucchi'),
+    ('Roberto', 'Chernez'),
+    ('Gabriel', 'Costa'),
+    ('Keijon', 'Davis'),
+    ('Shaunavon', 'DeSouza'),
+    ('Gabriel', 'DiPierro'),
+    ('Emiland', 'Elezaj'),
+    ('Andres', 'Gonzalez-Rios'),
+    ('Jonathan', 'Gutierrez'),
+    ('Oscar', 'Horwitz'),
+    ('Jashar', 'Jashar'),
+    ('Christopher', 'Karcz'),
+    ('Wiktor', 'Kiszkiel'),
+    ('Christopher', 'Kondratowicz'),
+    ('Paul', 'Kondratowicz'),
+    ('Nicholas', 'Kozdron'),
+    ('Sebastian', 'Lapczynski'),
+    ('John', 'McGeechan'),
+    ('Mark', 'Mikanik'),
+    ('Aldo', 'Munoz'),
+    ('Cyrus', 'Nasseri'),
+    ('Krystian', 'Nitek'),
+    ('Viktor', 'Pervushkin'),
+    ('Tyler', 'Pinho'),
+    ('Alvaro', 'Rodriguez'),
+    ('Daniel', 'Sawicki'),
+    ('Gabriel', 'Serafin'),
+    ('William', 'Tomlinson'),
+    ('Igor', 'Trajceski'),
+    ('Kevin', 'Valdivia'),
+    ('Dominik', 'Brulinski'),
+    ('Mathew', 'Contino'),
+    ('Joseph', 'Core'),
+    ('Jacob', 'Denison'),
+    ('Jack', 'Doran'),
+    ('Javiar', 'Edwards'),
+    ('Humbert', 'Ferrer'),
+    ('Spencer', 'Fleurant'),
+    ('Jason', 'Gaylord'),
+    ('Daniel', 'Giorgi'),
+    ('Kevin', 'Harrington'),
+    ('Stephanos', 'Hondrakis'),
+    ('Cris', 'Huacon'),
+    ('Samuka', 'Kenneh'),
+    ('Evan', 'Kim'),
+    ('Brent', 'McKeown'),
+    ('Enrique Montana', 'III'),
+    ('Jack', 'Mulhare'),
+    ('Curtis', 'Oberg'),
+    ('Farouk', 'Osman'),
+    ('Cole', 'Parete'),
+    ('William', 'Pearce'),
+    ('Akeem', 'Phipps'),
+    ('Layton', 'Purchase'),
+    ('Nabeel', 'Qawasmi'),
+    ('Yannick', 'Rihs'),
+    ('Antonio', 'Rocha'),
+    ('Jake', 'Rozhansky'),
+    ('Yahli', 'Saltsberg'),
+    ('Frank', 'Shkreli'),
+    ('Michael', 'Soboff'),
+    ('Tom', 'Wallenstein'),
+    ('Michael', 'Wampler'),
+    ('Peter', 'Wentzel'),
+    ('Edwin Zuniga', 'Lopez'),
+    ('Brahim Hadj', 'Abboud'),
+    ('Tomas', 'Ascoli'),
+    ('August', 'Axtman'),
+    ('Edwin', 'Bedolla'),
+    ('Noah Sutton', 'Beltran'),
+    ('Ammit', 'Bhogal'),
+    ('John', 'Bonas'),
+    ('Marcus', 'Brenes'),
+    ('Carter', 'Burris'),
+    ('Colin Forster', 'Davis'),
+    ('Alex', 'Demars'),
+    ('Oliver', 'Garcia'),
+    ('Michael', 'Gonzalez'),
+    ('Emmanuel', 'Hewitt'),
+    ('Luke', 'Hill'),
+    ('Jack', 'Jasinski'),
+    ('Dylan Leonid', 'Lacy'),
+    ('Joel', 'Lopez'),
+    ('Dominick', 'Martinez'),
+    ('Brian', 'McDaid'),
+    ('Luca', 'Mellor'),
+    ('Mason', 'Miller'),
+    ('Ayoub', 'Mouhou'),
+    ('Riley', 'Porter'),
+    ('Luke', 'Pressler'),
+    ('Ridge', 'Robinson'),
+    ('Miguel', 'Ross'),
+    ('Maximos', 'Sacarellos'),
+    ('Justin', 'Thomas'),
+    ('Luke', 'Thomas'),
+    ('Sama', 'Tima'),
+    ('Kyle', 'Tucker'),
+    ('Nikhil Ashish', 'Verma'),
+    ('Jacob', 'Weaver'),
+    ('Charles', 'Wilson'),
+    ('Matteo', 'Adiletta'),
+    ('William', 'Ardiles'),
+    ('Serge', 'Biket'),
+    ('Ryan', 'Butler'),
+    ('Obiazie', 'Chinatu'),
+    ('Seth', 'Crabbe'),
+    ('Leo', 'Dunia'),
+    ('Ivan', 'Fombu'),
+    ('Nikolaos', 'Gousios'),
+    ('Isaac', 'Hollinger'),
+    ('Micah', 'Hostetter'),
+    ('Abdoul', 'Issoufou'),
+    ('Clovis', 'Kabre'),
+    ('Justin', 'Keefer'),
+    ('Mehluko', 'Letsoalo'),
+    ('Kel', 'Merckel'),
+    ('Caden', 'Mullen'),
+    ('Babunga', 'Mulumeoderwa'),
+    ('Luke', 'Nall'),
+    ('Sivpheng', 'Phann'),
+    ('Derek', 'Ramirez'),
+    ('Ethan', 'Ramirez'),
+    ('Josiah', 'Ramirez'),
+    ('Chris', 'Richards'),
+    ('Daniel', 'Rowe'),
+    ('Lazaro', 'Salazar'),
+    ('David Tai', 'San'),
+    ('Dawson', 'Schreck'),
+    ('Owen', 'Shea'),
+    ('Denis', 'Tarasov'),
+    ('Babo', 'Tereffe'),
+    ('William', 'Vasquez'),
+    ('Joel', 'Walker'),
+    ('Christian', 'Wieand'),
+    ('Kedric', 'Yoder'),
+    ('Osman', 'Barrie'),
+    ('Paul', 'Bechtelheimer'),
+    ('Nathan', 'Biersbach'),
+    ('Brayden', 'Birnstiel'),
+    ('Ryan', 'Cleary'),
+    ('Theo Da', 'Silva'),
+    ('Kaelan', 'Debbage'),
+    ('Blake', 'Driehuis'),
+    ('Gavin', 'Faracchio'),
+    ('Vincent', 'Guzzo'),
+    ('Maxwell Byrd', 'Hawk'),
+    ('Austin', 'Johnson'),
+    ('Sincere', 'Kato'),
+    ('Muhammed Ali', 'Kol'),
+    ('Berlenz', 'Lumarque'),
+    ('Jason', 'Mancuso'),
+    ('Jade', 'Mesias'),
+    ('Tommy', 'Monaghan'),
+    ('Jeff', 'Morgan'),
+    ('Jake', 'Mulinge'),
+    ('Joseph', 'Nguyen'),
+    ('Carter Jack', 'Norton'),
+    ('Matthew', 'Perrella'),
+    ('Dylan', 'Pino'),
+    ('Samuel', 'Quaye'),
+    ('Julito', 'Quintana'),
+    ('Ethan', 'Romito'),
+    ('Ahmed', 'Saidi'),
+    ('Max', 'Schrader'),
+    ('Seth', 'Sidle'),
+    ('Adam', 'Sternberger'),
+    ('Steven', 'Thompson'),
+    ('Nico', 'Tramontana'),
+    ('John', 'Troiano'),
+    ('Djibi Tata', 'Bah'),
+    ('James', 'Bernstein'),
+    ('Pierre', 'Bosquet'),
+    ('Erik', 'Carchipulla'),
+    ('Filippo', 'D''Anna'),
+    ('Jonathan', 'Firmino'),
+    ('Jose (Tony)', 'Flores'),
+    ('Liam', 'Fredericks'),
+    ('Eric', 'Goldberg'),
+    ('Taeus', 'Jones'),
+    ('Brendan', 'Kerins'),
+    ('Sean Ryan', 'Milelli'),
+    ('Conlan Michael', 'Paventi'),
+    ('Kevin', 'Perez'),
+    ('Giovanni', 'Pierleonardi'),
+    ('Giuseppe', 'Pierleonardi'),
+    ('Guiliano', 'Pierleonardi'),
+    ('Vincenzo', 'Pugliese'),
+    ('Joel', 'Quist'),
+    ('Dennis', 'Rooney'),
+    ('Ilia', 'Sakheishvili'),
+    ('Cole', 'Sotack'),
+    ('Reed', 'Sviben'),
+    ('Brandon D', 'Valeri'),
+    ('Ronald', 'Ventura'),
+    ('Eric', 'Adamo'),
+    ('Salam', 'Ashurmamadov'),
+    ('Matthew', 'Bergmaier'),
+    ('Daniel', 'Bloyou'),
+    ('Lawrence', 'Buigbo'),
+    ('Diego', 'Cabrera'),
+    ('Emanuel', 'Caire'),
+    ('Sebastian', 'Carmona'),
+    ('Chad', 'Catalana'),
+    ('Nyles', 'Cayemitte'),
+    ('Justin', 'Cooper'),
+    ('Kevin', 'Davis'),
+    ('Alvin', 'Deegon'),
+    ('Yousouf', 'Doucoure'),
+    ('Nick', 'Dudek'),
+    ('Andres', 'Freire'),
+    ('Luka', 'Gogidze'),
+    ('Andres', 'Gomez'),
+    ('Brendan', 'Gorman'),
+    ('Ermir', 'Hoti'),
+    ('Hamin', 'Kim'),
+    ('Kalvin', 'Matischak'),
+    ('Gabriel', 'Matute'),
+    ('Aidan', 'Meissler'),
+    ('Glenn', 'Moyer'),
+    ('Kyle', 'Mtshazo'),
+    ('Daniel', 'Murtagh'),
+    ('Justin', 'Odoemene'),
+    ('Ryan', 'Pereus'),
+    ('Christopher', 'Rodriguez'),
+    ('Eran', 'Shifris'),
+    ('Andres', 'Velez'),
+    ('Seth', 'Walker'),
+    ('John Steven', 'Warren'),
+    ('Mark', 'Abbonizio'),
+    ('Sergio', 'Abelardy'),
+    ('Harry', 'Angelis'),
+    ('Pedro', 'Barbosa'),
+    ('Hunter', 'Bell'),
+    ('Brendan', 'Callahan'),
+    ('Mohamed', 'Elgayar'),
+    ('Salvatore', 'Ficarotta'),
+    ('Henry', 'Guzman'),
+    ('Theophilus', 'Ijeboi'),
+    ('Mohamed', 'Jawara'),
+    ('Sean', 'Murray'),
+    ('Laurence', 'Narcisi'),
+    ('Michael', 'Newell'),
+    ('Kaleb', 'Raymond'),
+    ('Joel', 'Richmond'),
+    ('Benjamin', 'Richter'),
+    ('Joshua', 'Rifkin'),
+    ('Daniel', 'Saint-Pol'),
+    ('David', 'Skiendzielewski'),
+    ('Owen', 'Stock'),
+    ('Ryan', 'Stock'),
+    ('Rasheed', 'Thomas'),
+    ('Sean', 'Touey'),
+    ('Jesse', 'Weick'),
+    ('Emani', 'Arroyo'),
+    ('Nolan', 'Bair'),
+    ('Almuthenna Hseen', 'Baled'),
+    ('Richard', 'Blanchard'),
+    ('Bakuri', 'Buadze'),
+    ('Maximo', 'Chavez'),
+    ('Evan Chinwendu', 'Azoro'),
+    ('Adan', 'Crispin-Morales'),
+    ('Jorge Luis Diaz', 'Lobo'),
+    ('Spencer', 'Dickinson'),
+    ('Isaiah', 'Fox'),
+    ('Goga', 'Gogoladze'),
+    ('Stephen', 'Grazioli'),
+    ('Mohamed', 'Ibrahim'),
+    ('Matthew', 'JeanPierre'),
+    ('Mohammadzain', 'Kazi'),
+    ('Guilherme', 'Martins'),
+    ('John', 'Miller'),
+    ('Edwin Owusu', 'Siaw'),
+    ('Juan', 'Polanco'),
+    ('Angel Javier', 'Rodriguez'),
+    ('Ahmed', 'Saedahmed'),
+    ('Edi', 'Schwartz'),
+    ('Maksym', 'Shevchenko'),
+    ('Alexander', 'Simon'),
+    ('Daniel', 'Smith'),
+    ('Christian', 'Sorteberg'),
+    ('Sekou', 'Sylla'),
+    ('Abraham', 'Waldman'),
+    ('Geovany', 'Acevedo'),
+    ('Axel', 'Bladimir'),
+    ('Michael', 'Carmody'),
+    ('Julien', 'Carraha'),
+    ('Nicholas', 'Cruz'),
+    ('Aba', 'David'),
+    ('Jonah', 'Dias'),
+    ('Mamadou', 'Diouf'),
+    ('Oliver', 'Dyson'),
+    ('Allan', 'Francisco'),
+    ('Randy', 'Gonzalez'),
+    ('Daniel', 'Grund'),
+    ('Ryan', 'Grund'),
+    ('Jeremy Hernandez', 'Ortega'),
+    ('Chidi', 'Iloka'),
+    ('Cesar', 'Jarmillo'),
+    ('Tomtom', 'Johnson'),
+    ('Davenson', 'Joinvilmar'),
+    ('Dylan', 'Kotch'),
+    ('adan', 'lopez'),
+    ('Liam', 'MacDonald'),
+    ('Mario', 'Martell'),
+    ('Arnaldo', 'Mendoza'),
+    ('Dani', 'Morales'),
+    ('jonathan', 'olaleye'),
+    ('Lucknerson', 'Pierre'),
+    ('Kyle', 'Pilliteri'),
+    ('Alex', 'Quezada'),
+    ('Wesley', 'Reyes'),
+    ('Nick', 'Sample'),
+    ('Melvin', 'Sapon'),
+    ('Chefetson', 'Simeus'),
+    ('Emerson', 'Vicente'),
+    ('Mate', 'Vilagosi'),
+    ('John', 'Warwick'),
+    ('Musa', 'Abdelgadir'),
+    ('Amar', 'Abdelrazek'),
+    ('Abdelrahman', 'Ali'),
+    ('Ahmed', 'Ali'),
+    ('Erwa', 'Babiker'),
+    ('Arsene', 'Bado'),
+    ('Logan', 'Bersani'),
+    ('Mohamed', 'Bility'),
+    ('Hamzah', 'Dabbour'),
+    ('Terrence', 'Doe'),
+    ('Musa', 'Donza'),
+    ('Alexander', 'Duopu'),
+    ('Luis', 'Espejo'),
+    ('Christopher', 'Fletcher'),
+    ('Mujtaba', 'Galas'),
+    ('Mustafa', 'Galas'),
+    ('John', 'Gonzalez'),
+    ('Ahmed', 'Gosie'),
+    ('Maccarrey', 'Guillaume'),
+    ('Otmane', 'Houasli'),
+    ('Esnayder', 'Josue'),
+    ('Abdoulaye', 'Kamagate'),
+    ('Amadou', 'Kamagate'),
+    ('Majid', 'Kawa'),
+    ('Mohamed', 'Khalafalla'),
+    ('Kouassi', 'Nguessan'),
+    ('Benell', 'Saygarn'),
+    ('Oumar', 'Sylla'),
+    ('Justin', 'Alves'),
+    ('Rob', 'Andrade'),
+    ('Tyler', 'Andreas'),
+    ('William', 'Bartels'),
+    ('Harmony', 'Bell-Gam'),
+    ('Dane', 'Calhoun'),
+    ('Adrian', 'Dilascio'),
+    ('Grady', 'Edwards'),
+    ('Matt', 'Fuentes'),
+    ('Douglas', 'Jensen'),
+    ('Dylan', 'Kanson'),
+    ('Marcus', 'Mason'),
+    ('Carter', 'Mathis'),
+    ('Alex', 'Matos'),
+    ('Rafael', 'Pereira'),
+    ('Anthony', 'Ryan'),
+    ('Bryan', 'Sanchez'),
+    ('Dante', 'Shenkin'),
+    ('Gianni', 'Smith'),
+    ('Kieran', 'Sundermann'),
+    ('Albert', 'Truszkowski'),
+    ('Uche', 'Wokocha'),
+    ('Clay', 'Yannazzone'),
+    ('Alex', 'Zargo'),
+    ('Dylan Frank', 'Aportela'),
+    ('Monsif', 'Atify'),
+    ('Shane', 'Baker'),
+    ('Mava Mboko', 'Celestin'),
+    ('Gunnar William', 'Christensen'),
+    ('Bailey', 'Cifone'),
+    ('Emmett', 'Dougherty'),
+    ('Sean', 'Fatiga'),
+    ('Gil', 'Ferreira'),
+    ('Greg', 'Ferreira'),
+    ('Ryan', 'Gale'),
+    ('Elvis', 'Gboho'),
+    ('McCarthy Tyler', 'Gomes'),
+    ('Jeshohaih', 'Hernandez'),
+    ('Ahmir Lamar', 'Johnson'),
+    ('Ahsan', 'Johnson'),
+    ('Bugra', 'Kumas'),
+    ('Jake', 'Kuzmick'),
+    ('Dominic Antonio', 'lodise'),
+    ('Gavin', 'O''Neill'),
+    ('Krish', 'Olmedo'),
+    ('Alexander Charles', 'Patton'),
+    ('Noam', 'Raz'),
+    ('Mason James', 'Regan'),
+    ('Fred', 'Renzulli'),
+    ('Joseph', 'Romano'),
+    ('Joshua', 'Rossell'),
+    ('Brian', 'Sharkey'),
+    ('Christopher John', 'Spicer'),
+    ('Kyle William', 'Stone'),
+    ('Owen', 'Strohm'),
+    ('Jackson M', 'Stuetz'),
+    ('Melcohol', 'Velasquez'),
+    ('Christian', 'Vetter'),
+    ('Anthony Alexis', 'Ali'),
+    ('Dylan', 'Bednarek'),
+    ('Garrett', 'Blankinship'),
+    ('Matthew David', 'Dottavi'),
+    ('Mohamed Kasongo', 'Doukoure'),
+    ('Noel', 'Fernadez'),
+    ('Patrick James', 'Fluharty'),
+    ('Astin Timothy', 'Galanis'),
+    ('Anthony Frank', 'Giafaglione'),
+    ('Amir', 'Khan'),
+    ('Anthony', 'Konah'),
+    ('Brian', 'Lorenz'),
+    ('Yoni Andre', 'Moussodou'),
+    ('Oguzhan', 'Mutaf'),
+    ('Rami Mahmoud', 'Nasr'),
+    ('Michael', 'Negrete'),
+    ('Juan', 'Oliveira'),
+    ('Edwin', 'Perez'),
+    ('Antonio', 'Ramos'),
+    ('Ethan', 'Rosado'),
+    ('Todd Richard', 'Salmon'),
+    ('Aiden Francis', 'Schmitt'),
+    ('Liam', 'Smith'),
+    ('Jovanny', 'Trinidad-Romero'),
+    ('Isaiah Roman', 'Woods-Kolsky'),
+    ('Chenyu', 'Yi'),
+    ('Samuel Tony', 'Zonoe'),
+    ('Skylar', 'Zugay'),
+    ('Soheyl Ali', 'Rafi'),
+    ('Jonathan', 'Arguta'),
+    ('Jean', 'Ayolmbong'),
+    ('Eric', 'Calvillo'),
+    ('Jhonny De', 'Souza'),
+    ('Valdir De', 'Souza'),
+    ('Isiah', 'Dorsey'),
+    ('Ricardo', 'Espinoza'),
+    ('Jerry', 'Felix'),
+    ('Caleb', 'Ghannam'),
+    ('Jose', 'Gonzlaez'),
+    ('Adsam', 'Guennouni'),
+    ('Jackson', 'Hall'),
+    ('Emmitt', 'Inestroza'),
+    ('Abdul-Azim', 'Ismail'),
+    ('Abdul-Rahman', 'Ismail'),
+    ('Ethan', 'Lee'),
+    ('Huber', 'Letona'),
+    ('Ethan', 'Lloyd'),
+    ('Bernardo', 'Majano'),
+    ('Reda', 'Manafi'),
+    ('Jack', 'Pinson'),
+    ('Jaime', 'Quintanilla'),
+    ('Michael', 'Radomski'),
+    ('Ahmed', 'Sheta'),
+    ('Roman', 'Topler'),
+    ('Marques', 'Vagner'),
+    ('Alton', 'West'),
+    ('Mohamed', 'Abdelrehman'),
+    ('Nyliek', 'Allen'),
+    ('Jared', 'Benedict'),
+    ('David', 'Bernal-Clark'),
+    ('Alex', 'Bilski'),
+    ('Nicholas', 'Blake'),
+    ('Edwardo', 'Chavez'),
+    ('Charles', 'Evangelos'),
+    ('Jessi e', 'Garcia'),
+    ('Daniel', 'Gonzalez'),
+    ('Sayed', 'Hashemi'),
+    ('Sayed', 'Hashemi'),
+    ('Vasilios', 'Kazakos'),
+    ('Alejandro', 'Lenz'),
+    ('Josaphat', 'Letona'),
+    ('Braden', 'Lopez'),
+    ('Gabriel', 'Maguire'),
+    ('Moussa', 'Mahama'),
+    ('Louis', 'Manyele'),
+    ('Carlos', 'Mareno'),
+    ('George', 'Mavronis'),
+    ('Michael', 'Medina'),
+    ('Roman', 'Milian'),
+    ('Johnny', 'Paletar'),
+    ('Danish', 'Saeedi'),
+    ('Jordon', 'Salvi'),
+    ('Leonel', 'Sanchez'),
+    ('Selim', 'Senel'),
+    ('Ahmadi', 'Shayan'),
+    ('Akimanzi', 'Siibo'),
+    ('Alex', 'Sosa'),
+    ('Viktor', 'Tachev'),
+    ('Matthew', 'Zelaya'),
+    ('Nebeyo', 'Zerihun'),
+    ('Ossy', 'Zubiria'),
+    ('Kelechi', 'Akujuobi'),
+    ('Faisal', 'Alay'),
+    ('Victorine Kwame', 'Appohsam'),
+    ('Hector Avila', 'Hernandez'),
+    ('Eduardo G', 'Barria'),
+    ('Zavier', 'Bell'),
+    ('Zach', 'Boyd'),
+    ('Julio', 'Bravo-Guzman'),
+    ('Deontae', 'Campbell'),
+    ('Brandon', 'Chambers'),
+    ('Aiden', 'Chen'),
+    ('Marckensley', 'Constant'),
+    ('Tim', 'Cooley'),
+    ('Christian', 'Cruz'),
+    ('Danilo', 'Duric'),
+    ('Logan', 'Flanagan'),
+    ('Colin', 'Foley'),
+    ('Nathan', 'Gichuhi'),
+    ('Jeremy', 'Gonzalez'),
+    ('Josh', 'Gutierrez'),
+    ('Jonah', 'Harvey'),
+    ('Josh', 'Haynie'),
+    ('Mitchell', 'Hopkins'),
+    ('Tanner', 'Johnston'),
+    ('David', 'Miller'),
+    ('Abdul', 'Mokhtar'),
+    ('Bijan', 'Morshedi'),
+    ('Ander', 'Ochoa'),
+    ('Victor', 'Oladeinde'),
+    ('Oved', 'Ortega'),
+    ('Kameron', 'Payne'),
+    ('Jayden', 'Rodriguez'),
+    ('Oumar', 'Thiandoum'),
+    ('Ronju', 'Walters'),
+    ('Kennison', 'Akuro'),
+    ('Melvin', 'Asanji'),
+    ('Brandon', 'Betts'),
+    ('Isaac', 'Carvajal'),
+    ('Elido Noel Chun', 'Reyes'),
+    ('Jenovic', 'Elumbu'),
+    ('Anderson', 'Fernandez'),
+    ('Angello', 'Fernandez'),
+    ('Terry', 'Fon'),
+    ('Eduardo', 'Fuentes'),
+    ('Christian', 'Garavito'),
+    ('Thaddeus', 'Goddard'),
+    ('Alexis Gonzalez', 'Ayala'),
+    ('Chayton', 'Kuidlan'),
+    ('Tobias', 'Lane'),
+    ('Jonathan Lemus', 'Morales'),
+    ('Creasy', 'Lopez'),
+    ('Lutho', 'Mlunguza'),
+    ('Toju', 'Okonedo'),
+    ('David', 'Pawlowski'),
+    ('Danny', 'Paz'),
+    ('Brayan Perez', 'Mendez'),
+    ('Bronson', 'Shepherd'),
+    ('Nicholas', 'Tziamouranis'),
+    ('William Villatoro', 'Velasquez'),
+    ('Brian', 'Ware'),
+    ('Sami', 'Afiouni'),
+    ('Samuel', 'Amedeker'),
+    ('Owen', 'Blount'),
+    ('Jordan', 'Bonnett'),
+    ('Evan', 'Bosak'),
+    ('Gerard', 'Broussard'),
+    ('Brian', 'Chidzvondo'),
+    ('Matthew', 'Do'),
+    ('Joseph', 'Enebeli'),
+    ('Adam', 'Grace'),
+    ('Demetrius', 'Howe'),
+    ('Massimo', 'Johnson'),
+    ('Benjamin', 'Jones'),
+    ('Aidan', 'Krivanec'),
+    ('Leighton', 'Langenhoven'),
+    ('Salah', 'Mahmoud'),
+    ('Treyvon', 'Medley-Green'),
+    ('Museba', 'Mwape'),
+    ('Jake', 'Nelson'),
+    ('Abulfazl', 'Panahi'),
+    ('Dame', 'Pene'),
+    ('Henry', 'Pittman'),
+    ('Yoskar Alejandro', 'Quintanilla'),
+    ('Emerson', 'Reyes'),
+    ('Mahdi', 'Reza'),
+    ('Mourtala', 'Seck'),
+    ('Alakhe', 'Sibeko'),
+    ('Noe', 'Soriano'),
+    ('Sharief', 'Stancil'),
+    ('Max', 'Taliaferro'),
+    ('Asanda', 'Tom'),
+    ('Caleb', 'Underwood'),
+    ('Callum', 'Vellozzi'),
+    ('Chrisendo', 'Wentzel'),
+    ('John', 'Williams'),
+    ('Felix', 'Amankwah'),
+    ('Daniel', 'Baxter'),
+    ('Drew', 'Belcher'),
+    ('Elijah', 'Belcher'),
+    ('Ethan', 'Belcher'),
+    ('Jacob', 'Bender'),
+    ('Jalen', 'Boston'),
+    ('Brandon', 'Burkholder'),
+    ('Nero', 'Cooper'),
+    ('Anthony', 'Dragisics'),
+    ('Alejandro', 'Estrada'),
+    ('Justin', 'Gielen'),
+    ('Brian', 'Graham'),
+    ('Brett', 'Joyner'),
+    ('Tanner', 'Kennard'),
+    ('Tyler', 'Lee'),
+    ('Stiven', 'Llano'),
+    ('Morgan', 'Lussi'),
+    ('Raffaele', 'Mazzone'),
+    ('Daniel', 'McCleary'),
+    ('Edixon', 'Moreira'),
+    ('David', 'Ogbonna'),
+    ('Garrett', 'Peters'),
+    ('Juston', 'Rainey'),
+    ('Cesar', 'Ramos'),
+    ('Aaron', 'Rilling'),
+    ('Jackson', 'Ruckman'),
+    ('Kyle', 'Saunderson'),
+    ('Luis', 'Soria'),
+    ('Brett St', 'Martin'),
+    ('Alexander', 'Wardle'),
+    ('Joseph Daly', 'Aigner'),
+    ('Liam Charles', 'Aigner'),
+    ('Jacob L', 'Amon'),
+    ('Samuel', 'Amon'),
+    ('Walner', 'Anescar'),
+    ('Samuel', 'Burbage'),
+    ('Joshua Alexander', 'Carey'),
+    ('Corvens Jay', 'Corvil'),
+    ('Zechariah', 'Dapaah'),
+    ('Adam Stephen', 'DeLizza'),
+    ('Heberson', 'Edouard'),
+    ('Ashley', 'Fevrier'),
+    ('Christ-Daniel', 'Fils'),
+    ('Caleb James', 'Gragg'),
+    ('Marc', 'Henrice'),
+    ('Colin Benjamin', 'Hofmann'),
+    ('Elijah', 'Jabagat'),
+    ('Rickelmy', 'Jeune'),
+    ('Damarius', 'Kelley'),
+    ('Goran', 'Mijalkovski'),
+    ('Sean Chidozie', 'Morse'),
+    ('Abdelazim', 'Osman'),
+    ('Ahmed', 'Osman'),
+    ('Pat', 'Parrish'),
+    ('Caden Mark', 'Pollard'),
+    ('Ivan', 'Sanchez-Gonzalez'),
+    ('Gianluca', 'Secondi'),
+    ('Mourad', 'Shalaby'),
+    ('Kenny', 'Spock'),
+    ('Guy Holmeade Talbott', 'V'),
+    ('Devon', 'Warman'),
+    ('Skyler', 'Williams'),
+    ('David', 'Alverez'),
+    ('Carlos', 'Amador'),
+    ('Chris', 'Avila'),
+    ('Yaseen Ben', 'Chouikha'),
+    ('Amir', 'Bentaleb'),
+    ('Angel Viera', 'Castro'),
+    ('Jesse', 'Conteh'),
+    ('Gio', 'Cruz'),
+    ('German Del', 'Cid'),
+    ('Mohammed Ahmed', 'Elsir'),
+    ('Collins', 'Frimpong'),
+    ('Roy Alex', 'Galeano'),
+    ('Oscar', 'Garcia'),
+    ('Sam', 'Garcia'),
+    ('Anthony', 'Juarez'),
+    ('Kwasi', 'Kotoko'),
+    ('Orlando', 'Martinez'),
+    ('Andrew', 'Mejia'),
+    ('Chris', 'Mejia'),
+    ('Milton', 'Miranda'),
+    ('Nasrullah', 'Muhammed'),
+    ('Alexis', 'Palma'),
+    ('Luis', 'Reyes'),
+    ('Romel', 'Reyes'),
+    ('Jason', 'Rodriguez'),
+    ('Elias San', 'Juan'),
+    ('Ricardo', 'Vega'),
+    ('Raul', 'Villalta'),
+    ('Nour', 'Alamri'),
+    ('Henry', 'Asbill'),
+    ('Asad', 'Bashir'),
+    ('Kai', 'Bennett'),
+    ('Alex', 'Caskey'),
+    ('Damian', 'Charles'),
+    ('Jamie', 'Gleeson'),
+    ('Noah', 'Goodman'),
+    ('Anthony', 'Gourdine'),
+    ('Morgan', 'Hall'),
+    ('Josh', 'Hughes'),
+    ('Gad', 'Kabwende'),
+    ('Jason', 'Kayne'),
+    ('JT', 'Keiffer'),
+    ('Sebastian', 'Lopez'),
+    ('Jean', 'Malilo'),
+    ('Zion Jediah-Jason', 'McClean'),
+    ('Gregg', 'McPheely'),
+    ('Nathan', 'Miles'),
+    ('Alex', 'Rotoloni'),
+    ('Jack', 'Snyder'),
+    ('Brynn', 'Thompson'),
+    ('Tyler', 'Vogt'),
+    ('Renaldo', 'Walters'),
+    ('Matt', 'Williams'),
+    ('Nick', 'York'),
+    ('Zackeriah', 'Aday-Nicholson'),
+    ('Gabriel', 'Alvarez'),
+    ('Dylan', 'Bapst'),
+    ('Mitchell', 'Barry'),
+    ('Charles', 'Blakenship'),
+    ('Davis', 'Bryan'),
+    ('Kevin', 'Carvalho'),
+    ('John', 'Fragakis'),
+    ('Stefan', 'Gojic'),
+    ('Andrew', 'Grodhaus'),
+    ('Colton', 'Huebner'),
+    ('Joshua', 'James'),
+    ('William', 'Keegan'),
+    ('Konrad', 'Knap'),
+    ('Jordan', 'Locke'),
+    ('Christopher', 'Marshall'),
+    ('Javier', 'Martinez'),
+    ('Cain', 'McMillan'),
+    ('Anthony', 'Norman'),
+    ('Sampson', 'Nsemoh'),
+    ('Thomas', 'Powers'),
+    ('Seth', 'Prieto'),
+    ('Adam', 'Rooney'),
+    ('Jacob', 'Sayer'),
+    ('Zachary', 'Smith'),
+    ('Christian', 'Waeglin'),
+    ('Christopher', 'Witmond'),
+    ('Rashid', 'Alarape'),
+    ('Alex', 'Archambeau'),
+    ('Christopher', 'Avery'),
+    ('Carlos', 'Ayala-Viera'),
+    ('Carlos', 'Becerra-Gomez'),
+    ('Oskar', 'Bringle'),
+    ('Elliot', 'Curtin'),
+    ('Eli', 'Dent'),
+    ('Jackson', 'Eskay'),
+    ('Andrew', 'Fitton'),
+    ('Mike', 'Foutsop'),
+    ('Neema', 'Gharib'),
+    ('Andrew', 'Halloran'),
+    ('Thierno', 'Issabre'),
+    ('Michael', 'Johnson'),
+    ('Brennan', 'Koslow'),
+    ('Mitchell', 'Kupstas'),
+    ('Boland', 'Lekeaka'),
+    ('Adrian', 'Lollar'),
+    ('McKinley Mercer', 'III'),
+    ('Luke', 'Narker'),
+    ('Hassan', 'Pinto'),
+    ('Cory', 'Plasker'),
+    ('Max', 'Poore'),
+    ('Kevin', 'Reyes'),
+    ('Sharpe', 'Sablon'),
+    ('Iain', 'Smith'),
+    ('Thor', 'Svienbjorsson'),
+    ('Thomas', 'Toney'),
+    ('Zachary Paul', 'Young'),
+    ('Bilal', 'Ahmed'),
+    ('Tim', 'Amoui'),
+    ('Badr El', 'Yazami'),
+    ('Stan-Lee', 'Etienne'),
+    ('Sylvi', 'Mahmood'),
+    ('Pedro', 'Marinho'),
+    ('Juan', 'Martinez'),
+    ('David', 'Michaelson'),
+    ('Metsantika', 'Mokgoatsana'),
+    ('Ali', 'Niang'),
+    ('Javier', 'Pace'),
+    ('Osman', 'Rodriguez'),
+    ('Aaron', 'Shiffman'),
+    ('Miwoned', 'Siraj'),
+    ('Tyler', 'Swinehart'),
+    ('Gabriel', 'Villar'),
+    ('Michael', 'Walsh'),
+    ('Joshua', 'Warde'),
+    ('Christopher', 'Wilson'),
+    ('Kyle', 'Xhajanka'),
+    ('Nathan', 'Bio'),
+    ('Rob', 'Bonet'),
+    ('Aziymu Shamil', 'Burns'),
+    ('Jackson', 'Cavenaugh'),
+    ('Kyle', 'Crawford'),
+    ('Eduardo', 'Delgado'),
+    ('Matheus', 'Fineto'),
+    ('Enrique Gonzalez', 'Plaza'),
+    ('Chris', 'Griffith'),
+    ('Philip', 'Harris'),
+    ('Justin', 'Heimerl'),
+    ('Lucas', 'Horton'),
+    ('Karson Reese', 'Kendall'),
+    ('Konner', 'Kendall'),
+    ('Mouad', 'Labied'),
+    ('Jake', 'Langton'),
+    ('Myles', 'Levelle'),
+    ('Randy', 'Mallar-Calvillo'),
+    ('Matt', 'Mitchell'),
+    ('Nikos', 'Papanikolopoulos'),
+    ('Cade', 'Quinto'),
+    ('Juandi', 'Riley'),
+    ('Luis', 'Romero'),
+    ('Eduardo Ernesto', 'Salmeron'),
+    ('Aswin', 'Sembu'),
+    ('Adam', 'Sole'),
+    ('Zaid', 'Takrouri'),
+    ('Michael', 'Touihri'),
+    ('Ivan', 'Verdezoto'),
+    ('Min', 'Yoo'),
+    ('Jonathan', 'Adabi'),
+    ('Tishe', 'Adekanmbi'),
+    ('Abdoulmalik', 'Adesanya'),
+    ('Caleb', 'Ayan'),
+    ('Olumide', 'Ayo-Ajibike'),
+    ('Elad Khaleef', 'Bogle'),
+    ('Tobias', 'Ciho'),
+    ('Nixon Manuel', 'Condolo'),
+    ('Felipe', 'Correa'),
+    ('Michael', 'Dardis'),
+    ('Abdoulaye', 'Diba'),
+    ('Lech', 'Dunser'),
+    ('Daniel Duran', 'Gonzalez'),
+    ('David Alejandro', 'Fierro'),
+    ('Caleb', 'Johnson'),
+    ('Ian Thomas', 'Kunkel'),
+    ('Jelle', 'Lansdaal'),
+    ('Ruari Eamonn', 'O’Rourke'),
+    ('Siddharth', 'Rajesh'),
+    ('Anel', 'Ramic'),
+    ('Sumner', 'Richardson'),
+    ('George Bishop', 'Rodi'),
+    ('Connor', 'Rosenthal'),
+    ('Godfred Nii', 'Tettey'),
+    ('Joshua Parbie', 'Tettey'),
+    ('Robert A', 'Thomas'),
+    ('Chris Arturo', 'Vitela'),
+    ('Noah', 'Wieland'),
+    ('Olanrewaju', 'Yusuff'),
+    ('Roberto Carlos', 'Calix'),
+    ('Eli Francisco', 'Carrasco'),
+    ('Axel', 'Castrejon'),
+    ('Gael Jared', 'Castrejon'),
+    ('Jared Scott', 'Childs'),
+    ('Dylan Bright', 'Edmonds'),
+    ('Mason McGill', 'Fifer'),
+    ('Omar', 'Guadarrama'),
+    ('Brandon', 'Gutierrez'),
+    ('Maury', 'Ibarra'),
+    ('Sebastian Tyler', 'Jones'),
+    ('Dino', 'Kalac'),
+    ('Taylor Benjamin', 'Lemmon'),
+    ('Ivan Israel', 'Lopez'),
+    ('Sebastian', 'Lopez'),
+    ('Juanes', 'Martinez'),
+    ('Sebastian', 'Nuñez'),
+    ('Ashton Thomas', 'Parnell'),
+    ('Tyler', 'Pineda'),
+    ('Voshon', 'Ramcharan'),
+    ('Marvin', 'Rodriguez'),
+    ('Fabian', 'Rodriguez-Escobedo'),
+    ('Blair', 'Springhall'),
+    ('Bradley Hamilton', 'Tidwell'),
+    ('Edward', 'Trejo'),
+    ('Johan Miguel', 'Trigo-Rios'),
+    ('Luis Albert', 'Ventura'),
+    ('Patrick', 'Ventura'),
+    ('Nicholas', 'Wheeler'),
+    ('Adam', 'Abdullahi'),
+    ('Mohammed', 'Al-Asady'),
+    ('Malek', 'Almariri'),
+    ('Mario', 'Arreguin'),
+    ('Ali', 'Bazz'),
+    ('Monchu', 'Camara'),
+    ('Steven', 'Carrillo'),
+    ('Karl', 'Christiansen'),
+    ('Franklin', 'Contreras'),
+    ('Vitor De', 'Souza'),
+    ('Adrian', 'Garcia'),
+    ('Josue', 'Gomez'),
+    ('Jafet', 'Higuera'),
+    ('Rui', 'James-Pereira'),
+    ('Kendrick', 'Jean'),
+    ('Sanaa', 'Listenbee'),
+    ('Chris', 'Louissaint'),
+    ('David', 'Martinez'),
+    ('Ramsis', 'Martinez'),
+    ('Ruben', 'Martinez'),
+    ('Jonathan', 'May'),
+    ('Jaylen', 'McCray'),
+    ('Tariq', 'Mohammed'),
+    ('Geovanni', 'Oboh'),
+    ('Jordan', 'Paul'),
+    ('Nicolas', 'Pegorer'),
+    ('Pablo', 'Piraquive'),
+    ('Roney', 'Rubio'),
+    ('Anakin', 'Ruiz'),
+    ('Jazeime', 'Russell'),
+    ('Jonathan', 'Sandoval'),
+    ('Ayman', 'Saudin'),
+    ('Manuel', 'Simental'),
+    ('Mahmoud', 'Tasslak'),
+    ('Myles', 'Williams')
+  ) AS v(first_name, last_name)
+  WHERE NOT EXISTS (
+    SELECT 1 FROM person_lookup pl
+    WHERE pl.first_name = v.first_name AND pl.last_name = v.last_name
+  )
   RETURNING id, first_name, last_name
+),
+all_persons AS (
+  SELECT * FROM person_lookup
+  UNION ALL
+  SELECT * FROM inserted_persons
 ),
 inserted_players AS (
   INSERT INTO players (person_id, source_system_id, external_id)
   SELECT
-    ip.id,
+    ap.id,
     1,  -- source_system_id (APSL)
     CASE
-      WHEN ip.first_name = 'Sahil' AND ip.last_name = 'Banerjee' THEN '114814-sahil-banerjee'
-      WHEN ip.first_name = 'Massimiliano' AND ip.last_name = 'Bruno' THEN '114814-massimiliano-bruno'
-      WHEN ip.first_name = 'Kevin Alves' AND ip.last_name = 'Cruz' THEN '114814-kevin-alves-cruz'
-      WHEN ip.first_name = 'Ryan' AND ip.last_name = 'Cura' THEN '114814-ryan-cura'
-      WHEN ip.first_name = 'Emilano De La Macorra' AND ip.last_name = 'Cardoso' THEN '114814-emilano-de-la-macorra-cardoso'
-      WHEN ip.first_name = 'Jeffery' AND ip.last_name = 'Dietrich' THEN '114814-jeffery-dietrich'
-      WHEN ip.first_name = 'Claudio' AND ip.last_name = 'Dragonetti' THEN '114814-claudio-dragonetti'
-      WHEN ip.first_name = 'Miguel' AND ip.last_name = 'Enriquez' THEN '114814-miguel-enriquez'
-      WHEN ip.first_name = 'Charles Esber' AND ip.last_name = 'Tavares' THEN '114814-charles-esber-tavares'
-      WHEN ip.first_name = 'Kaven' AND ip.last_name = 'Fitch' THEN '114814-kaven-fitch'
-      WHEN ip.first_name = 'Vincenzo' AND ip.last_name = 'Fuentes' THEN '114814-vincenzo-fuentes'
-      WHEN ip.first_name = 'Payson' AND ip.last_name = 'Goyette' THEN '114814-payson-goyette'
-      WHEN ip.first_name = 'Pano' AND ip.last_name = 'Haseotes' THEN '114814-pano-haseotes'
-      WHEN ip.first_name = 'Aidan' AND ip.last_name = 'Hayes' THEN '114814-aidan-hayes'
-      WHEN ip.first_name = 'Samuel' AND ip.last_name = 'Hong' THEN '114814-samuel-hong'
-      WHEN ip.first_name = 'Santiago' AND ip.last_name = 'Kadadihi' THEN '114814-santiago-kadadihi'
-      WHEN ip.first_name = 'George' AND ip.last_name = 'Karafilidis' THEN '114814-george-karafilidis'
-      WHEN ip.first_name = 'Jeremy' AND ip.last_name = 'Kim' THEN '114814-jeremy-kim'
-      WHEN ip.first_name = 'Eduardo' AND ip.last_name = 'Marquez' THEN '114814-eduardo-marquez'
-      WHEN ip.first_name = 'Nicolas' AND ip.last_name = 'Martignoni' THEN '114814-nicolas-martignoni'
-      WHEN ip.first_name = 'Evan' AND ip.last_name = 'Mendonca' THEN '114814-evan-mendonca'
-      WHEN ip.first_name = 'Pablo' AND ip.last_name = 'Montilla' THEN '114814-pablo-montilla'
-      WHEN ip.first_name = 'Lucas Ortega' AND ip.last_name = 'Morales' THEN '114814-lucas-ortega-morales'
-      WHEN ip.first_name = 'Nicholas Stephen' AND ip.last_name = 'Pierangeli' THEN '114814-nicholas-stephen-pierangeli'
-      WHEN ip.first_name = 'Mario Ruiz' AND ip.last_name = 'Perez' THEN '114814-mario-ruiz-perez'
-      WHEN ip.first_name = 'Edwin' AND ip.last_name = 'Saravia' THEN '114814-edwin-saravia'
-      WHEN ip.first_name = 'Caio' AND ip.last_name = 'Soares' THEN '114814-caio-soares'
-      WHEN ip.first_name = 'Johner' AND ip.last_name = 'Soe' THEN '114814-johner-soe'
-      WHEN ip.first_name = 'Luka' AND ip.last_name = 'Szymanski' THEN '114814-luka-szymanski'
-      WHEN ip.first_name = 'Ross Lamont' AND ip.last_name = 'Watson' THEN '114814-ross-lamont-watson'
-      WHEN ip.first_name = 'Moises De pina' AND ip.last_name = 'Alves' THEN '118063-moises-de-pina-alves'
-      WHEN ip.first_name = 'Jack' AND ip.last_name = 'Aronson' THEN '118063-jack-aronson'
-      WHEN ip.first_name = 'Joao P' AND ip.last_name = 'Carvalho' THEN '118063-joao-p-carvalho'
-      WHEN ip.first_name = 'Mana' AND ip.last_name = 'Chavali' THEN '118063-mana-chavali'
-      WHEN ip.first_name = 'Suri' AND ip.last_name = 'Chavali' THEN '118063-suri-chavali'
-      WHEN ip.first_name = 'Brendan' AND ip.last_name = 'Claflin' THEN '118063-brendan-claflin'
-      WHEN ip.first_name = 'Matthew Daniel' AND ip.last_name = 'Cosentino' THEN '118063-matthew-daniel-cosentino'
-      WHEN ip.first_name = 'Patrick' AND ip.last_name = 'Davison' THEN '118063-patrick-davison'
-      WHEN ip.first_name = 'Joao Paulo De Mattos' AND ip.last_name = 'Almeida' THEN '118063-joao-paulo-de-mattos-almeida'
-      WHEN ip.first_name = 'Manuel António' AND ip.last_name = 'Depina' THEN '118063-manuel-ant-nio-depina'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Eve' THEN '118063-michael-eve'
-      WHEN ip.first_name = 'Nicholas' AND ip.last_name = 'Falcone' THEN '118063-nicholas-falcone'
-      WHEN ip.first_name = 'Jackson' AND ip.last_name = 'Faulx' THEN '118063-jackson-faulx'
-      WHEN ip.first_name = 'Luke' AND ip.last_name = 'Hanchar' THEN '118063-luke-hanchar'
-      WHEN ip.first_name = 'Oswaldo' AND ip.last_name = 'Hernandez' THEN '118063-oswaldo-hernandez'
-      WHEN ip.first_name = 'Martin' AND ip.last_name = 'Konstantinov' THEN '118063-martin-konstantinov'
-      WHEN ip.first_name = 'Kyle' AND ip.last_name = 'Lasewicz' THEN '118063-kyle-lasewicz'
-      WHEN ip.first_name = 'Surya' AND ip.last_name = 'Mani' THEN '118063-surya-mani'
-      WHEN ip.first_name = 'Christian' AND ip.last_name = 'Martins' THEN '118063-christian-martins'
-      WHEN ip.first_name = 'Gilson' AND ip.last_name = 'Martins' THEN '118063-gilson-martins'
-      WHEN ip.first_name = 'Stephen Denis Silva' AND ip.last_name = 'Mendes' THEN '118063-stephen-denis-silva-mendes'
-      WHEN ip.first_name = 'Chad' AND ip.last_name = 'Meyers' THEN '118063-chad-meyers'
-      WHEN ip.first_name = 'Charles' AND ip.last_name = 'Miller' THEN '118063-charles-miller'
-      WHEN ip.first_name = 'Jonathan Ernesto' AND ip.last_name = 'Rodriguez' THEN '118063-jonathan-ernesto-rodriguez'
-      WHEN ip.first_name = 'Carlos' AND ip.last_name = 'Rojas' THEN '118063-carlos-rojas'
-      WHEN ip.first_name = 'Jaderson' AND ip.last_name = 'Rutsatz' THEN '118063-jaderson-rutsatz'
-      WHEN ip.first_name = 'Alexander' AND ip.last_name = 'Shanley' THEN '118063-alexander-shanley'
-      WHEN ip.first_name = 'Griffin' AND ip.last_name = 'Sisk' THEN '118063-griffin-sisk'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Soto' THEN '118063-daniel-soto'
-      WHEN ip.first_name = 'Elisandro' AND ip.last_name = 'Tavares' THEN '118063-elisandro-tavares'
-      WHEN ip.first_name = 'Nick' AND ip.last_name = 'Winn' THEN '118063-nick-winn'
-      WHEN ip.first_name = 'Jackson' AND ip.last_name = 'Yager' THEN '118063-jackson-yager'
-      WHEN ip.first_name = 'Mario' AND ip.last_name = 'Amado' THEN '114837-mario-amado'
-      WHEN ip.first_name = 'Brenner' AND ip.last_name = 'Cardoso' THEN '114837-brenner-cardoso'
-      WHEN ip.first_name = 'Wendy' AND ip.last_name = 'Celestin' THEN '114837-wendy-celestin'
-      WHEN ip.first_name = 'Denilson Barros' AND ip.last_name = 'Centeio' THEN '114837-denilson-barros-centeio'
-      WHEN ip.first_name = 'Jacinto' AND ip.last_name = 'Correia' THEN '114837-jacinto-correia'
-      WHEN ip.first_name = 'Edson Andarade Da' AND ip.last_name = 'Silva' THEN '114837-edson-andarade-da-silva'
-      WHEN ip.first_name = 'Fabio Pires Da' AND ip.last_name = 'Silva' THEN '114837-fabio-pires-da-silva'
-      WHEN ip.first_name = 'Rivaldo Baessa Da' AND ip.last_name = 'Silva' THEN '114837-rivaldo-baessa-da-silva'
-      WHEN ip.first_name = 'Heracles De Pina' AND ip.last_name = 'Fernandes' THEN '114837-heracles-de-pina-fernandes'
-      WHEN ip.first_name = 'Paulo De Pina' AND ip.last_name = 'Goncalves' THEN '114837-paulo-de-pina-goncalves'
-      WHEN ip.first_name = 'Valdir' AND ip.last_name = 'Depina' THEN '114837-valdir-depina'
-      WHEN ip.first_name = 'Isandro Fernandes' AND ip.last_name = 'Lopes' THEN '114837-isandro-fernandes-lopes'
-      WHEN ip.first_name = 'Mario Figueroa' AND ip.last_name = 'Garcia' THEN '114837-mario-figueroa-garcia'
-      WHEN ip.first_name = 'Adilson' AND ip.last_name = 'Gomes' THEN '114837-adilson-gomes'
-      WHEN ip.first_name = 'Clayton' AND ip.last_name = 'Gomes' THEN '114837-clayton-gomes'
-      WHEN ip.first_name = 'Estevao' AND ip.last_name = 'Gomes' THEN '114837-estevao-gomes'
-      WHEN ip.first_name = 'Jair Gomes De' AND ip.last_name = 'Pina' THEN '114837-jair-gomes-de-pina'
-      WHEN ip.first_name = 'Jose Gomes' AND ip.last_name = 'Rodrigues' THEN '114837-jose-gomes-rodrigues'
-      WHEN ip.first_name = 'Papa' AND ip.last_name = 'Ndiaye' THEN '114837-papa-ndiaye'
-      WHEN ip.first_name = 'Lucas Nogueira' AND ip.last_name = 'Monteiro' THEN '114837-lucas-nogueira-monteiro'
-      WHEN ip.first_name = 'Nima Norouzi' AND ip.last_name = 'Behjat' THEN '114837-nima-norouzi-behjat'
-      WHEN ip.first_name = 'Imauro' AND ip.last_name = 'Pina' THEN '114837-imauro-pina'
-      WHEN ip.first_name = 'Mauro Pires' AND ip.last_name = 'Amado' THEN '114837-mauro-pires-amado'
-      WHEN ip.first_name = 'Anthony' AND ip.last_name = 'Ramos' THEN '114837-anthony-ramos'
-      WHEN ip.first_name = 'Jose Rodrigues' AND ip.last_name = 'Teixeira' THEN '114837-jose-rodrigues-teixeira'
-      WHEN ip.first_name = 'Djeison Rodrigues' AND ip.last_name = 'Vieira' THEN '114837-djeison-rodrigues-vieira'
-      WHEN ip.first_name = 'Tahir Akil' AND ip.last_name = 'Scott' THEN '114837-tahir-akil-scott'
-      WHEN ip.first_name = 'Ronilson' AND ip.last_name = 'Semedo' THEN '114837-ronilson-semedo'
-      WHEN ip.first_name = 'Francisco M' AND ip.last_name = 'Silveira' THEN '114837-francisco-m-silveira'
-      WHEN ip.first_name = 'Yassine' AND ip.last_name = 'Smissame' THEN '114837-yassine-smissame'
-      WHEN ip.first_name = 'Kevin Sos Santos' AND ip.last_name = 'Barbisa' THEN '114837-kevin-sos-santos-barbisa'
-      WHEN ip.first_name = 'Domingos' AND ip.last_name = 'Tavares' THEN '114837-domingos-tavares'
-      WHEN ip.first_name = 'Edson Irlandino Tavares' AND ip.last_name = 'Dossantos' THEN '114837-edson-irlandino-tavares-dossantos'
-      WHEN ip.first_name = 'Elton J' AND ip.last_name = 'Teixeira' THEN '114837-elton-j-teixeira'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Andrade' THEN '114844-daniel-andrade'
-      WHEN ip.first_name = 'Edmilson' AND ip.last_name = 'Andrade' THEN '114844-edmilson-andrade'
-      WHEN ip.first_name = 'Damian' AND ip.last_name = 'Anerdson' THEN '114844-damian-anerdson'
-      WHEN ip.first_name = 'Ronis' AND ip.last_name = 'Ayala' THEN '114844-ronis-ayala'
-      WHEN ip.first_name = 'Dominique' AND ip.last_name = 'Baessa' THEN '114844-dominique-baessa'
-      WHEN ip.first_name = 'Gio' AND ip.last_name = 'Barros' THEN '114844-gio-barros'
-      WHEN ip.first_name = 'Justin' AND ip.last_name = 'Barros' THEN '114844-justin-barros'
-      WHEN ip.first_name = 'Dominek' AND ip.last_name = 'Borden' THEN '114844-dominek-borden'
-      WHEN ip.first_name = 'Edemilson' AND ip.last_name = 'Candida' THEN '114844-edemilson-candida'
-      WHEN ip.first_name = 'Kevin' AND ip.last_name = 'Correia' THEN '114844-kevin-correia'
-      WHEN ip.first_name = 'Neil' AND ip.last_name = 'Cunha' THEN '114844-neil-cunha'
-      WHEN ip.first_name = 'Mason' AND ip.last_name = 'Dealmeida' THEN '114844-mason-dealmeida'
-      WHEN ip.first_name = 'Clayton' AND ip.last_name = 'Demelo' THEN '114844-clayton-demelo'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Demelo' THEN '114844-ethan-demelo'
-      WHEN ip.first_name = 'Dawson' AND ip.last_name = 'Dosvais' THEN '114844-dawson-dosvais'
-      WHEN ip.first_name = 'Zajdele' AND ip.last_name = 'Dulcine' THEN '114844-zajdele-dulcine'
-      WHEN ip.first_name = 'Augustin' AND ip.last_name = 'Edwin' THEN '114844-augustin-edwin'
-      WHEN ip.first_name = 'Austin' AND ip.last_name = 'Eugenio' THEN '114844-austin-eugenio'
-      WHEN ip.first_name = 'Malaquias Tavares' AND ip.last_name = 'Garcia' THEN '114844-malaquias-tavares-garcia'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Garcia' THEN '114844-michael-garcia'
-      WHEN ip.first_name = 'Damon' AND ip.last_name = 'Greene' THEN '114844-damon-greene'
-      WHEN ip.first_name = 'Ricardo' AND ip.last_name = 'Macedo' THEN '114844-ricardo-macedo'
-      WHEN ip.first_name = 'Sam' AND ip.last_name = 'Matias' THEN '114844-sam-matias'
-      WHEN ip.first_name = 'Dylan' AND ip.last_name = 'Mendes' THEN '114844-dylan-mendes'
-      WHEN ip.first_name = 'Jose Carlos "Ze"' AND ip.last_name = 'Mendes' THEN '114844-jose-carlos-ze-mendes'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Paiva' THEN '114844-ethan-paiva'
-      WHEN ip.first_name = 'Joey' AND ip.last_name = 'Paiva' THEN '114844-joey-paiva'
-      WHEN ip.first_name = 'Colin' AND ip.last_name = 'Pereira' THEN '114844-colin-pereira'
-      WHEN ip.first_name = 'Jacob' AND ip.last_name = 'Ramos' THEN '114844-jacob-ramos'
-      WHEN ip.first_name = 'Rafael' AND ip.last_name = 'Raposo' THEN '114844-rafael-raposo'
-      WHEN ip.first_name = 'Dylan' AND ip.last_name = 'Senra' THEN '114844-dylan-senra'
-      WHEN ip.first_name = 'Flavio Joel Soares' AND ip.last_name = 'Carvalho' THEN '114844-flavio-joel-soares-carvalho'
-      WHEN ip.first_name = 'Christian' AND ip.last_name = 'Sousa' THEN '114844-christian-sousa'
-      WHEN ip.first_name = 'Wilson Omar Amaya' AND ip.last_name = 'Lara' THEN '114838-wilson-omar-amaya-lara'
-      WHEN ip.first_name = 'Jessiel Alexander' AND ip.last_name = 'Amparo' THEN '114838-jessiel-alexander-amparo'
-      WHEN ip.first_name = 'Minor Ojanny Angel' AND ip.last_name = 'Merida' THEN '114838-minor-ojanny-angel-merida'
-      WHEN ip.first_name = 'Yaw' AND ip.last_name = 'Bediako' THEN '114838-yaw-bediako'
-      WHEN ip.first_name = 'Elvino Tavares Da' AND ip.last_name = 'Silva' THEN '114838-elvino-tavares-da-silva'
-      WHEN ip.first_name = 'Delvino Tavares' AND ip.last_name = 'Dasilva' THEN '114838-delvino-tavares-dasilva'
-      WHEN ip.first_name = 'Jamel Anch' AND ip.last_name = 'David' THEN '114838-jamel-anch-david'
-      WHEN ip.first_name = 'Henry' AND ip.last_name = 'Edeko' THEN '114838-henry-edeko'
-      WHEN ip.first_name = 'Ayoub' AND ip.last_name = 'Essaoui' THEN '114838-ayoub-essaoui'
-      WHEN ip.first_name = 'Jackson' AND ip.last_name = 'Fernandes' THEN '114838-jackson-fernandes'
-      WHEN ip.first_name = 'Carlos Augusto Gomez' AND ip.last_name = 'Hernandez' THEN '114838-carlos-augusto-gomez-hernandez'
-      WHEN ip.first_name = 'Braulio Gonzalez' AND ip.last_name = 'Oliveria' THEN '114838-braulio-gonzalez-oliveria'
-      WHEN ip.first_name = 'Alejandro Alfonso Guerrero' AND ip.last_name = 'Vargas' THEN '114838-alejandro-alfonso-guerrero-vargas'
-      WHEN ip.first_name = 'Kenneth Jared Ibarra' AND ip.last_name = 'Suarez' THEN '114838-kenneth-jared-ibarra-suarez'
-      WHEN ip.first_name = 'Aeshan' AND ip.last_name = 'Kapil' THEN '114838-aeshan-kapil'
-      WHEN ip.first_name = 'Jesus Gilberto' AND ip.last_name = 'Martinez' THEN '114838-jesus-gilberto-martinez'
-      WHEN ip.first_name = 'Ricosta' AND ip.last_name = 'Mede' THEN '114838-ricosta-mede'
-      WHEN ip.first_name = 'Sheventz' AND ip.last_name = 'Multy' THEN '114838-sheventz-multy'
-      WHEN ip.first_name = 'Samuel Armando' AND ip.last_name = 'Perez' THEN '114838-samuel-armando-perez'
-      WHEN ip.first_name = 'Aiden Thor' AND ip.last_name = 'Perry' THEN '114838-aiden-thor-perry'
-      WHEN ip.first_name = 'Alex Andrade' AND ip.last_name = 'Pina' THEN '114838-alex-andrade-pina'
-      WHEN ip.first_name = 'Connor' AND ip.last_name = 'Poliquin' THEN '114838-connor-poliquin'
-      WHEN ip.first_name = 'Timothy' AND ip.last_name = 'Singleton' THEN '114838-timothy-singleton'
-      WHEN ip.first_name = 'Francisco Aron' AND ip.last_name = 'Villacorta' THEN '114838-francisco-aron-villacorta'
-      WHEN ip.first_name = 'Benjamin' AND ip.last_name = 'Watts' THEN '114838-benjamin-watts'
-      WHEN ip.first_name = 'Mo Amine' AND ip.last_name = 'Faleh' THEN '118064-mo-amine-faleh'
-      WHEN ip.first_name = 'Ludwin Daniel' AND ip.last_name = 'Carranza' THEN '118064-ludwin-daniel-carranza'
-      WHEN ip.first_name = 'Albert' AND ip.last_name = 'Daniels' THEN '118064-albert-daniels'
-      WHEN ip.first_name = 'Yassine' AND ip.last_name = 'ElBasli' THEN '118064-yassine-elbasli'
-      WHEN ip.first_name = 'Eduardo' AND ip.last_name = 'Engst-Mansilla' THEN '118064-eduardo-engst-mansilla'
-      WHEN ip.first_name = 'Kerllon Silva' AND ip.last_name = 'Felipe' THEN '118064-kerllon-silva-felipe'
-      WHEN ip.first_name = 'Cole' AND ip.last_name = 'Fergusson' THEN '118064-cole-fergusson'
-      WHEN ip.first_name = 'Joao Victor' AND ip.last_name = 'Ferreira' THEN '118064-joao-victor-ferreira'
-      WHEN ip.first_name = 'Carl' AND ip.last_name = 'Foming' THEN '118064-carl-foming'
-      WHEN ip.first_name = 'Jackson C' AND ip.last_name = 'Gilstrap' THEN '118064-jackson-c-gilstrap'
-      WHEN ip.first_name = 'Bernadin' AND ip.last_name = 'Herard' THEN '118064-bernadin-herard'
-      WHEN ip.first_name = 'Juan camilo' AND ip.last_name = 'Hernández' THEN '118064-juan-camilo-hern-ndez'
-      WHEN ip.first_name = 'Delices' AND ip.last_name = 'Keyri' THEN '118064-delices-keyri'
-      WHEN ip.first_name = 'Hindolo Brima' AND ip.last_name = 'Mansaray' THEN '118064-hindolo-brima-mansaray'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Massaquoi' THEN '118064-john-massaquoi'
-      WHEN ip.first_name = 'Vincent' AND ip.last_name = 'Miller' THEN '118064-vincent-miller'
-      WHEN ip.first_name = 'Hassan' AND ip.last_name = 'Mutaasa' THEN '118064-hassan-mutaasa'
-      WHEN ip.first_name = 'Amadou Moustapha' AND ip.last_name = 'Ndiaye' THEN '118064-amadou-moustapha-ndiaye'
-      WHEN ip.first_name = 'Carl' AND ip.last_name = 'Olivier' THEN '118064-carl-olivier'
-      WHEN ip.first_name = 'Roodchyl Samuel' AND ip.last_name = 'Pauleon' THEN '118064-roodchyl-samuel-pauleon'
-      WHEN ip.first_name = 'Jaydon' AND ip.last_name = 'Perez' THEN '118064-jaydon-perez'
-      WHEN ip.first_name = 'Joseph' AND ip.last_name = 'Saidu' THEN '118064-joseph-saidu'
-      WHEN ip.first_name = 'Destin' AND ip.last_name = 'Sleeter' THEN '118064-destin-sleeter'
-      WHEN ip.first_name = 'Pierre St' AND ip.last_name = 'Simon' THEN '118064-pierre-st-simon'
-      WHEN ip.first_name = 'Isaiah' AND ip.last_name = 'Stessman' THEN '118064-isaiah-stessman'
-      WHEN ip.first_name = 'Carlos' AND ip.last_name = 'Teixeira' THEN '118064-carlos-teixeira'
-      WHEN ip.first_name = 'Hamza' AND ip.last_name = 'Tribia' THEN '118064-hamza-tribia'
-      WHEN ip.first_name = 'Luiz Gustavo' AND ip.last_name = 'Zanellato' THEN '118064-luiz-gustavo-zanellato'
-      WHEN ip.first_name = 'Abraham' AND ip.last_name = 'Zepeda' THEN '118064-abraham-zepeda'
-      WHEN ip.first_name = 'Mustapha Ait' AND ip.last_name = 'Zbair' THEN '114815-mustapha-ait-zbair'
-      WHEN ip.first_name = 'Joshua' AND ip.last_name = 'Atemkeng' THEN '114815-joshua-atemkeng'
-      WHEN ip.first_name = 'Ousmane' AND ip.last_name = 'balde' THEN '114815-ousmane-balde'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Brewer' THEN '114815-john-brewer'
-      WHEN ip.first_name = 'Oscar' AND ip.last_name = 'Castillo' THEN '114815-oscar-castillo'
-      WHEN ip.first_name = 'Edmond' AND ip.last_name = 'Charles' THEN '114815-edmond-charles'
-      WHEN ip.first_name = 'Dimitri' AND ip.last_name = 'Costa' THEN '114815-dimitri-costa'
-      WHEN ip.first_name = 'Hamza El' AND ip.last_name = 'Amane' THEN '114815-hamza-el-amane'
-      WHEN ip.first_name = 'Mohamed' AND ip.last_name = 'El-Rhoufi' THEN '114815-mohamed-el-rhoufi'
-      WHEN ip.first_name = 'Hyacinth' AND ip.last_name = 'Fongang' THEN '114815-hyacinth-fongang'
-      WHEN ip.first_name = 'Metayer' AND ip.last_name = 'Gassamar' THEN '114815-metayer-gassamar'
-      WHEN ip.first_name = 'Abubakar Sidiq' AND ip.last_name = 'Hamidu' THEN '114815-abubakar-sidiq-hamidu'
-      WHEN ip.first_name = 'Diallo' AND ip.last_name = 'Ibrahima' THEN '114815-diallo-ibrahima'
-      WHEN ip.first_name = 'Ralph Jean' AND ip.last_name = 'Baptiste' THEN '114815-ralph-jean-baptiste'
-      WHEN ip.first_name = 'Root-mael Jean' AND ip.last_name = 'Baptiste' THEN '114815-root-mael-jean-baptiste'
-      WHEN ip.first_name = 'Cedrick' AND ip.last_name = 'Labah' THEN '114815-cedrick-labah'
-      WHEN ip.first_name = 'Bruno' AND ip.last_name = 'Lana' THEN '114815-bruno-lana'
-      WHEN ip.first_name = 'Longtse Mofor' AND ip.last_name = 'Landoh' THEN '114815-longtse-mofor-landoh'
-      WHEN ip.first_name = 'Roberto' AND ip.last_name = 'Martinez' THEN '114815-roberto-martinez'
-      WHEN ip.first_name = 'Quang' AND ip.last_name = 'Milligan' THEN '114815-quang-milligan'
-      WHEN ip.first_name = 'Bonjoh' AND ip.last_name = 'Ngoasong' THEN '114815-bonjoh-ngoasong'
-      WHEN ip.first_name = 'Sydiney' AND ip.last_name = 'Nyabiosi' THEN '114815-sydiney-nyabiosi'
-      WHEN ip.first_name = 'Pedro' AND ip.last_name = 'Pedrine' THEN '114815-pedro-pedrine'
-      WHEN ip.first_name = 'Marc Hattley' AND ip.last_name = 'Pierre' THEN '114815-marc-hattley-pierre'
-      WHEN ip.first_name = 'Luvensky' AND ip.last_name = 'Polycarpe' THEN '114815-luvensky-polycarpe'
-      WHEN ip.first_name = 'Angelo' AND ip.last_name = 'Ramirez' THEN '114815-angelo-ramirez'
-      WHEN ip.first_name = 'Emerson' AND ip.last_name = 'Roman' THEN '114815-emerson-roman'
-      WHEN ip.first_name = 'Yostin' AND ip.last_name = 'Roman' THEN '114815-yostin-roman'
-      WHEN ip.first_name = 'Shelton' AND ip.last_name = 'Sidelca' THEN '114815-shelton-sidelca'
-      WHEN ip.first_name = 'Redwane' AND ip.last_name = 'Tinfle' THEN '114815-redwane-tinfle'
-      WHEN ip.first_name = 'Nelvin' AND ip.last_name = 'Vando' THEN '114815-nelvin-vando'
-      WHEN ip.first_name = 'Jonathan' AND ip.last_name = 'Vazquez' THEN '114815-jonathan-vazquez'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Vitello' THEN '114815-ethan-vitello'
-      WHEN ip.first_name = 'Trevor' AND ip.last_name = 'Voisine' THEN '114815-trevor-voisine'
-      WHEN ip.first_name = 'Zamy Youri ' AND ip.last_name = 'Ansley' THEN '114815-zamy-youri-ansley'
-      WHEN ip.first_name = 'Meysar' AND ip.last_name = 'Abdulkadir' THEN '114826-meysar-abdulkadir'
-      WHEN ip.first_name = 'Joel' AND ip.last_name = 'Agebtossou' THEN '114826-joel-agebtossou'
-      WHEN ip.first_name = 'Davaughn' AND ip.last_name = 'Anderson' THEN '114826-davaughn-anderson'
-      WHEN ip.first_name = 'Deante' AND ip.last_name = 'Anderson' THEN '114826-deante-anderson'
-      WHEN ip.first_name = 'Jimmy' AND ip.last_name = 'Arita' THEN '114826-jimmy-arita'
-      WHEN ip.first_name = 'Ben' AND ip.last_name = 'Awashie' THEN '114826-ben-awashie'
-      WHEN ip.first_name = 'Alessandro' AND ip.last_name = 'Bacabac' THEN '114826-alessandro-bacabac'
-      WHEN ip.first_name = 'Dejaun' AND ip.last_name = 'Beckford' THEN '114826-dejaun-beckford'
-      WHEN ip.first_name = 'Joseph' AND ip.last_name = 'Boakye' THEN '114826-joseph-boakye'
-      WHEN ip.first_name = 'Alexander' AND ip.last_name = 'Clarke' THEN '114826-alexander-clarke'
-      WHEN ip.first_name = 'Caleb' AND ip.last_name = 'Ennin' THEN '114826-caleb-ennin'
-      WHEN ip.first_name = 'Tim' AND ip.last_name = 'Ennin' THEN '114826-tim-ennin'
-      WHEN ip.first_name = 'Shaquan' AND ip.last_name = 'Facey' THEN '114826-shaquan-facey'
-      WHEN ip.first_name = 'Jahvanni' AND ip.last_name = 'Grant' THEN '114826-jahvanni-grant'
-      WHEN ip.first_name = 'Elian' AND ip.last_name = 'Guaman' THEN '114826-elian-guaman'
-      WHEN ip.first_name = 'Dax' AND ip.last_name = 'Hoffman' THEN '114826-dax-hoffman'
-      WHEN ip.first_name = 'George' AND ip.last_name = 'Jimenez' THEN '114826-george-jimenez'
-      WHEN ip.first_name = 'Gideon' AND ip.last_name = 'Kadiri' THEN '114826-gideon-kadiri'
-      WHEN ip.first_name = 'Jaheim' AND ip.last_name = 'Kennedy' THEN '114826-jaheim-kennedy'
-      WHEN ip.first_name = 'Brenden' AND ip.last_name = 'Landry' THEN '114826-brenden-landry'
-      WHEN ip.first_name = 'Shani' AND ip.last_name = 'Miller' THEN '114826-shani-miller'
-      WHEN ip.first_name = 'Kwesi' AND ip.last_name = 'Mills-Odoi' THEN '114826-kwesi-mills-odoi'
-      WHEN ip.first_name = 'Shemar' AND ip.last_name = 'Moore' THEN '114826-shemar-moore'
-      WHEN ip.first_name = 'Andre' AND ip.last_name = 'Morrison' THEN '114826-andre-morrison'
-      WHEN ip.first_name = 'Yaw' AND ip.last_name = 'Nimo-Agyare' THEN '114826-yaw-nimo-agyare'
-      WHEN ip.first_name = 'Kenny' AND ip.last_name = 'Ofori' THEN '114826-kenny-ofori'
-      WHEN ip.first_name = 'Diwash' AND ip.last_name = 'Pun' THEN '114826-diwash-pun'
-      WHEN ip.first_name = 'Shamar' AND ip.last_name = 'Smith' THEN '114826-shamar-smith'
-      WHEN ip.first_name = 'Sholay' AND ip.last_name = 'Sock' THEN '114826-sholay-sock'
-      WHEN ip.first_name = 'Dane' AND ip.last_name = 'Stephens' THEN '114826-dane-stephens'
-      WHEN ip.first_name = 'Romaine' AND ip.last_name = 'Walters' THEN '114826-romaine-walters'
-      WHEN ip.first_name = 'Colin' AND ip.last_name = 'Branigan' THEN '114816-colin-branigan'
-      WHEN ip.first_name = 'Colin' AND ip.last_name = 'Brocksieper' THEN '114816-colin-brocksieper'
-      WHEN ip.first_name = 'Nick' AND ip.last_name = 'Burkle' THEN '114816-nick-burkle'
-      WHEN ip.first_name = 'Rocco' AND ip.last_name = 'D’Arcangelo' THEN '114816-rocco-d-arcangelo'
-      WHEN ip.first_name = 'Massimo' AND ip.last_name = 'Eichner' THEN '114816-massimo-eichner'
-      WHEN ip.first_name = 'Eddy' AND ip.last_name = 'Enowbi' THEN '114816-eddy-enowbi'
-      WHEN ip.first_name = 'Sean' AND ip.last_name = 'Gannon' THEN '114816-sean-gannon'
-      WHEN ip.first_name = 'Andrew Hayden' AND ip.last_name = 'Geres' THEN '114816-andrew-hayden-geres'
-      WHEN ip.first_name = 'Donovan' AND ip.last_name = 'Harris' THEN '114816-donovan-harris'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Hess' THEN '114816-john-hess'
-      WHEN ip.first_name = 'Jalen' AND ip.last_name = 'Jean' THEN '114816-jalen-jean'
-      WHEN ip.first_name = 'Eric-Bertin' AND ip.last_name = 'Kalumbwe' THEN '114816-eric-bertin-kalumbwe'
-      WHEN ip.first_name = 'Sevon Komlan' AND ip.last_name = 'Koudaya' THEN '114816-sevon-komlan-koudaya'
-      WHEN ip.first_name = 'Senan' AND ip.last_name = 'Lonergan' THEN '114816-senan-lonergan'
-      WHEN ip.first_name = 'Luke' AND ip.last_name = 'McNabb' THEN '114816-luke-mcnabb'
-      WHEN ip.first_name = 'Aidan' AND ip.last_name = 'Nolan' THEN '114816-aidan-nolan'
-      WHEN ip.first_name = 'Aidan' AND ip.last_name = 'O''Brien' THEN '114816-aidan-o-brien'
-      WHEN ip.first_name = 'Liam' AND ip.last_name = 'O''Brien' THEN '114816-liam-o-brien'
-      WHEN ip.first_name = 'Ronan' AND ip.last_name = 'O''Brien' THEN '114816-ronan-o-brien'
-      WHEN ip.first_name = 'Marco' AND ip.last_name = 'Parisi' THEN '114816-marco-parisi'
-      WHEN ip.first_name = 'Christian' AND ip.last_name = 'Rivas-Plata' THEN '114816-christian-rivas-plata'
-      WHEN ip.first_name = 'Colm' AND ip.last_name = 'Ryan' THEN '114816-colm-ryan'
-      WHEN ip.first_name = 'Ian' AND ip.last_name = 'Slattery' THEN '114816-ian-slattery'
-      WHEN ip.first_name = 'Marcris' AND ip.last_name = 'Webb' THEN '114816-marcris-webb'
-      WHEN ip.first_name = 'Nick' AND ip.last_name = 'Wlodarcyk' THEN '114816-nick-wlodarcyk'
-      WHEN ip.first_name = 'Kaio Ramos' AND ip.last_name = 'Araujo' THEN '114851-kaio-ramos-araujo'
-      WHEN ip.first_name = 'Luciano' AND ip.last_name = 'Artaza' THEN '114851-luciano-artaza'
-      WHEN ip.first_name = 'Luke' AND ip.last_name = 'Bello' THEN '114851-luke-bello'
-      WHEN ip.first_name = 'Marc' AND ip.last_name = 'Calle' THEN '114851-marc-calle'
-      WHEN ip.first_name = 'Leonardo Da' AND ip.last_name = 'Graca' THEN '114851-leonardo-da-graca'
-      WHEN ip.first_name = 'Ricardo' AND ip.last_name = 'Dias' THEN '114851-ricardo-dias'
-      WHEN ip.first_name = 'Matthew' AND ip.last_name = 'Evora' THEN '114851-matthew-evora'
-      WHEN ip.first_name = 'Anthony' AND ip.last_name = 'Faienza' THEN '114851-anthony-faienza'
-      WHEN ip.first_name = 'Thomas' AND ip.last_name = 'Fernandez-Wolff' THEN '114851-thomas-fernandez-wolff'
-      WHEN ip.first_name = 'Nicholas' AND ip.last_name = 'Fernández-Wolff' THEN '114851-nicholas-fern-ndez-wolff'
-      WHEN ip.first_name = 'Abdulmohaymen' AND ip.last_name = 'Gadoush' THEN '114851-abdulmohaymen-gadoush'
-      WHEN ip.first_name = 'Eurico' AND ip.last_name = 'Gomes' THEN '114851-eurico-gomes'
-      WHEN ip.first_name = 'Javier' AND ip.last_name = 'Hernandez' THEN '114851-javier-hernandez'
-      WHEN ip.first_name = 'Joni' AND ip.last_name = 'Kadrioski' THEN '114851-joni-kadrioski'
-      WHEN ip.first_name = 'Chavez' AND ip.last_name = 'Mbeki' THEN '114851-chavez-mbeki'
-      WHEN ip.first_name = 'Kenan' AND ip.last_name = 'Mujic' THEN '114851-kenan-mujic'
-      WHEN ip.first_name = 'Ermis' AND ip.last_name = 'Paguada' THEN '114851-ermis-paguada'
-      WHEN ip.first_name = 'Paulo' AND ip.last_name = 'Paris' THEN '114851-paulo-paris'
-      WHEN ip.first_name = 'Juan' AND ip.last_name = 'Saca' THEN '114851-juan-saca'
-      WHEN ip.first_name = 'Bruno' AND ip.last_name = 'Silva' THEN '114851-bruno-silva'
-      WHEN ip.first_name = 'Matthew' AND ip.last_name = 'Silva' THEN '114851-matthew-silva'
-      WHEN ip.first_name = 'Michel' AND ip.last_name = 'Souza' THEN '114851-michel-souza'
-      WHEN ip.first_name = 'Kadin' AND ip.last_name = 'Talho' THEN '114851-kadin-talho'
-      WHEN ip.first_name = 'Diego' AND ip.last_name = 'Vasquez' THEN '114851-diego-vasquez'
-      WHEN ip.first_name = 'Jannik' AND ip.last_name = 'Wille' THEN '114851-jannik-wille'
-      WHEN ip.first_name = 'Caleb' AND ip.last_name = 'Wu' THEN '114851-caleb-wu'
-      WHEN ip.first_name = 'Alan' AND ip.last_name = 'Xavier' THEN '114851-alan-xavier'
-      WHEN ip.first_name = 'Bright' AND ip.last_name = 'Agyemang' THEN '114819-bright-agyemang'
-      WHEN ip.first_name = 'Wander' AND ip.last_name = 'Alves' THEN '114819-wander-alves'
-      WHEN ip.first_name = 'Guilherme' AND ip.last_name = 'Andrade' THEN '114819-guilherme-andrade'
-      WHEN ip.first_name = 'Hayllan' AND ip.last_name = 'Batista' THEN '114819-hayllan-batista'
-      WHEN ip.first_name = 'Gabriel' AND ip.last_name = 'Berthoud' THEN '114819-gabriel-berthoud'
-      WHEN ip.first_name = 'Gabriel' AND ip.last_name = 'Carrelo' THEN '114819-gabriel-carrelo'
-      WHEN ip.first_name = 'Rodney' AND ip.last_name = 'Delgado' THEN '114819-rodney-delgado'
-      WHEN ip.first_name = 'Gregorio' AND ip.last_name = 'Espinoza' THEN '114819-gregorio-espinoza'
-      WHEN ip.first_name = 'Wilmer' AND ip.last_name = 'Flores' THEN '114819-wilmer-flores'
-      WHEN ip.first_name = 'Zouhair' AND ip.last_name = 'Khal' THEN '114819-zouhair-khal'
-      WHEN ip.first_name = 'Shamar J' AND ip.last_name = 'Kingston' THEN '114819-shamar-j-kingston'
-      WHEN ip.first_name = 'Bruno' AND ip.last_name = 'Luiz' THEN '114819-bruno-luiz'
-      WHEN ip.first_name = 'Colton' AND ip.last_name = 'Lukuc' THEN '114819-colton-lukuc'
-      WHEN ip.first_name = 'Abdessamad' AND ip.last_name = 'Machi' THEN '114819-abdessamad-machi'
-      WHEN ip.first_name = 'David' AND ip.last_name = 'Mollenthiel' THEN '114819-david-mollenthiel'
-      WHEN ip.first_name = 'Phila' AND ip.last_name = 'Nxumalo' THEN '114819-phila-nxumalo'
-      WHEN ip.first_name = 'Johan' AND ip.last_name = 'Pineda' THEN '114819-johan-pineda'
-      WHEN ip.first_name = 'Patrick' AND ip.last_name = 'Pineda' THEN '114819-patrick-pineda'
-      WHEN ip.first_name = 'Andrew' AND ip.last_name = 'Ranieri' THEN '114819-andrew-ranieri'
-      WHEN ip.first_name = 'Anthony' AND ip.last_name = 'Ranieri' THEN '114819-anthony-ranieri'
-      WHEN ip.first_name = 'Steven' AND ip.last_name = 'Rivera' THEN '114819-steven-rivera'
-      WHEN ip.first_name = 'Maynor' AND ip.last_name = 'Robles' THEN '114819-maynor-robles'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Rodriguez' THEN '114819-michael-rodriguez'
-      WHEN ip.first_name = 'Walter' AND ip.last_name = 'Romero' THEN '114819-walter-romero'
-      WHEN ip.first_name = 'Edwin' AND ip.last_name = 'Rosano' THEN '114819-edwin-rosano'
-      WHEN ip.first_name = 'Bairon' AND ip.last_name = 'Tejada' THEN '114819-bairon-tejada'
-      WHEN ip.first_name = 'Diego Vega' AND ip.last_name = 'Toledo' THEN '114819-diego-vega-toledo'
-      WHEN ip.first_name = 'Oscar Eduardo Velasquez' AND ip.last_name = 'Centeno' THEN '114819-oscar-eduardo-velasquez-centeno'
-      WHEN ip.first_name = 'Anderson' AND ip.last_name = 'Velez' THEN '114819-anderson-velez'
-      WHEN ip.first_name = 'Tristan' AND ip.last_name = 'Vincent' THEN '114819-tristan-vincent'
-      WHEN ip.first_name = 'Tyler' AND ip.last_name = 'Wrenn' THEN '114819-tyler-wrenn'
-      WHEN ip.first_name = 'Javier' AND ip.last_name = 'Yanez' THEN '114819-javier-yanez'
-      WHEN ip.first_name = 'Hermanus' AND ip.last_name = 'Achterkamp' THEN '114831-hermanus-achterkamp'
-      WHEN ip.first_name = 'Christopher Diego' AND ip.last_name = 'Anderson' THEN '114831-christopher-diego-anderson'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Bedoya' THEN '114831-daniel-bedoya'
-      WHEN ip.first_name = 'Etienne' AND ip.last_name = 'Botty' THEN '114831-etienne-botty'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Burko' THEN '114831-daniel-burko'
-      WHEN ip.first_name = 'Stefano' AND ip.last_name = 'Campisi' THEN '114831-stefano-campisi'
-      WHEN ip.first_name = 'Francesco' AND ip.last_name = 'Caorsi' THEN '114831-francesco-caorsi'
-      WHEN ip.first_name = 'Roc Carles' AND ip.last_name = 'Puig' THEN '114831-roc-carles-puig'
-      WHEN ip.first_name = 'Myson' AND ip.last_name = 'Colo' THEN '114831-myson-colo'
-      WHEN ip.first_name = 'Rodrigo Descalzo' AND ip.last_name = 'Rocca' THEN '114831-rodrigo-descalzo-rocca'
-      WHEN ip.first_name = 'Miguel Mauricio Diaz' AND ip.last_name = 'Cubas' THEN '114831-miguel-mauricio-diaz-cubas'
-      WHEN ip.first_name = 'Timothy Joseph Gallagher-De' AND ip.last_name = 'Meij' THEN '114831-timothy-joseph-gallagher-de-meij'
-      WHEN ip.first_name = 'Miguel Soto' AND ip.last_name = 'Gonzalez' THEN '114831-miguel-soto-gonzalez'
-      WHEN ip.first_name = 'Pierce John' AND ip.last_name = 'Infuso' THEN '114831-pierce-john-infuso'
-      WHEN ip.first_name = 'Adam' AND ip.last_name = 'Marcu' THEN '114831-adam-marcu'
-      WHEN ip.first_name = 'Patrick' AND ip.last_name = 'McCann' THEN '114831-patrick-mccann'
-      WHEN ip.first_name = 'Paul' AND ip.last_name = 'McVeigh' THEN '114831-paul-mcveigh'
-      WHEN ip.first_name = 'James' AND ip.last_name = 'Nealis' THEN '114831-james-nealis'
-      WHEN ip.first_name = 'Jack' AND ip.last_name = 'O''Malley' THEN '114831-jack-o-malley'
-      WHEN ip.first_name = 'George' AND ip.last_name = 'O`Malley' THEN '114831-george-o-malley'
-      WHEN ip.first_name = 'Nicholas' AND ip.last_name = 'Oberrauch' THEN '114831-nicholas-oberrauch'
-      WHEN ip.first_name = 'Alberto' AND ip.last_name = 'Pangrazzi' THEN '114831-alberto-pangrazzi'
-      WHEN ip.first_name = 'Francesco' AND ip.last_name = 'Perinelli' THEN '114831-francesco-perinelli'
-      WHEN ip.first_name = 'Nicholas' AND ip.last_name = 'Petridis' THEN '114831-nicholas-petridis'
-      WHEN ip.first_name = 'Cormac' AND ip.last_name = 'Pike' THEN '114831-cormac-pike'
-      WHEN ip.first_name = 'Saeed' AND ip.last_name = 'Robinson' THEN '114831-saeed-robinson'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Sabal' THEN '114831-john-sabal'
-      WHEN ip.first_name = 'Brian Sousa' AND ip.last_name = 'Saramago' THEN '114831-brian-sousa-saramago'
-      WHEN ip.first_name = 'Joshua' AND ip.last_name = 'Schaffer' THEN '114831-joshua-schaffer'
-      WHEN ip.first_name = 'Barakatulla' AND ip.last_name = 'Sharifi' THEN '114831-barakatulla-sharifi'
-      WHEN ip.first_name = 'Yacine Sidi' AND ip.last_name = 'Aissa' THEN '114831-yacine-sidi-aissa'
-      WHEN ip.first_name = 'Gabriel Villanueva' AND ip.last_name = 'Pacheco' THEN '114831-gabriel-villanueva-pacheco'
-      WHEN ip.first_name = 'Leo Wei' AND ip.last_name = 'Pinto' THEN '114831-leo-wei-pinto'
-      WHEN ip.first_name = 'Joseph' AND ip.last_name = 'Wright' THEN '114831-joseph-wright'
-      WHEN ip.first_name = 'El Mahdi' AND ip.last_name = 'Youssoufi' THEN '114831-el-mahdi-youssoufi'
-      WHEN ip.first_name = 'Santiago' AND ip.last_name = 'Arroyave' THEN '114820-santiago-arroyave'
-      WHEN ip.first_name = 'Tristan' AND ip.last_name = 'Barquin' THEN '114820-tristan-barquin'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Bazan' THEN '114820-ethan-bazan'
-      WHEN ip.first_name = 'Steven' AND ip.last_name = 'Bednarsky' THEN '114820-steven-bednarsky'
-      WHEN ip.first_name = 'Isimohi Mike' AND ip.last_name = 'Bello' THEN '114820-isimohi-mike-bello'
-      WHEN ip.first_name = 'Kouadio' AND ip.last_name = 'Bolaty' THEN '114820-kouadio-bolaty'
-      WHEN ip.first_name = 'Andrew' AND ip.last_name = 'Bortey' THEN '114820-andrew-bortey'
-      WHEN ip.first_name = 'Kelvin' AND ip.last_name = 'Brito' THEN '114820-kelvin-brito'
-      WHEN ip.first_name = 'Dorgeles' AND ip.last_name = 'Coulibaly' THEN '114820-dorgeles-coulibaly'
-      WHEN ip.first_name = 'Tyler' AND ip.last_name = 'Diaz' THEN '114820-tyler-diaz'
-      WHEN ip.first_name = 'Samuel' AND ip.last_name = 'Epitime' THEN '114820-samuel-epitime'
-      WHEN ip.first_name = 'Adam' AND ip.last_name = 'Garner' THEN '114820-adam-garner'
-      WHEN ip.first_name = 'Matthew' AND ip.last_name = 'Gotrell' THEN '114820-matthew-gotrell'
-      WHEN ip.first_name = 'Ivan Enrique' AND ip.last_name = 'Hurtado' THEN '114820-ivan-enrique-hurtado'
-      WHEN ip.first_name = 'Stefan' AND ip.last_name = 'Koroman' THEN '114820-stefan-koroman'
-      WHEN ip.first_name = 'Joseph' AND ip.last_name = 'Kresse' THEN '114820-joseph-kresse'
-      WHEN ip.first_name = 'Keeroy' AND ip.last_name = 'Lionel' THEN '114820-keeroy-lionel'
-      WHEN ip.first_name = 'Yamil' AND ip.last_name = 'Macias' THEN '114820-yamil-macias'
-      WHEN ip.first_name = 'Cameron' AND ip.last_name = 'McGregor' THEN '114820-cameron-mcgregor'
-      WHEN ip.first_name = 'Coby' AND ip.last_name = 'Mcgregor' THEN '114820-coby-mcgregor'
-      WHEN ip.first_name = 'Joseph' AND ip.last_name = 'Moon' THEN '114820-joseph-moon'
-      WHEN ip.first_name = 'Israel' AND ip.last_name = 'Neto' THEN '114820-israel-neto'
-      WHEN ip.first_name = 'Abdoul' AND ip.last_name = 'Ouedraogo' THEN '114820-abdoul-ouedraogo'
-      WHEN ip.first_name = 'Brian' AND ip.last_name = 'Paredes' THEN '114820-brian-paredes'
-      WHEN ip.first_name = 'Jung' AND ip.last_name = 'Park' THEN '114820-jung-park'
-      WHEN ip.first_name = 'Ewan' AND ip.last_name = 'Sanchez' THEN '114820-ewan-sanchez'
-      WHEN ip.first_name = 'Kevin' AND ip.last_name = 'Santamaria' THEN '114820-kevin-santamaria'
-      WHEN ip.first_name = 'Rodrigo' AND ip.last_name = 'Santiago' THEN '114820-rodrigo-santiago'
-      WHEN ip.first_name = 'Miguel' AND ip.last_name = 'Sencion' THEN '114820-miguel-sencion'
-      WHEN ip.first_name = 'Toheeb' AND ip.last_name = 'Shodimu' THEN '114820-toheeb-shodimu'
-      WHEN ip.first_name = 'Luc' AND ip.last_name = 'Smith' THEN '114820-luc-smith'
-      WHEN ip.first_name = 'Ramchwy St' AND ip.last_name = 'Vil' THEN '114820-ramchwy-st-vil'
-      WHEN ip.first_name = 'Mohamed' AND ip.last_name = 'Tall' THEN '114820-mohamed-tall'
-      WHEN ip.first_name = 'Christian Villegas' AND ip.last_name = 'Libreros' THEN '114820-christian-villegas-libreros'
-      WHEN ip.first_name = 'Andrew' AND ip.last_name = 'Weiner' THEN '114820-andrew-weiner'
-      WHEN ip.first_name = 'Pablo Ablanedo' AND ip.last_name = 'Llaneza' THEN '114832-pablo-ablanedo-llaneza'
-      WHEN ip.first_name = 'Jordan' AND ip.last_name = 'Bailon' THEN '114832-jordan-bailon'
-      WHEN ip.first_name = 'Filip' AND ip.last_name = 'Basili' THEN '114832-filip-basili'
-      WHEN ip.first_name = 'Axel' AND ip.last_name = 'Berglund' THEN '114832-axel-berglund'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Bermudez' THEN '114832-christopher-bermudez'
-      WHEN ip.first_name = 'Victor' AND ip.last_name = 'Castel' THEN '114832-victor-castel'
-      WHEN ip.first_name = 'Rikard' AND ip.last_name = 'Cederberg' THEN '114832-rikard-cederberg'
-      WHEN ip.first_name = 'Nicolas Cifuentes' AND ip.last_name = 'DIaz' THEN '114832-nicolas-cifuentes-diaz'
-      WHEN ip.first_name = 'Sergio' AND ip.last_name = 'Diaz' THEN '114832-sergio-diaz'
-      WHEN ip.first_name = 'Eric' AND ip.last_name = 'Frimpong' THEN '114832-eric-frimpong'
-      WHEN ip.first_name = 'George' AND ip.last_name = 'Gantalis' THEN '114832-george-gantalis'
-      WHEN ip.first_name = 'Gonzalo Gil de' AND ip.last_name = 'Pareja' THEN '114832-gonzalo-gil-de-pareja'
-      WHEN ip.first_name = 'Ede Mateo' AND ip.last_name = 'Gramberg' THEN '114832-ede-mateo-gramberg'
-      WHEN ip.first_name = 'Thomas' AND ip.last_name = 'Gray' THEN '114832-thomas-gray'
-      WHEN ip.first_name = 'Antreas' AND ip.last_name = 'Hadjigavriel' THEN '114832-antreas-hadjigavriel'
-      WHEN ip.first_name = 'Harri' AND ip.last_name = 'Hawkins' THEN '114832-harri-hawkins'
-      WHEN ip.first_name = 'Devin' AND ip.last_name = 'Heanue' THEN '114832-devin-heanue'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Heckenberg' THEN '114832-christopher-heckenberg'
-      WHEN ip.first_name = 'Kevin' AND ip.last_name = 'Hernandez' THEN '114832-kevin-hernandez'
-      WHEN ip.first_name = 'Jens Mannhart' AND ip.last_name = 'Hoff' THEN '114832-jens-mannhart-hoff'
-      WHEN ip.first_name = 'Joseph' AND ip.last_name = 'Holland' THEN '114832-joseph-holland'
-      WHEN ip.first_name = 'Filip' AND ip.last_name = 'Jauk' THEN '114832-filip-jauk'
-      WHEN ip.first_name = 'Konstantinos' AND ip.last_name = 'Karousis' THEN '114832-konstantinos-karousis'
-      WHEN ip.first_name = 'Benny' AND ip.last_name = 'Lafortune' THEN '114832-benny-lafortune'
-      WHEN ip.first_name = 'Joshua' AND ip.last_name = 'Levine' THEN '114832-joshua-levine'
-      WHEN ip.first_name = 'Juan Martinez' AND ip.last_name = 'Moreno' THEN '114832-juan-martinez-moreno'
-      WHEN ip.first_name = 'Filip' AND ip.last_name = 'Mirkovic' THEN '114832-filip-mirkovic'
-      WHEN ip.first_name = 'Christoforos' AND ip.last_name = 'Moulinos' THEN '114832-christoforos-moulinos'
-      WHEN ip.first_name = 'Stephen O’' AND ip.last_name = 'Connell' THEN '114832-stephen-o-connell'
-      WHEN ip.first_name = 'Alex' AND ip.last_name = 'Palas' THEN '114832-alex-palas'
-      WHEN ip.first_name = 'Sebastian' AND ip.last_name = 'Ruiz' THEN '114832-sebastian-ruiz'
-      WHEN ip.first_name = 'Athanasis' AND ip.last_name = 'Shehadeh' THEN '114832-athanasis-shehadeh'
-      WHEN ip.first_name = 'James' AND ip.last_name = 'Thristino' THEN '114832-james-thristino'
-      WHEN ip.first_name = 'Sean' AND ip.last_name = 'Towey' THEN '114832-sean-towey'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Bernardi' THEN '114827-john-bernardi'
-      WHEN ip.first_name = 'James Peter' AND ip.last_name = 'Boote' THEN '114827-james-peter-boote'
-      WHEN ip.first_name = 'Aidan' AND ip.last_name = 'Borra' THEN '114827-aidan-borra'
-      WHEN ip.first_name = 'Marco' AND ip.last_name = 'Charnas' THEN '114827-marco-charnas'
-      WHEN ip.first_name = 'Constantine' AND ip.last_name = 'Christodoulou' THEN '114827-constantine-christodoulou'
-      WHEN ip.first_name = 'Stefan' AND ip.last_name = 'Copetti' THEN '114827-stefan-copetti'
-      WHEN ip.first_name = 'Carlos' AND ip.last_name = 'Cortes' THEN '114827-carlos-cortes'
-      WHEN ip.first_name = 'Musa Bala' AND ip.last_name = 'Danso' THEN '114827-musa-bala-danso'
-      WHEN ip.first_name = 'Ali' AND ip.last_name = 'Dawha' THEN '114827-ali-dawha'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Dimarco' THEN '114827-daniel-dimarco'
-      WHEN ip.first_name = 'Sean' AND ip.last_name = 'Doran' THEN '114827-sean-doran'
-      WHEN ip.first_name = 'Dino' AND ip.last_name = 'Feratovic' THEN '114827-dino-feratovic'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Furphy' THEN '114827-ethan-furphy'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Gallagher' THEN '114827-michael-gallagher'
-      WHEN ip.first_name = 'Kyle' AND ip.last_name = 'Galloway' THEN '114827-kyle-galloway'
-      WHEN ip.first_name = 'Henry' AND ip.last_name = 'Hamilton' THEN '114827-henry-hamilton'
-      WHEN ip.first_name = 'Cillian' AND ip.last_name = 'Heaney' THEN '114827-cillian-heaney'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Hewes' THEN '114827-michael-hewes'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Homler' THEN '114827-ethan-homler'
-      WHEN ip.first_name = 'Jared' AND ip.last_name = 'Juleau' THEN '114827-jared-juleau'
-      WHEN ip.first_name = 'Andy' AND ip.last_name = 'Kasza' THEN '114827-andy-kasza'
-      WHEN ip.first_name = 'Daryl' AND ip.last_name = 'Kavanagh' THEN '114827-daryl-kavanagh'
-      WHEN ip.first_name = 'Seamus' AND ip.last_name = 'Keogh' THEN '114827-seamus-keogh'
-      WHEN ip.first_name = 'Sean' AND ip.last_name = 'Kerrigan' THEN '114827-sean-kerrigan'
-      WHEN ip.first_name = 'Danu' AND ip.last_name = 'Kinsella-Bishop' THEN '114827-danu-kinsella-bishop'
-      WHEN ip.first_name = 'Nicolas Macri' AND ip.last_name = 'Badessich' THEN '114827-nicolas-macri-badessich'
-      WHEN ip.first_name = 'Luis Puchol Del' AND ip.last_name = 'Pozo' THEN '114827-luis-puchol-del-pozo'
-      WHEN ip.first_name = 'Sebastian' AND ip.last_name = 'Rojek' THEN '114827-sebastian-rojek'
-      WHEN ip.first_name = 'Liam' AND ip.last_name = 'Salmon' THEN '114827-liam-salmon'
-      WHEN ip.first_name = 'Harry' AND ip.last_name = 'Sankey' THEN '114827-harry-sankey'
-      WHEN ip.first_name = 'Edward' AND ip.last_name = 'Speed' THEN '114827-edward-speed'
-      WHEN ip.first_name = 'Benjamin' AND ip.last_name = 'Stitz' THEN '114827-benjamin-stitz'
-      WHEN ip.first_name = 'Liam' AND ip.last_name = 'Walsh' THEN '114827-liam-walsh'
-      WHEN ip.first_name = 'Oskar' AND ip.last_name = 'Zywiec' THEN '114827-oskar-zywiec'
-      WHEN ip.first_name = 'Adrian' AND ip.last_name = 'Aguilera' THEN '114813-adrian-aguilera'
-      WHEN ip.first_name = 'Julian' AND ip.last_name = 'Anderson' THEN '114813-julian-anderson'
-      WHEN ip.first_name = 'Balint' AND ip.last_name = 'Barabas' THEN '114813-balint-barabas'
-      WHEN ip.first_name = 'Vasilios' AND ip.last_name = 'Brisnovalis' THEN '114813-vasilios-brisnovalis'
-      WHEN ip.first_name = 'Robert' AND ip.last_name = 'Cabrera' THEN '114813-robert-cabrera'
-      WHEN ip.first_name = 'Murat Edgar' AND ip.last_name = 'Calkap' THEN '114813-murat-edgar-calkap'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Curmi' THEN '114813-daniel-curmi'
-      WHEN ip.first_name = 'Duga' AND ip.last_name = 'Dambelly' THEN '114813-duga-dambelly'
-      WHEN ip.first_name = 'Khaled' AND ip.last_name = 'Daoud' THEN '114813-khaled-daoud'
-      WHEN ip.first_name = 'Mohamed' AND ip.last_name = 'Diaw' THEN '114813-mohamed-diaw'
-      WHEN ip.first_name = 'Julio' AND ip.last_name = 'Espinal' THEN '114813-julio-espinal'
-      WHEN ip.first_name = 'Jeison Gonzalez' AND ip.last_name = 'Sanchez' THEN '114813-jeison-gonzalez-sanchez'
-      WHEN ip.first_name = 'James' AND ip.last_name = 'Greco' THEN '114813-james-greco'
-      WHEN ip.first_name = 'Grady' AND ip.last_name = 'Kozak' THEN '114813-grady-kozak'
-      WHEN ip.first_name = 'Antonio' AND ip.last_name = 'Linge' THEN '114813-antonio-linge'
-      WHEN ip.first_name = 'Tyrone' AND ip.last_name = 'Malango' THEN '114813-tyrone-malango'
-      WHEN ip.first_name = 'William' AND ip.last_name = 'Marment' THEN '114813-william-marment'
-      WHEN ip.first_name = 'Augustus Manuel' AND ip.last_name = 'Mcgiff' THEN '114813-augustus-manuel-mcgiff'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Morandi' THEN '114813-christopher-morandi'
-      WHEN ip.first_name = 'Richard' AND ip.last_name = 'Morel' THEN '114813-richard-morel'
-      WHEN ip.first_name = 'Peter' AND ip.last_name = 'Myrianthopoulos' THEN '114813-peter-myrianthopoulos'
-      WHEN ip.first_name = 'Stefen' AND ip.last_name = 'Nikolic' THEN '114813-stefen-nikolic'
-      WHEN ip.first_name = 'Martin' AND ip.last_name = 'Nikprelaj' THEN '114813-martin-nikprelaj'
-      WHEN ip.first_name = 'Sergio' AND ip.last_name = 'Peralta' THEN '114813-sergio-peralta'
-      WHEN ip.first_name = 'Marco' AND ip.last_name = 'Primavera' THEN '114813-marco-primavera'
-      WHEN ip.first_name = 'Paolo Cerruto' AND ip.last_name = 'Primavera' THEN '114813-paolo-cerruto-primavera'
-      WHEN ip.first_name = 'Chris' AND ip.last_name = 'Riordan' THEN '114813-chris-riordan'
-      WHEN ip.first_name = 'David' AND ip.last_name = 'Rodriguez' THEN '114813-david-rodriguez'
-      WHEN ip.first_name = 'Ronaldo Rodriguez' AND ip.last_name = 'Jurado' THEN '114813-ronaldo-rodriguez-jurado'
-      WHEN ip.first_name = 'Fredy' AND ip.last_name = 'Rosales' THEN '114813-fredy-rosales'
-      WHEN ip.first_name = 'Duvan' AND ip.last_name = 'Sanchez' THEN '114813-duvan-sanchez'
-      WHEN ip.first_name = 'Giuliano' AND ip.last_name = 'Santucci' THEN '114813-giuliano-santucci'
-      WHEN ip.first_name = 'Navruz' AND ip.last_name = 'Shukroev' THEN '114813-navruz-shukroev'
-      WHEN ip.first_name = 'Milorad' AND ip.last_name = 'Sobot' THEN '114813-milorad-sobot'
-      WHEN ip.first_name = 'Michalis' AND ip.last_name = 'Stylianou' THEN '114813-michalis-stylianou'
-      WHEN ip.first_name = 'Keirol' AND ip.last_name = 'Aaron' THEN '115315-keirol-aaron'
-      WHEN ip.first_name = 'Matthais' AND ip.last_name = 'Adamek' THEN '115315-matthais-adamek'
-      WHEN ip.first_name = 'Yohance' AND ip.last_name = 'Alexander' THEN '115315-yohance-alexander'
-      WHEN ip.first_name = 'Andrea' AND ip.last_name = 'Andreou' THEN '115315-andrea-andreou'
-      WHEN ip.first_name = 'Luis' AND ip.last_name = 'Argudo' THEN '115315-luis-argudo'
-      WHEN ip.first_name = 'Theodore' AND ip.last_name = 'Bernhard' THEN '115315-theodore-bernhard'
-      WHEN ip.first_name = 'Antonio' AND ip.last_name = 'Biggs' THEN '115315-antonio-biggs'
-      WHEN ip.first_name = 'Mason' AND ip.last_name = 'Chetti' THEN '115315-mason-chetti'
-      WHEN ip.first_name = 'Jarvis' AND ip.last_name = 'Cleal' THEN '115315-jarvis-cleal'
-      WHEN ip.first_name = 'Joel' AND ip.last_name = 'Cunningham' THEN '115315-joel-cunningham'
-      WHEN ip.first_name = 'Caleb' AND ip.last_name = 'Danquah' THEN '115315-caleb-danquah'
-      WHEN ip.first_name = 'Eric' AND ip.last_name = 'Danquah' THEN '115315-eric-danquah'
-      WHEN ip.first_name = 'Sameer' AND ip.last_name = 'Fathazada' THEN '115315-sameer-fathazada'
-      WHEN ip.first_name = 'Leo' AND ip.last_name = 'Folla' THEN '115315-leo-folla'
-      WHEN ip.first_name = 'Jakob' AND ip.last_name = 'Friedman' THEN '115315-jakob-friedman'
-      WHEN ip.first_name = 'Sebastian' AND ip.last_name = 'Goicochea' THEN '115315-sebastian-goicochea'
-      WHEN ip.first_name = 'Juan Antonio' AND ip.last_name = 'Gomez' THEN '115315-juan-antonio-gomez'
-      WHEN ip.first_name = 'Alessio' AND ip.last_name = 'Hernandez' THEN '115315-alessio-hernandez'
-      WHEN ip.first_name = 'Benjamin' AND ip.last_name = 'Jones' THEN '115315-benjamin-jones'
-      WHEN ip.first_name = 'Selcuk' AND ip.last_name = 'Kahveci' THEN '115315-selcuk-kahveci'
-      WHEN ip.first_name = 'Chad' AND ip.last_name = 'Mark' THEN '115315-chad-mark'
-      WHEN ip.first_name = 'Eoin' AND ip.last_name = 'Martin' THEN '115315-eoin-martin'
-      WHEN ip.first_name = 'Leonardo' AND ip.last_name = 'Martinelli' THEN '115315-leonardo-martinelli'
-      WHEN ip.first_name = 'Alexander' AND ip.last_name = 'McLachlan' THEN '115315-alexander-mclachlan'
-      WHEN ip.first_name = 'Giovanny' AND ip.last_name = 'Morales' THEN '115315-giovanny-morales'
-      WHEN ip.first_name = 'Bradley' AND ip.last_name = 'Nestor' THEN '115315-bradley-nestor'
-      WHEN ip.first_name = 'Godwin' AND ip.last_name = 'Partey' THEN '115315-godwin-partey'
-      WHEN ip.first_name = 'Junior' AND ip.last_name = 'Rosero' THEN '115315-junior-rosero'
-      WHEN ip.first_name = 'Karim' AND ip.last_name = 'Russell' THEN '115315-karim-russell'
-      WHEN ip.first_name = 'Sanoussi' AND ip.last_name = 'Sangary' THEN '115315-sanoussi-sangary'
-      WHEN ip.first_name = 'Shaquille' AND ip.last_name = 'Saunchez' THEN '115315-shaquille-saunchez'
-      WHEN ip.first_name = 'Kendell' AND ip.last_name = 'Thomas' THEN '115315-kendell-thomas'
-      WHEN ip.first_name = 'Dillon' AND ip.last_name = 'Woods' THEN '115315-dillon-woods'
-      WHEN ip.first_name = 'George' AND ip.last_name = 'Yusuff' THEN '115315-george-yusuff'
-      WHEN ip.first_name = 'Joshua' AND ip.last_name = 'Adejokun' THEN '115102-joshua-adejokun'
-      WHEN ip.first_name = 'Saad' AND ip.last_name = 'Afif' THEN '115102-saad-afif'
-      WHEN ip.first_name = 'Youssef' AND ip.last_name = 'Afif' THEN '115102-youssef-afif'
-      WHEN ip.first_name = 'Osama Al' AND ip.last_name = 'Sahybi' THEN '115102-osama-al-sahybi'
-      WHEN ip.first_name = 'Eric' AND ip.last_name = 'Anderson' THEN '115102-eric-anderson'
-      WHEN ip.first_name = 'Raphael' AND ip.last_name = 'Carvalho' THEN '115102-raphael-carvalho'
-      WHEN ip.first_name = 'Oscar' AND ip.last_name = 'Champigneulle' THEN '115102-oscar-champigneulle'
-      WHEN ip.first_name = 'Ryan' AND ip.last_name = 'Chuang' THEN '115102-ryan-chuang'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Dempsey' THEN '115102-michael-dempsey'
-      WHEN ip.first_name = 'Byran' AND ip.last_name = 'Dia' THEN '115102-byran-dia'
-      WHEN ip.first_name = 'Yohance' AND ip.last_name = 'Douglas' THEN '115102-yohance-douglas'
-      WHEN ip.first_name = 'Jeffrey' AND ip.last_name = 'Gad' THEN '115102-jeffrey-gad'
-      WHEN ip.first_name = 'Jahdea' AND ip.last_name = 'Gildin' THEN '115102-jahdea-gildin'
-      WHEN ip.first_name = 'Ross' AND ip.last_name = 'Holden' THEN '115102-ross-holden'
-      WHEN ip.first_name = 'Hugo' AND ip.last_name = 'Howard' THEN '115102-hugo-howard'
-      WHEN ip.first_name = 'Ikrom' AND ip.last_name = 'Husanov' THEN '115102-ikrom-husanov'
-      WHEN ip.first_name = 'Geireann' AND ip.last_name = 'Lindfield' THEN '115102-geireann-lindfield'
-      WHEN ip.first_name = 'Sean' AND ip.last_name = 'Molloy' THEN '115102-sean-molloy'
-      WHEN ip.first_name = 'Shamir' AND ip.last_name = 'Mullings' THEN '115102-shamir-mullings'
-      WHEN ip.first_name = 'Ridwan' AND ip.last_name = 'Olawin' THEN '115102-ridwan-olawin'
-      WHEN ip.first_name = 'Gary' AND ip.last_name = 'Philpott' THEN '115102-gary-philpott'
-      WHEN ip.first_name = 'Sean' AND ip.last_name = 'Reilly' THEN '115102-sean-reilly'
-      WHEN ip.first_name = 'Faissal' AND ip.last_name = 'Sanfo' THEN '115102-faissal-sanfo'
-      WHEN ip.first_name = 'Ensa' AND ip.last_name = 'Sanneh' THEN '115102-ensa-sanneh'
-      WHEN ip.first_name = 'Avinash' AND ip.last_name = 'Singh' THEN '115102-avinash-singh'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Stevens' THEN '115102-john-stevens'
-      WHEN ip.first_name = 'Alexandru' AND ip.last_name = 'Teodorescu' THEN '115102-alexandru-teodorescu'
-      WHEN ip.first_name = 'Maurice' AND ip.last_name = 'Vermeulen' THEN '115102-maurice-vermeulen'
-      WHEN ip.first_name = 'Hermes' AND ip.last_name = 'Ademovi' THEN '114841-hermes-ademovi'
-      WHEN ip.first_name = 'Mamadou' AND ip.last_name = 'Bah' THEN '114841-mamadou-bah'
-      WHEN ip.first_name = 'Bljedi' AND ip.last_name = 'Bardic' THEN '114841-bljedi-bardic'
-      WHEN ip.first_name = 'Giuseppe' AND ip.last_name = 'Barone' THEN '114841-giuseppe-barone'
-      WHEN ip.first_name = 'Salvatore' AND ip.last_name = 'Barone' THEN '114841-salvatore-barone'
-      WHEN ip.first_name = 'Kemal' AND ip.last_name = 'Brkanovic' THEN '114841-kemal-brkanovic'
-      WHEN ip.first_name = 'Cesare' AND ip.last_name = 'Cali' THEN '114841-cesare-cali'
-      WHEN ip.first_name = 'Keithlend' AND ip.last_name = 'Cesar' THEN '114841-keithlend-cesar'
-      WHEN ip.first_name = 'Kyaire' AND ip.last_name = 'Clarke' THEN '114841-kyaire-clarke'
-      WHEN ip.first_name = 'Luis' AND ip.last_name = 'Cueva' THEN '114841-luis-cueva'
-      WHEN ip.first_name = 'Bradley' AND ip.last_name = 'Espejo' THEN '114841-bradley-espejo'
-      WHEN ip.first_name = 'Roberto' AND ip.last_name = 'Gioffre' THEN '114841-roberto-gioffre'
-      WHEN ip.first_name = 'Pietro' AND ip.last_name = 'Giove' THEN '114841-pietro-giove'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Gjini' THEN '114841-christopher-gjini'
-      WHEN ip.first_name = 'Peter' AND ip.last_name = 'Gjini' THEN '114841-peter-gjini'
-      WHEN ip.first_name = 'Armando' AND ip.last_name = 'Guarnera' THEN '114841-armando-guarnera'
-      WHEN ip.first_name = 'James' AND ip.last_name = 'Haddad' THEN '114841-james-haddad'
-      WHEN ip.first_name = 'Yassin' AND ip.last_name = 'Hairane' THEN '114841-yassin-hairane'
-      WHEN ip.first_name = 'Amir' AND ip.last_name = 'Islami' THEN '114841-amir-islami'
-      WHEN ip.first_name = 'Timothy Francis' AND ip.last_name = 'Kane' THEN '114841-timothy-francis-kane'
-      WHEN ip.first_name = 'Brian' AND ip.last_name = 'Kerliu' THEN '114841-brian-kerliu'
-      WHEN ip.first_name = 'Peterson' AND ip.last_name = 'Larose' THEN '114841-peterson-larose'
-      WHEN ip.first_name = 'Dylan' AND ip.last_name = 'Meadows' THEN '114841-dylan-meadows'
-      WHEN ip.first_name = 'Gerald' AND ip.last_name = 'Mehja' THEN '114841-gerald-mehja'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Mollica' THEN '114841-michael-mollica'
-      WHEN ip.first_name = 'Anthony' AND ip.last_name = 'Oliveira' THEN '114841-anthony-oliveira'
-      WHEN ip.first_name = 'Cristiano' AND ip.last_name = 'Oliveira' THEN '114841-cristiano-oliveira'
-      WHEN ip.first_name = 'Andrea' AND ip.last_name = 'Ruggiero' THEN '114841-andrea-ruggiero'
-      WHEN ip.first_name = 'Leutrim' AND ip.last_name = 'Saiti' THEN '114841-leutrim-saiti'
-      WHEN ip.first_name = 'Valeriy' AND ip.last_name = 'Saramoutin' THEN '114841-valeriy-saramoutin'
-      WHEN ip.first_name = 'Mark' AND ip.last_name = 'Shnadshteyn' THEN '114841-mark-shnadshteyn'
-      WHEN ip.first_name = 'Demyan' AND ip.last_name = 'Turiy' THEN '114841-demyan-turiy'
-      WHEN ip.first_name = 'Dominik' AND ip.last_name = 'Urban' THEN '114841-dominik-urban'
-      WHEN ip.first_name = 'Bryant' AND ip.last_name = 'Vidals' THEN '114841-bryant-vidals'
-      WHEN ip.first_name = 'Dani' AND ip.last_name = 'Villa' THEN '114841-dani-villa'
-      WHEN ip.first_name = 'Richard' AND ip.last_name = 'Bastian' THEN '114852-richard-bastian'
-      WHEN ip.first_name = 'Tal' AND ip.last_name = 'Benhamou' THEN '114852-tal-benhamou'
-      WHEN ip.first_name = 'Nathan' AND ip.last_name = 'Bennett' THEN '114852-nathan-bennett'
-      WHEN ip.first_name = 'Jason' AND ip.last_name = 'Budhai' THEN '114852-jason-budhai'
-      WHEN ip.first_name = 'Dennis Coke' AND ip.last_name = 'Jr' THEN '114852-dennis-coke-jr'
-      WHEN ip.first_name = 'Sully' AND ip.last_name = 'Corneille' THEN '114852-sully-corneille'
-      WHEN ip.first_name = 'Dario Giovanni' AND ip.last_name = 'Cruz' THEN '114852-dario-giovanni-cruz'
-      WHEN ip.first_name = 'Juan' AND ip.last_name = 'Cruz' THEN '114852-juan-cruz'
-      WHEN ip.first_name = 'Tomas de Andrade' AND ip.last_name = 'Gomes' THEN '114852-tomas-de-andrade-gomes'
-      WHEN ip.first_name = 'Felix' AND ip.last_name = 'Dyckerhoff' THEN '114852-felix-dyckerhoff'
-      WHEN ip.first_name = 'Salim' AND ip.last_name = 'Dziri' THEN '114852-salim-dziri'
-      WHEN ip.first_name = 'Glenford' AND ip.last_name = 'Gentle' THEN '114852-glenford-gentle'
-      WHEN ip.first_name = 'Boris' AND ip.last_name = 'Grubic' THEN '114852-boris-grubic'
-      WHEN ip.first_name = 'Wisdom' AND ip.last_name = 'Hountondji' THEN '114852-wisdom-hountondji'
-      WHEN ip.first_name = 'Tom' AND ip.last_name = 'Hultsch' THEN '114852-tom-hultsch'
-      WHEN ip.first_name = 'Raphael' AND ip.last_name = 'John' THEN '114852-raphael-john'
-      WHEN ip.first_name = 'Ryo' AND ip.last_name = 'Koiso' THEN '114852-ryo-koiso'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Laret' THEN '114852-michael-laret'
-      WHEN ip.first_name = 'Jason' AND ip.last_name = 'Lee' THEN '114852-jason-lee'
-      WHEN ip.first_name = 'Cesare' AND ip.last_name = 'Marconi' THEN '114852-cesare-marconi'
-      WHEN ip.first_name = 'Denny' AND ip.last_name = 'Morinigo-Arce' THEN '114852-denny-morinigo-arce'
-      WHEN ip.first_name = 'Mateo' AND ip.last_name = 'Munoz' THEN '114852-mateo-munoz'
-      WHEN ip.first_name = 'Deniz' AND ip.last_name = 'Oncu' THEN '114852-deniz-oncu'
-      WHEN ip.first_name = 'Mubarak' AND ip.last_name = 'Ouro' THEN '114852-mubarak-ouro'
-      WHEN ip.first_name = 'Jean Carlo' AND ip.last_name = 'Perez' THEN '114852-jean-carlo-perez'
-      WHEN ip.first_name = 'Mario' AND ip.last_name = 'Ramirez' THEN '114852-mario-ramirez'
-      WHEN ip.first_name = 'Paul' AND ip.last_name = 'Restrepo' THEN '114852-paul-restrepo'
-      WHEN ip.first_name = 'Ely' AND ip.last_name = 'Schartz' THEN '114852-ely-schartz'
-      WHEN ip.first_name = 'Diego' AND ip.last_name = 'Silva' THEN '114852-diego-silva'
-      WHEN ip.first_name = 'Tyler' AND ip.last_name = 'Swaby' THEN '114852-tyler-swaby'
-      WHEN ip.first_name = 'Andrade' AND ip.last_name = 'Wright' THEN '114852-andrade-wright'
-      WHEN ip.first_name = 'Abdul Karim' AND ip.last_name = 'Bah' THEN '114811-abdul-karim-bah'
-      WHEN ip.first_name = 'Ibrahima' AND ip.last_name = 'Bah' THEN '114811-ibrahima-bah'
-      WHEN ip.first_name = 'Matthew' AND ip.last_name = 'Baringer' THEN '114811-matthew-baringer'
-      WHEN ip.first_name = 'Cesar' AND ip.last_name = 'Buitrago' THEN '114811-cesar-buitrago'
-      WHEN ip.first_name = 'Saul' AND ip.last_name = 'Cardozo' THEN '114811-saul-cardozo'
-      WHEN ip.first_name = 'Elhadj' AND ip.last_name = 'Diallo' THEN '114811-elhadj-diallo'
-      WHEN ip.first_name = 'Youssouf' AND ip.last_name = 'Diallo' THEN '114811-youssouf-diallo'
-      WHEN ip.first_name = 'Ighoghoe' AND ip.last_name = 'Erediauwa' THEN '114811-ighoghoe-erediauwa'
-      WHEN ip.first_name = 'Vincent' AND ip.last_name = 'Galia' THEN '114811-vincent-galia'
-      WHEN ip.first_name = 'Luis' AND ip.last_name = 'Granados' THEN '114811-luis-granados'
-      WHEN ip.first_name = 'Radouane' AND ip.last_name = 'Guissi' THEN '114811-radouane-guissi'
-      WHEN ip.first_name = 'Joseph' AND ip.last_name = 'Kalilwa' THEN '114811-joseph-kalilwa'
-      WHEN ip.first_name = 'Nicholas' AND ip.last_name = 'King' THEN '114811-nicholas-king'
-      WHEN ip.first_name = 'Jonathan' AND ip.last_name = 'Lima' THEN '114811-jonathan-lima'
-      WHEN ip.first_name = 'Anyolo' AND ip.last_name = 'Makatiani' THEN '114811-anyolo-makatiani'
-      WHEN ip.first_name = 'Matthew' AND ip.last_name = 'McDonnell' THEN '114811-matthew-mcdonnell'
-      WHEN ip.first_name = 'Mohamad' AND ip.last_name = 'Miri' THEN '114811-mohamad-miri'
-      WHEN ip.first_name = 'Eoghan' AND ip.last_name = 'Morgan' THEN '114811-eoghan-morgan'
-      WHEN ip.first_name = 'Ezekiel' AND ip.last_name = 'Omosanya' THEN '114811-ezekiel-omosanya'
-      WHEN ip.first_name = 'Maynor' AND ip.last_name = 'Palacios' THEN '114811-maynor-palacios'
-      WHEN ip.first_name = 'Justin' AND ip.last_name = 'Peters' THEN '114811-justin-peters'
-      WHEN ip.first_name = 'Alec' AND ip.last_name = 'Pineda' THEN '114811-alec-pineda'
-      WHEN ip.first_name = 'Alejandro' AND ip.last_name = 'Sanchez' THEN '114811-alejandro-sanchez'
-      WHEN ip.first_name = 'Jaidon' AND ip.last_name = 'Selden' THEN '114811-jaidon-selden'
-      WHEN ip.first_name = 'James' AND ip.last_name = 'Terpak' THEN '114811-james-terpak'
-      WHEN ip.first_name = 'Dominic' AND ip.last_name = 'Tomety' THEN '114811-dominic-tomety'
-      WHEN ip.first_name = 'Samuel' AND ip.last_name = 'Urban' THEN '114811-samuel-urban'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Valentine' THEN '114811-christopher-valentine'
-      WHEN ip.first_name = 'Marcial' AND ip.last_name = 'Viveros' THEN '114811-marcial-viveros'
-      WHEN ip.first_name = 'Timothy' AND ip.last_name = 'Williams' THEN '114811-timothy-williams'
-      WHEN ip.first_name = 'Johannes' AND ip.last_name = 'Alvarez' THEN '114842-johannes-alvarez'
-      WHEN ip.first_name = 'Jason' AND ip.last_name = 'Alves' THEN '114842-jason-alves'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Barnas' THEN '114842-christopher-barnas'
-      WHEN ip.first_name = 'Sebastian' AND ip.last_name = 'Capozucchi' THEN '114842-sebastian-capozucchi'
-      WHEN ip.first_name = 'Roberto' AND ip.last_name = 'Chernez' THEN '114842-roberto-chernez'
-      WHEN ip.first_name = 'Gabriel' AND ip.last_name = 'Costa' THEN '114842-gabriel-costa'
-      WHEN ip.first_name = 'Keijon' AND ip.last_name = 'Davis' THEN '114842-keijon-davis'
-      WHEN ip.first_name = 'Shaunavon' AND ip.last_name = 'DeSouza' THEN '114842-shaunavon-desouza'
-      WHEN ip.first_name = 'Gabriel' AND ip.last_name = 'DiPierro' THEN '114842-gabriel-dipierro'
-      WHEN ip.first_name = 'Emiland' AND ip.last_name = 'Elezaj' THEN '114842-emiland-elezaj'
-      WHEN ip.first_name = 'Andres' AND ip.last_name = 'Gonzalez-Rios' THEN '114842-andres-gonzalez-rios'
-      WHEN ip.first_name = 'Jonathan' AND ip.last_name = 'Gutierrez' THEN '114842-jonathan-gutierrez'
-      WHEN ip.first_name = 'Oscar' AND ip.last_name = 'Horwitz' THEN '114842-oscar-horwitz'
-      WHEN ip.first_name = 'Jashar' AND ip.last_name = 'Jashar' THEN '114842-jashar-jashar'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Karcz' THEN '114842-christopher-karcz'
-      WHEN ip.first_name = 'Wiktor' AND ip.last_name = 'Kiszkiel' THEN '114842-wiktor-kiszkiel'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Kondratowicz' THEN '114842-christopher-kondratowicz'
-      WHEN ip.first_name = 'Paul' AND ip.last_name = 'Kondratowicz' THEN '114842-paul-kondratowicz'
-      WHEN ip.first_name = 'Nicholas' AND ip.last_name = 'Kozdron' THEN '114842-nicholas-kozdron'
-      WHEN ip.first_name = 'Sebastian' AND ip.last_name = 'Lapczynski' THEN '114842-sebastian-lapczynski'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'McGeechan' THEN '114842-john-mcgeechan'
-      WHEN ip.first_name = 'Mark' AND ip.last_name = 'Mikanik' THEN '114842-mark-mikanik'
-      WHEN ip.first_name = 'Aldo' AND ip.last_name = 'Munoz' THEN '114842-aldo-munoz'
-      WHEN ip.first_name = 'Cyrus' AND ip.last_name = 'Nasseri' THEN '114842-cyrus-nasseri'
-      WHEN ip.first_name = 'Krystian' AND ip.last_name = 'Nitek' THEN '114842-krystian-nitek'
-      WHEN ip.first_name = 'Viktor' AND ip.last_name = 'Pervushkin' THEN '114842-viktor-pervushkin'
-      WHEN ip.first_name = 'Tyler' AND ip.last_name = 'Pinho' THEN '114842-tyler-pinho'
-      WHEN ip.first_name = 'Alvaro' AND ip.last_name = 'Rodriguez' THEN '114842-alvaro-rodriguez'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Sawicki' THEN '114842-daniel-sawicki'
-      WHEN ip.first_name = 'Gabriel' AND ip.last_name = 'Serafin' THEN '114842-gabriel-serafin'
-      WHEN ip.first_name = 'William' AND ip.last_name = 'Tomlinson' THEN '114842-william-tomlinson'
-      WHEN ip.first_name = 'Igor' AND ip.last_name = 'Trajceski' THEN '114842-igor-trajceski'
-      WHEN ip.first_name = 'Kevin' AND ip.last_name = 'Valdivia' THEN '114842-kevin-valdivia'
-      WHEN ip.first_name = 'Dominik' AND ip.last_name = 'Brulinski' THEN '114830-dominik-brulinski'
-      WHEN ip.first_name = 'Mathew' AND ip.last_name = 'Contino' THEN '114830-mathew-contino'
-      WHEN ip.first_name = 'Joseph' AND ip.last_name = 'Core' THEN '114830-joseph-core'
-      WHEN ip.first_name = 'Jacob' AND ip.last_name = 'Denison' THEN '114830-jacob-denison'
-      WHEN ip.first_name = 'Jack' AND ip.last_name = 'Doran' THEN '114830-jack-doran'
-      WHEN ip.first_name = 'Javiar' AND ip.last_name = 'Edwards' THEN '114830-javiar-edwards'
-      WHEN ip.first_name = 'Humbert' AND ip.last_name = 'Ferrer' THEN '114830-humbert-ferrer'
-      WHEN ip.first_name = 'Spencer' AND ip.last_name = 'Fleurant' THEN '114830-spencer-fleurant'
-      WHEN ip.first_name = 'Jason' AND ip.last_name = 'Gaylord' THEN '114830-jason-gaylord'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Giorgi' THEN '114830-daniel-giorgi'
-      WHEN ip.first_name = 'Kevin' AND ip.last_name = 'Harrington' THEN '114830-kevin-harrington'
-      WHEN ip.first_name = 'Stephanos' AND ip.last_name = 'Hondrakis' THEN '114830-stephanos-hondrakis'
-      WHEN ip.first_name = 'Cris' AND ip.last_name = 'Huacon' THEN '114830-cris-huacon'
-      WHEN ip.first_name = 'Samuka' AND ip.last_name = 'Kenneh' THEN '114830-samuka-kenneh'
-      WHEN ip.first_name = 'Evan' AND ip.last_name = 'Kim' THEN '114830-evan-kim'
-      WHEN ip.first_name = 'Brent' AND ip.last_name = 'McKeown' THEN '114830-brent-mckeown'
-      WHEN ip.first_name = 'Enrique Montana' AND ip.last_name = 'III' THEN '114830-enrique-montana-iii'
-      WHEN ip.first_name = 'Jack' AND ip.last_name = 'Mulhare' THEN '114830-jack-mulhare'
-      WHEN ip.first_name = 'Curtis' AND ip.last_name = 'Oberg' THEN '114830-curtis-oberg'
-      WHEN ip.first_name = 'Farouk' AND ip.last_name = 'Osman' THEN '114830-farouk-osman'
-      WHEN ip.first_name = 'Cole' AND ip.last_name = 'Parete' THEN '114830-cole-parete'
-      WHEN ip.first_name = 'William' AND ip.last_name = 'Pearce' THEN '114830-william-pearce'
-      WHEN ip.first_name = 'Akeem' AND ip.last_name = 'Phipps' THEN '114830-akeem-phipps'
-      WHEN ip.first_name = 'Layton' AND ip.last_name = 'Purchase' THEN '114830-layton-purchase'
-      WHEN ip.first_name = 'Nabeel' AND ip.last_name = 'Qawasmi' THEN '114830-nabeel-qawasmi'
-      WHEN ip.first_name = 'Yannick' AND ip.last_name = 'Rihs' THEN '114830-yannick-rihs'
-      WHEN ip.first_name = 'Antonio' AND ip.last_name = 'Rocha' THEN '114830-antonio-rocha'
-      WHEN ip.first_name = 'Jake' AND ip.last_name = 'Rozhansky' THEN '114830-jake-rozhansky'
-      WHEN ip.first_name = 'Yahli' AND ip.last_name = 'Saltsberg' THEN '114830-yahli-saltsberg'
-      WHEN ip.first_name = 'Frank' AND ip.last_name = 'Shkreli' THEN '114830-frank-shkreli'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Soboff' THEN '114830-michael-soboff'
-      WHEN ip.first_name = 'Tom' AND ip.last_name = 'Wallenstein' THEN '114830-tom-wallenstein'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Wampler' THEN '114830-michael-wampler'
-      WHEN ip.first_name = 'Peter' AND ip.last_name = 'Wentzel' THEN '114830-peter-wentzel'
-      WHEN ip.first_name = 'Edwin Zuniga' AND ip.last_name = 'Lopez' THEN '114830-edwin-zuniga-lopez'
-      WHEN ip.first_name = 'Brahim Hadj' AND ip.last_name = 'Abboud' THEN '114850-brahim-hadj-abboud'
-      WHEN ip.first_name = 'Tomas' AND ip.last_name = 'Ascoli' THEN '114850-tomas-ascoli'
-      WHEN ip.first_name = 'August' AND ip.last_name = 'Axtman' THEN '114850-august-axtman'
-      WHEN ip.first_name = 'Edwin' AND ip.last_name = 'Bedolla' THEN '114850-edwin-bedolla'
-      WHEN ip.first_name = 'Noah Sutton' AND ip.last_name = 'Beltran' THEN '114850-noah-sutton-beltran'
-      WHEN ip.first_name = 'Ammit' AND ip.last_name = 'Bhogal' THEN '114850-ammit-bhogal'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Bonas' THEN '114850-john-bonas'
-      WHEN ip.first_name = 'Marcus' AND ip.last_name = 'Brenes' THEN '114850-marcus-brenes'
-      WHEN ip.first_name = 'Carter' AND ip.last_name = 'Burris' THEN '114850-carter-burris'
-      WHEN ip.first_name = 'Colin Forster' AND ip.last_name = 'Davis' THEN '114850-colin-forster-davis'
-      WHEN ip.first_name = 'Alex' AND ip.last_name = 'Demars' THEN '114850-alex-demars'
-      WHEN ip.first_name = 'Oliver' AND ip.last_name = 'Garcia' THEN '114850-oliver-garcia'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Gonzalez' THEN '114850-michael-gonzalez'
-      WHEN ip.first_name = 'Emmanuel' AND ip.last_name = 'Hewitt' THEN '114850-emmanuel-hewitt'
-      WHEN ip.first_name = 'Luke' AND ip.last_name = 'Hill' THEN '114850-luke-hill'
-      WHEN ip.first_name = 'Jack' AND ip.last_name = 'Jasinski' THEN '114850-jack-jasinski'
-      WHEN ip.first_name = 'Dylan Leonid' AND ip.last_name = 'Lacy' THEN '114850-dylan-leonid-lacy'
-      WHEN ip.first_name = 'Joel' AND ip.last_name = 'Lopez' THEN '114850-joel-lopez'
-      WHEN ip.first_name = 'Dominick' AND ip.last_name = 'Martinez' THEN '114850-dominick-martinez'
-      WHEN ip.first_name = 'Brian' AND ip.last_name = 'McDaid' THEN '114850-brian-mcdaid'
-      WHEN ip.first_name = 'Luca' AND ip.last_name = 'Mellor' THEN '114850-luca-mellor'
-      WHEN ip.first_name = 'Mason' AND ip.last_name = 'Miller' THEN '114850-mason-miller'
-      WHEN ip.first_name = 'Ayoub' AND ip.last_name = 'Mouhou' THEN '114850-ayoub-mouhou'
-      WHEN ip.first_name = 'Riley' AND ip.last_name = 'Porter' THEN '114850-riley-porter'
-      WHEN ip.first_name = 'Luke' AND ip.last_name = 'Pressler' THEN '114850-luke-pressler'
-      WHEN ip.first_name = 'Ridge' AND ip.last_name = 'Robinson' THEN '114850-ridge-robinson'
-      WHEN ip.first_name = 'Miguel' AND ip.last_name = 'Ross' THEN '114850-miguel-ross'
-      WHEN ip.first_name = 'Maximos' AND ip.last_name = 'Sacarellos' THEN '114850-maximos-sacarellos'
-      WHEN ip.first_name = 'Justin' AND ip.last_name = 'Thomas' THEN '114850-justin-thomas'
-      WHEN ip.first_name = 'Luke' AND ip.last_name = 'Thomas' THEN '114850-luke-thomas'
-      WHEN ip.first_name = 'Sama' AND ip.last_name = 'Tima' THEN '114850-sama-tima'
-      WHEN ip.first_name = 'Kyle' AND ip.last_name = 'Tucker' THEN '114850-kyle-tucker'
-      WHEN ip.first_name = 'Nikhil Ashish' AND ip.last_name = 'Verma' THEN '114850-nikhil-ashish-verma'
-      WHEN ip.first_name = 'Jacob' AND ip.last_name = 'Weaver' THEN '114850-jacob-weaver'
-      WHEN ip.first_name = 'Charles' AND ip.last_name = 'Wilson' THEN '114850-charles-wilson'
-      WHEN ip.first_name = 'Matteo' AND ip.last_name = 'Adiletta' THEN '114808-matteo-adiletta'
-      WHEN ip.first_name = 'William' AND ip.last_name = 'Ardiles' THEN '114808-william-ardiles'
-      WHEN ip.first_name = 'Serge' AND ip.last_name = 'Biket' THEN '114808-serge-biket'
-      WHEN ip.first_name = 'Ryan' AND ip.last_name = 'Butler' THEN '114808-ryan-butler'
-      WHEN ip.first_name = 'Obiazie' AND ip.last_name = 'Chinatu' THEN '114808-obiazie-chinatu'
-      WHEN ip.first_name = 'Seth' AND ip.last_name = 'Crabbe' THEN '114808-seth-crabbe'
-      WHEN ip.first_name = 'Leo' AND ip.last_name = 'Dunia' THEN '114808-leo-dunia'
-      WHEN ip.first_name = 'Ivan' AND ip.last_name = 'Fombu' THEN '114808-ivan-fombu'
-      WHEN ip.first_name = 'Nikolaos' AND ip.last_name = 'Gousios' THEN '114808-nikolaos-gousios'
-      WHEN ip.first_name = 'Isaac' AND ip.last_name = 'Hollinger' THEN '114808-isaac-hollinger'
-      WHEN ip.first_name = 'Micah' AND ip.last_name = 'Hostetter' THEN '114808-micah-hostetter'
-      WHEN ip.first_name = 'Abdoul' AND ip.last_name = 'Issoufou' THEN '114808-abdoul-issoufou'
-      WHEN ip.first_name = 'Clovis' AND ip.last_name = 'Kabre' THEN '114808-clovis-kabre'
-      WHEN ip.first_name = 'Justin' AND ip.last_name = 'Keefer' THEN '114808-justin-keefer'
-      WHEN ip.first_name = 'Mehluko' AND ip.last_name = 'Letsoalo' THEN '114808-mehluko-letsoalo'
-      WHEN ip.first_name = 'Kel' AND ip.last_name = 'Merckel' THEN '114808-kel-merckel'
-      WHEN ip.first_name = 'Caden' AND ip.last_name = 'Mullen' THEN '114808-caden-mullen'
-      WHEN ip.first_name = 'Babunga' AND ip.last_name = 'Mulumeoderwa' THEN '114808-babunga-mulumeoderwa'
-      WHEN ip.first_name = 'Luke' AND ip.last_name = 'Nall' THEN '114808-luke-nall'
-      WHEN ip.first_name = 'Sivpheng' AND ip.last_name = 'Phann' THEN '114808-sivpheng-phann'
-      WHEN ip.first_name = 'Derek' AND ip.last_name = 'Ramirez' THEN '114808-derek-ramirez'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Ramirez' THEN '114808-ethan-ramirez'
-      WHEN ip.first_name = 'Josiah' AND ip.last_name = 'Ramirez' THEN '114808-josiah-ramirez'
-      WHEN ip.first_name = 'Chris' AND ip.last_name = 'Richards' THEN '114808-chris-richards'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Rowe' THEN '114808-daniel-rowe'
-      WHEN ip.first_name = 'Lazaro' AND ip.last_name = 'Salazar' THEN '114808-lazaro-salazar'
-      WHEN ip.first_name = 'David Tai' AND ip.last_name = 'San' THEN '114808-david-tai-san'
-      WHEN ip.first_name = 'Dawson' AND ip.last_name = 'Schreck' THEN '114808-dawson-schreck'
-      WHEN ip.first_name = 'Owen' AND ip.last_name = 'Shea' THEN '114808-owen-shea'
-      WHEN ip.first_name = 'Denis' AND ip.last_name = 'Tarasov' THEN '114808-denis-tarasov'
-      WHEN ip.first_name = 'Babo' AND ip.last_name = 'Tereffe' THEN '114808-babo-tereffe'
-      WHEN ip.first_name = 'William' AND ip.last_name = 'Vasquez' THEN '114808-william-vasquez'
-      WHEN ip.first_name = 'Joel' AND ip.last_name = 'Walker' THEN '114808-joel-walker'
-      WHEN ip.first_name = 'Christian' AND ip.last_name = 'Wieand' THEN '114808-christian-wieand'
-      WHEN ip.first_name = 'Kedric' AND ip.last_name = 'Yoder' THEN '114808-kedric-yoder'
-      WHEN ip.first_name = 'Osman' AND ip.last_name = 'Barrie' THEN '114833-osman-barrie'
-      WHEN ip.first_name = 'Paul' AND ip.last_name = 'Bechtelheimer' THEN '114833-paul-bechtelheimer'
-      WHEN ip.first_name = 'Nathan' AND ip.last_name = 'Biersbach' THEN '114833-nathan-biersbach'
-      WHEN ip.first_name = 'Brayden' AND ip.last_name = 'Birnstiel' THEN '114833-brayden-birnstiel'
-      WHEN ip.first_name = 'Ryan' AND ip.last_name = 'Cleary' THEN '114833-ryan-cleary'
-      WHEN ip.first_name = 'Theo Da' AND ip.last_name = 'Silva' THEN '114833-theo-da-silva'
-      WHEN ip.first_name = 'Kaelan' AND ip.last_name = 'Debbage' THEN '114833-kaelan-debbage'
-      WHEN ip.first_name = 'Blake' AND ip.last_name = 'Driehuis' THEN '114833-blake-driehuis'
-      WHEN ip.first_name = 'Gavin' AND ip.last_name = 'Faracchio' THEN '114833-gavin-faracchio'
-      WHEN ip.first_name = 'Vincent' AND ip.last_name = 'Guzzo' THEN '114833-vincent-guzzo'
-      WHEN ip.first_name = 'Maxwell Byrd' AND ip.last_name = 'Hawk' THEN '114833-maxwell-byrd-hawk'
-      WHEN ip.first_name = 'Austin' AND ip.last_name = 'Johnson' THEN '114833-austin-johnson'
-      WHEN ip.first_name = 'Sincere' AND ip.last_name = 'Kato' THEN '114833-sincere-kato'
-      WHEN ip.first_name = 'Muhammed Ali' AND ip.last_name = 'Kol' THEN '114833-muhammed-ali-kol'
-      WHEN ip.first_name = 'Berlenz' AND ip.last_name = 'Lumarque' THEN '114833-berlenz-lumarque'
-      WHEN ip.first_name = 'Jason' AND ip.last_name = 'Mancuso' THEN '114833-jason-mancuso'
-      WHEN ip.first_name = 'Jade' AND ip.last_name = 'Mesias' THEN '114833-jade-mesias'
-      WHEN ip.first_name = 'Tommy' AND ip.last_name = 'Monaghan' THEN '114833-tommy-monaghan'
-      WHEN ip.first_name = 'Jeff' AND ip.last_name = 'Morgan' THEN '114833-jeff-morgan'
-      WHEN ip.first_name = 'Jake' AND ip.last_name = 'Mulinge' THEN '114833-jake-mulinge'
-      WHEN ip.first_name = 'Joseph' AND ip.last_name = 'Nguyen' THEN '114833-joseph-nguyen'
-      WHEN ip.first_name = 'Carter Jack' AND ip.last_name = 'Norton' THEN '114833-carter-jack-norton'
-      WHEN ip.first_name = 'Matthew' AND ip.last_name = 'Perrella' THEN '114833-matthew-perrella'
-      WHEN ip.first_name = 'Dylan' AND ip.last_name = 'Pino' THEN '114833-dylan-pino'
-      WHEN ip.first_name = 'Samuel' AND ip.last_name = 'Quaye' THEN '114833-samuel-quaye'
-      WHEN ip.first_name = 'Julito' AND ip.last_name = 'Quintana' THEN '114833-julito-quintana'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Romito' THEN '114833-ethan-romito'
-      WHEN ip.first_name = 'Ahmed' AND ip.last_name = 'Saidi' THEN '114833-ahmed-saidi'
-      WHEN ip.first_name = 'Max' AND ip.last_name = 'Schrader' THEN '114833-max-schrader'
-      WHEN ip.first_name = 'Seth' AND ip.last_name = 'Sidle' THEN '114833-seth-sidle'
-      WHEN ip.first_name = 'Adam' AND ip.last_name = 'Sternberger' THEN '114833-adam-sternberger'
-      WHEN ip.first_name = 'Steven' AND ip.last_name = 'Thompson' THEN '114833-steven-thompson'
-      WHEN ip.first_name = 'Nico' AND ip.last_name = 'Tramontana' THEN '114833-nico-tramontana'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Troiano' THEN '114833-john-troiano'
-      WHEN ip.first_name = 'Djibi Tata' AND ip.last_name = 'Bah' THEN '114840-djibi-tata-bah'
-      WHEN ip.first_name = 'James' AND ip.last_name = 'Bernstein' THEN '114840-james-bernstein'
-      WHEN ip.first_name = 'Pierre' AND ip.last_name = 'Bosquet' THEN '114840-pierre-bosquet'
-      WHEN ip.first_name = 'Erik' AND ip.last_name = 'Carchipulla' THEN '114840-erik-carchipulla'
-      WHEN ip.first_name = 'Filippo' AND ip.last_name = 'D''Anna' THEN '114840-filippo-d-anna'
-      WHEN ip.first_name = 'Jonathan' AND ip.last_name = 'Firmino' THEN '114840-jonathan-firmino'
-      WHEN ip.first_name = 'Jose (Tony)' AND ip.last_name = 'Flores' THEN '114840-jose-tony-flores'
-      WHEN ip.first_name = 'Liam' AND ip.last_name = 'Fredericks' THEN '114840-liam-fredericks'
-      WHEN ip.first_name = 'Eric' AND ip.last_name = 'Goldberg' THEN '114840-eric-goldberg'
-      WHEN ip.first_name = 'Taeus' AND ip.last_name = 'Jones' THEN '114840-taeus-jones'
-      WHEN ip.first_name = 'Brendan' AND ip.last_name = 'Kerins' THEN '114840-brendan-kerins'
-      WHEN ip.first_name = 'Sean Ryan' AND ip.last_name = 'Milelli' THEN '114840-sean-ryan-milelli'
-      WHEN ip.first_name = 'Conlan Michael' AND ip.last_name = 'Paventi' THEN '114840-conlan-michael-paventi'
-      WHEN ip.first_name = 'Kevin' AND ip.last_name = 'Perez' THEN '114840-kevin-perez'
-      WHEN ip.first_name = 'Giovanni' AND ip.last_name = 'Pierleonardi' THEN '114840-giovanni-pierleonardi'
-      WHEN ip.first_name = 'Giuseppe' AND ip.last_name = 'Pierleonardi' THEN '114840-giuseppe-pierleonardi'
-      WHEN ip.first_name = 'Guiliano' AND ip.last_name = 'Pierleonardi' THEN '114840-guiliano-pierleonardi'
-      WHEN ip.first_name = 'Vincenzo' AND ip.last_name = 'Pugliese' THEN '114840-vincenzo-pugliese'
-      WHEN ip.first_name = 'Joel' AND ip.last_name = 'Quist' THEN '114840-joel-quist'
-      WHEN ip.first_name = 'Dennis' AND ip.last_name = 'Rooney' THEN '114840-dennis-rooney'
-      WHEN ip.first_name = 'Ilia' AND ip.last_name = 'Sakheishvili' THEN '114840-ilia-sakheishvili'
-      WHEN ip.first_name = 'Cole' AND ip.last_name = 'Sotack' THEN '114840-cole-sotack'
-      WHEN ip.first_name = 'Reed' AND ip.last_name = 'Sviben' THEN '114840-reed-sviben'
-      WHEN ip.first_name = 'Brandon D' AND ip.last_name = 'Valeri' THEN '114840-brandon-d-valeri'
-      WHEN ip.first_name = 'Ronald' AND ip.last_name = 'Ventura' THEN '114840-ronald-ventura'
-      WHEN ip.first_name = 'Eric' AND ip.last_name = 'Adamo' THEN '114835-eric-adamo'
-      WHEN ip.first_name = 'Salam' AND ip.last_name = 'Ashurmamadov' THEN '114835-salam-ashurmamadov'
-      WHEN ip.first_name = 'Matthew' AND ip.last_name = 'Bergmaier' THEN '114835-matthew-bergmaier'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Bloyou' THEN '114835-daniel-bloyou'
-      WHEN ip.first_name = 'Lawrence' AND ip.last_name = 'Buigbo' THEN '114835-lawrence-buigbo'
-      WHEN ip.first_name = 'Diego' AND ip.last_name = 'Cabrera' THEN '114835-diego-cabrera'
-      WHEN ip.first_name = 'Emanuel' AND ip.last_name = 'Caire' THEN '114835-emanuel-caire'
-      WHEN ip.first_name = 'Sebastian' AND ip.last_name = 'Carmona' THEN '114835-sebastian-carmona'
-      WHEN ip.first_name = 'Chad' AND ip.last_name = 'Catalana' THEN '114835-chad-catalana'
-      WHEN ip.first_name = 'Nyles' AND ip.last_name = 'Cayemitte' THEN '114835-nyles-cayemitte'
-      WHEN ip.first_name = 'Justin' AND ip.last_name = 'Cooper' THEN '114835-justin-cooper'
-      WHEN ip.first_name = 'Kevin' AND ip.last_name = 'Davis' THEN '114835-kevin-davis'
-      WHEN ip.first_name = 'Alvin' AND ip.last_name = 'Deegon' THEN '114835-alvin-deegon'
-      WHEN ip.first_name = 'Yousouf' AND ip.last_name = 'Doucoure' THEN '114835-yousouf-doucoure'
-      WHEN ip.first_name = 'Nick' AND ip.last_name = 'Dudek' THEN '114835-nick-dudek'
-      WHEN ip.first_name = 'Andres' AND ip.last_name = 'Freire' THEN '114835-andres-freire'
-      WHEN ip.first_name = 'Luka' AND ip.last_name = 'Gogidze' THEN '114835-luka-gogidze'
-      WHEN ip.first_name = 'Andres' AND ip.last_name = 'Gomez' THEN '114835-andres-gomez'
-      WHEN ip.first_name = 'Brendan' AND ip.last_name = 'Gorman' THEN '114835-brendan-gorman'
-      WHEN ip.first_name = 'Ermir' AND ip.last_name = 'Hoti' THEN '114835-ermir-hoti'
-      WHEN ip.first_name = 'Hamin' AND ip.last_name = 'Kim' THEN '114835-hamin-kim'
-      WHEN ip.first_name = 'Kalvin' AND ip.last_name = 'Matischak' THEN '114835-kalvin-matischak'
-      WHEN ip.first_name = 'Gabriel' AND ip.last_name = 'Matute' THEN '114835-gabriel-matute'
-      WHEN ip.first_name = 'Aidan' AND ip.last_name = 'Meissler' THEN '114835-aidan-meissler'
-      WHEN ip.first_name = 'Glenn' AND ip.last_name = 'Moyer' THEN '114835-glenn-moyer'
-      WHEN ip.first_name = 'Kyle' AND ip.last_name = 'Mtshazo' THEN '114835-kyle-mtshazo'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Murtagh' THEN '114835-daniel-murtagh'
-      WHEN ip.first_name = 'Justin' AND ip.last_name = 'Odoemene' THEN '114835-justin-odoemene'
-      WHEN ip.first_name = 'Ryan' AND ip.last_name = 'Pereus' THEN '114835-ryan-pereus'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Rodriguez' THEN '114835-christopher-rodriguez'
-      WHEN ip.first_name = 'Eran' AND ip.last_name = 'Shifris' THEN '114835-eran-shifris'
-      WHEN ip.first_name = 'Andres' AND ip.last_name = 'Velez' THEN '114835-andres-velez'
-      WHEN ip.first_name = 'Seth' AND ip.last_name = 'Walker' THEN '114835-seth-walker'
-      WHEN ip.first_name = 'John Steven' AND ip.last_name = 'Warren' THEN '114835-john-steven-warren'
-      WHEN ip.first_name = 'Mark' AND ip.last_name = 'Abbonizio' THEN '114836-mark-abbonizio'
-      WHEN ip.first_name = 'Sergio' AND ip.last_name = 'Abelardy' THEN '114836-sergio-abelardy'
-      WHEN ip.first_name = 'Harry' AND ip.last_name = 'Angelis' THEN '114836-harry-angelis'
-      WHEN ip.first_name = 'Pedro' AND ip.last_name = 'Barbosa' THEN '114836-pedro-barbosa'
-      WHEN ip.first_name = 'Hunter' AND ip.last_name = 'Bell' THEN '114836-hunter-bell'
-      WHEN ip.first_name = 'Brendan' AND ip.last_name = 'Callahan' THEN '114836-brendan-callahan'
-      WHEN ip.first_name = 'Mohamed' AND ip.last_name = 'Elgayar' THEN '114836-mohamed-elgayar'
-      WHEN ip.first_name = 'Salvatore' AND ip.last_name = 'Ficarotta' THEN '114836-salvatore-ficarotta'
-      WHEN ip.first_name = 'Henry' AND ip.last_name = 'Guzman' THEN '114836-henry-guzman'
-      WHEN ip.first_name = 'Theophilus' AND ip.last_name = 'Ijeboi' THEN '114836-theophilus-ijeboi'
-      WHEN ip.first_name = 'Mohamed' AND ip.last_name = 'Jawara' THEN '114836-mohamed-jawara'
-      WHEN ip.first_name = 'Sean' AND ip.last_name = 'Murray' THEN '114836-sean-murray'
-      WHEN ip.first_name = 'Laurence' AND ip.last_name = 'Narcisi' THEN '114836-laurence-narcisi'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Newell' THEN '114836-michael-newell'
-      WHEN ip.first_name = 'Kaleb' AND ip.last_name = 'Raymond' THEN '114836-kaleb-raymond'
-      WHEN ip.first_name = 'Joel' AND ip.last_name = 'Richmond' THEN '114836-joel-richmond'
-      WHEN ip.first_name = 'Benjamin' AND ip.last_name = 'Richter' THEN '114836-benjamin-richter'
-      WHEN ip.first_name = 'Joshua' AND ip.last_name = 'Rifkin' THEN '114836-joshua-rifkin'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Saint-Pol' THEN '114836-daniel-saint-pol'
-      WHEN ip.first_name = 'David' AND ip.last_name = 'Skiendzielewski' THEN '114836-david-skiendzielewski'
-      WHEN ip.first_name = 'Owen' AND ip.last_name = 'Stock' THEN '114836-owen-stock'
-      WHEN ip.first_name = 'Ryan' AND ip.last_name = 'Stock' THEN '114836-ryan-stock'
-      WHEN ip.first_name = 'Rasheed' AND ip.last_name = 'Thomas' THEN '114836-rasheed-thomas'
-      WHEN ip.first_name = 'Sean' AND ip.last_name = 'Touey' THEN '114836-sean-touey'
-      WHEN ip.first_name = 'Jesse' AND ip.last_name = 'Weick' THEN '114836-jesse-weick'
-      WHEN ip.first_name = 'Emani' AND ip.last_name = 'Arroyo' THEN '114847-emani-arroyo'
-      WHEN ip.first_name = 'Nolan' AND ip.last_name = 'Bair' THEN '114847-nolan-bair'
-      WHEN ip.first_name = 'Almuthenna Hseen' AND ip.last_name = 'Baled' THEN '114847-almuthenna-hseen-baled'
-      WHEN ip.first_name = 'Richard' AND ip.last_name = 'Blanchard' THEN '114847-richard-blanchard'
-      WHEN ip.first_name = 'Bakuri' AND ip.last_name = 'Buadze' THEN '114847-bakuri-buadze'
-      WHEN ip.first_name = 'Maximo' AND ip.last_name = 'Chavez' THEN '114847-maximo-chavez'
-      WHEN ip.first_name = 'Evan Chinwendu' AND ip.last_name = 'Azoro' THEN '114847-evan-chinwendu-azoro'
-      WHEN ip.first_name = 'Adan' AND ip.last_name = 'Crispin-Morales' THEN '114847-adan-crispin-morales'
-      WHEN ip.first_name = 'Jorge Luis Diaz' AND ip.last_name = 'Lobo' THEN '114847-jorge-luis-diaz-lobo'
-      WHEN ip.first_name = 'Spencer' AND ip.last_name = 'Dickinson' THEN '114847-spencer-dickinson'
-      WHEN ip.first_name = 'Isaiah' AND ip.last_name = 'Fox' THEN '114847-isaiah-fox'
-      WHEN ip.first_name = 'Goga' AND ip.last_name = 'Gogoladze' THEN '114847-goga-gogoladze'
-      WHEN ip.first_name = 'Stephen' AND ip.last_name = 'Grazioli' THEN '114847-stephen-grazioli'
-      WHEN ip.first_name = 'Mohamed' AND ip.last_name = 'Ibrahim' THEN '114847-mohamed-ibrahim'
-      WHEN ip.first_name = 'Matthew' AND ip.last_name = 'JeanPierre' THEN '114847-matthew-jeanpierre'
-      WHEN ip.first_name = 'Mohammadzain' AND ip.last_name = 'Kazi' THEN '114847-mohammadzain-kazi'
-      WHEN ip.first_name = 'Guilherme' AND ip.last_name = 'Martins' THEN '114847-guilherme-martins'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Miller' THEN '114847-john-miller'
-      WHEN ip.first_name = 'Edwin Owusu' AND ip.last_name = 'Siaw' THEN '114847-edwin-owusu-siaw'
-      WHEN ip.first_name = 'Juan' AND ip.last_name = 'Polanco' THEN '114847-juan-polanco'
-      WHEN ip.first_name = 'Angel Javier' AND ip.last_name = 'Rodriguez' THEN '114847-angel-javier-rodriguez'
-      WHEN ip.first_name = 'Ahmed' AND ip.last_name = 'Saedahmed' THEN '114847-ahmed-saedahmed'
-      WHEN ip.first_name = 'Edi' AND ip.last_name = 'Schwartz' THEN '114847-edi-schwartz'
-      WHEN ip.first_name = 'Maksym' AND ip.last_name = 'Shevchenko' THEN '114847-maksym-shevchenko'
-      WHEN ip.first_name = 'Alexander' AND ip.last_name = 'Simon' THEN '114847-alexander-simon'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Smith' THEN '114847-daniel-smith'
-      WHEN ip.first_name = 'Christian' AND ip.last_name = 'Sorteberg' THEN '114847-christian-sorteberg'
-      WHEN ip.first_name = 'Sekou' AND ip.last_name = 'Sylla' THEN '114847-sekou-sylla'
-      WHEN ip.first_name = 'Abraham' AND ip.last_name = 'Waldman' THEN '114847-abraham-waldman'
-      WHEN ip.first_name = 'Geovany' AND ip.last_name = 'Acevedo' THEN '124946-geovany-acevedo'
-      WHEN ip.first_name = 'Axel' AND ip.last_name = 'Bladimir' THEN '124946-axel-bladimir'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Carmody' THEN '124946-michael-carmody'
-      WHEN ip.first_name = 'Julien' AND ip.last_name = 'Carraha' THEN '124946-julien-carraha'
-      WHEN ip.first_name = 'Nicholas' AND ip.last_name = 'Cruz' THEN '124946-nicholas-cruz'
-      WHEN ip.first_name = 'Aba' AND ip.last_name = 'David' THEN '124946-aba-david'
-      WHEN ip.first_name = 'Jonah' AND ip.last_name = 'Dias' THEN '124946-jonah-dias'
-      WHEN ip.first_name = 'Mamadou' AND ip.last_name = 'Diouf' THEN '124946-mamadou-diouf'
-      WHEN ip.first_name = 'Oliver' AND ip.last_name = 'Dyson' THEN '124946-oliver-dyson'
-      WHEN ip.first_name = 'Allan' AND ip.last_name = 'Francisco' THEN '124946-allan-francisco'
-      WHEN ip.first_name = 'Randy' AND ip.last_name = 'Gonzalez' THEN '124946-randy-gonzalez'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Grund' THEN '124946-daniel-grund'
-      WHEN ip.first_name = 'Ryan' AND ip.last_name = 'Grund' THEN '124946-ryan-grund'
-      WHEN ip.first_name = 'Jeremy Hernandez' AND ip.last_name = 'Ortega' THEN '124946-jeremy-hernandez-ortega'
-      WHEN ip.first_name = 'Chidi' AND ip.last_name = 'Iloka' THEN '124946-chidi-iloka'
-      WHEN ip.first_name = 'Cesar' AND ip.last_name = 'Jarmillo' THEN '124946-cesar-jarmillo'
-      WHEN ip.first_name = 'Tomtom' AND ip.last_name = 'Johnson' THEN '124946-tomtom-johnson'
-      WHEN ip.first_name = 'Davenson' AND ip.last_name = 'Joinvilmar' THEN '124946-davenson-joinvilmar'
-      WHEN ip.first_name = 'Dylan' AND ip.last_name = 'Kotch' THEN '124946-dylan-kotch'
-      WHEN ip.first_name = 'adan' AND ip.last_name = 'lopez' THEN '124946-adan-lopez'
-      WHEN ip.first_name = 'Liam' AND ip.last_name = 'MacDonald' THEN '124946-liam-macdonald'
-      WHEN ip.first_name = 'Mario' AND ip.last_name = 'Martell' THEN '124946-mario-martell'
-      WHEN ip.first_name = 'Arnaldo' AND ip.last_name = 'Mendoza' THEN '124946-arnaldo-mendoza'
-      WHEN ip.first_name = 'Dani' AND ip.last_name = 'Morales' THEN '124946-dani-morales'
-      WHEN ip.first_name = 'jonathan' AND ip.last_name = 'olaleye' THEN '124946-jonathan-olaleye'
-      WHEN ip.first_name = 'Lucknerson' AND ip.last_name = 'Pierre' THEN '124946-lucknerson-pierre'
-      WHEN ip.first_name = 'Kyle' AND ip.last_name = 'Pilliteri' THEN '124946-kyle-pilliteri'
-      WHEN ip.first_name = 'Alex' AND ip.last_name = 'Quezada' THEN '124946-alex-quezada'
-      WHEN ip.first_name = 'Wesley' AND ip.last_name = 'Reyes' THEN '124946-wesley-reyes'
-      WHEN ip.first_name = 'Nick' AND ip.last_name = 'Sample' THEN '124946-nick-sample'
-      WHEN ip.first_name = 'Melvin' AND ip.last_name = 'Sapon' THEN '124946-melvin-sapon'
-      WHEN ip.first_name = 'Chefetson' AND ip.last_name = 'Simeus' THEN '124946-chefetson-simeus'
-      WHEN ip.first_name = 'Emerson' AND ip.last_name = 'Vicente' THEN '124946-emerson-vicente'
-      WHEN ip.first_name = 'Mate' AND ip.last_name = 'Vilagosi' THEN '124946-mate-vilagosi'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Warwick' THEN '124946-john-warwick'
-      WHEN ip.first_name = 'Musa' AND ip.last_name = 'Abdelgadir' THEN '116079-musa-abdelgadir'
-      WHEN ip.first_name = 'Amar' AND ip.last_name = 'Abdelrazek' THEN '116079-amar-abdelrazek'
-      WHEN ip.first_name = 'Abdelrahman' AND ip.last_name = 'Ali' THEN '116079-abdelrahman-ali'
-      WHEN ip.first_name = 'Ahmed' AND ip.last_name = 'Ali' THEN '116079-ahmed-ali'
-      WHEN ip.first_name = 'Erwa' AND ip.last_name = 'Babiker' THEN '116079-erwa-babiker'
-      WHEN ip.first_name = 'Arsene' AND ip.last_name = 'Bado' THEN '116079-arsene-bado'
-      WHEN ip.first_name = 'Logan' AND ip.last_name = 'Bersani' THEN '116079-logan-bersani'
-      WHEN ip.first_name = 'Mohamed' AND ip.last_name = 'Bility' THEN '116079-mohamed-bility'
-      WHEN ip.first_name = 'Hamzah' AND ip.last_name = 'Dabbour' THEN '116079-hamzah-dabbour'
-      WHEN ip.first_name = 'Terrence' AND ip.last_name = 'Doe' THEN '116079-terrence-doe'
-      WHEN ip.first_name = 'Musa' AND ip.last_name = 'Donza' THEN '116079-musa-donza'
-      WHEN ip.first_name = 'Alexander' AND ip.last_name = 'Duopu' THEN '116079-alexander-duopu'
-      WHEN ip.first_name = 'Luis' AND ip.last_name = 'Espejo' THEN '116079-luis-espejo'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Fletcher' THEN '116079-christopher-fletcher'
-      WHEN ip.first_name = 'Mujtaba' AND ip.last_name = 'Galas' THEN '116079-mujtaba-galas'
-      WHEN ip.first_name = 'Mustafa' AND ip.last_name = 'Galas' THEN '116079-mustafa-galas'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Gonzalez' THEN '116079-john-gonzalez'
-      WHEN ip.first_name = 'Ahmed' AND ip.last_name = 'Gosie' THEN '116079-ahmed-gosie'
-      WHEN ip.first_name = 'Maccarrey' AND ip.last_name = 'Guillaume' THEN '116079-maccarrey-guillaume'
-      WHEN ip.first_name = 'Otmane' AND ip.last_name = 'Houasli' THEN '116079-otmane-houasli'
-      WHEN ip.first_name = 'Esnayder' AND ip.last_name = 'Josue' THEN '116079-esnayder-josue'
-      WHEN ip.first_name = 'Abdoulaye' AND ip.last_name = 'Kamagate' THEN '116079-abdoulaye-kamagate'
-      WHEN ip.first_name = 'Amadou' AND ip.last_name = 'Kamagate' THEN '116079-amadou-kamagate'
-      WHEN ip.first_name = 'Majid' AND ip.last_name = 'Kawa' THEN '116079-majid-kawa'
-      WHEN ip.first_name = 'Mohamed' AND ip.last_name = 'Khalafalla' THEN '116079-mohamed-khalafalla'
-      WHEN ip.first_name = 'Kouassi' AND ip.last_name = 'Nguessan' THEN '116079-kouassi-nguessan'
-      WHEN ip.first_name = 'Benell' AND ip.last_name = 'Saygarn' THEN '116079-benell-saygarn'
-      WHEN ip.first_name = 'Oumar' AND ip.last_name = 'Sylla' THEN '116079-oumar-sylla'
-      WHEN ip.first_name = 'Justin' AND ip.last_name = 'Alves' THEN '114822-justin-alves'
-      WHEN ip.first_name = 'Rob' AND ip.last_name = 'Andrade' THEN '114822-rob-andrade'
-      WHEN ip.first_name = 'Tyler' AND ip.last_name = 'Andreas' THEN '114822-tyler-andreas'
-      WHEN ip.first_name = 'William' AND ip.last_name = 'Bartels' THEN '114822-william-bartels'
-      WHEN ip.first_name = 'Harmony' AND ip.last_name = 'Bell-Gam' THEN '114822-harmony-bell-gam'
-      WHEN ip.first_name = 'Dane' AND ip.last_name = 'Calhoun' THEN '114822-dane-calhoun'
-      WHEN ip.first_name = 'Adrian' AND ip.last_name = 'Dilascio' THEN '114822-adrian-dilascio'
-      WHEN ip.first_name = 'Grady' AND ip.last_name = 'Edwards' THEN '114822-grady-edwards'
-      WHEN ip.first_name = 'Matt' AND ip.last_name = 'Fuentes' THEN '114822-matt-fuentes'
-      WHEN ip.first_name = 'Douglas' AND ip.last_name = 'Jensen' THEN '114822-douglas-jensen'
-      WHEN ip.first_name = 'Dylan' AND ip.last_name = 'Kanson' THEN '114822-dylan-kanson'
-      WHEN ip.first_name = 'Marcus' AND ip.last_name = 'Mason' THEN '114822-marcus-mason'
-      WHEN ip.first_name = 'Carter' AND ip.last_name = 'Mathis' THEN '114822-carter-mathis'
-      WHEN ip.first_name = 'Alex' AND ip.last_name = 'Matos' THEN '114822-alex-matos'
-      WHEN ip.first_name = 'Rafael' AND ip.last_name = 'Pereira' THEN '114822-rafael-pereira'
-      WHEN ip.first_name = 'Anthony' AND ip.last_name = 'Ryan' THEN '114822-anthony-ryan'
-      WHEN ip.first_name = 'Bryan' AND ip.last_name = 'Sanchez' THEN '114822-bryan-sanchez'
-      WHEN ip.first_name = 'Dante' AND ip.last_name = 'Shenkin' THEN '114822-dante-shenkin'
-      WHEN ip.first_name = 'Gianni' AND ip.last_name = 'Smith' THEN '114822-gianni-smith'
-      WHEN ip.first_name = 'Kieran' AND ip.last_name = 'Sundermann' THEN '114822-kieran-sundermann'
-      WHEN ip.first_name = 'Albert' AND ip.last_name = 'Truszkowski' THEN '114822-albert-truszkowski'
-      WHEN ip.first_name = 'Uche' AND ip.last_name = 'Wokocha' THEN '114822-uche-wokocha'
-      WHEN ip.first_name = 'Clay' AND ip.last_name = 'Yannazzone' THEN '114822-clay-yannazzone'
-      WHEN ip.first_name = 'Alex' AND ip.last_name = 'Zargo' THEN '114822-alex-zargo'
-      WHEN ip.first_name = 'Dylan Frank' AND ip.last_name = 'Aportela' THEN '116136-dylan-frank-aportela'
-      WHEN ip.first_name = 'Monsif' AND ip.last_name = 'Atify' THEN '116136-monsif-atify'
-      WHEN ip.first_name = 'Shane' AND ip.last_name = 'Baker' THEN '116136-shane-baker'
-      WHEN ip.first_name = 'Mava Mboko' AND ip.last_name = 'Celestin' THEN '116136-mava-mboko-celestin'
-      WHEN ip.first_name = 'Gunnar William' AND ip.last_name = 'Christensen' THEN '116136-gunnar-william-christensen'
-      WHEN ip.first_name = 'Bailey' AND ip.last_name = 'Cifone' THEN '116136-bailey-cifone'
-      WHEN ip.first_name = 'Emmett' AND ip.last_name = 'Dougherty' THEN '116136-emmett-dougherty'
-      WHEN ip.first_name = 'Sean' AND ip.last_name = 'Fatiga' THEN '116136-sean-fatiga'
-      WHEN ip.first_name = 'Gil' AND ip.last_name = 'Ferreira' THEN '116136-gil-ferreira'
-      WHEN ip.first_name = 'Greg' AND ip.last_name = 'Ferreira' THEN '116136-greg-ferreira'
-      WHEN ip.first_name = 'Ryan' AND ip.last_name = 'Gale' THEN '116136-ryan-gale'
-      WHEN ip.first_name = 'Elvis' AND ip.last_name = 'Gboho' THEN '116136-elvis-gboho'
-      WHEN ip.first_name = 'McCarthy Tyler' AND ip.last_name = 'Gomes' THEN '116136-mccarthy-tyler-gomes'
-      WHEN ip.first_name = 'Jeshohaih' AND ip.last_name = 'Hernandez' THEN '116136-jeshohaih-hernandez'
-      WHEN ip.first_name = 'Ahmir Lamar' AND ip.last_name = 'Johnson' THEN '116136-ahmir-lamar-johnson'
-      WHEN ip.first_name = 'Ahsan' AND ip.last_name = 'Johnson' THEN '116136-ahsan-johnson'
-      WHEN ip.first_name = 'Bugra' AND ip.last_name = 'Kumas' THEN '116136-bugra-kumas'
-      WHEN ip.first_name = 'Jake' AND ip.last_name = 'Kuzmick' THEN '116136-jake-kuzmick'
-      WHEN ip.first_name = 'Dominic Antonio' AND ip.last_name = 'lodise' THEN '116136-dominic-antonio-lodise'
-      WHEN ip.first_name = 'Gavin' AND ip.last_name = 'O''Neill' THEN '116136-gavin-o-neill'
-      WHEN ip.first_name = 'Krish' AND ip.last_name = 'Olmedo' THEN '116136-krish-olmedo'
-      WHEN ip.first_name = 'Alexander Charles' AND ip.last_name = 'Patton' THEN '116136-alexander-charles-patton'
-      WHEN ip.first_name = 'Noam' AND ip.last_name = 'Raz' THEN '116136-noam-raz'
-      WHEN ip.first_name = 'Mason James' AND ip.last_name = 'Regan' THEN '116136-mason-james-regan'
-      WHEN ip.first_name = 'Fred' AND ip.last_name = 'Renzulli' THEN '116136-fred-renzulli'
-      WHEN ip.first_name = 'Joseph' AND ip.last_name = 'Romano' THEN '116136-joseph-romano'
-      WHEN ip.first_name = 'Joshua' AND ip.last_name = 'Rossell' THEN '116136-joshua-rossell'
-      WHEN ip.first_name = 'Brian' AND ip.last_name = 'Sharkey' THEN '116136-brian-sharkey'
-      WHEN ip.first_name = 'Christopher John' AND ip.last_name = 'Spicer' THEN '116136-christopher-john-spicer'
-      WHEN ip.first_name = 'Kyle William' AND ip.last_name = 'Stone' THEN '116136-kyle-william-stone'
-      WHEN ip.first_name = 'Owen' AND ip.last_name = 'Strohm' THEN '116136-owen-strohm'
-      WHEN ip.first_name = 'Jackson M' AND ip.last_name = 'Stuetz' THEN '116136-jackson-m-stuetz'
-      WHEN ip.first_name = 'Melcohol' AND ip.last_name = 'Velasquez' THEN '116136-melcohol-velasquez'
-      WHEN ip.first_name = 'Christian' AND ip.last_name = 'Vetter' THEN '116136-christian-vetter'
-      WHEN ip.first_name = 'Anthony Alexis' AND ip.last_name = 'Ali' THEN '115227-anthony-alexis-ali'
-      WHEN ip.first_name = 'Dylan' AND ip.last_name = 'Bednarek' THEN '115227-dylan-bednarek'
-      WHEN ip.first_name = 'Garrett' AND ip.last_name = 'Blankinship' THEN '115227-garrett-blankinship'
-      WHEN ip.first_name = 'Matthew David' AND ip.last_name = 'Dottavi' THEN '115227-matthew-david-dottavi'
-      WHEN ip.first_name = 'Mohamed Kasongo' AND ip.last_name = 'Doukoure' THEN '115227-mohamed-kasongo-doukoure'
-      WHEN ip.first_name = 'Noel' AND ip.last_name = 'Fernadez' THEN '115227-noel-fernadez'
-      WHEN ip.first_name = 'Patrick James' AND ip.last_name = 'Fluharty' THEN '115227-patrick-james-fluharty'
-      WHEN ip.first_name = 'Astin Timothy' AND ip.last_name = 'Galanis' THEN '115227-astin-timothy-galanis'
-      WHEN ip.first_name = 'Anthony Frank' AND ip.last_name = 'Giafaglione' THEN '115227-anthony-frank-giafaglione'
-      WHEN ip.first_name = 'Amir' AND ip.last_name = 'Khan' THEN '115227-amir-khan'
-      WHEN ip.first_name = 'Anthony' AND ip.last_name = 'Konah' THEN '115227-anthony-konah'
-      WHEN ip.first_name = 'Brian' AND ip.last_name = 'Lorenz' THEN '115227-brian-lorenz'
-      WHEN ip.first_name = 'Yoni Andre' AND ip.last_name = 'Moussodou' THEN '115227-yoni-andre-moussodou'
-      WHEN ip.first_name = 'Oguzhan' AND ip.last_name = 'Mutaf' THEN '115227-oguzhan-mutaf'
-      WHEN ip.first_name = 'Rami Mahmoud' AND ip.last_name = 'Nasr' THEN '115227-rami-mahmoud-nasr'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Negrete' THEN '115227-michael-negrete'
-      WHEN ip.first_name = 'Juan' AND ip.last_name = 'Oliveira' THEN '115227-juan-oliveira'
-      WHEN ip.first_name = 'Edwin' AND ip.last_name = 'Perez' THEN '115227-edwin-perez'
-      WHEN ip.first_name = 'Antonio' AND ip.last_name = 'Ramos' THEN '115227-antonio-ramos'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Rosado' THEN '115227-ethan-rosado'
-      WHEN ip.first_name = 'Todd Richard' AND ip.last_name = 'Salmon' THEN '115227-todd-richard-salmon'
-      WHEN ip.first_name = 'Aiden Francis' AND ip.last_name = 'Schmitt' THEN '115227-aiden-francis-schmitt'
-      WHEN ip.first_name = 'Liam' AND ip.last_name = 'Smith' THEN '115227-liam-smith'
-      WHEN ip.first_name = 'Jovanny' AND ip.last_name = 'Trinidad-Romero' THEN '115227-jovanny-trinidad-romero'
-      WHEN ip.first_name = 'Isaiah Roman' AND ip.last_name = 'Woods-Kolsky' THEN '115227-isaiah-roman-woods-kolsky'
-      WHEN ip.first_name = 'Chenyu' AND ip.last_name = 'Yi' THEN '115227-chenyu-yi'
-      WHEN ip.first_name = 'Samuel Tony' AND ip.last_name = 'Zonoe' THEN '115227-samuel-tony-zonoe'
-      WHEN ip.first_name = 'Skylar' AND ip.last_name = 'Zugay' THEN '115227-skylar-zugay'
-      WHEN ip.first_name = 'Soheyl Ali' AND ip.last_name = 'Rafi' THEN '114829-soheyl-ali-rafi'
-      WHEN ip.first_name = 'Jonathan' AND ip.last_name = 'Arguta' THEN '114829-jonathan-arguta'
-      WHEN ip.first_name = 'Jean' AND ip.last_name = 'Ayolmbong' THEN '114829-jean-ayolmbong'
-      WHEN ip.first_name = 'Eric' AND ip.last_name = 'Calvillo' THEN '114829-eric-calvillo'
-      WHEN ip.first_name = 'Jhonny De' AND ip.last_name = 'Souza' THEN '114829-jhonny-de-souza'
-      WHEN ip.first_name = 'Valdir De' AND ip.last_name = 'Souza' THEN '114829-valdir-de-souza'
-      WHEN ip.first_name = 'Isiah' AND ip.last_name = 'Dorsey' THEN '114829-isiah-dorsey'
-      WHEN ip.first_name = 'Ricardo' AND ip.last_name = 'Espinoza' THEN '114829-ricardo-espinoza'
-      WHEN ip.first_name = 'Jerry' AND ip.last_name = 'Felix' THEN '114829-jerry-felix'
-      WHEN ip.first_name = 'Caleb' AND ip.last_name = 'Ghannam' THEN '114829-caleb-ghannam'
-      WHEN ip.first_name = 'Jose' AND ip.last_name = 'Gonzlaez' THEN '114829-jose-gonzlaez'
-      WHEN ip.first_name = 'Adsam' AND ip.last_name = 'Guennouni' THEN '114829-adsam-guennouni'
-      WHEN ip.first_name = 'Jackson' AND ip.last_name = 'Hall' THEN '114829-jackson-hall'
-      WHEN ip.first_name = 'Emmitt' AND ip.last_name = 'Inestroza' THEN '114829-emmitt-inestroza'
-      WHEN ip.first_name = 'Abdul-Azim' AND ip.last_name = 'Ismail' THEN '114829-abdul-azim-ismail'
-      WHEN ip.first_name = 'Abdul-Rahman' AND ip.last_name = 'Ismail' THEN '114829-abdul-rahman-ismail'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Lee' THEN '114829-ethan-lee'
-      WHEN ip.first_name = 'Huber' AND ip.last_name = 'Letona' THEN '114829-huber-letona'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Lloyd' THEN '114829-ethan-lloyd'
-      WHEN ip.first_name = 'Bernardo' AND ip.last_name = 'Majano' THEN '114829-bernardo-majano'
-      WHEN ip.first_name = 'Reda' AND ip.last_name = 'Manafi' THEN '114829-reda-manafi'
-      WHEN ip.first_name = 'Jack' AND ip.last_name = 'Pinson' THEN '114829-jack-pinson'
-      WHEN ip.first_name = 'Jaime' AND ip.last_name = 'Quintanilla' THEN '114829-jaime-quintanilla'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Radomski' THEN '114829-michael-radomski'
-      WHEN ip.first_name = 'Ahmed' AND ip.last_name = 'Sheta' THEN '114829-ahmed-sheta'
-      WHEN ip.first_name = 'Roman' AND ip.last_name = 'Topler' THEN '114829-roman-topler'
-      WHEN ip.first_name = 'Marques' AND ip.last_name = 'Vagner' THEN '114829-marques-vagner'
-      WHEN ip.first_name = 'Alton' AND ip.last_name = 'West' THEN '114829-alton-west'
-      WHEN ip.first_name = 'Mohamed' AND ip.last_name = 'Abdelrehman' THEN '114846-mohamed-abdelrehman'
-      WHEN ip.first_name = 'Nyliek' AND ip.last_name = 'Allen' THEN '114846-nyliek-allen'
-      WHEN ip.first_name = 'Jared' AND ip.last_name = 'Benedict' THEN '114846-jared-benedict'
-      WHEN ip.first_name = 'David' AND ip.last_name = 'Bernal-Clark' THEN '114846-david-bernal-clark'
-      WHEN ip.first_name = 'Alex' AND ip.last_name = 'Bilski' THEN '114846-alex-bilski'
-      WHEN ip.first_name = 'Nicholas' AND ip.last_name = 'Blake' THEN '114846-nicholas-blake'
-      WHEN ip.first_name = 'Edwardo' AND ip.last_name = 'Chavez' THEN '114846-edwardo-chavez'
-      WHEN ip.first_name = 'Charles' AND ip.last_name = 'Evangelos' THEN '114846-charles-evangelos'
-      WHEN ip.first_name = 'Jessi e' AND ip.last_name = 'Garcia' THEN '114846-jessi-e-garcia'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Gonzalez' THEN '114846-daniel-gonzalez'
-      WHEN ip.first_name = 'Sayed' AND ip.last_name = 'Hashemi' THEN '114846-sayed-hashemi'
-      WHEN ip.first_name = 'Sayed' AND ip.last_name = 'Hashemi' THEN '114846-sayed-hashemi'
-      WHEN ip.first_name = 'Vasilios' AND ip.last_name = 'Kazakos' THEN '114846-vasilios-kazakos'
-      WHEN ip.first_name = 'Alejandro' AND ip.last_name = 'Lenz' THEN '114846-alejandro-lenz'
-      WHEN ip.first_name = 'Josaphat' AND ip.last_name = 'Letona' THEN '114846-josaphat-letona'
-      WHEN ip.first_name = 'Braden' AND ip.last_name = 'Lopez' THEN '114846-braden-lopez'
-      WHEN ip.first_name = 'Gabriel' AND ip.last_name = 'Maguire' THEN '114846-gabriel-maguire'
-      WHEN ip.first_name = 'Moussa' AND ip.last_name = 'Mahama' THEN '114846-moussa-mahama'
-      WHEN ip.first_name = 'Louis' AND ip.last_name = 'Manyele' THEN '114846-louis-manyele'
-      WHEN ip.first_name = 'Carlos' AND ip.last_name = 'Mareno' THEN '114846-carlos-mareno'
-      WHEN ip.first_name = 'George' AND ip.last_name = 'Mavronis' THEN '114846-george-mavronis'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Medina' THEN '114846-michael-medina'
-      WHEN ip.first_name = 'Roman' AND ip.last_name = 'Milian' THEN '114846-roman-milian'
-      WHEN ip.first_name = 'Johnny' AND ip.last_name = 'Paletar' THEN '114846-johnny-paletar'
-      WHEN ip.first_name = 'Danish' AND ip.last_name = 'Saeedi' THEN '114846-danish-saeedi'
-      WHEN ip.first_name = 'Jordon' AND ip.last_name = 'Salvi' THEN '114846-jordon-salvi'
-      WHEN ip.first_name = 'Leonel' AND ip.last_name = 'Sanchez' THEN '114846-leonel-sanchez'
-      WHEN ip.first_name = 'Selim' AND ip.last_name = 'Senel' THEN '114846-selim-senel'
-      WHEN ip.first_name = 'Ahmadi' AND ip.last_name = 'Shayan' THEN '114846-ahmadi-shayan'
-      WHEN ip.first_name = 'Akimanzi' AND ip.last_name = 'Siibo' THEN '114846-akimanzi-siibo'
-      WHEN ip.first_name = 'Alex' AND ip.last_name = 'Sosa' THEN '114846-alex-sosa'
-      WHEN ip.first_name = 'Viktor' AND ip.last_name = 'Tachev' THEN '114846-viktor-tachev'
-      WHEN ip.first_name = 'Matthew' AND ip.last_name = 'Zelaya' THEN '114846-matthew-zelaya'
-      WHEN ip.first_name = 'Nebeyo' AND ip.last_name = 'Zerihun' THEN '114846-nebeyo-zerihun'
-      WHEN ip.first_name = 'Ossy' AND ip.last_name = 'Zubiria' THEN '114846-ossy-zubiria'
-      WHEN ip.first_name = 'Kelechi' AND ip.last_name = 'Akujuobi' THEN '114849-kelechi-akujuobi'
-      WHEN ip.first_name = 'Faisal' AND ip.last_name = 'Alay' THEN '114849-faisal-alay'
-      WHEN ip.first_name = 'Victorine Kwame' AND ip.last_name = 'Appohsam' THEN '114849-victorine-kwame-appohsam'
-      WHEN ip.first_name = 'Hector Avila' AND ip.last_name = 'Hernandez' THEN '114849-hector-avila-hernandez'
-      WHEN ip.first_name = 'Eduardo G' AND ip.last_name = 'Barria' THEN '114849-eduardo-g-barria'
-      WHEN ip.first_name = 'Zavier' AND ip.last_name = 'Bell' THEN '114849-zavier-bell'
-      WHEN ip.first_name = 'Zach' AND ip.last_name = 'Boyd' THEN '114849-zach-boyd'
-      WHEN ip.first_name = 'Julio' AND ip.last_name = 'Bravo-Guzman' THEN '114849-julio-bravo-guzman'
-      WHEN ip.first_name = 'Deontae' AND ip.last_name = 'Campbell' THEN '114849-deontae-campbell'
-      WHEN ip.first_name = 'Brandon' AND ip.last_name = 'Chambers' THEN '114849-brandon-chambers'
-      WHEN ip.first_name = 'Aiden' AND ip.last_name = 'Chen' THEN '114849-aiden-chen'
-      WHEN ip.first_name = 'Marckensley' AND ip.last_name = 'Constant' THEN '114849-marckensley-constant'
-      WHEN ip.first_name = 'Tim' AND ip.last_name = 'Cooley' THEN '114849-tim-cooley'
-      WHEN ip.first_name = 'Christian' AND ip.last_name = 'Cruz' THEN '114849-christian-cruz'
-      WHEN ip.first_name = 'Danilo' AND ip.last_name = 'Duric' THEN '114849-danilo-duric'
-      WHEN ip.first_name = 'Logan' AND ip.last_name = 'Flanagan' THEN '114849-logan-flanagan'
-      WHEN ip.first_name = 'Colin' AND ip.last_name = 'Foley' THEN '114849-colin-foley'
-      WHEN ip.first_name = 'Nathan' AND ip.last_name = 'Gichuhi' THEN '114849-nathan-gichuhi'
-      WHEN ip.first_name = 'Jeremy' AND ip.last_name = 'Gonzalez' THEN '114849-jeremy-gonzalez'
-      WHEN ip.first_name = 'Josh' AND ip.last_name = 'Gutierrez' THEN '114849-josh-gutierrez'
-      WHEN ip.first_name = 'Jonah' AND ip.last_name = 'Harvey' THEN '114849-jonah-harvey'
-      WHEN ip.first_name = 'Josh' AND ip.last_name = 'Haynie' THEN '114849-josh-haynie'
-      WHEN ip.first_name = 'Mitchell' AND ip.last_name = 'Hopkins' THEN '114849-mitchell-hopkins'
-      WHEN ip.first_name = 'Tanner' AND ip.last_name = 'Johnston' THEN '114849-tanner-johnston'
-      WHEN ip.first_name = 'David' AND ip.last_name = 'Miller' THEN '114849-david-miller'
-      WHEN ip.first_name = 'Abdul' AND ip.last_name = 'Mokhtar' THEN '114849-abdul-mokhtar'
-      WHEN ip.first_name = 'Bijan' AND ip.last_name = 'Morshedi' THEN '114849-bijan-morshedi'
-      WHEN ip.first_name = 'Ander' AND ip.last_name = 'Ochoa' THEN '114849-ander-ochoa'
-      WHEN ip.first_name = 'Victor' AND ip.last_name = 'Oladeinde' THEN '114849-victor-oladeinde'
-      WHEN ip.first_name = 'Oved' AND ip.last_name = 'Ortega' THEN '114849-oved-ortega'
-      WHEN ip.first_name = 'Kameron' AND ip.last_name = 'Payne' THEN '114849-kameron-payne'
-      WHEN ip.first_name = 'Jayden' AND ip.last_name = 'Rodriguez' THEN '114849-jayden-rodriguez'
-      WHEN ip.first_name = 'Oumar' AND ip.last_name = 'Thiandoum' THEN '114849-oumar-thiandoum'
-      WHEN ip.first_name = 'Ronju' AND ip.last_name = 'Walters' THEN '114849-ronju-walters'
-      WHEN ip.first_name = 'Kennison' AND ip.last_name = 'Akuro' THEN '114834-kennison-akuro'
-      WHEN ip.first_name = 'Melvin' AND ip.last_name = 'Asanji' THEN '114834-melvin-asanji'
-      WHEN ip.first_name = 'Brandon' AND ip.last_name = 'Betts' THEN '114834-brandon-betts'
-      WHEN ip.first_name = 'Isaac' AND ip.last_name = 'Carvajal' THEN '114834-isaac-carvajal'
-      WHEN ip.first_name = 'Elido Noel Chun' AND ip.last_name = 'Reyes' THEN '114834-elido-noel-chun-reyes'
-      WHEN ip.first_name = 'Jenovic' AND ip.last_name = 'Elumbu' THEN '114834-jenovic-elumbu'
-      WHEN ip.first_name = 'Anderson' AND ip.last_name = 'Fernandez' THEN '114834-anderson-fernandez'
-      WHEN ip.first_name = 'Angello' AND ip.last_name = 'Fernandez' THEN '114834-angello-fernandez'
-      WHEN ip.first_name = 'Terry' AND ip.last_name = 'Fon' THEN '114834-terry-fon'
-      WHEN ip.first_name = 'Eduardo' AND ip.last_name = 'Fuentes' THEN '114834-eduardo-fuentes'
-      WHEN ip.first_name = 'Christian' AND ip.last_name = 'Garavito' THEN '114834-christian-garavito'
-      WHEN ip.first_name = 'Thaddeus' AND ip.last_name = 'Goddard' THEN '114834-thaddeus-goddard'
-      WHEN ip.first_name = 'Alexis Gonzalez' AND ip.last_name = 'Ayala' THEN '114834-alexis-gonzalez-ayala'
-      WHEN ip.first_name = 'Chayton' AND ip.last_name = 'Kuidlan' THEN '114834-chayton-kuidlan'
-      WHEN ip.first_name = 'Tobias' AND ip.last_name = 'Lane' THEN '114834-tobias-lane'
-      WHEN ip.first_name = 'Jonathan Lemus' AND ip.last_name = 'Morales' THEN '114834-jonathan-lemus-morales'
-      WHEN ip.first_name = 'Creasy' AND ip.last_name = 'Lopez' THEN '114834-creasy-lopez'
-      WHEN ip.first_name = 'Lutho' AND ip.last_name = 'Mlunguza' THEN '114834-lutho-mlunguza'
-      WHEN ip.first_name = 'Toju' AND ip.last_name = 'Okonedo' THEN '114834-toju-okonedo'
-      WHEN ip.first_name = 'David' AND ip.last_name = 'Pawlowski' THEN '114834-david-pawlowski'
-      WHEN ip.first_name = 'Danny' AND ip.last_name = 'Paz' THEN '114834-danny-paz'
-      WHEN ip.first_name = 'Brayan Perez' AND ip.last_name = 'Mendez' THEN '114834-brayan-perez-mendez'
-      WHEN ip.first_name = 'Bronson' AND ip.last_name = 'Shepherd' THEN '114834-bronson-shepherd'
-      WHEN ip.first_name = 'Nicholas' AND ip.last_name = 'Tziamouranis' THEN '114834-nicholas-tziamouranis'
-      WHEN ip.first_name = 'William Villatoro' AND ip.last_name = 'Velasquez' THEN '114834-william-villatoro-velasquez'
-      WHEN ip.first_name = 'Brian' AND ip.last_name = 'Ware' THEN '114834-brian-ware'
-      WHEN ip.first_name = 'Sami' AND ip.last_name = 'Afiouni' THEN '114817-sami-afiouni'
-      WHEN ip.first_name = 'Samuel' AND ip.last_name = 'Amedeker' THEN '114817-samuel-amedeker'
-      WHEN ip.first_name = 'Owen' AND ip.last_name = 'Blount' THEN '114817-owen-blount'
-      WHEN ip.first_name = 'Jordan' AND ip.last_name = 'Bonnett' THEN '114817-jordan-bonnett'
-      WHEN ip.first_name = 'Evan' AND ip.last_name = 'Bosak' THEN '114817-evan-bosak'
-      WHEN ip.first_name = 'Gerard' AND ip.last_name = 'Broussard' THEN '114817-gerard-broussard'
-      WHEN ip.first_name = 'Brian' AND ip.last_name = 'Chidzvondo' THEN '114817-brian-chidzvondo'
-      WHEN ip.first_name = 'Matthew' AND ip.last_name = 'Do' THEN '114817-matthew-do'
-      WHEN ip.first_name = 'Joseph' AND ip.last_name = 'Enebeli' THEN '114817-joseph-enebeli'
-      WHEN ip.first_name = 'Adam' AND ip.last_name = 'Grace' THEN '114817-adam-grace'
-      WHEN ip.first_name = 'Demetrius' AND ip.last_name = 'Howe' THEN '114817-demetrius-howe'
-      WHEN ip.first_name = 'Massimo' AND ip.last_name = 'Johnson' THEN '114817-massimo-johnson'
-      WHEN ip.first_name = 'Benjamin' AND ip.last_name = 'Jones' THEN '114817-benjamin-jones'
-      WHEN ip.first_name = 'Aidan' AND ip.last_name = 'Krivanec' THEN '114817-aidan-krivanec'
-      WHEN ip.first_name = 'Leighton' AND ip.last_name = 'Langenhoven' THEN '114817-leighton-langenhoven'
-      WHEN ip.first_name = 'Salah' AND ip.last_name = 'Mahmoud' THEN '114817-salah-mahmoud'
-      WHEN ip.first_name = 'Treyvon' AND ip.last_name = 'Medley-Green' THEN '114817-treyvon-medley-green'
-      WHEN ip.first_name = 'Museba' AND ip.last_name = 'Mwape' THEN '114817-museba-mwape'
-      WHEN ip.first_name = 'Jake' AND ip.last_name = 'Nelson' THEN '114817-jake-nelson'
-      WHEN ip.first_name = 'Abulfazl' AND ip.last_name = 'Panahi' THEN '114817-abulfazl-panahi'
-      WHEN ip.first_name = 'Dame' AND ip.last_name = 'Pene' THEN '114817-dame-pene'
-      WHEN ip.first_name = 'Henry' AND ip.last_name = 'Pittman' THEN '114817-henry-pittman'
-      WHEN ip.first_name = 'Yoskar Alejandro' AND ip.last_name = 'Quintanilla' THEN '114817-yoskar-alejandro-quintanilla'
-      WHEN ip.first_name = 'Emerson' AND ip.last_name = 'Reyes' THEN '114817-emerson-reyes'
-      WHEN ip.first_name = 'Mahdi' AND ip.last_name = 'Reza' THEN '114817-mahdi-reza'
-      WHEN ip.first_name = 'Mourtala' AND ip.last_name = 'Seck' THEN '114817-mourtala-seck'
-      WHEN ip.first_name = 'Alakhe' AND ip.last_name = 'Sibeko' THEN '114817-alakhe-sibeko'
-      WHEN ip.first_name = 'Noe' AND ip.last_name = 'Soriano' THEN '114817-noe-soriano'
-      WHEN ip.first_name = 'Sharief' AND ip.last_name = 'Stancil' THEN '114817-sharief-stancil'
-      WHEN ip.first_name = 'Max' AND ip.last_name = 'Taliaferro' THEN '114817-max-taliaferro'
-      WHEN ip.first_name = 'Asanda' AND ip.last_name = 'Tom' THEN '114817-asanda-tom'
-      WHEN ip.first_name = 'Caleb' AND ip.last_name = 'Underwood' THEN '114817-caleb-underwood'
-      WHEN ip.first_name = 'Callum' AND ip.last_name = 'Vellozzi' THEN '114817-callum-vellozzi'
-      WHEN ip.first_name = 'Chrisendo' AND ip.last_name = 'Wentzel' THEN '114817-chrisendo-wentzel'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Williams' THEN '114817-john-williams'
-      WHEN ip.first_name = 'Felix' AND ip.last_name = 'Amankwah' THEN '114812-felix-amankwah'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'Baxter' THEN '114812-daniel-baxter'
-      WHEN ip.first_name = 'Drew' AND ip.last_name = 'Belcher' THEN '114812-drew-belcher'
-      WHEN ip.first_name = 'Elijah' AND ip.last_name = 'Belcher' THEN '114812-elijah-belcher'
-      WHEN ip.first_name = 'Ethan' AND ip.last_name = 'Belcher' THEN '114812-ethan-belcher'
-      WHEN ip.first_name = 'Jacob' AND ip.last_name = 'Bender' THEN '114812-jacob-bender'
-      WHEN ip.first_name = 'Jalen' AND ip.last_name = 'Boston' THEN '114812-jalen-boston'
-      WHEN ip.first_name = 'Brandon' AND ip.last_name = 'Burkholder' THEN '114812-brandon-burkholder'
-      WHEN ip.first_name = 'Nero' AND ip.last_name = 'Cooper' THEN '114812-nero-cooper'
-      WHEN ip.first_name = 'Anthony' AND ip.last_name = 'Dragisics' THEN '114812-anthony-dragisics'
-      WHEN ip.first_name = 'Alejandro' AND ip.last_name = 'Estrada' THEN '114812-alejandro-estrada'
-      WHEN ip.first_name = 'Justin' AND ip.last_name = 'Gielen' THEN '114812-justin-gielen'
-      WHEN ip.first_name = 'Brian' AND ip.last_name = 'Graham' THEN '114812-brian-graham'
-      WHEN ip.first_name = 'Brett' AND ip.last_name = 'Joyner' THEN '114812-brett-joyner'
-      WHEN ip.first_name = 'Tanner' AND ip.last_name = 'Kennard' THEN '114812-tanner-kennard'
-      WHEN ip.first_name = 'Tyler' AND ip.last_name = 'Lee' THEN '114812-tyler-lee'
-      WHEN ip.first_name = 'Stiven' AND ip.last_name = 'Llano' THEN '114812-stiven-llano'
-      WHEN ip.first_name = 'Morgan' AND ip.last_name = 'Lussi' THEN '114812-morgan-lussi'
-      WHEN ip.first_name = 'Raffaele' AND ip.last_name = 'Mazzone' THEN '114812-raffaele-mazzone'
-      WHEN ip.first_name = 'Daniel' AND ip.last_name = 'McCleary' THEN '114812-daniel-mccleary'
-      WHEN ip.first_name = 'Edixon' AND ip.last_name = 'Moreira' THEN '114812-edixon-moreira'
-      WHEN ip.first_name = 'David' AND ip.last_name = 'Ogbonna' THEN '114812-david-ogbonna'
-      WHEN ip.first_name = 'Garrett' AND ip.last_name = 'Peters' THEN '114812-garrett-peters'
-      WHEN ip.first_name = 'Juston' AND ip.last_name = 'Rainey' THEN '114812-juston-rainey'
-      WHEN ip.first_name = 'Cesar' AND ip.last_name = 'Ramos' THEN '114812-cesar-ramos'
-      WHEN ip.first_name = 'Aaron' AND ip.last_name = 'Rilling' THEN '114812-aaron-rilling'
-      WHEN ip.first_name = 'Jackson' AND ip.last_name = 'Ruckman' THEN '114812-jackson-ruckman'
-      WHEN ip.first_name = 'Kyle' AND ip.last_name = 'Saunderson' THEN '114812-kyle-saunderson'
-      WHEN ip.first_name = 'Luis' AND ip.last_name = 'Soria' THEN '114812-luis-soria'
-      WHEN ip.first_name = 'Brett St' AND ip.last_name = 'Martin' THEN '114812-brett-st-martin'
-      WHEN ip.first_name = 'Alexander' AND ip.last_name = 'Wardle' THEN '114812-alexander-wardle'
-      WHEN ip.first_name = 'Joseph Daly' AND ip.last_name = 'Aigner' THEN '118680-joseph-daly-aigner'
-      WHEN ip.first_name = 'Liam Charles' AND ip.last_name = 'Aigner' THEN '118680-liam-charles-aigner'
-      WHEN ip.first_name = 'Jacob L' AND ip.last_name = 'Amon' THEN '118680-jacob-l-amon'
-      WHEN ip.first_name = 'Samuel' AND ip.last_name = 'Amon' THEN '118680-samuel-amon'
-      WHEN ip.first_name = 'Walner' AND ip.last_name = 'Anescar' THEN '118680-walner-anescar'
-      WHEN ip.first_name = 'Samuel' AND ip.last_name = 'Burbage' THEN '118680-samuel-burbage'
-      WHEN ip.first_name = 'Joshua Alexander' AND ip.last_name = 'Carey' THEN '118680-joshua-alexander-carey'
-      WHEN ip.first_name = 'Corvens Jay' AND ip.last_name = 'Corvil' THEN '118680-corvens-jay-corvil'
-      WHEN ip.first_name = 'Zechariah' AND ip.last_name = 'Dapaah' THEN '118680-zechariah-dapaah'
-      WHEN ip.first_name = 'Adam Stephen' AND ip.last_name = 'DeLizza' THEN '118680-adam-stephen-delizza'
-      WHEN ip.first_name = 'Heberson' AND ip.last_name = 'Edouard' THEN '118680-heberson-edouard'
-      WHEN ip.first_name = 'Ashley' AND ip.last_name = 'Fevrier' THEN '118680-ashley-fevrier'
-      WHEN ip.first_name = 'Christ-Daniel' AND ip.last_name = 'Fils' THEN '118680-christ-daniel-fils'
-      WHEN ip.first_name = 'Caleb James' AND ip.last_name = 'Gragg' THEN '118680-caleb-james-gragg'
-      WHEN ip.first_name = 'Marc' AND ip.last_name = 'Henrice' THEN '118680-marc-henrice'
-      WHEN ip.first_name = 'Colin Benjamin' AND ip.last_name = 'Hofmann' THEN '118680-colin-benjamin-hofmann'
-      WHEN ip.first_name = 'Elijah' AND ip.last_name = 'Jabagat' THEN '118680-elijah-jabagat'
-      WHEN ip.first_name = 'Rickelmy' AND ip.last_name = 'Jeune' THEN '118680-rickelmy-jeune'
-      WHEN ip.first_name = 'Damarius' AND ip.last_name = 'Kelley' THEN '118680-damarius-kelley'
-      WHEN ip.first_name = 'Goran' AND ip.last_name = 'Mijalkovski' THEN '118680-goran-mijalkovski'
-      WHEN ip.first_name = 'Sean Chidozie' AND ip.last_name = 'Morse' THEN '118680-sean-chidozie-morse'
-      WHEN ip.first_name = 'Abdelazim' AND ip.last_name = 'Osman' THEN '118680-abdelazim-osman'
-      WHEN ip.first_name = 'Ahmed' AND ip.last_name = 'Osman' THEN '118680-ahmed-osman'
-      WHEN ip.first_name = 'Pat' AND ip.last_name = 'Parrish' THEN '118680-pat-parrish'
-      WHEN ip.first_name = 'Caden Mark' AND ip.last_name = 'Pollard' THEN '118680-caden-mark-pollard'
-      WHEN ip.first_name = 'Ivan' AND ip.last_name = 'Sanchez-Gonzalez' THEN '118680-ivan-sanchez-gonzalez'
-      WHEN ip.first_name = 'Gianluca' AND ip.last_name = 'Secondi' THEN '118680-gianluca-secondi'
-      WHEN ip.first_name = 'Mourad' AND ip.last_name = 'Shalaby' THEN '118680-mourad-shalaby'
-      WHEN ip.first_name = 'Kenny' AND ip.last_name = 'Spock' THEN '118680-kenny-spock'
-      WHEN ip.first_name = 'Guy Holmeade Talbott' AND ip.last_name = 'V' THEN '118680-guy-holmeade-talbott-v'
-      WHEN ip.first_name = 'Devon' AND ip.last_name = 'Warman' THEN '118680-devon-warman'
-      WHEN ip.first_name = 'Skyler' AND ip.last_name = 'Williams' THEN '118680-skyler-williams'
-      WHEN ip.first_name = 'David' AND ip.last_name = 'Alverez' THEN '114839-david-alverez'
-      WHEN ip.first_name = 'Carlos' AND ip.last_name = 'Amador' THEN '114839-carlos-amador'
-      WHEN ip.first_name = 'Chris' AND ip.last_name = 'Avila' THEN '114839-chris-avila'
-      WHEN ip.first_name = 'Yaseen Ben' AND ip.last_name = 'Chouikha' THEN '114839-yaseen-ben-chouikha'
-      WHEN ip.first_name = 'Amir' AND ip.last_name = 'Bentaleb' THEN '114839-amir-bentaleb'
-      WHEN ip.first_name = 'Angel Viera' AND ip.last_name = 'Castro' THEN '114839-angel-viera-castro'
-      WHEN ip.first_name = 'Jesse' AND ip.last_name = 'Conteh' THEN '114839-jesse-conteh'
-      WHEN ip.first_name = 'Gio' AND ip.last_name = 'Cruz' THEN '114839-gio-cruz'
-      WHEN ip.first_name = 'German Del' AND ip.last_name = 'Cid' THEN '114839-german-del-cid'
-      WHEN ip.first_name = 'Mohammed Ahmed' AND ip.last_name = 'Elsir' THEN '114839-mohammed-ahmed-elsir'
-      WHEN ip.first_name = 'Collins' AND ip.last_name = 'Frimpong' THEN '114839-collins-frimpong'
-      WHEN ip.first_name = 'Roy Alex' AND ip.last_name = 'Galeano' THEN '114839-roy-alex-galeano'
-      WHEN ip.first_name = 'Oscar' AND ip.last_name = 'Garcia' THEN '114839-oscar-garcia'
-      WHEN ip.first_name = 'Sam' AND ip.last_name = 'Garcia' THEN '114839-sam-garcia'
-      WHEN ip.first_name = 'Anthony' AND ip.last_name = 'Juarez' THEN '114839-anthony-juarez'
-      WHEN ip.first_name = 'Kwasi' AND ip.last_name = 'Kotoko' THEN '114839-kwasi-kotoko'
-      WHEN ip.first_name = 'Orlando' AND ip.last_name = 'Martinez' THEN '114839-orlando-martinez'
-      WHEN ip.first_name = 'Andrew' AND ip.last_name = 'Mejia' THEN '114839-andrew-mejia'
-      WHEN ip.first_name = 'Chris' AND ip.last_name = 'Mejia' THEN '114839-chris-mejia'
-      WHEN ip.first_name = 'Milton' AND ip.last_name = 'Miranda' THEN '114839-milton-miranda'
-      WHEN ip.first_name = 'Nasrullah' AND ip.last_name = 'Muhammed' THEN '114839-nasrullah-muhammed'
-      WHEN ip.first_name = 'Alexis' AND ip.last_name = 'Palma' THEN '114839-alexis-palma'
-      WHEN ip.first_name = 'Luis' AND ip.last_name = 'Reyes' THEN '114839-luis-reyes'
-      WHEN ip.first_name = 'Romel' AND ip.last_name = 'Reyes' THEN '114839-romel-reyes'
-      WHEN ip.first_name = 'Jason' AND ip.last_name = 'Rodriguez' THEN '114839-jason-rodriguez'
-      WHEN ip.first_name = 'Elias San' AND ip.last_name = 'Juan' THEN '114839-elias-san-juan'
-      WHEN ip.first_name = 'Ricardo' AND ip.last_name = 'Vega' THEN '114839-ricardo-vega'
-      WHEN ip.first_name = 'Raul' AND ip.last_name = 'Villalta' THEN '114839-raul-villalta'
-      WHEN ip.first_name = 'Nour' AND ip.last_name = 'Alamri' THEN '115815-nour-alamri'
-      WHEN ip.first_name = 'Henry' AND ip.last_name = 'Asbill' THEN '115815-henry-asbill'
-      WHEN ip.first_name = 'Asad' AND ip.last_name = 'Bashir' THEN '115815-asad-bashir'
-      WHEN ip.first_name = 'Kai' AND ip.last_name = 'Bennett' THEN '115815-kai-bennett'
-      WHEN ip.first_name = 'Alex' AND ip.last_name = 'Caskey' THEN '115815-alex-caskey'
-      WHEN ip.first_name = 'Damian' AND ip.last_name = 'Charles' THEN '115815-damian-charles'
-      WHEN ip.first_name = 'Jamie' AND ip.last_name = 'Gleeson' THEN '115815-jamie-gleeson'
-      WHEN ip.first_name = 'Noah' AND ip.last_name = 'Goodman' THEN '115815-noah-goodman'
-      WHEN ip.first_name = 'Anthony' AND ip.last_name = 'Gourdine' THEN '115815-anthony-gourdine'
-      WHEN ip.first_name = 'Morgan' AND ip.last_name = 'Hall' THEN '115815-morgan-hall'
-      WHEN ip.first_name = 'Josh' AND ip.last_name = 'Hughes' THEN '115815-josh-hughes'
-      WHEN ip.first_name = 'Gad' AND ip.last_name = 'Kabwende' THEN '115815-gad-kabwende'
-      WHEN ip.first_name = 'Jason' AND ip.last_name = 'Kayne' THEN '115815-jason-kayne'
-      WHEN ip.first_name = 'JT' AND ip.last_name = 'Keiffer' THEN '115815-jt-keiffer'
-      WHEN ip.first_name = 'Sebastian' AND ip.last_name = 'Lopez' THEN '115815-sebastian-lopez'
-      WHEN ip.first_name = 'Jean' AND ip.last_name = 'Malilo' THEN '115815-jean-malilo'
-      WHEN ip.first_name = 'Zion Jediah-Jason' AND ip.last_name = 'McClean' THEN '115815-zion-jediah-jason-mcclean'
-      WHEN ip.first_name = 'Gregg' AND ip.last_name = 'McPheely' THEN '115815-gregg-mcpheely'
-      WHEN ip.first_name = 'Nathan' AND ip.last_name = 'Miles' THEN '115815-nathan-miles'
-      WHEN ip.first_name = 'Alex' AND ip.last_name = 'Rotoloni' THEN '115815-alex-rotoloni'
-      WHEN ip.first_name = 'Jack' AND ip.last_name = 'Snyder' THEN '115815-jack-snyder'
-      WHEN ip.first_name = 'Brynn' AND ip.last_name = 'Thompson' THEN '115815-brynn-thompson'
-      WHEN ip.first_name = 'Tyler' AND ip.last_name = 'Vogt' THEN '115815-tyler-vogt'
-      WHEN ip.first_name = 'Renaldo' AND ip.last_name = 'Walters' THEN '115815-renaldo-walters'
-      WHEN ip.first_name = 'Matt' AND ip.last_name = 'Williams' THEN '115815-matt-williams'
-      WHEN ip.first_name = 'Nick' AND ip.last_name = 'York' THEN '115815-nick-york'
-      WHEN ip.first_name = 'Zackeriah' AND ip.last_name = 'Aday-Nicholson' THEN '115105-zackeriah-aday-nicholson'
-      WHEN ip.first_name = 'Gabriel' AND ip.last_name = 'Alvarez' THEN '115105-gabriel-alvarez'
-      WHEN ip.first_name = 'Dylan' AND ip.last_name = 'Bapst' THEN '115105-dylan-bapst'
-      WHEN ip.first_name = 'Mitchell' AND ip.last_name = 'Barry' THEN '115105-mitchell-barry'
-      WHEN ip.first_name = 'Charles' AND ip.last_name = 'Blakenship' THEN '115105-charles-blakenship'
-      WHEN ip.first_name = 'Davis' AND ip.last_name = 'Bryan' THEN '115105-davis-bryan'
-      WHEN ip.first_name = 'Kevin' AND ip.last_name = 'Carvalho' THEN '115105-kevin-carvalho'
-      WHEN ip.first_name = 'John' AND ip.last_name = 'Fragakis' THEN '115105-john-fragakis'
-      WHEN ip.first_name = 'Stefan' AND ip.last_name = 'Gojic' THEN '115105-stefan-gojic'
-      WHEN ip.first_name = 'Andrew' AND ip.last_name = 'Grodhaus' THEN '115105-andrew-grodhaus'
-      WHEN ip.first_name = 'Colton' AND ip.last_name = 'Huebner' THEN '115105-colton-huebner'
-      WHEN ip.first_name = 'Joshua' AND ip.last_name = 'James' THEN '115105-joshua-james'
-      WHEN ip.first_name = 'William' AND ip.last_name = 'Keegan' THEN '115105-william-keegan'
-      WHEN ip.first_name = 'Konrad' AND ip.last_name = 'Knap' THEN '115105-konrad-knap'
-      WHEN ip.first_name = 'Jordan' AND ip.last_name = 'Locke' THEN '115105-jordan-locke'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Marshall' THEN '115105-christopher-marshall'
-      WHEN ip.first_name = 'Javier' AND ip.last_name = 'Martinez' THEN '115105-javier-martinez'
-      WHEN ip.first_name = 'Cain' AND ip.last_name = 'McMillan' THEN '115105-cain-mcmillan'
-      WHEN ip.first_name = 'Anthony' AND ip.last_name = 'Norman' THEN '115105-anthony-norman'
-      WHEN ip.first_name = 'Sampson' AND ip.last_name = 'Nsemoh' THEN '115105-sampson-nsemoh'
-      WHEN ip.first_name = 'Thomas' AND ip.last_name = 'Powers' THEN '115105-thomas-powers'
-      WHEN ip.first_name = 'Seth' AND ip.last_name = 'Prieto' THEN '115105-seth-prieto'
-      WHEN ip.first_name = 'Adam' AND ip.last_name = 'Rooney' THEN '115105-adam-rooney'
-      WHEN ip.first_name = 'Jacob' AND ip.last_name = 'Sayer' THEN '115105-jacob-sayer'
-      WHEN ip.first_name = 'Zachary' AND ip.last_name = 'Smith' THEN '115105-zachary-smith'
-      WHEN ip.first_name = 'Christian' AND ip.last_name = 'Waeglin' THEN '115105-christian-waeglin'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Witmond' THEN '115105-christopher-witmond'
-      WHEN ip.first_name = 'Rashid' AND ip.last_name = 'Alarape' THEN '115108-rashid-alarape'
-      WHEN ip.first_name = 'Alex' AND ip.last_name = 'Archambeau' THEN '115108-alex-archambeau'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Avery' THEN '115108-christopher-avery'
-      WHEN ip.first_name = 'Carlos' AND ip.last_name = 'Ayala-Viera' THEN '115108-carlos-ayala-viera'
-      WHEN ip.first_name = 'Carlos' AND ip.last_name = 'Becerra-Gomez' THEN '115108-carlos-becerra-gomez'
-      WHEN ip.first_name = 'Oskar' AND ip.last_name = 'Bringle' THEN '115108-oskar-bringle'
-      WHEN ip.first_name = 'Elliot' AND ip.last_name = 'Curtin' THEN '115108-elliot-curtin'
-      WHEN ip.first_name = 'Eli' AND ip.last_name = 'Dent' THEN '115108-eli-dent'
-      WHEN ip.first_name = 'Jackson' AND ip.last_name = 'Eskay' THEN '115108-jackson-eskay'
-      WHEN ip.first_name = 'Andrew' AND ip.last_name = 'Fitton' THEN '115108-andrew-fitton'
-      WHEN ip.first_name = 'Mike' AND ip.last_name = 'Foutsop' THEN '115108-mike-foutsop'
-      WHEN ip.first_name = 'Neema' AND ip.last_name = 'Gharib' THEN '115108-neema-gharib'
-      WHEN ip.first_name = 'Andrew' AND ip.last_name = 'Halloran' THEN '115108-andrew-halloran'
-      WHEN ip.first_name = 'Thierno' AND ip.last_name = 'Issabre' THEN '115108-thierno-issabre'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Johnson' THEN '115108-michael-johnson'
-      WHEN ip.first_name = 'Brennan' AND ip.last_name = 'Koslow' THEN '115108-brennan-koslow'
-      WHEN ip.first_name = 'Mitchell' AND ip.last_name = 'Kupstas' THEN '115108-mitchell-kupstas'
-      WHEN ip.first_name = 'Boland' AND ip.last_name = 'Lekeaka' THEN '115108-boland-lekeaka'
-      WHEN ip.first_name = 'Adrian' AND ip.last_name = 'Lollar' THEN '115108-adrian-lollar'
-      WHEN ip.first_name = 'McKinley Mercer' AND ip.last_name = 'III' THEN '115108-mckinley-mercer-iii'
-      WHEN ip.first_name = 'Luke' AND ip.last_name = 'Narker' THEN '115108-luke-narker'
-      WHEN ip.first_name = 'Hassan' AND ip.last_name = 'Pinto' THEN '115108-hassan-pinto'
-      WHEN ip.first_name = 'Cory' AND ip.last_name = 'Plasker' THEN '115108-cory-plasker'
-      WHEN ip.first_name = 'Max' AND ip.last_name = 'Poore' THEN '115108-max-poore'
-      WHEN ip.first_name = 'Kevin' AND ip.last_name = 'Reyes' THEN '115108-kevin-reyes'
-      WHEN ip.first_name = 'Sharpe' AND ip.last_name = 'Sablon' THEN '115108-sharpe-sablon'
-      WHEN ip.first_name = 'Iain' AND ip.last_name = 'Smith' THEN '115108-iain-smith'
-      WHEN ip.first_name = 'Thor' AND ip.last_name = 'Svienbjorsson' THEN '115108-thor-svienbjorsson'
-      WHEN ip.first_name = 'Thomas' AND ip.last_name = 'Toney' THEN '115108-thomas-toney'
-      WHEN ip.first_name = 'Zachary Paul' AND ip.last_name = 'Young' THEN '115108-zachary-paul-young'
-      WHEN ip.first_name = 'Bilal' AND ip.last_name = 'Ahmed' THEN '115101-bilal-ahmed'
-      WHEN ip.first_name = 'Tim' AND ip.last_name = 'Amoui' THEN '115101-tim-amoui'
-      WHEN ip.first_name = 'Badr El' AND ip.last_name = 'Yazami' THEN '115101-badr-el-yazami'
-      WHEN ip.first_name = 'Stan-Lee' AND ip.last_name = 'Etienne' THEN '115101-stan-lee-etienne'
-      WHEN ip.first_name = 'Sylvi' AND ip.last_name = 'Mahmood' THEN '115101-sylvi-mahmood'
-      WHEN ip.first_name = 'Pedro' AND ip.last_name = 'Marinho' THEN '115101-pedro-marinho'
-      WHEN ip.first_name = 'Juan' AND ip.last_name = 'Martinez' THEN '115101-juan-martinez'
-      WHEN ip.first_name = 'David' AND ip.last_name = 'Michaelson' THEN '115101-david-michaelson'
-      WHEN ip.first_name = 'Metsantika' AND ip.last_name = 'Mokgoatsana' THEN '115101-metsantika-mokgoatsana'
-      WHEN ip.first_name = 'Ali' AND ip.last_name = 'Niang' THEN '115101-ali-niang'
-      WHEN ip.first_name = 'Javier' AND ip.last_name = 'Pace' THEN '115101-javier-pace'
-      WHEN ip.first_name = 'Osman' AND ip.last_name = 'Rodriguez' THEN '115101-osman-rodriguez'
-      WHEN ip.first_name = 'Aaron' AND ip.last_name = 'Shiffman' THEN '115101-aaron-shiffman'
-      WHEN ip.first_name = 'Miwoned' AND ip.last_name = 'Siraj' THEN '115101-miwoned-siraj'
-      WHEN ip.first_name = 'Tyler' AND ip.last_name = 'Swinehart' THEN '115101-tyler-swinehart'
-      WHEN ip.first_name = 'Gabriel' AND ip.last_name = 'Villar' THEN '115101-gabriel-villar'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Walsh' THEN '115101-michael-walsh'
-      WHEN ip.first_name = 'Joshua' AND ip.last_name = 'Warde' THEN '115101-joshua-warde'
-      WHEN ip.first_name = 'Christopher' AND ip.last_name = 'Wilson' THEN '115101-christopher-wilson'
-      WHEN ip.first_name = 'Kyle' AND ip.last_name = 'Xhajanka' THEN '115101-kyle-xhajanka'
-      WHEN ip.first_name = 'Nathan' AND ip.last_name = 'Bio' THEN '115106-nathan-bio'
-      WHEN ip.first_name = 'Rob' AND ip.last_name = 'Bonet' THEN '115106-rob-bonet'
-      WHEN ip.first_name = 'Aziymu Shamil' AND ip.last_name = 'Burns' THEN '115106-aziymu-shamil-burns'
-      WHEN ip.first_name = 'Jackson' AND ip.last_name = 'Cavenaugh' THEN '115106-jackson-cavenaugh'
-      WHEN ip.first_name = 'Kyle' AND ip.last_name = 'Crawford' THEN '115106-kyle-crawford'
-      WHEN ip.first_name = 'Eduardo' AND ip.last_name = 'Delgado' THEN '115106-eduardo-delgado'
-      WHEN ip.first_name = 'Matheus' AND ip.last_name = 'Fineto' THEN '115106-matheus-fineto'
-      WHEN ip.first_name = 'Enrique Gonzalez' AND ip.last_name = 'Plaza' THEN '115106-enrique-gonzalez-plaza'
-      WHEN ip.first_name = 'Chris' AND ip.last_name = 'Griffith' THEN '115106-chris-griffith'
-      WHEN ip.first_name = 'Philip' AND ip.last_name = 'Harris' THEN '115106-philip-harris'
-      WHEN ip.first_name = 'Justin' AND ip.last_name = 'Heimerl' THEN '115106-justin-heimerl'
-      WHEN ip.first_name = 'Lucas' AND ip.last_name = 'Horton' THEN '115106-lucas-horton'
-      WHEN ip.first_name = 'Karson Reese' AND ip.last_name = 'Kendall' THEN '115106-karson-reese-kendall'
-      WHEN ip.first_name = 'Konner' AND ip.last_name = 'Kendall' THEN '115106-konner-kendall'
-      WHEN ip.first_name = 'Mouad' AND ip.last_name = 'Labied' THEN '115106-mouad-labied'
-      WHEN ip.first_name = 'Jake' AND ip.last_name = 'Langton' THEN '115106-jake-langton'
-      WHEN ip.first_name = 'Myles' AND ip.last_name = 'Levelle' THEN '115106-myles-levelle'
-      WHEN ip.first_name = 'Randy' AND ip.last_name = 'Mallar-Calvillo' THEN '115106-randy-mallar-calvillo'
-      WHEN ip.first_name = 'Matt' AND ip.last_name = 'Mitchell' THEN '115106-matt-mitchell'
-      WHEN ip.first_name = 'Nikos' AND ip.last_name = 'Papanikolopoulos' THEN '115106-nikos-papanikolopoulos'
-      WHEN ip.first_name = 'Cade' AND ip.last_name = 'Quinto' THEN '115106-cade-quinto'
-      WHEN ip.first_name = 'Juandi' AND ip.last_name = 'Riley' THEN '115106-juandi-riley'
-      WHEN ip.first_name = 'Luis' AND ip.last_name = 'Romero' THEN '115106-luis-romero'
-      WHEN ip.first_name = 'Eduardo Ernesto' AND ip.last_name = 'Salmeron' THEN '115106-eduardo-ernesto-salmeron'
-      WHEN ip.first_name = 'Aswin' AND ip.last_name = 'Sembu' THEN '115106-aswin-sembu'
-      WHEN ip.first_name = 'Adam' AND ip.last_name = 'Sole' THEN '115106-adam-sole'
-      WHEN ip.first_name = 'Zaid' AND ip.last_name = 'Takrouri' THEN '115106-zaid-takrouri'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Touihri' THEN '115106-michael-touihri'
-      WHEN ip.first_name = 'Ivan' AND ip.last_name = 'Verdezoto' THEN '115106-ivan-verdezoto'
-      WHEN ip.first_name = 'Min' AND ip.last_name = 'Yoo' THEN '115106-min-yoo'
-      WHEN ip.first_name = 'Jonathan' AND ip.last_name = 'Adabi' THEN '115104-jonathan-adabi'
-      WHEN ip.first_name = 'Tishe' AND ip.last_name = 'Adekanmbi' THEN '115104-tishe-adekanmbi'
-      WHEN ip.first_name = 'Abdoulmalik' AND ip.last_name = 'Adesanya' THEN '115104-abdoulmalik-adesanya'
-      WHEN ip.first_name = 'Caleb' AND ip.last_name = 'Ayan' THEN '115104-caleb-ayan'
-      WHEN ip.first_name = 'Olumide' AND ip.last_name = 'Ayo-Ajibike' THEN '115104-olumide-ayo-ajibike'
-      WHEN ip.first_name = 'Elad Khaleef' AND ip.last_name = 'Bogle' THEN '115104-elad-khaleef-bogle'
-      WHEN ip.first_name = 'Tobias' AND ip.last_name = 'Ciho' THEN '115104-tobias-ciho'
-      WHEN ip.first_name = 'Nixon Manuel' AND ip.last_name = 'Condolo' THEN '115104-nixon-manuel-condolo'
-      WHEN ip.first_name = 'Felipe' AND ip.last_name = 'Correa' THEN '115104-felipe-correa'
-      WHEN ip.first_name = 'Michael' AND ip.last_name = 'Dardis' THEN '115104-michael-dardis'
-      WHEN ip.first_name = 'Abdoulaye' AND ip.last_name = 'Diba' THEN '115104-abdoulaye-diba'
-      WHEN ip.first_name = 'Lech' AND ip.last_name = 'Dunser' THEN '115104-lech-dunser'
-      WHEN ip.first_name = 'Daniel Duran' AND ip.last_name = 'Gonzalez' THEN '115104-daniel-duran-gonzalez'
-      WHEN ip.first_name = 'David Alejandro' AND ip.last_name = 'Fierro' THEN '115104-david-alejandro-fierro'
-      WHEN ip.first_name = 'Caleb' AND ip.last_name = 'Johnson' THEN '115104-caleb-johnson'
-      WHEN ip.first_name = 'Ian Thomas' AND ip.last_name = 'Kunkel' THEN '115104-ian-thomas-kunkel'
-      WHEN ip.first_name = 'Jelle' AND ip.last_name = 'Lansdaal' THEN '115104-jelle-lansdaal'
-      WHEN ip.first_name = 'Ruari Eamonn' AND ip.last_name = 'O’Rourke' THEN '115104-ruari-eamonn-o-rourke'
-      WHEN ip.first_name = 'Siddharth' AND ip.last_name = 'Rajesh' THEN '115104-siddharth-rajesh'
-      WHEN ip.first_name = 'Anel' AND ip.last_name = 'Ramic' THEN '115104-anel-ramic'
-      WHEN ip.first_name = 'Sumner' AND ip.last_name = 'Richardson' THEN '115104-sumner-richardson'
-      WHEN ip.first_name = 'George Bishop' AND ip.last_name = 'Rodi' THEN '115104-george-bishop-rodi'
-      WHEN ip.first_name = 'Connor' AND ip.last_name = 'Rosenthal' THEN '115104-connor-rosenthal'
-      WHEN ip.first_name = 'Godfred Nii' AND ip.last_name = 'Tettey' THEN '115104-godfred-nii-tettey'
-      WHEN ip.first_name = 'Joshua Parbie' AND ip.last_name = 'Tettey' THEN '115104-joshua-parbie-tettey'
-      WHEN ip.first_name = 'Robert A' AND ip.last_name = 'Thomas' THEN '115104-robert-a-thomas'
-      WHEN ip.first_name = 'Chris Arturo' AND ip.last_name = 'Vitela' THEN '115104-chris-arturo-vitela'
-      WHEN ip.first_name = 'Noah' AND ip.last_name = 'Wieland' THEN '115104-noah-wieland'
-      WHEN ip.first_name = 'Olanrewaju' AND ip.last_name = 'Yusuff' THEN '115104-olanrewaju-yusuff'
-      WHEN ip.first_name = 'Roberto Carlos' AND ip.last_name = 'Calix' THEN '115107-roberto-carlos-calix'
-      WHEN ip.first_name = 'Eli Francisco' AND ip.last_name = 'Carrasco' THEN '115107-eli-francisco-carrasco'
-      WHEN ip.first_name = 'Axel' AND ip.last_name = 'Castrejon' THEN '115107-axel-castrejon'
-      WHEN ip.first_name = 'Gael Jared' AND ip.last_name = 'Castrejon' THEN '115107-gael-jared-castrejon'
-      WHEN ip.first_name = 'Jared Scott' AND ip.last_name = 'Childs' THEN '115107-jared-scott-childs'
-      WHEN ip.first_name = 'Dylan Bright' AND ip.last_name = 'Edmonds' THEN '115107-dylan-bright-edmonds'
-      WHEN ip.first_name = 'Mason McGill' AND ip.last_name = 'Fifer' THEN '115107-mason-mcgill-fifer'
-      WHEN ip.first_name = 'Omar' AND ip.last_name = 'Guadarrama' THEN '115107-omar-guadarrama'
-      WHEN ip.first_name = 'Brandon' AND ip.last_name = 'Gutierrez' THEN '115107-brandon-gutierrez'
-      WHEN ip.first_name = 'Maury' AND ip.last_name = 'Ibarra' THEN '115107-maury-ibarra'
-      WHEN ip.first_name = 'Sebastian Tyler' AND ip.last_name = 'Jones' THEN '115107-sebastian-tyler-jones'
-      WHEN ip.first_name = 'Dino' AND ip.last_name = 'Kalac' THEN '115107-dino-kalac'
-      WHEN ip.first_name = 'Taylor Benjamin' AND ip.last_name = 'Lemmon' THEN '115107-taylor-benjamin-lemmon'
-      WHEN ip.first_name = 'Ivan Israel' AND ip.last_name = 'Lopez' THEN '115107-ivan-israel-lopez'
-      WHEN ip.first_name = 'Sebastian' AND ip.last_name = 'Lopez' THEN '115107-sebastian-lopez'
-      WHEN ip.first_name = 'Juanes' AND ip.last_name = 'Martinez' THEN '115107-juanes-martinez'
-      WHEN ip.first_name = 'Sebastian' AND ip.last_name = 'Nuñez' THEN '115107-sebastian-nu-ez'
-      WHEN ip.first_name = 'Ashton Thomas' AND ip.last_name = 'Parnell' THEN '115107-ashton-thomas-parnell'
-      WHEN ip.first_name = 'Tyler' AND ip.last_name = 'Pineda' THEN '115107-tyler-pineda'
-      WHEN ip.first_name = 'Voshon' AND ip.last_name = 'Ramcharan' THEN '115107-voshon-ramcharan'
-      WHEN ip.first_name = 'Marvin' AND ip.last_name = 'Rodriguez' THEN '115107-marvin-rodriguez'
-      WHEN ip.first_name = 'Fabian' AND ip.last_name = 'Rodriguez-Escobedo' THEN '115107-fabian-rodriguez-escobedo'
-      WHEN ip.first_name = 'Blair' AND ip.last_name = 'Springhall' THEN '115107-blair-springhall'
-      WHEN ip.first_name = 'Bradley Hamilton' AND ip.last_name = 'Tidwell' THEN '115107-bradley-hamilton-tidwell'
-      WHEN ip.first_name = 'Edward' AND ip.last_name = 'Trejo' THEN '115107-edward-trejo'
-      WHEN ip.first_name = 'Johan Miguel' AND ip.last_name = 'Trigo-Rios' THEN '115107-johan-miguel-trigo-rios'
-      WHEN ip.first_name = 'Luis Albert' AND ip.last_name = 'Ventura' THEN '115107-luis-albert-ventura'
-      WHEN ip.first_name = 'Patrick' AND ip.last_name = 'Ventura' THEN '115107-patrick-ventura'
-      WHEN ip.first_name = 'Nicholas' AND ip.last_name = 'Wheeler' THEN '115107-nicholas-wheeler'
-      WHEN ip.first_name = 'Adam' AND ip.last_name = 'Abdullahi' THEN '119159-adam-abdullahi'
-      WHEN ip.first_name = 'Mohammed' AND ip.last_name = 'Al-Asady' THEN '119159-mohammed-al-asady'
-      WHEN ip.first_name = 'Malek' AND ip.last_name = 'Almariri' THEN '119159-malek-almariri'
-      WHEN ip.first_name = 'Mario' AND ip.last_name = 'Arreguin' THEN '119159-mario-arreguin'
-      WHEN ip.first_name = 'Ali' AND ip.last_name = 'Bazz' THEN '119159-ali-bazz'
-      WHEN ip.first_name = 'Monchu' AND ip.last_name = 'Camara' THEN '119159-monchu-camara'
-      WHEN ip.first_name = 'Steven' AND ip.last_name = 'Carrillo' THEN '119159-steven-carrillo'
-      WHEN ip.first_name = 'Karl' AND ip.last_name = 'Christiansen' THEN '119159-karl-christiansen'
-      WHEN ip.first_name = 'Franklin' AND ip.last_name = 'Contreras' THEN '119159-franklin-contreras'
-      WHEN ip.first_name = 'Vitor De' AND ip.last_name = 'Souza' THEN '119159-vitor-de-souza'
-      WHEN ip.first_name = 'Adrian' AND ip.last_name = 'Garcia' THEN '119159-adrian-garcia'
-      WHEN ip.first_name = 'Josue' AND ip.last_name = 'Gomez' THEN '119159-josue-gomez'
-      WHEN ip.first_name = 'Jafet' AND ip.last_name = 'Higuera' THEN '119159-jafet-higuera'
-      WHEN ip.first_name = 'Rui' AND ip.last_name = 'James-Pereira' THEN '119159-rui-james-pereira'
-      WHEN ip.first_name = 'Kendrick' AND ip.last_name = 'Jean' THEN '119159-kendrick-jean'
-      WHEN ip.first_name = 'Sanaa' AND ip.last_name = 'Listenbee' THEN '119159-sanaa-listenbee'
-      WHEN ip.first_name = 'Chris' AND ip.last_name = 'Louissaint' THEN '119159-chris-louissaint'
-      WHEN ip.first_name = 'David' AND ip.last_name = 'Martinez' THEN '119159-david-martinez'
-      WHEN ip.first_name = 'Ramsis' AND ip.last_name = 'Martinez' THEN '119159-ramsis-martinez'
-      WHEN ip.first_name = 'Ruben' AND ip.last_name = 'Martinez' THEN '119159-ruben-martinez'
-      WHEN ip.first_name = 'Jonathan' AND ip.last_name = 'May' THEN '119159-jonathan-may'
-      WHEN ip.first_name = 'Jaylen' AND ip.last_name = 'McCray' THEN '119159-jaylen-mccray'
-      WHEN ip.first_name = 'Tariq' AND ip.last_name = 'Mohammed' THEN '119159-tariq-mohammed'
-      WHEN ip.first_name = 'Geovanni' AND ip.last_name = 'Oboh' THEN '119159-geovanni-oboh'
-      WHEN ip.first_name = 'Jordan' AND ip.last_name = 'Paul' THEN '119159-jordan-paul'
-      WHEN ip.first_name = 'Nicolas' AND ip.last_name = 'Pegorer' THEN '119159-nicolas-pegorer'
-      WHEN ip.first_name = 'Pablo' AND ip.last_name = 'Piraquive' THEN '119159-pablo-piraquive'
-      WHEN ip.first_name = 'Roney' AND ip.last_name = 'Rubio' THEN '119159-roney-rubio'
-      WHEN ip.first_name = 'Anakin' AND ip.last_name = 'Ruiz' THEN '119159-anakin-ruiz'
-      WHEN ip.first_name = 'Jazeime' AND ip.last_name = 'Russell' THEN '119159-jazeime-russell'
-      WHEN ip.first_name = 'Jonathan' AND ip.last_name = 'Sandoval' THEN '119159-jonathan-sandoval'
-      WHEN ip.first_name = 'Ayman' AND ip.last_name = 'Saudin' THEN '119159-ayman-saudin'
-      WHEN ip.first_name = 'Manuel' AND ip.last_name = 'Simental' THEN '119159-manuel-simental'
-      WHEN ip.first_name = 'Mahmoud' AND ip.last_name = 'Tasslak' THEN '119159-mahmoud-tasslak'
-      WHEN ip.first_name = 'Myles' AND ip.last_name = 'Williams' THEN '119159-myles-williams'
+      WHEN ap.first_name = 'Sahil' AND ap.last_name = 'Banerjee' THEN '114814-sahil-banerjee'
+      WHEN ap.first_name = 'Massimiliano' AND ap.last_name = 'Bruno' THEN '114814-massimiliano-bruno'
+      WHEN ap.first_name = 'Kevin Alves' AND ap.last_name = 'Cruz' THEN '114814-kevin-alves-cruz'
+      WHEN ap.first_name = 'Ryan' AND ap.last_name = 'Cura' THEN '114814-ryan-cura'
+      WHEN ap.first_name = 'Emilano De La Macorra' AND ap.last_name = 'Cardoso' THEN '114814-emilano-de-la-macorra-cardoso'
+      WHEN ap.first_name = 'Jeffery' AND ap.last_name = 'Dietrich' THEN '114814-jeffery-dietrich'
+      WHEN ap.first_name = 'Claudio' AND ap.last_name = 'Dragonetti' THEN '114814-claudio-dragonetti'
+      WHEN ap.first_name = 'Miguel' AND ap.last_name = 'Enriquez' THEN '114814-miguel-enriquez'
+      WHEN ap.first_name = 'Charles Esber' AND ap.last_name = 'Tavares' THEN '114814-charles-esber-tavares'
+      WHEN ap.first_name = 'Kaven' AND ap.last_name = 'Fitch' THEN '114814-kaven-fitch'
+      WHEN ap.first_name = 'Vincenzo' AND ap.last_name = 'Fuentes' THEN '114814-vincenzo-fuentes'
+      WHEN ap.first_name = 'Payson' AND ap.last_name = 'Goyette' THEN '114814-payson-goyette'
+      WHEN ap.first_name = 'Pano' AND ap.last_name = 'Haseotes' THEN '114814-pano-haseotes'
+      WHEN ap.first_name = 'Aidan' AND ap.last_name = 'Hayes' THEN '114814-aidan-hayes'
+      WHEN ap.first_name = 'Samuel' AND ap.last_name = 'Hong' THEN '114814-samuel-hong'
+      WHEN ap.first_name = 'Santiago' AND ap.last_name = 'Kadadihi' THEN '114814-santiago-kadadihi'
+      WHEN ap.first_name = 'George' AND ap.last_name = 'Karafilidis' THEN '114814-george-karafilidis'
+      WHEN ap.first_name = 'Jeremy' AND ap.last_name = 'Kim' THEN '114814-jeremy-kim'
+      WHEN ap.first_name = 'Eduardo' AND ap.last_name = 'Marquez' THEN '114814-eduardo-marquez'
+      WHEN ap.first_name = 'Nicolas' AND ap.last_name = 'Martignoni' THEN '114814-nicolas-martignoni'
+      WHEN ap.first_name = 'Evan' AND ap.last_name = 'Mendonca' THEN '114814-evan-mendonca'
+      WHEN ap.first_name = 'Pablo' AND ap.last_name = 'Montilla' THEN '114814-pablo-montilla'
+      WHEN ap.first_name = 'Lucas Ortega' AND ap.last_name = 'Morales' THEN '114814-lucas-ortega-morales'
+      WHEN ap.first_name = 'Nicholas Stephen' AND ap.last_name = 'Pierangeli' THEN '114814-nicholas-stephen-pierangeli'
+      WHEN ap.first_name = 'Mario Ruiz' AND ap.last_name = 'Perez' THEN '114814-mario-ruiz-perez'
+      WHEN ap.first_name = 'Edwin' AND ap.last_name = 'Saravia' THEN '114814-edwin-saravia'
+      WHEN ap.first_name = 'Caio' AND ap.last_name = 'Soares' THEN '114814-caio-soares'
+      WHEN ap.first_name = 'Johner' AND ap.last_name = 'Soe' THEN '114814-johner-soe'
+      WHEN ap.first_name = 'Luka' AND ap.last_name = 'Szymanski' THEN '114814-luka-szymanski'
+      WHEN ap.first_name = 'Ross Lamont' AND ap.last_name = 'Watson' THEN '114814-ross-lamont-watson'
+      WHEN ap.first_name = 'Moises De pina' AND ap.last_name = 'Alves' THEN '118063-moises-de-pina-alves'
+      WHEN ap.first_name = 'Jack' AND ap.last_name = 'Aronson' THEN '118063-jack-aronson'
+      WHEN ap.first_name = 'Joao P' AND ap.last_name = 'Carvalho' THEN '118063-joao-p-carvalho'
+      WHEN ap.first_name = 'Mana' AND ap.last_name = 'Chavali' THEN '118063-mana-chavali'
+      WHEN ap.first_name = 'Suri' AND ap.last_name = 'Chavali' THEN '118063-suri-chavali'
+      WHEN ap.first_name = 'Brendan' AND ap.last_name = 'Claflin' THEN '118063-brendan-claflin'
+      WHEN ap.first_name = 'Matthew Daniel' AND ap.last_name = 'Cosentino' THEN '118063-matthew-daniel-cosentino'
+      WHEN ap.first_name = 'Patrick' AND ap.last_name = 'Davison' THEN '118063-patrick-davison'
+      WHEN ap.first_name = 'Joao Paulo De Mattos' AND ap.last_name = 'Almeida' THEN '118063-joao-paulo-de-mattos-almeida'
+      WHEN ap.first_name = 'Manuel António' AND ap.last_name = 'Depina' THEN '118063-manuel-ant-nio-depina'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Eve' THEN '118063-michael-eve'
+      WHEN ap.first_name = 'Nicholas' AND ap.last_name = 'Falcone' THEN '118063-nicholas-falcone'
+      WHEN ap.first_name = 'Jackson' AND ap.last_name = 'Faulx' THEN '118063-jackson-faulx'
+      WHEN ap.first_name = 'Luke' AND ap.last_name = 'Hanchar' THEN '118063-luke-hanchar'
+      WHEN ap.first_name = 'Oswaldo' AND ap.last_name = 'Hernandez' THEN '118063-oswaldo-hernandez'
+      WHEN ap.first_name = 'Martin' AND ap.last_name = 'Konstantinov' THEN '118063-martin-konstantinov'
+      WHEN ap.first_name = 'Kyle' AND ap.last_name = 'Lasewicz' THEN '118063-kyle-lasewicz'
+      WHEN ap.first_name = 'Surya' AND ap.last_name = 'Mani' THEN '118063-surya-mani'
+      WHEN ap.first_name = 'Christian' AND ap.last_name = 'Martins' THEN '118063-christian-martins'
+      WHEN ap.first_name = 'Gilson' AND ap.last_name = 'Martins' THEN '118063-gilson-martins'
+      WHEN ap.first_name = 'Stephen Denis Silva' AND ap.last_name = 'Mendes' THEN '118063-stephen-denis-silva-mendes'
+      WHEN ap.first_name = 'Chad' AND ap.last_name = 'Meyers' THEN '118063-chad-meyers'
+      WHEN ap.first_name = 'Charles' AND ap.last_name = 'Miller' THEN '118063-charles-miller'
+      WHEN ap.first_name = 'Jonathan Ernesto' AND ap.last_name = 'Rodriguez' THEN '118063-jonathan-ernesto-rodriguez'
+      WHEN ap.first_name = 'Carlos' AND ap.last_name = 'Rojas' THEN '118063-carlos-rojas'
+      WHEN ap.first_name = 'Jaderson' AND ap.last_name = 'Rutsatz' THEN '118063-jaderson-rutsatz'
+      WHEN ap.first_name = 'Alexander' AND ap.last_name = 'Shanley' THEN '118063-alexander-shanley'
+      WHEN ap.first_name = 'Griffin' AND ap.last_name = 'Sisk' THEN '118063-griffin-sisk'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Soto' THEN '118063-daniel-soto'
+      WHEN ap.first_name = 'Elisandro' AND ap.last_name = 'Tavares' THEN '118063-elisandro-tavares'
+      WHEN ap.first_name = 'Nick' AND ap.last_name = 'Winn' THEN '118063-nick-winn'
+      WHEN ap.first_name = 'Jackson' AND ap.last_name = 'Yager' THEN '118063-jackson-yager'
+      WHEN ap.first_name = 'Mario' AND ap.last_name = 'Amado' THEN '114837-mario-amado'
+      WHEN ap.first_name = 'Brenner' AND ap.last_name = 'Cardoso' THEN '114837-brenner-cardoso'
+      WHEN ap.first_name = 'Wendy' AND ap.last_name = 'Celestin' THEN '114837-wendy-celestin'
+      WHEN ap.first_name = 'Denilson Barros' AND ap.last_name = 'Centeio' THEN '114837-denilson-barros-centeio'
+      WHEN ap.first_name = 'Jacinto' AND ap.last_name = 'Correia' THEN '114837-jacinto-correia'
+      WHEN ap.first_name = 'Edson Andarade Da' AND ap.last_name = 'Silva' THEN '114837-edson-andarade-da-silva'
+      WHEN ap.first_name = 'Fabio Pires Da' AND ap.last_name = 'Silva' THEN '114837-fabio-pires-da-silva'
+      WHEN ap.first_name = 'Rivaldo Baessa Da' AND ap.last_name = 'Silva' THEN '114837-rivaldo-baessa-da-silva'
+      WHEN ap.first_name = 'Heracles De Pina' AND ap.last_name = 'Fernandes' THEN '114837-heracles-de-pina-fernandes'
+      WHEN ap.first_name = 'Paulo De Pina' AND ap.last_name = 'Goncalves' THEN '114837-paulo-de-pina-goncalves'
+      WHEN ap.first_name = 'Valdir' AND ap.last_name = 'Depina' THEN '114837-valdir-depina'
+      WHEN ap.first_name = 'Isandro Fernandes' AND ap.last_name = 'Lopes' THEN '114837-isandro-fernandes-lopes'
+      WHEN ap.first_name = 'Mario Figueroa' AND ap.last_name = 'Garcia' THEN '114837-mario-figueroa-garcia'
+      WHEN ap.first_name = 'Adilson' AND ap.last_name = 'Gomes' THEN '114837-adilson-gomes'
+      WHEN ap.first_name = 'Clayton' AND ap.last_name = 'Gomes' THEN '114837-clayton-gomes'
+      WHEN ap.first_name = 'Estevao' AND ap.last_name = 'Gomes' THEN '114837-estevao-gomes'
+      WHEN ap.first_name = 'Jair Gomes De' AND ap.last_name = 'Pina' THEN '114837-jair-gomes-de-pina'
+      WHEN ap.first_name = 'Jose Gomes' AND ap.last_name = 'Rodrigues' THEN '114837-jose-gomes-rodrigues'
+      WHEN ap.first_name = 'Papa' AND ap.last_name = 'Ndiaye' THEN '114837-papa-ndiaye'
+      WHEN ap.first_name = 'Lucas Nogueira' AND ap.last_name = 'Monteiro' THEN '114837-lucas-nogueira-monteiro'
+      WHEN ap.first_name = 'Nima Norouzi' AND ap.last_name = 'Behjat' THEN '114837-nima-norouzi-behjat'
+      WHEN ap.first_name = 'Imauro' AND ap.last_name = 'Pina' THEN '114837-imauro-pina'
+      WHEN ap.first_name = 'Mauro Pires' AND ap.last_name = 'Amado' THEN '114837-mauro-pires-amado'
+      WHEN ap.first_name = 'Anthony' AND ap.last_name = 'Ramos' THEN '114837-anthony-ramos'
+      WHEN ap.first_name = 'Jose Rodrigues' AND ap.last_name = 'Teixeira' THEN '114837-jose-rodrigues-teixeira'
+      WHEN ap.first_name = 'Djeison Rodrigues' AND ap.last_name = 'Vieira' THEN '114837-djeison-rodrigues-vieira'
+      WHEN ap.first_name = 'Tahir Akil' AND ap.last_name = 'Scott' THEN '114837-tahir-akil-scott'
+      WHEN ap.first_name = 'Ronilson' AND ap.last_name = 'Semedo' THEN '114837-ronilson-semedo'
+      WHEN ap.first_name = 'Francisco M' AND ap.last_name = 'Silveira' THEN '114837-francisco-m-silveira'
+      WHEN ap.first_name = 'Yassine' AND ap.last_name = 'Smissame' THEN '114837-yassine-smissame'
+      WHEN ap.first_name = 'Kevin Sos Santos' AND ap.last_name = 'Barbisa' THEN '114837-kevin-sos-santos-barbisa'
+      WHEN ap.first_name = 'Domingos' AND ap.last_name = 'Tavares' THEN '114837-domingos-tavares'
+      WHEN ap.first_name = 'Edson Irlandino Tavares' AND ap.last_name = 'Dossantos' THEN '114837-edson-irlandino-tavares-dossantos'
+      WHEN ap.first_name = 'Elton J' AND ap.last_name = 'Teixeira' THEN '114837-elton-j-teixeira'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Andrade' THEN '114844-daniel-andrade'
+      WHEN ap.first_name = 'Edmilson' AND ap.last_name = 'Andrade' THEN '114844-edmilson-andrade'
+      WHEN ap.first_name = 'Damian' AND ap.last_name = 'Anerdson' THEN '114844-damian-anerdson'
+      WHEN ap.first_name = 'Ronis' AND ap.last_name = 'Ayala' THEN '114844-ronis-ayala'
+      WHEN ap.first_name = 'Dominique' AND ap.last_name = 'Baessa' THEN '114844-dominique-baessa'
+      WHEN ap.first_name = 'Gio' AND ap.last_name = 'Barros' THEN '114844-gio-barros'
+      WHEN ap.first_name = 'Justin' AND ap.last_name = 'Barros' THEN '114844-justin-barros'
+      WHEN ap.first_name = 'Dominek' AND ap.last_name = 'Borden' THEN '114844-dominek-borden'
+      WHEN ap.first_name = 'Edemilson' AND ap.last_name = 'Candida' THEN '114844-edemilson-candida'
+      WHEN ap.first_name = 'Kevin' AND ap.last_name = 'Correia' THEN '114844-kevin-correia'
+      WHEN ap.first_name = 'Neil' AND ap.last_name = 'Cunha' THEN '114844-neil-cunha'
+      WHEN ap.first_name = 'Mason' AND ap.last_name = 'Dealmeida' THEN '114844-mason-dealmeida'
+      WHEN ap.first_name = 'Clayton' AND ap.last_name = 'Demelo' THEN '114844-clayton-demelo'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Demelo' THEN '114844-ethan-demelo'
+      WHEN ap.first_name = 'Dawson' AND ap.last_name = 'Dosvais' THEN '114844-dawson-dosvais'
+      WHEN ap.first_name = 'Zajdele' AND ap.last_name = 'Dulcine' THEN '114844-zajdele-dulcine'
+      WHEN ap.first_name = 'Augustin' AND ap.last_name = 'Edwin' THEN '114844-augustin-edwin'
+      WHEN ap.first_name = 'Austin' AND ap.last_name = 'Eugenio' THEN '114844-austin-eugenio'
+      WHEN ap.first_name = 'Malaquias Tavares' AND ap.last_name = 'Garcia' THEN '114844-malaquias-tavares-garcia'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Garcia' THEN '114844-michael-garcia'
+      WHEN ap.first_name = 'Damon' AND ap.last_name = 'Greene' THEN '114844-damon-greene'
+      WHEN ap.first_name = 'Ricardo' AND ap.last_name = 'Macedo' THEN '114844-ricardo-macedo'
+      WHEN ap.first_name = 'Sam' AND ap.last_name = 'Matias' THEN '114844-sam-matias'
+      WHEN ap.first_name = 'Dylan' AND ap.last_name = 'Mendes' THEN '114844-dylan-mendes'
+      WHEN ap.first_name = 'Jose Carlos "Ze"' AND ap.last_name = 'Mendes' THEN '114844-jose-carlos-ze-mendes'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Paiva' THEN '114844-ethan-paiva'
+      WHEN ap.first_name = 'Joey' AND ap.last_name = 'Paiva' THEN '114844-joey-paiva'
+      WHEN ap.first_name = 'Colin' AND ap.last_name = 'Pereira' THEN '114844-colin-pereira'
+      WHEN ap.first_name = 'Jacob' AND ap.last_name = 'Ramos' THEN '114844-jacob-ramos'
+      WHEN ap.first_name = 'Rafael' AND ap.last_name = 'Raposo' THEN '114844-rafael-raposo'
+      WHEN ap.first_name = 'Dylan' AND ap.last_name = 'Senra' THEN '114844-dylan-senra'
+      WHEN ap.first_name = 'Flavio Joel Soares' AND ap.last_name = 'Carvalho' THEN '114844-flavio-joel-soares-carvalho'
+      WHEN ap.first_name = 'Christian' AND ap.last_name = 'Sousa' THEN '114844-christian-sousa'
+      WHEN ap.first_name = 'Wilson Omar Amaya' AND ap.last_name = 'Lara' THEN '114838-wilson-omar-amaya-lara'
+      WHEN ap.first_name = 'Jessiel Alexander' AND ap.last_name = 'Amparo' THEN '114838-jessiel-alexander-amparo'
+      WHEN ap.first_name = 'Minor Ojanny Angel' AND ap.last_name = 'Merida' THEN '114838-minor-ojanny-angel-merida'
+      WHEN ap.first_name = 'Yaw' AND ap.last_name = 'Bediako' THEN '114838-yaw-bediako'
+      WHEN ap.first_name = 'Elvino Tavares Da' AND ap.last_name = 'Silva' THEN '114838-elvino-tavares-da-silva'
+      WHEN ap.first_name = 'Delvino Tavares' AND ap.last_name = 'Dasilva' THEN '114838-delvino-tavares-dasilva'
+      WHEN ap.first_name = 'Jamel Anch' AND ap.last_name = 'David' THEN '114838-jamel-anch-david'
+      WHEN ap.first_name = 'Henry' AND ap.last_name = 'Edeko' THEN '114838-henry-edeko'
+      WHEN ap.first_name = 'Ayoub' AND ap.last_name = 'Essaoui' THEN '114838-ayoub-essaoui'
+      WHEN ap.first_name = 'Jackson' AND ap.last_name = 'Fernandes' THEN '114838-jackson-fernandes'
+      WHEN ap.first_name = 'Carlos Augusto Gomez' AND ap.last_name = 'Hernandez' THEN '114838-carlos-augusto-gomez-hernandez'
+      WHEN ap.first_name = 'Braulio Gonzalez' AND ap.last_name = 'Oliveria' THEN '114838-braulio-gonzalez-oliveria'
+      WHEN ap.first_name = 'Alejandro Alfonso Guerrero' AND ap.last_name = 'Vargas' THEN '114838-alejandro-alfonso-guerrero-vargas'
+      WHEN ap.first_name = 'Kenneth Jared Ibarra' AND ap.last_name = 'Suarez' THEN '114838-kenneth-jared-ibarra-suarez'
+      WHEN ap.first_name = 'Aeshan' AND ap.last_name = 'Kapil' THEN '114838-aeshan-kapil'
+      WHEN ap.first_name = 'Jesus Gilberto' AND ap.last_name = 'Martinez' THEN '114838-jesus-gilberto-martinez'
+      WHEN ap.first_name = 'Ricosta' AND ap.last_name = 'Mede' THEN '114838-ricosta-mede'
+      WHEN ap.first_name = 'Sheventz' AND ap.last_name = 'Multy' THEN '114838-sheventz-multy'
+      WHEN ap.first_name = 'Samuel Armando' AND ap.last_name = 'Perez' THEN '114838-samuel-armando-perez'
+      WHEN ap.first_name = 'Aiden Thor' AND ap.last_name = 'Perry' THEN '114838-aiden-thor-perry'
+      WHEN ap.first_name = 'Alex Andrade' AND ap.last_name = 'Pina' THEN '114838-alex-andrade-pina'
+      WHEN ap.first_name = 'Connor' AND ap.last_name = 'Poliquin' THEN '114838-connor-poliquin'
+      WHEN ap.first_name = 'Timothy' AND ap.last_name = 'Singleton' THEN '114838-timothy-singleton'
+      WHEN ap.first_name = 'Francisco Aron' AND ap.last_name = 'Villacorta' THEN '114838-francisco-aron-villacorta'
+      WHEN ap.first_name = 'Benjamin' AND ap.last_name = 'Watts' THEN '114838-benjamin-watts'
+      WHEN ap.first_name = 'Mo Amine' AND ap.last_name = 'Faleh' THEN '118064-mo-amine-faleh'
+      WHEN ap.first_name = 'Ludwin Daniel' AND ap.last_name = 'Carranza' THEN '118064-ludwin-daniel-carranza'
+      WHEN ap.first_name = 'Albert' AND ap.last_name = 'Daniels' THEN '118064-albert-daniels'
+      WHEN ap.first_name = 'Yassine' AND ap.last_name = 'ElBasli' THEN '118064-yassine-elbasli'
+      WHEN ap.first_name = 'Eduardo' AND ap.last_name = 'Engst-Mansilla' THEN '118064-eduardo-engst-mansilla'
+      WHEN ap.first_name = 'Kerllon Silva' AND ap.last_name = 'Felipe' THEN '118064-kerllon-silva-felipe'
+      WHEN ap.first_name = 'Cole' AND ap.last_name = 'Fergusson' THEN '118064-cole-fergusson'
+      WHEN ap.first_name = 'Joao Victor' AND ap.last_name = 'Ferreira' THEN '118064-joao-victor-ferreira'
+      WHEN ap.first_name = 'Carl' AND ap.last_name = 'Foming' THEN '118064-carl-foming'
+      WHEN ap.first_name = 'Jackson C' AND ap.last_name = 'Gilstrap' THEN '118064-jackson-c-gilstrap'
+      WHEN ap.first_name = 'Bernadin' AND ap.last_name = 'Herard' THEN '118064-bernadin-herard'
+      WHEN ap.first_name = 'Juan camilo' AND ap.last_name = 'Hernández' THEN '118064-juan-camilo-hern-ndez'
+      WHEN ap.first_name = 'Delices' AND ap.last_name = 'Keyri' THEN '118064-delices-keyri'
+      WHEN ap.first_name = 'Hindolo Brima' AND ap.last_name = 'Mansaray' THEN '118064-hindolo-brima-mansaray'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Massaquoi' THEN '118064-john-massaquoi'
+      WHEN ap.first_name = 'Vincent' AND ap.last_name = 'Miller' THEN '118064-vincent-miller'
+      WHEN ap.first_name = 'Hassan' AND ap.last_name = 'Mutaasa' THEN '118064-hassan-mutaasa'
+      WHEN ap.first_name = 'Amadou Moustapha' AND ap.last_name = 'Ndiaye' THEN '118064-amadou-moustapha-ndiaye'
+      WHEN ap.first_name = 'Carl' AND ap.last_name = 'Olivier' THEN '118064-carl-olivier'
+      WHEN ap.first_name = 'Roodchyl Samuel' AND ap.last_name = 'Pauleon' THEN '118064-roodchyl-samuel-pauleon'
+      WHEN ap.first_name = 'Jaydon' AND ap.last_name = 'Perez' THEN '118064-jaydon-perez'
+      WHEN ap.first_name = 'Joseph' AND ap.last_name = 'Saidu' THEN '118064-joseph-saidu'
+      WHEN ap.first_name = 'Destin' AND ap.last_name = 'Sleeter' THEN '118064-destin-sleeter'
+      WHEN ap.first_name = 'Pierre St' AND ap.last_name = 'Simon' THEN '118064-pierre-st-simon'
+      WHEN ap.first_name = 'Isaiah' AND ap.last_name = 'Stessman' THEN '118064-isaiah-stessman'
+      WHEN ap.first_name = 'Carlos' AND ap.last_name = 'Teixeira' THEN '118064-carlos-teixeira'
+      WHEN ap.first_name = 'Hamza' AND ap.last_name = 'Tribia' THEN '118064-hamza-tribia'
+      WHEN ap.first_name = 'Luiz Gustavo' AND ap.last_name = 'Zanellato' THEN '118064-luiz-gustavo-zanellato'
+      WHEN ap.first_name = 'Abraham' AND ap.last_name = 'Zepeda' THEN '118064-abraham-zepeda'
+      WHEN ap.first_name = 'Mustapha Ait' AND ap.last_name = 'Zbair' THEN '114815-mustapha-ait-zbair'
+      WHEN ap.first_name = 'Joshua' AND ap.last_name = 'Atemkeng' THEN '114815-joshua-atemkeng'
+      WHEN ap.first_name = 'Ousmane' AND ap.last_name = 'balde' THEN '114815-ousmane-balde'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Brewer' THEN '114815-john-brewer'
+      WHEN ap.first_name = 'Oscar' AND ap.last_name = 'Castillo' THEN '114815-oscar-castillo'
+      WHEN ap.first_name = 'Edmond' AND ap.last_name = 'Charles' THEN '114815-edmond-charles'
+      WHEN ap.first_name = 'Dimitri' AND ap.last_name = 'Costa' THEN '114815-dimitri-costa'
+      WHEN ap.first_name = 'Hamza El' AND ap.last_name = 'Amane' THEN '114815-hamza-el-amane'
+      WHEN ap.first_name = 'Mohamed' AND ap.last_name = 'El-Rhoufi' THEN '114815-mohamed-el-rhoufi'
+      WHEN ap.first_name = 'Hyacinth' AND ap.last_name = 'Fongang' THEN '114815-hyacinth-fongang'
+      WHEN ap.first_name = 'Metayer' AND ap.last_name = 'Gassamar' THEN '114815-metayer-gassamar'
+      WHEN ap.first_name = 'Abubakar Sidiq' AND ap.last_name = 'Hamidu' THEN '114815-abubakar-sidiq-hamidu'
+      WHEN ap.first_name = 'Diallo' AND ap.last_name = 'Ibrahima' THEN '114815-diallo-ibrahima'
+      WHEN ap.first_name = 'Ralph Jean' AND ap.last_name = 'Baptiste' THEN '114815-ralph-jean-baptiste'
+      WHEN ap.first_name = 'Root-mael Jean' AND ap.last_name = 'Baptiste' THEN '114815-root-mael-jean-baptiste'
+      WHEN ap.first_name = 'Cedrick' AND ap.last_name = 'Labah' THEN '114815-cedrick-labah'
+      WHEN ap.first_name = 'Bruno' AND ap.last_name = 'Lana' THEN '114815-bruno-lana'
+      WHEN ap.first_name = 'Longtse Mofor' AND ap.last_name = 'Landoh' THEN '114815-longtse-mofor-landoh'
+      WHEN ap.first_name = 'Roberto' AND ap.last_name = 'Martinez' THEN '114815-roberto-martinez'
+      WHEN ap.first_name = 'Quang' AND ap.last_name = 'Milligan' THEN '114815-quang-milligan'
+      WHEN ap.first_name = 'Bonjoh' AND ap.last_name = 'Ngoasong' THEN '114815-bonjoh-ngoasong'
+      WHEN ap.first_name = 'Sydiney' AND ap.last_name = 'Nyabiosi' THEN '114815-sydiney-nyabiosi'
+      WHEN ap.first_name = 'Pedro' AND ap.last_name = 'Pedrine' THEN '114815-pedro-pedrine'
+      WHEN ap.first_name = 'Marc Hattley' AND ap.last_name = 'Pierre' THEN '114815-marc-hattley-pierre'
+      WHEN ap.first_name = 'Luvensky' AND ap.last_name = 'Polycarpe' THEN '114815-luvensky-polycarpe'
+      WHEN ap.first_name = 'Angelo' AND ap.last_name = 'Ramirez' THEN '114815-angelo-ramirez'
+      WHEN ap.first_name = 'Emerson' AND ap.last_name = 'Roman' THEN '114815-emerson-roman'
+      WHEN ap.first_name = 'Yostin' AND ap.last_name = 'Roman' THEN '114815-yostin-roman'
+      WHEN ap.first_name = 'Shelton' AND ap.last_name = 'Sidelca' THEN '114815-shelton-sidelca'
+      WHEN ap.first_name = 'Redwane' AND ap.last_name = 'Tinfle' THEN '114815-redwane-tinfle'
+      WHEN ap.first_name = 'Nelvin' AND ap.last_name = 'Vando' THEN '114815-nelvin-vando'
+      WHEN ap.first_name = 'Jonathan' AND ap.last_name = 'Vazquez' THEN '114815-jonathan-vazquez'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Vitello' THEN '114815-ethan-vitello'
+      WHEN ap.first_name = 'Trevor' AND ap.last_name = 'Voisine' THEN '114815-trevor-voisine'
+      WHEN ap.first_name = 'Zamy Youri ' AND ap.last_name = 'Ansley' THEN '114815-zamy-youri-ansley'
+      WHEN ap.first_name = 'Meysar' AND ap.last_name = 'Abdulkadir' THEN '114826-meysar-abdulkadir'
+      WHEN ap.first_name = 'Joel' AND ap.last_name = 'Agebtossou' THEN '114826-joel-agebtossou'
+      WHEN ap.first_name = 'Davaughn' AND ap.last_name = 'Anderson' THEN '114826-davaughn-anderson'
+      WHEN ap.first_name = 'Deante' AND ap.last_name = 'Anderson' THEN '114826-deante-anderson'
+      WHEN ap.first_name = 'Jimmy' AND ap.last_name = 'Arita' THEN '114826-jimmy-arita'
+      WHEN ap.first_name = 'Ben' AND ap.last_name = 'Awashie' THEN '114826-ben-awashie'
+      WHEN ap.first_name = 'Alessandro' AND ap.last_name = 'Bacabac' THEN '114826-alessandro-bacabac'
+      WHEN ap.first_name = 'Dejaun' AND ap.last_name = 'Beckford' THEN '114826-dejaun-beckford'
+      WHEN ap.first_name = 'Joseph' AND ap.last_name = 'Boakye' THEN '114826-joseph-boakye'
+      WHEN ap.first_name = 'Alexander' AND ap.last_name = 'Clarke' THEN '114826-alexander-clarke'
+      WHEN ap.first_name = 'Caleb' AND ap.last_name = 'Ennin' THEN '114826-caleb-ennin'
+      WHEN ap.first_name = 'Tim' AND ap.last_name = 'Ennin' THEN '114826-tim-ennin'
+      WHEN ap.first_name = 'Shaquan' AND ap.last_name = 'Facey' THEN '114826-shaquan-facey'
+      WHEN ap.first_name = 'Jahvanni' AND ap.last_name = 'Grant' THEN '114826-jahvanni-grant'
+      WHEN ap.first_name = 'Elian' AND ap.last_name = 'Guaman' THEN '114826-elian-guaman'
+      WHEN ap.first_name = 'Dax' AND ap.last_name = 'Hoffman' THEN '114826-dax-hoffman'
+      WHEN ap.first_name = 'George' AND ap.last_name = 'Jimenez' THEN '114826-george-jimenez'
+      WHEN ap.first_name = 'Gideon' AND ap.last_name = 'Kadiri' THEN '114826-gideon-kadiri'
+      WHEN ap.first_name = 'Jaheim' AND ap.last_name = 'Kennedy' THEN '114826-jaheim-kennedy'
+      WHEN ap.first_name = 'Brenden' AND ap.last_name = 'Landry' THEN '114826-brenden-landry'
+      WHEN ap.first_name = 'Shani' AND ap.last_name = 'Miller' THEN '114826-shani-miller'
+      WHEN ap.first_name = 'Kwesi' AND ap.last_name = 'Mills-Odoi' THEN '114826-kwesi-mills-odoi'
+      WHEN ap.first_name = 'Shemar' AND ap.last_name = 'Moore' THEN '114826-shemar-moore'
+      WHEN ap.first_name = 'Andre' AND ap.last_name = 'Morrison' THEN '114826-andre-morrison'
+      WHEN ap.first_name = 'Yaw' AND ap.last_name = 'Nimo-Agyare' THEN '114826-yaw-nimo-agyare'
+      WHEN ap.first_name = 'Kenny' AND ap.last_name = 'Ofori' THEN '114826-kenny-ofori'
+      WHEN ap.first_name = 'Diwash' AND ap.last_name = 'Pun' THEN '114826-diwash-pun'
+      WHEN ap.first_name = 'Shamar' AND ap.last_name = 'Smith' THEN '114826-shamar-smith'
+      WHEN ap.first_name = 'Sholay' AND ap.last_name = 'Sock' THEN '114826-sholay-sock'
+      WHEN ap.first_name = 'Dane' AND ap.last_name = 'Stephens' THEN '114826-dane-stephens'
+      WHEN ap.first_name = 'Romaine' AND ap.last_name = 'Walters' THEN '114826-romaine-walters'
+      WHEN ap.first_name = 'Colin' AND ap.last_name = 'Branigan' THEN '114816-colin-branigan'
+      WHEN ap.first_name = 'Colin' AND ap.last_name = 'Brocksieper' THEN '114816-colin-brocksieper'
+      WHEN ap.first_name = 'Nick' AND ap.last_name = 'Burkle' THEN '114816-nick-burkle'
+      WHEN ap.first_name = 'Rocco' AND ap.last_name = 'D’Arcangelo' THEN '114816-rocco-d-arcangelo'
+      WHEN ap.first_name = 'Massimo' AND ap.last_name = 'Eichner' THEN '114816-massimo-eichner'
+      WHEN ap.first_name = 'Eddy' AND ap.last_name = 'Enowbi' THEN '114816-eddy-enowbi'
+      WHEN ap.first_name = 'Sean' AND ap.last_name = 'Gannon' THEN '114816-sean-gannon'
+      WHEN ap.first_name = 'Andrew Hayden' AND ap.last_name = 'Geres' THEN '114816-andrew-hayden-geres'
+      WHEN ap.first_name = 'Donovan' AND ap.last_name = 'Harris' THEN '114816-donovan-harris'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Hess' THEN '114816-john-hess'
+      WHEN ap.first_name = 'Jalen' AND ap.last_name = 'Jean' THEN '114816-jalen-jean'
+      WHEN ap.first_name = 'Eric-Bertin' AND ap.last_name = 'Kalumbwe' THEN '114816-eric-bertin-kalumbwe'
+      WHEN ap.first_name = 'Sevon Komlan' AND ap.last_name = 'Koudaya' THEN '114816-sevon-komlan-koudaya'
+      WHEN ap.first_name = 'Senan' AND ap.last_name = 'Lonergan' THEN '114816-senan-lonergan'
+      WHEN ap.first_name = 'Luke' AND ap.last_name = 'McNabb' THEN '114816-luke-mcnabb'
+      WHEN ap.first_name = 'Aidan' AND ap.last_name = 'Nolan' THEN '114816-aidan-nolan'
+      WHEN ap.first_name = 'Aidan' AND ap.last_name = 'O''Brien' THEN '114816-aidan-o-brien'
+      WHEN ap.first_name = 'Liam' AND ap.last_name = 'O''Brien' THEN '114816-liam-o-brien'
+      WHEN ap.first_name = 'Ronan' AND ap.last_name = 'O''Brien' THEN '114816-ronan-o-brien'
+      WHEN ap.first_name = 'Marco' AND ap.last_name = 'Parisi' THEN '114816-marco-parisi'
+      WHEN ap.first_name = 'Christian' AND ap.last_name = 'Rivas-Plata' THEN '114816-christian-rivas-plata'
+      WHEN ap.first_name = 'Colm' AND ap.last_name = 'Ryan' THEN '114816-colm-ryan'
+      WHEN ap.first_name = 'Ian' AND ap.last_name = 'Slattery' THEN '114816-ian-slattery'
+      WHEN ap.first_name = 'Marcris' AND ap.last_name = 'Webb' THEN '114816-marcris-webb'
+      WHEN ap.first_name = 'Nick' AND ap.last_name = 'Wlodarcyk' THEN '114816-nick-wlodarcyk'
+      WHEN ap.first_name = 'Kaio Ramos' AND ap.last_name = 'Araujo' THEN '114851-kaio-ramos-araujo'
+      WHEN ap.first_name = 'Luciano' AND ap.last_name = 'Artaza' THEN '114851-luciano-artaza'
+      WHEN ap.first_name = 'Luke' AND ap.last_name = 'Bello' THEN '114851-luke-bello'
+      WHEN ap.first_name = 'Marc' AND ap.last_name = 'Calle' THEN '114851-marc-calle'
+      WHEN ap.first_name = 'Leonardo Da' AND ap.last_name = 'Graca' THEN '114851-leonardo-da-graca'
+      WHEN ap.first_name = 'Ricardo' AND ap.last_name = 'Dias' THEN '114851-ricardo-dias'
+      WHEN ap.first_name = 'Matthew' AND ap.last_name = 'Evora' THEN '114851-matthew-evora'
+      WHEN ap.first_name = 'Anthony' AND ap.last_name = 'Faienza' THEN '114851-anthony-faienza'
+      WHEN ap.first_name = 'Thomas' AND ap.last_name = 'Fernandez-Wolff' THEN '114851-thomas-fernandez-wolff'
+      WHEN ap.first_name = 'Nicholas' AND ap.last_name = 'Fernández-Wolff' THEN '114851-nicholas-fern-ndez-wolff'
+      WHEN ap.first_name = 'Abdulmohaymen' AND ap.last_name = 'Gadoush' THEN '114851-abdulmohaymen-gadoush'
+      WHEN ap.first_name = 'Eurico' AND ap.last_name = 'Gomes' THEN '114851-eurico-gomes'
+      WHEN ap.first_name = 'Javier' AND ap.last_name = 'Hernandez' THEN '114851-javier-hernandez'
+      WHEN ap.first_name = 'Joni' AND ap.last_name = 'Kadrioski' THEN '114851-joni-kadrioski'
+      WHEN ap.first_name = 'Chavez' AND ap.last_name = 'Mbeki' THEN '114851-chavez-mbeki'
+      WHEN ap.first_name = 'Kenan' AND ap.last_name = 'Mujic' THEN '114851-kenan-mujic'
+      WHEN ap.first_name = 'Ermis' AND ap.last_name = 'Paguada' THEN '114851-ermis-paguada'
+      WHEN ap.first_name = 'Paulo' AND ap.last_name = 'Paris' THEN '114851-paulo-paris'
+      WHEN ap.first_name = 'Juan' AND ap.last_name = 'Saca' THEN '114851-juan-saca'
+      WHEN ap.first_name = 'Bruno' AND ap.last_name = 'Silva' THEN '114851-bruno-silva'
+      WHEN ap.first_name = 'Matthew' AND ap.last_name = 'Silva' THEN '114851-matthew-silva'
+      WHEN ap.first_name = 'Michel' AND ap.last_name = 'Souza' THEN '114851-michel-souza'
+      WHEN ap.first_name = 'Kadin' AND ap.last_name = 'Talho' THEN '114851-kadin-talho'
+      WHEN ap.first_name = 'Diego' AND ap.last_name = 'Vasquez' THEN '114851-diego-vasquez'
+      WHEN ap.first_name = 'Jannik' AND ap.last_name = 'Wille' THEN '114851-jannik-wille'
+      WHEN ap.first_name = 'Caleb' AND ap.last_name = 'Wu' THEN '114851-caleb-wu'
+      WHEN ap.first_name = 'Alan' AND ap.last_name = 'Xavier' THEN '114851-alan-xavier'
+      WHEN ap.first_name = 'Bright' AND ap.last_name = 'Agyemang' THEN '114819-bright-agyemang'
+      WHEN ap.first_name = 'Wander' AND ap.last_name = 'Alves' THEN '114819-wander-alves'
+      WHEN ap.first_name = 'Guilherme' AND ap.last_name = 'Andrade' THEN '114819-guilherme-andrade'
+      WHEN ap.first_name = 'Hayllan' AND ap.last_name = 'Batista' THEN '114819-hayllan-batista'
+      WHEN ap.first_name = 'Gabriel' AND ap.last_name = 'Berthoud' THEN '114819-gabriel-berthoud'
+      WHEN ap.first_name = 'Gabriel' AND ap.last_name = 'Carrelo' THEN '114819-gabriel-carrelo'
+      WHEN ap.first_name = 'Rodney' AND ap.last_name = 'Delgado' THEN '114819-rodney-delgado'
+      WHEN ap.first_name = 'Gregorio' AND ap.last_name = 'Espinoza' THEN '114819-gregorio-espinoza'
+      WHEN ap.first_name = 'Wilmer' AND ap.last_name = 'Flores' THEN '114819-wilmer-flores'
+      WHEN ap.first_name = 'Zouhair' AND ap.last_name = 'Khal' THEN '114819-zouhair-khal'
+      WHEN ap.first_name = 'Shamar J' AND ap.last_name = 'Kingston' THEN '114819-shamar-j-kingston'
+      WHEN ap.first_name = 'Bruno' AND ap.last_name = 'Luiz' THEN '114819-bruno-luiz'
+      WHEN ap.first_name = 'Colton' AND ap.last_name = 'Lukuc' THEN '114819-colton-lukuc'
+      WHEN ap.first_name = 'Abdessamad' AND ap.last_name = 'Machi' THEN '114819-abdessamad-machi'
+      WHEN ap.first_name = 'David' AND ap.last_name = 'Mollenthiel' THEN '114819-david-mollenthiel'
+      WHEN ap.first_name = 'Phila' AND ap.last_name = 'Nxumalo' THEN '114819-phila-nxumalo'
+      WHEN ap.first_name = 'Johan' AND ap.last_name = 'Pineda' THEN '114819-johan-pineda'
+      WHEN ap.first_name = 'Patrick' AND ap.last_name = 'Pineda' THEN '114819-patrick-pineda'
+      WHEN ap.first_name = 'Andrew' AND ap.last_name = 'Ranieri' THEN '114819-andrew-ranieri'
+      WHEN ap.first_name = 'Anthony' AND ap.last_name = 'Ranieri' THEN '114819-anthony-ranieri'
+      WHEN ap.first_name = 'Steven' AND ap.last_name = 'Rivera' THEN '114819-steven-rivera'
+      WHEN ap.first_name = 'Maynor' AND ap.last_name = 'Robles' THEN '114819-maynor-robles'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Rodriguez' THEN '114819-michael-rodriguez'
+      WHEN ap.first_name = 'Walter' AND ap.last_name = 'Romero' THEN '114819-walter-romero'
+      WHEN ap.first_name = 'Edwin' AND ap.last_name = 'Rosano' THEN '114819-edwin-rosano'
+      WHEN ap.first_name = 'Bairon' AND ap.last_name = 'Tejada' THEN '114819-bairon-tejada'
+      WHEN ap.first_name = 'Diego Vega' AND ap.last_name = 'Toledo' THEN '114819-diego-vega-toledo'
+      WHEN ap.first_name = 'Oscar Eduardo Velasquez' AND ap.last_name = 'Centeno' THEN '114819-oscar-eduardo-velasquez-centeno'
+      WHEN ap.first_name = 'Anderson' AND ap.last_name = 'Velez' THEN '114819-anderson-velez'
+      WHEN ap.first_name = 'Tristan' AND ap.last_name = 'Vincent' THEN '114819-tristan-vincent'
+      WHEN ap.first_name = 'Tyler' AND ap.last_name = 'Wrenn' THEN '114819-tyler-wrenn'
+      WHEN ap.first_name = 'Javier' AND ap.last_name = 'Yanez' THEN '114819-javier-yanez'
+      WHEN ap.first_name = 'Hermanus' AND ap.last_name = 'Achterkamp' THEN '114831-hermanus-achterkamp'
+      WHEN ap.first_name = 'Christopher Diego' AND ap.last_name = 'Anderson' THEN '114831-christopher-diego-anderson'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Bedoya' THEN '114831-daniel-bedoya'
+      WHEN ap.first_name = 'Etienne' AND ap.last_name = 'Botty' THEN '114831-etienne-botty'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Burko' THEN '114831-daniel-burko'
+      WHEN ap.first_name = 'Stefano' AND ap.last_name = 'Campisi' THEN '114831-stefano-campisi'
+      WHEN ap.first_name = 'Francesco' AND ap.last_name = 'Caorsi' THEN '114831-francesco-caorsi'
+      WHEN ap.first_name = 'Roc Carles' AND ap.last_name = 'Puig' THEN '114831-roc-carles-puig'
+      WHEN ap.first_name = 'Myson' AND ap.last_name = 'Colo' THEN '114831-myson-colo'
+      WHEN ap.first_name = 'Rodrigo Descalzo' AND ap.last_name = 'Rocca' THEN '114831-rodrigo-descalzo-rocca'
+      WHEN ap.first_name = 'Miguel Mauricio Diaz' AND ap.last_name = 'Cubas' THEN '114831-miguel-mauricio-diaz-cubas'
+      WHEN ap.first_name = 'Timothy Joseph Gallagher-De' AND ap.last_name = 'Meij' THEN '114831-timothy-joseph-gallagher-de-meij'
+      WHEN ap.first_name = 'Miguel Soto' AND ap.last_name = 'Gonzalez' THEN '114831-miguel-soto-gonzalez'
+      WHEN ap.first_name = 'Pierce John' AND ap.last_name = 'Infuso' THEN '114831-pierce-john-infuso'
+      WHEN ap.first_name = 'Adam' AND ap.last_name = 'Marcu' THEN '114831-adam-marcu'
+      WHEN ap.first_name = 'Patrick' AND ap.last_name = 'McCann' THEN '114831-patrick-mccann'
+      WHEN ap.first_name = 'Paul' AND ap.last_name = 'McVeigh' THEN '114831-paul-mcveigh'
+      WHEN ap.first_name = 'James' AND ap.last_name = 'Nealis' THEN '114831-james-nealis'
+      WHEN ap.first_name = 'Jack' AND ap.last_name = 'O''Malley' THEN '114831-jack-o-malley'
+      WHEN ap.first_name = 'George' AND ap.last_name = 'O`Malley' THEN '114831-george-o-malley'
+      WHEN ap.first_name = 'Nicholas' AND ap.last_name = 'Oberrauch' THEN '114831-nicholas-oberrauch'
+      WHEN ap.first_name = 'Alberto' AND ap.last_name = 'Pangrazzi' THEN '114831-alberto-pangrazzi'
+      WHEN ap.first_name = 'Francesco' AND ap.last_name = 'Perinelli' THEN '114831-francesco-perinelli'
+      WHEN ap.first_name = 'Nicholas' AND ap.last_name = 'Petridis' THEN '114831-nicholas-petridis'
+      WHEN ap.first_name = 'Cormac' AND ap.last_name = 'Pike' THEN '114831-cormac-pike'
+      WHEN ap.first_name = 'Saeed' AND ap.last_name = 'Robinson' THEN '114831-saeed-robinson'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Sabal' THEN '114831-john-sabal'
+      WHEN ap.first_name = 'Brian Sousa' AND ap.last_name = 'Saramago' THEN '114831-brian-sousa-saramago'
+      WHEN ap.first_name = 'Joshua' AND ap.last_name = 'Schaffer' THEN '114831-joshua-schaffer'
+      WHEN ap.first_name = 'Barakatulla' AND ap.last_name = 'Sharifi' THEN '114831-barakatulla-sharifi'
+      WHEN ap.first_name = 'Yacine Sidi' AND ap.last_name = 'Aissa' THEN '114831-yacine-sidi-aissa'
+      WHEN ap.first_name = 'Gabriel Villanueva' AND ap.last_name = 'Pacheco' THEN '114831-gabriel-villanueva-pacheco'
+      WHEN ap.first_name = 'Leo Wei' AND ap.last_name = 'Pinto' THEN '114831-leo-wei-pinto'
+      WHEN ap.first_name = 'Joseph' AND ap.last_name = 'Wright' THEN '114831-joseph-wright'
+      WHEN ap.first_name = 'El Mahdi' AND ap.last_name = 'Youssoufi' THEN '114831-el-mahdi-youssoufi'
+      WHEN ap.first_name = 'Santiago' AND ap.last_name = 'Arroyave' THEN '114820-santiago-arroyave'
+      WHEN ap.first_name = 'Tristan' AND ap.last_name = 'Barquin' THEN '114820-tristan-barquin'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Bazan' THEN '114820-ethan-bazan'
+      WHEN ap.first_name = 'Steven' AND ap.last_name = 'Bednarsky' THEN '114820-steven-bednarsky'
+      WHEN ap.first_name = 'Isimohi Mike' AND ap.last_name = 'Bello' THEN '114820-isimohi-mike-bello'
+      WHEN ap.first_name = 'Kouadio' AND ap.last_name = 'Bolaty' THEN '114820-kouadio-bolaty'
+      WHEN ap.first_name = 'Andrew' AND ap.last_name = 'Bortey' THEN '114820-andrew-bortey'
+      WHEN ap.first_name = 'Kelvin' AND ap.last_name = 'Brito' THEN '114820-kelvin-brito'
+      WHEN ap.first_name = 'Dorgeles' AND ap.last_name = 'Coulibaly' THEN '114820-dorgeles-coulibaly'
+      WHEN ap.first_name = 'Tyler' AND ap.last_name = 'Diaz' THEN '114820-tyler-diaz'
+      WHEN ap.first_name = 'Samuel' AND ap.last_name = 'Epitime' THEN '114820-samuel-epitime'
+      WHEN ap.first_name = 'Adam' AND ap.last_name = 'Garner' THEN '114820-adam-garner'
+      WHEN ap.first_name = 'Matthew' AND ap.last_name = 'Gotrell' THEN '114820-matthew-gotrell'
+      WHEN ap.first_name = 'Ivan Enrique' AND ap.last_name = 'Hurtado' THEN '114820-ivan-enrique-hurtado'
+      WHEN ap.first_name = 'Stefan' AND ap.last_name = 'Koroman' THEN '114820-stefan-koroman'
+      WHEN ap.first_name = 'Joseph' AND ap.last_name = 'Kresse' THEN '114820-joseph-kresse'
+      WHEN ap.first_name = 'Keeroy' AND ap.last_name = 'Lionel' THEN '114820-keeroy-lionel'
+      WHEN ap.first_name = 'Yamil' AND ap.last_name = 'Macias' THEN '114820-yamil-macias'
+      WHEN ap.first_name = 'Cameron' AND ap.last_name = 'McGregor' THEN '114820-cameron-mcgregor'
+      WHEN ap.first_name = 'Coby' AND ap.last_name = 'Mcgregor' THEN '114820-coby-mcgregor'
+      WHEN ap.first_name = 'Joseph' AND ap.last_name = 'Moon' THEN '114820-joseph-moon'
+      WHEN ap.first_name = 'Israel' AND ap.last_name = 'Neto' THEN '114820-israel-neto'
+      WHEN ap.first_name = 'Abdoul' AND ap.last_name = 'Ouedraogo' THEN '114820-abdoul-ouedraogo'
+      WHEN ap.first_name = 'Brian' AND ap.last_name = 'Paredes' THEN '114820-brian-paredes'
+      WHEN ap.first_name = 'Jung' AND ap.last_name = 'Park' THEN '114820-jung-park'
+      WHEN ap.first_name = 'Ewan' AND ap.last_name = 'Sanchez' THEN '114820-ewan-sanchez'
+      WHEN ap.first_name = 'Kevin' AND ap.last_name = 'Santamaria' THEN '114820-kevin-santamaria'
+      WHEN ap.first_name = 'Rodrigo' AND ap.last_name = 'Santiago' THEN '114820-rodrigo-santiago'
+      WHEN ap.first_name = 'Miguel' AND ap.last_name = 'Sencion' THEN '114820-miguel-sencion'
+      WHEN ap.first_name = 'Toheeb' AND ap.last_name = 'Shodimu' THEN '114820-toheeb-shodimu'
+      WHEN ap.first_name = 'Luc' AND ap.last_name = 'Smith' THEN '114820-luc-smith'
+      WHEN ap.first_name = 'Ramchwy St' AND ap.last_name = 'Vil' THEN '114820-ramchwy-st-vil'
+      WHEN ap.first_name = 'Mohamed' AND ap.last_name = 'Tall' THEN '114820-mohamed-tall'
+      WHEN ap.first_name = 'Christian Villegas' AND ap.last_name = 'Libreros' THEN '114820-christian-villegas-libreros'
+      WHEN ap.first_name = 'Andrew' AND ap.last_name = 'Weiner' THEN '114820-andrew-weiner'
+      WHEN ap.first_name = 'Pablo Ablanedo' AND ap.last_name = 'Llaneza' THEN '114832-pablo-ablanedo-llaneza'
+      WHEN ap.first_name = 'Jordan' AND ap.last_name = 'Bailon' THEN '114832-jordan-bailon'
+      WHEN ap.first_name = 'Filip' AND ap.last_name = 'Basili' THEN '114832-filip-basili'
+      WHEN ap.first_name = 'Axel' AND ap.last_name = 'Berglund' THEN '114832-axel-berglund'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Bermudez' THEN '114832-christopher-bermudez'
+      WHEN ap.first_name = 'Victor' AND ap.last_name = 'Castel' THEN '114832-victor-castel'
+      WHEN ap.first_name = 'Rikard' AND ap.last_name = 'Cederberg' THEN '114832-rikard-cederberg'
+      WHEN ap.first_name = 'Nicolas Cifuentes' AND ap.last_name = 'DIaz' THEN '114832-nicolas-cifuentes-diaz'
+      WHEN ap.first_name = 'Sergio' AND ap.last_name = 'Diaz' THEN '114832-sergio-diaz'
+      WHEN ap.first_name = 'Eric' AND ap.last_name = 'Frimpong' THEN '114832-eric-frimpong'
+      WHEN ap.first_name = 'George' AND ap.last_name = 'Gantalis' THEN '114832-george-gantalis'
+      WHEN ap.first_name = 'Gonzalo Gil de' AND ap.last_name = 'Pareja' THEN '114832-gonzalo-gil-de-pareja'
+      WHEN ap.first_name = 'Ede Mateo' AND ap.last_name = 'Gramberg' THEN '114832-ede-mateo-gramberg'
+      WHEN ap.first_name = 'Thomas' AND ap.last_name = 'Gray' THEN '114832-thomas-gray'
+      WHEN ap.first_name = 'Antreas' AND ap.last_name = 'Hadjigavriel' THEN '114832-antreas-hadjigavriel'
+      WHEN ap.first_name = 'Harri' AND ap.last_name = 'Hawkins' THEN '114832-harri-hawkins'
+      WHEN ap.first_name = 'Devin' AND ap.last_name = 'Heanue' THEN '114832-devin-heanue'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Heckenberg' THEN '114832-christopher-heckenberg'
+      WHEN ap.first_name = 'Kevin' AND ap.last_name = 'Hernandez' THEN '114832-kevin-hernandez'
+      WHEN ap.first_name = 'Jens Mannhart' AND ap.last_name = 'Hoff' THEN '114832-jens-mannhart-hoff'
+      WHEN ap.first_name = 'Joseph' AND ap.last_name = 'Holland' THEN '114832-joseph-holland'
+      WHEN ap.first_name = 'Filip' AND ap.last_name = 'Jauk' THEN '114832-filip-jauk'
+      WHEN ap.first_name = 'Konstantinos' AND ap.last_name = 'Karousis' THEN '114832-konstantinos-karousis'
+      WHEN ap.first_name = 'Benny' AND ap.last_name = 'Lafortune' THEN '114832-benny-lafortune'
+      WHEN ap.first_name = 'Joshua' AND ap.last_name = 'Levine' THEN '114832-joshua-levine'
+      WHEN ap.first_name = 'Juan Martinez' AND ap.last_name = 'Moreno' THEN '114832-juan-martinez-moreno'
+      WHEN ap.first_name = 'Filip' AND ap.last_name = 'Mirkovic' THEN '114832-filip-mirkovic'
+      WHEN ap.first_name = 'Christoforos' AND ap.last_name = 'Moulinos' THEN '114832-christoforos-moulinos'
+      WHEN ap.first_name = 'Stephen O’' AND ap.last_name = 'Connell' THEN '114832-stephen-o-connell'
+      WHEN ap.first_name = 'Alex' AND ap.last_name = 'Palas' THEN '114832-alex-palas'
+      WHEN ap.first_name = 'Sebastian' AND ap.last_name = 'Ruiz' THEN '114832-sebastian-ruiz'
+      WHEN ap.first_name = 'Athanasis' AND ap.last_name = 'Shehadeh' THEN '114832-athanasis-shehadeh'
+      WHEN ap.first_name = 'James' AND ap.last_name = 'Thristino' THEN '114832-james-thristino'
+      WHEN ap.first_name = 'Sean' AND ap.last_name = 'Towey' THEN '114832-sean-towey'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Bernardi' THEN '114827-john-bernardi'
+      WHEN ap.first_name = 'James Peter' AND ap.last_name = 'Boote' THEN '114827-james-peter-boote'
+      WHEN ap.first_name = 'Aidan' AND ap.last_name = 'Borra' THEN '114827-aidan-borra'
+      WHEN ap.first_name = 'Marco' AND ap.last_name = 'Charnas' THEN '114827-marco-charnas'
+      WHEN ap.first_name = 'Constantine' AND ap.last_name = 'Christodoulou' THEN '114827-constantine-christodoulou'
+      WHEN ap.first_name = 'Stefan' AND ap.last_name = 'Copetti' THEN '114827-stefan-copetti'
+      WHEN ap.first_name = 'Carlos' AND ap.last_name = 'Cortes' THEN '114827-carlos-cortes'
+      WHEN ap.first_name = 'Musa Bala' AND ap.last_name = 'Danso' THEN '114827-musa-bala-danso'
+      WHEN ap.first_name = 'Ali' AND ap.last_name = 'Dawha' THEN '114827-ali-dawha'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Dimarco' THEN '114827-daniel-dimarco'
+      WHEN ap.first_name = 'Sean' AND ap.last_name = 'Doran' THEN '114827-sean-doran'
+      WHEN ap.first_name = 'Dino' AND ap.last_name = 'Feratovic' THEN '114827-dino-feratovic'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Furphy' THEN '114827-ethan-furphy'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Gallagher' THEN '114827-michael-gallagher'
+      WHEN ap.first_name = 'Kyle' AND ap.last_name = 'Galloway' THEN '114827-kyle-galloway'
+      WHEN ap.first_name = 'Henry' AND ap.last_name = 'Hamilton' THEN '114827-henry-hamilton'
+      WHEN ap.first_name = 'Cillian' AND ap.last_name = 'Heaney' THEN '114827-cillian-heaney'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Hewes' THEN '114827-michael-hewes'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Homler' THEN '114827-ethan-homler'
+      WHEN ap.first_name = 'Jared' AND ap.last_name = 'Juleau' THEN '114827-jared-juleau'
+      WHEN ap.first_name = 'Andy' AND ap.last_name = 'Kasza' THEN '114827-andy-kasza'
+      WHEN ap.first_name = 'Daryl' AND ap.last_name = 'Kavanagh' THEN '114827-daryl-kavanagh'
+      WHEN ap.first_name = 'Seamus' AND ap.last_name = 'Keogh' THEN '114827-seamus-keogh'
+      WHEN ap.first_name = 'Sean' AND ap.last_name = 'Kerrigan' THEN '114827-sean-kerrigan'
+      WHEN ap.first_name = 'Danu' AND ap.last_name = 'Kinsella-Bishop' THEN '114827-danu-kinsella-bishop'
+      WHEN ap.first_name = 'Nicolas Macri' AND ap.last_name = 'Badessich' THEN '114827-nicolas-macri-badessich'
+      WHEN ap.first_name = 'Luis Puchol Del' AND ap.last_name = 'Pozo' THEN '114827-luis-puchol-del-pozo'
+      WHEN ap.first_name = 'Sebastian' AND ap.last_name = 'Rojek' THEN '114827-sebastian-rojek'
+      WHEN ap.first_name = 'Liam' AND ap.last_name = 'Salmon' THEN '114827-liam-salmon'
+      WHEN ap.first_name = 'Harry' AND ap.last_name = 'Sankey' THEN '114827-harry-sankey'
+      WHEN ap.first_name = 'Edward' AND ap.last_name = 'Speed' THEN '114827-edward-speed'
+      WHEN ap.first_name = 'Benjamin' AND ap.last_name = 'Stitz' THEN '114827-benjamin-stitz'
+      WHEN ap.first_name = 'Liam' AND ap.last_name = 'Walsh' THEN '114827-liam-walsh'
+      WHEN ap.first_name = 'Oskar' AND ap.last_name = 'Zywiec' THEN '114827-oskar-zywiec'
+      WHEN ap.first_name = 'Adrian' AND ap.last_name = 'Aguilera' THEN '114813-adrian-aguilera'
+      WHEN ap.first_name = 'Julian' AND ap.last_name = 'Anderson' THEN '114813-julian-anderson'
+      WHEN ap.first_name = 'Balint' AND ap.last_name = 'Barabas' THEN '114813-balint-barabas'
+      WHEN ap.first_name = 'Vasilios' AND ap.last_name = 'Brisnovalis' THEN '114813-vasilios-brisnovalis'
+      WHEN ap.first_name = 'Robert' AND ap.last_name = 'Cabrera' THEN '114813-robert-cabrera'
+      WHEN ap.first_name = 'Murat Edgar' AND ap.last_name = 'Calkap' THEN '114813-murat-edgar-calkap'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Curmi' THEN '114813-daniel-curmi'
+      WHEN ap.first_name = 'Duga' AND ap.last_name = 'Dambelly' THEN '114813-duga-dambelly'
+      WHEN ap.first_name = 'Khaled' AND ap.last_name = 'Daoud' THEN '114813-khaled-daoud'
+      WHEN ap.first_name = 'Mohamed' AND ap.last_name = 'Diaw' THEN '114813-mohamed-diaw'
+      WHEN ap.first_name = 'Julio' AND ap.last_name = 'Espinal' THEN '114813-julio-espinal'
+      WHEN ap.first_name = 'Jeison Gonzalez' AND ap.last_name = 'Sanchez' THEN '114813-jeison-gonzalez-sanchez'
+      WHEN ap.first_name = 'James' AND ap.last_name = 'Greco' THEN '114813-james-greco'
+      WHEN ap.first_name = 'Grady' AND ap.last_name = 'Kozak' THEN '114813-grady-kozak'
+      WHEN ap.first_name = 'Antonio' AND ap.last_name = 'Linge' THEN '114813-antonio-linge'
+      WHEN ap.first_name = 'Tyrone' AND ap.last_name = 'Malango' THEN '114813-tyrone-malango'
+      WHEN ap.first_name = 'William' AND ap.last_name = 'Marment' THEN '114813-william-marment'
+      WHEN ap.first_name = 'Augustus Manuel' AND ap.last_name = 'Mcgiff' THEN '114813-augustus-manuel-mcgiff'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Morandi' THEN '114813-christopher-morandi'
+      WHEN ap.first_name = 'Richard' AND ap.last_name = 'Morel' THEN '114813-richard-morel'
+      WHEN ap.first_name = 'Peter' AND ap.last_name = 'Myrianthopoulos' THEN '114813-peter-myrianthopoulos'
+      WHEN ap.first_name = 'Stefen' AND ap.last_name = 'Nikolic' THEN '114813-stefen-nikolic'
+      WHEN ap.first_name = 'Martin' AND ap.last_name = 'Nikprelaj' THEN '114813-martin-nikprelaj'
+      WHEN ap.first_name = 'Sergio' AND ap.last_name = 'Peralta' THEN '114813-sergio-peralta'
+      WHEN ap.first_name = 'Marco' AND ap.last_name = 'Primavera' THEN '114813-marco-primavera'
+      WHEN ap.first_name = 'Paolo Cerruto' AND ap.last_name = 'Primavera' THEN '114813-paolo-cerruto-primavera'
+      WHEN ap.first_name = 'Chris' AND ap.last_name = 'Riordan' THEN '114813-chris-riordan'
+      WHEN ap.first_name = 'David' AND ap.last_name = 'Rodriguez' THEN '114813-david-rodriguez'
+      WHEN ap.first_name = 'Ronaldo Rodriguez' AND ap.last_name = 'Jurado' THEN '114813-ronaldo-rodriguez-jurado'
+      WHEN ap.first_name = 'Fredy' AND ap.last_name = 'Rosales' THEN '114813-fredy-rosales'
+      WHEN ap.first_name = 'Duvan' AND ap.last_name = 'Sanchez' THEN '114813-duvan-sanchez'
+      WHEN ap.first_name = 'Giuliano' AND ap.last_name = 'Santucci' THEN '114813-giuliano-santucci'
+      WHEN ap.first_name = 'Navruz' AND ap.last_name = 'Shukroev' THEN '114813-navruz-shukroev'
+      WHEN ap.first_name = 'Milorad' AND ap.last_name = 'Sobot' THEN '114813-milorad-sobot'
+      WHEN ap.first_name = 'Michalis' AND ap.last_name = 'Stylianou' THEN '114813-michalis-stylianou'
+      WHEN ap.first_name = 'Keirol' AND ap.last_name = 'Aaron' THEN '115315-keirol-aaron'
+      WHEN ap.first_name = 'Matthais' AND ap.last_name = 'Adamek' THEN '115315-matthais-adamek'
+      WHEN ap.first_name = 'Yohance' AND ap.last_name = 'Alexander' THEN '115315-yohance-alexander'
+      WHEN ap.first_name = 'Andrea' AND ap.last_name = 'Andreou' THEN '115315-andrea-andreou'
+      WHEN ap.first_name = 'Luis' AND ap.last_name = 'Argudo' THEN '115315-luis-argudo'
+      WHEN ap.first_name = 'Theodore' AND ap.last_name = 'Bernhard' THEN '115315-theodore-bernhard'
+      WHEN ap.first_name = 'Antonio' AND ap.last_name = 'Biggs' THEN '115315-antonio-biggs'
+      WHEN ap.first_name = 'Mason' AND ap.last_name = 'Chetti' THEN '115315-mason-chetti'
+      WHEN ap.first_name = 'Jarvis' AND ap.last_name = 'Cleal' THEN '115315-jarvis-cleal'
+      WHEN ap.first_name = 'Joel' AND ap.last_name = 'Cunningham' THEN '115315-joel-cunningham'
+      WHEN ap.first_name = 'Caleb' AND ap.last_name = 'Danquah' THEN '115315-caleb-danquah'
+      WHEN ap.first_name = 'Eric' AND ap.last_name = 'Danquah' THEN '115315-eric-danquah'
+      WHEN ap.first_name = 'Sameer' AND ap.last_name = 'Fathazada' THEN '115315-sameer-fathazada'
+      WHEN ap.first_name = 'Leo' AND ap.last_name = 'Folla' THEN '115315-leo-folla'
+      WHEN ap.first_name = 'Jakob' AND ap.last_name = 'Friedman' THEN '115315-jakob-friedman'
+      WHEN ap.first_name = 'Sebastian' AND ap.last_name = 'Goicochea' THEN '115315-sebastian-goicochea'
+      WHEN ap.first_name = 'Juan Antonio' AND ap.last_name = 'Gomez' THEN '115315-juan-antonio-gomez'
+      WHEN ap.first_name = 'Alessio' AND ap.last_name = 'Hernandez' THEN '115315-alessio-hernandez'
+      WHEN ap.first_name = 'Benjamin' AND ap.last_name = 'Jones' THEN '115315-benjamin-jones'
+      WHEN ap.first_name = 'Selcuk' AND ap.last_name = 'Kahveci' THEN '115315-selcuk-kahveci'
+      WHEN ap.first_name = 'Chad' AND ap.last_name = 'Mark' THEN '115315-chad-mark'
+      WHEN ap.first_name = 'Eoin' AND ap.last_name = 'Martin' THEN '115315-eoin-martin'
+      WHEN ap.first_name = 'Leonardo' AND ap.last_name = 'Martinelli' THEN '115315-leonardo-martinelli'
+      WHEN ap.first_name = 'Alexander' AND ap.last_name = 'McLachlan' THEN '115315-alexander-mclachlan'
+      WHEN ap.first_name = 'Giovanny' AND ap.last_name = 'Morales' THEN '115315-giovanny-morales'
+      WHEN ap.first_name = 'Bradley' AND ap.last_name = 'Nestor' THEN '115315-bradley-nestor'
+      WHEN ap.first_name = 'Godwin' AND ap.last_name = 'Partey' THEN '115315-godwin-partey'
+      WHEN ap.first_name = 'Junior' AND ap.last_name = 'Rosero' THEN '115315-junior-rosero'
+      WHEN ap.first_name = 'Karim' AND ap.last_name = 'Russell' THEN '115315-karim-russell'
+      WHEN ap.first_name = 'Sanoussi' AND ap.last_name = 'Sangary' THEN '115315-sanoussi-sangary'
+      WHEN ap.first_name = 'Shaquille' AND ap.last_name = 'Saunchez' THEN '115315-shaquille-saunchez'
+      WHEN ap.first_name = 'Kendell' AND ap.last_name = 'Thomas' THEN '115315-kendell-thomas'
+      WHEN ap.first_name = 'Dillon' AND ap.last_name = 'Woods' THEN '115315-dillon-woods'
+      WHEN ap.first_name = 'George' AND ap.last_name = 'Yusuff' THEN '115315-george-yusuff'
+      WHEN ap.first_name = 'Joshua' AND ap.last_name = 'Adejokun' THEN '115102-joshua-adejokun'
+      WHEN ap.first_name = 'Saad' AND ap.last_name = 'Afif' THEN '115102-saad-afif'
+      WHEN ap.first_name = 'Youssef' AND ap.last_name = 'Afif' THEN '115102-youssef-afif'
+      WHEN ap.first_name = 'Osama Al' AND ap.last_name = 'Sahybi' THEN '115102-osama-al-sahybi'
+      WHEN ap.first_name = 'Eric' AND ap.last_name = 'Anderson' THEN '115102-eric-anderson'
+      WHEN ap.first_name = 'Raphael' AND ap.last_name = 'Carvalho' THEN '115102-raphael-carvalho'
+      WHEN ap.first_name = 'Oscar' AND ap.last_name = 'Champigneulle' THEN '115102-oscar-champigneulle'
+      WHEN ap.first_name = 'Ryan' AND ap.last_name = 'Chuang' THEN '115102-ryan-chuang'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Dempsey' THEN '115102-michael-dempsey'
+      WHEN ap.first_name = 'Byran' AND ap.last_name = 'Dia' THEN '115102-byran-dia'
+      WHEN ap.first_name = 'Yohance' AND ap.last_name = 'Douglas' THEN '115102-yohance-douglas'
+      WHEN ap.first_name = 'Jeffrey' AND ap.last_name = 'Gad' THEN '115102-jeffrey-gad'
+      WHEN ap.first_name = 'Jahdea' AND ap.last_name = 'Gildin' THEN '115102-jahdea-gildin'
+      WHEN ap.first_name = 'Ross' AND ap.last_name = 'Holden' THEN '115102-ross-holden'
+      WHEN ap.first_name = 'Hugo' AND ap.last_name = 'Howard' THEN '115102-hugo-howard'
+      WHEN ap.first_name = 'Ikrom' AND ap.last_name = 'Husanov' THEN '115102-ikrom-husanov'
+      WHEN ap.first_name = 'Geireann' AND ap.last_name = 'Lindfield' THEN '115102-geireann-lindfield'
+      WHEN ap.first_name = 'Sean' AND ap.last_name = 'Molloy' THEN '115102-sean-molloy'
+      WHEN ap.first_name = 'Shamir' AND ap.last_name = 'Mullings' THEN '115102-shamir-mullings'
+      WHEN ap.first_name = 'Ridwan' AND ap.last_name = 'Olawin' THEN '115102-ridwan-olawin'
+      WHEN ap.first_name = 'Gary' AND ap.last_name = 'Philpott' THEN '115102-gary-philpott'
+      WHEN ap.first_name = 'Sean' AND ap.last_name = 'Reilly' THEN '115102-sean-reilly'
+      WHEN ap.first_name = 'Faissal' AND ap.last_name = 'Sanfo' THEN '115102-faissal-sanfo'
+      WHEN ap.first_name = 'Ensa' AND ap.last_name = 'Sanneh' THEN '115102-ensa-sanneh'
+      WHEN ap.first_name = 'Avinash' AND ap.last_name = 'Singh' THEN '115102-avinash-singh'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Stevens' THEN '115102-john-stevens'
+      WHEN ap.first_name = 'Alexandru' AND ap.last_name = 'Teodorescu' THEN '115102-alexandru-teodorescu'
+      WHEN ap.first_name = 'Maurice' AND ap.last_name = 'Vermeulen' THEN '115102-maurice-vermeulen'
+      WHEN ap.first_name = 'Hermes' AND ap.last_name = 'Ademovi' THEN '114841-hermes-ademovi'
+      WHEN ap.first_name = 'Mamadou' AND ap.last_name = 'Bah' THEN '114841-mamadou-bah'
+      WHEN ap.first_name = 'Bljedi' AND ap.last_name = 'Bardic' THEN '114841-bljedi-bardic'
+      WHEN ap.first_name = 'Giuseppe' AND ap.last_name = 'Barone' THEN '114841-giuseppe-barone'
+      WHEN ap.first_name = 'Salvatore' AND ap.last_name = 'Barone' THEN '114841-salvatore-barone'
+      WHEN ap.first_name = 'Kemal' AND ap.last_name = 'Brkanovic' THEN '114841-kemal-brkanovic'
+      WHEN ap.first_name = 'Cesare' AND ap.last_name = 'Cali' THEN '114841-cesare-cali'
+      WHEN ap.first_name = 'Keithlend' AND ap.last_name = 'Cesar' THEN '114841-keithlend-cesar'
+      WHEN ap.first_name = 'Kyaire' AND ap.last_name = 'Clarke' THEN '114841-kyaire-clarke'
+      WHEN ap.first_name = 'Luis' AND ap.last_name = 'Cueva' THEN '114841-luis-cueva'
+      WHEN ap.first_name = 'Bradley' AND ap.last_name = 'Espejo' THEN '114841-bradley-espejo'
+      WHEN ap.first_name = 'Roberto' AND ap.last_name = 'Gioffre' THEN '114841-roberto-gioffre'
+      WHEN ap.first_name = 'Pietro' AND ap.last_name = 'Giove' THEN '114841-pietro-giove'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Gjini' THEN '114841-christopher-gjini'
+      WHEN ap.first_name = 'Peter' AND ap.last_name = 'Gjini' THEN '114841-peter-gjini'
+      WHEN ap.first_name = 'Armando' AND ap.last_name = 'Guarnera' THEN '114841-armando-guarnera'
+      WHEN ap.first_name = 'James' AND ap.last_name = 'Haddad' THEN '114841-james-haddad'
+      WHEN ap.first_name = 'Yassin' AND ap.last_name = 'Hairane' THEN '114841-yassin-hairane'
+      WHEN ap.first_name = 'Amir' AND ap.last_name = 'Islami' THEN '114841-amir-islami'
+      WHEN ap.first_name = 'Timothy Francis' AND ap.last_name = 'Kane' THEN '114841-timothy-francis-kane'
+      WHEN ap.first_name = 'Brian' AND ap.last_name = 'Kerliu' THEN '114841-brian-kerliu'
+      WHEN ap.first_name = 'Peterson' AND ap.last_name = 'Larose' THEN '114841-peterson-larose'
+      WHEN ap.first_name = 'Dylan' AND ap.last_name = 'Meadows' THEN '114841-dylan-meadows'
+      WHEN ap.first_name = 'Gerald' AND ap.last_name = 'Mehja' THEN '114841-gerald-mehja'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Mollica' THEN '114841-michael-mollica'
+      WHEN ap.first_name = 'Anthony' AND ap.last_name = 'Oliveira' THEN '114841-anthony-oliveira'
+      WHEN ap.first_name = 'Cristiano' AND ap.last_name = 'Oliveira' THEN '114841-cristiano-oliveira'
+      WHEN ap.first_name = 'Andrea' AND ap.last_name = 'Ruggiero' THEN '114841-andrea-ruggiero'
+      WHEN ap.first_name = 'Leutrim' AND ap.last_name = 'Saiti' THEN '114841-leutrim-saiti'
+      WHEN ap.first_name = 'Valeriy' AND ap.last_name = 'Saramoutin' THEN '114841-valeriy-saramoutin'
+      WHEN ap.first_name = 'Mark' AND ap.last_name = 'Shnadshteyn' THEN '114841-mark-shnadshteyn'
+      WHEN ap.first_name = 'Demyan' AND ap.last_name = 'Turiy' THEN '114841-demyan-turiy'
+      WHEN ap.first_name = 'Dominik' AND ap.last_name = 'Urban' THEN '114841-dominik-urban'
+      WHEN ap.first_name = 'Bryant' AND ap.last_name = 'Vidals' THEN '114841-bryant-vidals'
+      WHEN ap.first_name = 'Dani' AND ap.last_name = 'Villa' THEN '114841-dani-villa'
+      WHEN ap.first_name = 'Richard' AND ap.last_name = 'Bastian' THEN '114852-richard-bastian'
+      WHEN ap.first_name = 'Tal' AND ap.last_name = 'Benhamou' THEN '114852-tal-benhamou'
+      WHEN ap.first_name = 'Nathan' AND ap.last_name = 'Bennett' THEN '114852-nathan-bennett'
+      WHEN ap.first_name = 'Jason' AND ap.last_name = 'Budhai' THEN '114852-jason-budhai'
+      WHEN ap.first_name = 'Dennis Coke' AND ap.last_name = 'Jr' THEN '114852-dennis-coke-jr'
+      WHEN ap.first_name = 'Sully' AND ap.last_name = 'Corneille' THEN '114852-sully-corneille'
+      WHEN ap.first_name = 'Dario Giovanni' AND ap.last_name = 'Cruz' THEN '114852-dario-giovanni-cruz'
+      WHEN ap.first_name = 'Juan' AND ap.last_name = 'Cruz' THEN '114852-juan-cruz'
+      WHEN ap.first_name = 'Tomas de Andrade' AND ap.last_name = 'Gomes' THEN '114852-tomas-de-andrade-gomes'
+      WHEN ap.first_name = 'Felix' AND ap.last_name = 'Dyckerhoff' THEN '114852-felix-dyckerhoff'
+      WHEN ap.first_name = 'Salim' AND ap.last_name = 'Dziri' THEN '114852-salim-dziri'
+      WHEN ap.first_name = 'Glenford' AND ap.last_name = 'Gentle' THEN '114852-glenford-gentle'
+      WHEN ap.first_name = 'Boris' AND ap.last_name = 'Grubic' THEN '114852-boris-grubic'
+      WHEN ap.first_name = 'Wisdom' AND ap.last_name = 'Hountondji' THEN '114852-wisdom-hountondji'
+      WHEN ap.first_name = 'Tom' AND ap.last_name = 'Hultsch' THEN '114852-tom-hultsch'
+      WHEN ap.first_name = 'Raphael' AND ap.last_name = 'John' THEN '114852-raphael-john'
+      WHEN ap.first_name = 'Ryo' AND ap.last_name = 'Koiso' THEN '114852-ryo-koiso'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Laret' THEN '114852-michael-laret'
+      WHEN ap.first_name = 'Jason' AND ap.last_name = 'Lee' THEN '114852-jason-lee'
+      WHEN ap.first_name = 'Cesare' AND ap.last_name = 'Marconi' THEN '114852-cesare-marconi'
+      WHEN ap.first_name = 'Denny' AND ap.last_name = 'Morinigo-Arce' THEN '114852-denny-morinigo-arce'
+      WHEN ap.first_name = 'Mateo' AND ap.last_name = 'Munoz' THEN '114852-mateo-munoz'
+      WHEN ap.first_name = 'Deniz' AND ap.last_name = 'Oncu' THEN '114852-deniz-oncu'
+      WHEN ap.first_name = 'Mubarak' AND ap.last_name = 'Ouro' THEN '114852-mubarak-ouro'
+      WHEN ap.first_name = 'Jean Carlo' AND ap.last_name = 'Perez' THEN '114852-jean-carlo-perez'
+      WHEN ap.first_name = 'Mario' AND ap.last_name = 'Ramirez' THEN '114852-mario-ramirez'
+      WHEN ap.first_name = 'Paul' AND ap.last_name = 'Restrepo' THEN '114852-paul-restrepo'
+      WHEN ap.first_name = 'Ely' AND ap.last_name = 'Schartz' THEN '114852-ely-schartz'
+      WHEN ap.first_name = 'Diego' AND ap.last_name = 'Silva' THEN '114852-diego-silva'
+      WHEN ap.first_name = 'Tyler' AND ap.last_name = 'Swaby' THEN '114852-tyler-swaby'
+      WHEN ap.first_name = 'Andrade' AND ap.last_name = 'Wright' THEN '114852-andrade-wright'
+      WHEN ap.first_name = 'Abdul Karim' AND ap.last_name = 'Bah' THEN '114811-abdul-karim-bah'
+      WHEN ap.first_name = 'Ibrahima' AND ap.last_name = 'Bah' THEN '114811-ibrahima-bah'
+      WHEN ap.first_name = 'Matthew' AND ap.last_name = 'Baringer' THEN '114811-matthew-baringer'
+      WHEN ap.first_name = 'Cesar' AND ap.last_name = 'Buitrago' THEN '114811-cesar-buitrago'
+      WHEN ap.first_name = 'Saul' AND ap.last_name = 'Cardozo' THEN '114811-saul-cardozo'
+      WHEN ap.first_name = 'Elhadj' AND ap.last_name = 'Diallo' THEN '114811-elhadj-diallo'
+      WHEN ap.first_name = 'Youssouf' AND ap.last_name = 'Diallo' THEN '114811-youssouf-diallo'
+      WHEN ap.first_name = 'Ighoghoe' AND ap.last_name = 'Erediauwa' THEN '114811-ighoghoe-erediauwa'
+      WHEN ap.first_name = 'Vincent' AND ap.last_name = 'Galia' THEN '114811-vincent-galia'
+      WHEN ap.first_name = 'Luis' AND ap.last_name = 'Granados' THEN '114811-luis-granados'
+      WHEN ap.first_name = 'Radouane' AND ap.last_name = 'Guissi' THEN '114811-radouane-guissi'
+      WHEN ap.first_name = 'Joseph' AND ap.last_name = 'Kalilwa' THEN '114811-joseph-kalilwa'
+      WHEN ap.first_name = 'Nicholas' AND ap.last_name = 'King' THEN '114811-nicholas-king'
+      WHEN ap.first_name = 'Jonathan' AND ap.last_name = 'Lima' THEN '114811-jonathan-lima'
+      WHEN ap.first_name = 'Anyolo' AND ap.last_name = 'Makatiani' THEN '114811-anyolo-makatiani'
+      WHEN ap.first_name = 'Matthew' AND ap.last_name = 'McDonnell' THEN '114811-matthew-mcdonnell'
+      WHEN ap.first_name = 'Mohamad' AND ap.last_name = 'Miri' THEN '114811-mohamad-miri'
+      WHEN ap.first_name = 'Eoghan' AND ap.last_name = 'Morgan' THEN '114811-eoghan-morgan'
+      WHEN ap.first_name = 'Ezekiel' AND ap.last_name = 'Omosanya' THEN '114811-ezekiel-omosanya'
+      WHEN ap.first_name = 'Maynor' AND ap.last_name = 'Palacios' THEN '114811-maynor-palacios'
+      WHEN ap.first_name = 'Justin' AND ap.last_name = 'Peters' THEN '114811-justin-peters'
+      WHEN ap.first_name = 'Alec' AND ap.last_name = 'Pineda' THEN '114811-alec-pineda'
+      WHEN ap.first_name = 'Alejandro' AND ap.last_name = 'Sanchez' THEN '114811-alejandro-sanchez'
+      WHEN ap.first_name = 'Jaidon' AND ap.last_name = 'Selden' THEN '114811-jaidon-selden'
+      WHEN ap.first_name = 'James' AND ap.last_name = 'Terpak' THEN '114811-james-terpak'
+      WHEN ap.first_name = 'Dominic' AND ap.last_name = 'Tomety' THEN '114811-dominic-tomety'
+      WHEN ap.first_name = 'Samuel' AND ap.last_name = 'Urban' THEN '114811-samuel-urban'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Valentine' THEN '114811-christopher-valentine'
+      WHEN ap.first_name = 'Marcial' AND ap.last_name = 'Viveros' THEN '114811-marcial-viveros'
+      WHEN ap.first_name = 'Timothy' AND ap.last_name = 'Williams' THEN '114811-timothy-williams'
+      WHEN ap.first_name = 'Johannes' AND ap.last_name = 'Alvarez' THEN '114842-johannes-alvarez'
+      WHEN ap.first_name = 'Jason' AND ap.last_name = 'Alves' THEN '114842-jason-alves'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Barnas' THEN '114842-christopher-barnas'
+      WHEN ap.first_name = 'Sebastian' AND ap.last_name = 'Capozucchi' THEN '114842-sebastian-capozucchi'
+      WHEN ap.first_name = 'Roberto' AND ap.last_name = 'Chernez' THEN '114842-roberto-chernez'
+      WHEN ap.first_name = 'Gabriel' AND ap.last_name = 'Costa' THEN '114842-gabriel-costa'
+      WHEN ap.first_name = 'Keijon' AND ap.last_name = 'Davis' THEN '114842-keijon-davis'
+      WHEN ap.first_name = 'Shaunavon' AND ap.last_name = 'DeSouza' THEN '114842-shaunavon-desouza'
+      WHEN ap.first_name = 'Gabriel' AND ap.last_name = 'DiPierro' THEN '114842-gabriel-dipierro'
+      WHEN ap.first_name = 'Emiland' AND ap.last_name = 'Elezaj' THEN '114842-emiland-elezaj'
+      WHEN ap.first_name = 'Andres' AND ap.last_name = 'Gonzalez-Rios' THEN '114842-andres-gonzalez-rios'
+      WHEN ap.first_name = 'Jonathan' AND ap.last_name = 'Gutierrez' THEN '114842-jonathan-gutierrez'
+      WHEN ap.first_name = 'Oscar' AND ap.last_name = 'Horwitz' THEN '114842-oscar-horwitz'
+      WHEN ap.first_name = 'Jashar' AND ap.last_name = 'Jashar' THEN '114842-jashar-jashar'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Karcz' THEN '114842-christopher-karcz'
+      WHEN ap.first_name = 'Wiktor' AND ap.last_name = 'Kiszkiel' THEN '114842-wiktor-kiszkiel'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Kondratowicz' THEN '114842-christopher-kondratowicz'
+      WHEN ap.first_name = 'Paul' AND ap.last_name = 'Kondratowicz' THEN '114842-paul-kondratowicz'
+      WHEN ap.first_name = 'Nicholas' AND ap.last_name = 'Kozdron' THEN '114842-nicholas-kozdron'
+      WHEN ap.first_name = 'Sebastian' AND ap.last_name = 'Lapczynski' THEN '114842-sebastian-lapczynski'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'McGeechan' THEN '114842-john-mcgeechan'
+      WHEN ap.first_name = 'Mark' AND ap.last_name = 'Mikanik' THEN '114842-mark-mikanik'
+      WHEN ap.first_name = 'Aldo' AND ap.last_name = 'Munoz' THEN '114842-aldo-munoz'
+      WHEN ap.first_name = 'Cyrus' AND ap.last_name = 'Nasseri' THEN '114842-cyrus-nasseri'
+      WHEN ap.first_name = 'Krystian' AND ap.last_name = 'Nitek' THEN '114842-krystian-nitek'
+      WHEN ap.first_name = 'Viktor' AND ap.last_name = 'Pervushkin' THEN '114842-viktor-pervushkin'
+      WHEN ap.first_name = 'Tyler' AND ap.last_name = 'Pinho' THEN '114842-tyler-pinho'
+      WHEN ap.first_name = 'Alvaro' AND ap.last_name = 'Rodriguez' THEN '114842-alvaro-rodriguez'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Sawicki' THEN '114842-daniel-sawicki'
+      WHEN ap.first_name = 'Gabriel' AND ap.last_name = 'Serafin' THEN '114842-gabriel-serafin'
+      WHEN ap.first_name = 'William' AND ap.last_name = 'Tomlinson' THEN '114842-william-tomlinson'
+      WHEN ap.first_name = 'Igor' AND ap.last_name = 'Trajceski' THEN '114842-igor-trajceski'
+      WHEN ap.first_name = 'Kevin' AND ap.last_name = 'Valdivia' THEN '114842-kevin-valdivia'
+      WHEN ap.first_name = 'Dominik' AND ap.last_name = 'Brulinski' THEN '114830-dominik-brulinski'
+      WHEN ap.first_name = 'Mathew' AND ap.last_name = 'Contino' THEN '114830-mathew-contino'
+      WHEN ap.first_name = 'Joseph' AND ap.last_name = 'Core' THEN '114830-joseph-core'
+      WHEN ap.first_name = 'Jacob' AND ap.last_name = 'Denison' THEN '114830-jacob-denison'
+      WHEN ap.first_name = 'Jack' AND ap.last_name = 'Doran' THEN '114830-jack-doran'
+      WHEN ap.first_name = 'Javiar' AND ap.last_name = 'Edwards' THEN '114830-javiar-edwards'
+      WHEN ap.first_name = 'Humbert' AND ap.last_name = 'Ferrer' THEN '114830-humbert-ferrer'
+      WHEN ap.first_name = 'Spencer' AND ap.last_name = 'Fleurant' THEN '114830-spencer-fleurant'
+      WHEN ap.first_name = 'Jason' AND ap.last_name = 'Gaylord' THEN '114830-jason-gaylord'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Giorgi' THEN '114830-daniel-giorgi'
+      WHEN ap.first_name = 'Kevin' AND ap.last_name = 'Harrington' THEN '114830-kevin-harrington'
+      WHEN ap.first_name = 'Stephanos' AND ap.last_name = 'Hondrakis' THEN '114830-stephanos-hondrakis'
+      WHEN ap.first_name = 'Cris' AND ap.last_name = 'Huacon' THEN '114830-cris-huacon'
+      WHEN ap.first_name = 'Samuka' AND ap.last_name = 'Kenneh' THEN '114830-samuka-kenneh'
+      WHEN ap.first_name = 'Evan' AND ap.last_name = 'Kim' THEN '114830-evan-kim'
+      WHEN ap.first_name = 'Brent' AND ap.last_name = 'McKeown' THEN '114830-brent-mckeown'
+      WHEN ap.first_name = 'Enrique Montana' AND ap.last_name = 'III' THEN '114830-enrique-montana-iii'
+      WHEN ap.first_name = 'Jack' AND ap.last_name = 'Mulhare' THEN '114830-jack-mulhare'
+      WHEN ap.first_name = 'Curtis' AND ap.last_name = 'Oberg' THEN '114830-curtis-oberg'
+      WHEN ap.first_name = 'Farouk' AND ap.last_name = 'Osman' THEN '114830-farouk-osman'
+      WHEN ap.first_name = 'Cole' AND ap.last_name = 'Parete' THEN '114830-cole-parete'
+      WHEN ap.first_name = 'William' AND ap.last_name = 'Pearce' THEN '114830-william-pearce'
+      WHEN ap.first_name = 'Akeem' AND ap.last_name = 'Phipps' THEN '114830-akeem-phipps'
+      WHEN ap.first_name = 'Layton' AND ap.last_name = 'Purchase' THEN '114830-layton-purchase'
+      WHEN ap.first_name = 'Nabeel' AND ap.last_name = 'Qawasmi' THEN '114830-nabeel-qawasmi'
+      WHEN ap.first_name = 'Yannick' AND ap.last_name = 'Rihs' THEN '114830-yannick-rihs'
+      WHEN ap.first_name = 'Antonio' AND ap.last_name = 'Rocha' THEN '114830-antonio-rocha'
+      WHEN ap.first_name = 'Jake' AND ap.last_name = 'Rozhansky' THEN '114830-jake-rozhansky'
+      WHEN ap.first_name = 'Yahli' AND ap.last_name = 'Saltsberg' THEN '114830-yahli-saltsberg'
+      WHEN ap.first_name = 'Frank' AND ap.last_name = 'Shkreli' THEN '114830-frank-shkreli'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Soboff' THEN '114830-michael-soboff'
+      WHEN ap.first_name = 'Tom' AND ap.last_name = 'Wallenstein' THEN '114830-tom-wallenstein'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Wampler' THEN '114830-michael-wampler'
+      WHEN ap.first_name = 'Peter' AND ap.last_name = 'Wentzel' THEN '114830-peter-wentzel'
+      WHEN ap.first_name = 'Edwin Zuniga' AND ap.last_name = 'Lopez' THEN '114830-edwin-zuniga-lopez'
+      WHEN ap.first_name = 'Brahim Hadj' AND ap.last_name = 'Abboud' THEN '114850-brahim-hadj-abboud'
+      WHEN ap.first_name = 'Tomas' AND ap.last_name = 'Ascoli' THEN '114850-tomas-ascoli'
+      WHEN ap.first_name = 'August' AND ap.last_name = 'Axtman' THEN '114850-august-axtman'
+      WHEN ap.first_name = 'Edwin' AND ap.last_name = 'Bedolla' THEN '114850-edwin-bedolla'
+      WHEN ap.first_name = 'Noah Sutton' AND ap.last_name = 'Beltran' THEN '114850-noah-sutton-beltran'
+      WHEN ap.first_name = 'Ammit' AND ap.last_name = 'Bhogal' THEN '114850-ammit-bhogal'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Bonas' THEN '114850-john-bonas'
+      WHEN ap.first_name = 'Marcus' AND ap.last_name = 'Brenes' THEN '114850-marcus-brenes'
+      WHEN ap.first_name = 'Carter' AND ap.last_name = 'Burris' THEN '114850-carter-burris'
+      WHEN ap.first_name = 'Colin Forster' AND ap.last_name = 'Davis' THEN '114850-colin-forster-davis'
+      WHEN ap.first_name = 'Alex' AND ap.last_name = 'Demars' THEN '114850-alex-demars'
+      WHEN ap.first_name = 'Oliver' AND ap.last_name = 'Garcia' THEN '114850-oliver-garcia'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Gonzalez' THEN '114850-michael-gonzalez'
+      WHEN ap.first_name = 'Emmanuel' AND ap.last_name = 'Hewitt' THEN '114850-emmanuel-hewitt'
+      WHEN ap.first_name = 'Luke' AND ap.last_name = 'Hill' THEN '114850-luke-hill'
+      WHEN ap.first_name = 'Jack' AND ap.last_name = 'Jasinski' THEN '114850-jack-jasinski'
+      WHEN ap.first_name = 'Dylan Leonid' AND ap.last_name = 'Lacy' THEN '114850-dylan-leonid-lacy'
+      WHEN ap.first_name = 'Joel' AND ap.last_name = 'Lopez' THEN '114850-joel-lopez'
+      WHEN ap.first_name = 'Dominick' AND ap.last_name = 'Martinez' THEN '114850-dominick-martinez'
+      WHEN ap.first_name = 'Brian' AND ap.last_name = 'McDaid' THEN '114850-brian-mcdaid'
+      WHEN ap.first_name = 'Luca' AND ap.last_name = 'Mellor' THEN '114850-luca-mellor'
+      WHEN ap.first_name = 'Mason' AND ap.last_name = 'Miller' THEN '114850-mason-miller'
+      WHEN ap.first_name = 'Ayoub' AND ap.last_name = 'Mouhou' THEN '114850-ayoub-mouhou'
+      WHEN ap.first_name = 'Riley' AND ap.last_name = 'Porter' THEN '114850-riley-porter'
+      WHEN ap.first_name = 'Luke' AND ap.last_name = 'Pressler' THEN '114850-luke-pressler'
+      WHEN ap.first_name = 'Ridge' AND ap.last_name = 'Robinson' THEN '114850-ridge-robinson'
+      WHEN ap.first_name = 'Miguel' AND ap.last_name = 'Ross' THEN '114850-miguel-ross'
+      WHEN ap.first_name = 'Maximos' AND ap.last_name = 'Sacarellos' THEN '114850-maximos-sacarellos'
+      WHEN ap.first_name = 'Justin' AND ap.last_name = 'Thomas' THEN '114850-justin-thomas'
+      WHEN ap.first_name = 'Luke' AND ap.last_name = 'Thomas' THEN '114850-luke-thomas'
+      WHEN ap.first_name = 'Sama' AND ap.last_name = 'Tima' THEN '114850-sama-tima'
+      WHEN ap.first_name = 'Kyle' AND ap.last_name = 'Tucker' THEN '114850-kyle-tucker'
+      WHEN ap.first_name = 'Nikhil Ashish' AND ap.last_name = 'Verma' THEN '114850-nikhil-ashish-verma'
+      WHEN ap.first_name = 'Jacob' AND ap.last_name = 'Weaver' THEN '114850-jacob-weaver'
+      WHEN ap.first_name = 'Charles' AND ap.last_name = 'Wilson' THEN '114850-charles-wilson'
+      WHEN ap.first_name = 'Matteo' AND ap.last_name = 'Adiletta' THEN '114808-matteo-adiletta'
+      WHEN ap.first_name = 'William' AND ap.last_name = 'Ardiles' THEN '114808-william-ardiles'
+      WHEN ap.first_name = 'Serge' AND ap.last_name = 'Biket' THEN '114808-serge-biket'
+      WHEN ap.first_name = 'Ryan' AND ap.last_name = 'Butler' THEN '114808-ryan-butler'
+      WHEN ap.first_name = 'Obiazie' AND ap.last_name = 'Chinatu' THEN '114808-obiazie-chinatu'
+      WHEN ap.first_name = 'Seth' AND ap.last_name = 'Crabbe' THEN '114808-seth-crabbe'
+      WHEN ap.first_name = 'Leo' AND ap.last_name = 'Dunia' THEN '114808-leo-dunia'
+      WHEN ap.first_name = 'Ivan' AND ap.last_name = 'Fombu' THEN '114808-ivan-fombu'
+      WHEN ap.first_name = 'Nikolaos' AND ap.last_name = 'Gousios' THEN '114808-nikolaos-gousios'
+      WHEN ap.first_name = 'Isaac' AND ap.last_name = 'Hollinger' THEN '114808-isaac-hollinger'
+      WHEN ap.first_name = 'Micah' AND ap.last_name = 'Hostetter' THEN '114808-micah-hostetter'
+      WHEN ap.first_name = 'Abdoul' AND ap.last_name = 'Issoufou' THEN '114808-abdoul-issoufou'
+      WHEN ap.first_name = 'Clovis' AND ap.last_name = 'Kabre' THEN '114808-clovis-kabre'
+      WHEN ap.first_name = 'Justin' AND ap.last_name = 'Keefer' THEN '114808-justin-keefer'
+      WHEN ap.first_name = 'Mehluko' AND ap.last_name = 'Letsoalo' THEN '114808-mehluko-letsoalo'
+      WHEN ap.first_name = 'Kel' AND ap.last_name = 'Merckel' THEN '114808-kel-merckel'
+      WHEN ap.first_name = 'Caden' AND ap.last_name = 'Mullen' THEN '114808-caden-mullen'
+      WHEN ap.first_name = 'Babunga' AND ap.last_name = 'Mulumeoderwa' THEN '114808-babunga-mulumeoderwa'
+      WHEN ap.first_name = 'Luke' AND ap.last_name = 'Nall' THEN '114808-luke-nall'
+      WHEN ap.first_name = 'Sivpheng' AND ap.last_name = 'Phann' THEN '114808-sivpheng-phann'
+      WHEN ap.first_name = 'Derek' AND ap.last_name = 'Ramirez' THEN '114808-derek-ramirez'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Ramirez' THEN '114808-ethan-ramirez'
+      WHEN ap.first_name = 'Josiah' AND ap.last_name = 'Ramirez' THEN '114808-josiah-ramirez'
+      WHEN ap.first_name = 'Chris' AND ap.last_name = 'Richards' THEN '114808-chris-richards'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Rowe' THEN '114808-daniel-rowe'
+      WHEN ap.first_name = 'Lazaro' AND ap.last_name = 'Salazar' THEN '114808-lazaro-salazar'
+      WHEN ap.first_name = 'David Tai' AND ap.last_name = 'San' THEN '114808-david-tai-san'
+      WHEN ap.first_name = 'Dawson' AND ap.last_name = 'Schreck' THEN '114808-dawson-schreck'
+      WHEN ap.first_name = 'Owen' AND ap.last_name = 'Shea' THEN '114808-owen-shea'
+      WHEN ap.first_name = 'Denis' AND ap.last_name = 'Tarasov' THEN '114808-denis-tarasov'
+      WHEN ap.first_name = 'Babo' AND ap.last_name = 'Tereffe' THEN '114808-babo-tereffe'
+      WHEN ap.first_name = 'William' AND ap.last_name = 'Vasquez' THEN '114808-william-vasquez'
+      WHEN ap.first_name = 'Joel' AND ap.last_name = 'Walker' THEN '114808-joel-walker'
+      WHEN ap.first_name = 'Christian' AND ap.last_name = 'Wieand' THEN '114808-christian-wieand'
+      WHEN ap.first_name = 'Kedric' AND ap.last_name = 'Yoder' THEN '114808-kedric-yoder'
+      WHEN ap.first_name = 'Osman' AND ap.last_name = 'Barrie' THEN '114833-osman-barrie'
+      WHEN ap.first_name = 'Paul' AND ap.last_name = 'Bechtelheimer' THEN '114833-paul-bechtelheimer'
+      WHEN ap.first_name = 'Nathan' AND ap.last_name = 'Biersbach' THEN '114833-nathan-biersbach'
+      WHEN ap.first_name = 'Brayden' AND ap.last_name = 'Birnstiel' THEN '114833-brayden-birnstiel'
+      WHEN ap.first_name = 'Ryan' AND ap.last_name = 'Cleary' THEN '114833-ryan-cleary'
+      WHEN ap.first_name = 'Theo Da' AND ap.last_name = 'Silva' THEN '114833-theo-da-silva'
+      WHEN ap.first_name = 'Kaelan' AND ap.last_name = 'Debbage' THEN '114833-kaelan-debbage'
+      WHEN ap.first_name = 'Blake' AND ap.last_name = 'Driehuis' THEN '114833-blake-driehuis'
+      WHEN ap.first_name = 'Gavin' AND ap.last_name = 'Faracchio' THEN '114833-gavin-faracchio'
+      WHEN ap.first_name = 'Vincent' AND ap.last_name = 'Guzzo' THEN '114833-vincent-guzzo'
+      WHEN ap.first_name = 'Maxwell Byrd' AND ap.last_name = 'Hawk' THEN '114833-maxwell-byrd-hawk'
+      WHEN ap.first_name = 'Austin' AND ap.last_name = 'Johnson' THEN '114833-austin-johnson'
+      WHEN ap.first_name = 'Sincere' AND ap.last_name = 'Kato' THEN '114833-sincere-kato'
+      WHEN ap.first_name = 'Muhammed Ali' AND ap.last_name = 'Kol' THEN '114833-muhammed-ali-kol'
+      WHEN ap.first_name = 'Berlenz' AND ap.last_name = 'Lumarque' THEN '114833-berlenz-lumarque'
+      WHEN ap.first_name = 'Jason' AND ap.last_name = 'Mancuso' THEN '114833-jason-mancuso'
+      WHEN ap.first_name = 'Jade' AND ap.last_name = 'Mesias' THEN '114833-jade-mesias'
+      WHEN ap.first_name = 'Tommy' AND ap.last_name = 'Monaghan' THEN '114833-tommy-monaghan'
+      WHEN ap.first_name = 'Jeff' AND ap.last_name = 'Morgan' THEN '114833-jeff-morgan'
+      WHEN ap.first_name = 'Jake' AND ap.last_name = 'Mulinge' THEN '114833-jake-mulinge'
+      WHEN ap.first_name = 'Joseph' AND ap.last_name = 'Nguyen' THEN '114833-joseph-nguyen'
+      WHEN ap.first_name = 'Carter Jack' AND ap.last_name = 'Norton' THEN '114833-carter-jack-norton'
+      WHEN ap.first_name = 'Matthew' AND ap.last_name = 'Perrella' THEN '114833-matthew-perrella'
+      WHEN ap.first_name = 'Dylan' AND ap.last_name = 'Pino' THEN '114833-dylan-pino'
+      WHEN ap.first_name = 'Samuel' AND ap.last_name = 'Quaye' THEN '114833-samuel-quaye'
+      WHEN ap.first_name = 'Julito' AND ap.last_name = 'Quintana' THEN '114833-julito-quintana'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Romito' THEN '114833-ethan-romito'
+      WHEN ap.first_name = 'Ahmed' AND ap.last_name = 'Saidi' THEN '114833-ahmed-saidi'
+      WHEN ap.first_name = 'Max' AND ap.last_name = 'Schrader' THEN '114833-max-schrader'
+      WHEN ap.first_name = 'Seth' AND ap.last_name = 'Sidle' THEN '114833-seth-sidle'
+      WHEN ap.first_name = 'Adam' AND ap.last_name = 'Sternberger' THEN '114833-adam-sternberger'
+      WHEN ap.first_name = 'Steven' AND ap.last_name = 'Thompson' THEN '114833-steven-thompson'
+      WHEN ap.first_name = 'Nico' AND ap.last_name = 'Tramontana' THEN '114833-nico-tramontana'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Troiano' THEN '114833-john-troiano'
+      WHEN ap.first_name = 'Djibi Tata' AND ap.last_name = 'Bah' THEN '114840-djibi-tata-bah'
+      WHEN ap.first_name = 'James' AND ap.last_name = 'Bernstein' THEN '114840-james-bernstein'
+      WHEN ap.first_name = 'Pierre' AND ap.last_name = 'Bosquet' THEN '114840-pierre-bosquet'
+      WHEN ap.first_name = 'Erik' AND ap.last_name = 'Carchipulla' THEN '114840-erik-carchipulla'
+      WHEN ap.first_name = 'Filippo' AND ap.last_name = 'D''Anna' THEN '114840-filippo-d-anna'
+      WHEN ap.first_name = 'Jonathan' AND ap.last_name = 'Firmino' THEN '114840-jonathan-firmino'
+      WHEN ap.first_name = 'Jose (Tony)' AND ap.last_name = 'Flores' THEN '114840-jose-tony-flores'
+      WHEN ap.first_name = 'Liam' AND ap.last_name = 'Fredericks' THEN '114840-liam-fredericks'
+      WHEN ap.first_name = 'Eric' AND ap.last_name = 'Goldberg' THEN '114840-eric-goldberg'
+      WHEN ap.first_name = 'Taeus' AND ap.last_name = 'Jones' THEN '114840-taeus-jones'
+      WHEN ap.first_name = 'Brendan' AND ap.last_name = 'Kerins' THEN '114840-brendan-kerins'
+      WHEN ap.first_name = 'Sean Ryan' AND ap.last_name = 'Milelli' THEN '114840-sean-ryan-milelli'
+      WHEN ap.first_name = 'Conlan Michael' AND ap.last_name = 'Paventi' THEN '114840-conlan-michael-paventi'
+      WHEN ap.first_name = 'Kevin' AND ap.last_name = 'Perez' THEN '114840-kevin-perez'
+      WHEN ap.first_name = 'Giovanni' AND ap.last_name = 'Pierleonardi' THEN '114840-giovanni-pierleonardi'
+      WHEN ap.first_name = 'Giuseppe' AND ap.last_name = 'Pierleonardi' THEN '114840-giuseppe-pierleonardi'
+      WHEN ap.first_name = 'Guiliano' AND ap.last_name = 'Pierleonardi' THEN '114840-guiliano-pierleonardi'
+      WHEN ap.first_name = 'Vincenzo' AND ap.last_name = 'Pugliese' THEN '114840-vincenzo-pugliese'
+      WHEN ap.first_name = 'Joel' AND ap.last_name = 'Quist' THEN '114840-joel-quist'
+      WHEN ap.first_name = 'Dennis' AND ap.last_name = 'Rooney' THEN '114840-dennis-rooney'
+      WHEN ap.first_name = 'Ilia' AND ap.last_name = 'Sakheishvili' THEN '114840-ilia-sakheishvili'
+      WHEN ap.first_name = 'Cole' AND ap.last_name = 'Sotack' THEN '114840-cole-sotack'
+      WHEN ap.first_name = 'Reed' AND ap.last_name = 'Sviben' THEN '114840-reed-sviben'
+      WHEN ap.first_name = 'Brandon D' AND ap.last_name = 'Valeri' THEN '114840-brandon-d-valeri'
+      WHEN ap.first_name = 'Ronald' AND ap.last_name = 'Ventura' THEN '114840-ronald-ventura'
+      WHEN ap.first_name = 'Eric' AND ap.last_name = 'Adamo' THEN '114835-eric-adamo'
+      WHEN ap.first_name = 'Salam' AND ap.last_name = 'Ashurmamadov' THEN '114835-salam-ashurmamadov'
+      WHEN ap.first_name = 'Matthew' AND ap.last_name = 'Bergmaier' THEN '114835-matthew-bergmaier'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Bloyou' THEN '114835-daniel-bloyou'
+      WHEN ap.first_name = 'Lawrence' AND ap.last_name = 'Buigbo' THEN '114835-lawrence-buigbo'
+      WHEN ap.first_name = 'Diego' AND ap.last_name = 'Cabrera' THEN '114835-diego-cabrera'
+      WHEN ap.first_name = 'Emanuel' AND ap.last_name = 'Caire' THEN '114835-emanuel-caire'
+      WHEN ap.first_name = 'Sebastian' AND ap.last_name = 'Carmona' THEN '114835-sebastian-carmona'
+      WHEN ap.first_name = 'Chad' AND ap.last_name = 'Catalana' THEN '114835-chad-catalana'
+      WHEN ap.first_name = 'Nyles' AND ap.last_name = 'Cayemitte' THEN '114835-nyles-cayemitte'
+      WHEN ap.first_name = 'Justin' AND ap.last_name = 'Cooper' THEN '114835-justin-cooper'
+      WHEN ap.first_name = 'Kevin' AND ap.last_name = 'Davis' THEN '114835-kevin-davis'
+      WHEN ap.first_name = 'Alvin' AND ap.last_name = 'Deegon' THEN '114835-alvin-deegon'
+      WHEN ap.first_name = 'Yousouf' AND ap.last_name = 'Doucoure' THEN '114835-yousouf-doucoure'
+      WHEN ap.first_name = 'Nick' AND ap.last_name = 'Dudek' THEN '114835-nick-dudek'
+      WHEN ap.first_name = 'Andres' AND ap.last_name = 'Freire' THEN '114835-andres-freire'
+      WHEN ap.first_name = 'Luka' AND ap.last_name = 'Gogidze' THEN '114835-luka-gogidze'
+      WHEN ap.first_name = 'Andres' AND ap.last_name = 'Gomez' THEN '114835-andres-gomez'
+      WHEN ap.first_name = 'Brendan' AND ap.last_name = 'Gorman' THEN '114835-brendan-gorman'
+      WHEN ap.first_name = 'Ermir' AND ap.last_name = 'Hoti' THEN '114835-ermir-hoti'
+      WHEN ap.first_name = 'Hamin' AND ap.last_name = 'Kim' THEN '114835-hamin-kim'
+      WHEN ap.first_name = 'Kalvin' AND ap.last_name = 'Matischak' THEN '114835-kalvin-matischak'
+      WHEN ap.first_name = 'Gabriel' AND ap.last_name = 'Matute' THEN '114835-gabriel-matute'
+      WHEN ap.first_name = 'Aidan' AND ap.last_name = 'Meissler' THEN '114835-aidan-meissler'
+      WHEN ap.first_name = 'Glenn' AND ap.last_name = 'Moyer' THEN '114835-glenn-moyer'
+      WHEN ap.first_name = 'Kyle' AND ap.last_name = 'Mtshazo' THEN '114835-kyle-mtshazo'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Murtagh' THEN '114835-daniel-murtagh'
+      WHEN ap.first_name = 'Justin' AND ap.last_name = 'Odoemene' THEN '114835-justin-odoemene'
+      WHEN ap.first_name = 'Ryan' AND ap.last_name = 'Pereus' THEN '114835-ryan-pereus'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Rodriguez' THEN '114835-christopher-rodriguez'
+      WHEN ap.first_name = 'Eran' AND ap.last_name = 'Shifris' THEN '114835-eran-shifris'
+      WHEN ap.first_name = 'Andres' AND ap.last_name = 'Velez' THEN '114835-andres-velez'
+      WHEN ap.first_name = 'Seth' AND ap.last_name = 'Walker' THEN '114835-seth-walker'
+      WHEN ap.first_name = 'John Steven' AND ap.last_name = 'Warren' THEN '114835-john-steven-warren'
+      WHEN ap.first_name = 'Mark' AND ap.last_name = 'Abbonizio' THEN '114836-mark-abbonizio'
+      WHEN ap.first_name = 'Sergio' AND ap.last_name = 'Abelardy' THEN '114836-sergio-abelardy'
+      WHEN ap.first_name = 'Harry' AND ap.last_name = 'Angelis' THEN '114836-harry-angelis'
+      WHEN ap.first_name = 'Pedro' AND ap.last_name = 'Barbosa' THEN '114836-pedro-barbosa'
+      WHEN ap.first_name = 'Hunter' AND ap.last_name = 'Bell' THEN '114836-hunter-bell'
+      WHEN ap.first_name = 'Brendan' AND ap.last_name = 'Callahan' THEN '114836-brendan-callahan'
+      WHEN ap.first_name = 'Mohamed' AND ap.last_name = 'Elgayar' THEN '114836-mohamed-elgayar'
+      WHEN ap.first_name = 'Salvatore' AND ap.last_name = 'Ficarotta' THEN '114836-salvatore-ficarotta'
+      WHEN ap.first_name = 'Henry' AND ap.last_name = 'Guzman' THEN '114836-henry-guzman'
+      WHEN ap.first_name = 'Theophilus' AND ap.last_name = 'Ijeboi' THEN '114836-theophilus-ijeboi'
+      WHEN ap.first_name = 'Mohamed' AND ap.last_name = 'Jawara' THEN '114836-mohamed-jawara'
+      WHEN ap.first_name = 'Sean' AND ap.last_name = 'Murray' THEN '114836-sean-murray'
+      WHEN ap.first_name = 'Laurence' AND ap.last_name = 'Narcisi' THEN '114836-laurence-narcisi'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Newell' THEN '114836-michael-newell'
+      WHEN ap.first_name = 'Kaleb' AND ap.last_name = 'Raymond' THEN '114836-kaleb-raymond'
+      WHEN ap.first_name = 'Joel' AND ap.last_name = 'Richmond' THEN '114836-joel-richmond'
+      WHEN ap.first_name = 'Benjamin' AND ap.last_name = 'Richter' THEN '114836-benjamin-richter'
+      WHEN ap.first_name = 'Joshua' AND ap.last_name = 'Rifkin' THEN '114836-joshua-rifkin'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Saint-Pol' THEN '114836-daniel-saint-pol'
+      WHEN ap.first_name = 'David' AND ap.last_name = 'Skiendzielewski' THEN '114836-david-skiendzielewski'
+      WHEN ap.first_name = 'Owen' AND ap.last_name = 'Stock' THEN '114836-owen-stock'
+      WHEN ap.first_name = 'Ryan' AND ap.last_name = 'Stock' THEN '114836-ryan-stock'
+      WHEN ap.first_name = 'Rasheed' AND ap.last_name = 'Thomas' THEN '114836-rasheed-thomas'
+      WHEN ap.first_name = 'Sean' AND ap.last_name = 'Touey' THEN '114836-sean-touey'
+      WHEN ap.first_name = 'Jesse' AND ap.last_name = 'Weick' THEN '114836-jesse-weick'
+      WHEN ap.first_name = 'Emani' AND ap.last_name = 'Arroyo' THEN '114847-emani-arroyo'
+      WHEN ap.first_name = 'Nolan' AND ap.last_name = 'Bair' THEN '114847-nolan-bair'
+      WHEN ap.first_name = 'Almuthenna Hseen' AND ap.last_name = 'Baled' THEN '114847-almuthenna-hseen-baled'
+      WHEN ap.first_name = 'Richard' AND ap.last_name = 'Blanchard' THEN '114847-richard-blanchard'
+      WHEN ap.first_name = 'Bakuri' AND ap.last_name = 'Buadze' THEN '114847-bakuri-buadze'
+      WHEN ap.first_name = 'Maximo' AND ap.last_name = 'Chavez' THEN '114847-maximo-chavez'
+      WHEN ap.first_name = 'Evan Chinwendu' AND ap.last_name = 'Azoro' THEN '114847-evan-chinwendu-azoro'
+      WHEN ap.first_name = 'Adan' AND ap.last_name = 'Crispin-Morales' THEN '114847-adan-crispin-morales'
+      WHEN ap.first_name = 'Jorge Luis Diaz' AND ap.last_name = 'Lobo' THEN '114847-jorge-luis-diaz-lobo'
+      WHEN ap.first_name = 'Spencer' AND ap.last_name = 'Dickinson' THEN '114847-spencer-dickinson'
+      WHEN ap.first_name = 'Isaiah' AND ap.last_name = 'Fox' THEN '114847-isaiah-fox'
+      WHEN ap.first_name = 'Goga' AND ap.last_name = 'Gogoladze' THEN '114847-goga-gogoladze'
+      WHEN ap.first_name = 'Stephen' AND ap.last_name = 'Grazioli' THEN '114847-stephen-grazioli'
+      WHEN ap.first_name = 'Mohamed' AND ap.last_name = 'Ibrahim' THEN '114847-mohamed-ibrahim'
+      WHEN ap.first_name = 'Matthew' AND ap.last_name = 'JeanPierre' THEN '114847-matthew-jeanpierre'
+      WHEN ap.first_name = 'Mohammadzain' AND ap.last_name = 'Kazi' THEN '114847-mohammadzain-kazi'
+      WHEN ap.first_name = 'Guilherme' AND ap.last_name = 'Martins' THEN '114847-guilherme-martins'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Miller' THEN '114847-john-miller'
+      WHEN ap.first_name = 'Edwin Owusu' AND ap.last_name = 'Siaw' THEN '114847-edwin-owusu-siaw'
+      WHEN ap.first_name = 'Juan' AND ap.last_name = 'Polanco' THEN '114847-juan-polanco'
+      WHEN ap.first_name = 'Angel Javier' AND ap.last_name = 'Rodriguez' THEN '114847-angel-javier-rodriguez'
+      WHEN ap.first_name = 'Ahmed' AND ap.last_name = 'Saedahmed' THEN '114847-ahmed-saedahmed'
+      WHEN ap.first_name = 'Edi' AND ap.last_name = 'Schwartz' THEN '114847-edi-schwartz'
+      WHEN ap.first_name = 'Maksym' AND ap.last_name = 'Shevchenko' THEN '114847-maksym-shevchenko'
+      WHEN ap.first_name = 'Alexander' AND ap.last_name = 'Simon' THEN '114847-alexander-simon'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Smith' THEN '114847-daniel-smith'
+      WHEN ap.first_name = 'Christian' AND ap.last_name = 'Sorteberg' THEN '114847-christian-sorteberg'
+      WHEN ap.first_name = 'Sekou' AND ap.last_name = 'Sylla' THEN '114847-sekou-sylla'
+      WHEN ap.first_name = 'Abraham' AND ap.last_name = 'Waldman' THEN '114847-abraham-waldman'
+      WHEN ap.first_name = 'Geovany' AND ap.last_name = 'Acevedo' THEN '124946-geovany-acevedo'
+      WHEN ap.first_name = 'Axel' AND ap.last_name = 'Bladimir' THEN '124946-axel-bladimir'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Carmody' THEN '124946-michael-carmody'
+      WHEN ap.first_name = 'Julien' AND ap.last_name = 'Carraha' THEN '124946-julien-carraha'
+      WHEN ap.first_name = 'Nicholas' AND ap.last_name = 'Cruz' THEN '124946-nicholas-cruz'
+      WHEN ap.first_name = 'Aba' AND ap.last_name = 'David' THEN '124946-aba-david'
+      WHEN ap.first_name = 'Jonah' AND ap.last_name = 'Dias' THEN '124946-jonah-dias'
+      WHEN ap.first_name = 'Mamadou' AND ap.last_name = 'Diouf' THEN '124946-mamadou-diouf'
+      WHEN ap.first_name = 'Oliver' AND ap.last_name = 'Dyson' THEN '124946-oliver-dyson'
+      WHEN ap.first_name = 'Allan' AND ap.last_name = 'Francisco' THEN '124946-allan-francisco'
+      WHEN ap.first_name = 'Randy' AND ap.last_name = 'Gonzalez' THEN '124946-randy-gonzalez'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Grund' THEN '124946-daniel-grund'
+      WHEN ap.first_name = 'Ryan' AND ap.last_name = 'Grund' THEN '124946-ryan-grund'
+      WHEN ap.first_name = 'Jeremy Hernandez' AND ap.last_name = 'Ortega' THEN '124946-jeremy-hernandez-ortega'
+      WHEN ap.first_name = 'Chidi' AND ap.last_name = 'Iloka' THEN '124946-chidi-iloka'
+      WHEN ap.first_name = 'Cesar' AND ap.last_name = 'Jarmillo' THEN '124946-cesar-jarmillo'
+      WHEN ap.first_name = 'Tomtom' AND ap.last_name = 'Johnson' THEN '124946-tomtom-johnson'
+      WHEN ap.first_name = 'Davenson' AND ap.last_name = 'Joinvilmar' THEN '124946-davenson-joinvilmar'
+      WHEN ap.first_name = 'Dylan' AND ap.last_name = 'Kotch' THEN '124946-dylan-kotch'
+      WHEN ap.first_name = 'adan' AND ap.last_name = 'lopez' THEN '124946-adan-lopez'
+      WHEN ap.first_name = 'Liam' AND ap.last_name = 'MacDonald' THEN '124946-liam-macdonald'
+      WHEN ap.first_name = 'Mario' AND ap.last_name = 'Martell' THEN '124946-mario-martell'
+      WHEN ap.first_name = 'Arnaldo' AND ap.last_name = 'Mendoza' THEN '124946-arnaldo-mendoza'
+      WHEN ap.first_name = 'Dani' AND ap.last_name = 'Morales' THEN '124946-dani-morales'
+      WHEN ap.first_name = 'jonathan' AND ap.last_name = 'olaleye' THEN '124946-jonathan-olaleye'
+      WHEN ap.first_name = 'Lucknerson' AND ap.last_name = 'Pierre' THEN '124946-lucknerson-pierre'
+      WHEN ap.first_name = 'Kyle' AND ap.last_name = 'Pilliteri' THEN '124946-kyle-pilliteri'
+      WHEN ap.first_name = 'Alex' AND ap.last_name = 'Quezada' THEN '124946-alex-quezada'
+      WHEN ap.first_name = 'Wesley' AND ap.last_name = 'Reyes' THEN '124946-wesley-reyes'
+      WHEN ap.first_name = 'Nick' AND ap.last_name = 'Sample' THEN '124946-nick-sample'
+      WHEN ap.first_name = 'Melvin' AND ap.last_name = 'Sapon' THEN '124946-melvin-sapon'
+      WHEN ap.first_name = 'Chefetson' AND ap.last_name = 'Simeus' THEN '124946-chefetson-simeus'
+      WHEN ap.first_name = 'Emerson' AND ap.last_name = 'Vicente' THEN '124946-emerson-vicente'
+      WHEN ap.first_name = 'Mate' AND ap.last_name = 'Vilagosi' THEN '124946-mate-vilagosi'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Warwick' THEN '124946-john-warwick'
+      WHEN ap.first_name = 'Musa' AND ap.last_name = 'Abdelgadir' THEN '116079-musa-abdelgadir'
+      WHEN ap.first_name = 'Amar' AND ap.last_name = 'Abdelrazek' THEN '116079-amar-abdelrazek'
+      WHEN ap.first_name = 'Abdelrahman' AND ap.last_name = 'Ali' THEN '116079-abdelrahman-ali'
+      WHEN ap.first_name = 'Ahmed' AND ap.last_name = 'Ali' THEN '116079-ahmed-ali'
+      WHEN ap.first_name = 'Erwa' AND ap.last_name = 'Babiker' THEN '116079-erwa-babiker'
+      WHEN ap.first_name = 'Arsene' AND ap.last_name = 'Bado' THEN '116079-arsene-bado'
+      WHEN ap.first_name = 'Logan' AND ap.last_name = 'Bersani' THEN '116079-logan-bersani'
+      WHEN ap.first_name = 'Mohamed' AND ap.last_name = 'Bility' THEN '116079-mohamed-bility'
+      WHEN ap.first_name = 'Hamzah' AND ap.last_name = 'Dabbour' THEN '116079-hamzah-dabbour'
+      WHEN ap.first_name = 'Terrence' AND ap.last_name = 'Doe' THEN '116079-terrence-doe'
+      WHEN ap.first_name = 'Musa' AND ap.last_name = 'Donza' THEN '116079-musa-donza'
+      WHEN ap.first_name = 'Alexander' AND ap.last_name = 'Duopu' THEN '116079-alexander-duopu'
+      WHEN ap.first_name = 'Luis' AND ap.last_name = 'Espejo' THEN '116079-luis-espejo'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Fletcher' THEN '116079-christopher-fletcher'
+      WHEN ap.first_name = 'Mujtaba' AND ap.last_name = 'Galas' THEN '116079-mujtaba-galas'
+      WHEN ap.first_name = 'Mustafa' AND ap.last_name = 'Galas' THEN '116079-mustafa-galas'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Gonzalez' THEN '116079-john-gonzalez'
+      WHEN ap.first_name = 'Ahmed' AND ap.last_name = 'Gosie' THEN '116079-ahmed-gosie'
+      WHEN ap.first_name = 'Maccarrey' AND ap.last_name = 'Guillaume' THEN '116079-maccarrey-guillaume'
+      WHEN ap.first_name = 'Otmane' AND ap.last_name = 'Houasli' THEN '116079-otmane-houasli'
+      WHEN ap.first_name = 'Esnayder' AND ap.last_name = 'Josue' THEN '116079-esnayder-josue'
+      WHEN ap.first_name = 'Abdoulaye' AND ap.last_name = 'Kamagate' THEN '116079-abdoulaye-kamagate'
+      WHEN ap.first_name = 'Amadou' AND ap.last_name = 'Kamagate' THEN '116079-amadou-kamagate'
+      WHEN ap.first_name = 'Majid' AND ap.last_name = 'Kawa' THEN '116079-majid-kawa'
+      WHEN ap.first_name = 'Mohamed' AND ap.last_name = 'Khalafalla' THEN '116079-mohamed-khalafalla'
+      WHEN ap.first_name = 'Kouassi' AND ap.last_name = 'Nguessan' THEN '116079-kouassi-nguessan'
+      WHEN ap.first_name = 'Benell' AND ap.last_name = 'Saygarn' THEN '116079-benell-saygarn'
+      WHEN ap.first_name = 'Oumar' AND ap.last_name = 'Sylla' THEN '116079-oumar-sylla'
+      WHEN ap.first_name = 'Justin' AND ap.last_name = 'Alves' THEN '114822-justin-alves'
+      WHEN ap.first_name = 'Rob' AND ap.last_name = 'Andrade' THEN '114822-rob-andrade'
+      WHEN ap.first_name = 'Tyler' AND ap.last_name = 'Andreas' THEN '114822-tyler-andreas'
+      WHEN ap.first_name = 'William' AND ap.last_name = 'Bartels' THEN '114822-william-bartels'
+      WHEN ap.first_name = 'Harmony' AND ap.last_name = 'Bell-Gam' THEN '114822-harmony-bell-gam'
+      WHEN ap.first_name = 'Dane' AND ap.last_name = 'Calhoun' THEN '114822-dane-calhoun'
+      WHEN ap.first_name = 'Adrian' AND ap.last_name = 'Dilascio' THEN '114822-adrian-dilascio'
+      WHEN ap.first_name = 'Grady' AND ap.last_name = 'Edwards' THEN '114822-grady-edwards'
+      WHEN ap.first_name = 'Matt' AND ap.last_name = 'Fuentes' THEN '114822-matt-fuentes'
+      WHEN ap.first_name = 'Douglas' AND ap.last_name = 'Jensen' THEN '114822-douglas-jensen'
+      WHEN ap.first_name = 'Dylan' AND ap.last_name = 'Kanson' THEN '114822-dylan-kanson'
+      WHEN ap.first_name = 'Marcus' AND ap.last_name = 'Mason' THEN '114822-marcus-mason'
+      WHEN ap.first_name = 'Carter' AND ap.last_name = 'Mathis' THEN '114822-carter-mathis'
+      WHEN ap.first_name = 'Alex' AND ap.last_name = 'Matos' THEN '114822-alex-matos'
+      WHEN ap.first_name = 'Rafael' AND ap.last_name = 'Pereira' THEN '114822-rafael-pereira'
+      WHEN ap.first_name = 'Anthony' AND ap.last_name = 'Ryan' THEN '114822-anthony-ryan'
+      WHEN ap.first_name = 'Bryan' AND ap.last_name = 'Sanchez' THEN '114822-bryan-sanchez'
+      WHEN ap.first_name = 'Dante' AND ap.last_name = 'Shenkin' THEN '114822-dante-shenkin'
+      WHEN ap.first_name = 'Gianni' AND ap.last_name = 'Smith' THEN '114822-gianni-smith'
+      WHEN ap.first_name = 'Kieran' AND ap.last_name = 'Sundermann' THEN '114822-kieran-sundermann'
+      WHEN ap.first_name = 'Albert' AND ap.last_name = 'Truszkowski' THEN '114822-albert-truszkowski'
+      WHEN ap.first_name = 'Uche' AND ap.last_name = 'Wokocha' THEN '114822-uche-wokocha'
+      WHEN ap.first_name = 'Clay' AND ap.last_name = 'Yannazzone' THEN '114822-clay-yannazzone'
+      WHEN ap.first_name = 'Alex' AND ap.last_name = 'Zargo' THEN '114822-alex-zargo'
+      WHEN ap.first_name = 'Dylan Frank' AND ap.last_name = 'Aportela' THEN '116136-dylan-frank-aportela'
+      WHEN ap.first_name = 'Monsif' AND ap.last_name = 'Atify' THEN '116136-monsif-atify'
+      WHEN ap.first_name = 'Shane' AND ap.last_name = 'Baker' THEN '116136-shane-baker'
+      WHEN ap.first_name = 'Mava Mboko' AND ap.last_name = 'Celestin' THEN '116136-mava-mboko-celestin'
+      WHEN ap.first_name = 'Gunnar William' AND ap.last_name = 'Christensen' THEN '116136-gunnar-william-christensen'
+      WHEN ap.first_name = 'Bailey' AND ap.last_name = 'Cifone' THEN '116136-bailey-cifone'
+      WHEN ap.first_name = 'Emmett' AND ap.last_name = 'Dougherty' THEN '116136-emmett-dougherty'
+      WHEN ap.first_name = 'Sean' AND ap.last_name = 'Fatiga' THEN '116136-sean-fatiga'
+      WHEN ap.first_name = 'Gil' AND ap.last_name = 'Ferreira' THEN '116136-gil-ferreira'
+      WHEN ap.first_name = 'Greg' AND ap.last_name = 'Ferreira' THEN '116136-greg-ferreira'
+      WHEN ap.first_name = 'Ryan' AND ap.last_name = 'Gale' THEN '116136-ryan-gale'
+      WHEN ap.first_name = 'Elvis' AND ap.last_name = 'Gboho' THEN '116136-elvis-gboho'
+      WHEN ap.first_name = 'McCarthy Tyler' AND ap.last_name = 'Gomes' THEN '116136-mccarthy-tyler-gomes'
+      WHEN ap.first_name = 'Jeshohaih' AND ap.last_name = 'Hernandez' THEN '116136-jeshohaih-hernandez'
+      WHEN ap.first_name = 'Ahmir Lamar' AND ap.last_name = 'Johnson' THEN '116136-ahmir-lamar-johnson'
+      WHEN ap.first_name = 'Ahsan' AND ap.last_name = 'Johnson' THEN '116136-ahsan-johnson'
+      WHEN ap.first_name = 'Bugra' AND ap.last_name = 'Kumas' THEN '116136-bugra-kumas'
+      WHEN ap.first_name = 'Jake' AND ap.last_name = 'Kuzmick' THEN '116136-jake-kuzmick'
+      WHEN ap.first_name = 'Dominic Antonio' AND ap.last_name = 'lodise' THEN '116136-dominic-antonio-lodise'
+      WHEN ap.first_name = 'Gavin' AND ap.last_name = 'O''Neill' THEN '116136-gavin-o-neill'
+      WHEN ap.first_name = 'Krish' AND ap.last_name = 'Olmedo' THEN '116136-krish-olmedo'
+      WHEN ap.first_name = 'Alexander Charles' AND ap.last_name = 'Patton' THEN '116136-alexander-charles-patton'
+      WHEN ap.first_name = 'Noam' AND ap.last_name = 'Raz' THEN '116136-noam-raz'
+      WHEN ap.first_name = 'Mason James' AND ap.last_name = 'Regan' THEN '116136-mason-james-regan'
+      WHEN ap.first_name = 'Fred' AND ap.last_name = 'Renzulli' THEN '116136-fred-renzulli'
+      WHEN ap.first_name = 'Joseph' AND ap.last_name = 'Romano' THEN '116136-joseph-romano'
+      WHEN ap.first_name = 'Joshua' AND ap.last_name = 'Rossell' THEN '116136-joshua-rossell'
+      WHEN ap.first_name = 'Brian' AND ap.last_name = 'Sharkey' THEN '116136-brian-sharkey'
+      WHEN ap.first_name = 'Christopher John' AND ap.last_name = 'Spicer' THEN '116136-christopher-john-spicer'
+      WHEN ap.first_name = 'Kyle William' AND ap.last_name = 'Stone' THEN '116136-kyle-william-stone'
+      WHEN ap.first_name = 'Owen' AND ap.last_name = 'Strohm' THEN '116136-owen-strohm'
+      WHEN ap.first_name = 'Jackson M' AND ap.last_name = 'Stuetz' THEN '116136-jackson-m-stuetz'
+      WHEN ap.first_name = 'Melcohol' AND ap.last_name = 'Velasquez' THEN '116136-melcohol-velasquez'
+      WHEN ap.first_name = 'Christian' AND ap.last_name = 'Vetter' THEN '116136-christian-vetter'
+      WHEN ap.first_name = 'Anthony Alexis' AND ap.last_name = 'Ali' THEN '115227-anthony-alexis-ali'
+      WHEN ap.first_name = 'Dylan' AND ap.last_name = 'Bednarek' THEN '115227-dylan-bednarek'
+      WHEN ap.first_name = 'Garrett' AND ap.last_name = 'Blankinship' THEN '115227-garrett-blankinship'
+      WHEN ap.first_name = 'Matthew David' AND ap.last_name = 'Dottavi' THEN '115227-matthew-david-dottavi'
+      WHEN ap.first_name = 'Mohamed Kasongo' AND ap.last_name = 'Doukoure' THEN '115227-mohamed-kasongo-doukoure'
+      WHEN ap.first_name = 'Noel' AND ap.last_name = 'Fernadez' THEN '115227-noel-fernadez'
+      WHEN ap.first_name = 'Patrick James' AND ap.last_name = 'Fluharty' THEN '115227-patrick-james-fluharty'
+      WHEN ap.first_name = 'Astin Timothy' AND ap.last_name = 'Galanis' THEN '115227-astin-timothy-galanis'
+      WHEN ap.first_name = 'Anthony Frank' AND ap.last_name = 'Giafaglione' THEN '115227-anthony-frank-giafaglione'
+      WHEN ap.first_name = 'Amir' AND ap.last_name = 'Khan' THEN '115227-amir-khan'
+      WHEN ap.first_name = 'Anthony' AND ap.last_name = 'Konah' THEN '115227-anthony-konah'
+      WHEN ap.first_name = 'Brian' AND ap.last_name = 'Lorenz' THEN '115227-brian-lorenz'
+      WHEN ap.first_name = 'Yoni Andre' AND ap.last_name = 'Moussodou' THEN '115227-yoni-andre-moussodou'
+      WHEN ap.first_name = 'Oguzhan' AND ap.last_name = 'Mutaf' THEN '115227-oguzhan-mutaf'
+      WHEN ap.first_name = 'Rami Mahmoud' AND ap.last_name = 'Nasr' THEN '115227-rami-mahmoud-nasr'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Negrete' THEN '115227-michael-negrete'
+      WHEN ap.first_name = 'Juan' AND ap.last_name = 'Oliveira' THEN '115227-juan-oliveira'
+      WHEN ap.first_name = 'Edwin' AND ap.last_name = 'Perez' THEN '115227-edwin-perez'
+      WHEN ap.first_name = 'Antonio' AND ap.last_name = 'Ramos' THEN '115227-antonio-ramos'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Rosado' THEN '115227-ethan-rosado'
+      WHEN ap.first_name = 'Todd Richard' AND ap.last_name = 'Salmon' THEN '115227-todd-richard-salmon'
+      WHEN ap.first_name = 'Aiden Francis' AND ap.last_name = 'Schmitt' THEN '115227-aiden-francis-schmitt'
+      WHEN ap.first_name = 'Liam' AND ap.last_name = 'Smith' THEN '115227-liam-smith'
+      WHEN ap.first_name = 'Jovanny' AND ap.last_name = 'Trinidad-Romero' THEN '115227-jovanny-trinidad-romero'
+      WHEN ap.first_name = 'Isaiah Roman' AND ap.last_name = 'Woods-Kolsky' THEN '115227-isaiah-roman-woods-kolsky'
+      WHEN ap.first_name = 'Chenyu' AND ap.last_name = 'Yi' THEN '115227-chenyu-yi'
+      WHEN ap.first_name = 'Samuel Tony' AND ap.last_name = 'Zonoe' THEN '115227-samuel-tony-zonoe'
+      WHEN ap.first_name = 'Skylar' AND ap.last_name = 'Zugay' THEN '115227-skylar-zugay'
+      WHEN ap.first_name = 'Soheyl Ali' AND ap.last_name = 'Rafi' THEN '114829-soheyl-ali-rafi'
+      WHEN ap.first_name = 'Jonathan' AND ap.last_name = 'Arguta' THEN '114829-jonathan-arguta'
+      WHEN ap.first_name = 'Jean' AND ap.last_name = 'Ayolmbong' THEN '114829-jean-ayolmbong'
+      WHEN ap.first_name = 'Eric' AND ap.last_name = 'Calvillo' THEN '114829-eric-calvillo'
+      WHEN ap.first_name = 'Jhonny De' AND ap.last_name = 'Souza' THEN '114829-jhonny-de-souza'
+      WHEN ap.first_name = 'Valdir De' AND ap.last_name = 'Souza' THEN '114829-valdir-de-souza'
+      WHEN ap.first_name = 'Isiah' AND ap.last_name = 'Dorsey' THEN '114829-isiah-dorsey'
+      WHEN ap.first_name = 'Ricardo' AND ap.last_name = 'Espinoza' THEN '114829-ricardo-espinoza'
+      WHEN ap.first_name = 'Jerry' AND ap.last_name = 'Felix' THEN '114829-jerry-felix'
+      WHEN ap.first_name = 'Caleb' AND ap.last_name = 'Ghannam' THEN '114829-caleb-ghannam'
+      WHEN ap.first_name = 'Jose' AND ap.last_name = 'Gonzlaez' THEN '114829-jose-gonzlaez'
+      WHEN ap.first_name = 'Adsam' AND ap.last_name = 'Guennouni' THEN '114829-adsam-guennouni'
+      WHEN ap.first_name = 'Jackson' AND ap.last_name = 'Hall' THEN '114829-jackson-hall'
+      WHEN ap.first_name = 'Emmitt' AND ap.last_name = 'Inestroza' THEN '114829-emmitt-inestroza'
+      WHEN ap.first_name = 'Abdul-Azim' AND ap.last_name = 'Ismail' THEN '114829-abdul-azim-ismail'
+      WHEN ap.first_name = 'Abdul-Rahman' AND ap.last_name = 'Ismail' THEN '114829-abdul-rahman-ismail'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Lee' THEN '114829-ethan-lee'
+      WHEN ap.first_name = 'Huber' AND ap.last_name = 'Letona' THEN '114829-huber-letona'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Lloyd' THEN '114829-ethan-lloyd'
+      WHEN ap.first_name = 'Bernardo' AND ap.last_name = 'Majano' THEN '114829-bernardo-majano'
+      WHEN ap.first_name = 'Reda' AND ap.last_name = 'Manafi' THEN '114829-reda-manafi'
+      WHEN ap.first_name = 'Jack' AND ap.last_name = 'Pinson' THEN '114829-jack-pinson'
+      WHEN ap.first_name = 'Jaime' AND ap.last_name = 'Quintanilla' THEN '114829-jaime-quintanilla'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Radomski' THEN '114829-michael-radomski'
+      WHEN ap.first_name = 'Ahmed' AND ap.last_name = 'Sheta' THEN '114829-ahmed-sheta'
+      WHEN ap.first_name = 'Roman' AND ap.last_name = 'Topler' THEN '114829-roman-topler'
+      WHEN ap.first_name = 'Marques' AND ap.last_name = 'Vagner' THEN '114829-marques-vagner'
+      WHEN ap.first_name = 'Alton' AND ap.last_name = 'West' THEN '114829-alton-west'
+      WHEN ap.first_name = 'Mohamed' AND ap.last_name = 'Abdelrehman' THEN '114846-mohamed-abdelrehman'
+      WHEN ap.first_name = 'Nyliek' AND ap.last_name = 'Allen' THEN '114846-nyliek-allen'
+      WHEN ap.first_name = 'Jared' AND ap.last_name = 'Benedict' THEN '114846-jared-benedict'
+      WHEN ap.first_name = 'David' AND ap.last_name = 'Bernal-Clark' THEN '114846-david-bernal-clark'
+      WHEN ap.first_name = 'Alex' AND ap.last_name = 'Bilski' THEN '114846-alex-bilski'
+      WHEN ap.first_name = 'Nicholas' AND ap.last_name = 'Blake' THEN '114846-nicholas-blake'
+      WHEN ap.first_name = 'Edwardo' AND ap.last_name = 'Chavez' THEN '114846-edwardo-chavez'
+      WHEN ap.first_name = 'Charles' AND ap.last_name = 'Evangelos' THEN '114846-charles-evangelos'
+      WHEN ap.first_name = 'Jessi e' AND ap.last_name = 'Garcia' THEN '114846-jessi-e-garcia'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Gonzalez' THEN '114846-daniel-gonzalez'
+      WHEN ap.first_name = 'Sayed' AND ap.last_name = 'Hashemi' THEN '114846-sayed-hashemi'
+      WHEN ap.first_name = 'Sayed' AND ap.last_name = 'Hashemi' THEN '114846-sayed-hashemi'
+      WHEN ap.first_name = 'Vasilios' AND ap.last_name = 'Kazakos' THEN '114846-vasilios-kazakos'
+      WHEN ap.first_name = 'Alejandro' AND ap.last_name = 'Lenz' THEN '114846-alejandro-lenz'
+      WHEN ap.first_name = 'Josaphat' AND ap.last_name = 'Letona' THEN '114846-josaphat-letona'
+      WHEN ap.first_name = 'Braden' AND ap.last_name = 'Lopez' THEN '114846-braden-lopez'
+      WHEN ap.first_name = 'Gabriel' AND ap.last_name = 'Maguire' THEN '114846-gabriel-maguire'
+      WHEN ap.first_name = 'Moussa' AND ap.last_name = 'Mahama' THEN '114846-moussa-mahama'
+      WHEN ap.first_name = 'Louis' AND ap.last_name = 'Manyele' THEN '114846-louis-manyele'
+      WHEN ap.first_name = 'Carlos' AND ap.last_name = 'Mareno' THEN '114846-carlos-mareno'
+      WHEN ap.first_name = 'George' AND ap.last_name = 'Mavronis' THEN '114846-george-mavronis'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Medina' THEN '114846-michael-medina'
+      WHEN ap.first_name = 'Roman' AND ap.last_name = 'Milian' THEN '114846-roman-milian'
+      WHEN ap.first_name = 'Johnny' AND ap.last_name = 'Paletar' THEN '114846-johnny-paletar'
+      WHEN ap.first_name = 'Danish' AND ap.last_name = 'Saeedi' THEN '114846-danish-saeedi'
+      WHEN ap.first_name = 'Jordon' AND ap.last_name = 'Salvi' THEN '114846-jordon-salvi'
+      WHEN ap.first_name = 'Leonel' AND ap.last_name = 'Sanchez' THEN '114846-leonel-sanchez'
+      WHEN ap.first_name = 'Selim' AND ap.last_name = 'Senel' THEN '114846-selim-senel'
+      WHEN ap.first_name = 'Ahmadi' AND ap.last_name = 'Shayan' THEN '114846-ahmadi-shayan'
+      WHEN ap.first_name = 'Akimanzi' AND ap.last_name = 'Siibo' THEN '114846-akimanzi-siibo'
+      WHEN ap.first_name = 'Alex' AND ap.last_name = 'Sosa' THEN '114846-alex-sosa'
+      WHEN ap.first_name = 'Viktor' AND ap.last_name = 'Tachev' THEN '114846-viktor-tachev'
+      WHEN ap.first_name = 'Matthew' AND ap.last_name = 'Zelaya' THEN '114846-matthew-zelaya'
+      WHEN ap.first_name = 'Nebeyo' AND ap.last_name = 'Zerihun' THEN '114846-nebeyo-zerihun'
+      WHEN ap.first_name = 'Ossy' AND ap.last_name = 'Zubiria' THEN '114846-ossy-zubiria'
+      WHEN ap.first_name = 'Kelechi' AND ap.last_name = 'Akujuobi' THEN '114849-kelechi-akujuobi'
+      WHEN ap.first_name = 'Faisal' AND ap.last_name = 'Alay' THEN '114849-faisal-alay'
+      WHEN ap.first_name = 'Victorine Kwame' AND ap.last_name = 'Appohsam' THEN '114849-victorine-kwame-appohsam'
+      WHEN ap.first_name = 'Hector Avila' AND ap.last_name = 'Hernandez' THEN '114849-hector-avila-hernandez'
+      WHEN ap.first_name = 'Eduardo G' AND ap.last_name = 'Barria' THEN '114849-eduardo-g-barria'
+      WHEN ap.first_name = 'Zavier' AND ap.last_name = 'Bell' THEN '114849-zavier-bell'
+      WHEN ap.first_name = 'Zach' AND ap.last_name = 'Boyd' THEN '114849-zach-boyd'
+      WHEN ap.first_name = 'Julio' AND ap.last_name = 'Bravo-Guzman' THEN '114849-julio-bravo-guzman'
+      WHEN ap.first_name = 'Deontae' AND ap.last_name = 'Campbell' THEN '114849-deontae-campbell'
+      WHEN ap.first_name = 'Brandon' AND ap.last_name = 'Chambers' THEN '114849-brandon-chambers'
+      WHEN ap.first_name = 'Aiden' AND ap.last_name = 'Chen' THEN '114849-aiden-chen'
+      WHEN ap.first_name = 'Marckensley' AND ap.last_name = 'Constant' THEN '114849-marckensley-constant'
+      WHEN ap.first_name = 'Tim' AND ap.last_name = 'Cooley' THEN '114849-tim-cooley'
+      WHEN ap.first_name = 'Christian' AND ap.last_name = 'Cruz' THEN '114849-christian-cruz'
+      WHEN ap.first_name = 'Danilo' AND ap.last_name = 'Duric' THEN '114849-danilo-duric'
+      WHEN ap.first_name = 'Logan' AND ap.last_name = 'Flanagan' THEN '114849-logan-flanagan'
+      WHEN ap.first_name = 'Colin' AND ap.last_name = 'Foley' THEN '114849-colin-foley'
+      WHEN ap.first_name = 'Nathan' AND ap.last_name = 'Gichuhi' THEN '114849-nathan-gichuhi'
+      WHEN ap.first_name = 'Jeremy' AND ap.last_name = 'Gonzalez' THEN '114849-jeremy-gonzalez'
+      WHEN ap.first_name = 'Josh' AND ap.last_name = 'Gutierrez' THEN '114849-josh-gutierrez'
+      WHEN ap.first_name = 'Jonah' AND ap.last_name = 'Harvey' THEN '114849-jonah-harvey'
+      WHEN ap.first_name = 'Josh' AND ap.last_name = 'Haynie' THEN '114849-josh-haynie'
+      WHEN ap.first_name = 'Mitchell' AND ap.last_name = 'Hopkins' THEN '114849-mitchell-hopkins'
+      WHEN ap.first_name = 'Tanner' AND ap.last_name = 'Johnston' THEN '114849-tanner-johnston'
+      WHEN ap.first_name = 'David' AND ap.last_name = 'Miller' THEN '114849-david-miller'
+      WHEN ap.first_name = 'Abdul' AND ap.last_name = 'Mokhtar' THEN '114849-abdul-mokhtar'
+      WHEN ap.first_name = 'Bijan' AND ap.last_name = 'Morshedi' THEN '114849-bijan-morshedi'
+      WHEN ap.first_name = 'Ander' AND ap.last_name = 'Ochoa' THEN '114849-ander-ochoa'
+      WHEN ap.first_name = 'Victor' AND ap.last_name = 'Oladeinde' THEN '114849-victor-oladeinde'
+      WHEN ap.first_name = 'Oved' AND ap.last_name = 'Ortega' THEN '114849-oved-ortega'
+      WHEN ap.first_name = 'Kameron' AND ap.last_name = 'Payne' THEN '114849-kameron-payne'
+      WHEN ap.first_name = 'Jayden' AND ap.last_name = 'Rodriguez' THEN '114849-jayden-rodriguez'
+      WHEN ap.first_name = 'Oumar' AND ap.last_name = 'Thiandoum' THEN '114849-oumar-thiandoum'
+      WHEN ap.first_name = 'Ronju' AND ap.last_name = 'Walters' THEN '114849-ronju-walters'
+      WHEN ap.first_name = 'Kennison' AND ap.last_name = 'Akuro' THEN '114834-kennison-akuro'
+      WHEN ap.first_name = 'Melvin' AND ap.last_name = 'Asanji' THEN '114834-melvin-asanji'
+      WHEN ap.first_name = 'Brandon' AND ap.last_name = 'Betts' THEN '114834-brandon-betts'
+      WHEN ap.first_name = 'Isaac' AND ap.last_name = 'Carvajal' THEN '114834-isaac-carvajal'
+      WHEN ap.first_name = 'Elido Noel Chun' AND ap.last_name = 'Reyes' THEN '114834-elido-noel-chun-reyes'
+      WHEN ap.first_name = 'Jenovic' AND ap.last_name = 'Elumbu' THEN '114834-jenovic-elumbu'
+      WHEN ap.first_name = 'Anderson' AND ap.last_name = 'Fernandez' THEN '114834-anderson-fernandez'
+      WHEN ap.first_name = 'Angello' AND ap.last_name = 'Fernandez' THEN '114834-angello-fernandez'
+      WHEN ap.first_name = 'Terry' AND ap.last_name = 'Fon' THEN '114834-terry-fon'
+      WHEN ap.first_name = 'Eduardo' AND ap.last_name = 'Fuentes' THEN '114834-eduardo-fuentes'
+      WHEN ap.first_name = 'Christian' AND ap.last_name = 'Garavito' THEN '114834-christian-garavito'
+      WHEN ap.first_name = 'Thaddeus' AND ap.last_name = 'Goddard' THEN '114834-thaddeus-goddard'
+      WHEN ap.first_name = 'Alexis Gonzalez' AND ap.last_name = 'Ayala' THEN '114834-alexis-gonzalez-ayala'
+      WHEN ap.first_name = 'Chayton' AND ap.last_name = 'Kuidlan' THEN '114834-chayton-kuidlan'
+      WHEN ap.first_name = 'Tobias' AND ap.last_name = 'Lane' THEN '114834-tobias-lane'
+      WHEN ap.first_name = 'Jonathan Lemus' AND ap.last_name = 'Morales' THEN '114834-jonathan-lemus-morales'
+      WHEN ap.first_name = 'Creasy' AND ap.last_name = 'Lopez' THEN '114834-creasy-lopez'
+      WHEN ap.first_name = 'Lutho' AND ap.last_name = 'Mlunguza' THEN '114834-lutho-mlunguza'
+      WHEN ap.first_name = 'Toju' AND ap.last_name = 'Okonedo' THEN '114834-toju-okonedo'
+      WHEN ap.first_name = 'David' AND ap.last_name = 'Pawlowski' THEN '114834-david-pawlowski'
+      WHEN ap.first_name = 'Danny' AND ap.last_name = 'Paz' THEN '114834-danny-paz'
+      WHEN ap.first_name = 'Brayan Perez' AND ap.last_name = 'Mendez' THEN '114834-brayan-perez-mendez'
+      WHEN ap.first_name = 'Bronson' AND ap.last_name = 'Shepherd' THEN '114834-bronson-shepherd'
+      WHEN ap.first_name = 'Nicholas' AND ap.last_name = 'Tziamouranis' THEN '114834-nicholas-tziamouranis'
+      WHEN ap.first_name = 'William Villatoro' AND ap.last_name = 'Velasquez' THEN '114834-william-villatoro-velasquez'
+      WHEN ap.first_name = 'Brian' AND ap.last_name = 'Ware' THEN '114834-brian-ware'
+      WHEN ap.first_name = 'Sami' AND ap.last_name = 'Afiouni' THEN '114817-sami-afiouni'
+      WHEN ap.first_name = 'Samuel' AND ap.last_name = 'Amedeker' THEN '114817-samuel-amedeker'
+      WHEN ap.first_name = 'Owen' AND ap.last_name = 'Blount' THEN '114817-owen-blount'
+      WHEN ap.first_name = 'Jordan' AND ap.last_name = 'Bonnett' THEN '114817-jordan-bonnett'
+      WHEN ap.first_name = 'Evan' AND ap.last_name = 'Bosak' THEN '114817-evan-bosak'
+      WHEN ap.first_name = 'Gerard' AND ap.last_name = 'Broussard' THEN '114817-gerard-broussard'
+      WHEN ap.first_name = 'Brian' AND ap.last_name = 'Chidzvondo' THEN '114817-brian-chidzvondo'
+      WHEN ap.first_name = 'Matthew' AND ap.last_name = 'Do' THEN '114817-matthew-do'
+      WHEN ap.first_name = 'Joseph' AND ap.last_name = 'Enebeli' THEN '114817-joseph-enebeli'
+      WHEN ap.first_name = 'Adam' AND ap.last_name = 'Grace' THEN '114817-adam-grace'
+      WHEN ap.first_name = 'Demetrius' AND ap.last_name = 'Howe' THEN '114817-demetrius-howe'
+      WHEN ap.first_name = 'Massimo' AND ap.last_name = 'Johnson' THEN '114817-massimo-johnson'
+      WHEN ap.first_name = 'Benjamin' AND ap.last_name = 'Jones' THEN '114817-benjamin-jones'
+      WHEN ap.first_name = 'Aidan' AND ap.last_name = 'Krivanec' THEN '114817-aidan-krivanec'
+      WHEN ap.first_name = 'Leighton' AND ap.last_name = 'Langenhoven' THEN '114817-leighton-langenhoven'
+      WHEN ap.first_name = 'Salah' AND ap.last_name = 'Mahmoud' THEN '114817-salah-mahmoud'
+      WHEN ap.first_name = 'Treyvon' AND ap.last_name = 'Medley-Green' THEN '114817-treyvon-medley-green'
+      WHEN ap.first_name = 'Museba' AND ap.last_name = 'Mwape' THEN '114817-museba-mwape'
+      WHEN ap.first_name = 'Jake' AND ap.last_name = 'Nelson' THEN '114817-jake-nelson'
+      WHEN ap.first_name = 'Abulfazl' AND ap.last_name = 'Panahi' THEN '114817-abulfazl-panahi'
+      WHEN ap.first_name = 'Dame' AND ap.last_name = 'Pene' THEN '114817-dame-pene'
+      WHEN ap.first_name = 'Henry' AND ap.last_name = 'Pittman' THEN '114817-henry-pittman'
+      WHEN ap.first_name = 'Yoskar Alejandro' AND ap.last_name = 'Quintanilla' THEN '114817-yoskar-alejandro-quintanilla'
+      WHEN ap.first_name = 'Emerson' AND ap.last_name = 'Reyes' THEN '114817-emerson-reyes'
+      WHEN ap.first_name = 'Mahdi' AND ap.last_name = 'Reza' THEN '114817-mahdi-reza'
+      WHEN ap.first_name = 'Mourtala' AND ap.last_name = 'Seck' THEN '114817-mourtala-seck'
+      WHEN ap.first_name = 'Alakhe' AND ap.last_name = 'Sibeko' THEN '114817-alakhe-sibeko'
+      WHEN ap.first_name = 'Noe' AND ap.last_name = 'Soriano' THEN '114817-noe-soriano'
+      WHEN ap.first_name = 'Sharief' AND ap.last_name = 'Stancil' THEN '114817-sharief-stancil'
+      WHEN ap.first_name = 'Max' AND ap.last_name = 'Taliaferro' THEN '114817-max-taliaferro'
+      WHEN ap.first_name = 'Asanda' AND ap.last_name = 'Tom' THEN '114817-asanda-tom'
+      WHEN ap.first_name = 'Caleb' AND ap.last_name = 'Underwood' THEN '114817-caleb-underwood'
+      WHEN ap.first_name = 'Callum' AND ap.last_name = 'Vellozzi' THEN '114817-callum-vellozzi'
+      WHEN ap.first_name = 'Chrisendo' AND ap.last_name = 'Wentzel' THEN '114817-chrisendo-wentzel'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Williams' THEN '114817-john-williams'
+      WHEN ap.first_name = 'Felix' AND ap.last_name = 'Amankwah' THEN '114812-felix-amankwah'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'Baxter' THEN '114812-daniel-baxter'
+      WHEN ap.first_name = 'Drew' AND ap.last_name = 'Belcher' THEN '114812-drew-belcher'
+      WHEN ap.first_name = 'Elijah' AND ap.last_name = 'Belcher' THEN '114812-elijah-belcher'
+      WHEN ap.first_name = 'Ethan' AND ap.last_name = 'Belcher' THEN '114812-ethan-belcher'
+      WHEN ap.first_name = 'Jacob' AND ap.last_name = 'Bender' THEN '114812-jacob-bender'
+      WHEN ap.first_name = 'Jalen' AND ap.last_name = 'Boston' THEN '114812-jalen-boston'
+      WHEN ap.first_name = 'Brandon' AND ap.last_name = 'Burkholder' THEN '114812-brandon-burkholder'
+      WHEN ap.first_name = 'Nero' AND ap.last_name = 'Cooper' THEN '114812-nero-cooper'
+      WHEN ap.first_name = 'Anthony' AND ap.last_name = 'Dragisics' THEN '114812-anthony-dragisics'
+      WHEN ap.first_name = 'Alejandro' AND ap.last_name = 'Estrada' THEN '114812-alejandro-estrada'
+      WHEN ap.first_name = 'Justin' AND ap.last_name = 'Gielen' THEN '114812-justin-gielen'
+      WHEN ap.first_name = 'Brian' AND ap.last_name = 'Graham' THEN '114812-brian-graham'
+      WHEN ap.first_name = 'Brett' AND ap.last_name = 'Joyner' THEN '114812-brett-joyner'
+      WHEN ap.first_name = 'Tanner' AND ap.last_name = 'Kennard' THEN '114812-tanner-kennard'
+      WHEN ap.first_name = 'Tyler' AND ap.last_name = 'Lee' THEN '114812-tyler-lee'
+      WHEN ap.first_name = 'Stiven' AND ap.last_name = 'Llano' THEN '114812-stiven-llano'
+      WHEN ap.first_name = 'Morgan' AND ap.last_name = 'Lussi' THEN '114812-morgan-lussi'
+      WHEN ap.first_name = 'Raffaele' AND ap.last_name = 'Mazzone' THEN '114812-raffaele-mazzone'
+      WHEN ap.first_name = 'Daniel' AND ap.last_name = 'McCleary' THEN '114812-daniel-mccleary'
+      WHEN ap.first_name = 'Edixon' AND ap.last_name = 'Moreira' THEN '114812-edixon-moreira'
+      WHEN ap.first_name = 'David' AND ap.last_name = 'Ogbonna' THEN '114812-david-ogbonna'
+      WHEN ap.first_name = 'Garrett' AND ap.last_name = 'Peters' THEN '114812-garrett-peters'
+      WHEN ap.first_name = 'Juston' AND ap.last_name = 'Rainey' THEN '114812-juston-rainey'
+      WHEN ap.first_name = 'Cesar' AND ap.last_name = 'Ramos' THEN '114812-cesar-ramos'
+      WHEN ap.first_name = 'Aaron' AND ap.last_name = 'Rilling' THEN '114812-aaron-rilling'
+      WHEN ap.first_name = 'Jackson' AND ap.last_name = 'Ruckman' THEN '114812-jackson-ruckman'
+      WHEN ap.first_name = 'Kyle' AND ap.last_name = 'Saunderson' THEN '114812-kyle-saunderson'
+      WHEN ap.first_name = 'Luis' AND ap.last_name = 'Soria' THEN '114812-luis-soria'
+      WHEN ap.first_name = 'Brett St' AND ap.last_name = 'Martin' THEN '114812-brett-st-martin'
+      WHEN ap.first_name = 'Alexander' AND ap.last_name = 'Wardle' THEN '114812-alexander-wardle'
+      WHEN ap.first_name = 'Joseph Daly' AND ap.last_name = 'Aigner' THEN '118680-joseph-daly-aigner'
+      WHEN ap.first_name = 'Liam Charles' AND ap.last_name = 'Aigner' THEN '118680-liam-charles-aigner'
+      WHEN ap.first_name = 'Jacob L' AND ap.last_name = 'Amon' THEN '118680-jacob-l-amon'
+      WHEN ap.first_name = 'Samuel' AND ap.last_name = 'Amon' THEN '118680-samuel-amon'
+      WHEN ap.first_name = 'Walner' AND ap.last_name = 'Anescar' THEN '118680-walner-anescar'
+      WHEN ap.first_name = 'Samuel' AND ap.last_name = 'Burbage' THEN '118680-samuel-burbage'
+      WHEN ap.first_name = 'Joshua Alexander' AND ap.last_name = 'Carey' THEN '118680-joshua-alexander-carey'
+      WHEN ap.first_name = 'Corvens Jay' AND ap.last_name = 'Corvil' THEN '118680-corvens-jay-corvil'
+      WHEN ap.first_name = 'Zechariah' AND ap.last_name = 'Dapaah' THEN '118680-zechariah-dapaah'
+      WHEN ap.first_name = 'Adam Stephen' AND ap.last_name = 'DeLizza' THEN '118680-adam-stephen-delizza'
+      WHEN ap.first_name = 'Heberson' AND ap.last_name = 'Edouard' THEN '118680-heberson-edouard'
+      WHEN ap.first_name = 'Ashley' AND ap.last_name = 'Fevrier' THEN '118680-ashley-fevrier'
+      WHEN ap.first_name = 'Christ-Daniel' AND ap.last_name = 'Fils' THEN '118680-christ-daniel-fils'
+      WHEN ap.first_name = 'Caleb James' AND ap.last_name = 'Gragg' THEN '118680-caleb-james-gragg'
+      WHEN ap.first_name = 'Marc' AND ap.last_name = 'Henrice' THEN '118680-marc-henrice'
+      WHEN ap.first_name = 'Colin Benjamin' AND ap.last_name = 'Hofmann' THEN '118680-colin-benjamin-hofmann'
+      WHEN ap.first_name = 'Elijah' AND ap.last_name = 'Jabagat' THEN '118680-elijah-jabagat'
+      WHEN ap.first_name = 'Rickelmy' AND ap.last_name = 'Jeune' THEN '118680-rickelmy-jeune'
+      WHEN ap.first_name = 'Damarius' AND ap.last_name = 'Kelley' THEN '118680-damarius-kelley'
+      WHEN ap.first_name = 'Goran' AND ap.last_name = 'Mijalkovski' THEN '118680-goran-mijalkovski'
+      WHEN ap.first_name = 'Sean Chidozie' AND ap.last_name = 'Morse' THEN '118680-sean-chidozie-morse'
+      WHEN ap.first_name = 'Abdelazim' AND ap.last_name = 'Osman' THEN '118680-abdelazim-osman'
+      WHEN ap.first_name = 'Ahmed' AND ap.last_name = 'Osman' THEN '118680-ahmed-osman'
+      WHEN ap.first_name = 'Pat' AND ap.last_name = 'Parrish' THEN '118680-pat-parrish'
+      WHEN ap.first_name = 'Caden Mark' AND ap.last_name = 'Pollard' THEN '118680-caden-mark-pollard'
+      WHEN ap.first_name = 'Ivan' AND ap.last_name = 'Sanchez-Gonzalez' THEN '118680-ivan-sanchez-gonzalez'
+      WHEN ap.first_name = 'Gianluca' AND ap.last_name = 'Secondi' THEN '118680-gianluca-secondi'
+      WHEN ap.first_name = 'Mourad' AND ap.last_name = 'Shalaby' THEN '118680-mourad-shalaby'
+      WHEN ap.first_name = 'Kenny' AND ap.last_name = 'Spock' THEN '118680-kenny-spock'
+      WHEN ap.first_name = 'Guy Holmeade Talbott' AND ap.last_name = 'V' THEN '118680-guy-holmeade-talbott-v'
+      WHEN ap.first_name = 'Devon' AND ap.last_name = 'Warman' THEN '118680-devon-warman'
+      WHEN ap.first_name = 'Skyler' AND ap.last_name = 'Williams' THEN '118680-skyler-williams'
+      WHEN ap.first_name = 'David' AND ap.last_name = 'Alverez' THEN '114839-david-alverez'
+      WHEN ap.first_name = 'Carlos' AND ap.last_name = 'Amador' THEN '114839-carlos-amador'
+      WHEN ap.first_name = 'Chris' AND ap.last_name = 'Avila' THEN '114839-chris-avila'
+      WHEN ap.first_name = 'Yaseen Ben' AND ap.last_name = 'Chouikha' THEN '114839-yaseen-ben-chouikha'
+      WHEN ap.first_name = 'Amir' AND ap.last_name = 'Bentaleb' THEN '114839-amir-bentaleb'
+      WHEN ap.first_name = 'Angel Viera' AND ap.last_name = 'Castro' THEN '114839-angel-viera-castro'
+      WHEN ap.first_name = 'Jesse' AND ap.last_name = 'Conteh' THEN '114839-jesse-conteh'
+      WHEN ap.first_name = 'Gio' AND ap.last_name = 'Cruz' THEN '114839-gio-cruz'
+      WHEN ap.first_name = 'German Del' AND ap.last_name = 'Cid' THEN '114839-german-del-cid'
+      WHEN ap.first_name = 'Mohammed Ahmed' AND ap.last_name = 'Elsir' THEN '114839-mohammed-ahmed-elsir'
+      WHEN ap.first_name = 'Collins' AND ap.last_name = 'Frimpong' THEN '114839-collins-frimpong'
+      WHEN ap.first_name = 'Roy Alex' AND ap.last_name = 'Galeano' THEN '114839-roy-alex-galeano'
+      WHEN ap.first_name = 'Oscar' AND ap.last_name = 'Garcia' THEN '114839-oscar-garcia'
+      WHEN ap.first_name = 'Sam' AND ap.last_name = 'Garcia' THEN '114839-sam-garcia'
+      WHEN ap.first_name = 'Anthony' AND ap.last_name = 'Juarez' THEN '114839-anthony-juarez'
+      WHEN ap.first_name = 'Kwasi' AND ap.last_name = 'Kotoko' THEN '114839-kwasi-kotoko'
+      WHEN ap.first_name = 'Orlando' AND ap.last_name = 'Martinez' THEN '114839-orlando-martinez'
+      WHEN ap.first_name = 'Andrew' AND ap.last_name = 'Mejia' THEN '114839-andrew-mejia'
+      WHEN ap.first_name = 'Chris' AND ap.last_name = 'Mejia' THEN '114839-chris-mejia'
+      WHEN ap.first_name = 'Milton' AND ap.last_name = 'Miranda' THEN '114839-milton-miranda'
+      WHEN ap.first_name = 'Nasrullah' AND ap.last_name = 'Muhammed' THEN '114839-nasrullah-muhammed'
+      WHEN ap.first_name = 'Alexis' AND ap.last_name = 'Palma' THEN '114839-alexis-palma'
+      WHEN ap.first_name = 'Luis' AND ap.last_name = 'Reyes' THEN '114839-luis-reyes'
+      WHEN ap.first_name = 'Romel' AND ap.last_name = 'Reyes' THEN '114839-romel-reyes'
+      WHEN ap.first_name = 'Jason' AND ap.last_name = 'Rodriguez' THEN '114839-jason-rodriguez'
+      WHEN ap.first_name = 'Elias San' AND ap.last_name = 'Juan' THEN '114839-elias-san-juan'
+      WHEN ap.first_name = 'Ricardo' AND ap.last_name = 'Vega' THEN '114839-ricardo-vega'
+      WHEN ap.first_name = 'Raul' AND ap.last_name = 'Villalta' THEN '114839-raul-villalta'
+      WHEN ap.first_name = 'Nour' AND ap.last_name = 'Alamri' THEN '115815-nour-alamri'
+      WHEN ap.first_name = 'Henry' AND ap.last_name = 'Asbill' THEN '115815-henry-asbill'
+      WHEN ap.first_name = 'Asad' AND ap.last_name = 'Bashir' THEN '115815-asad-bashir'
+      WHEN ap.first_name = 'Kai' AND ap.last_name = 'Bennett' THEN '115815-kai-bennett'
+      WHEN ap.first_name = 'Alex' AND ap.last_name = 'Caskey' THEN '115815-alex-caskey'
+      WHEN ap.first_name = 'Damian' AND ap.last_name = 'Charles' THEN '115815-damian-charles'
+      WHEN ap.first_name = 'Jamie' AND ap.last_name = 'Gleeson' THEN '115815-jamie-gleeson'
+      WHEN ap.first_name = 'Noah' AND ap.last_name = 'Goodman' THEN '115815-noah-goodman'
+      WHEN ap.first_name = 'Anthony' AND ap.last_name = 'Gourdine' THEN '115815-anthony-gourdine'
+      WHEN ap.first_name = 'Morgan' AND ap.last_name = 'Hall' THEN '115815-morgan-hall'
+      WHEN ap.first_name = 'Josh' AND ap.last_name = 'Hughes' THEN '115815-josh-hughes'
+      WHEN ap.first_name = 'Gad' AND ap.last_name = 'Kabwende' THEN '115815-gad-kabwende'
+      WHEN ap.first_name = 'Jason' AND ap.last_name = 'Kayne' THEN '115815-jason-kayne'
+      WHEN ap.first_name = 'JT' AND ap.last_name = 'Keiffer' THEN '115815-jt-keiffer'
+      WHEN ap.first_name = 'Sebastian' AND ap.last_name = 'Lopez' THEN '115815-sebastian-lopez'
+      WHEN ap.first_name = 'Jean' AND ap.last_name = 'Malilo' THEN '115815-jean-malilo'
+      WHEN ap.first_name = 'Zion Jediah-Jason' AND ap.last_name = 'McClean' THEN '115815-zion-jediah-jason-mcclean'
+      WHEN ap.first_name = 'Gregg' AND ap.last_name = 'McPheely' THEN '115815-gregg-mcpheely'
+      WHEN ap.first_name = 'Nathan' AND ap.last_name = 'Miles' THEN '115815-nathan-miles'
+      WHEN ap.first_name = 'Alex' AND ap.last_name = 'Rotoloni' THEN '115815-alex-rotoloni'
+      WHEN ap.first_name = 'Jack' AND ap.last_name = 'Snyder' THEN '115815-jack-snyder'
+      WHEN ap.first_name = 'Brynn' AND ap.last_name = 'Thompson' THEN '115815-brynn-thompson'
+      WHEN ap.first_name = 'Tyler' AND ap.last_name = 'Vogt' THEN '115815-tyler-vogt'
+      WHEN ap.first_name = 'Renaldo' AND ap.last_name = 'Walters' THEN '115815-renaldo-walters'
+      WHEN ap.first_name = 'Matt' AND ap.last_name = 'Williams' THEN '115815-matt-williams'
+      WHEN ap.first_name = 'Nick' AND ap.last_name = 'York' THEN '115815-nick-york'
+      WHEN ap.first_name = 'Zackeriah' AND ap.last_name = 'Aday-Nicholson' THEN '115105-zackeriah-aday-nicholson'
+      WHEN ap.first_name = 'Gabriel' AND ap.last_name = 'Alvarez' THEN '115105-gabriel-alvarez'
+      WHEN ap.first_name = 'Dylan' AND ap.last_name = 'Bapst' THEN '115105-dylan-bapst'
+      WHEN ap.first_name = 'Mitchell' AND ap.last_name = 'Barry' THEN '115105-mitchell-barry'
+      WHEN ap.first_name = 'Charles' AND ap.last_name = 'Blakenship' THEN '115105-charles-blakenship'
+      WHEN ap.first_name = 'Davis' AND ap.last_name = 'Bryan' THEN '115105-davis-bryan'
+      WHEN ap.first_name = 'Kevin' AND ap.last_name = 'Carvalho' THEN '115105-kevin-carvalho'
+      WHEN ap.first_name = 'John' AND ap.last_name = 'Fragakis' THEN '115105-john-fragakis'
+      WHEN ap.first_name = 'Stefan' AND ap.last_name = 'Gojic' THEN '115105-stefan-gojic'
+      WHEN ap.first_name = 'Andrew' AND ap.last_name = 'Grodhaus' THEN '115105-andrew-grodhaus'
+      WHEN ap.first_name = 'Colton' AND ap.last_name = 'Huebner' THEN '115105-colton-huebner'
+      WHEN ap.first_name = 'Joshua' AND ap.last_name = 'James' THEN '115105-joshua-james'
+      WHEN ap.first_name = 'William' AND ap.last_name = 'Keegan' THEN '115105-william-keegan'
+      WHEN ap.first_name = 'Konrad' AND ap.last_name = 'Knap' THEN '115105-konrad-knap'
+      WHEN ap.first_name = 'Jordan' AND ap.last_name = 'Locke' THEN '115105-jordan-locke'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Marshall' THEN '115105-christopher-marshall'
+      WHEN ap.first_name = 'Javier' AND ap.last_name = 'Martinez' THEN '115105-javier-martinez'
+      WHEN ap.first_name = 'Cain' AND ap.last_name = 'McMillan' THEN '115105-cain-mcmillan'
+      WHEN ap.first_name = 'Anthony' AND ap.last_name = 'Norman' THEN '115105-anthony-norman'
+      WHEN ap.first_name = 'Sampson' AND ap.last_name = 'Nsemoh' THEN '115105-sampson-nsemoh'
+      WHEN ap.first_name = 'Thomas' AND ap.last_name = 'Powers' THEN '115105-thomas-powers'
+      WHEN ap.first_name = 'Seth' AND ap.last_name = 'Prieto' THEN '115105-seth-prieto'
+      WHEN ap.first_name = 'Adam' AND ap.last_name = 'Rooney' THEN '115105-adam-rooney'
+      WHEN ap.first_name = 'Jacob' AND ap.last_name = 'Sayer' THEN '115105-jacob-sayer'
+      WHEN ap.first_name = 'Zachary' AND ap.last_name = 'Smith' THEN '115105-zachary-smith'
+      WHEN ap.first_name = 'Christian' AND ap.last_name = 'Waeglin' THEN '115105-christian-waeglin'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Witmond' THEN '115105-christopher-witmond'
+      WHEN ap.first_name = 'Rashid' AND ap.last_name = 'Alarape' THEN '115108-rashid-alarape'
+      WHEN ap.first_name = 'Alex' AND ap.last_name = 'Archambeau' THEN '115108-alex-archambeau'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Avery' THEN '115108-christopher-avery'
+      WHEN ap.first_name = 'Carlos' AND ap.last_name = 'Ayala-Viera' THEN '115108-carlos-ayala-viera'
+      WHEN ap.first_name = 'Carlos' AND ap.last_name = 'Becerra-Gomez' THEN '115108-carlos-becerra-gomez'
+      WHEN ap.first_name = 'Oskar' AND ap.last_name = 'Bringle' THEN '115108-oskar-bringle'
+      WHEN ap.first_name = 'Elliot' AND ap.last_name = 'Curtin' THEN '115108-elliot-curtin'
+      WHEN ap.first_name = 'Eli' AND ap.last_name = 'Dent' THEN '115108-eli-dent'
+      WHEN ap.first_name = 'Jackson' AND ap.last_name = 'Eskay' THEN '115108-jackson-eskay'
+      WHEN ap.first_name = 'Andrew' AND ap.last_name = 'Fitton' THEN '115108-andrew-fitton'
+      WHEN ap.first_name = 'Mike' AND ap.last_name = 'Foutsop' THEN '115108-mike-foutsop'
+      WHEN ap.first_name = 'Neema' AND ap.last_name = 'Gharib' THEN '115108-neema-gharib'
+      WHEN ap.first_name = 'Andrew' AND ap.last_name = 'Halloran' THEN '115108-andrew-halloran'
+      WHEN ap.first_name = 'Thierno' AND ap.last_name = 'Issabre' THEN '115108-thierno-issabre'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Johnson' THEN '115108-michael-johnson'
+      WHEN ap.first_name = 'Brennan' AND ap.last_name = 'Koslow' THEN '115108-brennan-koslow'
+      WHEN ap.first_name = 'Mitchell' AND ap.last_name = 'Kupstas' THEN '115108-mitchell-kupstas'
+      WHEN ap.first_name = 'Boland' AND ap.last_name = 'Lekeaka' THEN '115108-boland-lekeaka'
+      WHEN ap.first_name = 'Adrian' AND ap.last_name = 'Lollar' THEN '115108-adrian-lollar'
+      WHEN ap.first_name = 'McKinley Mercer' AND ap.last_name = 'III' THEN '115108-mckinley-mercer-iii'
+      WHEN ap.first_name = 'Luke' AND ap.last_name = 'Narker' THEN '115108-luke-narker'
+      WHEN ap.first_name = 'Hassan' AND ap.last_name = 'Pinto' THEN '115108-hassan-pinto'
+      WHEN ap.first_name = 'Cory' AND ap.last_name = 'Plasker' THEN '115108-cory-plasker'
+      WHEN ap.first_name = 'Max' AND ap.last_name = 'Poore' THEN '115108-max-poore'
+      WHEN ap.first_name = 'Kevin' AND ap.last_name = 'Reyes' THEN '115108-kevin-reyes'
+      WHEN ap.first_name = 'Sharpe' AND ap.last_name = 'Sablon' THEN '115108-sharpe-sablon'
+      WHEN ap.first_name = 'Iain' AND ap.last_name = 'Smith' THEN '115108-iain-smith'
+      WHEN ap.first_name = 'Thor' AND ap.last_name = 'Svienbjorsson' THEN '115108-thor-svienbjorsson'
+      WHEN ap.first_name = 'Thomas' AND ap.last_name = 'Toney' THEN '115108-thomas-toney'
+      WHEN ap.first_name = 'Zachary Paul' AND ap.last_name = 'Young' THEN '115108-zachary-paul-young'
+      WHEN ap.first_name = 'Bilal' AND ap.last_name = 'Ahmed' THEN '115101-bilal-ahmed'
+      WHEN ap.first_name = 'Tim' AND ap.last_name = 'Amoui' THEN '115101-tim-amoui'
+      WHEN ap.first_name = 'Badr El' AND ap.last_name = 'Yazami' THEN '115101-badr-el-yazami'
+      WHEN ap.first_name = 'Stan-Lee' AND ap.last_name = 'Etienne' THEN '115101-stan-lee-etienne'
+      WHEN ap.first_name = 'Sylvi' AND ap.last_name = 'Mahmood' THEN '115101-sylvi-mahmood'
+      WHEN ap.first_name = 'Pedro' AND ap.last_name = 'Marinho' THEN '115101-pedro-marinho'
+      WHEN ap.first_name = 'Juan' AND ap.last_name = 'Martinez' THEN '115101-juan-martinez'
+      WHEN ap.first_name = 'David' AND ap.last_name = 'Michaelson' THEN '115101-david-michaelson'
+      WHEN ap.first_name = 'Metsantika' AND ap.last_name = 'Mokgoatsana' THEN '115101-metsantika-mokgoatsana'
+      WHEN ap.first_name = 'Ali' AND ap.last_name = 'Niang' THEN '115101-ali-niang'
+      WHEN ap.first_name = 'Javier' AND ap.last_name = 'Pace' THEN '115101-javier-pace'
+      WHEN ap.first_name = 'Osman' AND ap.last_name = 'Rodriguez' THEN '115101-osman-rodriguez'
+      WHEN ap.first_name = 'Aaron' AND ap.last_name = 'Shiffman' THEN '115101-aaron-shiffman'
+      WHEN ap.first_name = 'Miwoned' AND ap.last_name = 'Siraj' THEN '115101-miwoned-siraj'
+      WHEN ap.first_name = 'Tyler' AND ap.last_name = 'Swinehart' THEN '115101-tyler-swinehart'
+      WHEN ap.first_name = 'Gabriel' AND ap.last_name = 'Villar' THEN '115101-gabriel-villar'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Walsh' THEN '115101-michael-walsh'
+      WHEN ap.first_name = 'Joshua' AND ap.last_name = 'Warde' THEN '115101-joshua-warde'
+      WHEN ap.first_name = 'Christopher' AND ap.last_name = 'Wilson' THEN '115101-christopher-wilson'
+      WHEN ap.first_name = 'Kyle' AND ap.last_name = 'Xhajanka' THEN '115101-kyle-xhajanka'
+      WHEN ap.first_name = 'Nathan' AND ap.last_name = 'Bio' THEN '115106-nathan-bio'
+      WHEN ap.first_name = 'Rob' AND ap.last_name = 'Bonet' THEN '115106-rob-bonet'
+      WHEN ap.first_name = 'Aziymu Shamil' AND ap.last_name = 'Burns' THEN '115106-aziymu-shamil-burns'
+      WHEN ap.first_name = 'Jackson' AND ap.last_name = 'Cavenaugh' THEN '115106-jackson-cavenaugh'
+      WHEN ap.first_name = 'Kyle' AND ap.last_name = 'Crawford' THEN '115106-kyle-crawford'
+      WHEN ap.first_name = 'Eduardo' AND ap.last_name = 'Delgado' THEN '115106-eduardo-delgado'
+      WHEN ap.first_name = 'Matheus' AND ap.last_name = 'Fineto' THEN '115106-matheus-fineto'
+      WHEN ap.first_name = 'Enrique Gonzalez' AND ap.last_name = 'Plaza' THEN '115106-enrique-gonzalez-plaza'
+      WHEN ap.first_name = 'Chris' AND ap.last_name = 'Griffith' THEN '115106-chris-griffith'
+      WHEN ap.first_name = 'Philip' AND ap.last_name = 'Harris' THEN '115106-philip-harris'
+      WHEN ap.first_name = 'Justin' AND ap.last_name = 'Heimerl' THEN '115106-justin-heimerl'
+      WHEN ap.first_name = 'Lucas' AND ap.last_name = 'Horton' THEN '115106-lucas-horton'
+      WHEN ap.first_name = 'Karson Reese' AND ap.last_name = 'Kendall' THEN '115106-karson-reese-kendall'
+      WHEN ap.first_name = 'Konner' AND ap.last_name = 'Kendall' THEN '115106-konner-kendall'
+      WHEN ap.first_name = 'Mouad' AND ap.last_name = 'Labied' THEN '115106-mouad-labied'
+      WHEN ap.first_name = 'Jake' AND ap.last_name = 'Langton' THEN '115106-jake-langton'
+      WHEN ap.first_name = 'Myles' AND ap.last_name = 'Levelle' THEN '115106-myles-levelle'
+      WHEN ap.first_name = 'Randy' AND ap.last_name = 'Mallar-Calvillo' THEN '115106-randy-mallar-calvillo'
+      WHEN ap.first_name = 'Matt' AND ap.last_name = 'Mitchell' THEN '115106-matt-mitchell'
+      WHEN ap.first_name = 'Nikos' AND ap.last_name = 'Papanikolopoulos' THEN '115106-nikos-papanikolopoulos'
+      WHEN ap.first_name = 'Cade' AND ap.last_name = 'Quinto' THEN '115106-cade-quinto'
+      WHEN ap.first_name = 'Juandi' AND ap.last_name = 'Riley' THEN '115106-juandi-riley'
+      WHEN ap.first_name = 'Luis' AND ap.last_name = 'Romero' THEN '115106-luis-romero'
+      WHEN ap.first_name = 'Eduardo Ernesto' AND ap.last_name = 'Salmeron' THEN '115106-eduardo-ernesto-salmeron'
+      WHEN ap.first_name = 'Aswin' AND ap.last_name = 'Sembu' THEN '115106-aswin-sembu'
+      WHEN ap.first_name = 'Adam' AND ap.last_name = 'Sole' THEN '115106-adam-sole'
+      WHEN ap.first_name = 'Zaid' AND ap.last_name = 'Takrouri' THEN '115106-zaid-takrouri'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Touihri' THEN '115106-michael-touihri'
+      WHEN ap.first_name = 'Ivan' AND ap.last_name = 'Verdezoto' THEN '115106-ivan-verdezoto'
+      WHEN ap.first_name = 'Min' AND ap.last_name = 'Yoo' THEN '115106-min-yoo'
+      WHEN ap.first_name = 'Jonathan' AND ap.last_name = 'Adabi' THEN '115104-jonathan-adabi'
+      WHEN ap.first_name = 'Tishe' AND ap.last_name = 'Adekanmbi' THEN '115104-tishe-adekanmbi'
+      WHEN ap.first_name = 'Abdoulmalik' AND ap.last_name = 'Adesanya' THEN '115104-abdoulmalik-adesanya'
+      WHEN ap.first_name = 'Caleb' AND ap.last_name = 'Ayan' THEN '115104-caleb-ayan'
+      WHEN ap.first_name = 'Olumide' AND ap.last_name = 'Ayo-Ajibike' THEN '115104-olumide-ayo-ajibike'
+      WHEN ap.first_name = 'Elad Khaleef' AND ap.last_name = 'Bogle' THEN '115104-elad-khaleef-bogle'
+      WHEN ap.first_name = 'Tobias' AND ap.last_name = 'Ciho' THEN '115104-tobias-ciho'
+      WHEN ap.first_name = 'Nixon Manuel' AND ap.last_name = 'Condolo' THEN '115104-nixon-manuel-condolo'
+      WHEN ap.first_name = 'Felipe' AND ap.last_name = 'Correa' THEN '115104-felipe-correa'
+      WHEN ap.first_name = 'Michael' AND ap.last_name = 'Dardis' THEN '115104-michael-dardis'
+      WHEN ap.first_name = 'Abdoulaye' AND ap.last_name = 'Diba' THEN '115104-abdoulaye-diba'
+      WHEN ap.first_name = 'Lech' AND ap.last_name = 'Dunser' THEN '115104-lech-dunser'
+      WHEN ap.first_name = 'Daniel Duran' AND ap.last_name = 'Gonzalez' THEN '115104-daniel-duran-gonzalez'
+      WHEN ap.first_name = 'David Alejandro' AND ap.last_name = 'Fierro' THEN '115104-david-alejandro-fierro'
+      WHEN ap.first_name = 'Caleb' AND ap.last_name = 'Johnson' THEN '115104-caleb-johnson'
+      WHEN ap.first_name = 'Ian Thomas' AND ap.last_name = 'Kunkel' THEN '115104-ian-thomas-kunkel'
+      WHEN ap.first_name = 'Jelle' AND ap.last_name = 'Lansdaal' THEN '115104-jelle-lansdaal'
+      WHEN ap.first_name = 'Ruari Eamonn' AND ap.last_name = 'O’Rourke' THEN '115104-ruari-eamonn-o-rourke'
+      WHEN ap.first_name = 'Siddharth' AND ap.last_name = 'Rajesh' THEN '115104-siddharth-rajesh'
+      WHEN ap.first_name = 'Anel' AND ap.last_name = 'Ramic' THEN '115104-anel-ramic'
+      WHEN ap.first_name = 'Sumner' AND ap.last_name = 'Richardson' THEN '115104-sumner-richardson'
+      WHEN ap.first_name = 'George Bishop' AND ap.last_name = 'Rodi' THEN '115104-george-bishop-rodi'
+      WHEN ap.first_name = 'Connor' AND ap.last_name = 'Rosenthal' THEN '115104-connor-rosenthal'
+      WHEN ap.first_name = 'Godfred Nii' AND ap.last_name = 'Tettey' THEN '115104-godfred-nii-tettey'
+      WHEN ap.first_name = 'Joshua Parbie' AND ap.last_name = 'Tettey' THEN '115104-joshua-parbie-tettey'
+      WHEN ap.first_name = 'Robert A' AND ap.last_name = 'Thomas' THEN '115104-robert-a-thomas'
+      WHEN ap.first_name = 'Chris Arturo' AND ap.last_name = 'Vitela' THEN '115104-chris-arturo-vitela'
+      WHEN ap.first_name = 'Noah' AND ap.last_name = 'Wieland' THEN '115104-noah-wieland'
+      WHEN ap.first_name = 'Olanrewaju' AND ap.last_name = 'Yusuff' THEN '115104-olanrewaju-yusuff'
+      WHEN ap.first_name = 'Roberto Carlos' AND ap.last_name = 'Calix' THEN '115107-roberto-carlos-calix'
+      WHEN ap.first_name = 'Eli Francisco' AND ap.last_name = 'Carrasco' THEN '115107-eli-francisco-carrasco'
+      WHEN ap.first_name = 'Axel' AND ap.last_name = 'Castrejon' THEN '115107-axel-castrejon'
+      WHEN ap.first_name = 'Gael Jared' AND ap.last_name = 'Castrejon' THEN '115107-gael-jared-castrejon'
+      WHEN ap.first_name = 'Jared Scott' AND ap.last_name = 'Childs' THEN '115107-jared-scott-childs'
+      WHEN ap.first_name = 'Dylan Bright' AND ap.last_name = 'Edmonds' THEN '115107-dylan-bright-edmonds'
+      WHEN ap.first_name = 'Mason McGill' AND ap.last_name = 'Fifer' THEN '115107-mason-mcgill-fifer'
+      WHEN ap.first_name = 'Omar' AND ap.last_name = 'Guadarrama' THEN '115107-omar-guadarrama'
+      WHEN ap.first_name = 'Brandon' AND ap.last_name = 'Gutierrez' THEN '115107-brandon-gutierrez'
+      WHEN ap.first_name = 'Maury' AND ap.last_name = 'Ibarra' THEN '115107-maury-ibarra'
+      WHEN ap.first_name = 'Sebastian Tyler' AND ap.last_name = 'Jones' THEN '115107-sebastian-tyler-jones'
+      WHEN ap.first_name = 'Dino' AND ap.last_name = 'Kalac' THEN '115107-dino-kalac'
+      WHEN ap.first_name = 'Taylor Benjamin' AND ap.last_name = 'Lemmon' THEN '115107-taylor-benjamin-lemmon'
+      WHEN ap.first_name = 'Ivan Israel' AND ap.last_name = 'Lopez' THEN '115107-ivan-israel-lopez'
+      WHEN ap.first_name = 'Sebastian' AND ap.last_name = 'Lopez' THEN '115107-sebastian-lopez'
+      WHEN ap.first_name = 'Juanes' AND ap.last_name = 'Martinez' THEN '115107-juanes-martinez'
+      WHEN ap.first_name = 'Sebastian' AND ap.last_name = 'Nuñez' THEN '115107-sebastian-nu-ez'
+      WHEN ap.first_name = 'Ashton Thomas' AND ap.last_name = 'Parnell' THEN '115107-ashton-thomas-parnell'
+      WHEN ap.first_name = 'Tyler' AND ap.last_name = 'Pineda' THEN '115107-tyler-pineda'
+      WHEN ap.first_name = 'Voshon' AND ap.last_name = 'Ramcharan' THEN '115107-voshon-ramcharan'
+      WHEN ap.first_name = 'Marvin' AND ap.last_name = 'Rodriguez' THEN '115107-marvin-rodriguez'
+      WHEN ap.first_name = 'Fabian' AND ap.last_name = 'Rodriguez-Escobedo' THEN '115107-fabian-rodriguez-escobedo'
+      WHEN ap.first_name = 'Blair' AND ap.last_name = 'Springhall' THEN '115107-blair-springhall'
+      WHEN ap.first_name = 'Bradley Hamilton' AND ap.last_name = 'Tidwell' THEN '115107-bradley-hamilton-tidwell'
+      WHEN ap.first_name = 'Edward' AND ap.last_name = 'Trejo' THEN '115107-edward-trejo'
+      WHEN ap.first_name = 'Johan Miguel' AND ap.last_name = 'Trigo-Rios' THEN '115107-johan-miguel-trigo-rios'
+      WHEN ap.first_name = 'Luis Albert' AND ap.last_name = 'Ventura' THEN '115107-luis-albert-ventura'
+      WHEN ap.first_name = 'Patrick' AND ap.last_name = 'Ventura' THEN '115107-patrick-ventura'
+      WHEN ap.first_name = 'Nicholas' AND ap.last_name = 'Wheeler' THEN '115107-nicholas-wheeler'
+      WHEN ap.first_name = 'Adam' AND ap.last_name = 'Abdullahi' THEN '119159-adam-abdullahi'
+      WHEN ap.first_name = 'Mohammed' AND ap.last_name = 'Al-Asady' THEN '119159-mohammed-al-asady'
+      WHEN ap.first_name = 'Malek' AND ap.last_name = 'Almariri' THEN '119159-malek-almariri'
+      WHEN ap.first_name = 'Mario' AND ap.last_name = 'Arreguin' THEN '119159-mario-arreguin'
+      WHEN ap.first_name = 'Ali' AND ap.last_name = 'Bazz' THEN '119159-ali-bazz'
+      WHEN ap.first_name = 'Monchu' AND ap.last_name = 'Camara' THEN '119159-monchu-camara'
+      WHEN ap.first_name = 'Steven' AND ap.last_name = 'Carrillo' THEN '119159-steven-carrillo'
+      WHEN ap.first_name = 'Karl' AND ap.last_name = 'Christiansen' THEN '119159-karl-christiansen'
+      WHEN ap.first_name = 'Franklin' AND ap.last_name = 'Contreras' THEN '119159-franklin-contreras'
+      WHEN ap.first_name = 'Vitor De' AND ap.last_name = 'Souza' THEN '119159-vitor-de-souza'
+      WHEN ap.first_name = 'Adrian' AND ap.last_name = 'Garcia' THEN '119159-adrian-garcia'
+      WHEN ap.first_name = 'Josue' AND ap.last_name = 'Gomez' THEN '119159-josue-gomez'
+      WHEN ap.first_name = 'Jafet' AND ap.last_name = 'Higuera' THEN '119159-jafet-higuera'
+      WHEN ap.first_name = 'Rui' AND ap.last_name = 'James-Pereira' THEN '119159-rui-james-pereira'
+      WHEN ap.first_name = 'Kendrick' AND ap.last_name = 'Jean' THEN '119159-kendrick-jean'
+      WHEN ap.first_name = 'Sanaa' AND ap.last_name = 'Listenbee' THEN '119159-sanaa-listenbee'
+      WHEN ap.first_name = 'Chris' AND ap.last_name = 'Louissaint' THEN '119159-chris-louissaint'
+      WHEN ap.first_name = 'David' AND ap.last_name = 'Martinez' THEN '119159-david-martinez'
+      WHEN ap.first_name = 'Ramsis' AND ap.last_name = 'Martinez' THEN '119159-ramsis-martinez'
+      WHEN ap.first_name = 'Ruben' AND ap.last_name = 'Martinez' THEN '119159-ruben-martinez'
+      WHEN ap.first_name = 'Jonathan' AND ap.last_name = 'May' THEN '119159-jonathan-may'
+      WHEN ap.first_name = 'Jaylen' AND ap.last_name = 'McCray' THEN '119159-jaylen-mccray'
+      WHEN ap.first_name = 'Tariq' AND ap.last_name = 'Mohammed' THEN '119159-tariq-mohammed'
+      WHEN ap.first_name = 'Geovanni' AND ap.last_name = 'Oboh' THEN '119159-geovanni-oboh'
+      WHEN ap.first_name = 'Jordan' AND ap.last_name = 'Paul' THEN '119159-jordan-paul'
+      WHEN ap.first_name = 'Nicolas' AND ap.last_name = 'Pegorer' THEN '119159-nicolas-pegorer'
+      WHEN ap.first_name = 'Pablo' AND ap.last_name = 'Piraquive' THEN '119159-pablo-piraquive'
+      WHEN ap.first_name = 'Roney' AND ap.last_name = 'Rubio' THEN '119159-roney-rubio'
+      WHEN ap.first_name = 'Anakin' AND ap.last_name = 'Ruiz' THEN '119159-anakin-ruiz'
+      WHEN ap.first_name = 'Jazeime' AND ap.last_name = 'Russell' THEN '119159-jazeime-russell'
+      WHEN ap.first_name = 'Jonathan' AND ap.last_name = 'Sandoval' THEN '119159-jonathan-sandoval'
+      WHEN ap.first_name = 'Ayman' AND ap.last_name = 'Saudin' THEN '119159-ayman-saudin'
+      WHEN ap.first_name = 'Manuel' AND ap.last_name = 'Simental' THEN '119159-manuel-simental'
+      WHEN ap.first_name = 'Mahmoud' AND ap.last_name = 'Tasslak' THEN '119159-mahmoud-tasslak'
+      WHEN ap.first_name = 'Myles' AND ap.last_name = 'Williams' THEN '119159-myles-williams'
     END
-  FROM inserted_persons ip
+  FROM all_persons ap
   ON CONFLICT (source_system_id, external_id) DO UPDATE SET
     person_id = EXCLUDED.person_id
   RETURNING id, external_id
