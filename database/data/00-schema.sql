@@ -180,6 +180,65 @@ INSERT INTO source_systems (id, name, description, is_active) VALUES
     (4, 'groupme', 'GroupMe integration', true)
 ON CONFLICT (id) DO NOTHING;
 
+-- Scrape Target System Tables
+CREATE TABLE scrape_target_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE scraper_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    parser_class VARCHAR(100),
+    platform VARCHAR(50),
+    description TEXT,
+    sort_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE scrape_execution_statuses (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0
+);
+
+CREATE TABLE scrape_targets (
+    id SERIAL PRIMARY KEY,
+    source_system_id INTEGER NOT NULL REFERENCES source_systems(id),
+    scraper_type_id INTEGER NOT NULL REFERENCES scraper_types(id),
+    target_type_id INTEGER NOT NULL REFERENCES scrape_target_types(id),
+    url TEXT NOT NULL,
+    label VARCHAR(255),
+    params JSONB,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_scrape_targets_source ON scrape_targets(source_system_id);
+CREATE INDEX idx_scrape_targets_scraper ON scrape_targets(scraper_type_id);
+CREATE INDEX idx_scrape_targets_type ON scrape_targets(target_type_id);
+CREATE INDEX idx_scrape_targets_active ON scrape_targets(is_active);
+
+CREATE TABLE scrape_executions (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER NOT NULL REFERENCES scrape_targets(id),
+    status_id INTEGER NOT NULL REFERENCES scrape_execution_statuses(id),
+    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    duration_ms INTEGER,
+    entities_created INTEGER DEFAULT 0,
+    entities_updated INTEGER DEFAULT 0,
+    error_message TEXT,
+    metadata JSONB
+);
+
+CREATE INDEX idx_scrape_executions_target ON scrape_executions(scrape_target_id);
+CREATE INDEX idx_scrape_executions_status ON scrape_executions(status_id);
+CREATE INDEX idx_scrape_executions_started ON scrape_executions(started_at DESC);
+
 CREATE TABLE chat_providers (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
@@ -613,6 +672,7 @@ CREATE TABLE teams (
     logo_url TEXT,
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100) UNIQUE,
+    scrape_target_id INTEGER REFERENCES scrape_targets(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -694,6 +754,7 @@ CREATE TABLE players (
     height_cm INTEGER,                      -- Height in centimeters
     nationality VARCHAR(3),                 -- ISO 3166-1 alpha-3 (USA, BRA, MEX)
     photo_url TEXT,
+    scrape_target_id INTEGER REFERENCES scrape_targets(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -841,6 +902,7 @@ CREATE TABLE matches (
     
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100),  -- Unique per source system
+    scrape_target_id INTEGER REFERENCES scrape_targets(id),
     created_by_user_id INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
