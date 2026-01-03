@@ -958,6 +958,22 @@ async function generateCasaSql(teams, sqlGenerator) {
   const path = require('path');
   const dataDir = path.join(__dirname, '../data');
   
+  // Hard-coded club mappings for reserve/alternate teams
+  // Maps reserve team name -> canonical club name in existing clubs
+  const clubMappings = {
+    'Alloy Soccer Club Reserves': 'Alloy Soccer Club',
+    'Lighthouse Boys Club': 'Lighthouse 1893 SC',
+    'Lighthouse Old Timers Club': 'Lighthouse 1893 SC',
+    'Oaklyn II': 'Oaklyn United FC',
+    'PSC II': 'Philadelphia Soccer Club',
+    'Persepolis I': 'Persepolis I',  // Keep exact name
+    'Persepolis II': 'Persepolis I',  // Map II to I if I exists
+    'Phoenix I': 'Phoenix I',
+    'Phoenix II': 'Phoenix I',
+    'Real Central NJ II': 'Real Central NJ Soccer',
+    'Jersey Shore Boca': 'Jersey Shore Boca',  // Exact match case
+  };
+  
   // Read existing clubs to find duplicates
   const clubsFile = await fs.readFile(path.join(dataDir, '030-clubs.sql'), 'utf-8');
   const existingClubs = new Map();
@@ -971,29 +987,54 @@ async function generateCasaSql(teams, sqlGenerator) {
   
   // Track which teams need new clubs vs reusing existing ones
   const newClubs = [];
+  const casaClubs = new Map(); // Track clubs we're creating in THIS scrape
   const teamMappings = teams.map((team, idx) => {
-    const existing = existingClubs.get(team.name);
+    // First check hard-coded mappings
+    const canonicalName = clubMappings[team.name] || team.name;
+    
+    // Check existing APSL clubs first
+    const existing = existingClubs.get(canonicalName);
     if (existing) {
-      console.log(`   🔗 Reusing existing club for: ${team.name} (ID ${existing.id})`);
+      if (canonicalName !== team.name) {
+        console.log(`   🔗 Reusing existing APSL club for: ${team.name} -> ${canonicalName} (ID ${existing.id})`);
+      } else {
+        console.log(`   🔗 Reusing existing APSL club for: ${team.name} (ID ${existing.id})`);
+      }
       return {
         teamName: team.name,
         clubId: existing.id,
-        sportDivisionId: existing.id, // Assume sport_division_id matches club_id for existing clubs
+        sportDivisionId: existing.id,
         scrapeTargetId: team.scrapeTargetId,
         isNew: false
       };
-    } else {
-      const clubId = 1000 + newClubs.length;
-      const slug = team.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      newClubs.push({ id: clubId, name: team.name, slug });
+    }
+    
+    // Check CASA clubs we're creating in THIS scrape (for Phoenix I/II, Persepolis I/II)
+    const casaExisting = casaClubs.get(canonicalName);
+    if (casaExisting) {
+      console.log(`   🔗 Reusing CASA club for: ${team.name} -> ${canonicalName} (ID ${casaExisting.id})`);
       return {
         teamName: team.name,
-        clubId: clubId,
-        sportDivisionId: clubId,
+        clubId: casaExisting.id,
+        sportDivisionId: casaExisting.id,
         scrapeTargetId: team.scrapeTargetId,
-        isNew: true
+        isNew: false
       };
     }
+    
+    // Create new club
+    const clubId = 1000 + newClubs.length;
+    const slug = canonicalName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const clubData = { id: clubId, name: canonicalName, slug };
+    newClubs.push(clubData);
+    casaClubs.set(canonicalName, clubData);
+    return {
+      teamName: team.name,
+      clubId: clubId,
+      sportDivisionId: clubId,
+      scrapeTargetId: team.scrapeTargetId,
+      isNew: true
+    };
   });
   
   console.log(`   📊 New clubs to create: ${newClubs.length}, Reusing existing: ${teams.length - newClubs.length}`);
