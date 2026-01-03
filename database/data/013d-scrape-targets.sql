@@ -28,16 +28,17 @@ INSERT INTO scrape_targets (id, source_system_id, scraper_type_id, target_type_i
     -- CASA Traditional League - Boston Division 1 Liga 1
     (16, 2, 1, 1, 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9090891', 'CASA Traditional Boston D1L1 Standings', '{"league": "Traditional", "region": "Boston", "division": "1", "liga": "1"}'::jsonb, true),
     (17, 2, 1, 3, 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090891', 'CASA Traditional Boston D1L1 Schedule', '{"league": "Traditional", "region": "Boston", "division": "1", "liga": "1"}'::jsonb, true),
+    (18, 2, 2, 2, 'https://docs.google.com/spreadsheets/d/1OnHnhrSRA3Wp2eCs_9-dJhDBlVhSEoobFDGTYvQTfvE/htmlview?gid=661044352', 'CASA Traditional Boston D1L1 Roster', '{"league": "Traditional", "region": "Boston", "division": "1", "liga": "1", "gid": "661044352"}'::jsonb, true),
     
     -- CASA Select League - Lancaster Division 1 Liga 1
-    (18, 2, 1, 1, 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9090893', 'CASA Select Lancaster D1L1 Standings', '{"league": "Select", "region": "Lancaster", "division": "1", "liga": "1"}'::jsonb, true),
-    (19, 2, 1, 3, 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090893', 'CASA Select Lancaster D1L1 Schedule', '{"league": "Select", "region": "Lancaster", "division": "1", "liga": "1"}'::jsonb, true),
-    (20, 2, 2, 2, 'https://docs.google.com/spreadsheets/d/1OnHnhrSRA3Wp2eCs_9-dJhDBlVhSEoobFDGTYvQTfvE/htmlview?gid=661044352', 'CASA Select Lancaster D1L1 Roster', '{"league": "Select", "region": "Lancaster", "division": "1", "liga": "1", "gid": "661044352"}'::jsonb, true),
+    (19, 2, 1, 1, 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9090893', 'CASA Select Lancaster D1L1 Standings', '{"league": "Select", "region": "Lancaster", "division": "1", "liga": "1"}'::jsonb, true),
+    (20, 2, 1, 3, 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090893', 'CASA Select Lancaster D1L1 Schedule', '{"league": "Select", "region": "Lancaster", "division": "1", "liga": "1"}'::jsonb, true),
+    (21, 2, 2, 2, 'https://docs.google.com/spreadsheets/d/1alzJMAccMT5IIBQ_YOAp6FMbADnfC77dxRMZtceMau4/htmlview?gid=682688852', 'CASA Select Lancaster D1L1 Roster', '{"league": "Select", "region": "Lancaster", "division": "1", "liga": "1", "gid": "682688852"}'::jsonb, true),
     
     -- CASA Select League - Central New Jersey Liga 1
-    (21, 2, 1, 1, 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9124981', 'CASA Select Central NJ L1 Standings', '{"league": "Select", "region": "Central NJ", "liga": "1"}'::jsonb, true),
-    (22, 2, 1, 3, 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9124981', 'CASA Select Central NJ L1 Schedule', '{"league": "Select", "region": "Central NJ", "liga": "1"}'::jsonb, true),
-    (23, 2, 2, 2, 'https://docs.google.com/spreadsheets/d/1tStu09AvdhBJtYLXl49R-oa5XgFYDo9j/htmlview?gid=229389251', 'CASA Select Central NJ L1 Roster', '{"league": "Select", "region": "Central NJ", "liga": "1", "gid": "229389251"}'::jsonb, true)
+    (22, 2, 1, 1, 'https://www.casasoccerleagues.com/season_management_season_page/tab_standings?page_node_id=9124981', 'CASA Select Central NJ L1 Standings', '{"league": "Select", "region": "Central NJ", "liga": "1"}'::jsonb, true),
+    (23, 2, 1, 3, 'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9124981', 'CASA Select Central NJ L1 Schedule', '{"league": "Select", "region": "Central NJ", "liga": "1"}'::jsonb, true),
+    (24, 2, 2, 2, 'https://docs.google.com/spreadsheets/d/1tStu09AvdhBJtYLXl49R-oa5XgFYDo9j/htmlview?gid=229389251', 'CASA Select Central NJ L1 Roster', '{"league": "Select", "region": "Central NJ", "liga": "1", "gid": "229389251"}'::jsonb, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Google Places API for Venue Info
