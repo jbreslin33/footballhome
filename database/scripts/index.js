@@ -954,43 +954,76 @@ async function parseCasaTargets(targets, sqlGenerator) {
 async function generateCasaSql(teams, sqlGenerator) {
   console.log(`   🔨 Generating CASA SQL...`);
   
-  // Generate clubs (1 per team)
-  const clubInserts = teams.map((team, idx) => {
-    const clubId = 1000 + idx; // Start at 1000 to avoid conflicts with APSL
-    const slug = team.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    return `(${clubId}, '${team.name}', '${slug}', true)`;
-  });
-  
-  // Generate sport_divisions (1 per club, sport_id=1 for Soccer)
-  const sportDivisionInserts = teams.map((team, idx) => {
-    const clubId = 1000 + idx;
-    const sportDivisionId = 1000 + idx;
-    return `(${sportDivisionId}, ${clubId}, 1, '${team.name}', true)`;
-  });
-  
-  // Generate teams
-  const teamInserts = teams.map((team, idx) => {
-    const sportDivisionId = 1000 + idx;
-    return `('${team.name}', ${sportDivisionId}, ${team.scrapeTargetId})`;
-  });
-  
-  // Write SQL files
   const fs = require('fs').promises;
   const path = require('path');
+  const dataDir = path.join(__dirname, '../data');
   
-  // Append to existing clubs file
-  const clubsSql = `\n-- CASA clubs\nINSERT INTO clubs (id, display_name, slug, is_active) VALUES\n${clubInserts.join(',\n')};\n`;
-  await fs.appendFile(path.join(__dirname, '../data/030-clubs.sql'), clubsSql);
+  // Read existing clubs to find duplicates
+  const clubsFile = await fs.readFile(path.join(dataDir, '030-clubs.sql'), 'utf-8');
+  const existingClubs = new Map();
   
-  // Append to existing sport_divisions file
-  const sportDivisionsSql = `\n-- CASA sport_divisions\nINSERT INTO sport_divisions (id, club_id, sport_id, display_name, is_active) VALUES\n${sportDivisionInserts.join(',\n')};\n`;
-  await fs.appendFile(path.join(__dirname, '../data/031-sport-divisions.sql'), sportDivisionsSql);
+  // Parse existing club names and IDs
+  const clubMatches = clubsFile.matchAll(/\((\d+),\s*'([^']+)',\s*'([^']+)',\s*true\)/g);
+  for (const match of clubMatches) {
+    const [, id, name, slug] = match;
+    existingClubs.set(name, { id: parseInt(id), slug });
+  }
   
-  // Append to existing teams file
-  const teamsSql = `\n-- CASA teams\nINSERT INTO teams (name, sport_division_id, scrape_target_id) VALUES\n${teamInserts.join(',\n')};\n`;
-  await fs.appendFile(path.join(__dirname, '../data/032-teams-players.sql'), teamsSql);
+  // Track which teams need new clubs vs reusing existing ones
+  const newClubs = [];
+  const teamMappings = teams.map((team, idx) => {
+    const existing = existingClubs.get(team.name);
+    if (existing) {
+      console.log(`   🔗 Reusing existing club for: ${team.name} (ID ${existing.id})`);
+      return {
+        teamName: team.name,
+        clubId: existing.id,
+        sportDivisionId: existing.id, // Assume sport_division_id matches club_id for existing clubs
+        scrapeTargetId: team.scrapeTargetId,
+        isNew: false
+      };
+    } else {
+      const clubId = 1000 + newClubs.length;
+      const slug = team.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      newClubs.push({ id: clubId, name: team.name, slug });
+      return {
+        teamName: team.name,
+        clubId: clubId,
+        sportDivisionId: clubId,
+        scrapeTargetId: team.scrapeTargetId,
+        isNew: true
+      };
+    }
+  });
   
-  console.log(`   ✅ Generated SQL for ${teams.length} CASA teams`);
+  console.log(`   📊 New clubs to create: ${newClubs.length}, Reusing existing: ${teams.length - newClubs.length}`);
+  
+  // Generate SQL only for NEW clubs
+  if (newClubs.length > 0) {
+    const clubInserts = newClubs.map(club => 
+      `(${club.id}, '${club.name}', '${club.slug}', true)`
+    );
+    const clubsSql = `\n-- CASA clubs (new only)\nINSERT INTO clubs (id, display_name, slug, is_active) VALUES\n${clubInserts.join(',\n')}\nON CONFLICT (id) DO NOTHING;\n`;
+    await fs.appendFile(path.join(dataDir, '030-clubs.sql'), clubsSql);
+    
+    // Generate sport_divisions only for NEW clubs
+    const sportDivisionInserts = newClubs.map(club =>
+      `(${club.id}, ${club.id}, 1, '${club.name}', true)`
+    );
+    const sportDivisionsSql = `\n-- CASA sport_divisions (new only)\nINSERT INTO sport_divisions (id, club_id, sport_id, display_name, is_active) VALUES\n${sportDivisionInserts.join(',\n')}\nON CONFLICT (id) DO NOTHING;\n`;
+    await fs.appendFile(path.join(dataDir, '031-sport-divisions.sql'), sportDivisionsSql);
+  }
+  
+  // Generate teams for ALL (both new clubs and existing clubs with reserve teams)
+  // For reserve teams (reusing existing clubs), append " Reserves" to make name unique
+  const teamInserts = teamMappings.map(mapping => {
+    const teamName = mapping.isNew ? mapping.teamName : `${mapping.teamName} Reserves`;
+    return `('${teamName}', ${mapping.sportDivisionId}, ${mapping.scrapeTargetId})`;
+  });
+  const teamsSql = `\n-- CASA teams (includes reserves for existing clubs)\nINSERT INTO teams (name, sport_division_id, scrape_target_id) VALUES\n${teamInserts.join(',\n')}\nON CONFLICT (name) DO NOTHING;\n`;
+  await fs.appendFile(path.join(dataDir, '032-teams-players.sql'), teamsSql);
+  
+  console.log(`   ✅ Generated SQL for ${teams.length} CASA teams (${newClubs.length} new clubs, ${teams.length - newClubs.length} reserves)`);
 }
 
 /**

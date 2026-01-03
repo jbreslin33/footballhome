@@ -3518,7 +3518,7 @@ CROSS JOIN LATERAL (
 ) team_names
 JOIN team_division_lookup tdl ON tdl.team_name = team_names.team_name
 ON CONFLICT (team_division_id, player_id) DO NOTHING;
--- CASA teams
+-- CASA teams (includes reserves for existing clubs)
 INSERT INTO teams (name, sport_division_id, scrape_target_id) VALUES
 ('Ade United', 1000, 12),
 ('Oaklyn II', 1001, 12),
@@ -3546,11 +3546,12 @@ INSERT INTO teams (name, sport_division_id, scrape_target_id) VALUES
 ('Strictly Nos', 1023, 18),
 ('Alaso FC', 1024, 24),
 ('FeelsGood FC', 1025, 24),
-('Jersey Shore Boca', 1026, 24),
-('Jersey Shore Hounds', 1027, 24),
-('MFC Stars', 1028, 24),
-('Milan Football Club', 1029, 24),
-('Monmouth Light FC', 1030, 24),
-('Princeton International FC', 1031, 24),
-('Real Central NJ II', 1032, 24),
-('Rondo Football Club', 1033, 24);
+('Jersey Shore Boca Reserves', 35, 24),
+('Jersey Shore Hounds', 1026, 24),
+('MFC Stars', 1027, 24),
+('Milan Football Club', 1028, 24),
+('Monmouth Light FC', 1029, 24),
+('Princeton International FC', 1030, 24),
+('Real Central NJ II', 1031, 24),
+('Rondo Football Club', 1032, 24)
+ON CONFLICT (name) DO NOTHING;

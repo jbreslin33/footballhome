@@ -114,7 +114,7 @@ INSERT INTO sport_divisions (id, club_id, display_name, sport_id, is_active) VAL
 
 ON CONFLICT (id) DO NOTHING;
 
--- CASA sport_divisions
+-- CASA sport_divisions (new only)
 INSERT INTO sport_divisions (id, club_id, sport_id, display_name, is_active) VALUES
 (1000, 1000, 1, 'Ade United', true),
 (1001, 1001, 1, 'Oaklyn II', true),
@@ -142,11 +142,11 @@ INSERT INTO sport_divisions (id, club_id, sport_id, display_name, is_active) VAL
 (1023, 1023, 1, 'Strictly Nos', true),
 (1024, 1024, 1, 'Alaso FC', true),
 (1025, 1025, 1, 'FeelsGood FC', true),
-(1026, 1026, 1, 'Jersey Shore Boca', true),
-(1027, 1027, 1, 'Jersey Shore Hounds', true),
-(1028, 1028, 1, 'MFC Stars', true),
-(1029, 1029, 1, 'Milan Football Club', true),
-(1030, 1030, 1, 'Monmouth Light FC', true),
-(1031, 1031, 1, 'Princeton International FC', true),
-(1032, 1032, 1, 'Real Central NJ II', true),
-(1033, 1033, 1, 'Rondo Football Club', true);
+(1026, 1026, 1, 'Jersey Shore Hounds', true),
+(1027, 1027, 1, 'MFC Stars', true),
+(1028, 1028, 1, 'Milan Football Club', true),
+(1029, 1029, 1, 'Monmouth Light FC', true),
+(1030, 1030, 1, 'Princeton International FC', true),
+(1031, 1031, 1, 'Real Central NJ II', true),
+(1032, 1032, 1, 'Rondo Football Club', true)
+ON CONFLICT (id) DO NOTHING;

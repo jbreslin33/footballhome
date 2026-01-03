@@ -113,7 +113,7 @@ INSERT INTO clubs (id, display_name, slug, is_active) VALUES
 
 ON CONFLICT (id) DO NOTHING;
 
--- CASA clubs
+-- CASA clubs (new only)
 INSERT INTO clubs (id, display_name, slug, is_active) VALUES
 (1000, 'Ade United', 'ade-united', true),
 (1001, 'Oaklyn II', 'oaklyn-ii', true),
@@ -141,11 +141,11 @@ INSERT INTO clubs (id, display_name, slug, is_active) VALUES
 (1023, 'Strictly Nos', 'strictly-nos', true),
 (1024, 'Alaso FC', 'alaso-fc', true),
 (1025, 'FeelsGood FC', 'feelsgood-fc', true),
-(1026, 'Jersey Shore Boca', 'jersey-shore-boca', true),
-(1027, 'Jersey Shore Hounds', 'jersey-shore-hounds', true),
-(1028, 'MFC Stars', 'mfc-stars', true),
-(1029, 'Milan Football Club', 'milan-football-club', true),
-(1030, 'Monmouth Light FC', 'monmouth-light-fc', true),
-(1031, 'Princeton International FC', 'princeton-international-fc', true),
-(1032, 'Real Central NJ II', 'real-central-nj-ii', true),
-(1033, 'Rondo Football Club', 'rondo-football-club', true);
+(1026, 'Jersey Shore Hounds', 'jersey-shore-hounds', true),
+(1027, 'MFC Stars', 'mfc-stars', true),
+(1028, 'Milan Football Club', 'milan-football-club', true),
+(1029, 'Monmouth Light FC', 'monmouth-light-fc', true),
+(1030, 'Princeton International FC', 'princeton-international-fc', true),
+(1031, 'Real Central NJ II', 'real-central-nj-ii', true),
+(1032, 'Rondo Football Club', 'rondo-football-club', true)
+ON CONFLICT (id) DO NOTHING;
