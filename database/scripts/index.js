@@ -858,34 +858,125 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches, targ
 async function parseCasaTargets(targets, sqlGenerator) {
   const path = require('path');
   const fs = require('fs').promises;
+  const { JSDOM } = require('jsdom');
   
   const cacheDir = path.join(__dirname, '../scraped-html/casa');
   
   console.log(`   📋 Parsing CASA targets...`);
   
-  // Check cached files
+  // Find scrape target IDs for each league
+  const over40Standings = targets.find(t => t.label === 'CASA Over 40 Standings');
+  const over40Roster = targets.find(t => t.label === 'CASA Over 40 Roster Sheet');
+  const over50Standings = targets.find(t => t.label === 'CASA Over 50 Standings');
+  const over50Roster = targets.find(t => t.label === 'CASA Over 50 Roster Sheet');
+  
+  if (!over40Roster && !over50Roster) {
+    console.log(`   ⚠️  No CASA roster targets found`);
+    return;
+  }
+  
+  // Parse Google Sheets roster files
   try {
     const files = await fs.readdir(cacheDir);
-    const standingsFiles = files.filter(f => f.startsWith('standings') && f.endsWith('.html'));
-    const rosterFiles = files.filter(f => f.startsWith('roster') && f.endsWith('.html'));
-    const scheduleFiles = files.filter(f => f.startsWith('schedule') && f.endsWith('.html'));
+    const sheetsFiles = files.filter(f => f.startsWith('spreadsheets') && f.endsWith('.html'));
     
-    console.log(`   💾 Found ${standingsFiles.length} standings, ${rosterFiles.length} rosters, ${scheduleFiles.length} schedules`);
+    console.log(`   💾 Found ${sheetsFiles.length} Google Sheets roster files`);
     
-    if (standingsFiles.length === 0) {
-      console.log(`   ⚠️  No standings files found. Run with --fetch first.`);
-      return;
+    const allTeams = [];
+    
+    for (const file of sheetsFiles) {
+      const filePath = path.join(cacheDir, file);
+      const html = await fs.readFile(filePath, 'utf-8');
+      
+      // Extract league name from title
+      const dom = new JSDOM(html);
+      const title = dom.window.document.title;
+      const leagueName = title.includes('Select') ? 'Select Liga 1' : 'Traditional';
+      
+      console.log(`   📄 Parsing: ${title}`);
+      
+      // Extract team names from page switcher tabs
+      // Pattern: items.push({name: "Team Name", pageUrl: "...", gid: "..."});
+      const teamMatches = html.match(/items\.push\({name:\s*"([^"]+)"/g);
+      if (!teamMatches) {
+        console.log(`   ⚠️  No team names found in ${file}`);
+        continue;
+      }
+      
+      const teams = teamMatches.map(match => {
+        const nameMatch = match.match(/name:\s*"([^"]+)"/);
+        return nameMatch ? nameMatch[1] : null;
+      }).filter(Boolean);
+      
+      console.log(`   ✅ Found ${teams.length} teams: ${teams.join(', ')}`);
+      
+      // Determine scrape target ID based on league
+      const scrapeTargetId = title.includes('Select') 
+        ? (over50Roster ? over50Roster.id : null)
+        : (over40Roster ? over40Roster.id : null);
+      
+      teams.forEach(teamName => {
+        allTeams.push({
+          name: teamName,
+          leagueName: leagueName,
+          scrapeTargetId: scrapeTargetId
+        });
+      });
     }
     
-    console.log(`   ⚠️  CASA HTML parser not yet implemented`);
-    console.log(`   TODO: Parse Sports Engine HTML structure (casasoccerleagues.com)`);
-    console.log(`   TODO: Parse Google Sheets roster HTML`);
-    console.log(`   NOTE: CASA schedule page uses infinite scroll (need to scroll to load all matches)`);
-    console.log(`   NOTE: CASA does not track match events, lineups, or player stats (only basic match info)`);
+    console.log(`   📊 Total teams parsed: ${allTeams.length}`);
+    
+    // Generate SQL files
+    if (allTeams.length > 0) {
+      await generateCasaSql(allTeams, sqlGenerator);
+    }
     
   } catch (error) {
-    console.log(`   ⚠️  No cache directory found: ${error.message}`);
+    console.log(`   ⚠️  Error parsing CASA data: ${error.message}`);
+    console.error(error.stack);
   }
+}
+
+async function generateCasaSql(teams, sqlGenerator) {
+  console.log(`   🔨 Generating CASA SQL...`);
+  
+  // Generate clubs (1 per team)
+  const clubInserts = teams.map((team, idx) => {
+    const clubId = 1000 + idx; // Start at 1000 to avoid conflicts with APSL
+    const slug = team.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return `(${clubId}, '${team.name}', '${slug}', true)`;
+  });
+  
+  // Generate sport_divisions (1 per club, sport_id=1 for Soccer)
+  const sportDivisionInserts = teams.map((team, idx) => {
+    const clubId = 1000 + idx;
+    const sportDivisionId = 1000 + idx;
+    return `(${sportDivisionId}, ${clubId}, 1, '${team.name}', true)`;
+  });
+  
+  // Generate teams
+  const teamInserts = teams.map((team, idx) => {
+    const sportDivisionId = 1000 + idx;
+    return `('${team.name}', ${sportDivisionId}, ${team.scrapeTargetId})`;
+  });
+  
+  // Write SQL files
+  const fs = require('fs').promises;
+  const path = require('path');
+  
+  // Append to existing clubs file
+  const clubsSql = `\n-- CASA clubs\nINSERT INTO clubs (id, display_name, slug, is_active) VALUES\n${clubInserts.join(',\n')};\n`;
+  await fs.appendFile(path.join(__dirname, '../data/030-clubs.sql'), clubsSql);
+  
+  // Append to existing sport_divisions file
+  const sportDivisionsSql = `\n-- CASA sport_divisions\nINSERT INTO sport_divisions (id, club_id, sport_id, display_name, is_active) VALUES\n${sportDivisionInserts.join(',\n')};\n`;
+  await fs.appendFile(path.join(__dirname, '../data/031-sport-divisions.sql'), sportDivisionsSql);
+  
+  // Append to existing teams file
+  const teamsSql = `\n-- CASA teams\nINSERT INTO teams (name, sport_division_id, scrape_target_id) VALUES\n${teamInserts.join(',\n')};\n`;
+  await fs.appendFile(path.join(__dirname, '../data/032-teams-players.sql'), teamsSql);
+  
+  console.log(`   ✅ Generated SQL for ${teams.length} CASA teams`);
 }
 
 /**

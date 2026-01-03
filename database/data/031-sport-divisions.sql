@@ -109,5 +109,23 @@ INSERT INTO sport_divisions (id, club_id, display_name, sport_id, is_active) VAL
     (52, 52, 'Alliance SC', 1, true)
 ,
     (53, 53, 'SC Gwinnett', 1, true)
+,
+    (54, 54, 'Georgia United FC', 1, true)
 
 ON CONFLICT (id) DO NOTHING;
+
+-- CASA sport_divisions
+INSERT INTO sport_divisions (id, club_id, sport_id, display_name, is_active) VALUES
+(1000, 1000, 1, 'Ade United', true),
+(1001, 1001, 1, 'Oaklyn II', true),
+(1002, 1002, 1, 'Sierra Stars', true),
+(1003, 1003, 1, 'Lighthouse Boys Club', true),
+(1004, 1004, 1, 'Illyrians FC', true),
+(1005, 1005, 1, 'Black Stars', true),
+(1006, 1006, 1, 'Phoenix I', true),
+(1007, 1007, 1, 'PSC II', true),
+(1008, 1008, 1, 'Persepolis I', true),
+(1009, 1009, 1, 'CF Armada', true),
+(1010, 1010, 1, 'Lighthouse Old Timers Club', true),
+(1011, 1011, 1, 'Persepolis II', true),
+(1012, 1012, 1, 'Phoenix II', true);

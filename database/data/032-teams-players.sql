@@ -62,7 +62,8 @@ WITH inserted_teams AS (
     ('Bel Calcio FC', 50, 1),
     ('Buckhead SC', 51, 1),
     ('Alliance SC', 52, 1),
-    ('SC Gwinnett', 53, 1)
+    ('SC Gwinnett', 53, 1),
+    ('Georgia United FC', 54, 1)
   ON CONFLICT (name) DO NOTHING
   RETURNING id, name
 ),
@@ -121,7 +122,8 @@ all_teams AS (
     'Bel Calcio FC',
     'Buckhead SC',
     'Alliance SC',
-    'SC Gwinnett'
+    'SC Gwinnett',
+    'Georgia United FC'
   ) AND id NOT IN (SELECT id FROM inserted_teams)
 ),
 inserted_team_divisions AS (
@@ -181,6 +183,7 @@ inserted_team_divisions AS (
       WHEN 'Buckhead SC' THEN 6
       WHEN 'Alliance SC' THEN 6
       WHEN 'SC Gwinnett' THEN 6
+      WHEN 'Georgia United FC' THEN 6
     END,
     true
   FROM all_teams at
@@ -247,6 +250,7 @@ SELECT
     WHEN 'Buckhead SC' THEN '115104'
     WHEN 'Alliance SC' THEN '115107'
     WHEN 'SC Gwinnett' THEN '119159'
+    WHEN 'Georgia United FC' THEN '133651'
   END
 FROM teams t
 JOIN team_divisions td ON td.team_id = t.id
@@ -303,6 +307,7 @@ WHERE td.division_id = CASE t.name
   WHEN 'Buckhead SC' THEN 6
   WHEN 'Alliance SC' THEN 6
   WHEN 'SC Gwinnett' THEN 6
+  WHEN 'Georgia United FC' THEN 6
 END
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_division_id = EXCLUDED.team_division_id;
@@ -3513,3 +3518,18 @@ CROSS JOIN LATERAL (
 ) team_names
 JOIN team_division_lookup tdl ON tdl.team_name = team_names.team_name
 ON CONFLICT (team_division_id, player_id) DO NOTHING;
+-- CASA teams
+INSERT INTO teams (name, sport_division_id, scrape_target_id) VALUES
+('Ade United', 1000, 15),
+('Oaklyn II', 1001, 15),
+('Sierra Stars', 1002, 15),
+('Lighthouse Boys Club', 1003, 15),
+('Illyrians FC', 1004, 15),
+('Black Stars', 1005, 15),
+('Phoenix I', 1006, 15),
+('PSC II', 1007, 15),
+('Persepolis I', 1008, 15),
+('CF Armada', 1009, 15),
+('Lighthouse Old Timers Club', 1010, 15),
+('Persepolis II', 1011, 15),
+('Phoenix II', 1012, 15);

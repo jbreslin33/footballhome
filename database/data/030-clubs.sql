@@ -108,5 +108,23 @@ INSERT INTO clubs (id, display_name, slug, is_active) VALUES
     (52, 'Alliance SC', 'alliance-sc', true)
 ,
     (53, 'SC Gwinnett', 'sc-gwinnett', true)
+,
+    (54, 'Georgia United FC', 'georgia-united-fc', true)
 
 ON CONFLICT (id) DO NOTHING;
+
+-- CASA clubs
+INSERT INTO clubs (id, display_name, slug, is_active) VALUES
+(1000, 'Ade United', 'ade-united', true),
+(1001, 'Oaklyn II', 'oaklyn-ii', true),
+(1002, 'Sierra Stars', 'sierra-stars', true),
+(1003, 'Lighthouse Boys Club', 'lighthouse-boys-club', true),
+(1004, 'Illyrians FC', 'illyrians-fc', true),
+(1005, 'Black Stars', 'black-stars', true),
+(1006, 'Phoenix I', 'phoenix-i', true),
+(1007, 'PSC II', 'psc-ii', true),
+(1008, 'Persepolis I', 'persepolis-i', true),
+(1009, 'CF Armada', 'cf-armada', true),
+(1010, 'Lighthouse Old Timers Club', 'lighthouse-old-timers-club', true),
+(1011, 'Persepolis II', 'persepolis-ii', true),
+(1012, 'Phoenix II', 'phoenix-ii', true);
