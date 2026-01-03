@@ -864,16 +864,15 @@ async function parseCasaTargets(targets, sqlGenerator) {
   
   console.log(`   📋 Parsing CASA targets...`);
   
-  // Find scrape target IDs for each league
-  const over40Standings = targets.find(t => t.label === 'CASA Over 40 Standings');
-  const over40Roster = targets.find(t => t.label === 'CASA Over 40 Roster Sheet');
-  const over50Standings = targets.find(t => t.label === 'CASA Over 50 Standings');
-  const over50Roster = targets.find(t => t.label === 'CASA Over 50 Roster Sheet');
+  // Find all CASA roster targets (Google Sheets)
+  const rosterTargets = targets.filter(t => t.label && t.label.includes('Roster'));
   
-  if (!over40Roster && !over50Roster) {
+  if (rosterTargets.length === 0) {
     console.log(`   ⚠️  No CASA roster targets found`);
     return;
   }
+  
+  console.log(`   📋 Found ${rosterTargets.length} roster targets`);
   
   // Parse Google Sheets roster files
   try {
@@ -888,12 +887,32 @@ async function parseCasaTargets(targets, sqlGenerator) {
       const filePath = path.join(cacheDir, file);
       const html = await fs.readFile(filePath, 'utf-8');
       
+      // Extract document ID from filename to match with scrape_target URL
+      // Example: spreadsheets-d-14eqoj60t0xnru6-de3cc913.html
+      const docIdMatch = file.match(/spreadsheets-d-([a-z0-9]+)-/i);
+      if (!docIdMatch) {
+        console.log(`   ⚠️  Cannot extract doc ID from filename: ${file}`);
+        continue;
+      }
+      const docIdPart = docIdMatch[1].toLowerCase();
+      
+      // Find matching roster target by URL
+      const matchingTarget = rosterTargets.find(t => {
+        const urlLower = t.url.toLowerCase();
+        return urlLower.includes(docIdPart.slice(0, 10)); // Match first 10 chars of doc ID
+      });
+      
+      if (!matchingTarget) {
+        console.log(`   ⚠️  No matching scrape target for ${file}`);
+        continue;
+      }
+      
       // Extract league name from title
       const dom = new JSDOM(html);
       const title = dom.window.document.title;
-      const leagueName = title.includes('Select') ? 'Select Liga 1' : 'Traditional';
       
       console.log(`   📄 Parsing: ${title}`);
+      console.log(`   🎯 Matched to: ${matchingTarget.label} (ID ${matchingTarget.id})`);
       
       // Extract team names from page switcher tabs
       // Pattern: items.push({name: "Team Name", pageUrl: "...", gid: "..."});
@@ -910,16 +929,11 @@ async function parseCasaTargets(targets, sqlGenerator) {
       
       console.log(`   ✅ Found ${teams.length} teams: ${teams.join(', ')}`);
       
-      // Determine scrape target ID based on league
-      const scrapeTargetId = title.includes('Select') 
-        ? (over50Roster ? over50Roster.id : null)
-        : (over40Roster ? over40Roster.id : null);
-      
       teams.forEach(teamName => {
         allTeams.push({
           name: teamName,
-          leagueName: leagueName,
-          scrapeTargetId: scrapeTargetId
+          label: matchingTarget.label,
+          scrapeTargetId: matchingTarget.id
         });
       });
     }
