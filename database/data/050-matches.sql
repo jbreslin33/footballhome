@@ -3,7 +3,7 @@
 
 INSERT INTO matches (
   home_team_id, away_team_id, match_type_id, match_status_id, match_date,
-  home_score, away_score, source_system_id, external_id
+  home_score, away_score, source_system_id, external_id, scrape_target_id
 )
 SELECT
   ht.id,
@@ -14,7 +14,8 @@ SELECT
   m.home_score,
   m.away_score,
   1, -- source_system_id (APSL)
-  m.external_id
+  m.external_id,
+  3 -- scrape_target_id
 FROM (VALUES
   ('Hoboken FC 1912', 'Leros SC', 1, 1, '226814'),
   ('Zum Schneider FC 03', 'NY Pancyprian Freedoms', 1, 0, '226815'),

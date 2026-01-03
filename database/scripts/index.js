@@ -151,11 +151,21 @@ async function parseApslTargets(targets, sqlGenerator) {
   const cacheDir = path.join(__dirname, '../scraped-html/apsl');
   
   // APSL only has one target: the standings page
-  const standingsTarget = targets.find(t => t.target_type === 'league_structure');
+  const standingsTarget = targets.find(t => t.target_type_name === 'league_structure');
   if (!standingsTarget) {
     console.log('   ⚠️  No league_structure target found for APSL');
     return;
   }
+  
+  const standingsTargetId = standingsTarget.id;
+  
+  // Find team roster template target
+  const rosterTemplate = targets.find(t => t.target_type_name === 'team_roster');
+  const rosterTargetId = rosterTemplate ? rosterTemplate.id : null;
+  
+  // Find match event template target
+  const matchTemplate = targets.find(t => t.target_type_name === 'match_event');
+  const matchTargetId = matchTemplate ? matchTemplate.id : null;
   
   try {
     // Find the cached HTML file (look for standings*.html)
@@ -262,7 +272,12 @@ async function parseApslTargets(targets, sqlGenerator) {
     console.log(`   ✅ Parsed ${allMatches.length} matches with events`);
     
     // Generate SQL for teams, players, and matches
-    await generateApslSql(conferences, parser, allPlayers, allMatches);
+    // Pass scrape_target_id values for data lineage
+    await generateApslSql(conferences, parser, allPlayers, allMatches, {
+      standingsTargetId,
+      rosterTargetId,
+      matchTargetId
+    });
     
   } catch (error) {
     console.error(`   ❌ Parse error: ${error.message}`);
@@ -273,7 +288,7 @@ async function parseApslTargets(targets, sqlGenerator) {
 /**
  * Generate SQL files for APSL scraped data
  */
-async function generateApslSql(conferences, parser, allPlayers, allMatches) {
+async function generateApslSql(conferences, parser, allPlayers, allMatches, targetIds = {}) {
   const path = require('path');
   const fs = require('fs').promises;
   const crypto = require('crypto');
@@ -355,11 +370,12 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
     lines.push('-- Insert teams and link to divisions with external IDs');
     
     lines.push('WITH inserted_teams AS (');
-    lines.push('  INSERT INTO teams (name) VALUES');
+    lines.push('  INSERT INTO teams (name, scrape_target_id) VALUES');
     
     const teamValueLines = teams.map((team, idx) => {
       const isLast = idx === teams.length - 1;
-      return `    ('${team.name.replace(/'/g, "''")}')${isLast ? '' : ','}`;
+      const scrapeTargetId = targetIds.standingsTargetId || 'NULL';
+      return `    ('${team.name.replace(/'/g, "''")}', ${scrapeTargetId})${isLast ? '' : ','}`;
     });
     
     lines.push(...teamValueLines);
@@ -483,8 +499,8 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
       lines.push('  FROM inserted_persons');
       lines.push('),');
       lines.push('inserted_players AS (');
-      lines.push('  INSERT INTO players (person_id)');
-      lines.push('  SELECT ip.id');
+      lines.push(`  INSERT INTO players (person_id, scrape_target_id)`);
+      lines.push('  SELECT ip.id, ' + (targetIds.rosterTargetId || 'NULL'));
       lines.push('  FROM indexed_persons ip');
       lines.push('  RETURNING id, person_id');
       lines.push(')');
@@ -598,7 +614,7 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
     
     matchLines.push('INSERT INTO matches (');
     matchLines.push('  home_team_id, away_team_id, match_type_id, match_status_id, match_date,');
-    matchLines.push('  home_score, away_score, source_system_id, external_id');
+    matchLines.push('  home_score, away_score, source_system_id, external_id, scrape_target_id');
     matchLines.push(')');
     matchLines.push('SELECT');
     matchLines.push('  ht.id,');
@@ -609,7 +625,8 @@ async function generateApslSql(conferences, parser, allPlayers, allMatches) {
     matchLines.push('  m.home_score,');
     matchLines.push('  m.away_score,');
     matchLines.push('  1, -- source_system_id (APSL)');
-    matchLines.push('  m.external_id');
+    matchLines.push('  m.external_id,');
+    matchLines.push(`  ${targetIds.matchTargetId || 'NULL'} -- scrape_target_id`);
     matchLines.push('FROM (VALUES');
     
     const matchValues = allMatches.map((match, idx) => {
@@ -797,17 +814,16 @@ async function parseCasaTargets(targets, sqlGenerator) {
  * Load scrape targets from config file (source of truth)
  */
 async function loadTargetsFromConfig() {
-  const path = require('path');
-  const fs = require('fs').promises;
-  
-  const configPath = path.join(__dirname, '../scrape-targets.json');
+  // Load scrape targets from database instead of JSON file
+  const { getScrapeTargets } = require('./utils/database');
   
   try {
-    const configData = await fs.readFile(configPath, 'utf-8');
-    const config = JSON.parse(configData);
-    return config.targets.filter(t => t.is_active);
+    const targets = await getScrapeTargets();
+    console.log(`   Loaded ${targets.length} targets from database`);
+    return targets;
   } catch (error) {
-    console.error(`❌ Failed to load scrape-targets.json: ${error.message}`);
+    console.error(`❌ Failed to load scrape targets from database: ${error.message}`);
+    console.error('   Make sure the database is running and scrape_targets table exists.');
     return [];
   }
 }
@@ -822,7 +838,8 @@ async function main() {
       const targets = await loadTargetsFromConfig();
       
       if (targets.length === 0) {
-        console.error('❌ No active scrape targets found in database/scrape-targets.json');
+        console.error('❌ No active scrape targets found in database');
+        console.error('   Check that scrape_targets table has is_active=true rows');
         process.exit(1);
       }
       
