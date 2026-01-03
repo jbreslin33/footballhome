@@ -861,16 +861,28 @@ async function parseCasaTargets(targets, sqlGenerator) {
   
   const cacheDir = path.join(__dirname, '../scraped-html/casa');
   
-  console.log(`   ⚠️  CASA parser not yet implemented`);
-  console.log(`   TODO: Parse ${targets.length} targets (rosters, schedules, standings)`);
+  console.log(`   📋 Parsing CASA targets...`);
   
   // Check cached files
   try {
     const files = await fs.readdir(cacheDir);
-    const htmlFiles = files.filter(f => f.endsWith('.html'));
-    console.log(`   💾 Found ${htmlFiles.length} cached HTML files`);
+    const standingsFiles = files.filter(f => f.startsWith('standings') && f.endsWith('.html'));
+    const rosterFiles = files.filter(f => f.startsWith('roster') && f.endsWith('.html'));
+    const scheduleFiles = files.filter(f => f.startsWith('schedule') && f.endsWith('.html'));
+    
+    console.log(`   💾 Found ${standingsFiles.length} standings, ${rosterFiles.length} rosters, ${scheduleFiles.length} schedules`);
+    
+    if (standingsFiles.length === 0) {
+      console.log(`   ⚠️  No standings files found. Run with --fetch first.`);
+      return;
+    }
+    
+    console.log(`   ⚠️  CASA HTML parser not yet implemented`);
+    console.log(`   TODO: Parse TeamPass HTML structure (similar to APSL)`);
+    console.log(`   TODO: Parse Google Sheets roster HTML`);
+    
   } catch (error) {
-    console.log(`   ⚠️  No cache directory found`);
+    console.log(`   ⚠️  No cache directory found: ${error.message}`);
   }
 }
 
