@@ -271,6 +271,21 @@ INSERT INTO age_calculation_methods (id, name, description, sort_order) VALUES
     (7, 'open', 'No age restriction', 7)
 ON CONFLICT (id) DO NOTHING;
 
+CREATE TABLE sports (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0
+);
+
+INSERT INTO sports (id, name, description, sort_order) VALUES
+    (1, 'Soccer', 'Association Football', 1),
+    (2, 'Basketball', 'Basketball', 2),
+    (3, 'Baseball', 'Baseball', 3),
+    (4, 'Hockey', 'Ice Hockey', 4),
+    (5, 'Volleyball', 'Volleyball', 5)
+ON CONFLICT (id) DO NOTHING;
+
 -- ============================================================================
 -- 2. GOVERNING BODY HIERARCHY
 -- ============================================================================
@@ -652,13 +667,14 @@ CREATE TABLE sport_divisions (
     id SERIAL PRIMARY KEY,
     club_id INTEGER NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
     display_name VARCHAR(255) NOT NULL,
-    sport VARCHAR(50) DEFAULT 'soccer',
+    sport_id INTEGER NOT NULL DEFAULT 1 REFERENCES sports(id),
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(club_id, display_name)
 );
 
 CREATE INDEX idx_sport_divisions_club ON sport_divisions(club_id);
+CREATE INDEX idx_sport_divisions_sport ON sport_divisions(sport_id);
 
 -- ============================================================================
 -- 5. UNIFIED LEAGUE DATA (Replaces all apsl_*, casa_*, custom_* tables)
