@@ -880,6 +880,8 @@ async function parseCasaTargets(targets, sqlGenerator) {
     console.log(`   ⚠️  CASA HTML parser not yet implemented`);
     console.log(`   TODO: Parse Sports Engine HTML structure (casasoccerleagues.com)`);
     console.log(`   TODO: Parse Google Sheets roster HTML`);
+    console.log(`   NOTE: CASA schedule page uses infinite scroll (need to scroll to load all matches)`);
+    console.log(`   NOTE: CASA does not track match events, lineups, or player stats (only basic match info)`);
     
   } catch (error) {
     console.log(`   ⚠️  No cache directory found: ${error.message}`);
