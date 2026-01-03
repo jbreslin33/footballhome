@@ -878,7 +878,7 @@ async function parseCasaTargets(targets, sqlGenerator) {
     }
     
     console.log(`   ⚠️  CASA HTML parser not yet implemented`);
-    console.log(`   TODO: Parse TeamPass HTML structure (similar to APSL)`);
+    console.log(`   TODO: Parse Sports Engine HTML structure (casasoccerleagues.com)`);
     console.log(`   TODO: Parse Google Sheets roster HTML`);
     
   } catch (error) {
