@@ -37,6 +37,21 @@ class DivisionRepository {
   }
   
   /**
+   * Find divisions by season
+   */
+  async findBySeason(seasonId) {
+    const result = await this.db.query(`
+      SELECT id, season_id, conference_id, name, division_type_id,
+             skill_level, skill_label, source_system_id, external_id, sort_order
+      FROM divisions
+      WHERE season_id = $1
+      ORDER BY sort_order, name
+    `, [seasonId]);
+    
+    return result.rows;
+  }
+  
+  /**
    * Upsert division (insert or update if external_id exists)
    */
   async upsert(division) {

@@ -79,6 +79,14 @@ class ApslStructureScraper {
     const seasonResult = await this.seasonRepo.upsert(season);
     console.log(`   ✓ Season: ${seasonResult.inserted ? 'inserted' : 'updated'} (id=${seasonResult.id})`);
     
+    // 3a. Link season to scrape_target (audit trail)
+    await this._client.query(
+      `INSERT INTO season_scrape_targets (scrape_target_id, season_id) 
+       VALUES ($1, $2) 
+       ON CONFLICT (scrape_target_id, season_id) DO NOTHING`,
+      [this.scrapeTarget.id, seasonResult.id]
+    );
+    
     // 4. Upsert conferences (link to season)
     for (const conference of conferences) {
       conference.seasonId = seasonResult.id;
@@ -97,6 +105,17 @@ class ApslStructureScraper {
     }
     const divResult = await this.divisionRepo.upsertMany(divisions);
     console.log(`   ✓ Divisions: ${divResult.inserted} inserted, ${divResult.updated} updated`);
+    
+    // 5a. Link divisions to scrape_target (audit trail)
+    const savedDivisions = await this.divisionRepo.findBySeason(seasonResult.id);
+    for (const div of savedDivisions) {
+      await this._client.query(
+        `INSERT INTO division_scrape_targets (scrape_target_id, division_id) 
+         VALUES ($1, $2) 
+         ON CONFLICT (scrape_target_id, division_id) DO NOTHING`,
+        [this.scrapeTarget.id, div.id]
+      );
+    }
     
     // Print conference + division details
     for (let i = 0; i < conferences.length; i++) {
