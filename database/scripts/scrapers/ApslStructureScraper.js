@@ -106,8 +106,7 @@ class ApslStructureScraper {
     }
     
     // 5. Upsert divisions (link to conferences and season)
-    // Map divisions to their saved conference IDs
-    const savedConferences = await this.conferenceRepo.findBySeason(seasonResult.id);
+    // Map divisions to their saved conference IDs (reuse savedConferences from above)
     const conferenceMap = new Map(savedConferences.map(c => [c.external_id, c.id]));
     
     for (const division of divisions) {
