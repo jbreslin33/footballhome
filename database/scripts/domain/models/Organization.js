@@ -5,10 +5,9 @@
  * Organization → League → Season → Conference → Division → Team → Player
  */
 class Organization {
-  constructor({ name, displayName, slug, website, isActive = true }) {
+  constructor({ name, shortName = null, website = null, isActive = true }) {
     this.name = name;
-    this.displayName = displayName;
-    this.slug = slug;
+    this.shortName = shortName;
     this.website = website;
     this.isActive = isActive;
     
@@ -19,24 +18,19 @@ class Organization {
     if (!this.name || this.name.trim().length === 0) {
       throw new Error(`Invalid organization name: ${this.name}`);
     }
-    
-    if (!this.slug || this.slug.trim().length === 0) {
-      throw new Error(`Invalid organization slug: ${this.slug}`);
-    }
   }
   
   toDbRow() {
     return {
       name: this.name,
-      display_name: this.displayName,
-      slug: this.slug,
-      website: this.website,
+      short_name: this.shortName,
+      website_url: this.website,
       is_active: this.isActive
     };
   }
   
   toString() {
-    return `${this.displayName || this.name} (${this.slug})`;
+    return `${this.shortName || this.name}`;
   }
 }
 

@@ -10,14 +10,14 @@ class LeagueRepository {
   }
   
   /**
-   * Find league by slug within an organization
+   * Find league by name within an organization
    */
-  async findBySlug(organizationId, slug) {
+  async findByName(organizationId, name) {
     const result = await this.db.query(`
-      SELECT id, name, display_name, organization_id, slug, is_active
+      SELECT id, name, organization_id, external_id, is_active
       FROM leagues
-      WHERE organization_id = $1 AND slug = $2
-    `, [organizationId, slug]);
+      WHERE organization_id = $1 AND name = $2
+    `, [organizationId, name]);
     
     return result.rows[0] || null;
   }
@@ -26,23 +26,20 @@ class LeagueRepository {
    * Find or create league by name within an organization
    * Returns the league ID
    */
-  async findOrCreateByName(organizationId, name, slug = null) {
+  async findOrCreateByName(organizationId, name) {
     // Try to find existing
-    const existing = await this.db.query(`
-      SELECT id FROM leagues
-      WHERE organization_id = $1 AND name = $2
-    `, [organizationId, name]);
+    const existing = await this.findByName(organizationId, name);
     
-    if (existing.rows.length > 0) {
-      return existing.rows[0].id;
+    if (existing) {
+      return existing.id;
     }
     
     // Create new
     const result = await this.db.query(`
-      INSERT INTO leagues (organization_id, name, slug)
-      VALUES ($1, $2, $3)
+      INSERT INTO leagues (organization_id, name)
+      VALUES ($1, $2)
       RETURNING id
-    `, [organizationId, name, slug || name.toLowerCase().replace(/\s+/g, '-')]);
+    `, [organizationId, name]);
     
     return result.rows[0].id;
   }
@@ -54,14 +51,13 @@ class LeagueRepository {
     const row = league.toDbRow();
     
     const result = await this.db.query(`
-      INSERT INTO leagues (name, display_name, organization_id, slug, is_active)
-      VALUES ($1, $2, $3, $4, $5)
-      ON CONFLICT (organization_id, slug) DO UPDATE SET
-        name = EXCLUDED.name,
-        display_name = EXCLUDED.display_name,
+      INSERT INTO leagues (name, organization_id, external_id, is_active)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (organization_id, name) DO UPDATE SET
+        external_id = EXCLUDED.external_id,
         is_active = EXCLUDED.is_active
       RETURNING id, (xmax = 0) AS is_insert
-    `, [row.name, row.display_name, row.organization_id, row.slug, row.is_active]);
+    `, [row.name, row.organization_id, row.external_id, row.is_active]);
     
     return {
       id: result.rows[0].id,

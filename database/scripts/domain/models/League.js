@@ -5,11 +5,10 @@
  * Organization → League → Season → Conference → Division → Team → Player
  */
 class League {
-  constructor({ name, displayName, organizationId, slug, isActive = true }) {
+  constructor({ name, organizationId = null, externalId = null, isActive = true }) {
     this.name = name;
-    this.displayName = displayName;
     this.organizationId = organizationId;
-    this.slug = slug;
+    this.externalId = externalId;
     this.isActive = isActive;
     
     this.validate();
@@ -20,23 +19,20 @@ class League {
       throw new Error(`Invalid league name: ${this.name}`);
     }
     
-    if (!this.organizationId) {
-      throw new Error(`League must have an organization_id`);
-    }
+    // organizationId can be null during construction, but must be set before saving
   }
   
   toDbRow() {
     return {
       name: this.name,
-      display_name: this.displayName,
       organization_id: this.organizationId,
-      slug: this.slug,
+      external_id: this.externalId,
       is_active: this.isActive
     };
   }
   
   toString() {
-    return `${this.displayName || this.name}`;
+    return `${this.name}`;
   }
 }
 

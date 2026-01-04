@@ -10,14 +10,14 @@ class OrganizationRepository {
   }
   
   /**
-   * Find organization by slug
+   * Find organization by name
    */
-  async findBySlug(slug) {
+  async findByName(name) {
     const result = await this.db.query(`
-      SELECT id, name, display_name, slug, website, is_active
+      SELECT id, name, short_name, website_url, is_active
       FROM organizations
-      WHERE slug = $1
-    `, [slug]);
+      WHERE name = $1
+    `, [name]);
     
     return result.rows[0] || null;
   }
@@ -26,7 +26,7 @@ class OrganizationRepository {
    * Find or create organization by name
    * Returns the organization ID
    */
-  async findOrCreateByName(name, slug = null) {
+  async findOrCreateByName(name) {
     // Try to find existing
     const existing = await this.db.query(`
       SELECT id FROM organizations
@@ -39,10 +39,10 @@ class OrganizationRepository {
     
     // Create new
     const result = await this.db.query(`
-      INSERT INTO organizations (name, slug)
-      VALUES ($1, $2)
+      INSERT INTO organizations (name)
+      VALUES ($1)
       RETURNING id
-    `, [name, slug || name.toLowerCase().replace(/\s+/g, '-')]);
+    `, [name]);
     
     return result.rows[0].id;
   }
@@ -54,15 +54,14 @@ class OrganizationRepository {
     const row = organization.toDbRow();
     
     const result = await this.db.query(`
-      INSERT INTO organizations (name, display_name, slug, website, is_active)
-      VALUES ($1, $2, $3, $4, $5)
-      ON CONFLICT (slug) DO UPDATE SET
-        name = EXCLUDED.name,
-        display_name = EXCLUDED.display_name,
-        website = EXCLUDED.website,
+      INSERT INTO organizations (name, short_name, website_url, is_active)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (name) DO UPDATE SET
+        short_name = EXCLUDED.short_name,
+        website_url = EXCLUDED.website_url,
         is_active = EXCLUDED.is_active
       RETURNING id, (xmax = 0) AS is_insert
-    `, [row.name, row.display_name, row.slug, row.website, row.is_active]);
+    `, [row.name, row.short_name, row.website_url, row.is_active]);
     
     return {
       id: result.rows[0].id,
