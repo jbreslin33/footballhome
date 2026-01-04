@@ -1,5 +1,5 @@
 const { Pool } = require('pg');
-const FileFetcher = require('../infrastructure/fetchers/FileFetcher');
+const HtmlFetcher = require('../infrastructure/fetchers/HtmlFetcher');
 const ApslStandingsParser = require('../infrastructure/parsers/ApslStandingsParser');
 const OrganizationRepository = require('../domain/repositories/OrganizationRepository');
 const LeagueRepository = require('../domain/repositories/LeagueRepository');
@@ -14,9 +14,12 @@ const DivisionRepository = require('../domain/repositories/DivisionRepository');
  * Organization → League → Season → Conferences → Divisions
  * 
  * This is a thin orchestrator - all logic is in reusable components.
+ * 
+ * Data Source: scrape_targets table (id=1 for current season, 2-4 for historical)
  */
 class ApslStructureScraper {
-  constructor(fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo, divisionRepo) {
+  constructor(scrapeTarget, fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo, divisionRepo) {
+    this.scrapeTarget = scrapeTarget;
     this.fetcher = fetcher;
     this.parser = parser;
     this.orgRepo = orgRepo;
@@ -30,7 +33,7 @@ class ApslStructureScraper {
    * Main entry point
    */
   async run() {
-    console.log(`\n⚽ APSL Structure Scraper - Simple Test`);
+    console.log(`\n⚽ APSL Structure Scraper`);
     console.log('='.repeat(60));
     
     try {
@@ -44,13 +47,13 @@ class ApslStructureScraper {
   }
   
   async scrapeAndSave() {
-    // Use local HTML file for testing
-    const filePath = '/home/jbreslin/sandbox/github/footballhome/database/scraped-html/apsl/standings-fa7d5bab.html';
+    // Fetch HTML from URL (with caching)
+    const url = this.scrapeTarget.url;
     
-    console.log('📄 Reading from local file...');
-    console.log(`   ${filePath}`);
-    const html = await this.fetcher.fetch(filePath);
-    console.log(`   ✓ Read ${html.length} bytes`);
+    console.log('🌐 Fetching APSL standings...');
+    console.log(`   ${url}`);
+    const html = await this.fetcher.fetch(url, true); // useCache=true
+    console.log(`   ✓ Fetched ${html.length} bytes`);
     
     console.log('🔍 Parsing HTML into domain models...');
     const { organization, league, season, conferences, divisions } = this.parser.parse(html);
@@ -115,8 +118,19 @@ class ApslStructureScraper {
     
     const client = await pool.connect();
     
+    // Load scrape_target from database (id=1 for current APSL season)
+    const scrapeTargetId = process.env.SCRAPE_TARGET_ID || 1;
+    const result = await client.query('SELECT * FROM scrape_targets WHERE id = $1', [scrapeTargetId]);
+    
+    if (result.rows.length === 0) {
+      throw new Error(`scrape_target id=${scrapeTargetId} not found`);
+    }
+    
+    const scrapeTarget = result.rows[0];
+    console.log(`📋 Loaded scrape_target: id=${scrapeTarget.id}, url=${scrapeTarget.url}`);
+    
     // Create all dependencies
-    const fetcher = new FileFetcher();
+    const fetcher = new HtmlFetcher();
     const parser = new ApslStandingsParser();
     const orgRepo = new OrganizationRepository(client);
     const leagueRepo = new LeagueRepository(client);
@@ -126,6 +140,7 @@ class ApslStructureScraper {
     
     // Inject dependencies
     const scraper = new ApslStructureScraper(
+      scrapeTarget,
       fetcher,
       parser,
       orgRepo,
