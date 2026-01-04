@@ -212,7 +212,7 @@ echo -e "${YELLOW}⏳ Waiting for services...${NC}"
 # Wait for database
 echo -n "  Database: "
 for i in $(seq 1 60); do
-    if $DOCKER_COMPOSE exec -T db pg_isready -U footballhome > /dev/null 2>&1; then
+    if $DOCKER_COMPOSE exec -T db pg_isready -U footballhome_user > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Ready (${i}s)${NC}"
         break
     fi

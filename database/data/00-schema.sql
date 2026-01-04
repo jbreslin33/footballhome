@@ -510,7 +510,7 @@ CREATE TABLE conferences (
 CREATE INDEX idx_conferences_season ON conferences(season_id);
 CREATE INDEX idx_conferences_source ON conferences(source_system_id);
 
-COMMENT ON TABLE conferences IS 'Geographic groupings within seasons (optional)';
+COMMENT ON TABLE conferences IS 'Geographic/organizational groupings within seasons (required - use "Default Conference" for single-conference leagues)';
 
 CREATE TABLE division_types (
     id SERIAL PRIMARY KEY,
@@ -528,7 +528,7 @@ ON CONFLICT (id) DO NOTHING;
 CREATE TABLE divisions (
     id SERIAL PRIMARY KEY,
     season_id INTEGER NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
-    conference_id INTEGER REFERENCES conferences(id) ON DELETE CASCADE,
+    conference_id INTEGER NOT NULL REFERENCES conferences(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     
     -- Division type (league play vs tournament structures)
@@ -550,7 +550,7 @@ CREATE INDEX idx_divisions_type ON divisions(division_type_id);
 CREATE INDEX idx_divisions_source ON divisions(source_system_id);
 CREATE INDEX idx_divisions_skill ON divisions(skill_level);
 
-COMMENT ON TABLE divisions IS 'Competitive tiers within seasons/conferences';
+COMMENT ON TABLE divisions IS 'Competitive tiers within conferences (every division must belong to a conference)';
 
 -- ============================================================================
 -- 4. FOOTBALLHOME IDENTITY SYSTEM

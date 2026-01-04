@@ -59,12 +59,21 @@ class ApslStandingsParser {
     const conferences = [];
     const options = document.querySelectorAll('select option[value]');
     
+    // Known fake conferences: previous seasons masquerading as conferences
+    // These appear in the season dropdown and should be filtered out
+    const FAKE_CONFERENCE_IDS = ['396', '2597', '6020', '7930'];
+    
     for (const option of options) {
       const value = option.getAttribute('value');
       if (!value || value === '') continue; // Skip "All" option
       
       // Parse value: "17825,0" where 17825 is conference ID
       const [externalId] = value.split(',');
+      
+      // Skip fake conferences (previous seasons)
+      if (FAKE_CONFERENCE_IDS.includes(externalId)) {
+        continue;
+      }
       
       // Parse text: "Mayflower Conference (8 Teams)"
       const text = option.textContent.trim();
