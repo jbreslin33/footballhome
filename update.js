@@ -58,9 +58,9 @@ async function main() {
   });
   
   try {
-    console.log(`${colors.yellow}📋 Querying scrape_targets table...${colors.reset}`);
+    console.log(`${colors.yellow}📋 Querying scrape_targets table (state machine)...${colors.reset}`);
     
-    // Get all active scrape targets
+    // Get all active scrape targets, respecting state machine
     const result = await pool.query(`
       SELECT 
         st.id,
@@ -72,13 +72,21 @@ async function main() {
         scrt.name as scraper_type_name,
         st.source_system_id,
         ss.name as source_system_name,
+        st.scrape_action_id,
+        sa.name as action_name,
+        st.scrape_status_id,
+        sst.name as status_name,
         st.is_initialized,
         st.last_synced_at
       FROM scrape_targets st
       JOIN scrape_target_types stt ON st.target_type_id = stt.id
       JOIN scraper_types scrt ON st.scraper_type_id = scrt.id
       JOIN source_systems ss ON st.source_system_id = ss.id
+      LEFT JOIN scrape_actions sa ON st.scrape_action_id = sa.id
+      LEFT JOIN scrape_statuses sst ON st.scrape_status_id = sst.id
       WHERE st.is_active = true
+        AND (sa.name IS NULL OR sa.name != 'skip')           -- Don't process 'skip' actions
+        AND (sst.name IS NULL OR sst.name NOT IN ('archived', 'in_progress'))  -- Don't process archived or already running
       ORDER BY st.id
     `);
     
@@ -104,12 +112,27 @@ async function main() {
       console.log(`${colors.yellow}Target: ${target.label}${colors.reset}`);
       console.log(`  Type: ${target.target_type_name}`);
       console.log(`  Source: ${target.source_system_name}`);
+      console.log(`  Action: ${target.action_name || 'download_and_parse (default)'}`);
+      console.log(`  Status: ${target.status_name || 'not_started (default)'}`);
       console.log(`  Last synced: ${target.last_synced_at || 'Never'}`);
       console.log('');
+      
+      // Mark as in_progress
+      await pool.query(
+        'UPDATE scrape_targets SET scrape_status_id = 2 WHERE id = $1',
+        [target.id]
+      );
+      
+      const startTime = Date.now();
+      let success = false;
+      let errorMessage = null;
       
       try {
         // Route to appropriate scraper based on target_type_id and source_system_id
         const mode = target.is_initialized ? 'sync' : 'discover';
+        
+        // Set environment variable for scraper to know which target it's processing
+        process.env.SCRAPE_TARGET_ID = target.id;
         
         // Countries (REST Countries API) - target_type_id=17, source_system_id=6
         if (target.target_type_id === 17 && target.source_system_id === 6) {
@@ -125,6 +148,7 @@ async function main() {
             path.join(__dirname, 'database/scripts/scrapers/UsStatesScraper.js')
           );
           
+          success = true;
           stats.success++;
         }
         // APSL conference structure - target_type_id=1, source_system_id=1
@@ -132,19 +156,46 @@ async function main() {
           await runScraper(
             path.join(__dirname, 'database/scripts/scrapers/ApslStructureScraper.js')
           );
+          success = true;
           stats.success++;
         }
         // Add more scrapers here as they're built
         else {
           console.log(`${colors.yellow}  ⚠ No scraper implemented for this target type yet${colors.reset}`);
+          success = true; // Not an error, just not implemented
           stats.skipped++;
         }
         
         console.log('');
       } catch (error) {
         console.error(`${colors.red}  ✗ Failed: ${error.message}${colors.reset}`);
+        success = false;
+        errorMessage = error.message;
         stats.failed++;
         console.log('');
+      } finally {
+        const duration = Date.now() - startTime;
+        
+        // Update target status
+        const newStatusId = success ? 3 : 5;  // 3=completed, 5=failed
+        await pool.query(
+          `UPDATE scrape_targets 
+           SET scrape_status_id = $1, 
+               is_initialized = true,
+               last_synced_at = CURRENT_TIMESTAMP,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $2`,
+          [newStatusId, target.id]
+        );
+        
+        // Record execution in scrape_executions table
+        const executionStatusId = success ? 3 : 5;  // 3=success, 5=failed
+        await pool.query(
+          `INSERT INTO scrape_executions 
+           (scrape_target_id, status_id, started_at, completed_at, duration_ms, error_message)
+           VALUES ($1, $2, to_timestamp($3::double precision / 1000), CURRENT_TIMESTAMP, $4, $5)`,
+          [target.id, executionStatusId, startTime, duration, errorMessage]
+        );
       }
     }
     
