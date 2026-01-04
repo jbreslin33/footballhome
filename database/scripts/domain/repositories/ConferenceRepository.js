@@ -57,12 +57,13 @@ class ConferenceRepository {
     
     // Upsert by name (unique constraint is on season_id + name)
     const result = await this.db.query(`
-      INSERT INTO conferences (name, season_id, external_id)
-      VALUES ($1, $2, $3)
+      INSERT INTO conferences (name, season_id, source_system_id, external_id)
+      VALUES ($1, $2, $3, $4)
       ON CONFLICT (season_id, name) DO UPDATE SET
+        source_system_id = EXCLUDED.source_system_id,
         external_id = EXCLUDED.external_id
       RETURNING id, (xmax = 0) AS is_insert
-    `, [row.name, row.season_id, row.external_id]);
+    `, [row.name, row.season_id, row.source_system_id, row.external_id]);
     
     return {
       id: result.rows[0].id,

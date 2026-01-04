@@ -5,9 +5,10 @@
  * Organization → League → Season → Conference → Division → Team → Player
  */
 class Conference {
-  constructor({ name, seasonId = null, externalId = null, isActive = true }) {
+  constructor({ name, seasonId = null, sourceSystemId = null, externalId = null, isActive = true }) {
     this.name = name;
     this.seasonId = seasonId;
+    this.sourceSystemId = sourceSystemId;
     this.externalId = externalId; // APSL's conference ID
     this.isActive = isActive;
     
@@ -26,6 +27,7 @@ class Conference {
     return {
       name: this.name,
       season_id: this.seasonId,
+      source_system_id: this.sourceSystemId,
       external_id: this.externalId
     };
   }

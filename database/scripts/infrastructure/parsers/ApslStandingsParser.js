@@ -100,6 +100,7 @@ class ApslStandingsParser {
         const conference = new Conference({
           name: conferenceName,
           seasonId: null, // Will be filled by scraper
+          sourceSystemId: 1, // APSL
           externalId: externalId,
           isActive: true
         });
