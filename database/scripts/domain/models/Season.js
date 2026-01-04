@@ -16,13 +16,42 @@ class Season {
   }) {
     this.name = name;
     this.leagueId = leagueId;
-    this.startDate = startDate;
-    this.endDate = endDate;
     this.sourceSystemId = sourceSystemId;
     this.externalId = externalId;
     this.isActive = isActive;
     
+    // Auto-calculate dates from season name if not provided
+    // Season name format: "YYYY/YYYY" (e.g., "2025/2026")
+    // Default: September 1st of first year to June 30th of second year
+    if (!startDate || !endDate) {
+      const dates = this.calculateSeasonDates(name);
+      this.startDate = startDate || dates.startDate;
+      this.endDate = endDate || dates.endDate;
+    } else {
+      this.startDate = startDate;
+      this.endDate = endDate;
+    }
+    
     this.validate();
+  }
+  
+  /**
+   * Calculate season start/end dates from season name
+   * @param {string} name - Season name in format "YYYY/YYYY"
+   * @returns {object} { startDate, endDate }
+   */
+  calculateSeasonDates(name) {
+    // Match "2025/2026" format
+    const match = name.match(/(\d{4})\/(\d{4})/);
+    if (match) {
+      const startYear = parseInt(match[1], 10);
+      const endYear = parseInt(match[2], 10);
+      return {
+        startDate: `${startYear}-09-01`,  // September 1st
+        endDate: `${endYear}-06-30`       // June 30th
+      };
+    }
+    return { startDate: null, endDate: null };
   }
   
   validate() {
