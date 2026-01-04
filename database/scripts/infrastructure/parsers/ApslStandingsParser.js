@@ -4,6 +4,7 @@ const League = require('../../domain/models/League');
 const Season = require('../../domain/models/Season');
 const Conference = require('../../domain/models/Conference');
 const Division = require('../../domain/models/Division');
+const ScrapedTeam = require('../../domain/models/ScrapedTeam');
 
 /**
  * APSL Standings Parser
@@ -116,8 +117,68 @@ class ApslStandingsParser {
       league,
       season,
       conferences,
-      divisions: this.createDivisionsForConferences(conferences)
+      divisions: this.createDivisionsForConferences(conferences),
+      teams: this.extractTeams(document)
     };
+  }
+  
+  /**
+   * Extract team names from standings tables
+   * Teams appear in divs with team names and logos
+   * @param {Document} document - jsdom document
+   * @returns {Array} ScrapedTeam models
+   */
+  extractTeams(document) {
+    const teams = [];
+    const teamNames = new Set(); // Track unique names
+    
+    // Find all elements that contain team names
+    // Pattern: divs containing team names after logos
+    const allDivs = document.querySelectorAll('div');
+    
+    for (const div of allDivs) {
+      const text = div.textContent.trim();
+      
+      // Skip empty, very short, or very long text
+      if (!text || text.length < 3 || text.length > 100) continue;
+      
+      // Look for patterns that indicate team names:
+      // 1. Contains "FC", "SC", "United", etc.
+      // 2. Follows an img tag (logo)
+      // 3. Is in a reasonable team name format
+      if (this.looksLikeTeamName(text) && !teamNames.has(text)) {
+        teamNames.add(text);
+        
+        teams.push(new ScrapedTeam({
+          name: text,
+          sourceSystemId: 1, // APSL
+          externalId: null   // APSL doesn't provide team IDs in standings
+        }));
+      }
+    }
+    
+    return teams;
+  }
+  
+  /**
+   * Check if text looks like a team name
+   * @param {string} text
+   * @returns {boolean}
+   */
+  looksLikeTeamName(text) {
+    // Must not be a conference name
+    if (text.includes('Conference')) return false;
+    
+    // Must not be a common UI element
+    const skipWords = ['Standings', 'Schedule', 'Table', 'Division', 'League', 'Season'];
+    if (skipWords.some(word => text.includes(word))) return false;
+    
+    // Common team suffixes/keywords
+    const teamIndicators = ['FC', 'SC', 'United', 'City', 'Athletic', 'Rovers', 'Wanderers', 
+                            'AFC', 'CFC', 'RFC', 'Club', 'CF', 'AC', 'Real'];
+    
+    // Check if it contains any team indicator
+    return teamIndicators.some(indicator => text.includes(indicator));
   }
   
   /**
