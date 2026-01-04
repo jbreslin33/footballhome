@@ -177,7 +177,9 @@ INSERT INTO source_systems (id, name, description, is_active) VALUES
     (1, 'apsl', 'American Premier Soccer League', true),
     (2, 'casa', 'CASA Soccer Leagues', true),
     (3, 'custom', 'User-created/custom data', true),
-    (4, 'groupme', 'GroupMe integration', true)
+    (4, 'groupme', 'GroupMe integration', true),
+    (5, 'google_places', 'Google Places API', true),
+    (6, 'rest_countries', 'REST Countries API', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Scrape Target System Tables
@@ -203,7 +205,9 @@ INSERT INTO scrape_target_types (id, name, description, sort_order) VALUES
     (12, 'chat_messages', 'Chat messages', 12),
     (13, 'chat_events', 'Chat events', 13),
     (14, 'chat_members', 'Chat members', 14),
-    (15, 'chat_rsvps', 'Chat RSVPs', 15)
+    (15, 'chat_rsvps', 'Chat RSVPs', 15),
+    (16, 'venues', 'Venue information from Google Places', 16),
+    (17, 'countries', 'Country information', 17)
 ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE scraper_types (
