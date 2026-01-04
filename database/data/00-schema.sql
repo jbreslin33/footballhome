@@ -345,15 +345,8 @@ CREATE TABLE continents (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO continents (id, code, name, sort_order) VALUES
-    (1, 'AF', 'Africa', 1),
-    (2, 'AN', 'Antarctica', 2),
-    (3, 'AS', 'Asia', 3),
-    (4, 'EU', 'Europe', 4),
-    (5, 'NA', 'North America', 5),
-    (6, 'OC', 'Oceania', 6),
-    (7, 'SA', 'South America', 7)
-ON CONFLICT (id) DO NOTHING;
+-- Continents are populated by CountryScraperV2.js (via REST Countries API)
+-- Run: ./update.sh
 
 -- ============================================================================
 -- 2. GOVERNING BODY HIERARCHY
@@ -389,20 +382,8 @@ CREATE INDEX idx_countries_code ON countries(code);
 CREATE INDEX idx_countries_fifa ON countries(fifa_code);
 CREATE INDEX idx_countries_continent ON countries(continent_id);
 
-INSERT INTO countries (code, name, fifa_code) VALUES
-    ('USA', 'United States', 'USA'),
-    ('CAN', 'Canada', 'CAN'),
-    ('MEX', 'Mexico', 'MEX'),
-    ('BRA', 'Brazil', 'BRA'),
-    ('ARG', 'Argentina', 'ARG'),
-    ('GBR', 'United Kingdom', 'ENG'),
-    ('ESP', 'Spain', 'ESP'),
-    ('FRA', 'France', 'FRA'),
-    ('DEU', 'Germany', 'GER'),
-    ('ITA', 'Italy', 'ITA'),
-    ('PRT', 'Portugal', 'POR'),
-    ('NLD', 'Netherlands', 'NED')
-ON CONFLICT (code) DO NOTHING;
+-- Countries are populated by CountryScraperV2.js (via REST Countries API)
+-- Run: ./update.sh
 
 CREATE TABLE states (
     id SERIAL PRIMARY KEY,
@@ -417,20 +398,7 @@ CREATE TABLE states (
 CREATE INDEX idx_states_country ON states(country_id);
 CREATE INDEX idx_states_code ON states(code);
 
-INSERT INTO states (country_id, code, name) VALUES
-    ((SELECT id FROM countries WHERE code = 'USA'), 'PA', 'Pennsylvania'),
-    ((SELECT id FROM countries WHERE code = 'USA'), 'NJ', 'New Jersey'),
-    ((SELECT id FROM countries WHERE code = 'USA'), 'NY', 'New York'),
-    ((SELECT id FROM countries WHERE code = 'USA'), 'CA', 'California'),
-    ((SELECT id FROM countries WHERE code = 'USA'), 'TX', 'Texas'),
-    ((SELECT id FROM countries WHERE code = 'USA'), 'FL', 'Florida'),
-    ((SELECT id FROM countries WHERE code = 'USA'), 'IL', 'Illinois'),
-    ((SELECT id FROM countries WHERE code = 'USA'), 'OH', 'Ohio'),
-    ((SELECT id FROM countries WHERE code = 'USA'), 'MA', 'Massachusetts'),
-    ((SELECT id FROM countries WHERE code = 'USA'), 'MD', 'Maryland'),
-    ((SELECT id FROM countries WHERE code = 'USA'), 'VA', 'Virginia'),
-    ((SELECT id FROM countries WHERE code = 'USA'), 'DE', 'Delaware')
-ON CONFLICT (country_id, code) DO NOTHING;
+-- States are populated by UsStatesScraper.js (all 50 US states + DC)
 
 -- ============================================================================
 -- 3. ORGANIZATIONS (Universal Superclass)

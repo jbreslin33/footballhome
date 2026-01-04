@@ -55,7 +55,7 @@ class CountryRepository {
    */
   async findByCode(code) {
     const result = await this.db.query(`
-      SELECT c.code, c.name, c.fifa_code, c.continent_id, con.code as continent_code
+      SELECT c.id, c.code, c.name, c.fifa_code, c.continent_id, con.code as continent_code
       FROM countries c
       LEFT JOIN continents con ON c.continent_id = con.id
       WHERE c.code = $1

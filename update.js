@@ -111,15 +111,23 @@ async function main() {
         // Route to appropriate scraper based on target_type_id and source_system_id
         const mode = target.is_initialized ? 'sync' : 'discover';
         
-        // Countries (REST Countries API)
+        // Countries (REST Countries API) - target_type_id=17, source_system_id=6
         if (target.target_type_id === 17 && target.source_system_id === 6) {
           await runScraper(
             path.join(__dirname, 'database/scripts/scrapers/CountryScraperV2.js'),
             [mode]
           );
+          
+          // After loading countries, automatically run US States scraper
+          console.log('');
+          console.log(`${colors.blue}  → Running dependent scraper: UsStatesScraper.js${colors.reset}`);
+          await runScraper(
+            path.join(__dirname, 'database/scripts/scrapers/UsStatesScraper.js')
+          );
+          
           stats.success++;
         }
-        // APSL conference structure
+        // APSL conference structure - target_type_id=1, source_system_id=1
         else if (target.target_type_id === 1 && target.source_system_id === 1) {
           await runScraper(
             path.join(__dirname, 'database/scripts/scrapers/ApslStructureScraper.js')
