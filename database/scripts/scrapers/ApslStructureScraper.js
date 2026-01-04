@@ -94,6 +94,17 @@ class ApslStructureScraper {
     const confResult = await this.conferenceRepo.upsertMany(conferences);
     console.log(`   ✓ Conferences: ${confResult.totalInserted} inserted, ${confResult.totalUpdated} updated`);
     
+    // 4a. Link conferences to scrape_target (audit trail)
+    const savedConferences = await this.conferenceRepo.findBySeason(seasonResult.id);
+    for (const conf of savedConferences) {
+      await this._client.query(
+        `INSERT INTO conference_scrape_targets (scrape_target_id, conference_id) 
+         VALUES ($1, $2) 
+         ON CONFLICT (scrape_target_id, conference_id) DO NOTHING`,
+        [this.scrapeTarget.id, conf.id]
+      );
+    }
+    
     // 5. Upsert divisions (link to conferences and season)
     // Map divisions to their saved conference IDs
     const savedConferences = await this.conferenceRepo.findBySeason(seasonResult.id);

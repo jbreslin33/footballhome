@@ -34,6 +34,14 @@ CREATE TABLE IF NOT EXISTS season_scrape_targets (
 );
 CREATE INDEX IF NOT EXISTS idx_season_scrape_targets_season ON season_scrape_targets(season_id);
 
+-- Conference scrape targets (conference structure, conference standings)
+CREATE TABLE IF NOT EXISTS conference_scrape_targets (
+    scrape_target_id INTEGER NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    conference_id INTEGER NOT NULL REFERENCES conferences(id) ON DELETE CASCADE,
+    PRIMARY KEY (scrape_target_id, conference_id)
+);
+CREATE INDEX IF NOT EXISTS idx_conference_scrape_targets_conference ON conference_scrape_targets(conference_id);
+
 -- Division scrape targets (division standings, division schedule, division stats)
 CREATE TABLE IF NOT EXISTS division_scrape_targets (
     scrape_target_id INTEGER NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
