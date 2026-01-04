@@ -5,11 +5,21 @@
  * Organization → League → Season → Conference → Division → Team → Player
  */
 class Season {
-  constructor({ name, leagueId = null, startDate = null, endDate = null, isActive = true }) {
+  constructor({ 
+    name, 
+    leagueId = null, 
+    startDate = null, 
+    endDate = null, 
+    sourceSystemId = null,
+    externalId = null,
+    isActive = true 
+  }) {
     this.name = name;
     this.leagueId = leagueId;
     this.startDate = startDate;
     this.endDate = endDate;
+    this.sourceSystemId = sourceSystemId;
+    this.externalId = externalId;
     this.isActive = isActive;
     
     this.validate();
@@ -29,6 +39,8 @@ class Season {
       league_id: this.leagueId,
       start_date: this.startDate,
       end_date: this.endDate,
+      source_system_id: this.sourceSystemId,
+      external_id: this.externalId,
       is_active: this.isActive
     };
   }

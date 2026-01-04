@@ -51,14 +51,16 @@ class SeasonRepository {
     const row = season.toDbRow();
     
     const result = await this.db.query(`
-      INSERT INTO seasons (name, league_id, start_date, end_date, is_active)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO seasons (name, league_id, start_date, end_date, source_system_id, external_id, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (league_id, name) DO UPDATE SET
         start_date = EXCLUDED.start_date,
         end_date = EXCLUDED.end_date,
+        source_system_id = EXCLUDED.source_system_id,
+        external_id = EXCLUDED.external_id,
         is_active = EXCLUDED.is_active
       RETURNING id, (xmax = 0) AS is_insert
-    `, [row.name, row.league_id, row.start_date, row.end_date, row.is_active]);
+    `, [row.name, row.league_id, row.start_date, row.end_date, row.source_system_id, row.external_id, row.is_active]);
     
     return {
       id: result.rows[0].id,

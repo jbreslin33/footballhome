@@ -40,8 +40,10 @@ class ApslStandingsParser {
       isActive: true
     });
     
-    // Extract season from first conference heading
+    // Extract season from first conference heading and dropdown
     let seasonName = null;
+    let seasonExternalId = null;
+    
     const firstHeading = document.querySelector('.leagueAccordTitle1');
     if (firstHeading) {
       // Extract "2025/2026" from "2025/2026 - Mayflower Conference"
@@ -51,9 +53,21 @@ class ApslStandingsParser {
       }
     }
     
+    // Map of season names to external IDs from APSL dropdown
+    const SEASON_EXTERNAL_IDS = {
+      '2022/2023': '396',
+      '2023/2024': '2597',
+      '2024/2025': '6020',
+      '2025/2026': '7930'
+    };
+    
+    seasonExternalId = SEASON_EXTERNAL_IDS[seasonName] || null;
+    
     const season = new Season({
       name: seasonName || '2025/2026',
       leagueId: null, // Will be filled by scraper
+      sourceSystemId: 1, // APSL
+      externalId: seasonExternalId,
       isActive: true
     });
     
@@ -63,7 +77,7 @@ class ApslStandingsParser {
     
     // Known fake conferences: previous seasons masquerading as conferences
     // These appear in the season dropdown and should be filtered out
-    const FAKE_CONFERENCE_IDS = ['396', '2597', '6020', '7930'];
+    const FAKE_CONFERENCE_IDS = Object.values(SEASON_EXTERNAL_IDS);
     
     for (const option of options) {
       const value = option.getAttribute('value');
