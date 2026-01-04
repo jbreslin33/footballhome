@@ -188,6 +188,24 @@ CREATE TABLE scrape_target_types (
     sort_order INTEGER DEFAULT 0
 );
 
+INSERT INTO scrape_target_types (id, name, description, sort_order) VALUES
+    (1, 'conference_structure', 'League structure (conferences, divisions)', 1),
+    (2, 'standings', 'Division standings', 2),
+    (3, 'schedule', 'Match schedules', 3),
+    (4, 'team_roster', 'Team rosters', 4),
+    (5, 'team_stats', 'Team season statistics', 5),
+    (6, 'player_stats', 'Player season statistics', 6),
+    (7, 'player_profile', 'Player biographical data', 7),
+    (8, 'match_lineups', 'Match lineups (starters/subs)', 8),
+    (9, 'match_events', 'Match events (goals, cards, subs)', 9),
+    (10, 'match_score', 'Match scores', 10),
+    (11, 'venue_details', 'Venue information', 11),
+    (12, 'chat_messages', 'Chat messages', 12),
+    (13, 'chat_events', 'Chat events', 13),
+    (14, 'chat_members', 'Chat members', 14),
+    (15, 'chat_rsvps', 'Chat RSVPs', 15)
+ON CONFLICT (id) DO NOTHING;
+
 CREATE TABLE scraper_types (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
@@ -197,12 +215,27 @@ CREATE TABLE scraper_types (
     sort_order INTEGER DEFAULT 0
 );
 
+INSERT INTO scraper_types (id, name, parser_class, platform, description, sort_order) VALUES
+    (1, 'html_parser', 'HtmlParser', 'web', 'Parse HTML pages', 1),
+    (2, 'google_sheets', 'GoogleSheetsParser', 'google', 'Parse Google Sheets', 2),
+    (3, 'api_client', 'ApiClient', 'api', 'API endpoint client', 3),
+    (4, 'google_places', 'GooglePlacesClient', 'google', 'Google Places API', 4)
+ON CONFLICT (id) DO NOTHING;
+
 CREATE TABLE scrape_execution_statuses (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
     sort_order INTEGER DEFAULT 0
 );
+
+INSERT INTO scrape_execution_statuses (id, name, description, sort_order) VALUES
+    (1, 'pending', 'Queued for execution', 1),
+    (2, 'running', 'Currently executing', 2),
+    (3, 'completed', 'Completed successfully', 3),
+    (4, 'failed', 'Execution failed', 4),
+    (5, 'cancelled', 'Execution cancelled', 5)
+ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE scrape_targets (
     id SERIAL PRIMARY KEY,
@@ -211,8 +244,9 @@ CREATE TABLE scrape_targets (
     target_type_id INTEGER NOT NULL REFERENCES scrape_target_types(id),
     url TEXT NOT NULL,
     label VARCHAR(255),
-    params JSONB,
     is_active BOOLEAN DEFAULT true,
+    is_initialized BOOLEAN DEFAULT false,
+    last_synced_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -221,6 +255,7 @@ CREATE INDEX idx_scrape_targets_source ON scrape_targets(source_system_id);
 CREATE INDEX idx_scrape_targets_scraper ON scrape_targets(scraper_type_id);
 CREATE INDEX idx_scrape_targets_type ON scrape_targets(target_type_id);
 CREATE INDEX idx_scrape_targets_active ON scrape_targets(is_active);
+CREATE INDEX idx_scrape_targets_initialized ON scrape_targets(is_initialized);
 
 CREATE TABLE scrape_executions (
     id SERIAL PRIMARY KEY,
@@ -238,6 +273,212 @@ CREATE TABLE scrape_executions (
 CREATE INDEX idx_scrape_executions_target ON scrape_executions(scrape_target_id);
 CREATE INDEX idx_scrape_executions_status ON scrape_executions(status_id);
 CREATE INDEX idx_scrape_executions_started ON scrape_executions(started_at DESC);
+
+-- ============================================================================
+-- Entity-Specific Scrape Target Tables (Normalized)
+-- ============================================================================
+
+CREATE TABLE conference_structure_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    season_id INTEGER NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_conference_structure_scrape_targets_target ON conference_structure_scrape_targets(scrape_target_id);
+CREATE INDEX idx_conference_structure_scrape_targets_season ON conference_structure_scrape_targets(season_id);
+
+COMMENT ON TABLE conference_structure_scrape_targets IS 'Scrapes league structure (conferences, divisions)';
+
+CREATE TABLE standings_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_standings_scrape_targets_target ON standings_scrape_targets(scrape_target_id);
+CREATE INDEX idx_standings_scrape_targets_division ON standings_scrape_targets(division_id);
+
+COMMENT ON TABLE standings_scrape_targets IS 'Scrapes division standings';
+
+CREATE TABLE schedule_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_schedule_scrape_targets_target ON schedule_scrape_targets(scrape_target_id);
+CREATE INDEX idx_schedule_scrape_targets_division ON schedule_scrape_targets(division_id);
+
+COMMENT ON TABLE schedule_scrape_targets IS 'Scrapes match schedules for division';
+
+CREATE TABLE team_roster_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    division_roster_id INTEGER NOT NULL REFERENCES division_rosters(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_team_roster_scrape_targets_target ON team_roster_scrape_targets(scrape_target_id);
+CREATE INDEX idx_team_roster_scrape_targets_roster ON team_roster_scrape_targets(division_roster_id);
+
+COMMENT ON TABLE team_roster_scrape_targets IS 'Scrapes team rosters (players)';
+
+CREATE TABLE team_season_stats_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    division_roster_id INTEGER NOT NULL REFERENCES division_rosters(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_team_season_stats_scrape_targets_target ON team_season_stats_scrape_targets(scrape_target_id);
+CREATE INDEX idx_team_season_stats_scrape_targets_roster ON team_season_stats_scrape_targets(division_roster_id);
+
+COMMENT ON TABLE team_season_stats_scrape_targets IS 'Scrapes team season statistics';
+
+CREATE TABLE player_season_stats_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    division_roster_player_id INTEGER NOT NULL REFERENCES division_roster_players(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_player_season_stats_scrape_targets_target ON player_season_stats_scrape_targets(scrape_target_id);
+CREATE INDEX idx_player_season_stats_scrape_targets_player ON player_season_stats_scrape_targets(division_roster_player_id);
+
+COMMENT ON TABLE player_season_stats_scrape_targets IS 'Scrapes player season statistics';
+
+CREATE TABLE player_profile_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_player_profile_scrape_targets_target ON player_profile_scrape_targets(scrape_target_id);
+CREATE INDEX idx_player_profile_scrape_targets_player ON player_profile_scrape_targets(player_id);
+
+COMMENT ON TABLE player_profile_scrape_targets IS 'Scrapes player biographical data';
+
+CREATE TABLE match_lineups_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_match_lineups_scrape_targets_target ON match_lineups_scrape_targets(scrape_target_id);
+CREATE INDEX idx_match_lineups_scrape_targets_match ON match_lineups_scrape_targets(match_id);
+
+COMMENT ON TABLE match_lineups_scrape_targets IS 'Scrapes match lineups (starters vs subs)';
+
+CREATE TABLE match_events_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_match_events_scrape_targets_target ON match_events_scrape_targets(scrape_target_id);
+CREATE INDEX idx_match_events_scrape_targets_match ON match_events_scrape_targets(match_id);
+
+COMMENT ON TABLE match_events_scrape_targets IS 'Scrapes match events (goals, cards, subs)';
+
+CREATE TABLE match_score_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    match_id INTEGER NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_match_score_scrape_targets_target ON match_score_scrape_targets(scrape_target_id);
+CREATE INDEX idx_match_score_scrape_targets_match ON match_score_scrape_targets(match_id);
+
+COMMENT ON TABLE match_score_scrape_targets IS 'Scrapes match scores';
+
+CREATE TABLE venue_details_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    venue_name_search VARCHAR(255) NOT NULL,
+    requires_api_key BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_venue_details_scrape_targets_target ON venue_details_scrape_targets(scrape_target_id);
+
+COMMENT ON TABLE venue_details_scrape_targets IS 'Scrapes venue information (Google Places)';
+
+CREATE TABLE chat_messages_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    external_group_id VARCHAR(255),
+    requires_api_key BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_chat_messages_scrape_targets_target ON chat_messages_scrape_targets(scrape_target_id);
+CREATE INDEX idx_chat_messages_scrape_targets_chat ON chat_messages_scrape_targets(chat_id);
+
+COMMENT ON TABLE chat_messages_scrape_targets IS 'Scrapes chat messages';
+
+CREATE TABLE chat_events_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_chat_events_scrape_targets_target ON chat_events_scrape_targets(scrape_target_id);
+CREATE INDEX idx_chat_events_scrape_targets_chat ON chat_events_scrape_targets(chat_id);
+
+COMMENT ON TABLE chat_events_scrape_targets IS 'Scrapes chat events';
+
+CREATE TABLE chat_members_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_chat_members_scrape_targets_target ON chat_members_scrape_targets(scrape_target_id);
+CREATE INDEX idx_chat_members_scrape_targets_chat ON chat_members_scrape_targets(chat_id);
+
+COMMENT ON TABLE chat_members_scrape_targets IS 'Scrapes chat members';
+
+CREATE TABLE chat_rsvps_scrape_targets (
+    id SERIAL PRIMARY KEY,
+    scrape_target_id INTEGER UNIQUE NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    chat_event_id INTEGER NOT NULL REFERENCES chat_events(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_chat_rsvps_scrape_targets_target ON chat_rsvps_scrape_targets(scrape_target_id);
+CREATE INDEX idx_chat_rsvps_scrape_targets_event ON chat_rsvps_scrape_targets(chat_event_id);
+
+COMMENT ON TABLE chat_rsvps_scrape_targets IS 'Scrapes chat event RSVPs';
+
+-- ============================================================================
+-- Team Name Mapping (for club assignment)
+-- ============================================================================
+
+CREATE TABLE team_name_mappings (
+    id SERIAL PRIMARY KEY,
+    source_system_id INTEGER NOT NULL REFERENCES source_systems(id),
+    scraped_name VARCHAR(255) NOT NULL,
+    club_id INTEGER NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_system_id, scraped_name)
+);
+
+CREATE INDEX idx_team_name_mappings_source ON team_name_mappings(source_system_id);
+CREATE INDEX idx_team_name_mappings_club ON team_name_mappings(club_id);
+CREATE INDEX idx_team_name_mappings_name ON team_name_mappings(source_system_id, scraped_name);
+
+COMMENT ON TABLE team_name_mappings IS 'Maps scraped team names to clubs for automatic assignment';
 
 CREATE TABLE chat_providers (
     id SERIAL PRIMARY KEY,
