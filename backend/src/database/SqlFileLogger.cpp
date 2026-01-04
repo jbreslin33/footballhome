@@ -72,7 +72,7 @@ void SqlFileLogger::initializeTableMap() {
     table_file_map_["clubs"] = "06";
     
     // Sport divisions
-    table_file_map_["sport_divisions"] = "07";
+    table_file_map_["clubs"] = "07";
     
     // Users and authentication
     table_file_map_["users"] = "08";
@@ -89,7 +89,7 @@ void SqlFileLogger::initializeTableMap() {
     table_file_map_["league_conference_admins"] = "08";
     table_file_map_["league_division_admins"] = "08";
     table_file_map_["sport_division_admins"] = "08";
-    table_file_map_["club_admins"] = "75";
+    table_file_map_["organization_admins"] = "75";
     table_file_map_["team_admins"] = "21";
     
     // Teams

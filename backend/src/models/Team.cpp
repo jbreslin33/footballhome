@@ -82,7 +82,7 @@ std::string Team::getAllTeams() {
         std::string sql = 
             "SELECT t.id, t.name, t.age_group, t.skill_level, d.name as division_name "
             "FROM teams t "
-            "LEFT JOIN sport_divisions d ON t.sport_division_id = d.id "
+            "LEFT JOIN clubs d ON t.club_id = d.id "
             "ORDER BY t.name";
         
         pqxx::result result = executeQuery(sql, {});

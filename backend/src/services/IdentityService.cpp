@@ -25,7 +25,7 @@ std::vector<IdentityService::IdentityDTO> IdentityService::getIdentities(const I
             LEFT JOIN teams t ON uei.team_id = t.id
             LEFT JOIN external_providers ep ON uei.provider_id = ep.id
             LEFT JOIN users u ON uei.user_id = u.id
-            LEFT JOIN sport_divisions sd ON t.sport_division_id = sd.id
+            LEFT JOIN clubs sd ON t.club_id = sd.id
             WHERE 1=1
         )";
         

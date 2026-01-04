@@ -745,7 +745,7 @@ Response TacticalBoardController::handleGetBoard(const Request& request) {
     
     // Get entity links
     auto entitiesResult = db_->query(
-        "SELECT match_id, practice_id, team_id, club_id, sport_division_id "
+        "SELECT match_id, practice_id, team_id, club_id, club_id "
         "FROM tactical_board_entities WHERE tactical_board_id = $1",
         {boardId}
     );
@@ -764,8 +764,8 @@ Response TacticalBoardController::handleGetBoard(const Request& request) {
             json << "{\"type\":\"team\",\"id\":\"" << escapeJson(entity["team_id"].c_str()) << "\"}";
         } else if (!entity["club_id"].is_null()) {
             json << "{\"type\":\"club\",\"id\":\"" << escapeJson(entity["club_id"].c_str()) << "\"}";
-        } else if (!entity["sport_division_id"].is_null()) {
-            json << "{\"type\":\"division\",\"id\":\"" << escapeJson(entity["sport_division_id"].c_str()) << "\"}";
+        } else if (!entity["club_id"].is_null()) {
+            json << "{\"type\":\"division\",\"id\":\"" << escapeJson(entity["club_id"].c_str()) << "\"}";
         }
     }
     json << "],";

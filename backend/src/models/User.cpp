@@ -64,19 +64,19 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
     std::cout << "🔍 authenticateUser called for: " << email << std::endl;
     
     try {
-        // Query database for user by email with admin info and club info
+        // Query database for user by email with admin info and organization info
         // Schema: persons (identity) -> users (auth) -> person_emails (contact) -> admins (privileges) -> admin_levels (name)
-        // club_admins links admins.id to clubs
+        // organization_admins links admins.id to organizations
         std::string sql = "SELECT u.id, pe.email, p.first_name, p.last_name, u.password_hash, "
                          "COALESCE(al.name, 'user') as admin_level, "
-                         "ca.club_id, c.display_name as club_name "
+                         "oa.organization_id, o.name as organization_name "
                          "FROM users u "
                          "JOIN persons p ON u.person_id = p.id "
                          "JOIN person_emails pe ON p.id = pe.person_id "
                          "LEFT JOIN admins a ON u.id = a.user_id "
                          "LEFT JOIN admin_levels al ON a.admin_level_id = al.id "
-                         "LEFT JOIN club_admins ca ON a.id = ca.admin_id AND ca.is_active = true "
-                         "LEFT JOIN clubs c ON ca.club_id = c.id "
+                         "LEFT JOIN organization_admins oa ON a.id = oa.admin_id AND oa.is_active = true "
+                         "LEFT JOIN organizations o ON oa.organization_id = o.id "
                          "WHERE pe.email = $1 AND pe.is_verified = true "
                          "LIMIT 1";
         
@@ -98,8 +98,8 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
                 userData.preferred_name = ""; // Preferred name not in current schema
                 userData.name = userData.first_name + " " + userData.last_name;
                 userData.role = row["admin_level"].as<std::string>();
-                userData.club_id = row["club_id"].is_null() ? "" : row["club_id"].as<std::string>();
-                userData.club_name = row["club_name"].is_null() ? "" : row["club_name"].as<std::string>();
+                userData.club_id = row["organization_id"].is_null() ? "" : row["organization_id"].as<std::string>();
+                userData.club_name = row["organization_name"].is_null() ? "" : row["organization_name"].as<std::string>();
                 
                 std::cout << "✅ Authentication successful for: " << email << " (role: " << userData.role << ")" << std::endl;
             } else {
@@ -205,7 +205,7 @@ std::string User::getUserRoles(const std::string& user_id) {
             "  c.name as club_name "
             "FROM team_division_players tp "
             "JOIN teams t ON tp.team_id = t.id "
-            "JOIN sport_divisions sd ON t.sport_division_id = sd.id "
+            "JOIN clubs sd ON t.club_id = sd.id "
             "JOIN clubs c ON sd.club_id = c.id "
             "WHERE tp.player_id = $1 AND tp.is_active = true";
         
@@ -217,7 +217,7 @@ std::string User::getUserRoles(const std::string& user_id) {
             json << "\"type\":\"player\",";
             json << "\"teamId\":\"" << row["team_id"].as<std::string>() << "\",";
             json << "\"teamName\":\"" << row["team_name"].as<std::string>() << "\",";
-            json << "\"clubName\":\"" << row["club_name"].as<std::string>() << "\",";
+            json << "\"clubName\":\"" << row["organization_name"].as<std::string>() << "\",";
             json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].as<std::string>());
             json << "}";
             hasRoles = true;
@@ -234,7 +234,7 @@ std::string User::getUserRoles(const std::string& user_id) {
             "  c.name as club_name "
             "FROM team_coaches tc "
             "JOIN teams t ON tc.team_id = t.id "
-            "JOIN sport_divisions sd ON t.sport_division_id = sd.id "
+            "JOIN clubs sd ON t.club_id = sd.id "
             "JOIN clubs c ON sd.club_id = c.id "
             "WHERE tc.coach_id = $1 AND tc.is_active = true";
         
@@ -246,7 +246,7 @@ std::string User::getUserRoles(const std::string& user_id) {
             json << "\"type\":\"coach\",";
             json << "\"teamId\":\"" << row["team_id"].as<std::string>() << "\",";
             json << "\"teamName\":\"" << row["team_name"].as<std::string>() << "\",";
-            json << "\"clubName\":\"" << row["club_name"].as<std::string>() << "\",";
+            json << "\"clubName\":\"" << row["organization_name"].as<std::string>() << "\",";
             json << "\"coachRole\":\"" << row["coach_role"].as<std::string>() << "\",";
             json << "\"isPrimary\":" << (row["is_primary"].as<bool>() ? "true" : "false");
             json << "}";

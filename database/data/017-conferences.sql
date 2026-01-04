@@ -2,7 +2,7 @@
 -- Manual seed data - defines conference structure before scraping
 -- Generated from: database/config/league-structure.json
 
-INSERT INTO conferences (id, league_id, name, abbreviation) VALUES
+INSERT INTO conferences (id, season_id, name, abbreviation) VALUES
   -- APSL 2025 Season Conferences
   (1, 1, 'Mayflower Conference', 'Mayflower'),
   (2, 1, 'Constitution Conference', 'Constit.'),
@@ -25,6 +25,6 @@ INSERT INTO conferences (id, league_id, name, abbreviation) VALUES
   (15, 3, 'South New Jersey Select', 'S-NJ'),
   (16, 3, 'North New Jersey Select', 'N-NJ')
 ON CONFLICT (id) DO UPDATE SET
-  league_id = EXCLUDED.league_id,
+  season_id = EXCLUDED.season_id,
   name = EXCLUDED.name,
   abbreviation = EXCLUDED.abbreviation;

@@ -276,7 +276,7 @@ Response SystemAdminController::handleGetDashboard(const Request& request) {
         
         // Get counts
         std::string users_query = "SELECT COUNT(*) as count FROM users WHERE is_active = true";
-        std::string teams_query = "SELECT COUNT(*) as count FROM teams WHERE is_active = true";
+        std::string teams_query = "SELECT COUNT(*) as count FROM teams";
         std::string clubs_query = "SELECT COUNT(*) as count FROM clubs WHERE is_active = true";
         std::string events_query = "SELECT COUNT(*) as count FROM events WHERE event_date >= CURRENT_DATE";
         
@@ -852,7 +852,7 @@ Response SystemAdminController::handleGetUser(const Request& request) {
                    tp.jersey_number, tp.is_active as team_active
             FROM team_division_players tp
             JOIN teams t ON tp.team_id = t.id
-            JOIN sport_divisions sd ON t.sport_division_id = sd.id
+            JOIN clubs sd ON t.club_id = sd.id
             WHERE tp.player_id = $1
             ORDER BY t.name
         )";
@@ -2068,6 +2068,35 @@ Response SystemAdminController::handleLinkIdentity(const Request& request) {
 }
 
 Response SystemAdminController::handleGetDatabaseSchema(const Request& request) {
+    // Helper function to escape JSON strings
+    auto escapeJson = [](const std::string& input) -> std::string {
+        std::string output;
+        for (unsigned char c : input) {
+            switch (c) {
+                case '"':  output += "\\\""; break;
+                case '\\': output += "\\\\"; break;
+                case '\b': output += "\\b"; break;
+                case '\f': output += "\\f"; break;
+                case '\n': output += "\\n"; break;
+                case '\r': output += "\\r"; break;
+                case '\t': output += "\\t"; break;
+                default:
+                    if (c < 0x20) {
+                        char buf[7];
+                        snprintf(buf, sizeof(buf), "\\u%04x", c);
+                        output += buf;
+                    } else if (c >= 0x80) {
+                        // UTF-8 continuation byte or start of multi-byte sequence
+                        // Pass through as-is (valid UTF-8)
+                        output += c;
+                    } else {
+                        output += c;
+                    }
+            }
+        }
+        return output;
+    };
+    
     try {
         std::string json = "{\"tables\":[";
         
@@ -2087,9 +2116,9 @@ Response SystemAdminController::handleGetDatabaseSchema(const Request& request) 
             std::string table_name = table["table_name"].as<std::string>();
             
             json += "{";
-            json += "\"name\":\"" + table_name + "\",";
+            json += "\"name\":\"" + escapeJson(table_name) + "\",";
             std::string table_comment = table["table_comment"].is_null() ? "" : std::string(table["table_comment"].c_str());
-            json += "\"comment\":\"" + table_comment + "\",";
+            json += "\"comment\":\"" + escapeJson(table_comment) + "\",";
             
             // Get columns for this table
             json += "\"columns\":[";
@@ -2121,10 +2150,10 @@ Response SystemAdminController::handleGetDatabaseSchema(const Request& request) 
                 std::string col_default = col["column_default"].is_null() ? "" : std::string(col["column_default"].c_str());
                 bool is_pk = col["is_primary_key"].as<bool>();
                 
-                json += "\"name\":\"" + col_name + "\",";
-                json += "\"type\":\"" + col_type + "\",";
-                json += "\"nullable\":\"" + col_nullable + "\",";
-                json += "\"default\":\"" + col_default + "\",";
+                json += "\"name\":\"" + escapeJson(col_name) + "\",";
+                json += "\"type\":\"" + escapeJson(col_type) + "\",";
+                json += "\"nullable\":\"" + escapeJson(col_nullable) + "\",";
+                json += "\"default\":\"" + escapeJson(col_default) + "\",";
                 json += "\"primary_key\":" + std::string(is_pk ? "true" : "false");
                 json += "}";
                 if (j < columns.size() - 1) json += ",";
@@ -2154,9 +2183,9 @@ Response SystemAdminController::handleGetDatabaseSchema(const Request& request) 
                 std::string fk_table = std::string(fk["foreign_table_name"].c_str());
                 std::string fk_fk_col = std::string(fk["foreign_column_name"].c_str());
                 
-                json += "\"column\":\"" + fk_col + "\",";
-                json += "\"foreign_table\":\"" + fk_table + "\",";
-                json += "\"foreign_column\":\"" + fk_fk_col + "\"";
+                json += "\"column\":\"" + escapeJson(fk_col) + "\",";
+                json += "\"foreign_table\":\"" + escapeJson(fk_table) + "\",";
+                json += "\"foreign_column\":\"" + escapeJson(fk_fk_col) + "\"";
                 json += "}";
                 if (k < fks.size() - 1) json += ",";
             }

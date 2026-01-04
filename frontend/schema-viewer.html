@@ -385,18 +385,101 @@
         let schemaData = null;
         let currentTable = null;
         
-        const categories = {
-            'Core System': ['source_systems', 'governing_bodies', 'organizations'],
-            'League Structure': ['leagues', 'conferences', 'divisions', 'seasons'],
-            'Clubs & Teams': ['clubs', 'sport_divisions', 'teams', 'team_divisions'],
-            'Players & People': ['users', 'admins', 'club_admins', 'players', 'coaches', 'team_coaches', 'team_players'],
-            'Venues': ['venues', 'venue_availability'],
-            'Matches & Games': ['match_types', 'match_statuses', 'matches', 'match_divisions', 'match_lineups', 'match_event_types', 'match_events'],
-            'Statistics': ['player_match_stats', 'player_season_stats', 'team_standings', 'team_stats'],
-            'Scheduling': ['schedule_generations', 'schedule_generation_options', 'schedule_rivalry_pairs', 'schedule_group_assignments', 'schedule_venue_constraints', 'schedule_team_blackouts', 'schedule_day_constraints', 'schedule_division_weights', 'schedule_preferences'],
-            'Communication': ['chats', 'chat_members', 'chat_messages'],
-            'External Identity': ['external_identity_types', 'external_identities']
-        };
+        // Dynamic categorization based on table name patterns and relationships
+        function categorizeTable(tableName, table) {
+            // Lookup tables (end with _types, _statuses, _levels, etc.)
+            if (/_types$|_statuses$|_levels$|_methods$|_roles$/.test(tableName)) {
+                return 'Lookup Tables';
+            }
+            
+            // Match tables
+            if (/^match/.test(tableName)) {
+                return 'Matches & Games';
+            }
+            
+            // Schedule tables
+            if (/^schedule/.test(tableName)) {
+                return 'Scheduling';
+            }
+            
+            // League structure
+            if (/^(leagues|seasons|conferences|divisions)$/.test(tableName)) {
+                return 'League Structure';
+            }
+            
+            // Teams and rosters
+            if (/^(teams|division_rosters|division_roster_)/.test(tableName)) {
+                return 'Teams & Rosters';
+            }
+            
+            // People and identity
+            if (/^(persons|users|admins|players|coaches|external_identities)/.test(tableName)) {
+                return 'People & Identity';
+            }
+            
+            // Organizations and clubs
+            if (/^(organizations|organization_|clubs)$/.test(tableName)) {
+                return 'Organizations & Clubs';
+            }
+            
+            // Chat and communication
+            if (/^chat/.test(tableName)) {
+                return 'Communication';
+            }
+            
+            // Venues
+            if (/^venue/.test(tableName)) {
+                return 'Venues';
+            }
+            
+            // Statistics
+            if (/_stats$|_standings$/.test(tableName)) {
+                return 'Statistics';
+            }
+            
+            // Core system
+            if (/^(source_systems|governing_bodies|scrape_|sports|positions)/.test(tableName)) {
+                return 'Core System';
+            }
+            
+            return 'Other';
+        }
+        
+        function getCategorizedTables(filter = '') {
+            if (!schemaData) return {};
+            
+            const filterLower = filter.toLowerCase();
+            const categories = {};
+            
+            schemaData.tables
+                .filter(t => !filter || t.name.toLowerCase().includes(filterLower))
+                .forEach(table => {
+                    const category = categorizeTable(table.name, table);
+                    if (!categories[category]) {
+                        categories[category] = [];
+                    }
+                    categories[category].push(table);
+                });
+            
+            // Sort categories alphabetically, but keep Lookup Tables and Core System first
+            const sortedCategories = {};
+            const priorityCategories = ['Core System', 'Lookup Tables'];
+            
+            priorityCategories.forEach(cat => {
+                if (categories[cat]) {
+                    sortedCategories[cat] = categories[cat].sort((a, b) => a.name.localeCompare(b.name));
+                }
+            });
+            
+            Object.keys(categories)
+                .filter(cat => !priorityCategories.includes(cat))
+                .sort()
+                .forEach(cat => {
+                    sortedCategories[cat] = categories[cat].sort((a, b) => a.name.localeCompare(b.name));
+                });
+            
+            return sortedCategories;
+        }
         
         async function loadSchema() {
             try {
@@ -413,21 +496,13 @@
         
         function renderSidebar(filter = '') {
             const sidebar = document.getElementById('sidebar');
-            const filterLower = filter.toLowerCase();
+            const categories = getCategorizedTables(filter);
             
             let html = '';
             let hasResults = false;
             
-            for (const [categoryName, tableNames] of Object.entries(categories)) {
-                const categoryTables = tableNames
-                    .filter(name => {
-                        const table = schemaData.tables.find(t => t.name === name);
-                        return table && (!filter || table.name.toLowerCase().includes(filterLower));
-                    })
-                    .map(name => schemaData.tables.find(t => t.name === name))
-                    .filter(t => t);
-                
-                if (categoryTables.length === 0) continue;
+            for (const [categoryName, tables] of Object.entries(categories)) {
+                if (tables.length === 0) continue;
                 hasResults = true;
                 
                 html += `
@@ -435,37 +510,10 @@
                         <div class="category-header" onclick="toggleCategory(this)">
                             <span class="category-toggle">▼</span>
                             <span>${categoryName}</span>
-                            <span class="table-count">${categoryTables.length}</span>
+                            <span class="table-count">${tables.length}</span>
                         </div>
                         <div class="category-tables">
-                            ${categoryTables.map(table => `
-                                <div class="table-item" onclick="selectTable('${table.name}')" data-table="${table.name}">
-                                    ${table.name}
-                                    <span class="table-count">${table.columns.length}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-            
-            // Uncategorized tables
-            const categorizedTables = Object.values(categories).flat();
-            const uncategorized = schemaData.tables
-                .filter(t => !categorizedTables.includes(t.name))
-                .filter(t => !filter || t.name.toLowerCase().includes(filterLower));
-            
-            if (uncategorized.length > 0) {
-                hasResults = true;
-                html += `
-                    <div class="category collapsed">
-                        <div class="category-header" onclick="toggleCategory(this)">
-                            <span class="category-toggle">▼</span>
-                            <span>Other Tables</span>
-                            <span class="table-count">${uncategorized.length}</span>
-                        </div>
-                        <div class="category-tables">
-                            ${uncategorized.map(table => `
+                            ${tables.map(table => `
                                 <div class="table-item" onclick="selectTable('${table.name}')" data-table="${table.name}">
                                     ${table.name}
                                     <span class="table-count">${table.columns.length}</span>

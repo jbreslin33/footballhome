@@ -1,16 +1,8 @@
--- Club-admins - Foundation Data
--- This file contains core/foundational data for club-admins that always loads.
--- Tables 001-012 (lookup tables) have data inline in schema, this file is optional.
+-- Organization-admins - Foundation Data
+-- Renamed from club_admins (admins belong to organizations)
+-- This file contains core/foundational data that always loads.
 
--- Assign James Breslin to Lighthouse 1893 SC club
--- Note: Requires club_id 1 to exist in clubs table (should be loaded from scraped data)
-INSERT INTO club_admins (club_id, admin_id, admin_role, is_primary, is_active)
-SELECT 
-    c.id,
-    1,  -- James Breslin's admin_id
-    'Owner',
-    true,
-    true
-FROM clubs c
-WHERE c.slug = 'lighthouse-1893-sc'
+-- Assign James Breslin to Lighthouse 1893 organization
+INSERT INTO organization_admins (organization_id, admin_id, admin_role, is_primary, is_active)
+VALUES (1, 1, 'Owner', true, true)
 ON CONFLICT DO NOTHING;

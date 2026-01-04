@@ -5,7 +5,7 @@
 -- CASA Select: Liga 1/Liga 2 or Division 1/Division 2
 -- Generated from: database/config/league-structure.json
 
-INSERT INTO divisions (id, league_id, conference_id, name, skill_level) VALUES
+INSERT INTO divisions (id, season_id, conference_id, name, skill_level) VALUES
   -- APSL 2025 Season - Each conference has ONLY Division 1
   (1, 1, 1, 'Division 1', 1),   -- Mayflower
   (2, 1, 2, 'Division 1', 1),   -- Constitution
@@ -56,7 +56,7 @@ INSERT INTO divisions (id, league_id, conference_id, name, skill_level) VALUES
   (31, 3, 16, 'Division 1', 1),
   (32, 3, 16, 'Division 2', 2)
 ON CONFLICT (id) DO UPDATE SET
-  league_id = EXCLUDED.league_id,
+  season_id = EXCLUDED.season_id,
   conference_id = EXCLUDED.conference_id,
   name = EXCLUDED.name,
   skill_level = EXCLUDED.skill_level;

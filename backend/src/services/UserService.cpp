@@ -42,7 +42,7 @@ std::vector<UserService::UserDetails> UserService::getUsersByClub(const std::str
         FROM users u
         JOIN team_division_players tp ON u.id = tp.player_id
         JOIN teams t ON tp.team_id = t.id
-        JOIN sport_divisions sd ON t.sport_division_id = sd.id
+        JOIN clubs sd ON t.club_id = sd.id
         WHERE sd.club_id = $1
         ORDER BY u.last_name, u.first_name
     )";
@@ -153,7 +153,7 @@ std::vector<UserService::TeamMembership> UserService::getUserTeams(const std::st
                p.id as position_id, p.display_name as position_name
         FROM team_division_players tp
         JOIN teams t ON tp.team_id = t.id
-        JOIN sport_divisions sd ON t.sport_division_id = sd.id
+        JOIN clubs sd ON t.club_id = sd.id
         LEFT JOIN players pl ON pl.id = tp.player_id
         LEFT JOIN positions p ON p.id = pl.preferred_position_id
         WHERE tp.player_id = $1
@@ -228,8 +228,8 @@ bool UserService::canUserManageUser(const std::string& admin_id,
             SELECT COUNT(*) as count
             FROM team_division_players tp
             JOIN teams t ON tp.team_id = t.id
-            JOIN sport_divisions sd ON t.sport_division_id = sd.id
-            JOIN club_admins ca ON ca.club_id = sd.club_id
+            JOIN clubs sd ON t.club_id = sd.id
+            JOIN organization_admins ca ON ca.club_id = sd.club_id
             WHERE ca.admin_id = (SELECT id FROM admins WHERE admin_id = $1)
               AND tp.player_id = $2
         )";

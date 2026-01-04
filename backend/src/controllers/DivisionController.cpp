@@ -63,7 +63,7 @@ Response DivisionController::handleGetDivisions(const Request& request) {
         // Query to get all sport divisions
         std::string query = 
             "SELECT sd.id, sd.display_name, c.display_name as club_name "
-            "FROM sport_divisions sd "
+            "FROM clubs sd "
             "JOIN clubs c ON sd.club_id = c.id "
             "ORDER BY c.display_name, sd.display_name";
         
@@ -122,7 +122,7 @@ Response DivisionController::handleGetClubDivisions(const Request& request) {
         // Query to get all divisions for a specific club
         std::string query = 
             "SELECT sd.id, sd.display_name "
-            "FROM sport_divisions sd "
+            "FROM clubs sd "
             "WHERE sd.club_id = $1 "
             "ORDER BY sd.display_name";
         
@@ -185,8 +185,8 @@ Response DivisionController::handleGetDivisionPlayers(const Request& request) {
                    "null::varchar as registration_number, '2024-2025' as last_active_season, "
                    "CURRENT_TIMESTAMP as created_at, CURRENT_TIMESTAMP as updated_at, "
                    "u.first_name, u.last_name, u.date_of_birth, u.email, u.phone "
-                   "FROM sport_divisions sd "
-                   "JOIN teams t ON sd.id = t.sport_division_id "
+                   "FROM clubs sd "
+                   "JOIN teams t ON sd.id = t.club_id "
                    "JOIN team_division_players tp ON t.id = tp.team_id "
                    "JOIN players p ON tp.player_id = p.id "
                    "JOIN users u ON p.id = u.id "
@@ -199,8 +199,8 @@ Response DivisionController::handleGetDivisionPlayers(const Request& request) {
                    "null::varchar as registration_number, '2024-2025' as last_active_season, "
                    "CURRENT_TIMESTAMP as created_at, CURRENT_TIMESTAMP as updated_at, "
                    "u.first_name, u.last_name, u.date_of_birth, u.email, u.phone "
-                   "FROM sport_divisions sd "
-                   "JOIN teams t ON sd.id = t.sport_division_id "
+                   "FROM clubs sd "
+                   "JOIN teams t ON sd.id = t.club_id "
                    "JOIN team_division_players tp ON t.id = tp.team_id "
                    "JOIN players p ON tp.player_id = p.id "
                    "JOIN users u ON p.id = u.id "

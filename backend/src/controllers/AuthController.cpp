@@ -459,7 +459,7 @@ Response AuthController::handleCoachTeams(const Request& request) {
                          "FROM coaches co "
                          "JOIN team_coaches tc ON co.id = tc.coach_id "
                          "JOIN teams t ON tc.team_id = t.id "
-                         "JOIN sport_divisions sd ON t.sport_division_id = sd.id "
+                         "JOIN clubs sd ON t.club_id = sd.id "
                          "LEFT JOIN team_division_players tp ON t.id = tp.team_id "
                          "WHERE co.id = $1 "
                          "GROUP BY t.id, t.name, sd.club_id "
@@ -501,7 +501,7 @@ Response AuthController::handlePlayerTeams(const Request& request) {
         std::string sql = "SELECT DISTINCT t.id, t.name, sd.display_name as division_name, sd.club_id "
                          "FROM team_division_players tp "
                          "JOIN teams t ON tp.team_id = t.id "
-                         "JOIN sport_divisions sd ON t.sport_division_id = sd.id "
+                         "JOIN clubs sd ON t.club_id = sd.id "
                          "JOIN players p ON tp.player_id = p.id "
                          "WHERE p.id = $1 "
                          "ORDER BY t.name";
@@ -559,16 +559,16 @@ Response AuthController::handleAdminContexts(const Request& request) {
             first = false;
         }
         
-        // Get clubs the user administers (via admins -> club_admins)
-        std::string club_sql = "SELECT DISTINCT c.id, c.display_name, 'club' as type "
-                              "FROM clubs c "
-                              "JOIN club_admins ca ON c.id = ca.club_id "
-                              "JOIN admins a ON ca.admin_id = a.id "
-                              "WHERE a.user_id = $1 AND ca.is_active = true "
-                              "GROUP BY c.id, c.display_name";
+        // Get organizations the user administers (via admins -> organization_admins)
+        std::string org_sql = "SELECT DISTINCT o.id, o.name as display_name, 'organization' as type "
+                              "FROM organizations o "
+                              "JOIN organization_admins oa ON o.id = oa.organization_id "
+                              "JOIN admins a ON oa.admin_id = a.id "
+                              "WHERE a.user_id = $1 AND oa.is_active = true "
+                              "GROUP BY o.id, o.name";
         
-        pqxx::result club_result = db_->query(club_sql, {user_id});
-        for (auto row : club_result) {
+        pqxx::result org_result = db_->query(org_sql, {user_id});
+        for (auto row : org_result) {
             if (!first) contexts_json << ",";
             first = false;
             contexts_json << "{\"id\":\"" << row["id"].as<std::string>() << "\","
