@@ -671,37 +671,6 @@ CREATE INDEX idx_organization_admins_admin ON organization_admins(admin_id);
 
 COMMENT ON TABLE organization_admins IS 'Admins assigned to organizations (Lighthouse 1893, etc.)';
 
-CREATE TABLE club_admins (
-    id SERIAL PRIMARY KEY,
-    club_id INTEGER NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
-    admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
-    admin_role VARCHAR(50),
-    is_primary BOOLEAN DEFAULT false,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(club_id, admin_id)
-);
-
-CREATE INDEX idx_club_admins_club ON club_admins(club_id);
-CREATE INDEX idx_club_admins_admin ON club_admins(admin_id);
-
-COMMENT ON TABLE club_admins IS 'Admins assigned to clubs (Lighthouse SC, Boys Club, etc.) - grants app permissions';
-
-CREATE TABLE team_admins (
-    id SERIAL PRIMARY KEY,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
-    admin_role VARCHAR(50),
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(team_id, admin_id)
-);
-
-CREATE INDEX idx_team_admins_team ON team_admins(team_id);
-CREATE INDEX idx_team_admins_admin ON team_admins(admin_id);
-
-COMMENT ON TABLE team_admins IS 'Admins assigned to teams - grants app permissions. Separate from coaches table (identity vs authorization).';
-
 CREATE TABLE league_admins (
     id SERIAL PRIMARY KEY,
     league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
@@ -736,6 +705,22 @@ CREATE INDEX idx_clubs_sport ON clubs(sport_id);
 
 COMMENT ON TABLE clubs IS 'Competitive units within organizations (e.g., "Lighthouse 1893 SC", "Boys Club")';
 
+CREATE TABLE club_admins (
+    id SERIAL PRIMARY KEY,
+    club_id INTEGER NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+    admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    admin_role VARCHAR(50),
+    is_primary BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(club_id, admin_id)
+);
+
+CREATE INDEX idx_club_admins_club ON club_admins(club_id);
+CREATE INDEX idx_club_admins_admin ON club_admins(admin_id);
+
+COMMENT ON TABLE club_admins IS 'Admins assigned to clubs (Lighthouse SC, Boys Club, etc.) - grants app permissions';
+
 -- ============================================================================
 -- 5. UNIFIED LEAGUE DATA (Replaces all apsl_*, casa_*, custom_* tables)
 -- ============================================================================
@@ -756,6 +741,21 @@ CREATE INDEX idx_teams_club ON teams(club_id);
 CREATE INDEX idx_teams_source ON teams(source_system_id);
 
 COMMENT ON TABLE teams IS 'Persistent team entities (e.g., "Lighthouse 1893 SC", "Lighthouse Boys Club")';
+
+CREATE TABLE team_admins (
+    id SERIAL PRIMARY KEY,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    admin_role VARCHAR(50),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(team_id, admin_id)
+);
+
+CREATE INDEX idx_team_admins_team ON team_admins(team_id);
+CREATE INDEX idx_team_admins_admin ON team_admins(admin_id);
+
+COMMENT ON TABLE team_admins IS 'Admins assigned to teams - grants app permissions. Separate from coaches table (identity vs authorization).';
 
 -- Teams register in divisions (seasonal participation)
 CREATE TABLE division_rosters (
