@@ -36,6 +36,20 @@ class ConferenceRepository {
   }
   
   /**
+   * Find all conferences for a season
+   */
+  async findBySeason(seasonId) {
+    const result = await this.db.query(`
+      SELECT id, name, season_id, external_id
+      FROM conferences
+      WHERE season_id = $1
+      ORDER BY sort_order, name
+    `, [seasonId]);
+    
+    return result.rows;
+  }
+  
+  /**
    * Upsert conference using domain model
    */
   async upsert(conference) {

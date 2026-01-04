@@ -5,23 +5,25 @@ const OrganizationRepository = require('../domain/repositories/OrganizationRepos
 const LeagueRepository = require('../domain/repositories/LeagueRepository');
 const SeasonRepository = require('../domain/repositories/SeasonRepository');
 const ConferenceRepository = require('../domain/repositories/ConferenceRepository');
+const DivisionRepository = require('../domain/repositories/DivisionRepository');
 
 /**
  * APSL Structure Scraper
  * 
  * Extracts soccer hierarchy from APSL standings page:
- * Organization → League → Season → Conferences
+ * Organization → League → Season → Conferences → Divisions
  * 
  * This is a thin orchestrator - all logic is in reusable components.
  */
 class ApslStructureScraper {
-  constructor(fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo) {
+  constructor(fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo, divisionRepo) {
     this.fetcher = fetcher;
     this.parser = parser;
     this.orgRepo = orgRepo;
     this.leagueRepo = leagueRepo;
     this.seasonRepo = seasonRepo;
     this.conferenceRepo = conferenceRepo;
+    this.divisionRepo = divisionRepo;
   }
   
   /**
@@ -51,11 +53,12 @@ class ApslStructureScraper {
     console.log(`   ✓ Read ${html.length} bytes`);
     
     console.log('🔍 Parsing HTML into domain models...');
-    const { organization, league, season, conferences } = this.parser.parse(html);
+    const { organization, league, season, conferences, divisions } = this.parser.parse(html);
     console.log(`   ✓ Found: ${organization.name}`);
     console.log(`   ✓ League: ${league.name}`);
     console.log(`   ✓ Season: ${season.name}`);
     console.log(`   ✓ Conferences: ${conferences.length}`);
+    console.log(`   ✓ Divisions: ${divisions.length} (1 per conference)`);
     
     console.log('💾 Saving to database...');
     
@@ -80,9 +83,21 @@ class ApslStructureScraper {
     const confResult = await this.conferenceRepo.upsertMany(conferences);
     console.log(`   ✓ Conferences: ${confResult.totalInserted} inserted, ${confResult.totalUpdated} updated`);
     
-    // Print conference details
-    for (const conference of conferences) {
-      console.log(`     - ${conference.name} (external_id=${conference.externalId})`);
+    // 5. Upsert divisions (link to conferences and season)
+    // Map divisions to their saved conference IDs
+    const savedConferences = await this.conferenceRepo.findBySeason(seasonResult.id);
+    const conferenceMap = new Map(savedConferences.map(c => [c.external_id, c.id]));
+    
+    for (const division of divisions) {
+      division.seasonId = seasonResult.id;
+      division.conferenceId = conferenceMap.get(division.externalId);
+    }
+    const divResult = await this.divisionRepo.upsertMany(divisions);
+    console.log(`   ✓ Divisions: ${divResult.inserted} inserted, ${divResult.updated} updated`);
+    
+    // Print conference + division details
+    for (let i = 0; i < conferences.length; i++) {
+      console.log(`     - ${conferences[i].name} → ${divisions[i].name}`);
     }
   }
   
@@ -107,6 +122,7 @@ class ApslStructureScraper {
     const leagueRepo = new LeagueRepository(client);
     const seasonRepo = new SeasonRepository(client);
     const conferenceRepo = new ConferenceRepository(client);
+    const divisionRepo = new DivisionRepository(client);
     
     // Inject dependencies
     const scraper = new ApslStructureScraper(
@@ -115,7 +131,8 @@ class ApslStructureScraper {
       orgRepo,
       leagueRepo,
       seasonRepo,
-      conferenceRepo
+      conferenceRepo,
+      divisionRepo
     );
     
     // Store pool and client for cleanup

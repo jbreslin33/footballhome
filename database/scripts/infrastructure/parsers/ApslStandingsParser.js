@@ -3,6 +3,7 @@ const Organization = require('../../domain/models/Organization');
 const League = require('../../domain/models/League');
 const Season = require('../../domain/models/Season');
 const Conference = require('../../domain/models/Conference');
+const Division = require('../../domain/models/Division');
 
 /**
  * APSL Standings Parser
@@ -12,12 +13,13 @@ const Conference = require('../../domain/models/Conference');
  * - League (American Premier Soccer League)
  * - Season (2025/2026)
  * - Conferences (Mayflower, Constitution, etc.)
+ * - Divisions (1 per conference - APSL business rule)
  */
 class ApslStandingsParser {
   /**
    * Parse APSL standings HTML
    * @param {string} html - Raw HTML from standings page
-   * @returns {Object} { organization, league, season, conferences }
+   * @returns {Object} { organization, league, season, conferences, divisions }
    */
   parse(html) {
     const dom = new JSDOM(html);
@@ -98,8 +100,32 @@ class ApslStandingsParser {
       organization,
       league,
       season,
-      conferences
+      conferences,
+      divisions: this.createDivisionsForConferences(conferences)
     };
+  }
+  
+  /**
+   * Create 1 division per conference (APSL business rule)
+   * Division name = conference name without "Conference" suffix
+   * @param {Array} conferences - Conference models
+   * @returns {Array} Division models
+   */
+  createDivisionsForConferences(conferences) {
+    return conferences.map(conference => {
+      // Strip "Conference" suffix from name
+      const divisionName = conference.name.replace(/\s+Conference$/i, '').trim();
+      
+      return new Division({
+        name: divisionName,
+        conferenceId: null, // Will be filled by scraper after conference is saved
+        seasonId: null,      // Will be filled by scraper
+        externalId: conference.externalId, // Use same external_id as conference
+        sourceSystemId: conference.sourceSystemId,
+        divisionTypeId: 1,   // Standard league play
+        isActive: true
+      });
+    });
   }
 }
 
