@@ -330,6 +330,28 @@ INSERT INTO sports (id, name, description, sort_order) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
+-- Continents (lookup with data inline)
+-- ============================================================================
+
+CREATE TABLE continents (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    code CHAR(2) NOT NULL UNIQUE,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO continents (id, code, name, sort_order) VALUES
+    (1, 'AF', 'Africa', 1),
+    (2, 'AN', 'Antarctica', 2),
+    (3, 'AS', 'Asia', 3),
+    (4, 'EU', 'Europe', 4),
+    (5, 'NA', 'North America', 5),
+    (6, 'OC', 'Oceania', 6),
+    (7, 'SA', 'South America', 7)
+ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================================
 -- 2. GOVERNING BODY HIERARCHY
 -- ============================================================================
 
@@ -354,12 +376,14 @@ CREATE TABLE countries (
     code CHAR(3) NOT NULL UNIQUE,
     name VARCHAR(100) NOT NULL UNIQUE,
     fifa_code CHAR(3),
+    continent_id INTEGER REFERENCES continents(id),
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_countries_code ON countries(code);
 CREATE INDEX idx_countries_fifa ON countries(fifa_code);
+CREATE INDEX idx_countries_continent ON countries(continent_id);
 
 INSERT INTO countries (code, name, fifa_code) VALUES
     ('USA', 'United States', 'USA'),
