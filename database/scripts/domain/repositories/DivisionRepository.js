@@ -8,17 +8,30 @@ class DivisionRepository {
   }
   
   /**
-   * Find division by external ID and source system
+   * Find division by external ID, source system, and season
+   * Divisions are season-specific, so same external_id can exist across multiple seasons
    */
-  async findByExternalId(sourceSystemId, externalId) {
-    const result = await this.db.query(`
-      SELECT id, season_id, conference_id, name, division_type_id,
-             skill_level, skill_label, source_system_id, external_id, sort_order
-      FROM divisions
-      WHERE source_system_id = $1 AND external_id = $2
-    `, [sourceSystemId, externalId]);
-    
-    return result.rows[0] || null;
+  async findByExternalId(sourceSystemId, externalId, seasonId = null) {
+    if (seasonId) {
+      const result = await this.db.query(`
+        SELECT id, season_id, conference_id, name, division_type_id,
+               skill_level, skill_label, source_system_id, external_id, sort_order
+        FROM divisions
+        WHERE source_system_id = $1 AND external_id = $2 AND season_id = $3
+      `, [sourceSystemId, externalId, seasonId]);
+      
+      return result.rows[0] || null;
+    } else {
+      // Fallback for backward compatibility
+      const result = await this.db.query(`
+        SELECT id, season_id, conference_id, name, division_type_id,
+               skill_level, skill_label, source_system_id, external_id, sort_order
+        FROM divisions
+        WHERE source_system_id = $1 AND external_id = $2
+      `, [sourceSystemId, externalId]);
+      
+      return result.rows[0] || null;
+    }
   }
   
   /**
@@ -52,14 +65,14 @@ class DivisionRepository {
   }
   
   /**
-   * Upsert division (insert or update if external_id exists)
+   * Upsert division (insert or update if external_id exists for this season)
    */
   async upsert(division) {
     const row = division.toDbRow();
     
-    // If has external_id, try update first
-    if (row.external_id && row.source_system_id) {
-      const existing = await this.findByExternalId(row.source_system_id, row.external_id);
+    // If has external_id, try update first (must match season too!)
+    if (row.external_id && row.source_system_id && row.season_id) {
+      const existing = await this.findByExternalId(row.source_system_id, row.external_id, row.season_id);
       
       if (existing) {
         const result = await this.db.query(`
