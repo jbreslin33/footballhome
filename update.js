@@ -151,6 +151,15 @@ async function main() {
           success = true;
           stats.success++;
         }
+        // Governing Bodies (static JSON) - target_type_id=18, source_system_id=7
+        else if (target.target_type_id === 18 && target.source_system_id === 7) {
+          await runScraper(
+            path.join(__dirname, 'database/scripts/scrapers/GoverningBodyScraper.js'),
+            [mode]
+          );
+          success = true;
+          stats.success++;
+        }
         // APSL conference structure - target_type_id=1, source_system_id=1
         else if (target.target_type_id === 1 && target.source_system_id === 1) {
           await runScraper(

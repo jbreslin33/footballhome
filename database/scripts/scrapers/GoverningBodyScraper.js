@@ -20,13 +20,13 @@ class GoverningBodyScraper {
       port: process.env.DB_PORT || 5432,
       database: process.env.DB_NAME || 'footballhome',
       user: process.env.DB_USER || 'footballhome_user',
-      password: process.env.DB_PASSWORD || 'dev_password_123',
+      password: process.env.DB_PASSWORD || 'footballhome_pass',
     });
     
     this.sourceFile = path.join(__dirname, '../../config/governing-bodies-source.json');
-    this.sourceSystemId = 5; // Create new source_system for governing bodies
-    this.scraperTypeId = 2; // google_sheets (or we can create a new one for JSON)
-    this.targetTypeId = 16; // Create new scrape_target_type for governing_bodies
+    this.sourceSystemId = 7; // static_json
+    this.scraperTypeId = 2; // google_sheets (repurposed for JSON)
+    this.targetTypeId = 18; // governing_bodies
   }
 
   /**
@@ -172,8 +172,7 @@ class GoverningBodyScraper {
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           short_name = EXCLUDED.short_name,
-          website_url = EXCLUDED.website_url,
-          updated_at = NOW()
+          website_url = EXCLUDED.website_url
         RETURNING id
       `, [gb.id, gb.name, gb.short_name, gb.website_url]);
       

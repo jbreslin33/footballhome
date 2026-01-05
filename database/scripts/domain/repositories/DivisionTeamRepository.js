@@ -1,7 +1,7 @@
 /**
  * DivisionTeam Repository
  * 
- * Handles database operations for the division_teams junction table.
+ * Handles database operations for the division_rosters junction table.
  * Links teams to divisions (roster assignments).
  */
 class DivisionTeamRepository {
@@ -14,8 +14,8 @@ class DivisionTeamRepository {
    */
   async findByDivisionAndTeam(divisionId, teamId) {
     const result = await this.db.query(`
-      SELECT division_id, team_id, reserve_of_team_id, is_active
-      FROM division_teams
+      SELECT division_id, team_id, is_active
+      FROM division_rosters
       WHERE division_id = $1 AND team_id = $2
     `, [divisionId, teamId]);
     
@@ -27,9 +27,9 @@ class DivisionTeamRepository {
    */
   async findByDivision(divisionId) {
     const result = await this.db.query(`
-      SELECT dt.division_id, dt.team_id, dt.reserve_of_team_id, dt.is_active,
+      SELECT dt.division_id, dt.team_id, dt.is_active,
              t.display_name, t.short_name
-      FROM division_teams dt
+      FROM division_rosters dt
       JOIN teams t ON dt.team_id = t.id
       WHERE dt.division_id = $1
       ORDER BY t.display_name
@@ -43,9 +43,9 @@ class DivisionTeamRepository {
    */
   async findByTeam(teamId) {
     const result = await this.db.query(`
-      SELECT dt.division_id, dt.team_id, dt.reserve_of_team_id, dt.is_active,
+      SELECT dt.division_id, dt.team_id, dt.is_active,
              d.name as division_name, d.season_id
-      FROM division_teams dt
+      FROM division_rosters dt
       JOIN divisions d ON dt.division_id = d.id
       WHERE dt.team_id = $1
       ORDER BY d.season_id DESC, d.name
@@ -58,19 +58,18 @@ class DivisionTeamRepository {
    * Upsert division_team link
    * @param {number} divisionId
    * @param {number} teamId
-   * @param {number|null} reserveOfTeamId - Optional: if this team is a reserve team
    * @param {boolean} isActive - Default: true
    */
-  async upsert(divisionId, teamId, reserveOfTeamId = null, isActive = true) {
+  async upsert(divisionId, teamId, isActive = true) {
     const result = await this.db.query(`
-      INSERT INTO division_teams (division_id, team_id, reserve_of_team_id, is_active)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO division_rosters (division_id, team_id, is_active)
+      VALUES ($1, $2, $3)
       ON CONFLICT (division_id, team_id)
       DO UPDATE SET
-        reserve_of_team_id = EXCLUDED.reserve_of_team_id,
-        is_active = EXCLUDED.is_active
-      RETURNING division_id, team_id, reserve_of_team_id, is_active
-    `, [divisionId, teamId, reserveOfTeamId, isActive]);
+        is_active = EXCLUDED.is_active,
+        created_at = CURRENT_TIMESTAMP
+      RETURNING division_id, team_id, is_active
+    `, [divisionId, teamId, isActive]);
     
     return result.rows[0];
   }
@@ -80,7 +79,7 @@ class DivisionTeamRepository {
    */
   async delete(divisionId, teamId) {
     const result = await this.db.query(`
-      DELETE FROM division_teams
+      DELETE FROM division_rosters
       WHERE division_id = $1 AND team_id = $2
       RETURNING division_id, team_id
     `, [divisionId, teamId]);
@@ -93,7 +92,7 @@ class DivisionTeamRepository {
    */
   async markInactive(divisionId, teamId) {
     const result = await this.db.query(`
-      UPDATE division_teams
+      UPDATE division_rosters
       SET is_active = false
       WHERE division_id = $1 AND team_id = $2
       RETURNING division_id, team_id, is_active
