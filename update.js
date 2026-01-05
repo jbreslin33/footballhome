@@ -131,8 +131,13 @@ async function main() {
         // Route to appropriate scraper based on target_type_id and source_system_id
         const mode = target.is_initialized ? 'sync' : 'discover';
         
-        // Set environment variable for scraper to know which target it's processing
+        // Determine if we should use cache based on scrape_action
+        // 1=download_and_parse (fetch fresh), 2=use_cache_only, 4=force_refresh (fetch fresh)
+        const useCache = target.action_name === 'use_cache_only';
+        
+        // Set environment variables for scraper
         process.env.SCRAPE_TARGET_ID = target.id;
+        process.env.SCRAPE_USE_CACHE = useCache ? 'true' : 'false';
         
         // Countries (REST Countries API) - target_type_id=17, source_system_id=6
         if (target.target_type_id === 17 && target.source_system_id === 6) {
@@ -185,17 +190,34 @@ async function main() {
       } finally {
         const duration = Date.now() - startTime;
         
-        // Update target status
-        const newStatusId = success ? 3 : 5;  // 3=completed, 5=failed
-        await pool.query(
-          `UPDATE scrape_targets 
-           SET scrape_status_id = $1, 
-               is_initialized = true,
-               last_synced_at = CURRENT_TIMESTAMP,
-               updated_at = CURRENT_TIMESTAMP
-           WHERE id = $2`,
-          [newStatusId, target.id]
-        );
+        // Update target status and action based on success
+        if (success) {
+          // On success: Mark complete and set action to 'skip' so it won't re-run
+          await pool.query(
+            `UPDATE scrape_targets 
+             SET scrape_action_id = 3,  -- 3=skip (completed, don't re-run)
+                 scrape_status_id = 3,  -- 3=completed
+                 last_success_at = CURRENT_TIMESTAMP,
+                 is_initialized = true,
+                 last_synced_at = CURRENT_TIMESTAMP,
+                 updated_at = CURRENT_TIMESTAMP,
+                 retry_count = 0
+             WHERE id = $1`,
+            [target.id]
+          );
+        } else {
+          // On failure: Mark failed, keep action unchanged, increment retry count
+          await pool.query(
+            `UPDATE scrape_targets 
+             SET scrape_status_id = 5,  -- 5=failed
+                 last_error_at = CURRENT_TIMESTAMP,
+                 last_error_message = $1,
+                 retry_count = retry_count + 1,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $2`,
+            [errorMessage, target.id]
+          );
+        }
         
         // Record execution in scrape_executions table
         const executionStatusId = success ? 3 : 5;  // 3=success, 5=failed

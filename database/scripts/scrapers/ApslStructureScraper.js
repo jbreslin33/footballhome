@@ -55,12 +55,13 @@ class ApslStructureScraper {
   }
   
   async scrapeAndSave() {
-    // Fetch HTML from URL (with caching)
+    // Fetch HTML from URL (respecting cache control from orchestrator)
     const url = this.scrapeTarget.url;
+    const useCache = process.env.SCRAPE_USE_CACHE === 'true';
     
     console.log('🌐 Fetching APSL standings...');
     console.log(`   ${url}`);
-    const html = await this.fetcher.fetch(url, true); // useCache=true
+    const html = await this.fetcher.fetch(url, useCache);
     console.log(`   ✓ Fetched ${html.length} bytes`);
     
     console.log('🔍 Parsing HTML into domain models...');

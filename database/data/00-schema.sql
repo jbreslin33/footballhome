@@ -252,6 +252,14 @@ CREATE TABLE scrape_targets (
     target_type_id INTEGER NOT NULL REFERENCES scrape_target_types(id),
     url TEXT NOT NULL,
     label VARCHAR(255),
+    -- State machine fields
+    scrape_action_id INTEGER REFERENCES scrape_actions(id) DEFAULT 1,
+    scrape_status_id INTEGER REFERENCES scrape_statuses(id) DEFAULT 1,
+    last_success_at TIMESTAMP,
+    last_error_at TIMESTAMP,
+    last_error_message TEXT,
+    retry_count INTEGER DEFAULT 0,
+    -- Legacy fields (for backward compatibility during migration)
     is_active BOOLEAN DEFAULT true,
     is_initialized BOOLEAN DEFAULT false,
     last_synced_at TIMESTAMP,
@@ -262,6 +270,8 @@ CREATE TABLE scrape_targets (
 CREATE INDEX idx_scrape_targets_source ON scrape_targets(source_system_id);
 CREATE INDEX idx_scrape_targets_scraper ON scrape_targets(scraper_type_id);
 CREATE INDEX idx_scrape_targets_type ON scrape_targets(target_type_id);
+CREATE INDEX idx_scrape_targets_action ON scrape_targets(scrape_action_id);
+CREATE INDEX idx_scrape_targets_status ON scrape_targets(scrape_status_id);
 CREATE INDEX idx_scrape_targets_active ON scrape_targets(is_active);
 CREATE INDEX idx_scrape_targets_initialized ON scrape_targets(is_initialized);
 
