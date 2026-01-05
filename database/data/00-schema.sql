@@ -767,6 +767,7 @@ COMMENT ON TABLE club_admins IS 'Admins assigned to clubs (Lighthouse SC, Boys C
 CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
     club_id INTEGER REFERENCES clubs(id),  -- Nullable for standalone teams
+    parent_team_id INTEGER REFERENCES teams(id),  -- Club hierarchy (U12→U14→U16→First Team)
     name VARCHAR(255) NOT NULL UNIQUE,
     city VARCHAR(100),
     logo_url TEXT,
@@ -777,6 +778,7 @@ CREATE TABLE teams (
 );
 
 CREATE INDEX idx_teams_club ON teams(club_id);
+CREATE INDEX idx_teams_parent ON teams(parent_team_id);
 CREATE INDEX idx_teams_source ON teams(source_system_id);
 
 COMMENT ON TABLE teams IS 'Persistent team entities (e.g., "Lighthouse 1893 SC", "Lighthouse Boys Club")';
@@ -801,6 +803,7 @@ CREATE TABLE division_rosters (
     id SERIAL PRIMARY KEY,
     division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    reserve_of_team_id INTEGER REFERENCES teams(id),  -- League recognizes this team as a reserve
     registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
