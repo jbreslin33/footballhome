@@ -7,6 +7,9 @@ const SeasonRepository = require('../domain/repositories/SeasonRepository');
 const ConferenceRepository = require('../domain/repositories/ConferenceRepository');
 const DivisionRepository = require('../domain/repositories/DivisionRepository');
 const ScrapedTeamRepository = require('../domain/repositories/ScrapedTeamRepository');
+const ClubRepository = require('../domain/repositories/ClubRepository');
+const Organization = require('../domain/models/Organization');
+const Club = require('../domain/models/Club');
 
 /**
  * APSL Structure Scraper
@@ -19,7 +22,7 @@ const ScrapedTeamRepository = require('../domain/repositories/ScrapedTeamReposit
  * Data Source: scrape_targets table (id=1 for current season, 2-4 for historical)
  */
 class ApslStructureScraper {
-  constructor(scrapeTarget, fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo, divisionRepo, teamRepo) {
+  constructor(scrapeTarget, fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo, divisionRepo, teamRepo, clubRepo) {
     this.scrapeTarget = scrapeTarget;
     this.fetcher = fetcher;
     this.parser = parser;
@@ -29,6 +32,7 @@ class ApslStructureScraper {
     this.conferenceRepo = conferenceRepo;
     this.divisionRepo = divisionRepo;
     this.teamRepo = teamRepo;
+    this.clubRepo = clubRepo;
   }
   
   /**
@@ -130,10 +134,40 @@ class ApslStructureScraper {
       );
     }
     
-    // 6. Upsert teams
+    // 6. Upsert teams (create club/organization for each team)
     if (teams && teams.length > 0) {
+      let clubsCreated = 0;
+      let teamsLinked = 0;
+      
+      for (const team of teams) {
+        // For APSL, each team IS a club (e.g., "Lighthouse 1893 SC")
+        // Create organization + club with same name as team
+        const teamOrg = new Organization({
+          name: team.name,
+          isActive: true
+        });
+        
+        const orgResult = await this.orgRepo.upsert(teamOrg);
+        if (orgResult.inserted) clubsCreated++;
+        
+        // Create club under that organization
+        const club = new Club({
+          name: team.name,
+          organizationId: orgResult.id,
+          sportId: 1, // Soccer
+          isActive: true
+        });
+        
+        const clubResult = await this.clubRepo.upsert(club);
+        
+        // Link team to club
+        team.clubId = clubResult.id;
+        teamsLinked++;
+      }
+      
       const teamResult = await this.teamRepo.upsertMany(teams);
       console.log(`   ✓ Teams: ${teamResult.inserted} inserted, ${teamResult.updated} updated`);
+      console.log(`   ✓ Clubs/Organizations: ${clubsCreated} created, ${teamsLinked} teams linked to clubs`);
     }
     
     // Print conference + division details
@@ -176,6 +210,7 @@ class ApslStructureScraper {
     const conferenceRepo = new ConferenceRepository(client);
     const divisionRepo = new DivisionRepository(client);
     const teamRepo = new ScrapedTeamRepository(client);
+    const clubRepo = new ClubRepository(client);
     
     // Inject dependencies
     const scraper = new ApslStructureScraper(
@@ -187,7 +222,8 @@ class ApslStructureScraper {
       seasonRepo,
       conferenceRepo,
       divisionRepo,
-      teamRepo
+      teamRepo,
+      clubRepo
     );
     
     // Store pool and client for cleanup
