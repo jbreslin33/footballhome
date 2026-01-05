@@ -21,13 +21,13 @@ class ApslStandingsParser {
    * Parse APSL standings HTML
    * @param {string} html - Raw HTML from standings page
    * @param {number} scrapeTargetId - ID of the scrape_target this data came from
-   * @returns {Object} { organization, league, season, conferences, divisions }
+   * @returns {Object} { organization, league, season, conferences, divisions, divisionTeams }
    */
   parse(html, scrapeTargetId = null) {
     const dom = new JSDOM(html);
     const document = dom.window.document;
     
-    // Store scrapeTargetId for use in extractTeams
+    // Store scrapeTargetId for use throughout parsing
     this.scrapeTargetId = scrapeTargetId;
     
     // Extract organization
@@ -116,49 +116,111 @@ class ApslStandingsParser {
       }
     }
     
+    // Extract teams grouped by division
+    const { divisionTeams, allTeams } = this.extractTeamsWithDivisions(document, conferences);
+    
     return {
       organization,
       league,
       season,
       conferences,
       divisions: this.createDivisionsForConferences(conferences),
-      teams: this.extractTeams(document)
+      teams: allTeams,
+      divisionTeams: divisionTeams
     };
   }
   
   /**
-   * Extract team names from standings tables
-   * Teams appear in divs with team names and logos
+   * Extract teams grouped by division from standings page
    * @param {Document} document - jsdom document
-   * @returns {Array} ScrapedTeam models
+   * @param {Array} conferences - Conference models from dropdown
+   * @returns {Object} { divisionTeams: [{conferenceName, teams}], allTeams: [ScrapedTeam] }
    */
-  extractTeams(document) {
-    const teams = [];
-    const teamNames = new Set(); // Track unique names
+  extractTeamsWithDivisions(document, conferences) {
+    const divisionTeams = [];
+    const allTeamsMap = new Map(); // Track unique teams by name
     
-    // Find all elements that contain team names
-    // Pattern: divs containing team names after logos
-    const allDivs = document.querySelectorAll('div');
+    // Find all conference sections with class "leagueAccordTitle1"
+    const conferenceSections = document.querySelectorAll('.leagueAccordTitle1');
     
-    for (const div of allDivs) {
-      const text = div.textContent.trim();
+    for (const titleElement of conferenceSections) {
+      // Extract conference name from heading: "2025/2026 - Mayflower Conference"
+      const fullText = titleElement.textContent.trim();
+      const match = fullText.match(/^\d{4}\/\d{4}\s*-\s*(.+)$/);
       
-      // Skip empty, very short, or very long text
-      if (!text || text.length < 3 || text.length > 100) continue;
+      if (!match) continue;
       
-      // Look for patterns that indicate team names:
-      // 1. Contains "FC", "SC", "United", etc.
-      // 2. Follows an img tag (logo)
-      // 3. Is in a reasonable team name format
-      if (this.looksLikeTeamName(text) && !teamNames.has(text)) {
-        teamNames.add(text);
-        
-        teams.push(new ScrapedTeam({
-          name: text,
-          sourceSystemId: 1, // APSL
-          externalId: null  // APSL doesn't provide team IDs in standings
-        }));
+      const conferenceName = match[1].trim();
+      
+      // Find the standings table following this heading
+      // HTML structure: titleElement is inside a parent div, and accordBox is the next sibling of that parent
+      // <div>
+      //   <div class="leagueAccordTitle1">...</div>
+      //   <div class="leagueAccordTitle2">...</div>
+      // </div>
+      // <div class="leagueAccordbox">...</div>
+      let accordBox = titleElement.parentElement.nextElementSibling;
+      while (accordBox && !accordBox.classList.contains('leagueAccordbox')) {
+        accordBox = accordBox.nextElementSibling;
       }
+      
+      if (!accordBox) continue;
+      
+      // Extract teams from this standings table
+      const teams = this.extractTeamsFromTable(accordBox, allTeamsMap);
+      
+      if (teams.length > 0) {
+        divisionTeams.push({
+          conferenceName: conferenceName,
+          teams: teams
+        });
+      }
+    }
+    
+    return {
+      divisionTeams: divisionTeams,
+      allTeams: Array.from(allTeamsMap.values())
+    };
+  }
+  
+  /**
+   * Extract teams from a standings table section
+   * @param {Element} accordBox - The div.leagueAccordbox containing the standings table
+   * @param {Map} allTeamsMap - Map to track unique teams (mutated)
+   * @returns {Array} ScrapedTeam models for this division
+   */
+  extractTeamsFromTable(accordBox, allTeamsMap) {
+    const teams = [];
+    
+    // Find all team links in this section
+    // Pattern: <a href="/APSL/Team/114814">
+    const teamLinks = accordBox.querySelectorAll('a[href*="/APSL/Team/"]');
+    
+    for (const link of teamLinks) {
+      // Extract team name from the div inside the link
+      // Pattern: <div style="...">Lighthouse 1893 SC</div>
+      const nameDiv = link.querySelector('div[style*="margin-left"]');
+      if (!nameDiv) continue;
+      
+      const teamName = nameDiv.textContent.trim();
+      if (!teamName || teamName.length < 3) continue;
+      
+      // Extract external ID from href: /APSL/Team/114814
+      const href = link.getAttribute('href');
+      const externalIdMatch = href.match(/\/Team\/(\d+)/);
+      const externalId = externalIdMatch ? externalIdMatch[1] : null;
+      
+      // Create or reuse team model
+      if (!allTeamsMap.has(teamName)) {
+        const team = new ScrapedTeam({
+          name: teamName,
+          sourceSystemId: 1, // APSL
+          externalId: externalId
+        });
+        allTeamsMap.set(teamName, team);
+      }
+      
+      teams.push(allTeamsMap.get(teamName));
     }
     
     return teams;

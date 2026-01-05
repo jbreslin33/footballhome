@@ -8,6 +8,7 @@ const ConferenceRepository = require('../domain/repositories/ConferenceRepositor
 const DivisionRepository = require('../domain/repositories/DivisionRepository');
 const ScrapedTeamRepository = require('../domain/repositories/ScrapedTeamRepository');
 const ClubRepository = require('../domain/repositories/ClubRepository');
+const DivisionTeamRepository = require('../domain/repositories/DivisionTeamRepository');
 const Organization = require('../domain/models/Organization');
 const Club = require('../domain/models/Club');
 
@@ -22,7 +23,7 @@ const Club = require('../domain/models/Club');
  * Data Source: scrape_targets table (id=1 for current season, 2-4 for historical)
  */
 class ApslStructureScraper {
-  constructor(scrapeTarget, fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo, divisionRepo, teamRepo, clubRepo) {
+  constructor(scrapeTarget, fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo, divisionRepo, teamRepo, clubRepo, divisionTeamRepo) {
     this.scrapeTarget = scrapeTarget;
     this.fetcher = fetcher;
     this.parser = parser;
@@ -33,6 +34,7 @@ class ApslStructureScraper {
     this.divisionRepo = divisionRepo;
     this.teamRepo = teamRepo;
     this.clubRepo = clubRepo;
+    this.divisionTeamRepo = divisionTeamRepo;
   }
   
   /**
@@ -62,7 +64,7 @@ class ApslStructureScraper {
     console.log(`   ✓ Fetched ${html.length} bytes`);
     
     console.log('🔍 Parsing HTML into domain models...');
-    const { organization, league, season, conferences, divisions, teams } = this.parser.parse(html);
+    const { organization, league, season, conferences, divisions, teams, divisionTeams } = this.parser.parse(html);
     console.log(`   ✓ Found: ${organization.name}`);
     console.log(`   ✓ League: ${league.name}`);
     console.log(`   ✓ Season: ${season.name}`);
@@ -211,6 +213,40 @@ class ApslStructureScraper {
           [this.scrapeTarget.id, team.id]
         );
       }
+      
+      // 7. Populate division_teams (link teams to divisions)
+      if (divisionTeams && divisionTeams.length > 0) {
+        console.log('🔗 Linking teams to divisions...');
+        
+        // Build maps for quick lookup
+        const divisionsByName = new Map(savedDivisions.map(d => [d.name, d.id]));
+        const teamsByName = new Map(savedTeams.map(t => [t.name, t.id]));
+        
+        let linksCreated = 0;
+        for (const divisionData of divisionTeams) {
+          const divisionName = divisionData.conferenceName.replace(/\s+Conference$/i, '').trim();
+          const divisionId = divisionsByName.get(divisionName);
+          
+          if (!divisionId) {
+            console.warn(`   ⚠️  Division not found: ${divisionName}`);
+            continue;
+          }
+          
+          for (const team of divisionData.teams) {
+            const teamId = teamsByName.get(team.name);
+            
+            if (!teamId) {
+              console.warn(`   ⚠️  Team not found: ${team.name}`);
+              continue;
+            }
+            
+            await this.divisionTeamRepo.upsert(divisionId, teamId);
+            linksCreated++;
+          }
+        }
+        
+        console.log(`   ✓ Division-Team Links: ${linksCreated} created`);
+      }
     }
     
     // Print conference + division details
@@ -254,6 +290,7 @@ class ApslStructureScraper {
     const divisionRepo = new DivisionRepository(client);
     const teamRepo = new ScrapedTeamRepository(client);
     const clubRepo = new ClubRepository(client);
+    const divisionTeamRepo = new DivisionTeamRepository(client);
     
     // Inject dependencies
     const scraper = new ApslStructureScraper(
@@ -266,7 +303,8 @@ class ApslStructureScraper {
       conferenceRepo,
       divisionRepo,
       teamRepo,
-      clubRepo
+      clubRepo,
+      divisionTeamRepo
     );
     
     // Store pool and client for cleanup
