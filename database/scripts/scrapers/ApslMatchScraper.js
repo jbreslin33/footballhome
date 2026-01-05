@@ -97,6 +97,15 @@ class ApslMatchScraper {
             continue;
           }
           
+          // Generate a deterministic external_id for deduplication
+          // Format: apsl-{date}-{smaller_team_id}-{larger_team_id}
+          // This ensures the same match from both teams' pages gets the same ID
+          const [team1, team2] = [homeTeamId, awayTeamId].sort((a, b) => a - b);
+          const generatedExternalId = `apsl-${matchData.matchDate}-${team1}-${team2}`;
+          
+          // Prefer the external_id from the HTML if available, otherwise use generated
+          const externalId = matchData.externalId || generatedExternalId;
+          
           // Create Match domain model
           const match = new Match({
             matchTypeId: 1, // league match
@@ -110,11 +119,11 @@ class ApslMatchScraper {
             homeScore: matchData.homeScore,
             awayScore: matchData.awayScore,
             sourceSystemId: 1, // APSL
-            externalId: matchData.externalId,
+            externalId: externalId,
             scrapeTargetId: team.scrape_target_id
           });
           
-          // Upsert match
+          // Upsert match (will find existing by external_id and update, or create new)
           const result = await this.matchRepo.upsert(match);
           
           // Link match to division
