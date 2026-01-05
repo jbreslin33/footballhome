@@ -178,6 +178,13 @@ async function main() {
             path.join(__dirname, 'database/scripts/scrapers/ApslRosterScraper.js')
           );
           
+          // After roster scrape, run match scraper to populate matches
+          console.log('');
+          console.log(`${colors.blue}  → Running dependent scraper: ApslMatchScraper.js${colors.reset}`);
+          await runScraper(
+            path.join(__dirname, 'database/scripts/scrapers/ApslMatchScraper.js')
+          );
+          
           success = true;
           stats.success++;
         }
