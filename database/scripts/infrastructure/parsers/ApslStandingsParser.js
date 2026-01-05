@@ -156,8 +156,7 @@ class ApslStandingsParser {
         teams.push(new ScrapedTeam({
           name: text,
           sourceSystemId: 1, // APSL
-          externalId: null,  // APSL doesn't provide team IDs in standings
-          scrapeTargetId: this.scrapeTargetId
+          externalId: null  // APSL doesn't provide team IDs in standings
         }));
       }
     }

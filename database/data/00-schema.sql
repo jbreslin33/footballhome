@@ -773,7 +773,6 @@ CREATE TABLE teams (
     logo_url TEXT,
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100) UNIQUE,
-    scrape_target_id INTEGER REFERENCES scrape_targets(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

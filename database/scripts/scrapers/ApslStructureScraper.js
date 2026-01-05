@@ -62,7 +62,7 @@ class ApslStructureScraper {
     console.log(`   ✓ Fetched ${html.length} bytes`);
     
     console.log('🔍 Parsing HTML into domain models...');
-    const { organization, league, season, conferences, divisions, teams } = this.parser.parse(html, this.scrapeTarget.id);
+    const { organization, league, season, conferences, divisions, teams } = this.parser.parse(html);
     console.log(`   ✓ Found: ${organization.name}`);
     console.log(`   ✓ League: ${league.name}`);
     console.log(`   ✓ Season: ${season.name}`);
@@ -76,10 +76,26 @@ class ApslStructureScraper {
     const orgResult = await this.orgRepo.upsert(organization);
     console.log(`   ✓ Organization: ${orgResult.inserted ? 'inserted' : 'updated'} (id=${orgResult.id})`);
     
+    // 1a. Link organization to scrape_target (audit trail)
+    await this._client.query(
+      `INSERT INTO organization_scrape_targets (scrape_target_id, organization_id) 
+       VALUES ($1, $2) 
+       ON CONFLICT (scrape_target_id, organization_id) DO NOTHING`,
+      [this.scrapeTarget.id, orgResult.id]
+    );
+    
     // 2. Upsert league (link to organization)
     league.organizationId = orgResult.id;
     const leagueResult = await this.leagueRepo.upsert(league);
     console.log(`   ✓ League: ${leagueResult.inserted ? 'inserted' : 'updated'} (id=${leagueResult.id})`);
+    
+    // 2a. Link league to scrape_target (audit trail)
+    await this._client.query(
+      `INSERT INTO league_scrape_targets (scrape_target_id, league_id) 
+       VALUES ($1, $2) 
+       ON CONFLICT (scrape_target_id, league_id) DO NOTHING`,
+      [this.scrapeTarget.id, leagueResult.id]
+    );
     
     // 3. Upsert season (link to league)
     season.leagueId = leagueResult.id;
@@ -150,6 +166,14 @@ class ApslStructureScraper {
         const orgResult = await this.orgRepo.upsert(teamOrg);
         if (orgResult.inserted) clubsCreated++;
         
+        // Link team organization to scrape_target
+        await this._client.query(
+          `INSERT INTO organization_scrape_targets (scrape_target_id, organization_id) 
+           VALUES ($1, $2) 
+           ON CONFLICT (scrape_target_id, organization_id) DO NOTHING`,
+          [this.scrapeTarget.id, orgResult.id]
+        );
+        
         // Create club under that organization
         const club = new Club({
           name: team.name,
@@ -160,6 +184,14 @@ class ApslStructureScraper {
         
         const clubResult = await this.clubRepo.upsert(club);
         
+        // Link club to scrape_target
+        await this._client.query(
+          `INSERT INTO club_scrape_targets (scrape_target_id, club_id) 
+           VALUES ($1, $2) 
+           ON CONFLICT (scrape_target_id, club_id) DO NOTHING`,
+          [this.scrapeTarget.id, clubResult.id]
+        );
+        
         // Link team to club
         team.clubId = clubResult.id;
         teamsLinked++;
@@ -168,6 +200,17 @@ class ApslStructureScraper {
       const teamResult = await this.teamRepo.upsertMany(teams);
       console.log(`   ✓ Teams: ${teamResult.inserted} inserted, ${teamResult.updated} updated`);
       console.log(`   ✓ Clubs/Organizations: ${clubsCreated} created, ${teamsLinked} teams linked to clubs`);
+      
+      // 6a. Link teams to scrape_target (audit trail)
+      const savedTeams = await this.teamRepo.findBySourceSystem(1); // APSL source_system_id = 1
+      for (const team of savedTeams) {
+        await this._client.query(
+          `INSERT INTO team_scrape_targets (scrape_target_id, team_id) 
+           VALUES ($1, $2) 
+           ON CONFLICT (scrape_target_id, team_id) DO NOTHING`,
+          [this.scrapeTarget.id, team.id]
+        );
+      }
     }
     
     // Print conference + division details

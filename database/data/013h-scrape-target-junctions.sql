@@ -49,3 +49,27 @@ CREATE TABLE IF NOT EXISTS division_scrape_targets (
     PRIMARY KEY (scrape_target_id, division_id)
 );
 CREATE INDEX IF NOT EXISTS idx_division_scrape_targets_division ON division_scrape_targets(division_id);
+
+-- Organization scrape targets (organization details, organization structure)
+CREATE TABLE IF NOT EXISTS organization_scrape_targets (
+    scrape_target_id INTEGER NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    PRIMARY KEY (scrape_target_id, organization_id)
+);
+CREATE INDEX IF NOT EXISTS idx_organization_scrape_targets_organization ON organization_scrape_targets(organization_id);
+
+-- Club scrape targets (club details, club roster, club structure)
+CREATE TABLE IF NOT EXISTS club_scrape_targets (
+    scrape_target_id INTEGER NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    club_id INTEGER NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+    PRIMARY KEY (scrape_target_id, club_id)
+);
+CREATE INDEX IF NOT EXISTS idx_club_scrape_targets_club ON club_scrape_targets(club_id);
+
+-- League scrape targets (league structure, league standings, league schedule)
+CREATE TABLE IF NOT EXISTS league_scrape_targets (
+    scrape_target_id INTEGER NOT NULL REFERENCES scrape_targets(id) ON DELETE CASCADE,
+    league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    PRIMARY KEY (scrape_target_id, league_id)
+);
+CREATE INDEX IF NOT EXISTS idx_league_scrape_targets_league ON league_scrape_targets(league_id);
