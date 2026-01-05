@@ -5,9 +5,8 @@
 # Run this ONCE when first cloning the repository.
 #
 # After this script completes, use:
-#   ./dev.sh              # Full rebuild with data scraping
-#   ./dev.sh --quick      # Quick restart after code changes
-#   ./dev.sh --replay-only # Fast rebuild from saved state
+#   ./build.sh            # Full rebuild (destroys containers/volumes)
+#   ./update.sh           # Run scrapers to populate/update data
 #
 
 set -e
@@ -426,17 +425,17 @@ echo "Your development environment is ready!"
 echo ""
 echo "Next steps:"
 echo ""
-echo "  1. Start the application:"
-echo "     ${YELLOW}./dev.sh${NC}"
+echo "  1. Build and start containers:"
+echo "     ${YELLOW}./build.sh${NC}"
 echo ""
-echo "  2. Once running, open in your browser:"
+echo "  2. Populate data (run scrapers):"
+echo "     ${YELLOW}./update.sh${NC}"
+echo ""
+echo "  3. Once running, open in your browser:"
 echo "     ${YELLOW}http://localhost:3000${NC}"
 echo ""
-echo "  3. Log in with credentials:"
+echo "  4. Log in with credentials:"
 echo "     Email:    soccer@lighthouse1893.org"
 echo "     Password: 1893Soccer!"
 echo "     Name:     James Breslin"
-echo ""
-echo "For more information, see DEVELOPMENT.md or run:"
-echo "  ${YELLOW}./dev.sh --help${NC}"
 echo ""
