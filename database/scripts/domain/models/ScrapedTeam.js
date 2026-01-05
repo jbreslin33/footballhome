@@ -11,7 +11,8 @@ class ScrapedTeam {
     city = null,
     logoUrl = null,
     sourceSystemId = null,
-    externalId = null
+    externalId = null,
+    scrapeTargetId = null
   }) {
     this.name = name;
     this.clubId = clubId;
@@ -19,6 +20,7 @@ class ScrapedTeam {
     this.logoUrl = logoUrl;
     this.sourceSystemId = sourceSystemId;
     this.externalId = externalId;
+    this.scrapeTargetId = scrapeTargetId;
     
     this.validate();
   }
@@ -36,7 +38,8 @@ class ScrapedTeam {
       city: this.city,
       logo_url: this.logoUrl,
       source_system_id: this.sourceSystemId,
-      external_id: this.externalId
+      external_id: this.externalId,
+      scrape_target_id: this.scrapeTargetId
     };
   }
   

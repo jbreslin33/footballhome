@@ -20,11 +20,15 @@ class ApslStandingsParser {
   /**
    * Parse APSL standings HTML
    * @param {string} html - Raw HTML from standings page
+   * @param {number} scrapeTargetId - ID of the scrape_target this data came from
    * @returns {Object} { organization, league, season, conferences, divisions }
    */
-  parse(html) {
+  parse(html, scrapeTargetId = null) {
     const dom = new JSDOM(html);
     const document = dom.window.document;
+    
+    // Store scrapeTargetId for use in extractTeams
+    this.scrapeTargetId = scrapeTargetId;
     
     // Extract organization
     const organization = new Organization({
@@ -152,7 +156,8 @@ class ApslStandingsParser {
         teams.push(new ScrapedTeam({
           name: text,
           sourceSystemId: 1, // APSL
-          externalId: null   // APSL doesn't provide team IDs in standings
+          externalId: null,  // APSL doesn't provide team IDs in standings
+          scrapeTargetId: this.scrapeTargetId
         }));
       }
     }

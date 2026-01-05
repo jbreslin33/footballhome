@@ -67,12 +67,14 @@ class ScrapedTeamRepository {
           city = $2,
           logo_url = $3,
           source_system_id = $4,
-          external_id = $5
-        WHERE id = $6
+          external_id = $5,
+          scrape_target_id = $6
+        WHERE id = $7
         RETURNING id
       `, [
         row.club_id, row.city, row.logo_url, 
         row.source_system_id, row.external_id,
+        row.scrape_target_id,
         existingByName.id
       ]);
       
@@ -81,10 +83,10 @@ class ScrapedTeamRepository {
     
     // Insert new
     const result = await this.db.query(`
-      INSERT INTO teams (name, club_id, city, logo_url, source_system_id, external_id)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO teams (name, club_id, city, logo_url, source_system_id, external_id, scrape_target_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
-    `, [row.name, row.club_id, row.city, row.logo_url, row.source_system_id, row.external_id]);
+    `, [row.name, row.club_id, row.city, row.logo_url, row.source_system_id, row.external_id, row.scrape_target_id]);
     
     return { id: result.rows[0].id, inserted: true };
   }

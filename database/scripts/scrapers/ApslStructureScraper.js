@@ -62,7 +62,7 @@ class ApslStructureScraper {
     console.log(`   ✓ Fetched ${html.length} bytes`);
     
     console.log('🔍 Parsing HTML into domain models...');
-    const { organization, league, season, conferences, divisions, teams } = this.parser.parse(html);
+    const { organization, league, season, conferences, divisions, teams } = this.parser.parse(html, this.scrapeTarget.id);
     console.log(`   ✓ Found: ${organization.name}`);
     console.log(`   ✓ League: ${league.name}`);
     console.log(`   ✓ Season: ${season.name}`);
