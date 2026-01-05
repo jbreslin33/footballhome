@@ -920,8 +920,11 @@ CREATE TABLE players (
     nationality VARCHAR(3),                 -- ISO 3166-1 alpha-3 (USA, BRA, MEX)
     photo_url TEXT,
     scrape_target_id INTEGER REFERENCES scrape_targets(id),
+    source_system_id INTEGER REFERENCES source_systems(id),
+    external_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_system_id, external_id)
 );
 
 CREATE INDEX idx_players_person ON players(person_id);
