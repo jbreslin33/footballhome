@@ -170,6 +170,14 @@ async function main() {
           await runScraper(
             path.join(__dirname, 'database/scripts/scrapers/ApslStructureScraper.js')
           );
+          
+          // After structure scrape, run roster scraper to populate players
+          console.log('');
+          console.log(`${colors.blue}  → Running dependent scraper: ApslRosterScraper.js${colors.reset}`);
+          await runScraper(
+            path.join(__dirname, 'database/scripts/scrapers/ApslRosterScraper.js')
+          );
+          
           success = true;
           stats.success++;
         }
