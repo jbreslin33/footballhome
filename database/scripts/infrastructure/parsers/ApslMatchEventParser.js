@@ -130,8 +130,9 @@ class ApslMatchEventParser {
     const normalized = eventType.toLowerCase().trim();
     
     // Map APSL event types to our database event types
+    // NOTE: APSL labels goals as "Assist" in their match reports!
     const eventMap = {
-      'assist': 'assist',
+      'assist': 'goal',  // APSL calls goals "Assist"
       'sub in': 'sub_in',
       'sub out': 'sub_out',
       'goal': 'goal',
