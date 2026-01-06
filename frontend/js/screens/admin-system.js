@@ -130,7 +130,7 @@ class AdminSystemScreen extends Screen {
               </thead>
               <tbody>
                 ${matches.map(m => `
-                  <tr>
+                  <tr class="clickable-match" data-match-id="${m.id}" style="cursor: pointer;">
                     <td>${m.match_date ? new Date(m.match_date).toLocaleDateString() : '-'}</td>
                     <td>${m.home_team_name || 'TBD'}</td>
                     <td><strong>${m.home_score !== null ? m.home_score : '-'} - ${m.away_score !== null ? m.away_score : '-'}</strong></td>
@@ -159,8 +159,76 @@ class AdminSystemScreen extends Screen {
         });
       });
       
+      // Add click handlers for match rows
+      content.querySelectorAll('.clickable-match').forEach(row => {
+        row.addEventListener('click', () => {
+          const matchId = row.dataset.matchId;
+          this.viewMatchStats(matchId);
+        });
+      });
+      
     } catch (error) {
       content.innerHTML = `<div class="error-message">Error loading matches: ${error.message}</div>`;
+    }
+  }
+  
+  async viewMatchStats(matchId) {
+    try {
+      // Fetch match events
+      const response = await fetch(`/api/stats/matches/${matchId}/events`);
+      if (!response.ok) throw new Error('Failed to load match events');
+      
+      const result = await response.json();
+      const events = result.data || [];
+      
+      // Create modal
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width: 800px;">
+          <div class="modal-header">
+            <h3>⚽ Match Events (${events.length})</h3>
+            <button class="modal-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            ${events.length === 0 ? '<p>No events recorded for this match.</p>' : `
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Minute</th>
+                    <th>Event</th>
+                    <th>Player</th>
+                    <th>Team</th>
+                    <th>Assist</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${events.map(e => `
+                    <tr>
+                      <td><strong>${e.minute}'</strong></td>
+                      <td>${e.event_type}</td>
+                      <td>${e.player_name}</td>
+                      <td>${e.team_name}</td>
+                      <td>${e.assisted_by || '-'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Close modal handlers
+      modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+      });
+      
+    } catch (error) {
+      alert(`Error loading match stats: ${error.message}`);
     }
   }
   
