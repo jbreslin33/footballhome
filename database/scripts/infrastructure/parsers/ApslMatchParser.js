@@ -119,14 +119,17 @@ class ApslMatchParser {
     // Determine status
     const matchStatus = this.determineMatchStatus(date, time, homeScore, awayScore);
     
-    // Extract external match ID from view link
-    const viewLink = matchCell.querySelector('a[href*="/APSL/Event/"]');
+    // Extract external match ID from view link in result cell (cell 3)
     let externalId = null;
-    if (viewLink) {
-      const href = viewLink.getAttribute('href');
-      const match = href.match(/\/Event\/(\d+)/);
-      if (match) {
-        externalId = match[1];
+    if (cells.length > 3) {
+      const resultCell = cells[3];
+      const viewLink = resultCell.querySelector('a[href*="/APSL/Event/"]');
+      if (viewLink) {
+        const href = viewLink.getAttribute('href');
+        const match = href.match(/\/Event\/(\d+)/);
+        if (match) {
+          externalId = match[1]; // Just the numeric ID
+        }
       }
     }
     
