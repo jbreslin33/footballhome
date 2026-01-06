@@ -382,19 +382,21 @@ Response StatsController::handleGetMatchEvents(const Request& request) {
             SELECT 
                 me.id,
                 me.match_id,
-                (p.first_name || ' ' || p.last_name) as player_name,
+                (per.first_name || ' ' || per.last_name) as player_name,
                 t.name as team_name,
                 met.name as event_type,
                 me.minute,
                 CASE 
-                    WHEN me.assisted_by_player_id IS NOT NULL THEN (ap.first_name || ' ' || ap.last_name)
+                    WHEN me.assisted_by_player_id IS NOT NULL THEN (aper.first_name || ' ' || aper.last_name)
                     ELSE NULL
                 END as assisted_by_player_name
             FROM match_events me
             JOIN players p ON me.player_id = p.id
+            JOIN persons per ON p.person_id = per.id
             JOIN teams t ON me.team_id = t.id
             JOIN match_event_types met ON me.event_type_id = met.id
             LEFT JOIN players ap ON me.assisted_by_player_id = ap.id
+            LEFT JOIN persons aper ON ap.person_id = aper.id
             WHERE me.match_id = )" + match_id + R"(
             ORDER BY me.minute ASC, me.id
         )";
