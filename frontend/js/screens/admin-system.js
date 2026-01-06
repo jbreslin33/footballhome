@@ -2,7 +2,8 @@
 class AdminSystemScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
-    this.currentView = 'schema';
+    this.currentView = 'matches';
+    this.matchesSort = { column: 'match_date', dir: 'DESC' };
   }
 
   render() {
@@ -19,7 +20,8 @@ class AdminSystemScreen extends Screen {
       <div class="admin-container">
         <!-- Navigation Tabs -->
         <div class="admin-tabs">
-          <button class="admin-tab active" data-view="schema">🗂️ Schema</button>
+          <button class="admin-tab active" data-view="matches">⚽ Matches</button>
+          <button class="admin-tab" data-view="schema">🗂️ Schema</button>
         </div>
         
         <!-- Content Area -->
@@ -80,6 +82,9 @@ class AdminSystemScreen extends Screen {
     
     try {
       switch(view) {
+        case 'matches':
+          await this.loadMatches();
+          break;
         case 'schema':
           await this.loadDatabaseSchema();
           break;
@@ -89,6 +94,73 @@ class AdminSystemScreen extends Screen {
     } catch (error) {
       console.error('Error loading view:', error);
       content.innerHTML = `<div class="error-message">Error loading ${view}: ${error.message}</div>`;
+    }
+  }
+
+  async loadMatches() {
+    const content = this.element.querySelector('.admin-content');
+    
+    try {
+      const { column, dir } = this.matchesSort;
+      const response = await fetch(`/api/system-admin/matches?sort=${column}&dir=${dir}`);
+      
+      if (!response.ok) throw new Error('Failed to load matches');
+      const matches = await response.json();
+      
+      const sortIcon = (col) => {
+        if (col !== column) return '';
+        return dir === 'ASC' ? ' ▲' : ' ▼';
+      };
+      
+      content.innerHTML = `
+        <div class="matches-view">
+          <h2>⚽ All Matches (${matches.length})</h2>
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th class="sortable" data-col="match_date">Date${sortIcon('match_date')}</th>
+                  <th class="sortable" data-col="home_team_name">Home Team${sortIcon('home_team_name')}</th>
+                  <th>Score</th>
+                  <th class="sortable" data-col="away_team_name">Away Team${sortIcon('away_team_name')}</th>
+                  <th class="sortable" data-col="league_name">League${sortIcon('league_name')}</th>
+                  <th class="sortable" data-col="source_system">Source${sortIcon('source_system')}</th>
+                  <th>Events</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${matches.map(m => `
+                  <tr>
+                    <td>${m.match_date ? new Date(m.match_date).toLocaleDateString() : '-'}</td>
+                    <td>${m.home_team_name || 'TBD'}</td>
+                    <td><strong>${m.home_score !== null ? m.home_score : '-'} - ${m.away_score !== null ? m.away_score : '-'}</strong></td>
+                    <td>${m.away_team_name || 'TBD'}</td>
+                    <td>${m.league_name || '-'}</td>
+                    <td>${m.source_system || '-'}</td>
+                    <td>${m.event_count || 0}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      
+      // Add click handlers for sorting
+      content.querySelectorAll('.sortable').forEach(th => {
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', () => {
+          const col = th.dataset.col;
+          this.matchesSort = {
+            column: col,
+            dir: (this.matchesSort.column === col && this.matchesSort.dir === 'ASC') ? 'DESC' : 'ASC'
+          };
+          this.loadMatches();
+        });
+      });
+      
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading matches: ${error.message}</div>`;
     }
   }
   

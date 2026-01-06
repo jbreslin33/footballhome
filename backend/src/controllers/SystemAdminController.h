@@ -21,6 +21,7 @@ private:
     std::unique_ptr<IdentityService> identityService_;
     
     // Dashboard & Overview
+    Response handleGetMatches(const Request& request);
     Response handleGetDashboard(const Request& request);
     Response handleGetSystemHealth(const Request& request);
     

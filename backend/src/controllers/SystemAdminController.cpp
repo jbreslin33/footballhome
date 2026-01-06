@@ -24,6 +24,11 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
         return this->handleLinkIdentity(request);
     });
 
+    // Matches endpoint
+    router.get(prefix + "/matches", [this](const Request& request) {
+        return this->handleGetMatches(request);
+    });
+
     // Integration Dashboards
     router.get(prefix + "/organizations", [this](const Request& request) {
         return this->handleGetOrganizations(request);
@@ -269,6 +274,83 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
 // ============================================================================
 // DASHBOARD & OVERVIEW
 // ============================================================================
+
+Response SystemAdminController::handleGetMatches(const Request& request) {
+    try {
+        std::cout << "⚽ Getting all matches..." << std::endl;
+        
+        // Get sort parameters
+        std::string sort_column = request.getQueryParam("sort", "match_date");
+        std::string sort_dir = request.getQueryParam("dir", "DESC");
+        
+        // Validate sort column
+        std::vector<std::string> allowed_columns = {
+            "match_date", "home_team_name", "away_team_name", 
+            "league_name", "source_system"
+        };
+        
+        if (std::find(allowed_columns.begin(), allowed_columns.end(), sort_column) == allowed_columns.end()) {
+            sort_column = "match_date";
+        }
+        
+        if (sort_dir != "ASC" && sort_dir != "DESC") {
+            sort_dir = "DESC";
+        }
+        
+        std::string query = R"(
+            SELECT 
+                m.id,
+                m.match_date,
+                m.home_score,
+                m.away_score,
+                ht.name as home_team_name,
+                at.name as away_team_name,
+                l.name as league_name,
+                ss.name as source_system,
+                COUNT(me.id) as event_count
+            FROM matches m
+            LEFT JOIN teams ht ON m.home_team_id = ht.id
+            LEFT JOIN teams at ON m.away_team_id = at.id
+            LEFT JOIN seasons s ON m.season_id = s.id
+            LEFT JOIN leagues l ON s.league_id = l.id
+            LEFT JOIN source_systems ss ON m.source_system_id = ss.id
+            LEFT JOIN match_events me ON m.id = me.match_id
+            GROUP BY m.id, m.match_date, m.home_score, m.away_score,
+                     ht.name, at.name, l.name, ss.name
+            ORDER BY )" + sort_column + " " + sort_dir + R"(
+        )";
+        
+        pqxx::result result = db_->query(query);
+        
+        std::stringstream json;
+        json << "[";
+        bool first = true;
+        
+        for (const auto& row : result) {
+            if (!first) json << ",";
+            first = false;
+            
+            json << "{";
+            json << "\"id\":" << row["id"].as<int>() << ",";
+            json << "\"match_date\":\"" << row["match_date"].c_str() << "\",";
+            json << "\"home_score\":" << (row["home_score"].is_null() ? "null" : row["home_score"].c_str()) << ",";
+            json << "\"away_score\":" << (row["away_score"].is_null() ? "null" : row["away_score"].c_str()) << ",";
+            json << "\"home_team_name\":\"" << row["home_team_name"].c_str() << "\",";
+            json << "\"away_team_name\":\"" << row["away_team_name"].c_str() << "\",";
+            json << "\"league_name\":\"" << row["league_name"].c_str() << "\",";
+            json << "\"source_system\":\"" << row["source_system"].c_str() << "\",";
+            json << "\"event_count\":" << row["event_count"].as<int>();
+            json << "}";
+        }
+        
+        json << "]";
+        
+        return Response::json(json.str());
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error getting matches: " << e.what() << std::endl;
+        return Response::error("Failed to get matches: " + std::string(e.what()), 500);
+    }
+}
 
 Response SystemAdminController::handleGetDashboard(const Request& request) {
     try {
