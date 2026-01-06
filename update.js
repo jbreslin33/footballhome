@@ -199,6 +199,13 @@ async function main() {
             path.join(__dirname, 'database/scripts/scrapers/ApslLineupScraper.js')
           );
           
+          // After lineups, run match event scraper to populate match events
+          console.log('');
+          console.log(`${colors.blue}  → Running dependent scraper: ApslMatchEventScraper.js${colors.reset}`);
+          await runScraper(
+            path.join(__dirname, 'database/scripts/scrapers/ApslMatchEventScraper.js')
+          );
+          
           success = true;
           stats.success++;
         }
