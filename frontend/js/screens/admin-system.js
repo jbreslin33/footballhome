@@ -91,25 +91,6 @@ class AdminSystemScreen extends Screen {
       content.innerHTML = `<div class="error-message">Error loading ${view}: ${error.message}</div>`;
     }
   }
-          await this.loadApiUsage();
-          break;
-        case 'imports':
-          await this.loadImportJobs();
-          break;
-        case 'scrapers':
-          await this.loadScraperLogs();
-          break;
-        case 'notifications':
-          await this.loadNotifications();
-          break;
-        case 'lookups':
-          await this.loadLookupTables();
-          break;
-      }
-    } catch (error) {
-      content.innerHTML = `<div class="error-message">Error loading ${view}: ${error.message}</div>`;
-    }
-  }
   
   async viewTableData(tableName, limit = 100, sortColumn = '', sortDir = 'ASC') {
     try {
