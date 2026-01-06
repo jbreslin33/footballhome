@@ -279,9 +279,11 @@ Response SystemAdminController::handleGetMatches(const Request& request) {
     try {
         std::cout << "⚽ Getting all matches..." << std::endl;
         
-        // Get sort parameters
-        std::string sort_column = request.getQueryParam("sort", "match_date");
-        std::string sort_dir = request.getQueryParam("dir", "DESC");
+        // Get sort parameters with defaults
+        std::string sort_column = request.hasQueryParam("sort") ? 
+            request.getQueryParam("sort") : "match_date";
+        std::string sort_dir = request.hasQueryParam("dir") ? 
+            request.getQueryParam("dir") : "DESC";
         
         // Validate sort column
         std::vector<std::string> allowed_columns = {
@@ -348,7 +350,8 @@ Response SystemAdminController::handleGetMatches(const Request& request) {
         return Response::json(json.str());
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting matches: " << e.what() << std::endl;
-        return Response::error("Failed to get matches: " + std::string(e.what()), 500);
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
+            "{\"error\":\"Failed to get matches: " + std::string(e.what()) + "\"}");
     }
 }
 
