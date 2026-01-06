@@ -313,7 +313,9 @@ Response SystemAdminController::handleGetMatches(const Request& request) {
             FROM matches m
             LEFT JOIN teams ht ON m.home_team_id = ht.id
             LEFT JOIN teams at ON m.away_team_id = at.id
-            LEFT JOIN seasons s ON m.season_id = s.id
+            LEFT JOIN match_divisions md ON m.id = md.match_id
+            LEFT JOIN divisions d ON md.division_id = d.id
+            LEFT JOIN seasons s ON d.season_id = s.id
             LEFT JOIN leagues l ON s.league_id = l.id
             LEFT JOIN source_systems ss ON m.source_system_id = ss.id
             LEFT JOIN match_events me ON m.id = me.match_id
