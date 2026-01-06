@@ -185,6 +185,20 @@ async function main() {
             path.join(__dirname, 'database/scripts/scrapers/ApslMatchScraper.js')
           );
           
+          // After match scrape, run date scraper to populate match dates
+          console.log('');
+          console.log(`${colors.blue}  → Running dependent scraper: ApslMatchDateScraper.js${colors.reset}`);
+          await runScraper(
+            path.join(__dirname, 'database/scripts/scrapers/ApslMatchDateScraper.js')
+          );
+          
+          // After dates, run lineup scraper to populate match lineups
+          console.log('');
+          console.log(`${colors.blue}  → Running dependent scraper: ApslLineupScraper.js${colors.reset}`);
+          await runScraper(
+            path.join(__dirname, 'database/scripts/scrapers/ApslLineupScraper.js')
+          );
+          
           success = true;
           stats.success++;
         }
