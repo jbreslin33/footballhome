@@ -199,12 +199,7 @@ async function main() {
             path.join(__dirname, 'database/scripts/scrapers/ApslLineupScraper.js')
           );
           
-          // After lineups, run match event scraper to populate match events
-          console.log('');
-          console.log(`${colors.blue}  → Running dependent scraper: ApslMatchEventScraper.js${colors.reset}`);
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/ApslMatchEventScraper.js')
-          );
+          // Note: ApslMatchEventScraper runs once after ALL APSL targets are processed (see end of main())
           
           success = true;
           stats.success++;
@@ -263,6 +258,23 @@ async function main() {
            VALUES ($1, $2, to_timestamp($3::double precision / 1000), CURRENT_TIMESTAMP, $4, $5)`,
           [target.id, executionStatusId, startTime, duration, errorMessage]
         );
+      }
+    }
+    
+    // Run match event scraper ONCE after all APSL targets are processed
+    // This prevents duplicate goal entries from running 4 times (once per season)
+    const apslTargetsProcessed = stats.success > 0 || stats.failed > 0;
+    if (apslTargetsProcessed) {
+      console.log('');
+      console.log(`${colors.blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
+      console.log(`${colors.blue}  → Running ApslMatchEventScraper.js (processes all APSL matches)${colors.reset}`);
+      try {
+        await runScraper(
+          path.join(__dirname, 'database/scripts/scrapers/ApslMatchEventScraper.js')
+        );
+        console.log(`${colors.green}  ✓ Match events processed successfully${colors.reset}`);
+      } catch (error) {
+        console.error(`${colors.red}  ✗ Match event scraper failed: ${error.message}${colors.reset}`);
       }
     }
     
