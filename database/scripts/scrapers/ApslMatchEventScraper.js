@@ -61,6 +61,13 @@ class ApslMatchEventScraper {
           continue;
         }
         
+        // Debug: Log parsed events
+        console.log(`   📋 Match ${match.id}: Parsed ${events.length} events`);
+        const goalEvents = events.filter(e => e.eventType === 'goal');
+        if (goalEvents.length > 0) {
+          console.log(`   ⚽ ${goalEvents.length} goals: ${goalEvents.map(g => g.playerName).join(', ')}`);
+        }
+        
         // Save events to database
         const savedCount = await this.saveEvents(match, events, homeTeam, awayTeam);
         
@@ -165,7 +172,7 @@ class ApslMatchEventScraper {
     }
     
     // Look up player by name and team
-    const player = await this.findPlayerByName(event.playerName, teamId);
+    const player = await this.findPlayerByName(event.playerName, teamId, matchId);
     
     if (!player) {
       // Player not in roster - might be a guest player or typo
@@ -184,7 +191,7 @@ class ApslMatchEventScraper {
     // Handle assisted_by if present
     let assistedByPlayerId = null;
     if (event.assistedByPlayerName) {
-      const assistPlayer = await this.findPlayerByName(event.assistedByPlayerName, teamId);
+      const assistPlayer = await this.findPlayerByName(event.assistedByPlayerName, teamId, matchId);
       if (assistPlayer) {
         assistedByPlayerId = assistPlayer.id;
       }
@@ -240,8 +247,9 @@ class ApslMatchEventScraper {
   
   /**
    * Find player by name and team
+   * Looks in match lineups first (more specific), then team rosters (broader)
    */
-  async findPlayerByName(playerName, teamId) {
+  async findPlayerByName(playerName, teamId, matchId) {
     // Split "LastName, FirstName" format
     const parts = playerName.split(',').map(p => p.trim());
     
@@ -261,8 +269,27 @@ class ApslMatchEventScraper {
       }
     }
     
-    // Query for player on this team with matching name
-    const result = await this.client.query(`
+    // First try: Find player in this specific match's lineup
+    let result = await this.client.query(`
+      SELECT DISTINCT p.id, p.person_id, per.first_name, per.last_name
+      FROM players p
+      JOIN persons per ON p.person_id = per.id
+      JOIN match_lineups ml ON p.id = ml.player_id
+      WHERE ml.match_id = $1
+        AND ml.team_id = $2
+        AND (
+          (per.last_name ILIKE $3 AND per.first_name ILIKE $4)
+          OR (per.last_name ILIKE $3)
+        )
+      LIMIT 1
+    `, [matchId, teamId, lastName, firstName]);
+    
+    if (result.rows[0]) {
+      return result.rows[0];
+    }
+    
+    // Second try: Find player in team's division roster (official league roster)
+    result = await this.client.query(`
       SELECT DISTINCT p.id, p.person_id, per.first_name, per.last_name
       FROM players p
       JOIN persons per ON p.person_id = per.id
