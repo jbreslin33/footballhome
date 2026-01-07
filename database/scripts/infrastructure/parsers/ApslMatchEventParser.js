@@ -150,15 +150,15 @@ class ApslMatchEventParser {
    * Normalize event type from APSL format to our database format
    * @param {string} apslEventType - Event type from APSL (e.g., "Sub In", "Assist")
    * @returns {string} Normalized event type matching match_event_types.name
-   * NOTE: APSL uses "Assist" text for goals (displays as soccer ball icon on website)
+   * NOTE: Goals are marked with <i class="fa-solid fa-futbol"></i> icon, NOT "Assist" text
    */
   normalizeEventType(eventType) {
     const normalized = eventType.toLowerCase().trim();
     
     // Map APSL event types to our database event types
-    // CRITICAL: APSL HTML contains "Assist" text which displays as soccer ball icon
+    // CRITICAL: "Assist" text indicates a separate row for who assisted - skip it
     const eventMap = {
-      'assist': 'goal',  // APSL uses "Assist" text for goals (renders as ball icon on site)
+      // 'assist' is NOT a goal - it's metadata that should be skipped
       'sub in': 'sub_in',
       'sub out': 'sub_out',
       'goal': 'goal',  // Just in case
