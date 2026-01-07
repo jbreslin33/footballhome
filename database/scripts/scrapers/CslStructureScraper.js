@@ -77,16 +77,22 @@ class CslStructureScraper {
    * Ensure organization/league/season/conference hierarchy exists
    */
   async ensureHierarchy() {
-    // 1. Get USASA organization
-    const org = await this.orgRepo.findByName('USASA');
+    // 1. Create or get CSL organization
+    let org = await this.orgRepo.findByName(this.leagueName);
     if (!org) {
-      throw new Error('USASA organization not found - run GoverningBodyScraper first');
+      console.log(`\n🏢 Creating organization: ${this.leagueName}`);
+      org = await this.orgRepo.create({
+        name: this.leagueName,
+        slug: this.leagueSlug,
+        type: 'league',
+        isActive: true
+      });
     }
     
-    // 2. Create or get league
+    // 2. Create or get league (same as organization for standalone leagues)
     let league = await this.leagueRepo.findBySlug(this.leagueSlug);
     if (!league) {
-      console.log(`\n🏆 Creating league: ${this.leagueName}`);
+      console.log(`🏆 Creating league: ${this.leagueName}`);
       league = await this.leagueRepo.create({
         organizationId: org.id,
         name: this.leagueName,
