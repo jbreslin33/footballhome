@@ -30,17 +30,20 @@ class CslStandingsParser {
       const divisionName = divisionMatch[2].trim();
       
       // Find the table that follows this div
-      // Navigate through siblings to find the next table
+      // Navigate through siblings to find the next table (with safety limit)
       let current = div;
       let table = null;
+      let iterations = 0;
+      const MAX_ITERATIONS = 100;
       
-      while (current && !table) {
+      while (current && !table && iterations < MAX_ITERATIONS) {
+        iterations++;
         current = current.nextElementSibling;
         if (current && current.tagName === 'TABLE') {
           table = current;
         }
         // Also check within parent's next sibling for accordion-style layouts
-        if (!current && div.parentElement) {
+        if (!current && div.parentElement && iterations < MAX_ITERATIONS) {
           current = div.parentElement.nextElementSibling;
           if (current) {
             table = current.querySelector('table');
