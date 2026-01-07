@@ -81,11 +81,11 @@ class CslStructureScraper {
     let org = await this.orgRepo.findByName(this.leagueName);
     if (!org) {
       console.log(`\n🏢 Creating organization: ${this.leagueName}`);
-      org = await this.orgRepo.create({
+      org = await this.orgRepo.upsert({
         name: this.leagueName,
         slug: this.leagueSlug,
         type: 'league',
-        isActive: true
+        is_active: true
       });
     }
     
@@ -93,38 +93,42 @@ class CslStructureScraper {
     let league = await this.leagueRepo.findBySlug(this.leagueSlug);
     if (!league) {
       console.log(`🏆 Creating league: ${this.leagueName}`);
-      league = await this.leagueRepo.create({
-        organizationId: org.id,
+      league = await this.leagueRepo.upsert({
+        organization_id: org.id,
         name: this.leagueName,
         slug: this.leagueSlug,
-        isActive: true
+        is_active: true
       });
     }
     
     // 3. Create or get season
-    let season = await this.seasonRepo.findByLeagueAndName(league.id, this.season);
+    let season = await this.seasonRepo.findByName(league.id, this.season);
     if (!season) {
       console.log(`   📅 Creating season: ${this.season}`);
-      season = await this.seasonRepo.create({
-        leagueId: league.id,
+      const seasonData = {
+        league_id: league.id,
         name: this.season,
-        startDate: new Date(`${this.season.split('-')[0]}-09-01`),
-        endDate: new Date(`${this.season.split('-')[1]}-06-30`),
-        isActive: true
-      });
+        start_date: new Date(`${this.season.split('-')[0]}-09-01`),
+        end_date: new Date(`${this.season.split('-')[1]}-06-30`),
+        is_active: true
+      };
+      const seasonResult = await this.seasonRepo.upsert(seasonData);
+      season = { id: seasonResult.id, ...seasonData };
     }
     
     // 4. Create or get conference (CSL has only one conference)
     const conferenceName = 'Main';
-    let conference = await this.conferenceRepo.findBySeasonAndName(season.id, conferenceName);
+    let conference = await this.conferenceRepo.findByName(season.id, conferenceName);
     if (!conference) {
       console.log(`   📋 Creating conference: ${conferenceName}`);
-      conference = await this.conferenceRepo.create({
-        seasonId: season.id,
+      const conferenceData = {
+        season_id: season.id,
         name: conferenceName,
         slug: 'main',
-        isActive: true
-      });
+        is_active: true
+      };
+      const conferenceResult = await this.conferenceRepo.upsert(conferenceData);
+      conference = { id: conferenceResult.id, ...conferenceData };
     }
     
     return { league, season, conference };
