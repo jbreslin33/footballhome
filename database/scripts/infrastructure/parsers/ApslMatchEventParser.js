@@ -65,29 +65,37 @@ class ApslMatchEventParser {
    */
   parseEventRow(cells, teamAName, teamBName) {
     // Column 0: Team A player name
-    // Column 1: Team A event type (text: "Assist" means goal, displays as ball icon on site)
+    // Column 1: Team A event type (icon: <i class="fa-solid fa-futbol"></i> for goals, or text)
     // Column 2: Time/minute
-    // Column 3: Team B event type (text: "Assist" means goal, displays as ball icon on site)
+    // Column 3: Team B event type (icon: <i class="fa-solid fa-futbol"></i> for goals, or text)
     // Column 4: Team B player name
     
     const teamAPlayer = cells[0].textContent.trim();
-    const teamAEventType = cells[1].textContent.trim();
+    const teamAEventCell = cells[1];
     const minute = cells[2].textContent.trim();
-    const teamBEventType = cells[3].textContent.trim();
+    const teamBEventCell = cells[3];
     const teamBPlayer = cells[4].textContent.trim();
+    
+    // Check for goal icon (Font Awesome soccer ball)
+    const teamAHasGoalIcon = this.hasGoalIcon(teamAEventCell);
+    const teamBHasGoalIcon = this.hasGoalIcon(teamBEventCell);
+    
+    // Get text-based event types
+    const teamAEventText = teamAEventCell.textContent.trim();
+    const teamBEventText = teamBEventCell.textContent.trim();
     
     // Determine which side has the event
     let playerName = null;
     let eventType = null;
     let teamName = null;
     
-    if (teamAPlayer && teamAEventType) {
+    if (teamAPlayer && (teamAHasGoalIcon || teamAEventText)) {
       playerName = this.parsePlayerName(teamAPlayer);
-      eventType = this.normalizeEventType(teamAEventType);
+      eventType = teamAHasGoalIcon ? 'goal' : this.normalizeEventType(teamAEventText);
       teamName = teamAName;
-    } else if (teamBPlayer && teamBEventType) {
+    } else if (teamBPlayer && (teamBHasGoalIcon || teamBEventText)) {
       playerName = this.parsePlayerName(teamBPlayer);
-      eventType = this.normalizeEventType(teamBEventType);
+      eventType = teamBHasGoalIcon ? 'goal' : this.normalizeEventType(teamBEventText);
       teamName = teamBName;
     }
     
@@ -112,6 +120,22 @@ class ApslMatchEventParser {
   }
   
   /**
+   * Check if cell contains a Font Awesome soccer ball icon (goal indicator)
+   * @param {Element} cell - The td element to check
+   * @returns {boolean} True if soccer ball icon present
+   */
+  hasGoalIcon(cell) {
+    // Check for Font Awesome icon: <i class="fa-solid fa-futbol"></i>
+    const icon = cell.querySelector('i.fa-futbol');
+    if (icon) {
+      return true;
+    }
+    
+    // Also check for variations
+    const icons = cell.querySelectorAll('i[class*="futbol"], i[class*="soccer"], i[class*="ball"]');
+    return icons.length > 0;
+  }
+  
   /**
    * Parse player name from cell text
    * Format: "LastName, FirstName" or just "Name"
