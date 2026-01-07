@@ -157,10 +157,12 @@ async function main() {
   try {
     const scraper = new CslRosterScraper(client);
     await scraper.scrape();
+    console.log('CslRosterScraper completed successfully');
   } finally {
     client.release();
     await pool.end();
   }
+  process.exit(0);
 }
 
 if (require.main === module) {

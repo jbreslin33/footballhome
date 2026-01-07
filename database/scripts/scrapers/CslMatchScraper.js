@@ -120,10 +120,12 @@ async function main() {
   try {
     const scraper = new CslMatchScraper(client);
     await scraper.scrape();
+    console.log('CslMatchScraper completed successfully');
   } finally {
     client.release();
     await pool.end();
   }
+  process.exit(0);
 }
 
 if (require.main === module) {

@@ -235,10 +235,12 @@ async function main() {
   try {
     const scraper = new CslStructureScraper(client, { season: '2025-2026' });
     await scraper.scrape();
+    console.log('CslStructureScraper completed successfully');
   } finally {
     client.release();
     await pool.end();
   }
+  process.exit(0);
 }
 
 if (require.main === module) {
