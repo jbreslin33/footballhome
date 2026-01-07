@@ -200,4 +200,33 @@ class CslMatchEventScraper {
   }
 }
 
+// Run if called directly
+async function main() {
+  const { Pool } = require('pg');
+  const pool = new Pool({
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    database: process.env.DB_NAME || 'footballhome',
+    user: process.env.DB_USER || 'footballhome_user',
+    password: process.env.DB_PASS || 'footballhome_pass',
+  });
+  
+  const client = await pool.connect();
+  
+  try {
+    const scraper = new CslMatchEventScraper(client);
+    await scraper.scrape();
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
+
+if (require.main === module) {
+  main().catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
+}
+
 module.exports = CslMatchEventScraper;
