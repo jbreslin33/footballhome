@@ -64,30 +64,38 @@ class ApslMatchEventParser {
    * @returns {Object|null} Event object or null if empty row
    */
   parseEventRow(cells, teamAName, teamBName) {
-    // Column 0: Team A player
-    // Column 1: Team A event type
+    // Column 0: Team A player name
+    // Column 1: Team A event type (may contain soccer ball icon for goals)
     // Column 2: Time/minute
-    // Column 3: Team B event type
-    // Column 4: Team B player
+    // Column 3: Team B event type (may contain soccer ball icon for goals)
+    // Column 4: Team B player name
     
     const teamAPlayer = cells[0].textContent.trim();
-    const teamAEventType = cells[1].textContent.trim();
+    const teamAEventCell = cells[1];
     const minute = cells[2].textContent.trim();
-    const teamBEventType = cells[3].textContent.trim();
+    const teamBEventCell = cells[3];
     const teamBPlayer = cells[4].textContent.trim();
+    
+    // Check for soccer ball icon (goal indicator) in Play columns
+    const teamAHasGoal = this.hasSoccerBallIcon(teamAEventCell);
+    const teamBHasGoal = this.hasSoccerBallIcon(teamBEventCell);
+    
+    // Get text-based event types (for other events like cards, subs)
+    const teamAEventText = teamAEventCell.textContent.trim();
+    const teamBEventText = teamBEventCell.textContent.trim();
     
     // Determine which side has the event
     let playerName = null;
     let eventType = null;
     let teamName = null;
     
-    if (teamAPlayer && teamAEventType) {
+    if (teamAPlayer && (teamAHasGoal || teamAEventText)) {
       playerName = this.parsePlayerName(teamAPlayer);
-      eventType = this.normalizeEventType(teamAEventType);
+      eventType = teamAHasGoal ? 'goal' : this.normalizeEventType(teamAEventText);
       teamName = teamAName;
-    } else if (teamBPlayer && teamBEventType) {
+    } else if (teamBPlayer && (teamBHasGoal || teamBEventText)) {
       playerName = this.parsePlayerName(teamBPlayer);
-      eventType = this.normalizeEventType(teamBEventType);
+      eventType = teamBHasGoal ? 'goal' : this.normalizeEventType(teamBEventText);
       teamName = teamBName;
     }
     
@@ -112,6 +120,44 @@ class ApslMatchEventParser {
   }
   
   /**
+   * Check if a cell contains a soccer ball icon (indicates a goal)
+   * @param {Element} cell - The td element to check
+   * @returns {boolean} True if soccer ball icon is present
+   */
+  hasSoccerBallIcon(cell) {
+    // Check for img tag with soccer ball (common pattern)
+    const img = cell.querySelector('img');
+    if (img) {
+      const src = img.getAttribute('src') || '';
+      const alt = img.getAttribute('alt') || '';
+      // Look for soccer ball indicators in src or alt text
+      if (src.includes('ball') || src.includes('goal') || src.includes('soccer') ||
+          alt.toLowerCase().includes('ball') || alt.toLowerCase().includes('goal')) {
+        return true;
+      }
+    }
+    
+    // Check for soccer ball emoji or unicode character (⚽)
+    const text = cell.textContent;
+    if (text.includes('⚽') || text.includes('🥅')) {
+      return true;
+    }
+    
+    // Check for span/div with specific classes that might indicate a goal icon
+    const iconElements = cell.querySelectorAll('[class*="ball"], [class*="goal"], [class*="icon"]');
+    if (iconElements.length > 0) {
+      for (const elem of iconElements) {
+        const className = elem.className || '';
+        if (className.includes('ball') || className.includes('goal')) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  /**
    * Parse player name from cell text
    * Format: "LastName, FirstName" or just "Name"
    * @param {string} text - Raw player name text
@@ -123,19 +169,20 @@ class ApslMatchEventParser {
   
   /**
    * Normalize event type from APSL format to our database format
-   * @param {string} apslEventType - Event type from APSL (e.g., "Sub In", "Assist")
+   * @param {string} apslEventType - Event type from APSL (e.g., "Sub In", "Yellow Card")
    * @returns {string} Normalized event type matching match_event_types.name
+   * NOTE: Goals are detected via soccer ball icons, not text
    */
   normalizeEventType(eventType) {
     const normalized = eventType.toLowerCase().trim();
     
     // Map APSL event types to our database event types
-    // NOTE: APSL labels goals as "Assist" in their match reports!
+    // NOTE: Goals are shown as soccer ball icons in the HTML, not as text
     const eventMap = {
-      'assist': 'goal',  // APSL calls goals "Assist"
+      'assist': 'assist',  // Actual assists
       'sub in': 'sub_in',
       'sub out': 'sub_out',
-      'goal': 'goal',
+      'goal': 'goal',  // Just in case goals appear as text
       'yellow card': 'yellow_card',
       'red card': 'red_card',
       'shot on target': 'shot_on_target',
