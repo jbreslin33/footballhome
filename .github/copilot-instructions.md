@@ -11,18 +11,18 @@
   - **Schema Management**: SQL scripts in `database/data/` executed alphabetically (e.g., `00-schema.sql`, `01-core-lookups.sql`).
 
 ## 🔧 Development Workflow
-- **Primary Control Script**: Always use `./dev.sh` for builds and lifecycle management.
-  - **Full Rebuild**: `./dev.sh` (destroys containers/volumes, cleans caches, rebuilds from scratch).
-  - **Refresh Data**: `./dev.sh --refresh` (re-scrapes all data: APSL + CASA + GroupMe, updates SQL files, then rebuilds).
+- **Primary Control Script**: Always use `./build.sh` for builds and lifecycle management.
+  - **Full Rebuild**: `./build.sh` (destroys containers/volumes, cleans caches, rebuilds from scratch).
+  - **Refresh Data**: `./build.sh --refresh` (re-scrapes all data: APSL + CASA + GroupMe, updates SQL files, then rebuilds).
   - **NOTE**: No quick restart option exists. All rebuilds are full rebuilds.
 - **Terminal Commands - CRITICAL RULES**:
   - **NEVER filter command output** with `grep`, `head`, `tail`, or pipe to files when running build/rebuild commands
   - **NEVER use `tail -f`** or any hanging/blocking commands - they will be cancelled by the user
-  - **User wants to see FULL output** from `./dev.sh`, scrapers, and Docker commands
+  - **User wants to see FULL output** from `./build.sh`, scrapers, and Docker commands
   - For log inspection AFTER completion, use `docker-compose logs` or `podman logs` directly
 - **Database Changes**: 
   - **Manual Static Data**: Add a new numbered SQL file in `database/data/` (e.g., `026-club-admins.sql`). Data inserted here persists across full rebuilds.
-  - **Schema Changes**: Update `00-schema.sql`, then run full rebuild (`./dev.sh`).
+  - **Schema Changes**: Update `00-schema.sql`, then run full rebuild (`./build.sh`).
   - **Alphabetical Execution**: SQL files in `database/data/` are executed alphabetically by init scripts.
   - **Data Persistence Strategy**: 
     - Manual data (created by developers) → numbered SQL files (e.g., `019a-persons.sql`, `023-admins.sql`)
@@ -41,8 +41,8 @@
   - `VenueScraper`: Google Places API - ⚠️ Untested
 - **Workflow**: 
   1. Scrapers generate SQL files in `database/data/` (committed to git for reproducibility)
-  2. `./dev.sh` loads SQL files during database initialization
-  3. Use `./dev.sh --refresh` to re-scrape and update SQL files
+  2. `./build.sh` loads SQL files during database initialization
+  3. Use `./build.sh --refresh` to re-scrape and update SQL files
   4. Use specific flags for selective scraping: `--apsl`, `--casa`, `--lighthouse`, `--groupme`
 - **Parsing Pattern**: When implementing new parsers, recover old scraper logic from git history if needed:
   - Old scrapers in commit `4e50246^` (before OOP migration)
