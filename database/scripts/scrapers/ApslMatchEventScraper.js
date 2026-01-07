@@ -169,7 +169,7 @@ class ApslMatchEventScraper {
     
     if (!player) {
       // Player not in roster - might be a guest player or typo
-      // Skip for now, could create as needed in future
+      console.log(`   ⚠️  Player not found: "${event.playerName}" (${event.eventType}) for team ${teamId}`);
       return false;
     }
     
