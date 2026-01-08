@@ -96,24 +96,25 @@ class CslMatchParser {
     // Extract match type from description
     const matchType = this.extractMatchType(matchCell.textContent);
     
-    // Extract external ID from event link
-    let externalId = null;
-    const eventLink = matchCell.querySelector('a[href*="/CSL/Event/"]');
-    if (eventLink) {
-      const href = eventLink.getAttribute('href');
-      const match = href.match(/\/Event\/([^'"]+)/);
-      if (match) {
-        externalId = match[1];
-      }
-    }
-    
-    // Cell 3 (optional): Result/Score
+    // Cell 3 (optional): Result/Score and Event Link
     let homeScore = null;
     let awayScore = null;
     let result = null;
+    let externalId = null;
     
     if (cells.length > 3) {
-      const resultText = cells[3].textContent.trim();
+      const resultCell = cells[3];
+      const resultText = resultCell.textContent.trim();
+      
+      // Extract external ID from event link in result cell
+      const eventLink = resultCell.querySelector('a[href*="/CSL/Event/"]');
+      if (eventLink) {
+        const href = eventLink.getAttribute('href');
+        const match = href.match(/\/Event\/([^'"]+)/);
+        if (match) {
+          externalId = match[1];
+        }
+      }
       const scoreMatch = resultText.match(/\((\d+)\s*-\s*(\d+)\)/);
       if (scoreMatch) {
         if (isHomeMatch) {
