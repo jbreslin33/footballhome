@@ -37,6 +37,18 @@
       "notes": "Main page with all conference standings",
       "is_active": true,
       "last_fetched_at": "2026-01-02T11:23:26.000Z"
+    },
+    {
+      "source_system_id": 2,
+      "source_system_name": "CSL",
+      "target_type": "league_structure",
+      "url": "https://www.cosmosoccerleague.com/CSL/Tables/",
+      "description": "CSL Standings Page",
+      "config": {"extracts": ["divisions", "teams", "standings"], "season": "2025-2026"},
+      "fetch_frequency": "weekly",
+      "notes": "Cosmopolitan Soccer League - feeder to APSL Metropolitan",
+      "is_active": true,
+      "last_fetched_at": null
     }
   ]
 }

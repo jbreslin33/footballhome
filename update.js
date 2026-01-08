@@ -204,6 +204,36 @@ async function main() {
           success = true;
           stats.success++;
         }
+        // CSL league structure - target_type_id=1, source_system_id=2
+        else if (target.target_type_id === 1 && target.source_system_id === 2) {
+          await runScraper(
+            path.join(__dirname, 'database/scripts/scrapers/CslStructureScraper.js')
+          );
+          
+          // After structure scrape, run roster scraper to populate players
+          console.log('');
+          console.log(`${colors.blue}  → Running dependent scraper: CslRosterScraper.js${colors.reset}`);
+          await runScraper(
+            path.join(__dirname, 'database/scripts/scrapers/CslRosterScraper.js')
+          );
+          
+          // After roster scrape, run match scraper to populate matches
+          console.log('');
+          console.log(`${colors.blue}  → Running dependent scraper: CslMatchScraper.js${colors.reset}`);
+          await runScraper(
+            path.join(__dirname, 'database/scripts/scrapers/CslMatchScraper.js')
+          );
+          
+          // After matches, run event scraper to populate player stats
+          console.log('');
+          console.log(`${colors.blue}  → Running dependent scraper: CslMatchEventScraper.js${colors.reset}`);
+          await runScraper(
+            path.join(__dirname, 'database/scripts/scrapers/CslMatchEventScraper.js')
+          );
+          
+          success = true;
+          stats.success++;
+        }
         // Add more scrapers here as they're built
         else {
           console.log(`${colors.yellow}  ⚠ No scraper implemented for this target type yet${colors.reset}`);
