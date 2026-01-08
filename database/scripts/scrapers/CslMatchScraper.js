@@ -1,48 +1,148 @@
-const HtmlFetcher = require('../infrastructure/fetchers/HtmlFetcher');
-const CslFixturesParser = require('../infrastructure/parsers/CslFixturesParser');
-const DivisionRepository = require('../domain/repositories/DivisionRepository');
+const fs = require('fs');
+const path = require('path');
 const MatchRepository = require('../domain/repositories/MatchRepository');
-const ScrapedTeamRepository = require('../domain/repositories/ScrapedTeamRepository');
+const CslMatchParser = require('../infrastructure/parsers/CslMatchParser');
+const Match = require('../domain/models/Match');
 
 /**
  * Cosmopolitan Soccer League Match Scraper
  * 
- * Extracts match results from CSL fixtures page
+ * Scrapes match schedules from cached CSL team HTML files.
+ * Follows same pattern as ApslMatchScraper:
+ * - Uses cached HTML files from team pages
+ * - Repository pattern for database operations
+ * - Parser for HTML parsing logic
  */
 class CslMatchScraper {
-  constructor(client) {
+  constructor(client, matchRepo, parser) {
     this.client = client;
-    this.fetcher = new HtmlFetcher('database/scraped-html/csl');
-    this.parser = new CslFixturesParser();
-    this.divisionRepo = new DivisionRepository(client);
-    this.matchRepo = new MatchRepository(client);
-    this.scrapedTeamRepo = new ScrapedTeamRepository(client);
+    this.matchRepo = matchRepo || new MatchRepository(client);
+    this.parser = parser || new CslMatchParser();
+    this.cacheDir = path.join(__dirname, '../../scraped-html/csl');
   }
   
-  /**
-   * Main scraping logic
-   */
-  async scrape() {
-    console.log('\n⚽ CSL Match Scraper');
-    console.log('============================================================');
+  async run() {
+    console.log(`\n⚽ CSL Match Scraper`);
+    console.log('='.repeat(60));
     
     try {
-      // Fetch fixtures page
-      const url = 'https://www.cosmosoccerleague.com/CSL/Fixtures/';
-      const html = await this.fetcher.fetch(url, 'csl-fixtures');
+      // Get all CSL teams with external_ids
+      const teams = await this.getTeams();
+      console.log(`📋 Found ${teams.length} teams to process\n`);
       
-      // Parse matches
-      const matches = this.parser.parse(html);
-      console.log(`📋 Found ${matches.length} matches\n`);
+      let totalMatches = 0;
+      let totalNew = 0;
+      let totalUpdated = 0;
       
-      // Get CSL divisions for team lookup
-      const divisions = await this.getCslDivisions();
-      
-      for (const matchData of matches) {
-        await this.processMatch(matchData, divisions);
+      for (const team of teams) {
+        const htmlFile = this.findTeamHtmlFile(team.external_id);
+        
+        if (!htmlFile) {
+          console.log(`   ⚠️  No HTML file for team ${team.name} (external_id: ${team.external_id})`);
+          continue;
+        }
+        
+        const html = fs.readFileSync(htmlFile, 'utf-8');
+        const matches = this.parser.parse(html, team.team_id);
+        
+        if (matches.length === 0) {
+          console.log(`   ⚠️  No matches found for ${team.name}`);
+          continue;
+        }
+        
+        console.log(`   ${team.name}: ${matches.length} matches`);
+        
+        for (const matchData of matches) {
+          // Skip if missing required data
+          if (!matchData.matchDate) {
+            continue;
+          }
+          
+          // Look up opponent team by external_id
+          let homeTeamId = matchData.homeTeamId;
+          let awayTeamId = matchData.awayTeamId;
+          
+          // If homeTeamId is not the current team, look it up by external_id
+          if (homeTeamId !== team.team_id) {
+            const opponentResult = await this.client.query(
+              'SELECT id FROM teams WHERE source_system_id = 8 AND external_id = $1',
+              [homeTeamId.toString()]
+            );
+            if (opponentResult.rows.length > 0) {
+              homeTeamId = opponentResult.rows[0].id;
+            } else {
+              console.log(`     ⚠️  Skipping match - opponent team ${homeTeamId} not found in database`);
+              continue;
+            }
+          }
+          
+          // If awayTeamId is not the current team, look it up by external_id
+          if (awayTeamId !== team.team_id) {
+            const opponentResult = await this.client.query(
+              'SELECT id FROM teams WHERE source_system_id = 8 AND external_id = $1',
+              [awayTeamId.toString()]
+            );
+            if (opponentResult.rows.length > 0) {
+              awayTeamId = opponentResult.rows[0].id;
+            } else {
+              console.log(`     ⚠️  Skipping match - opponent team ${awayTeamId} not found in database`);
+              continue;
+            }
+          }
+          
+          // Skip if we still don't have both teams
+          if (!homeTeamId || !awayTeamId) {
+            continue;
+          }
+          
+          // Generate a deterministic external_id for deduplication
+          const [team1, team2] = [homeTeamId, awayTeamId].sort((a, b) => a - b);
+          const generatedExternalId = `csl-${matchData.matchDate}-${team1}-${team2}`;
+          
+          // Prefer the external_id from the HTML if available, otherwise use generated
+          const externalId = matchData.externalId || generatedExternalId;
+          
+          // Create Match domain model
+          const match = new Match({
+            matchTypeId: 1, // league match
+            homeTeamId: homeTeamId,
+            awayTeamId: awayTeamId,
+            matchDate: matchData.matchDate,
+            matchTime: matchData.matchTime,
+            title: matchData.description,
+            description: matchData.description,
+            matchStatusId: matchData.matchStatusId,
+            homeScore: matchData.homeScore,
+            awayScore: matchData.awayScore,
+            venueId: null,
+            sourceSystemId: 8,
+            externalId: externalId,
+            scrapeTargetId: team.scrape_target_id
+          });
+          
+          // Check if match exists
+          const existing = await this.matchRepo.findByExternalId(8, externalId);
+          
+          if (existing) {
+            // Update if scores changed
+            if (existing.home_score !== match.homeScore || existing.away_score !== match.awayScore) {
+              await this.matchRepo.update(existing.id, match);
+              totalUpdated++;
+            }
+          } else {
+            await this.matchRepo.create(match);
+            totalNew++;
+          }
+          
+          totalMatches++;
+        }
       }
       
-      console.log('\n✅ Match scraping completed');
+      console.log(`\n📊 Summary:`);
+      console.log(`   Total matches: ${totalMatches}`);
+      console.log(`   New: ${totalNew}`);
+      console.log(`   Updated: ${totalUpdated}`);
+      console.log(`\n✅ Match scraping completed`);
       
     } catch (error) {
       console.error('❌ Error:', error.message);
@@ -51,56 +151,33 @@ class CslMatchScraper {
   }
   
   /**
-   * Get all CSL divisions
+   * Get all CSL teams with their team_id and external_id
    */
-  async getCslDivisions() {
+  async getTeams() {
     const result = await this.client.query(`
-      SELECT d.id, d.name
-      FROM divisions d
-      JOIN conferences c ON d.conference_id = c.id
-      JOIN seasons s ON c.season_id = s.id
-      JOIN leagues l ON s.league_id = l.id
-      WHERE l.name = 'Cosmopolitan Soccer League'
+      SELECT DISTINCT ON (t.id)
+        t.id as team_id,
+        t.external_id,
+        t.name,
+        t.scrape_target_id
+      FROM teams t
+      WHERE t.source_system_id = 8 
+        AND t.external_id IS NOT NULL
+      ORDER BY t.id
     `);
     
     return result.rows;
   }
   
   /**
-   * Process a single match
+   * Find the HTML file for a team by external_id
    */
-  async processMatch(matchData, divisions) {
-    // Find teams
-    const homeTeam = await this.scrapedTeamRepo.findByName(matchData.homeTeam);
-    const awayTeam = await this.scrapedTeamRepo.findByName(matchData.awayTeam);
+  findTeamHtmlFile(externalId) {
+    const files = fs.readdirSync(this.cacheDir);
+    const pattern = new RegExp(`^${externalId}-[a-f0-9]+\\.html$`);
     
-    if (!homeTeam || !awayTeam) {
-      console.log(`   ⚠️  Teams not found: ${matchData.homeTeam} vs ${matchData.awayTeam}`);
-      return;
-    }
-    
-    // Determine division (try to infer from team names)
-    const division = divisions[0]; // For now, use first division - TODO: improve logic
-    
-    // Check if match already exists
-    const existing = await this.matchRepo.findByExternalId(matchData.externalId);
-    if (existing) {
-      return; // Skip existing matches
-    }
-    
-    // Create match
-    await this.matchRepo.create({
-      divisionId: division.id,
-      homeTeamId: homeTeam.id,
-      awayTeamId: awayTeam.id,
-      homeScore: matchData.homeScore,
-      awayScore: matchData.awayScore,
-      matchDate: matchData.date ? new Date(matchData.date) : new Date(),
-      externalId: matchData.externalId,
-      status: matchData.homeScore !== null ? 'completed' : 'scheduled'
-    });
-    
-    console.log(`   ✅ ${matchData.homeTeam} ${matchData.homeScore}-${matchData.awayScore} ${matchData.awayTeam}`);
+    const match = files.find(file => pattern.test(file));
+    return match ? path.join(this.cacheDir, match) : null;
   }
 }
 
@@ -119,7 +196,7 @@ async function main() {
   
   try {
     const scraper = new CslMatchScraper(client);
-    await scraper.scrape();
+    await scraper.run();
     console.log('CslMatchScraper completed successfully');
   } finally {
     client.release();
