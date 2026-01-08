@@ -85,9 +85,21 @@ class CslStandingsParser {
       // Skip empty rows or teams with no matches
       if (!teamName || cells[2].textContent.trim() === '0') continue;
       
+      // Extract team ID from the roster link (e.g., /CSL/Team/116433)
+      let teamId = null;
+      const teamLink = cells[1].querySelector('a[href*="/CSL/Team/"]');
+      if (teamLink) {
+        const href = teamLink.getAttribute('href');
+        const match = href.match(/\/CSL\/Team\/(\d+)/);
+        if (match) {
+          teamId = match[1]; // Store just the numeric ID
+        }
+      }
+      
       teams.push({
         rank: parseInt(cells[0].textContent.trim()) || 0,
         name: teamName,
+        externalId: teamId, // Store team ID for roster scraping
         played: parseInt(cells[2].textContent.trim()) || 0,
         wins: parseInt(cells[3].textContent.trim()) || 0,
         draws: parseInt(cells[4].textContent.trim()) || 0,

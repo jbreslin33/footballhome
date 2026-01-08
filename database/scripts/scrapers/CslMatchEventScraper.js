@@ -81,11 +81,7 @@ class CslMatchEventScraper {
       FROM matches m
       JOIN teams ht ON m.home_team_id = ht.id
       JOIN teams at ON m.away_team_id = at.id
-      JOIN divisions d ON m.division_id = d.id
-      JOIN conferences c ON d.conference_id = c.id
-      JOIN seasons s ON c.season_id = s.id
-      JOIN leagues l ON s.league_id = l.id
-      WHERE l.slug = 'cosmopolitan-soccer-league'
+      WHERE ht.source_system_id = 8  -- CSL source system
         AND m.home_score IS NOT NULL
         AND m.away_score IS NOT NULL
       ORDER BY m.match_date

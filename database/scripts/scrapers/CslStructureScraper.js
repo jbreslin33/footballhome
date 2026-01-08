@@ -9,6 +9,12 @@ const DivisionRepository = require('../domain/repositories/DivisionRepository');
 const ScrapedTeamRepository = require('../domain/repositories/ScrapedTeamRepository');
 const ClubRepository = require('../domain/repositories/ClubRepository');
 const DivisionTeamRepository = require('../domain/repositories/DivisionTeamRepository');
+const Organization = require('../domain/models/Organization');
+const League = require('../domain/models/League');
+const Season = require('../domain/models/Season');
+const Conference = require('../domain/models/Conference');
+const Division = require('../domain/models/Division');
+const ScrapedTeam = require('../domain/models/ScrapedTeam');
 
 /**
  * Cosmopolitan Soccer League Structure Scraper
@@ -81,39 +87,38 @@ class CslStructureScraper {
     let org = await this.orgRepo.findByName(this.leagueName);
     if (!org) {
       console.log(`\n🏢 Creating organization: ${this.leagueName}`);
-      org = await this.orgRepo.upsert({
+      const orgModel = new Organization({
         name: this.leagueName,
-        slug: this.leagueSlug,
-        type: 'league',
-        is_active: true
+        isActive: true
       });
+      const orgResult = await this.orgRepo.upsert(orgModel);
+      org = { id: orgResult.id, name: this.leagueName };
     }
     
     // 2. Create or get league (same as organization for standalone leagues)
-    let league = await this.leagueRepo.findBySlug(this.leagueSlug);
+    let league = await this.leagueRepo.findByName(org.id, this.leagueName);
     if (!league) {
       console.log(`🏆 Creating league: ${this.leagueName}`);
-      league = await this.leagueRepo.upsert({
-        organization_id: org.id,
+      const leagueModel = new League({
         name: this.leagueName,
-        slug: this.leagueSlug,
-        is_active: true
+        organizationId: org.id,
+        isActive: true
       });
+      const leagueResult = await this.leagueRepo.upsert(leagueModel);
+      league = { id: leagueResult.id, name: this.leagueName };
     }
     
     // 3. Create or get season
     let season = await this.seasonRepo.findByName(league.id, this.season);
     if (!season) {
       console.log(`   📅 Creating season: ${this.season}`);
-      const seasonData = {
-        league_id: league.id,
+      const seasonModel = new Season({
         name: this.season,
-        start_date: new Date(`${this.season.split('-')[0]}-09-01`),
-        end_date: new Date(`${this.season.split('-')[1]}-06-30`),
-        is_active: true
-      };
-      const seasonResult = await this.seasonRepo.upsert(seasonData);
-      season = { id: seasonResult.id, ...seasonData };
+        leagueId: league.id,
+        isActive: true
+      });
+      const seasonResult = await this.seasonRepo.upsert(seasonModel);
+      season = { id: seasonResult.id, name: this.season };
     }
     
     // 4. Create or get conference (CSL has only one conference)
@@ -121,14 +126,13 @@ class CslStructureScraper {
     let conference = await this.conferenceRepo.findByName(season.id, conferenceName);
     if (!conference) {
       console.log(`   📋 Creating conference: ${conferenceName}`);
-      const conferenceData = {
-        season_id: season.id,
+      const conferenceModel = new Conference({
         name: conferenceName,
-        slug: 'main',
-        is_active: true
-      };
-      const conferenceResult = await this.conferenceRepo.upsert(conferenceData);
-      conference = { id: conferenceResult.id, ...conferenceData };
+        seasonId: season.id,
+        isActive: true
+      });
+      const conferenceResult = await this.conferenceRepo.upsert(conferenceModel);
+      conference = { id: conferenceResult.id, name: conferenceName };
     }
     
     return { league, season, conference };
@@ -141,26 +145,22 @@ class CslStructureScraper {
     console.log(`\n📂 Processing division: ${divisionData.divisionName}`);
     console.log(`   Teams: ${divisionData.teams.length}`);
     
-    // Create or get division
-    let division = await this.divisionRepo.findByConferenceAndName(conferenceId, divisionData.divisionName);
+    // Create division model and upsert
+    const level = this.determineDivisionLevel(divisionData.divisionName);
+    const divisionModel = new Division({
+      seasonId: seasonId,
+      conferenceId: conferenceId,
+      name: divisionData.divisionName,
+      sourceSystemId: 8, // CSL
+      isActive: true
+    });
     
-    if (!division) {
-      const level = this.determineDivisionLevel(divisionData.divisionName);
-      division = await this.divisionRepo.create({
-        conferenceId,
-        name: divisionData.divisionName,
-        slug: this.slugify(divisionData.divisionName),
-        level,
-        isActive: true
-      });
-      console.log(`   ✅ Created division: ${divisionData.divisionName}`);
-    } else {
-      console.log(`   ⏭️  Division exists: ${divisionData.divisionName}`);
-    }
+    const divisionResult = await this.divisionRepo.upsert(divisionModel);
+    console.log(`   ✅ ${divisionResult.inserted ? 'Created' : 'Found'} division: ${divisionData.divisionName} (id=${divisionResult.id})`);
     
     // Process teams in this division
     for (const teamData of divisionData.teams) {
-      await this.processTeam(division.id, seasonId, teamData);
+      await this.processTeam(divisionResult.id, seasonId, teamData);
     }
   }
   
@@ -168,34 +168,20 @@ class CslStructureScraper {
    * Process a team and link it to division
    */
   async processTeam(divisionId, seasonId, teamData) {
-    // 1. Create scraped_teams entry
-    const scrapedTeamSlug = this.slugify(teamData.name);
-    let scrapedTeam = await this.scrapedTeamRepo.findBySlug(scrapedTeamSlug);
+    // 1. Create scraped_teams entry using upsert (handles duplicates)
+    const scrapedTeamModel = new ScrapedTeam({
+      name: teamData.name,
+      sourceSystemId: 8, // CSL
+      externalId: teamData.externalId // Store team ID for roster scraping
+    });
+    const scrapedTeamResult = await this.scrapedTeamRepo.upsert(scrapedTeamModel);
+    console.log(`      ✅ ${scrapedTeamResult.inserted ? 'Created' : 'Found'} scraped team: ${teamData.name}${teamData.externalId ? ` (ID: ${teamData.externalId})` : ''}`);
     
-    if (!scrapedTeam) {
-      scrapedTeam = await this.scrapedTeamRepo.create({
-        name: teamData.name,
-        slug: scrapedTeamSlug,
-        source: 'csl',
-        isActive: true
-      });
-      console.log(`      ✅ Created scraped team: ${teamData.name}`);
-    }
-    
-    // 2. Try to link to club (if exists)
-    const club = await this.clubRepo.findByDisplayName(teamData.name);
-    const clubId = club ? club.id : null;
-    
-    // 3. Create division_teams junction
-    const existing = await this.divisionTeamRepo.findByDivisionAndTeam(divisionId, scrapedTeam.id);
+    // 2. Create division_teams junction (CSL teams are independent, no club link)
+    const existing = await this.divisionTeamRepo.findByDivisionAndTeam(divisionId, scrapedTeamResult.id);
     
     if (!existing) {
-      await this.divisionTeamRepo.create({
-        divisionId,
-        scrapedTeamId: scrapedTeam.id,
-        clubId,
-        season: seasonId
-      });
+      await this.divisionTeamRepo.upsert(divisionId, scrapedTeamResult.id, true);
     }
   }
   

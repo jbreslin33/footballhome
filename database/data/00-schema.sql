@@ -180,7 +180,8 @@ INSERT INTO source_systems (id, name, description, is_active) VALUES
     (4, 'groupme', 'GroupMe integration', true),
     (5, 'google_places', 'Google Places API', true),
     (6, 'rest_countries', 'REST Countries API', true),
-    (7, 'static_json', 'Static JSON configuration files', true)
+    (7, 'static_json', 'Static JSON configuration files', true),
+    (8, 'csl', 'Cosmopolitan Soccer League', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Scrape Target System Tables

@@ -60,7 +60,7 @@ class CslMatchScraper {
       JOIN conferences c ON d.conference_id = c.id
       JOIN seasons s ON c.season_id = s.id
       JOIN leagues l ON s.league_id = l.id
-      WHERE l.slug = 'cosmopolitan-soccer-league'
+      WHERE l.name = 'Cosmopolitan Soccer League'
     `);
     
     return result.rows;

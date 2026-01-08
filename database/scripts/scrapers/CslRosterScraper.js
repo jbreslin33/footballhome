@@ -3,6 +3,7 @@ const CslRosterParser = require('../infrastructure/parsers/CslRosterParser');
 const DivisionTeamRepository = require('../domain/repositories/DivisionTeamRepository');
 const DivisionTeamPlayerRepository = require('../domain/repositories/DivisionTeamPlayerRepository');
 const PersonRepository = require('../domain/repositories/PersonRepository');
+const PlayerRepository = require('../domain/repositories/PlayerRepository');
 
 /**
  * Cosmopolitan Soccer League Roster Scraper
@@ -17,6 +18,7 @@ class CslRosterScraper {
     this.divisionTeamRepo = new DivisionTeamRepository(client);
     this.divisionTeamPlayerRepo = new DivisionTeamPlayerRepository(client);
     this.personRepo = new PersonRepository(client);
+    this.playerRepo = new PlayerRepository(client);
   }
   
   /**
@@ -48,20 +50,20 @@ class CslRosterScraper {
    */
   async getCslTeams() {
     const result = await this.client.query(`
-      SELECT 
-        st.id as scraped_team_id,
-        st.name as team_name,
-        st.external_id,
+      SELECT DISTINCT ON (t.id)
+        t.id as team_id,
+        t.name as team_name,
+        t.external_id,
         dt.id as division_team_id
-      FROM scraped_teams st
-      JOIN division_teams dt ON st.id = dt.scraped_team_id
+      FROM teams t
+      JOIN division_teams dt ON t.id = dt.team_id
       JOIN divisions d ON dt.division_id = d.id
       JOIN conferences c ON d.conference_id = c.id
       JOIN seasons s ON c.season_id = s.id
       JOIN leagues l ON s.league_id = l.id
-      WHERE l.slug = 'cosmopolitan-soccer-league'
-        AND st.is_active = true
-      ORDER BY st.name
+      WHERE l.name = 'Cosmopolitan Soccer League'
+        AND dt.is_active = true
+      ORDER BY t.id, t.name
     `);
     
     return result.rows;
@@ -114,30 +116,23 @@ class CslRosterScraper {
       return;
     }
     
-    // Find or create person
-    let person = await this.personRepo.findByName(firstName, lastName);
+    // Step 1: Find or create person using upsert
+    const personResult = await this.personRepo.upsert({
+      firstName,
+      lastName,
+      isActive: true
+    });
     
-    if (!person) {
-      person = await this.personRepo.create({
-        firstName,
-        lastName,
-        isActive: true
-      });
-    }
+    // Step 2: Find or create player linked to person
+    const playerResult = await this.playerRepo.upsert({
+      personId: personResult.id
+    });
     
-    // Link to division team
-    const existing = await this.divisionTeamPlayerRepo.findByDivisionTeamAndPerson(
-      divisionTeamId,
-      person.id
-    );
-    
-    if (!existing) {
-      await this.divisionTeamPlayerRepo.create({
-        divisionTeamId,
-        personId: person.id,
-        jerseyNumber: playerData.number
-      });
-    }
+    // Step 3: Link player to division team (roster entry)
+    await this.divisionTeamPlayerRepo.upsert(divisionTeamId, playerResult.id, {
+      jerseyNumber: playerData.number,
+      isActive: true
+    });
   }
 }
 
