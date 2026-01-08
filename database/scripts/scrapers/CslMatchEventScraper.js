@@ -149,7 +149,7 @@ class CslMatchEventScraper {
         playerId: player.id,
         teamId,
         eventTypeId: this.eventTypeCache['goal'],
-        minute: null, // CSL doesn't provide minute-by-minute data
+        minute: 0, // CSL doesn't provide minute-by-minute data (0 = unknown)
         assistedByPlayerId: null
       });
     }
@@ -166,11 +166,10 @@ class CslMatchEventScraper {
     const result = await this.client.query(`
       SELECT DISTINCT p.id, p.first_name, p.last_name
       FROM persons p
-      JOIN division_team_players dtp ON p.id = dtp.person_id
+      JOIN players pl ON p.id = pl.person_id
+      JOIN division_team_players dtp ON pl.id = dtp.player_id
       JOIN division_teams dt ON dtp.division_team_id = dt.id
-      JOIN scraped_teams st ON dt.scraped_team_id = st.id
-      JOIN teams t ON st.id = t.scraped_team_id
-      WHERE t.id = $1
+      WHERE dt.team_id = $1
         AND CONCAT(p.last_name, ', ', p.first_name) = $2
     `, [teamId, playerName]);
     
@@ -183,11 +182,10 @@ class CslMatchEventScraper {
     const fuzzyResult = await this.client.query(`
       SELECT DISTINCT p.id, p.first_name, p.last_name
       FROM persons p
-      JOIN division_team_players dtp ON p.id = dtp.person_id
+      JOIN players pl ON p.id = pl.person_id
+      JOIN division_team_players dtp ON pl.id = dtp.player_id
       JOIN division_teams dt ON dtp.division_team_id = dt.id
-      JOIN scraped_teams st ON dt.scraped_team_id = st.id
-      JOIN teams t ON st.id = t.scraped_team_id
-      WHERE t.id = $1
+      WHERE dt.team_id = $1
         AND p.last_name = $2
       LIMIT 1
     `, [teamId, lastName]);
