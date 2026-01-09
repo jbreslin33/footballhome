@@ -81,7 +81,7 @@ class CslMatchEventScraper {
       FROM matches m
       JOIN teams ht ON m.home_team_id = ht.id
       JOIN teams at ON m.away_team_id = at.id
-      WHERE ht.source_system_id = 8  -- CSL source system
+      WHERE m.source_system_id = 8  -- CSL source system
         AND m.home_score IS NOT NULL
         AND m.away_score IS NOT NULL
       ORDER BY m.match_date

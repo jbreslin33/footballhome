@@ -198,6 +198,16 @@ class ApslStructureScraper {
         // Link team to club
         team.clubId = clubResult.id;
         teamsLinked++;
+        
+        // Download team page if we have an external_id (use cache to avoid re-downloading)
+        if (team.externalId) {
+          try {
+            const teamUrl = `https://www.apslsoccer.com/APSL/Team/${team.externalId}`;
+            await this.fetcher.fetch(teamUrl, true); // Use cache to preserve existing good files
+          } catch (error) {
+            console.warn(`      ⚠️  Failed to fetch team page for ${team.name}: ${error.message}`);
+          }
+        }
       }
       
       const teamResult = await this.teamRepo.upsertMany(teams);

@@ -35,7 +35,7 @@
 
 
 	
-<script nonce="1767824320027">
+<script nonce="1767965146728">
 function getCookie(cname) {
 	var name = cname + "=";
 	var decodedCookie = decodeURIComponent(document.cookie);
@@ -2431,25 +2431,40 @@ Team Roster
 	</script>
 
 
-<p>
+	<style>
+		.calendar-sync-container {
+			display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start;
+		}
+		.calendar-btn {
+			flex: 1 1 200px; max-width: 300px; text-align: center; white-space: nowrap;
+		}
+		.btn-copy-url { background-color: #f8f9fa; border: 1px solid #ddd; color: #333; }
+	</style>
 
-<a class="btn btn-default btn-small" style="width:300px;" target="_blank" rel="noopener"
-	href="https://app.teampass.com/mediacontent/iCal/ical_118353_03D4A8.ics">
-		add calendar to your device
-		<i class="fa-solid fa-calendar-days"  style='font-size:11px;'></i>
-</a>
+	<div class="calendar-sync-container" style="margin-top: 20px;">
+		<a class="btn btn-default btn-small calendar-btn" href="webcal://app.teampass.com/mediacontent/iCal/ical_118353_03D4A8.ics">
+			<i class="fa-brands fa-apple"></i> Apple / iOS
+		</a>
+		<a class="btn btn-default btn-small calendar-btn" style="color: #DB4437;" target="_blank" rel="noopener"
+		   href="https://calendar.google.com/calendar/r?pli=1&amp;cid=http://app.teampass.com/mediacontent/iCal/ical_118353_03D4A8.ics">
+			<i class="fa-brands fa-google"></i> Google
+		</a>
+		<a class="btn btn-default btn-small calendar-btn" style="color: #0078D4;" target="_blank" rel="noopener"
+		   href="https://outlook.live.com/owa/?path=/calendar/action/compose&amp;rru=addsubscription&amp;url=http://app.teampass.com/mediacontent/iCal/ical_118353_03D4A8.ics&amp;name=NY%20Titans%20FC%20%2D%20Cosmopolitan%20Soccer%20League">
+			<i class="fa-brands fa-microsoft"></i> Outlook
+		</a>
+		<button class="btn btn-default btn-small calendar-btn btn-copy-url" onclick="copyToClipboard('https://app.teampass.com/mediacontent/iCal/ical_118353_03D4A8.ics')">
+			<i class="fa-solid fa-link"></i> Copy Link
+		</button>
+	</div>
 
-<a class="btn btn-default btn-small" style="width:200px;" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/r?pli=1&amp;cid=http://app.teampass.com/mediacontent/iCal/ical_118353_03D4A8.ics">
-add to Google
-<i class="fa-brands fa-google"  style='font-size:11px;'></i>
-</a>
-<a class="btn btn-default btn-small" style="width:200px;" target="_blank" rel="noopener" data-confirm="You must be logged into Outlook.com."
-	href="https://outlook.live.com/owa/?path=/calendar/action/compose&amp;rru=addsubscription&amp;url=http://app.teampass.com/mediacontent/iCal/ical_118353_03D4A8.ics&amp;name=NY Titans FC Cosmopolitan Soccer League 2025/2026">
-add to Outlook
-<i class="fa-brands fa-microsoft" style='font-size:11px;'></i>
-</a></p>
-
-
+	<script>
+		function copyToClipboard(text) {
+			navigator.clipboard.writeText(text).then(function() {
+				alert('Calendar Feed URL copied!');
+			}, function(err) { console.error('Could not copy text: ', err); });
+		}
+	</script>
 	<br><br>
 
 					<div class="leagueAccordbox box"  style="display:block;padding:0px;">
@@ -3478,7 +3493,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824320996">
+								href="/?1767965147619">
 
 							
 								<img src="/mediacontent//2021/09/25/12/FIFA_logo_without_slogan_225032.png" style="height:auto;width:auto;
@@ -3512,7 +3527,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824320996">
+								href="/?1767965147619">
 
 							
 								<img src="/mediacontent//2021/10/05/00/United_States_Soccer_Federation_logo_2016_225154.png" style="height:auto;width:auto;
@@ -3546,7 +3561,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824320996">
+								href="/?1767965147619">
 
 							
 								<img src="/mediacontent//2021/10/05/00/USASA_225155.png" style="height:auto;width:auto;
@@ -3580,7 +3595,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824320996">
+								href="/?1767965147619">
 
 							
 								<img src="/mediacontent//2025/05/06/17/u_Untitled_2_1746578664563_1_245790.png" style="height:auto;width:auto;
@@ -3614,7 +3629,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824320996">
+								href="/?1767965147619">
 
 							
 								<img src="/mediacontent//2022/08/09/15/ENYSSA_229916.png" style="height:auto;width:auto;
@@ -3648,7 +3663,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824320996">
+								href="/?1767965147619">
 
 							
 								<img src="/mediacontent//2022/08/22/15/njsa-logo_230212.png" style="height:auto;width:auto;
@@ -3766,9 +3781,9 @@ add to Outlook
 
 					<form action="https://secure.teampass.com//CSL/index.cfm" method=post name="ContactUsForm" id="ContactUsForm">
 					
-					<input type=hidden name=hash value="0968BCD0-BC46-B775-A5E2F67920961533">
+					<input type=hidden name=hash value="5D589B30-D4FE-409E-D0CBFCA4B431AEFE">
 					<input type=hidden name=hash2 value="">
-					<script nonce="1767824320012">
+					<script nonce="1767965146712">
 						document.ContactUsForm.hash2.value="A6808C9E32E64A093B9A668B3F34A5DF";
 					</script>
 					<div class="ContactUS">
@@ -3861,7 +3876,7 @@ add to Outlook
 
 		Cosmopolitan Soccer League 
 
-		- January 07 2026 &copy
+		- January 09 2026 &copy
 
 		
 
@@ -3900,7 +3915,7 @@ add to Outlook
 
 
 
-<script nonce="1767824320012">
+<script nonce="1767965146712">
 	try {
 		isAsyncSupported = eval("typeof Object.getPrototypeOf(async function() {}).constructor === 'function'");
 	} catch (exception) {
@@ -3913,7 +3928,7 @@ add to Outlook
 
 	<script src="/js/popper.js"></script>
 	<script src="/js/jquery.mask.js"></script>
-	<script nonce="1767824320012">
+	<script nonce="1767965146712">
 		$('input[name="form_teampass_player_signup_PARENT2_PHONE"]').mask('000-000-0000');
 		$(function () {
 			$('[data-toggle="popover"]').popover()
@@ -3927,7 +3942,7 @@ add to Outlook
 
 	<link href="/css/jquery.bxslider.css" rel="stylesheet">
 	<script src="/js/jquery.bxslider.min.js"></script>
-	<script nonce="1767824320012" type="text/javascript">
+	<script nonce="1767965146712" type="text/javascript">
 		$(document).ready(function(){
 			$('.Slider').bxSlider({useCSS:false, auto: false, pager: false,slideWidth: 1260,touchEnabled: false
 			});
@@ -3937,7 +3952,7 @@ add to Outlook
 
 
 
-<script nonce="1767824320012" type="text/javascript">
+<script nonce="1767965146712" type="text/javascript">
 
 
 		
@@ -4224,196 +4239,4 @@ function output_Head_Shot(obj){
 			});
 
 
-			$('div.ContactTitle').click(function(){
-				var cls = $(this).attr('class');
-				if(cls == 'ContactTitle'){
-					$(this).attr('class', 'ContactTitle active');
-					$(this).next('div').fadeIn('slow');
-					$(this).find('.fa-caret-right').attr('class', 'fa fa-caret-down');
-				}else{
-					$(this).attr('class', 'ContactTitle');
-					$(this).next('div').fadeOut('fast');
-					$(this).find('.fa-caret-down').attr('class', 'fa fa-caret-right');
-				}
-			});
-
-		$('.roster_headshot').mouseover(function(){
-			$(this).find('.roster_headshot_buttons').show();
-		});
-
-		$('.roster_headshot').mouseout(function(){
-			$('.roster_headshot_buttons').hide();
-		});
-
-
-
-		$('.have_sub').mouseover(function(){
-			if($(window).width() > 750 ) {
-				$('.sub').hide();
-				$(this).find('.sub').show();
-			}
-		});
-		$('.sub').mouseover(function(){
-			if($(window).width() > 750 ) {
-				$('.sub').hide();
-				$(this).show();
-			}
-		});
-		$('.sub').mouseout(function(){
-			if($(window).width() > 750 ) {
-				$(this).hide();
-				$('.sub').hide();
-			}
-		});
-		$('ul.nav').mouseout(function(){
-			if($(window).width() > 750 ) {
-				$('.sub').hide();
-			}
-		});
-
-	$('.have_sub i').click(function(){
-		$('.sub').slideUp('fast');
-		$(this).parent().parent().find('.sub').slideDown('slow');
-	});
-
-	$('.qv .closeit').click(function(){
-		$(this).parent().parent().parent().fadeOut('fast');
-	});
-	$('.qv .rleft img').click(function(){
-		if($(this).attr('class') == 'thumb'){
-		var src = $(this).attr('src');
-		$(this).parent().find('img.main').attr('src', src);
-		}
-	});
-
-		$(document).ready(function() {
-			checkSubNvWidth();
-
-
-
-
-			
-
-		   $('.subLnkA').on('click touchend', function(e) {
-			  var el = $(this);
-			  var link = el.attr('href');
-			  window.location = link;
-		   });
-
-
-		});
-
-		function checkSubNvWidth() {
-				//alert($(window).width());
-				if($(window).width() <= 765) {
-					$('.sub').show();
-					//$('.rmenu').collapse("hide");
-				}
-				if($(window).width() > 765) {
-					$('.sub').hide();
-					$('.navbar-collapse').collapse("hide");
-				}
-			}
-
-
-			
-
-
-
-
-
-//	$('.rsearch i').click(function(){
-//		var idto = $(this).attr('id');
-//		if(idto == 'clicked'){
-//			$(this).parent().find('#searchTextField').hide();
-//			$(this).attr('id', '');
-//		}else{
-//			$(this).parent().find('#searchTextField').fadeIn('slow');
-//			$(this).attr('id', 'clicked');
-//		}
-//	});
-</script>
-
-
-	
-
-
-	<script nonce="1767824320012" type="text/javascript">
-
-
-		$(document).keydown(function(event){
-			if(event.which=="17")
-				cntrlIsPressed = true;
-		});
-		$(document).keyup(function(){
-			cntrlIsPressed = false;
-		});
-		var cntrlIsPressed = false;
-
-
-		
-
-
-			$(window).resize(function() {
-				if (! navigator.userAgent.match(/(iPod|iPhone|iPad)/)) {
-						//alert(window.innerWidth);
-						//alert($(window).width());
-						checkSubNvWidth();
-				}
-			});
-
-
-		
-	</script>
-
-
-	
-
-
-</body>
-
-
-
-	<script>
-	document.addEventListener("DOMContentLoaded", function() {
-		let interaction_count = 0;
-		let input_field_created = false;
-		const formElement = document.getElementById('ContactUsForm');
-		const formFields = formElement ? formElement.querySelectorAll('input, textarea, select') : [];
-		function updateInteractionCount(event) {
-			interaction_count++;
-			if (!input_field_created) {
-				createHiddenField();
-				input_field_created = true;
-			}
-			const hiddenInput = document.getElementById('form_sess_id');
-			if (hiddenInput) {
-				hiddenInput.value = interaction_count * 9;
-			}
-		}
-		function createHiddenField() {
-			const hiddenInput = document.createElement('input');
-			hiddenInput.type = 'hidden';
-			hiddenInput.name = 'form_sess_id';
-			hiddenInput.id = 'form_sess_id';
-			hiddenInput.value = 0;
-			formElement.appendChild(hiddenInput);
-		}
-		function activateListeners() {
-			if (formElement) {
-				formElement.addEventListener('mousemove', updateInteractionCount);
-				formElement.addEventListener('keydown', updateInteractionCount);
-				formElement.addEventListener('touchstart', updateInteractionCount);
-				formElement.addEventListener('scroll', updateInteractionCount);
-			}
-			formFields.forEach(field => {
-				field.removeEventListener('focus', activateListeners);
-			});
-		}
-		formFields.forEach(field => {
-			field.addEventListener('focus', activateListeners, { once: true });
-		});
-	});
-	</script>
-
-</html>
+			$('div.Cont

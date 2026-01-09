@@ -35,7 +35,7 @@
 
 
 	
-<script nonce="1767824405925">
+<script nonce="1767964979167">
 function getCookie(cname) {
 	var name = cname + "=";
 	var decodedCookie = decodeURIComponent(document.cookie);
@@ -2426,25 +2426,40 @@ Team Roster
 	</script>
 
 
-<p>
+	<style>
+		.calendar-sync-container {
+			display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start;
+		}
+		.calendar-btn {
+			flex: 1 1 200px; max-width: 300px; text-align: center; white-space: nowrap;
+		}
+		.btn-copy-url { background-color: #f8f9fa; border: 1px solid #ddd; color: #333; }
+	</style>
 
-<a class="btn btn-default btn-small" style="width:300px;" target="_blank" rel="noopener"
-	href="https://app.teampass.com/mediacontent/iCal/ical_116477_164D92.ics">
-		add calendar to your device
-		<i class="fa-solid fa-calendar-days"  style='font-size:11px;'></i>
-</a>
+	<div class="calendar-sync-container" style="margin-top: 20px;">
+		<a class="btn btn-default btn-small calendar-btn" href="webcal://app.teampass.com/mediacontent/iCal/ical_116477_164D92.ics">
+			<i class="fa-brands fa-apple"></i> Apple / iOS
+		</a>
+		<a class="btn btn-default btn-small calendar-btn" style="color: #DB4437;" target="_blank" rel="noopener"
+		   href="https://calendar.google.com/calendar/r?pli=1&amp;cid=http://app.teampass.com/mediacontent/iCal/ical_116477_164D92.ics">
+			<i class="fa-brands fa-google"></i> Google
+		</a>
+		<a class="btn btn-default btn-small calendar-btn" style="color: #0078D4;" target="_blank" rel="noopener"
+		   href="https://outlook.live.com/owa/?path=/calendar/action/compose&amp;rru=addsubscription&amp;url=http://app.teampass.com/mediacontent/iCal/ical_116477_164D92.ics&amp;name=SC%20Eintracht%20II%20%2D%20Cosmopolitan%20Soccer%20League">
+			<i class="fa-brands fa-microsoft"></i> Outlook
+		</a>
+		<button class="btn btn-default btn-small calendar-btn btn-copy-url" onclick="copyToClipboard('https://app.teampass.com/mediacontent/iCal/ical_116477_164D92.ics')">
+			<i class="fa-solid fa-link"></i> Copy Link
+		</button>
+	</div>
 
-<a class="btn btn-default btn-small" style="width:200px;" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/r?pli=1&amp;cid=http://app.teampass.com/mediacontent/iCal/ical_116477_164D92.ics">
-add to Google
-<i class="fa-brands fa-google"  style='font-size:11px;'></i>
-</a>
-<a class="btn btn-default btn-small" style="width:200px;" target="_blank" rel="noopener" data-confirm="You must be logged into Outlook.com."
-	href="https://outlook.live.com/owa/?path=/calendar/action/compose&amp;rru=addsubscription&amp;url=http://app.teampass.com/mediacontent/iCal/ical_116477_164D92.ics&amp;name=SC Eintracht II Cosmopolitan Soccer League 2025/2026">
-add to Outlook
-<i class="fa-brands fa-microsoft" style='font-size:11px;'></i>
-</a></p>
-
-
+	<script>
+		function copyToClipboard(text) {
+			navigator.clipboard.writeText(text).then(function() {
+				alert('Calendar Feed URL copied!');
+			}, function(err) { console.error('Could not copy text: ', err); });
+		}
+	</script>
 	<br><br>
 
 					<div class="leagueAccordbox box"  style="display:block;padding:0px;">
@@ -2815,7 +2830,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824407050">
+								href="/?1767964980073">
 
 							
 								<img src="/mediacontent//2021/09/25/12/FIFA_logo_without_slogan_225032.png" style="height:auto;width:auto;
@@ -2849,7 +2864,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824407050">
+								href="/?1767964980073">
 
 							
 								<img src="/mediacontent//2021/10/05/00/United_States_Soccer_Federation_logo_2016_225154.png" style="height:auto;width:auto;
@@ -2883,7 +2898,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824407050">
+								href="/?1767964980073">
 
 							
 								<img src="/mediacontent//2021/10/05/00/USASA_225155.png" style="height:auto;width:auto;
@@ -2917,7 +2932,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824407050">
+								href="/?1767964980073">
 
 							
 								<img src="/mediacontent//2025/05/06/17/u_Untitled_2_1746578664563_1_245790.png" style="height:auto;width:auto;
@@ -2951,7 +2966,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824407050">
+								href="/?1767964980073">
 
 							
 								<img src="/mediacontent//2022/08/09/15/ENYSSA_229916.png" style="height:auto;width:auto;
@@ -2985,7 +3000,7 @@ add to Outlook
 							 cursor:pointer;
 
 							"
-								href="/?1767824407050">
+								href="/?1767964980073">
 
 							
 								<img src="/mediacontent//2022/08/22/15/njsa-logo_230212.png" style="height:auto;width:auto;
@@ -3103,9 +3118,9 @@ add to Outlook
 
 					<form action="https://secure.teampass.com//CSL/index.cfm" method=post name="ContactUsForm" id="ContactUsForm">
 					
-					<input type=hidden name=hash value="0975D843-A556-098B-EFA17FB5025405C4">
+					<input type=hidden name=hash value="5D3F0A02-9223-5141-7AB71EC23117F2A5">
 					<input type=hidden name=hash2 value="">
-					<script nonce="1767824405909">
+					<script nonce="1767964979167">
 						document.ContactUsForm.hash2.value="A6808C9E32E64A093B9A668B3F34A5DF";
 					</script>
 					<div class="ContactUS">
@@ -3198,7 +3213,7 @@ add to Outlook
 
 		Cosmopolitan Soccer League 
 
-		- January 07 2026 &copy
+		- January 09 2026 &copy
 
 		
 
@@ -3237,7 +3252,7 @@ add to Outlook
 
 
 
-<script nonce="1767824405909">
+<script nonce="1767964979167">
 	try {
 		isAsyncSupported = eval("typeof Object.getPrototypeOf(async function() {}).constructor === 'function'");
 	} catch (exception) {
@@ -3250,7 +3265,7 @@ add to Outlook
 
 	<script src="/js/popper.js"></script>
 	<script src="/js/jquery.mask.js"></script>
-	<script nonce="1767824405909">
+	<script nonce="1767964979167">
 		$('input[name="form_teampass_player_signup_PARENT2_PHONE"]').mask('000-000-0000');
 		$(function () {
 			$('[data-toggle="popover"]').popover()
@@ -3264,7 +3279,7 @@ add to Outlook
 
 	<link href="/css/jquery.bxslider.css" rel="stylesheet">
 	<script src="/js/jquery.bxslider.min.js"></script>
-	<script nonce="1767824405909" type="text/javascript">
+	<script nonce="1767964979167" type="text/javascript">
 		$(document).ready(function(){
 			$('.Slider').bxSlider({useCSS:false, auto: false, pager: false,slideWidth: 1260,touchEnabled: false
 			});
@@ -3274,7 +3289,7 @@ add to Outlook
 
 
 
-<script nonce="1767824405909" type="text/javascript">
+<script nonce="1767964979167" type="text/javascript">
 
 
 		
@@ -3675,7 +3690,7 @@ function output_Head_Shot(obj){
 	
 
 
-	<script nonce="1767824405909" type="text/javascript">
+	<script nonce="1767964979167" type="text/javascript">
 
 
 		$(document).keydown(function(event){

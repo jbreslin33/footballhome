@@ -177,7 +177,17 @@ class CslStructureScraper {
     const scrapedTeamResult = await this.scrapedTeamRepo.upsert(scrapedTeamModel);
     console.log(`      ✅ ${scrapedTeamResult.inserted ? 'Created' : 'Found'} scraped team: ${teamData.name}${teamData.externalId ? ` (ID: ${teamData.externalId})` : ''}`);
     
-    // 2. Create division_teams junction (CSL teams are independent, no club link)
+    // 2. Download team page if we have an external_id (use cache to avoid re-downloading)
+    if (teamData.externalId) {
+      try {
+        const teamUrl = `https://www.cosmosoccerleague.com/CSL/Team/${teamData.externalId}`;
+        await this.fetcher.fetch(teamUrl, true); // Use cache to avoid overwriting good files
+      } catch (error) {
+        console.log(`      ⚠️  Failed to fetch team page: ${error.message}`);
+      }
+    }
+    
+    // 3. Create division_teams junction (CSL teams are independent, no club link)
     const existing = await this.divisionTeamRepo.findByDivisionAndTeam(divisionId, scrapedTeamResult.id);
     
     if (!existing) {

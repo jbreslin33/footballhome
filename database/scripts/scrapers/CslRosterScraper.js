@@ -1,4 +1,5 @@
-const HtmlFetcher = require('../infrastructure/fetchers/HtmlFetcher');
+const fs = require('fs');
+const path = require('path');
 const CslRosterParser = require('../infrastructure/parsers/CslRosterParser');
 const DivisionTeamRepository = require('../domain/repositories/DivisionTeamRepository');
 const DivisionTeamPlayerRepository = require('../domain/repositories/DivisionTeamPlayerRepository');
@@ -8,12 +9,13 @@ const PlayerRepository = require('../domain/repositories/PlayerRepository');
 /**
  * Cosmopolitan Soccer League Roster Scraper
  * 
- * Extracts player rosters for each team from CSL team pages
+ * Extracts player rosters for each team from cached CSL team HTML pages
+ * Mirrors APSL roster scraper pattern for consistency
  */
 class CslRosterScraper {
   constructor(client) {
     this.client = client;
-    this.fetcher = new HtmlFetcher('database/scraped-html/csl');
+    this.cacheDir = path.join(__dirname, '../../scraped-html/csl');
     this.parser = new CslRosterParser();
     this.divisionTeamRepo = new DivisionTeamRepository(client);
     this.divisionTeamPlayerRepo = new DivisionTeamPlayerRepository(client);
@@ -80,17 +82,16 @@ class CslRosterScraper {
       return;
     }
     
-    // Fetch roster HTML
-    const url = `https://www.cosmosoccerleague.com/CSL/Team/${team.external_id}`;
-    const filename = `csl-roster-${team.external_id}`;
+    // Find cached HTML file (like APSL pattern)
+    const htmlFile = this.findTeamHtmlFile(team.external_id);
     
-    let html;
-    try {
-      html = await this.fetcher.fetch(url, filename);
-    } catch (error) {
-      console.log(`   ⚠️  Could not fetch roster: ${error.message}`);
+    if (!htmlFile) {
+      console.log(`   ⚠️  No HTML file found for external_id: ${team.external_id}`);
       return;
     }
+    
+    // Read HTML from cache
+    const html = fs.readFileSync(htmlFile, 'utf-8');
     
     // Parse players
     const players = this.parser.parse(html);
@@ -99,6 +100,21 @@ class CslRosterScraper {
     // Add players to database
     for (const playerData of players) {
       await this.addPlayer(team.division_team_id, playerData);
+    }
+  }
+  
+  /**
+   * Find HTML file for team (mirrors APSL pattern)
+   */
+  findTeamHtmlFile(externalId) {
+    try {
+      const files = fs.readdirSync(this.cacheDir);
+      // Look for files starting with external_id followed by dash
+      const pattern = new RegExp(`^${externalId}-[a-f0-9]+\\.html$`);
+      const match = files.find(f => pattern.test(f));
+      return match ? path.join(this.cacheDir, match) : null;
+    } catch (error) {
+      return null;
     }
   }
   
