@@ -50,8 +50,15 @@ class HtmlFetcher {
     if (useCache) {
       try {
         const cached = await fs.readFile(cacheFile, 'utf-8');
-        console.log(`   📂 Using cached HTML: ${path.basename(cacheFile)}`);
-        return cached;
+        
+        // Validate cached content - reject empty or invalid files
+        if (!cached || cached.trim().length === 0) {
+          console.log(`   ⚠️  Cached file is empty, re-fetching: ${path.basename(cacheFile)}`);
+          // Fall through to fetch from URL
+        } else {
+          console.log(`   📂 Using cached HTML: ${path.basename(cacheFile)}`);
+          return cached;
+        }
       } catch (error) {
         // Cache miss - continue to fetch
       }

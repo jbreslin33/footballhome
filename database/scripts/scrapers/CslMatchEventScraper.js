@@ -1,3 +1,4 @@
+const path = require('path');
 const HtmlFetcher = require('../infrastructure/fetchers/HtmlFetcher');
 const CslMatchEventParser = require('../infrastructure/parsers/CslMatchEventParser');
 const MatchRepository = require('../domain/repositories/MatchRepository');
@@ -16,7 +17,7 @@ const DivisionTeamPlayerRepository = require('../domain/repositories/DivisionTea
 class CslMatchEventScraper {
   constructor(client) {
     this.client = client;
-    this.fetcher = new HtmlFetcher('database/scraped-html/csl');
+    this.fetcher = new HtmlFetcher(path.join(__dirname, '../../scraped-html/csl'));
     this.parser = new CslMatchEventParser();
     this.matchRepo = new MatchRepository(client);
     this.matchEventRepo = new MatchEventRepository(client);

@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const path = require('path');
 const HtmlFetcher = require('../infrastructure/fetchers/HtmlFetcher');
 const CslStandingsParser = require('../infrastructure/parsers/CslStandingsParser');
 const OrganizationRepository = require('../domain/repositories/OrganizationRepository');
@@ -27,7 +28,7 @@ const ScrapedTeam = require('../domain/models/ScrapedTeam');
 class CslStructureScraper {
   constructor(client, config = {}) {
     this.client = client;
-    this.fetcher = new HtmlFetcher('database/scraped-html/csl');
+    this.fetcher = new HtmlFetcher(path.join(__dirname, '../../scraped-html/csl'));
     this.parser = new CslStandingsParser();
     this.orgRepo = new OrganizationRepository(client);
     this.leagueRepo = new LeagueRepository(client);
