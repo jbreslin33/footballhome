@@ -75,6 +75,27 @@ Examples:
 ./dev.sh --verbose --alert-pattern='error|duration|deadlock'
 ```
 
+## 🤖 AI Development Tools
+
+This project includes multiple AI coding assistants. Choose based on your needs:
+
+- **Claude CLI** (`./claude`) - Quick Q&A, code generation (cloud, paid)
+- **Aider** (`./aider`) - Full file editing, refactoring (cloud, paid)
+- **Ollama** (`./scripts/ai-cli.sh`) - Local AI, completely free (offline)
+
+```bash
+# Setup (one-time)
+./scripts/setup/setup-claude.sh   # Cloud AI (requires API key)
+./scripts/ai-cli.sh install        # Local AI (free, ~4GB download)
+
+# Usage examples
+./claude query "how to use std::mutex in C++?"
+./aider backend/src/Router.cpp     # Interactive file editing
+./scripts/ai-cli.sh chat            # Local AI chat (free)
+```
+
+**See [AI_TOOLS.md](AI_TOOLS.md) for detailed documentation, cost comparison, and usage examples.**
+
 ## 🏗️ Architecture
 
 ```
