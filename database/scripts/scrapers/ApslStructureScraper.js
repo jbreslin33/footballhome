@@ -157,6 +157,7 @@ class ApslStructureScraper {
     if (teams && teams.length > 0) {
       let clubsCreated = 0;
       let teamsLinked = 0;
+      const failedFetches = [];
       
       for (const team of teams) {
         // For APSL, each team IS a club (e.g., "Lighthouse 1893 SC")
@@ -201,12 +202,38 @@ class ApslStructureScraper {
         
         // Download team page if we have an external_id (use cache to avoid re-downloading)
         if (team.externalId) {
+          const teamUrl = `https://www.apslsoccer.com/APSL/Team/${team.externalId}`;
           try {
-            const teamUrl = `https://www.apslsoccer.com/APSL/Team/${team.externalId}`;
             await this.fetcher.fetch(teamUrl, true); // Use cache to preserve existing good files
           } catch (error) {
-            console.warn(`      ⚠️  Failed to fetch team page for ${team.name}: ${error.message}`);
+            if (error.message === 'EMPTY_CACHE' || error.message.includes('timeout')) {
+              failedFetches.push({ url: teamUrl, team: team.name });
+            } else {
+              console.warn(`      ⚠️  Failed to fetch team page for ${team.name}: ${error.message}`);
+            }
           }
+        }
+      }
+      
+      // Retry failed fetches at the end
+      if (failedFetches.length > 0) {
+        console.log(`\n   🔄 Retrying ${failedFetches.length} failed team page fetches...`);
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          const stillFailing = [];
+          for (const { url, team } of failedFetches) {
+            try {
+              await this.fetcher.fetch(url, false, attempt); // Don't use cache, pass attempt number
+            } catch (error) {
+              if (attempt === 2) {
+                console.warn(`      ⚠️  Final attempt failed for ${team}: ${error.message}`);
+              } else {
+                stillFailing.push({ url, team });
+              }
+            }
+          }
+          if (stillFailing.length === 0) break;
+          failedFetches.length = 0;
+          failedFetches.push(...stillFailing);
         }
       }
       

@@ -28,7 +28,7 @@ class CslMatchEventScraper {
   }
   
   /**
-   * Main scraping logic
+   * Main scraping logic - now separated into phases
    */
   async scrape() {
     console.log('\n⚽ CSL Match Event Scraper');
@@ -42,17 +42,73 @@ class CslMatchEventScraper {
       const matches = await this.getCompletedMatches();
       console.log(`⚽ Found ${matches.length} completed matches to process\n`);
       
-      for (const match of matches) {
-        await this.processMatch(match);
-      }
+      // PHASE 1: Download all HTML files (batch)
+      console.log('📥 Phase 1: Downloading HTML files...');
+      await this.downloadAllHtml(matches);
+      
+      // PHASE 2: Parse all cached HTML files and write to database
+      console.log('\n📝 Phase 2: Parsing and saving match events...');
+      const stats = await this.parseAndSaveAll(matches);
       
       console.log('\n✅ Scrape completed');
-      console.log(`   Matches processed: ${matches.length}`);
+      console.log(`   Matches processed: ${stats.processed}`);
+      console.log(`   Total events: ${stats.totalEvents}`);
+      console.log(`   Skipped: ${stats.skipped}`);
       
     } catch (error) {
       console.error('❌ Error:', error.message);
       throw error;
     }
+  }
+  
+  /**
+   * PHASE 1: Download all HTML files for matches
+   * Uses caching to skip already-downloaded files
+   */
+  async downloadAllHtml(matches) {
+    let downloaded = 0;
+    let cached = 0;
+    let failed = 0;
+    
+    for (const match of matches) {
+      const url = `https://www.cosmosoccerleague.com/CSL/Event/${match.external_id}`;
+      const filename = `${match.external_id}`;
+      
+      try {
+        // Fetch will use cache if available
+        const result = await this.fetcher.fetch(url, filename, true);
+        if (result && result.length > 0) {
+          cached++;
+        }
+      } catch (error) {
+        console.log(`   ⚠️  Failed to download match ${match.id}: ${error.message}`);
+        failed++;
+      }
+    }
+    
+    console.log(`   Downloaded/Verified: ${matches.length} files`);
+    console.log(`   Failed: ${failed}`);
+  }
+  
+  /**
+   * PHASE 2: Parse all cached HTML files and save to database
+   */
+  async parseAndSaveAll(matches) {
+    let processed = 0;
+    let skipped = 0;
+    let totalEvents = 0;
+    
+    for (const match of matches) {
+      const result = await this.processMatch(match);
+      if (result.success) {
+        processed++;
+        totalEvents += result.eventCount;
+      } else {
+        skipped++;
+      }
+    }
+    
+    return { processed, skipped, totalEvents };
   }
   
   /**
@@ -92,21 +148,23 @@ class CslMatchEventScraper {
   }
   
   /**
-   * Process a single match
+   * Process a single match - reads from cached HTML file
    */
   async processMatch(match) {
-    console.log(`\n   📋 Match ${match.id}: ${match.home_team_name} ${match.home_score}-${match.away_score} ${match.away_team_name}`);
+    // Find cached HTML file
+    const htmlFile = this.findEventHtmlFile(match.external_id);
     
-    // Fetch HTML
-    const url = `https://www.cosmosoccerleague.com/CSL/Event/${match.external_id}`;
-    const filename = `csl-event-${match.external_id}`;
+    if (!htmlFile) {
+      return { success: false, eventCount: 0 };
+    }
     
-    let html;
-    try {
-      html = await this.fetcher.fetch(url, filename);
-    } catch (error) {
-      console.log(`   ⚠️  Could not fetch HTML: ${error.message}`);
-      return;
+    // Read from cache
+    const fs = require('fs');
+    const html = fs.readFileSync(htmlFile, 'utf-8');
+    
+    // Validate HTML
+    if (!html || html.trim().length === 0) {
+      return { success: false, eventCount: 0 };
     }
     
     // Parse player stats
@@ -129,7 +187,25 @@ class CslMatchEventScraper {
       totalAssists += playerStat.assists;
     }
     
-    console.log(`   ⚽ ${totalGoals} goals, ${totalAssists} assists recorded`);
+    return { success: true, eventCount: totalGoals + totalAssists };
+  }
+  
+  /**
+   * Find HTML file for match event (mirrors APSL pattern)
+   */
+  findEventHtmlFile(externalId) {
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+      const files = fs.readdirSync(this.fetcher.cacheDir);
+      // Look for files starting with externalId
+      const pattern = new RegExp(`^${externalId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-[a-f0-9]+\\.html$`);
+      const match = files.find(f => pattern.test(f));
+      return match ? path.join(this.fetcher.cacheDir, match) : null;
+    } catch (error) {
+      return null;
+    }
   }
   
   /**

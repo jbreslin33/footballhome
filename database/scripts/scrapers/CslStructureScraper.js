@@ -44,6 +44,9 @@ class CslStructureScraper {
     this.leagueSlug = 'cosmopolitan-soccer-league';
     this.standingsUrl = 'https://www.cosmosoccerleague.com/CSL/Tables/';
     this.season = config.season || '2025-2026';
+    
+    // Track failed fetches for retry
+    this.failedFetches = [];
   }
   
   /**
@@ -70,6 +73,9 @@ class CslStructureScraper {
       for (const divisionData of divisions) {
         await this.processDivision(conference.id, season.id, divisionData);
       }
+      
+      // Step 5: Retry failed fetches
+      await this.retryFailedFetches();
       
       console.log('\n✅ CSL structure scraping completed');
       return true;
@@ -184,7 +190,11 @@ class CslStructureScraper {
         const teamUrl = `https://www.cosmosoccerleague.com/CSL/Team/${teamData.externalId}`;
         await this.fetcher.fetch(teamUrl, true); // Use cache to avoid overwriting good files
       } catch (error) {
-        console.log(`      ⚠️  Failed to fetch team page: ${error.message}`);
+        if (error.message === 'EMPTY_CACHE' || error.message.includes('timeout')) {
+          this.failedFetches.push({ url: teamUrl, team: teamData.name });
+        } else {
+          console.log(`      ⚠️  Failed to fetch team page: ${error.message}`);
+        }
       }
     }
     
@@ -193,6 +203,38 @@ class CslStructureScraper {
     
     if (!existing) {
       await this.divisionTeamRepo.upsert(divisionId, scrapedTeamResult.id, true);
+    }
+  }
+  
+  /**
+   * Retry failed team page fetches
+   */
+  async retryFailedFetches() {
+    if (this.failedFetches.length === 0) return;
+    
+    console.log(`\n🔄 Retrying ${this.failedFetches.length} failed team page fetches...`);
+    
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const stillFailing = [];
+      
+      for (const { url, team } of this.failedFetches) {
+        try {
+          await this.fetcher.fetch(url, false, attempt); // Don't use cache, pass attempt number
+        } catch (error) {
+          if (attempt === 2) {
+            console.warn(`   ⚠️  Final attempt failed for ${team}: ${error.message}`);
+          } else {
+            stillFailing.push({ url, team });
+          }
+        }
+      }
+      
+      if (stillFailing.length === 0) {
+        console.log(`   ✅ All retries succeeded!`);
+        break;
+      }
+      
+      this.failedFetches = stillFailing;
     }
   }
   

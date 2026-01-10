@@ -46,7 +46,199 @@ async function runScraper(scraperPath, args = []) {
 }
 
 /**
- * Main orchestrator
+ * PHASE 1: Download all HTML files from all sources
+ */
+async function downloadPhase(pool, targets) {
+  console.log(`${colors.yellow}📥 Downloading HTML from all sources...${colors.reset}`);
+  console.log('');
+  
+  for (const target of targets) {
+    await pool.query('UPDATE scrape_targets SET scrape_status_id = 2 WHERE id = $1', [target.id]);
+    
+    console.log(`${colors.blue}[${target.source_system_name.toUpperCase()}] ${target.label}${colors.reset}`);
+    
+    try {
+      const useCache = target.action_name === 'use_cache_only';
+      process.env.SCRAPE_USE_CACHE = useCache ? 'true' : 'false';
+      process.env.SCRAPE_MODE = 'download';  // Tell scrapers to only download
+      
+      // APSL - Download standings + team pages
+      if (target.target_type_id === 1 && target.source_system_id === 1) {
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/ApslStructureScraper.js'));
+        console.log(`${colors.green}  ✓ Downloaded APSL structure HTML${colors.reset}\n`);
+      }
+      // CSL - Download standings + team pages  
+      else if (target.target_type_id === 1 && target.source_system_id === 2) {
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslStructureScraper.js'));
+        console.log(`${colors.green}  ✓ Downloaded CSL structure HTML${colors.reset}\n`);
+      }
+      // Countries
+      else if (target.target_type_id === 17 && target.source_system_id === 6) {
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/CountryScraperV2.js'), ['discover']);
+        console.log(`${colors.green}  ✓ Downloaded country data${colors.reset}\n`);
+      }
+      // Governing Bodies
+      else if (target.target_type_id === 18 && target.source_system_id === 7) {
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/GoverningBodyScraper.js'), ['discover']);
+        console.log(`${colors.green}  ✓ Loaded governing body data${colors.reset}\n`);
+      }
+      else {
+        console.log(`${colors.yellow}  ⚠️  No downloader implemented yet${colors.reset}\n`);
+      }
+    } catch (error) {
+      console.error(`${colors.red}  ✗ Download failed: ${error.message}${colors.reset}\n`);
+    }
+  }
+  
+  console.log(`${colors.green}✓ Download phase complete${colors.reset}`);
+}
+
+/**
+ * PHASE 2: Parse all cached files and save to database
+ */
+async function parsePhase(pool, targets) {
+  const stats = {
+    total: targets.length,
+    success: 0,
+    failed: 0,
+    skipped: 0
+  };
+  
+  for (const target of targets) {
+    console.log(`${colors.blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
+    console.log(`${colors.yellow}Target: ${target.label}${colors.reset}`);
+    console.log(`  Source: ${target.source_system_name}`);
+    console.log('');
+    
+    const startTime = Date.now();
+    let success = false;
+    let errorMessage = null;
+    
+    try {
+      const mode = target.is_initialized ? 'sync' : 'discover';
+      process.env.SCRAPE_TARGET_ID = target.id;
+      process.env.SCRAPE_MODE = 'parse';  // Tell scrapers to only parse cached files
+      
+      // Countries
+      if (target.target_type_id === 17 && target.source_system_id === 6) {
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/CountryScraperV2.js'), [mode]);
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/UsStatesScraper.js'));
+        success = true;
+        stats.success++;
+      }
+      // Governing Bodies
+      else if (target.target_type_id === 18 && target.source_system_id === 7) {
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/GoverningBodyScraper.js'), [mode]);
+        success = true;
+        stats.success++;
+      }
+      // APSL - Parse everything from cached HTML
+      else if (target.target_type_id === 1 && target.source_system_id === 1) {
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/ApslStructureScraper.js'));
+        console.log('');
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/ApslRosterScraper.js'));
+        console.log('');
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/ApslMatchScraper.js'));
+        console.log('');
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/ApslMatchDateScraper.js'));
+        console.log('');
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/ApslLineupScraper.js'));
+        success = true;
+        stats.success++;
+      }
+      // CSL - Parse everything from cached HTML
+      else if (target.target_type_id === 1 && target.source_system_id === 2) {
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslStructureScraper.js'));
+        console.log('');
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslRosterScraper.js'));
+        console.log('');
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslMatchScraper.js'));
+        console.log('');
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslMatchEventScraper.js'));
+        success = true;
+        stats.success++;
+      }
+      else {
+        console.log(`${colors.yellow}  ⚠ No parser implemented yet${colors.reset}`);
+        success = true;
+        stats.skipped++;
+      }
+      
+      console.log('');
+    } catch (error) {
+      console.error(`${colors.red}  ✗ Failed: ${error.message}${colors.reset}`);
+      success = false;
+      errorMessage = error.message;
+      stats.failed++;
+      console.log('');
+    } finally {
+      const duration = Date.now() - startTime;
+      
+      // Update target status
+      if (success) {
+        await pool.query(
+          `UPDATE scrape_targets 
+           SET scrape_action_id = 3, scrape_status_id = 3, last_success_at = CURRENT_TIMESTAMP,
+               is_initialized = true, last_synced_at = CURRENT_TIMESTAMP,
+               updated_at = CURRENT_TIMESTAMP, retry_count = 0
+           WHERE id = $1`,
+          [target.id]
+        );
+      } else {
+        await pool.query(
+          `UPDATE scrape_targets 
+           SET scrape_status_id = 5, last_error_at = CURRENT_TIMESTAMP,
+               last_error_message = $1, retry_count = retry_count + 1,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $2`,
+          [errorMessage, target.id]
+        );
+      }
+      
+      // Record execution
+      const executionStatusId = success ? 3 : 5;
+      await pool.query(
+        `INSERT INTO scrape_executions 
+         (scrape_target_id, status_id, started_at, completed_at, duration_ms, error_message)
+         VALUES ($1, $2, to_timestamp($3::double precision / 1000), CURRENT_TIMESTAMP, $4, $5)`,
+        [target.id, executionStatusId, startTime, duration, errorMessage]
+      );
+    }
+  }
+  
+  // Run match event scraper ONCE for all APSL matches
+  const apslTargetsProcessed = stats.success > 0 || stats.failed > 0;
+  if (apslTargetsProcessed) {
+    console.log('');
+    console.log(`${colors.blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
+    console.log(`${colors.blue}  → Running ApslMatchEventScraper.js${colors.reset}`);
+    try {
+      await runScraper(path.join(__dirname, 'database/scripts/scrapers/ApslMatchEventScraper.js'));
+      console.log(`${colors.green}  ✓ Match events processed${colors.reset}`);
+    } catch (error) {
+      console.error(`${colors.red}  ✗ Failed: ${error.message}${colors.reset}`);
+    }
+  }
+  
+  // Summary
+  console.log(`${colors.blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
+  console.log(`${colors.yellow}Summary:${colors.reset}`);
+  console.log(`  Total targets:  ${stats.total}`);
+  console.log(`  ${colors.green}✓${colors.reset} Success:      ${stats.success}`);
+  if (stats.failed > 0) {
+    console.log(`  ${colors.red}✗${colors.reset} Failed:       ${stats.failed}`);
+  }
+  if (stats.skipped > 0) {
+    console.log(`  ${colors.yellow}⚠${colors.reset} Skipped:      ${stats.skipped}`);
+  }
+  
+  return stats;
+}
+
+/**
+ * Main orchestrator - TWO PHASE APPROACH
+ * Phase 1: Download ALL HTML files from all sources
+ * Phase 2: Parse ALL cached files and write to database
  */
 async function main() {
   const pool = new Pool({
@@ -99,226 +291,26 @@ async function main() {
     console.log(`${colors.green}  Found ${result.rows.length} active target(s)${colors.reset}`);
     console.log('');
     
-    const stats = {
-      total: result.rows.length,
-      success: 0,
-      failed: 0,
-      skipped: 0
-    };
+    // ========================================================================
+    // PHASE 1: DOWNLOAD ALL HTML FILES
+    // ========================================================================
+    console.log(`${colors.blue}╔════════════════════════════════════════════════════════════╗${colors.reset}`);
+    console.log(`${colors.blue}║  PHASE 1: DOWNLOADING ALL HTML FILES                      ║${colors.reset}`);
+    console.log(`${colors.blue}╚════════════════════════════════════════════════════════════╝${colors.reset}`);
+    console.log('');
     
-    // Process each target
-    for (const target of result.rows) {
-      console.log(`${colors.blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-      console.log(`${colors.yellow}Target: ${target.label}${colors.reset}`);
-      console.log(`  Type: ${target.target_type_name}`);
-      console.log(`  Source: ${target.source_system_name}`);
-      console.log(`  Action: ${target.action_name || 'download_and_parse (default)'}`);
-      console.log(`  Status: ${target.status_name || 'not_started (default)'}`);
-      console.log(`  Last synced: ${target.last_synced_at || 'Never'}`);
-      console.log('');
-      
-      // Mark as in_progress
-      await pool.query(
-        'UPDATE scrape_targets SET scrape_status_id = 2 WHERE id = $1',
-        [target.id]
-      );
-      
-      const startTime = Date.now();
-      let success = false;
-      let errorMessage = null;
-      
-      try {
-        // Route to appropriate scraper based on target_type_id and source_system_id
-        const mode = target.is_initialized ? 'sync' : 'discover';
-        
-        // Determine if we should use cache based on scrape_action
-        // 1=download_and_parse (fetch fresh), 2=use_cache_only, 4=force_refresh (fetch fresh)
-        const useCache = target.action_name === 'use_cache_only';
-        
-        // Set environment variables for scraper
-        process.env.SCRAPE_TARGET_ID = target.id;
-        process.env.SCRAPE_USE_CACHE = useCache ? 'true' : 'false';
-        
-        // Countries (REST Countries API) - target_type_id=17, source_system_id=6
-        if (target.target_type_id === 17 && target.source_system_id === 6) {
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/CountryScraperV2.js'),
-            [mode]
-          );
-          
-          // After loading countries, automatically run US States scraper
-          console.log('');
-          console.log(`${colors.blue}  → Running dependent scraper: UsStatesScraper.js${colors.reset}`);
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/UsStatesScraper.js')
-          );
-          
-          success = true;
-          stats.success++;
-        }
-        // Governing Bodies (static JSON) - target_type_id=18, source_system_id=7
-        else if (target.target_type_id === 18 && target.source_system_id === 7) {
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/GoverningBodyScraper.js'),
-            [mode]
-          );
-          success = true;
-          stats.success++;
-        }
-        // APSL conference structure - target_type_id=1, source_system_id=1
-        else if (target.target_type_id === 1 && target.source_system_id === 1) {
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/ApslStructureScraper.js')
-          );
-          
-          // After structure scrape, run roster scraper to populate players
-          console.log('');
-          console.log(`${colors.blue}  → Running dependent scraper: ApslRosterScraper.js${colors.reset}`);
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/ApslRosterScraper.js')
-          );
-          
-          // After roster scrape, run match scraper to populate matches
-          console.log('');
-          console.log(`${colors.blue}  → Running dependent scraper: ApslMatchScraper.js${colors.reset}`);
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/ApslMatchScraper.js')
-          );
-          
-          // After match scrape, run date scraper to populate match dates
-          console.log('');
-          console.log(`${colors.blue}  → Running dependent scraper: ApslMatchDateScraper.js${colors.reset}`);
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/ApslMatchDateScraper.js')
-          );
-          
-          // After dates, run lineup scraper to populate match lineups
-          console.log('');
-          console.log(`${colors.blue}  → Running dependent scraper: ApslLineupScraper.js${colors.reset}`);
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/ApslLineupScraper.js')
-          );
-          
-          // Note: ApslMatchEventScraper runs once after ALL APSL targets are processed (see end of main())
-          
-          success = true;
-          stats.success++;
-        }
-        // CSL league structure - target_type_id=1, source_system_id=2
-        else if (target.target_type_id === 1 && target.source_system_id === 2) {
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/CslStructureScraper.js')
-          );
-          
-          // After structure scrape, run roster scraper to populate players
-          console.log('');
-          console.log(`${colors.blue}  → Running dependent scraper: CslRosterScraper.js${colors.reset}`);
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/CslRosterScraper.js')
-          );
-          
-          // After roster scrape, run match scraper to populate matches
-          console.log('');
-          console.log(`${colors.blue}  → Running dependent scraper: CslMatchScraper.js${colors.reset}`);
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/CslMatchScraper.js')
-          );
-          
-          // After matches, run event scraper to populate player stats
-          console.log('');
-          console.log(`${colors.blue}  → Running dependent scraper: CslMatchEventScraper.js${colors.reset}`);
-          await runScraper(
-            path.join(__dirname, 'database/scripts/scrapers/CslMatchEventScraper.js')
-          );
-          
-          success = true;
-          stats.success++;
-        }
-        // Add more scrapers here as they're built
-        else {
-          console.log(`${colors.yellow}  ⚠ No scraper implemented for this target type yet${colors.reset}`);
-          success = true; // Not an error, just not implemented
-          stats.skipped++;
-        }
-        
-        console.log('');
-      } catch (error) {
-        console.error(`${colors.red}  ✗ Failed: ${error.message}${colors.reset}`);
-        success = false;
-        errorMessage = error.message;
-        stats.failed++;
-        console.log('');
-      } finally {
-        const duration = Date.now() - startTime;
-        
-        // Update target status and action based on success
-        if (success) {
-          // On success: Mark complete and set action to 'skip' so it won't re-run
-          await pool.query(
-            `UPDATE scrape_targets 
-             SET scrape_action_id = 3,  -- 3=skip (completed, don't re-run)
-                 scrape_status_id = 3,  -- 3=completed
-                 last_success_at = CURRENT_TIMESTAMP,
-                 is_initialized = true,
-                 last_synced_at = CURRENT_TIMESTAMP,
-                 updated_at = CURRENT_TIMESTAMP,
-                 retry_count = 0
-             WHERE id = $1`,
-            [target.id]
-          );
-        } else {
-          // On failure: Mark failed, keep action unchanged, increment retry count
-          await pool.query(
-            `UPDATE scrape_targets 
-             SET scrape_status_id = 5,  -- 5=failed
-                 last_error_at = CURRENT_TIMESTAMP,
-                 last_error_message = $1,
-                 retry_count = retry_count + 1,
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = $2`,
-            [errorMessage, target.id]
-          );
-        }
-        
-        // Record execution in scrape_executions table
-        const executionStatusId = success ? 3 : 5;  // 3=success, 5=failed
-        await pool.query(
-          `INSERT INTO scrape_executions 
-           (scrape_target_id, status_id, started_at, completed_at, duration_ms, error_message)
-           VALUES ($1, $2, to_timestamp($3::double precision / 1000), CURRENT_TIMESTAMP, $4, $5)`,
-          [target.id, executionStatusId, startTime, duration, errorMessage]
-        );
-      }
-    }
+    await downloadPhase(pool, result.rows);
     
-    // Run match event scraper ONCE after all APSL targets are processed
-    // This prevents duplicate goal entries from running 4 times (once per season)
-    const apslTargetsProcessed = stats.success > 0 || stats.failed > 0;
-    if (apslTargetsProcessed) {
-      console.log('');
-      console.log(`${colors.blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-      console.log(`${colors.blue}  → Running ApslMatchEventScraper.js (processes all APSL matches)${colors.reset}`);
-      try {
-        await runScraper(
-          path.join(__dirname, 'database/scripts/scrapers/ApslMatchEventScraper.js')
-        );
-        console.log(`${colors.green}  ✓ Match events processed successfully${colors.reset}`);
-      } catch (error) {
-        console.error(`${colors.red}  ✗ Match event scraper failed: ${error.message}${colors.reset}`);
-      }
-    }
+    // ========================================================================
+    // PHASE 2: PARSE AND SAVE TO DATABASE
+    // ========================================================================
+    console.log('');
+    console.log(`${colors.blue}╔════════════════════════════════════════════════════════════╗${colors.reset}`);
+    console.log(`${colors.blue}║  PHASE 2: PARSING AND SAVING TO DATABASE                  ║${colors.reset}`);
+    console.log(`${colors.blue}╚════════════════════════════════════════════════════════════╝${colors.reset}`);
+    console.log('');
     
-    // Summary
-    console.log(`${colors.blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
-    console.log(`${colors.yellow}Summary:${colors.reset}`);
-    console.log(`  Total targets:  ${stats.total}`);
-    console.log(`  ${colors.green}✓${colors.reset} Success:      ${stats.success}`);
-    if (stats.failed > 0) {
-      console.log(`  ${colors.red}✗${colors.reset} Failed:       ${stats.failed}`);
-    }
-    if (stats.skipped > 0) {
-      console.log(`  ${colors.yellow}⚠${colors.reset} Skipped:      ${stats.skipped}`);
-    }
+    const stats = await parsePhase(pool, result.rows);
     
     if (stats.failed > 0) {
       process.exit(1);
