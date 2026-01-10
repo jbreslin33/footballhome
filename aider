@@ -1,0 +1,24 @@
+#!/bin/bash
+# Aider wrapper - AI pair programming with Claude
+#
+# Usage:
+#   ./aider                    # Start in current directory
+#   ./aider file1.cpp file2.h  # Start with specific files
+#   ./aider --help             # See all options
+
+# Ensure we're in project root
+cd "$(dirname "$0")"
+
+# Check for API key
+if [ -z "$ANTHROPIC_API_KEY" ]; then
+    echo -e "\033[0;31m✗\033[0m ANTHROPIC_API_KEY not set"
+    echo -e "\033[0;34mℹ\033[0m Run: ./scripts/setup/setup-aider.sh"
+    exit 1
+fi
+
+# Run aider with Claude
+exec aider \
+    --model claude-sonnet-4-20250514 \
+    --dark-mode \
+    --no-auto-commits \
+    "$@"

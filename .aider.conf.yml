@@ -1,0 +1,22 @@
+# Aider configuration for Football Home
+model: claude-sonnet-4-20250514
+dark-mode: true
+no-auto-commits: true
+pretty: true
+stream: true
+
+# Context files (always included)
+read:
+  - README.md
+  - .github/copilot-instructions.md
+
+# Ignore patterns
+ignore:
+  - node_modules/
+  - build/
+  - .git/
+  - "*.log"
+  - "*.pyc"
+  - __pycache__/
+  - dist/
+  - .vscode/
