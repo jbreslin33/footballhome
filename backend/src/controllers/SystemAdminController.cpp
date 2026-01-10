@@ -3248,7 +3248,7 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
                 LIMIT 10
             )";
             
-            pqxx::result assists = db_->query(assistsSql, {season
+            pqxx::result assists = db_->query(assistsSql, {seasonIdStr});
             json << "\"top_assists\":[";
             for (size_t j = 0; j < assists.size(); ++j) {
                 if (j > 0) json << ",";
@@ -3275,7 +3275,7 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
                 LIMIT 10
             )";
             
-            pqxx::result teams = db_->query(teamsSql, {season
+            pqxx::result teams = db_->query(teamsSql, {seasonIdStr});
             for (size_t j = 0; j < teams.size(); ++j) {
                 if (j > 0) json << ",";
                 json << "{\"team_name\":\"" << teams[j]["team_name"].c_str() << "\","
