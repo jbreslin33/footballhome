@@ -55,3 +55,4 @@ package-lock.json
 footballhome-git-crypt.key
 .env
 env
+.aider*
