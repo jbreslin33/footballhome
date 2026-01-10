@@ -24,6 +24,9 @@ private:
     Response handleGetMatches(const Request& request);
     Response handleGetDashboard(const Request& request);
     Response handleGetSystemHealth(const Request& request);
+    Response handleGetCoverageReport(const Request& request);
+    Response handleGetDataQuality(const Request& request);
+    Response handleGetLeagueStats(const Request& request);
     
     // System Settings
     Response handleGetSettings(const Request& request);

@@ -21,6 +21,9 @@ class AdminSystemScreen extends Screen {
         <!-- Navigation Tabs -->
         <div class="admin-tabs">
           <button class="admin-tab active" data-view="matches">⚽ Matches</button>
+          <button class="admin-tab" data-view="coverage">📊 Match Event Coverage</button>
+          <button class="admin-tab" data-view="data-quality">🔍 Data Quality</button>
+          <button class="admin-tab" data-view="league-stats">🏆 League Statistics</button>
           <button class="admin-tab" data-view="schema">🗂️ Schema</button>
         </div>
         
@@ -84,6 +87,15 @@ class AdminSystemScreen extends Screen {
       switch(view) {
         case 'matches':
           await this.loadMatches();
+          break;
+        case 'coverage':
+          await this.loadCoverageReport();
+          break;
+        case 'data-quality':
+          await this.loadDataQuality();
+          break;
+        case 'league-stats':
+          await this.loadLeagueStats();
           break;
         case 'schema':
           await this.loadDatabaseSchema();
@@ -643,6 +655,219 @@ class AdminSystemScreen extends Screen {
           console.log('No node selected');
         }
       });
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading schema: ${error.message}</div>`;
+    }
+  }
+
+  async loadCoverageReport() {
+    const content = this.element.querySelector('.admin-content');
+    
+    try {
+      const response = await fetch('/api/system-admin/coverage');
+      if (!response.ok) throw new Error('Failed to load coverage data');
+      
+      const data = await response.json();
+      
+      content.innerHTML = `
+        <div class="coverage-view">
+          <h2>📊 Match Event Coverage Report</h2>
+          <p class="subtitle">Coverage by league and source system</p>
+          
+          <div class="coverage-summary">
+            ${data.leagues.map(league => {
+              const coveragePct = ((league.matches_with_events / league.total_matches) * 100).toFixed(1);
+              const barColor = coveragePct >= 80 ? '#22c55e' : coveragePct >= 50 ? '#f59e0b' : '#ef4444';
+              
+              return `
+                <div class="coverage-card">
+                  <h3>${league.league_name || 'Unknown League'}</h3>
+                  <div class="coverage-stats">
+                    <div class="stat-item">
+                      <span class="stat-label">Total Matches</span>
+                      <span class="stat-value">${league.total_matches}</span>
+                    </div>
+                    <div class="stat-item">
+                      <span class="stat-label">With Events</span>
+                      <span class="stat-value">${league.matches_with_events}</span>
+                    </div>
+                    <div class="stat-item">
+                      <span class="stat-label">Coverage</span>
+                      <span class="stat-value" style="color: ${barColor}">${coveragePct}%</span>
+                    </div>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${coveragePct}%; background: ${barColor}"></div>
+                  </div>
+                  <div class="event-breakdown">
+                    <div class="event-stat">⚽ ${league.total_goals || 0} Goals</div>
+                    <div class="event-stat">🅰️ ${league.total_assists || 0} Assists</div>
+                    <div class="event-stat">🔄 ${league.total_subs || 0} Subs</div>
+                  </div>
+                  <div class="data-gap">
+                    <strong>${league.matches_with_score_no_events || 0}</strong> matches have scores but no events
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading coverage: ${error.message}</div>`;
+    }
+  }
+
+  async loadDataQuality() {
+    const content = this.element.querySelector('.admin-content');
+    
+    try {
+      const response = await fetch('/api/system-admin/data-quality');
+      if (!response.ok) throw new Error('Failed to load data quality');
+      
+      const data = await response.json();
+      
+      content.innerHTML = `
+        <div class="data-quality-view">
+          <h2>🔍 Data Quality Dashboard</h2>
+          <p class="subtitle">Identify missing data and scraping issues</p>
+          
+          <div class="quality-grid">
+            <div class="quality-card">
+              <h3>⚠️ Missing Match Events</h3>
+              <div class="quality-stats">
+                <div class="stat-large">${data.missing_events?.total || 0}</div>
+                <div class="stat-label">Matches with scores but no goal events</div>
+              </div>
+              ${data.missing_events?.by_league ? `
+                <div class="breakdown">
+                  ${data.missing_events.by_league.map(l => `
+                    <div class="breakdown-item">
+                      <span>${l.league_name}</span>
+                      <span class="badge">${l.count}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="quality-card">
+              <h3>🚫 Failed Downloads</h3>
+              <div class="quality-stats">
+                <div class="stat-large">${data.failed_downloads?.total || 0}</div>
+                <div class="stat-label">.skip marker files (404s, timeouts)</div>
+              </div>
+              ${data.failed_downloads?.by_source ? `
+                <div class="breakdown">
+                  ${data.failed_downloads.by_source.map(s => `
+                    <div class="breakdown-item">
+                      <span>${s.source}</span>
+                      <span class="badge">${s.count}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="quality-card">
+              <h3>📦 HTML Cache Status</h3>
+              <div class="quality-stats">
+                <div class="stat-large">${data.cache_stats?.total_files || 0}</div>
+                <div class="stat-label">Cached HTML files</div>
+              </div>
+              ${data.cache_stats?.by_source ? `
+                <div class="breakdown">
+                  ${data.cache_stats.by_source.map(s => `
+                    <div class="breakdown-item">
+                      <span>${s.source}</span>
+                      <span class="badge">${s.count} files (${(s.size_mb || 0).toFixed(1)} MB)</span>
+                    </div>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="quality-card">
+              <h3>👤 Missing Player Data</h3>
+              <div class="quality-stats">
+                <div class="stat-large">${data.missing_players?.unmatched_count || 0}</div>
+                <div class="stat-label">Player references not found in roster</div>
+              </div>
+              <p class="info-text">This is expected - external rosters may not match 100%</p>
+            </div>
+          </div>
+        </div>
+      `;
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading data quality: ${error.message}</div>`;
+    }
+  }
+
+  async loadLeagueStats() {
+    const content = this.element.querySelector('.admin-content');
+    
+    try {
+      const response = await fetch('/api/system-admin/league-stats');
+      if (!response.ok) throw new Error('Failed to load league stats');
+      
+      const data = await response.json();
+      
+      content.innerHTML = `
+        <div class="league-stats-view">
+          <h2>🏆 League Statistics</h2>
+          <p class="subtitle">Top performers and league insights</p>
+          
+          <div class="stats-grid">
+            ${data.leagues.map(league => `
+              <div class="league-stat-card">
+                <h3>${league.league_name}</h3>
+                
+                <div class="stat-section">
+                  <h4>⚽ Top Scorers</h4>
+                  <ol class="top-list">
+                    ${(league.top_scorers || []).slice(0, 5).map(p => `
+                      <li>
+                        <span class="player-name">${p.player_name}</span>
+                        <span class="badge">${p.goals} goals</span>
+                      </li>
+                    `).join('')}
+                  </ol>
+                  ${!league.top_scorers || league.top_scorers.length === 0 ? '<p class="info-text">No goal data available</p>' : ''}
+                </div>
+                
+                <div class="stat-section">
+                  <h4>🅰️ Top Assists</h4>
+                  <ol class="top-list">
+                    ${(league.top_assists || []).slice(0, 5).map(p => `
+                      <li>
+                        <span class="player-name">${p.player_name}</span>
+                        <span class="badge">${p.assists} assists</span>
+                      </li>
+                    `).join('')}
+                  </ol>
+                  ${!league.top_assists || league.top_assists.length === 0 ? '<p class="info-text">No assist data available</p>' : ''}
+                </div>
+                
+                <div class="stat-section">
+                  <h4>📊 Most Active Teams</h4>
+                  <ol class="top-list">
+                    ${(league.most_active_teams || []).slice(0, 5).map(t => `
+                      <li>
+                        <span class="team-name">${t.team_name}</span>
+                        <span class="badge">${t.match_count} matches</span>
+                      </li>
+                    `).join('')}
+                  </ol>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading league stats: ${error.message}</div>`;
+    }
+  }
       
       // Initial fit after network stabilizes
       network.once('stabilizationIterationsDone', () => {

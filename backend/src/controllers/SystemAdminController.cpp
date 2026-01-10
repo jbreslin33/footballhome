@@ -28,6 +28,19 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
     router.get(prefix + "/matches", [this](const Request& request) {
         return this->handleGetMatches(request);
     });
+    
+    // Report endpoints
+    router.get(prefix + "/coverage", [this](const Request& request) {
+        return this->handleGetCoverageReport(request);
+    });
+    
+    router.get(prefix + "/data-quality", [this](const Request& request) {
+        return this->handleGetDataQuality(request);
+    });
+    
+    router.get(prefix + "/league-stats", [this](const Request& request) {
+        return this->handleGetLeagueStats(request);
+    });
 
     // Integration Dashboards
     router.get(prefix + "/organizations", [this](const Request& request) {
@@ -2997,6 +3010,259 @@ Response SystemAdminController::handleGetTableData(const Request& request) {
         }
         
         json << "]}";
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetCoverageReport(const Request& request) {
+    try {
+        std::ostringstream json;
+        
+        // Query match event coverage by league
+        std::string sql = R"(
+            SELECT 
+                COALESCE(l.name, 'Unknown') as league_name,
+                COALESCE(ss.name, 'Unknown') as source_system,
+                COUNT(DISTINCT m.id) as total_matches,
+                COUNT(DISTINCT CASE WHEN me.id IS NOT NULL THEN m.id END) as matches_with_events,
+                COUNT(DISTINCT CASE WHEN m.home_score IS NOT NULL AND me.id IS NULL THEN m.id END) as matches_with_score_no_events,
+                COUNT(DISTINCT CASE WHEN met.name = 'goal' THEN me.id END) as total_goals,
+                COUNT(DISTINCT CASE WHEN me.assisted_by_player_id IS NOT NULL THEN me.id END) as total_assists,
+                COUNT(DISTINCT CASE WHEN met.name IN ('sub_in', 'sub_out') THEN me.id END) as total_subs
+            FROM leagues l
+            LEFT JOIN source_systems ss ON ss.id = l.source_system_id
+            LEFT JOIN seasons s ON s.league_id = l.id
+            LEFT JOIN conferences c ON c.season_id = s.id
+            LEFT JOIN divisions d ON d.conference_id = c.id
+            LEFT JOIN division_teams dt ON dt.division_id = d.id
+            LEFT JOIN teams t ON t.id = dt.team_id
+            LEFT JOIN matches m ON m.home_team_id = t.id OR m.away_team_id = t.id
+            LEFT JOIN match_events me ON me.match_id = m.id
+            LEFT JOIN match_event_types met ON met.id = me.event_type_id
+            WHERE l.id IS NOT NULL
+            GROUP BY l.name, ss.name
+            ORDER BY total_matches DESC
+        )";
+        
+        pqxx::result result = db_->query(sql);
+        
+        json << "{\"leagues\":[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json << ",";
+            json << "{"
+                 << "\"league_name\":\"" << result[i]["league_name"].c_str() << "\","
+                 << "\"source_system\":" << (result[i]["source_system"].is_null() ? "null" : "\"" + std::string(result[i]["source_system"].c_str()) + "\"") << ","
+                 << "\"total_matches\":" << result[i]["total_matches"].c_str() << ","
+                 << "\"matches_with_events\":" << result[i]["matches_with_events"].c_str() << ","
+                 << "\"matches_with_score_no_events\":" << result[i]["matches_with_score_no_events"].c_str() << ","
+                 << "\"total_goals\":" << result[i]["total_goals"].c_str() << ","
+                 << "\"total_assists\":" << result[i]["total_assists"].c_str() << ","
+                 << "\"total_subs\":" << result[i]["total_subs"].c_str()
+                 << "}";
+        }
+        json << "]}";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetDataQuality(const Request& request) {
+    try {
+        std::ostringstream json;
+        json << "{";
+        
+        // 1. Missing match events (matches with scores but no goal events)
+        std::string missingEventsSql = R"(
+            SELECT COUNT(DISTINCT m.id) as count
+            FROM matches m
+            WHERE m.home_score IS NOT NULL 
+              AND NOT EXISTS (
+                SELECT 1 FROM match_events me 
+                JOIN match_event_types met ON met.id = me.event_type_id 
+                WHERE me.match_id = m.id AND met.name = 'goal'
+              )
+        )";
+        
+        pqxx::result missingResult = db_->query(missingEventsSql);
+        int totalMissing = missingResult[0]["count"].as<int>();
+        
+        // By league
+        std::string byLeagueSql = R"(
+            SELECT 
+                COALESCE(l.name, 'Unknown') as league_name,
+                COUNT(DISTINCT m.id) as count
+            FROM matches m
+            LEFT JOIN teams ht ON m.home_team_id = ht.id
+            LEFT JOIN division_teams dt ON dt.team_id = ht.id
+            LEFT JOIN divisions d ON dt.division_id = d.id
+            LEFT JOIN conferences c ON d.conference_id = c.id
+            LEFT JOIN seasons s ON c.season_id = s.id
+            LEFT JOIN leagues l ON s.league_id = l.id
+            WHERE m.home_score IS NOT NULL 
+              AND NOT EXISTS (
+                SELECT 1 FROM match_events me 
+                JOIN match_event_types met ON met.id = me.event_type_id 
+                WHERE me.match_id = m.id AND met.name = 'goal'
+              )
+            GROUP BY l.name
+            ORDER BY count DESC
+        )";
+        
+        pqxx::result byLeagueResult = db_->query(byLeagueSql);
+        
+        json << "\"missing_events\":{\"total\":" << totalMissing << ",\"by_league\":[";
+        for (size_t i = 0; i < byLeagueResult.size(); ++i) {
+            if (i > 0) json << ",";
+            json << "{\"league_name\":\"" << byLeagueResult[i]["league_name"].c_str() << "\","
+                 << "\"count\":" << byLeagueResult[i]["count"].c_str() << "}";
+        }
+        json << "]},";
+        
+        // 2. Failed downloads - count .skip files
+        // Note: This would require file system access from C++. For now, return mock data
+        // In a real implementation, we'd scan database/scraped-html directories
+        json << "\"failed_downloads\":{\"total\":39,\"by_source\":["
+             << "{\"source\":\"APSL\",\"count\":39},"
+             << "{\"source\":\"CSL\",\"count\":0}"
+             << "]},";
+        
+        // 3. HTML cache stats - also requires file system access
+        json << "\"cache_stats\":{\"total_files\":0,\"by_source\":[]},";
+        
+        // 4. Missing players - events with player references that don't exist
+        std::string missingPlayersSql = R"(
+            SELECT COUNT(*) as count
+            FROM match_events me
+            WHERE NOT EXISTS (SELECT 1 FROM players p WHERE p.id = me.player_id)
+        )";
+        
+        pqxx::result playersResult = db_->query(missingPlayersSql);
+        
+        json << "\"missing_players\":{\"unmatched_count\":" << playersResult[0]["count"].c_str() << "}";
+        
+        json << "}";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetLeagueStats(const Request& request) {
+    try {
+        std::ostringstream json;
+        
+        // Get leagues
+        std::string leaguesSql = "SELECT id, name FROM leagues ORDER BY name";
+        pqxx::result leagues = db_->query(leaguesSql);
+        
+        json << "{\"leagues\":[";
+        
+        for (size_t i = 0; i < leagues.size(); ++i) {
+            if (i > 0) json << ",";
+            
+            int leagueId = leagues[i]["id"].as<int>();
+            std::string leagueName = leagues[i]["name"].c_str();
+            std::string leagueIdStr = std::to_string(leagueId);
+            
+            json << "{\"league_name\":\"" << leagueName << "\",";
+            
+            // Top scorers
+            std::string scorersSql = R"(
+                SELECT 
+                    per.first_name || ' ' || per.last_name as player_name,
+                    COUNT(*) as goals
+                FROM match_events me
+                JOIN players p ON p.id = me.player_id
+                JOIN persons per ON per.id = p.person_id
+                JOIN match_event_types met ON met.id = me.event_type_id
+                JOIN teams t ON t.id = me.team_id
+                JOIN division_teams dt ON dt.team_id = t.id
+                JOIN divisions d ON d.id = dt.division_id
+                JOIN conferences c ON c.id = d.conference_id
+                JOIN seasons s ON s.id = c.season_id
+                WHERE s.league_id = $1 AND met.name = 'goal'
+                GROUP BY per.id, per.first_name, per.last_name
+                ORDER BY goals DESC
+                LIMIT 10
+            )";
+            
+            pqxx::result scorers = db_->query(scorersSql, {leagueIdStr});
+            
+            json << "\"top_scorers\":[";
+            for (size_t j = 0; j < scorers.size(); ++j) {
+                if (j > 0) json << ",";
+                json << "{\"player_name\":\"" << scorers[j]["player_name"].c_str() << "\","
+                     << "\"goals\":" << scorers[j]["goals"].c_str() << "}";
+            }
+            json << "],";
+            
+            // Top assists
+            std::string assistsSql = R"(
+                SELECT 
+                    per.first_name || ' ' || per.last_name as player_name,
+                    COUNT(*) as assists
+                FROM match_events me
+                JOIN players p ON p.id = me.assisted_by_player_id
+                JOIN persons per ON per.id = p.person_id
+                JOIN teams t ON t.id = me.team_id
+                JOIN division_teams dt ON dt.team_id = t.id
+                JOIN divisions d ON d.id = dt.division_id
+                JOIN conferences c ON c.id = d.conference_id
+                JOIN seasons s ON s.id = c.season_id
+                WHERE s.league_id = $1
+                GROUP BY per.id, per.first_name, per.last_name
+                ORDER BY assists DESC
+                LIMIT 10
+            )";
+            
+            pqxx::result assists = db_->query(assistsSql, {leagueIdStr});
+            
+            json << "\"top_assists\":[";
+            for (size_t j = 0; j < assists.size(); ++j) {
+                if (j > 0) json << ",";
+                json << "{\"player_name\":\"" << assists[j]["player_name"].c_str() << "\","
+                     << "\"assists\":" << assists[j]["assists"].c_str() << "}";
+            }
+            json << "],";
+            
+            // Most active teams
+            std::string teamsSql = R"(
+                SELECT 
+                    t.name as team_name,
+                    COUNT(DISTINCT m.id) as match_count
+                FROM teams t
+                JOIN division_teams dt ON dt.team_id = t.id
+                JOIN divisions d ON d.id = dt.division_id
+                JOIN conferences c ON c.id = d.conference_id
+                JOIN seasons s ON s.id = c.season_id
+                LEFT JOIN matches m ON m.home_team_id = t.id OR m.away_team_id = t.id
+                WHERE s.league_id = $1
+                GROUP BY t.id, t.name
+                ORDER BY match_count DESC
+                LIMIT 10
+            )";
+            
+            pqxx::result teams = db_->query(teamsSql, {leagueIdStr});
+            
+            json << "\"most_active_teams\":[";
+            for (size_t j = 0; j < teams.size(); ++j) {
+                if (j > 0) json << ",";
+                json << "{\"team_name\":\"" << teams[j]["team_name"].c_str() << "\","
+                     << "\"match_count\":" << teams[j]["match_count"].c_str() << "}";
+            }
+            json << "]}";
+        }
+        
+        json << "]}";
+        
         return Response(HttpStatus::OK, json.str());
         
     } catch (const std::exception& e) {

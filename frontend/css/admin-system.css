@@ -916,3 +916,255 @@
   padding: var(--space-8);
   font-style: italic;
 }
+
+/* Coverage Report Styles */
+.coverage-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.coverage-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: var(--space-4);
+}
+
+.coverage-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.coverage-card h3 {
+  margin: 0 0 var(--space-3) 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.coverage-stats {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.progress-bar {
+  height: 24px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: var(--space-3);
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary-color);
+  transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.event-breakdown {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+}
+
+.event-stat {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.data-gap {
+  padding: var(--space-2);
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  color: #92400e;
+}
+
+/* Data Quality Styles */
+.data-quality-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.quality-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-4);
+}
+
+.quality-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.quality-card h3 {
+  margin: 0 0 var(--space-3) 0;
+  font-size: 1.125rem;
+  color: var(--text-primary);
+}
+
+.quality-stats {
+  margin-bottom: var(--space-3);
+}
+
+.stat-large {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1;
+  margin-bottom: var(--space-2);
+}
+
+.breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2);
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+}
+
+.breakdown-item .badge {
+  background: var(--primary-color);
+  color: white;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.info-text {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+  font-style: italic;
+}
+
+/* League Stats Styles */
+.league-stats-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.league-stat-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.league-stat-card h3 {
+  margin: 0 0 var(--space-4) 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: var(--space-2);
+}
+
+.league-stat-card h4 {
+  margin: var(--space-3) 0 var(--space-2) 0;
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.stat-section {
+  margin-bottom: var(--space-4);
+}
+
+.top-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: top-list;
+}
+
+.top-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-2);
+  counter-increment: top-list;
+  position: relative;
+  padding-left: 40px;
+}
+
+.top-list li::before {
+  content: counter(top-list);
+  position: absolute;
+  left: var(--space-3);
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: var(--primary-color);
+}
+
+.top-list li:nth-child(1)::before {
+  color: #f59e0b;
+}
+
+.top-list li:nth-child(2)::before {
+  color: #6b7280;
+}
+
+.top-list li:nth-child(3)::before {
+  color: #cd7f32;
+}
+
+.player-name,
+.team-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.top-list .badge {
+  background: var(--primary-color);
+  color: white;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
