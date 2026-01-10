@@ -186,8 +186,8 @@ class CslStructureScraper {
     
     // 2. Download team page if we have an external_id (use cache to avoid re-downloading)
     if (teamData.externalId) {
+      const teamUrl = `https://www.cosmosoccerleague.com/CSL/Team/${teamData.externalId}`;
       try {
-        const teamUrl = `https://www.cosmosoccerleague.com/CSL/Team/${teamData.externalId}`;
         await this.fetcher.fetch(teamUrl, true); // Use cache to avoid overwriting good files
       } catch (error) {
         if (error.message === 'EMPTY_CACHE' || error.message.includes('timeout')) {
