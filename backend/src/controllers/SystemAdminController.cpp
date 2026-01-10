@@ -3159,20 +3159,46 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
     try {
         std::ostringstream json;
         
-        // Get leagues
-        std::string leaguesSql = "SELECT id, name FROM leagues ORDER BY name";
-        pqxx::result leagues = db_->query(leaguesSql);
+        // Get active seasons (current season with events)
+        std::string seasonsSql = R"(
+            SELECT s.id, l.name as league_name, s.name as season_name, 
+                   EXTRACT(YEAR FROM s.start_date) as start_year,
+                   EXTRACT(YEAR FROM s.end_date) as end_year
+            FROM seasons s
+            JOIN leagues l ON l.id = s.league_id
+            WHERE s.is_active = true OR s.id IN (
+                SELECT DISTINCT se.id 
+                FROM seasons se 
+                JOIN conferences c ON c.season_id = se.id
+                JOIN divisions d ON d.conference_id = c.id
+                JOIN division_teams dt ON dt.division_id = d.id
+                JOIN teams t ON t.id = dt.team_id
+                JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
+                JOIN match_events me ON me.match_id = m.id
+            )
+            ORDER BY l.name, s.start_date DESC
+        )";
+        pqxx::result seasons = db_->query(seasonsSql);
         
         json << "{\"leagues\":[";
         
-        for (size_t i = 0; i < leagues.size(); ++i) {
+        for (size_t i = 0; i < seasons.size(); ++i) {
             if (i > 0) json << ",";
             
-            int leagueId = leagues[i]["id"].as<int>();
-            std::string leagueName = leagues[i]["name"].c_str();
-            std::string leagueIdStr = std::to_string(leagueId);
+            int seasonId = seasons[i]["id"].as<int>();
+            std::string leagueName = seasons[i]["league_name"].c_str();
+            std::string seasonName = seasons[i]["season_name"].c_str();
+            std::string seasonIdStr = std::to_string(seasonId);
             
-            json << "{\"league_name\":\"" << leagueName << "\",";
+            // Build display name with years
+            std::string displayName = leagueName;
+            if (!seasons[i]["start_year"].is_null() && !seasons[i]["end_year"].is_null()) {
+                displayName += " " + std::string(seasons[i]["start_year"].c_str()) + "/" + std::string(seasons[i]["end_year"].c_str());
+            } else if (!seasonName.empty()) {
+                displayName += " " + seasonName;
+            }
+            
+            json << "{\"league_name\":\"" << displayName << "\",";
             
             // Top scorers
             std::string scorersSql = R"(
@@ -3187,14 +3213,13 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
                 JOIN division_teams dt ON dt.team_id = t.id
                 JOIN divisions d ON d.id = dt.division_id
                 JOIN conferences c ON c.id = d.conference_id
-                JOIN seasons s ON s.id = c.season_id
-                WHERE s.league_id = $1 AND met.name = 'goal'
+                WHERE c.season_id = $1 AND met.name = 'goal'
                 GROUP BY per.id, per.first_name, per.last_name
                 ORDER BY goals DESC
                 LIMIT 10
             )";
             
-            pqxx::result scorers = db_->query(scorersSql, {leagueIdStr});
+            pqxx::result scorers = db_->query(scorersSql, {seasonIdStr});
             
             json << "\"top_scorers\":[";
             for (size_t j = 0; j < scorers.size(); ++j) {
@@ -3217,14 +3242,13 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
                 JOIN divisions d ON d.id = dt.division_id
                 JOIN conferences c ON c.id = d.conference_id
                 JOIN seasons s ON s.id = c.season_id
-                WHERE s.league_id = $1
+                WHERE c.season_id = $1
                 GROUP BY per.id, per.first_name, per.last_name
                 ORDER BY assists DESC
                 LIMIT 10
             )";
             
-            pqxx::result assists = db_->query(assistsSql, {leagueIdStr});
-            
+            pqxx::result assists = db_->query(assistsSql, {season
             json << "\"top_assists\":[";
             for (size_t j = 0; j < assists.size(); ++j) {
                 if (j > 0) json << ",";
@@ -3244,15 +3268,14 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
                 JOIN conferences c ON c.id = d.conference_id
                 JOIN seasons s ON s.id = c.season_id
                 LEFT JOIN matches m ON m.home_team_id = t.id OR m.away_team_id = t.id
-                WHERE s.league_id = $1
+                LEFT JOIN matches m ON m.home_team_id = t.id OR m.away_team_id = t.id
+                WHERE c.season_id = $1
                 GROUP BY t.id, t.name
                 ORDER BY match_count DESC
                 LIMIT 10
             )";
             
-            pqxx::result teams = db_->query(teamsSql, {leagueIdStr});
-            
-            json << "\"most_active_teams\":[";
+            pqxx::result teams = db_->query(teamsSql, {season
             for (size_t j = 0; j < teams.size(); ++j) {
                 if (j > 0) json << ",";
                 json << "{\"team_name\":\"" << teams[j]["team_name"].c_str() << "\","
