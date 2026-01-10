@@ -417,138 +417,36 @@ class AdminSystemScreen extends Screen {
         </div>
       `;
       
-      // Prepare nodes (tables) and edges (foreign keys)
-      const nodes = [];
-      const edges = [];
+      // Prepare table map for details panel
       const tableMap = {};
-      
-      data.tables.forEach((table, index) => {
-        // Build label with table name and all columns
-        const columnLines = table.columns.map(col => {
-          const pk = col.primary_key ? '🔑 ' : '  ';
-          const fk = table.foreign_keys.some(f => f.column === col.name) ? ' →' : '';
-          const type = col.type.length > 15 ? col.type.substring(0, 12) + '...' : col.type;
-          return `${pk}${col.name}: ${type}${fk}`;
-        });
-        
-        const fullLabel = `${table.name}\n${'─'.repeat(table.name.length)}\n${columnLines.join('\n')}`;
-        
-        // Tooltip with more details
-        const columnDetails = table.columns.map(col => {
-          const pk = col.primary_key ? '🔑 ' : '';
-          const nullable = col.nullable === 'NO' ? ' NOT NULL' : '';
-          const def = col.default ? ` DEFAULT ${col.default}` : '';
-          return `${pk}${col.name}: ${col.type}${nullable}${def}`;
-        }).join('\\n');
-        
-        nodes.push({
-          id: table.name,
-          label: fullLabel,
-          title: `<b>${table.name}</b>\\n\\n${columnDetails}`,
-          shape: 'box',
-          color: {
-            background: '#ffffff',
-            border: '#2196F3',
-            highlight: { background: '#e3f2fd', border: '#1976d2' }
-          },
-          font: { size: 11, face: 'Monaco, Consolas, "Courier New", monospace', align: 'left' },
-          margin: 10,
-          widthConstraint: { minimum: 200, maximum: 350 }
-        });
-        
+      data.tables.forEach(table => {
         tableMap[table.name] = table;
-        
-        // Add foreign key relationships as edges
-        table.foreign_keys.forEach(fk => {
-          edges.push({
-            from: table.name,
-            to: fk.foreign_table,
-            label: fk.column,
-            arrows: 'to',
-            color: { color: '#2196F3', highlight: '#ff5722' },
-            font: { size: 10, align: 'middle' },
-            title: `${table.name}.${fk.column} → ${fk.foreign_table}.${fk.foreign_column}`
-          });
-        });
       });
       
-      // Create vis.js network
+      // Create custom schema viewer
       const container = document.getElementById('schema-network');
-      const networkData = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+      this.schemaViewer = new SchemaViewer(container, data.tables);
       
-      const options = {
-        physics: {
-          enabled: true,
-          barnesHut: {
-            gravitationalConstant: -30000,
-            centralGravity: 0.2,
-            springLength: 220,
-            springConstant: 0.01,
-            damping: 0.2,
-            avoidOverlap: 1
-          },
-          stabilization: {
-            enabled: true,
-            iterations: 800,
-            updateInterval: 50
-          },
-          minVelocity: 0.75
-        },
-        interaction: {
-          hover: true,
-          tooltipDelay: 100,
-          navigationButtons: true,
-          keyboard: true
-        },
-        nodes: {
-          borderWidth: 2,
-          borderWidthSelected: 4,
-          shapeProperties: {
-            borderRadius: 4
-          },
-          margin: 10,
-          heightConstraint: { minimum: 60 }
-        },
-        edges: {
-          width: 2,
-          smooth: {
-            type: 'curvedCW',
-            roundness: 0.2
-          },
-          arrows: {
-            to: {
-              enabled: true,
-              scaleFactor: 0.5
-            }
-          },
-          color: {
-            inherit: false
-          }
-        },
-        layout: {
-          improvedLayout: true
-        }
+      // Handle table clicks
+      this.schemaViewer.onTableClick = (table) => {
+        this.showTableDetails(table, tableMap);
       };
-      
-      const network = new vis.Network(container, networkData, options);
       
       // Event handlers
       document.getElementById('schema-fit').addEventListener('click', () => {
-        network.fit({ animation: true });
+        this.schemaViewer.fitToScreen();
       });
       
       document.getElementById('schema-zoom-in').addEventListener('click', () => {
-        const scale = network.getScale();
-        network.moveTo({ scale: scale * 1.2, animation: true });
+        this.schemaViewer.zoom(1.2);
       });
       
       document.getElementById('schema-zoom-out').addEventListener('click', () => {
-        const scale = network.getScale();
-        network.moveTo({ scale: scale * 0.8, animation: true });
+        this.schemaViewer.zoom(0.8);
       });
       
       document.getElementById('schema-reset').addEventListener('click', () => {
-        network.fit({ animation: true });
+        this.schemaViewer.reset();
       });
       
       // Fullscreen toggle
@@ -568,29 +466,29 @@ class AdminSystemScreen extends Screen {
         window.open('/schema-viewer.html', 'SchemaViewer', 'width=1400,height=900,menubar=no,toolbar=no,location=no');
       });
       
-      // Show table details on single click
-      network.on('click', (params) => {
-        const detailsDiv = document.getElementById('schema-details');
-        
-        if (params.nodes.length > 0) {
-          const tableName = params.nodes[0];
-          const table = tableMap[tableName];
-          
-          let detailsHTML = `
-            <h3>📋 ${tableName}</h3>
-            <p style="color: var(--text-secondary); margin: var(--space-2) 0;">💡 Double-click this table to view its data</p>
-            <h4>Columns (${table.columns.length})</h4>
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Nullable</th>
-                  <th>Default</th>
-                  <th>Primary Key</th>
-                </tr>
-              </thead>
-              <tbody>
+    } catch (error) {
+      content.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+    }
+  }
+  
+  showTableDetails(table, tableMap) {
+    const detailsDiv = document.getElementById('schema-details');
+    
+    let detailsHTML = `
+      <h3>📋 ${table.name}</h3>
+      <p style="color: var(--text-secondary); margin: var(--space-2) 0;">💡 Double-click this table to view its data</p>
+      <h4>Columns (${table.columns.length})</h4>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Nullable</th>
+            <th>Default</th>
+            <th>Primary Key</th>
+          </tr>
+        </thead>
+        <tbody>
           `;
           
           table.columns.forEach(col => {
@@ -636,28 +534,9 @@ class AdminSystemScreen extends Screen {
                 </tbody>
               </table>
             `;
-          }
-          
-          detailsDiv.innerHTML = detailsHTML;
-        } else {
-          detailsDiv.innerHTML = '<p class="info-message">Click on a table to see details</p>';
         }
-      });
-      
-      // Double-click to view table data
-      network.on('doubleClick', (params) => {
-        console.log('Double-click detected:', params);
-        if (params.nodes.length > 0) {
-          const tableName = params.nodes[0];
-          console.log('Opening table:', tableName);
-          this.viewTableData(tableName);
-        } else {
-          console.log('No node selected');
-        }
-      });
-    } catch (error) {
-      content.innerHTML = `<div class="error-message">Error loading schema: ${error.message}</div>`;
-    }
+        
+        detailsDiv.innerHTML = detailsHTML;
   }
 
   async loadCoverageReport() {
