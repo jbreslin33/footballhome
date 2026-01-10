@@ -868,14 +868,4 @@ class AdminSystemScreen extends Screen {
       content.innerHTML = `<div class="error-message">Error loading league stats: ${error.message}</div>`;
     }
   }
-      
-      // Initial fit after network stabilizes
-      network.once('stabilizationIterationsDone', () => {
-        network.fit({ animation: false });
-      });
-      
-    } catch (error) {
-      content.innerHTML = `<div class="error-message">Error loading schema: ${error.message}</div>`;
-    }
-  }
 }
