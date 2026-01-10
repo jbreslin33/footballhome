@@ -414,7 +414,46 @@ echo "  • Node.js $NODE_VERSION"
 echo "  • npm $NPM_VERSION"
 
 # ============================================================
-# Step 6: Success and Next Steps
+# Step 6: Optional AI Development Tools
+# ============================================================
+echo ""
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}Optional: AI Development Tools${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+echo "Install AI coding assistants for terminal use?"
+echo "  • Claude CLI - Quick Q&A with Claude"
+echo "  • Aider - Full agent mode (edits files)"
+echo ""
+read -p "Install AI dev tools? (y/n): " install_ai
+
+if [[ "$install_ai" == "y" ]]; then
+    echo ""
+    print_status "Setting up Claude CLI..."
+    if ./scripts/setup/setup-claude.sh; then
+        print_success "Claude CLI installed"
+    else
+        print_warning "Claude CLI setup skipped or failed"
+    fi
+    
+    echo ""
+    print_status "Setting up Aider..."
+    if 
+echo "Optional AI tools (if installed):"
+echo "  • Quick Q&A:     ./claude query \"your question\""
+echo "  • Chat mode:     ./claude chat"
+echo "  • Agent mode:    ./aider"
+echo ""./scripts/setup/setup-aider.sh; then
+        print_success "Aider installed"
+    else
+        print_warning "Aider setup skipped or failed"
+    fi
+else
+    print_status "Skipping AI tools (you can run ./scripts/setup/setup-claude.sh later)"
+fi
+
+# ============================================================
+# Step 7: Success and Next Steps
 # ============================================================
 echo ""
 echo -e "${GREEN}========================================${NC}"

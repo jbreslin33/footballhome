@@ -10,13 +10,5 @@ read:
   - README.md
   - .github/copilot-instructions.md
 
-# Ignore patterns
-ignore:
-  - node_modules/
-  - build/
-  - .git/
-  - "*.log"
-  - "*.pyc"
-  - __pycache__/
-  - dist/
-  - .vscode/
+# Ignore patterns (use aiderignore file instead)
+# See: https://aider.chat/docs/config/aider_ignore.html
