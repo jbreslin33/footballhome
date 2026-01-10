@@ -27,7 +27,7 @@ INSERT INTO scrape_targets (id, source_system_id, scraper_type_id, target_type_i
 ON CONFLICT (id) DO NOTHING;
 
 -- Cosmopolitan Soccer League (CSL) - APSL Feeder League
--- Target type 1 (League Structure), Source system 2 (CSL)
+-- Target type 1 (League Structure), Source system 8 (CSL)
 INSERT INTO scrape_targets (id, source_system_id, scraper_type_id, target_type_id, url, label, is_active) VALUES
-    (5, 2, 1, 1, 'https://www.cosmosoccerleague.com/CSL/Tables/', 'CSL 2025/2026 Season Structure', true)
+    (5, 8, 1, 1, 'https://www.cosmosoccerleague.com/CSL/Tables/', 'CSL 2025/2026 Season Structure', true)
 ON CONFLICT (id) DO NOTHING;
