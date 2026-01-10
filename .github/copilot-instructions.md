@@ -1,5 +1,38 @@
 # Football Home Copilot Instructions
 
+## ⚠️ CRITICAL RULES (READ FIRST)
+
+### Terminal Command Rules
+**NEVER use these commands when showing build/scraper output:**
+- ❌ `tail` - User wants FULL output, not last N lines
+- ❌ `head` - User wants FULL output, not first N lines  
+- ❌ `grep` - Do not filter build output
+- ❌ `tail -f` - Do not use blocking/hanging commands
+- ❌ Pipe to files (`> output.txt`) - Show output directly
+
+**WHY:** User needs to see complete output to diagnose issues. Filtering hides critical errors.
+
+**CORRECT:** `./build.sh` (full output)  
+**WRONG:** `./build.sh 2>&1 | head -100` or `./build.sh | grep error`
+
+### File Organization Rules
+**Root folder is for:**
+- ✅ Primary scripts: `build.sh`, `setup.sh`, `update.sh`
+- ✅ Config files: `package.json`, `docker-compose.yml`, `.env.example`
+- ✅ Documentation: `README.md`, `AI_TOOLS.md`, `*.md` design docs
+- ✅ Wrapper scripts: `./claude`, `./aider`
+
+**Root folder is NOT for:**
+- ❌ Temporary HTML dumps (`team_schedule.html`, `standings_dump.html`)
+- ❌ Temporary JSON files (`standings.json`)
+- ❌ Scraper output (goes in `database/scraped-html/`)
+- ❌ Test files or scratch files
+
+**When scraping/debugging:**
+- Write HTML to `database/scraped-html/[league]/`
+- Write JSON to `database/scraped-html/[league]/`
+- NEVER write temp files to project root
+
 ## 🏗 Architecture Overview
 - **Frontend**: Vanilla JavaScript Single Page Application (SPA) using a custom Finite State Machine (FSM) for navigation.
   - **No Frameworks**: Do not suggest React, Vue, or Angular patterns. Use raw DOM manipulation and the custom `Screen` class structure.
@@ -15,11 +48,6 @@
   - **Full Rebuild**: `./build.sh` (destroys containers/volumes, cleans caches, rebuilds from scratch).
   - **Refresh Data**: `./build.sh --refresh` (re-scrapes all data: APSL + CASA + GroupMe, updates SQL files, then rebuilds).
   - **NOTE**: No quick restart option exists. All rebuilds are full rebuilds.
-- **Terminal Commands - CRITICAL RULES**:
-  - **NEVER filter command output** with `grep`, `head`, `tail`, or pipe to files when running build/rebuild commands
-  - **NEVER use `tail -f`** or any hanging/blocking commands - they will be cancelled by the user
-  - **User wants to see FULL output** from `./build.sh`, scrapers, and Docker commands
-  - For log inspection AFTER completion, use `docker-compose logs` or `podman logs` directly
 - **Database Changes**: 
   - **Manual Static Data**: Add a new numbered SQL file in `database/data/` (e.g., `026-club-admins.sql`). Data inserted here persists across full rebuilds.
   - **Schema Changes**: Update `00-schema.sql`, then run full rebuild (`./build.sh`).
