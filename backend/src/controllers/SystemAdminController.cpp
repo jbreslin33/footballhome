@@ -2381,16 +2381,11 @@ Response SystemAdminController::handleGetOrganizations(const Request& request) {
 Response SystemAdminController::handleGetLeagues(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT l.id, l.name, l.season, l.organization_id, o.name as organization_name, "
-            "'APSL' as league_type "
-            "FROM apsl_leagues l "
+            "SELECT l.id, l.name, l.slug, o.name as organization_name "
+            "FROM leagues l "
             "LEFT JOIN organizations o ON l.organization_id = o.id "
-            "UNION ALL "
-            "SELECT l.id, l.name, l.season, l.organization_id, o.name as organization_name, "
-            "'CASA' as league_type "
-            "FROM casa_leagues l "
-            "LEFT JOIN organizations o ON l.organization_id = o.id "
-            "ORDER BY league_type, name"
+            "WHERE l.is_active = true "
+            "ORDER BY l.name"
         );
         std::string json = "[";
         for (size_t i = 0; i < result.size(); ++i) {
@@ -2398,10 +2393,8 @@ Response SystemAdminController::handleGetLeagues(const Request& request) {
             json += "{";
             json += "\"id\":" + row["id"].as<std::string>() + ",";
             json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
-            json += "\"season\":\"" + (row["season"].is_null() ? "" : row["season"].as<std::string>()) + "\",";
-            json += "\"organization_id\":" + (row["organization_id"].is_null() ? "null" : row["organization_id"].as<std::string>()) + ",";
-            json += "\"organization_name\":\"" + (row["organization_name"].is_null() ? "" : row["organization_name"].as<std::string>()) + "\",";
-            json += "\"league_type\":\"" + row["league_type"].as<std::string>() + "\"";
+            json += "\"slug\":\"" + (row["slug"].is_null() ? "" : row["slug"].as<std::string>()) + "\",";
+            json += "\"organization_name\":\"" + (row["organization_name"].is_null() ? "" : row["organization_name"].as<std::string>()) + "\"";
             json += "}";
             if (i < result.size() - 1) json += ",";
         }
