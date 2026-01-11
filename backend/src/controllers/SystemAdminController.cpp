@@ -42,6 +42,15 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
         return this->handleGetLeagueStats(request);
     });
 
+    // Standings
+    router.get(prefix + "/standings/seasons", [this](const Request& request) {
+        return this->handleGetSeasons(request);
+    });
+    
+    router.get(prefix + "/standings", [this](const Request& request) {
+        return this->handleGetStandings(request);
+    });
+
     // Integration Dashboards
     router.get(prefix + "/organizations", [this](const Request& request) {
         return this->handleGetOrganizations(request);
@@ -3292,3 +3301,149 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
     }
 }
+
+Response SystemAdminController::handleGetSeasons(const Request& request) {
+    try {
+        // Get league_id from query params
+        std::string leagueId = request.queryParams.count("league_id") ? request.queryParams.at("league_id") : "";
+        
+        if (leagueId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"league_id parameter required\"}");
+        }
+        
+        // Get distinct seasons for this league with match counts
+        std::string sql = R"(
+            SELECT 
+                COALESCE(m.season, 'Unknown') as season,
+                COUNT(*) as match_count
+            FROM matches m
+            JOIN teams ht ON m.home_team_id = ht.id
+            JOIN division_teams dt ON dt.team_id = ht.id
+            JOIN divisions d ON d.id = dt.division_id
+            JOIN conferences c ON c.id = d.conference_id
+            JOIN seasons s ON s.id = c.season_id
+            WHERE s.league_id = $1
+            GROUP BY m.season
+            ORDER BY m.season DESC
+        )";
+        
+        pqxx::result result = db_->query(sql, {leagueId});
+        
+        std::ostringstream json;
+        json << "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json << ",";
+            json << "{\"season\":\"" << result[i]["season"].c_str() << "\","
+                 << "\"match_count\":" << result[i]["match_count"].c_str() << "}";
+        }
+        json << "]";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetStandings(const Request& request) {
+    try {
+        // Get league_id and season from query params
+        std::string leagueId = request.queryParams.count("league_id") ? request.queryParams.at("league_id") : "";
+        std::string season = request.queryParams.count("season") ? request.queryParams.at("season") : "";
+        
+        if (leagueId.empty() || season.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"league_id and season parameters required\"}");
+        }
+        
+        // Calculate standings from match results
+        std::string sql = R"(
+            WITH team_matches AS (
+                SELECT 
+                    t.id as team_id,
+                    t.name as team_name,
+                    m.id as match_id,
+                    m.home_team_id,
+                    m.away_team_id,
+                    m.home_score,
+                    m.away_score,
+                    CASE 
+                        WHEN m.home_team_id = t.id THEN m.home_score
+                        ELSE m.away_score
+                    END as goals_for,
+                    CASE 
+                        WHEN m.home_team_id = t.id THEN m.away_score
+                        ELSE m.home_score
+                    END as goals_against,
+                    CASE 
+                        WHEN m.home_team_id = t.id AND m.home_score > m.away_score THEN 3
+                        WHEN m.away_team_id = t.id AND m.away_score > m.home_score THEN 3
+                        WHEN m.home_score = m.away_score THEN 1
+                        ELSE 0
+                    END as points,
+                    CASE 
+                        WHEN m.home_team_id = t.id AND m.home_score > m.away_score THEN 1
+                        WHEN m.away_team_id = t.id AND m.away_score > m.home_score THEN 1
+                        ELSE 0
+                    END as win,
+                    CASE 
+                        WHEN m.home_score = m.away_score THEN 1
+                        ELSE 0
+                    END as draw,
+                    CASE 
+                        WHEN m.home_team_id = t.id AND m.home_score < m.away_score THEN 1
+                        WHEN m.away_team_id = t.id AND m.away_score < m.home_score THEN 1
+                        ELSE 0
+                    END as loss
+                FROM teams t
+                JOIN division_teams dt ON dt.team_id = t.id
+                JOIN divisions d ON d.id = dt.division_id
+                JOIN conferences c ON c.id = d.conference_id
+                JOIN seasons s ON s.id = c.season_id
+                JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
+                WHERE s.league_id = $1
+                    AND m.season = $2
+                    AND m.home_score IS NOT NULL
+                    AND m.away_score IS NOT NULL
+            )
+            SELECT 
+                team_id,
+                team_name,
+                COUNT(*) as games_played,
+                SUM(win) as wins,
+                SUM(draw) as draws,
+                SUM(loss) as losses,
+                SUM(goals_for) as goals_for,
+                SUM(goals_against) as goals_against,
+                SUM(goals_for) - SUM(goals_against) as goal_difference,
+                SUM(points) as points
+            FROM team_matches
+            GROUP BY team_id, team_name
+            ORDER BY points DESC, goal_difference DESC, goals_for DESC, team_name ASC
+        )";
+        
+        pqxx::result result = db_->query(sql, {leagueId, season});
+        
+        std::ostringstream json;
+        json << "[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json << ",";
+            json << "{\"team_id\":" << result[i]["team_id"].c_str() << ","
+                 << "\"team_name\":\"" << result[i]["team_name"].c_str() << "\","
+                 << "\"games_played\":" << result[i]["games_played"].c_str() << ","
+                 << "\"wins\":" << result[i]["wins"].c_str() << ","
+                 << "\"draws\":" << result[i]["draws"].c_str() << ","
+                 << "\"losses\":" << result[i]["losses"].c_str() << ","
+                 << "\"goals_for\":" << result[i]["goals_for"].c_str() << ","
+                 << "\"goals_against\":" << result[i]["goals_against"].c_str() << ","
+                 << "\"goal_difference\":" << result[i]["goal_difference"].c_str() << ","
+                 << "\"points\":" << result[i]["points"].c_str() << "}";
+        }
+        json << "]";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+

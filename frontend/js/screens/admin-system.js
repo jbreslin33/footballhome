@@ -21,7 +21,8 @@ class AdminSystemScreen extends Screen {
         <!-- Navigation Tabs -->
         <div class="admin-tabs">
           <button class="admin-tab active" data-view="matches">⚽ Matches</button>
-          <button class="admin-tab" data-view="coverage">📊 Match Event Coverage</button>
+          <button class="admin-tab" data-view="standings">📊 Standings</button>
+          <button class="admin-tab" data-view="coverage">📈 Match Event Coverage</button>
           <button class="admin-tab" data-view="data-quality">🔍 Data Quality</button>
           <button class="admin-tab" data-view="league-stats">🏆 League Statistics</button>
           <button class="admin-tab" data-view="schema">🗂️ Schema</button>
@@ -87,6 +88,9 @@ class AdminSystemScreen extends Screen {
       switch(view) {
         case 'matches':
           await this.loadMatches();
+          break;
+        case 'standings':
+          await this.loadStandings();
           break;
         case 'coverage':
           await this.loadCoverageReport();
@@ -658,6 +662,149 @@ class AdminSystemScreen extends Screen {
       
     } catch (error) {
       content.innerHTML = `<div class="error-message">Error loading schema: ${error.message}</div>`;
+    }
+  }
+
+  async loadStandings() {
+    const content = this.element.querySelector('.admin-content');
+    
+    try {
+      // Fetch available leagues and seasons
+      const leaguesResponse = await fetch('/api/system-admin/leagues');
+      if (!leaguesResponse.ok) throw new Error('Failed to load leagues');
+      const leagues = await leaguesResponse.json();
+      
+      content.innerHTML = `
+        <div class="standings-view">
+          <h2>📊 League Standings</h2>
+          <p class="subtitle">Select a league and season to view standings</p>
+          
+          <div class="filter-controls" style="margin: var(--space-4) 0; display: flex; gap: var(--space-3); align-items: center;">
+            <div>
+              <label for="league-select" style="display: block; margin-bottom: var(--space-1); font-weight: 600;">League:</label>
+              <select id="league-select" class="form-control" style="min-width: 250px;">
+                <option value="">-- Select League --</option>
+                ${leagues.map(l => `<option value="${l.id}">${l.name}</option>`).join('')}
+              </select>
+            </div>
+            
+            <div>
+              <label for="season-select" style="display: block; margin-bottom: var(--space-1); font-weight: 600;">Season:</label>
+              <select id="season-select" class="form-control" style="min-width: 150px;" disabled>
+                <option value="">-- Select Season --</option>
+              </select>
+            </div>
+            
+            <div style="margin-top: 24px;">
+              <button id="load-standings-btn" class="btn btn-primary" disabled>Load Standings</button>
+            </div>
+          </div>
+          
+          <div id="standings-results" style="margin-top: var(--space-4);">
+            <p style="color: var(--text-secondary); text-align: center; padding: var(--space-6);">
+              👆 Select a league and season above to view standings
+            </p>
+          </div>
+        </div>
+      `;
+      
+      // Event handlers
+      const leagueSelect = document.getElementById('league-select');
+      const seasonSelect = document.getElementById('season-select');
+      const loadBtn = document.getElementById('load-standings-btn');
+      
+      leagueSelect.addEventListener('change', async () => {
+        const leagueId = leagueSelect.value;
+        
+        if (!leagueId) {
+          seasonSelect.disabled = true;
+          seasonSelect.innerHTML = '<option value="">-- Select Season --</option>';
+          loadBtn.disabled = true;
+          return;
+        }
+        
+        // Fetch seasons for this league
+        const seasonsResponse = await fetch(`/api/system-admin/standings/seasons?league_id=${leagueId}`);
+        const seasons = await seasonsResponse.json();
+        
+        seasonSelect.innerHTML = '<option value="">-- Select Season --</option>' + 
+          seasons.map(s => `<option value="${s.season}">${s.season} (${s.match_count} matches)</option>`).join('');
+        seasonSelect.disabled = false;
+        loadBtn.disabled = true;
+      });
+      
+      seasonSelect.addEventListener('change', () => {
+        loadBtn.disabled = !seasonSelect.value;
+      });
+      
+      loadBtn.addEventListener('click', async () => {
+        const leagueId = leagueSelect.value;
+        const season = seasonSelect.value;
+        
+        if (!leagueId || !season) return;
+        
+        const resultsDiv = document.getElementById('standings-results');
+        resultsDiv.innerHTML = '<div class="loading-indicator">Loading standings...</div>';
+        
+        try {
+          const response = await fetch(`/api/system-admin/standings?league_id=${leagueId}&season=${season}`);
+          if (!response.ok) throw new Error('Failed to load standings');
+          const standings = await response.json();
+          
+          if (standings.length === 0) {
+            resultsDiv.innerHTML = '<p class="info-message">No matches found for this league and season.</p>';
+            return;
+          }
+          
+          // Get league name for display
+          const leagueName = leagueSelect.options[leagueSelect.selectedIndex].text;
+          
+          resultsDiv.innerHTML = `
+            <h3>${leagueName} - ${season} Season</h3>
+            <div class="table-container">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Pos</th>
+                    <th>Team</th>
+                    <th>GP</th>
+                    <th>W</th>
+                    <th>D</th>
+                    <th>L</th>
+                    <th>GF</th>
+                    <th>GA</th>
+                    <th>GD</th>
+                    <th>Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${standings.map((team, idx) => `
+                    <tr>
+                      <td><strong>${idx + 1}</strong></td>
+                      <td style="text-align: left;"><strong>${team.team_name}</strong></td>
+                      <td>${team.games_played}</td>
+                      <td>${team.wins}</td>
+                      <td>${team.draws}</td>
+                      <td>${team.losses}</td>
+                      <td>${team.goals_for}</td>
+                      <td>${team.goals_against}</td>
+                      <td style="color: ${team.goal_difference > 0 ? 'green' : team.goal_difference < 0 ? 'red' : 'inherit'};">
+                        ${team.goal_difference > 0 ? '+' : ''}${team.goal_difference}
+                      </td>
+                      <td><strong>${team.points}</strong></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        } catch (error) {
+          resultsDiv.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+        }
+      });
+      
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading standings: ${error.message}</div>`;
     }
   }
 

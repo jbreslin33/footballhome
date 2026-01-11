@@ -27,6 +27,8 @@ private:
     Response handleGetCoverageReport(const Request& request);
     Response handleGetDataQuality(const Request& request);
     Response handleGetLeagueStats(const Request& request);
+    Response handleGetSeasons(const Request& request);
+    Response handleGetStandings(const Request& request);
     
     // System Settings
     Response handleGetSettings(const Request& request);
