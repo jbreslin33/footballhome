@@ -3305,7 +3305,7 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
 Response SystemAdminController::handleGetSeasons(const Request& request) {
     try {
         // Get league_id from query params
-        std::string leagueId = request.queryParams.count("league_id") ? request.queryParams.at("league_id") : "";
+        std::string leagueId = request.getQueryParam("league_id");
         
         if (leagueId.empty()) {
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"league_id parameter required\"}");
@@ -3348,8 +3348,8 @@ Response SystemAdminController::handleGetSeasons(const Request& request) {
 Response SystemAdminController::handleGetStandings(const Request& request) {
     try {
         // Get league_id and season from query params
-        std::string leagueId = request.queryParams.count("league_id") ? request.queryParams.at("league_id") : "";
-        std::string season = request.queryParams.count("season") ? request.queryParams.at("season") : "";
+        std::string leagueId = request.getQueryParam("league_id");
+        std::string season = request.getQueryParam("season");
         
         if (leagueId.empty() || season.empty()) {
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"league_id and season parameters required\"}");
