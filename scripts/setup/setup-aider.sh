@@ -63,12 +63,8 @@ check_python() {
 # Check for Anthropic API key
 check_api_key() {
     if [ -z "$ANTHROPIC_API_KEY" ]; then
-        print_error "ANTHROPIC_API_KEY not set"
-        echo ""
-        print_info "Aider needs Claude API access."
-        print_info "Run this first: ./scripts/setup/setup-claude.sh"
-        echo ""
-        exit 1
+        print_warning "ANTHROPIC_API_KEY not set - Aider will need manual configuration"
+        return
     fi
     
     local masked_key="${ANTHROPIC_API_KEY:0:12}...${ANTHROPIC_API_KEY: -8}"
@@ -81,11 +77,7 @@ install_aider() {
     
     if command_exists aider; then
         print_success "Aider already installed: $(aider --version | head -1)"
-        read -p "Upgrade to latest version? (y/n): " upgrade
-        if [[ "$upgrade" == "y" ]]; then
-            pip3 install --upgrade aider-chat
-            print_success "Aider upgraded"
-        fi
+        # Skip upgrade - user can manually upgrade if needed
     else
         pip3 install aider-chat
         print_success "Aider installed successfully"
@@ -221,6 +213,17 @@ show_usage() {
     echo ""
     print_success "✨ Aider setup complete!"
     echo ""
+    
+    if [ -z "$ANTHROPIC_API_KEY" ]; then
+        print_info "To configure your API key:"
+        echo ""
+        echo -e "  1. Add to ${GREEN}~/.zshrc${NC}:"
+        echo -e "     ${GREEN}export ANTHROPIC_API_KEY='your-api-key-here'${NC}"
+        echo ""
+        echo -e "  2. Then reload: ${GREEN}source ~/.zshrc${NC}"
+        echo ""
+    fi
+    
     print_info "How to use Aider:"
     echo ""
     echo -e "  ${GREEN}./aider${NC}"
@@ -243,8 +246,6 @@ show_usage() {
     echo "  ✓ Multi-file refactoring"
     echo "  ✓ Git integration"
     echo "  ✓ Uses Claude Sonnet 4"
-    echo ""
-    print_warning "Restart terminal or run: source ~/.zshrc"
     echo ""
 }
 

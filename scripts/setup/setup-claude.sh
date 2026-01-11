@@ -68,69 +68,28 @@ check_jq() {
 
 # Get API key from user
 get_api_key() {
-    echo ""
-    print_info "🔑 Anthropic API Key Setup"
-    echo ""
-    
-    # Check if key already exists in environment or profile
-    local existing_key=""
-    local shell_profile=""
-    
-    # Detect shell and profile file
-    if [[ "$SHELL" == *"zsh"* ]]; then
-        shell_profile="$HOME/.zshrc"
-    elif [[ "$SHELL" == *"bash"* ]]; then
-        shell_profile="$HOME/.bashrc"
-    else
-        shell_profile="$HOME/.profile"
-    fi
-    
-    # Check environment variable first
+    # Skip API key setup - user will configure manually
+    # Check if key exists in environment
     if [ -n "$ANTHROPIC_API_KEY" ]; then
-        existing_key="$ANTHROPIC_API_KEY"
-    # Then check profile file
-    elif grep -q "ANTHROPIC_API_KEY" "$shell_profile" 2>/dev/null; then
-        existing_key=$(grep "ANTHROPIC_API_KEY" "$shell_profile" | grep -o 'sk-ant-[^"]*' | head -1)
+        echo "$ANTHROPIC_API_KEY"
+        return
     fi
     
-    # If key exists, ask if user wants to use it
-    if [ -n "$existing_key" ]; then
-        local masked_key="${existing_key:0:12}...${existing_key: -8}"
-        print_success "Found existing API key: $masked_key"
-        echo ""
-        read -p "Use existing key? (y/n): " use_existing
-        
-        if [[ "$use_existing" == "y" ]]; then
-            echo "$existing_key"
-            return
-        fi
-        echo ""
-        print_info "Entering new API key..."
-    fi
-    
-    echo "To get your API key:"
-    echo "  1. Go to: ${BLUE}https://console.anthropic.com/${NC}"
-    echo "  2. Sign up or log in"
-    echo "  3. Click 'API Keys' in the sidebar"
-    echo "  4. Click 'Create Key'"
-    echo "  5. Copy the key"
+    # Return empty - tools will be installed but unconfigured
     echo ""
-    print_warning "Note: You'll need to add billing credits (minimum ~\$5)"
-    echo ""
-    
-    read -p "Enter your Anthropic API key (starts with sk-ant-): " api_key
-    
-    if [[ ! "$api_key" =~ ^sk-ant- ]]; then
-        print_error "Invalid API key format (should start with 'sk-ant-')"
-        exit 1
-    fi
-    
-    echo "$api_key"
 }
+
 
 # Save API key to shell profile
 save_api_key() {
     local api_key="$1"
+    
+    # Skip if no key provided
+    if [ -z "$api_key" ]; then
+        print_warning "No API key provided - user will configure manually"
+        return
+    fi
+    
     local shell_profile=""
     
     # Detect shell and profile file
@@ -265,6 +224,12 @@ WRAPPEREOF
 
 # Test Claude CLI
 test_claude() {
+    # Skip test if no API key configured
+    if [ -z "$ANTHROPIC_API_KEY" ]; then
+        print_warning "Skipping test - API key not configured"
+        return
+    fi
+    
     print_info "Testing Claude CLI..."
     echo ""
     
@@ -276,10 +241,10 @@ test_claude() {
         echo "Response: $test_response"
         echo ""
     else
-        print_error "Failed to communicate with Claude API"
+        print_warning "Failed to communicate with Claude API - check your API key"
         echo ""
         echo "Error: $test_response"
-        exit 1
+        # Don't exit - continue with setup
     fi
 }
 
@@ -288,12 +253,21 @@ show_usage() {
     echo ""
     print_success "✨ Setup complete!"
     echo ""
+    
+    if [ -z "$ANTHROPIC_API_KEY" ]; then
+        print_info "To configure your API key:"
+        echo ""
+        echo -e "  1. Add to ${GREEN}~/.zshrc${NC}:"
+        echo -e "     ${GREEN}export ANTHROPIC_API_KEY='your-api-key-here'${NC}"
+        echo ""
+        echo -e "  2. Then reload: ${GREEN}source ~/.zshrc${NC}"
+        echo ""
+    fi
+    
     print_info "How to use Claude:"
     echo ""
     echo -e "  ${GREEN}./claude chat${NC}           - Interactive mode"
     echo -e "  ${GREEN}./claude query \"text\"${NC}  - Quick query"
-    echo ""
-    print_warning "Restart terminal or run: source ~/.zshrc"
     echo ""
 }
 
