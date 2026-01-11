@@ -56,3 +56,4 @@ footballhome-git-crypt.key
 .env
 env
 .aider*
+frontend/vendor/

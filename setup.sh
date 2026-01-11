@@ -414,7 +414,34 @@ echo "  • Node.js $NODE_VERSION"
 echo "  • npm $NPM_VERSION"
 
 # ============================================================
-# Step 6: Optional AI Development Tools
+# Step 6: Download vis-network library for schema viewer
+# ============================================================
+echo ""
+print_status "Downloading vis-network library for schema visualization..."
+
+VENDOR_DIR="frontend/vendor"
+VIS_VERSION="9.1.9"
+VIS_JS="$VENDOR_DIR/vis-network.min.js"
+VIS_CSS="$VENDOR_DIR/vis-network.min.css"
+
+mkdir -p "$VENDOR_DIR"
+
+if [ ! -f "$VIS_JS" ]; then
+    curl -sL "https://unpkg.com/vis-network@${VIS_VERSION}/standalone/umd/vis-network.min.js" -o "$VIS_JS"
+    print_success "Downloaded vis-network.min.js"
+else
+    print_success "vis-network.min.js already exists"
+fi
+
+if [ ! -f "$VIS_CSS" ]; then
+    curl -sL "https://unpkg.com/vis-network@${VIS_VERSION}/styles/vis-network.min.css" -o "$VIS_CSS"
+    print_success "Downloaded vis-network.min.css"
+else
+    print_success "vis-network.min.css already exists"
+fi
+
+# ============================================================
+# Step 7: Optional AI Development Tools
 # ============================================================
 echo ""
 echo -e "${BLUE}========================================${NC}"
@@ -437,7 +464,7 @@ else
 fi
 
 # ============================================================
-# Step 7: Success and Next Steps
+# Step 8: Success and Next Steps
 # ============================================================
 echo ""
 echo -e "${GREEN}========================================${NC}"
