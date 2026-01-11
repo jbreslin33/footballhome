@@ -18,7 +18,10 @@ Football Home provides multiple AI coding assistants for different use cases. Ch
 
 ### Setup
 ```bash
+# Auto-installed during setup.sh, or run manually:
 ./scripts/setup/setup-claude.sh
+
+# Then configure your API key (see Troubleshooting section below)
 ```
 
 ### Usage
@@ -62,7 +65,10 @@ Football Home provides multiple AI coding assistants for different use cases. Ch
 
 ### Setup
 ```bash
+# Auto-installed during setup.sh, or run manually:
 ./scripts/setup/setup-aider.sh
+
+# Then configure your API key (see Troubleshooting section below)
 ```
 
 ### Usage
@@ -239,13 +245,47 @@ OLLAMA_MODEL="deepseek-coder:6.7b"  # Default model
 
 ## 🆘 Troubleshooting
 
-### Claude/Aider not working?
+### Claude/Aider API Key Not Configured?
+
+The setup scripts install the tools but **don't prompt for API keys**. You need to configure manually:
+
+**1. Get your API key from Anthropic:**
+- Visit https://console.anthropic.com/settings/keys
+- Create a new API key (starts with `sk-ant-api03-...`)
+
+**2. Add to your shell profile:**
+```bash
+# Open your shell config:
+nano ~/.zshrc  # or ~/.bashrc for bash
+
+# Add this line:
+export ANTHROPIC_API_KEY='sk-ant-api03-YOUR-KEY-HERE'
+
+# Save and reload:
+source ~/.zshrc
+```
+
+**3. Verify it's set:**
+```bash
+echo $ANTHROPIC_API_KEY  # Should show your key
+```
+
+**4. Test the tools:**
+```bash
+./claude query "Say hello"
+./aider --version
+```
+
+### Claude/Aider not working after key is set?
 ```bash
 # Check API key is set:
 echo $ANTHROPIC_API_KEY
 
-# If empty, run setup again:
-./scripts/setup/setup-claude.sh
+# If empty, source your profile again:
+source ~/.zshrc
+
+# Still not working? Check key is valid at:
+# https://console.anthropic.com/settings/keys
 ```
 
 ### Ollama not working?
