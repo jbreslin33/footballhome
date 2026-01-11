@@ -46,8 +46,12 @@
 ## 🔧 Development Workflow
 - **Primary Control Script**: Always use `./build.sh` for builds and lifecycle management.
   - **Full Rebuild**: `./build.sh` (destroys containers/volumes, cleans caches, rebuilds from scratch).
-  - **Refresh Data**: `./build.sh --refresh` (re-scrapes all data: APSL + CASA + GroupMe, updates SQL files, then rebuilds).
+  - **Refresh Data**: `./build.sh --refresh` (re-scrapes all active targets from scrape-targets.json, updates SQL files, then rebuilds).
   - **NOTE**: No quick restart option exists. All rebuilds are full rebuilds.
+- **Data Updates**: Use `./update.sh` to run scrapers without rebuilding containers.
+  - Reads active targets from `database/scrape-targets.json`
+  - Updates SQL files in `database/data/`
+  - Does NOT restart containers (run `./build.sh` after to load new data)
 - **Database Changes**: 
   - **Manual Static Data**: Add a new numbered SQL file in `database/data/` (e.g., `026-club-admins.sql`). Data inserted here persists across full rebuilds.
   - **Schema Changes**: Update `00-schema.sql`, then run full rebuild (`./build.sh`).
@@ -58,24 +62,31 @@
     - App data (created by users via UI) → persists only in database (not written back to SQL files)
 
 ## 🔄 Data Scraping Architecture (OOP)
+- **Scrape Targets**: Configuration-driven scraping using `database/scrape-targets.json`
+  - Single source of truth for all scrape URLs and configurations
+  - Each target has: `source_system_id`, `url`, `description`, `config`, `fetch_frequency`, `is_active`
+  - Scrapers read from this file and update `last_fetched_at` after fetching
+  - Target types: `reference_data`, `league_structure`, `roster_data`, `match_data`
 - **Scrapers**: Object-oriented Node.js scrapers in `database/scripts/`
   - Base classes: `Scraper`, `DataFetcher`, `HtmlParser`
   - Services: `IdGenerator`, `SqlGenerator`, `DuplicateDetector`
   - Models: `League`, `Team`, `Player`, `Match`, `Venue`
 - **Scraper Implementations**:
   - `ApslScraper`: APSL league (apslsoccer.com) - ✅ Working
+  - `CslScraper`: CSL league (cosmosoccerleague.com) - ⚠️ Needs implementation
   - `CasaScraper`: CASA league (casasoccerleagues.com + Google Sheets) - 🔄 Needs parsing implementation
   - `GroupMeScraper`: 4 chat implementations (Training, APSL, Boys Club, Old Timers) - ⚠️ Untested
   - `VenueScraper`: Google Places API - ⚠️ Untested
 - **Workflow**: 
-  1. Scrapers generate SQL files in `database/data/` (committed to git for reproducibility)
-  2. `./build.sh` loads SQL files during database initialization
-  3. Use `./build.sh --refresh` to re-scrape and update SQL files
-  4. Use specific flags for selective scraping: `--apsl`, `--casa`, `--lighthouse`, `--groupme`
+  1. Add scrape targets to `database/scrape-targets.json`
+  2. Run `./update.sh` to scrape all active targets
+  3. Scrapers generate SQL files in `database/data/` (committed to git for reproducibility)
+  4. Run `./build.sh` to load SQL files during database initialization
+  5. Use `./build.sh --refresh` to re-scrape all active targets and rebuild
 - **Parsing Pattern**: When implementing new parsers, recover old scraper logic from git history if needed:
   - Old scrapers in commit `4e50246^` (before OOP migration)
   - Port working HTML parsing logic to OOP parser classes
-  - Test with real data using team filters: `--team "Lighthouse"`
+  - Test scraped data via Super Admin dashboard (Matches, Standings, Data Quality reports)
 
 ## 📝 Coding Conventions
 
