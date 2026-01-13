@@ -723,14 +723,35 @@ class AdminSystemScreen extends Screen {
           return;
         }
         
-        // Fetch seasons for this league
-        const seasonsResponse = await fetch(`/api/system-admin/standings/seasons?league_id=${leagueId}`);
-        const seasons = await seasonsResponse.json();
-        
-        seasonSelect.innerHTML = '<option value="">-- Select Season --</option>' + 
-          seasons.map(s => `<option value="${s.season}">${s.season} (${s.match_count} matches)</option>`).join('');
-        seasonSelect.disabled = false;
-        loadBtn.disabled = true;
+        try {
+          // Fetch seasons for this league
+          const seasonsResponse = await fetch(`/api/system-admin/standings/seasons?league_id=${leagueId}`);
+          if (!seasonsResponse.ok) {
+            const errorText = await seasonsResponse.text();
+            console.error('Failed to load seasons:', errorText);
+            seasonSelect.innerHTML = '<option value="">Error loading seasons</option>';
+            seasonSelect.disabled = true;
+            return;
+          }
+          
+          const seasons = await seasonsResponse.json();
+          
+          if (seasons.length === 0) {
+            seasonSelect.innerHTML = '<option value="">No seasons available</option>';
+            seasonSelect.disabled = true;
+            loadBtn.disabled = true;
+            return;
+          }
+          
+          seasonSelect.innerHTML = '<option value="">-- Select Season --</option>' + 
+            seasons.map(s => `<option value="${s.season}">${s.season} (${s.match_count} matches)</option>`).join('');
+          seasonSelect.disabled = false;
+          loadBtn.disabled = true;
+        } catch (error) {
+          console.error('Error fetching seasons:', error);
+          seasonSelect.innerHTML = '<option value="">Error loading seasons</option>';
+          seasonSelect.disabled = true;
+        }
       });
       
       seasonSelect.addEventListener('change', () => {
@@ -759,44 +780,64 @@ class AdminSystemScreen extends Screen {
           // Get league name for display
           const leagueName = leagueSelect.options[leagueSelect.selectedIndex].text;
           
-          resultsDiv.innerHTML = `
-            <h3>${leagueName} - ${season} Season</h3>
-            <div class="table-container">
-              <table class="admin-table">
-                <thead>
-                  <tr>
-                    <th>Pos</th>
-                    <th>Team</th>
-                    <th>GP</th>
-                    <th>W</th>
-                    <th>D</th>
-                    <th>L</th>
-                    <th>GF</th>
-                    <th>GA</th>
-                    <th>GD</th>
-                    <th>Pts</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${standings.map((team, idx) => `
+          // Group standings by division
+          const divisionGroups = {};
+          standings.forEach(team => {
+            const divName = team.division_name || 'Unknown Division';
+            if (!divisionGroups[divName]) {
+              divisionGroups[divName] = [];
+            }
+            divisionGroups[divName].push(team);
+          });
+          
+          // Generate HTML for each division
+          let tablesHtml = '';
+          Object.keys(divisionGroups).sort().forEach(divisionName => {
+            const teams = divisionGroups[divisionName];
+            tablesHtml += `
+              <h3 style="margin-top: var(--space-5); margin-bottom: var(--space-2);">${divisionName}</h3>
+              <div class="table-container">
+                <table class="admin-table">
+                  <thead>
                     <tr>
-                      <td><strong>${idx + 1}</strong></td>
-                      <td style="text-align: left;"><strong>${team.team_name}</strong></td>
-                      <td>${team.games_played}</td>
-                      <td>${team.wins}</td>
-                      <td>${team.draws}</td>
-                      <td>${team.losses}</td>
-                      <td>${team.goals_for}</td>
-                      <td>${team.goals_against}</td>
-                      <td style="color: ${team.goal_difference > 0 ? 'green' : team.goal_difference < 0 ? 'red' : 'inherit'};">
-                        ${team.goal_difference > 0 ? '+' : ''}${team.goal_difference}
-                      </td>
-                      <td><strong>${team.points}</strong></td>
+                      <th>Pos</th>
+                      <th>Team</th>
+                      <th>GP</th>
+                      <th>W</th>
+                      <th>D</th>
+                      <th>L</th>
+                      <th>GF</th>
+                      <th>GA</th>
+                      <th>GD</th>
+                      <th>Pts</th>
                     </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    ${teams.map((team, idx) => `
+                      <tr>
+                        <td><strong>${idx + 1}</strong></td>
+                        <td style="text-align: left;"><strong>${team.team_name}</strong></td>
+                        <td>${team.games_played}</td>
+                        <td>${team.wins}</td>
+                        <td>${team.draws}</td>
+                        <td>${team.losses}</td>
+                        <td>${team.goals_for}</td>
+                        <td>${team.goals_against}</td>
+                        <td style="color: ${team.goal_difference > 0 ? 'green' : team.goal_difference < 0 ? 'red' : 'inherit'};">
+                          ${team.goal_difference > 0 ? '+' : ''}${team.goal_difference}
+                        </td>
+                        <td><strong>${team.points}</strong></td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `;
+          });
+          
+          resultsDiv.innerHTML = `
+            <h2>${leagueName} - ${season} Season</h2>
+            ${tablesHtml}
           `;
         } catch (error) {
           resultsDiv.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;

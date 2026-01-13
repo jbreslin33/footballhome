@@ -2381,7 +2381,7 @@ Response SystemAdminController::handleGetOrganizations(const Request& request) {
 Response SystemAdminController::handleGetLeagues(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT l.id, l.name, l.slug, o.name as organization_name "
+            "SELECT l.id, l.name, o.name as organization_name "
             "FROM leagues l "
             "LEFT JOIN organizations o ON l.organization_id = o.id "
             "WHERE l.is_active = true "
@@ -2393,7 +2393,6 @@ Response SystemAdminController::handleGetLeagues(const Request& request) {
             json += "{";
             json += "\"id\":" + row["id"].as<std::string>() + ",";
             json += "\"name\":\"" + row["name"].as<std::string>() + "\",";
-            json += "\"slug\":\"" + (row["slug"].is_null() ? "" : row["slug"].as<std::string>()) + "\",";
             json += "\"organization_name\":\"" + (row["organization_name"].is_null() ? "" : row["organization_name"].as<std::string>()) + "\"";
             json += "}";
             if (i < result.size() - 1) json += ",";
@@ -3307,17 +3306,17 @@ Response SystemAdminController::handleGetSeasons(const Request& request) {
         // Get distinct seasons for this league with match counts
         std::string sql = R"(
             SELECT 
-                COALESCE(m.season, 'Unknown') as season,
-                COUNT(*) as match_count
-            FROM matches m
-            JOIN teams ht ON m.home_team_id = ht.id
-            JOIN division_teams dt ON dt.team_id = ht.id
-            JOIN divisions d ON d.id = dt.division_id
-            JOIN conferences c ON c.id = d.conference_id
-            JOIN seasons s ON s.id = c.season_id
+                s.name as season,
+                COUNT(DISTINCT m.id) as match_count
+            FROM seasons s
+            LEFT JOIN divisions d ON d.season_id = s.id
+            LEFT JOIN division_teams dt ON dt.division_id = d.id
+            LEFT JOIN teams t ON t.id = dt.team_id
+            LEFT JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
             WHERE s.league_id = $1
-            GROUP BY m.season
-            ORDER BY m.season DESC
+            GROUP BY s.name, s.start_date
+            HAVING COUNT(DISTINCT m.id) > 0
+            ORDER BY s.start_date DESC NULLS LAST, s.name DESC
         )";
         
         pqxx::result result = db_->query(sql, {leagueId});
@@ -3352,6 +3351,8 @@ Response SystemAdminController::handleGetStandings(const Request& request) {
         std::string sql = R"(
             WITH team_matches AS (
                 SELECT 
+                    d.id as division_id,
+                    d.name as division_name,
                     t.id as team_id,
                     t.name as team_name,
                     m.id as match_id,
@@ -3390,15 +3391,16 @@ Response SystemAdminController::handleGetStandings(const Request& request) {
                 FROM teams t
                 JOIN division_teams dt ON dt.team_id = t.id
                 JOIN divisions d ON d.id = dt.division_id
-                JOIN conferences c ON c.id = d.conference_id
-                JOIN seasons s ON s.id = c.season_id
+                JOIN seasons s ON s.id = d.season_id
                 JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
                 WHERE s.league_id = $1
-                    AND m.season = $2
+                    AND s.name = $2
                     AND m.home_score IS NOT NULL
                     AND m.away_score IS NOT NULL
             )
             SELECT 
+                division_id,
+                division_name,
                 team_id,
                 team_name,
                 COUNT(*) as games_played,
@@ -3410,8 +3412,8 @@ Response SystemAdminController::handleGetStandings(const Request& request) {
                 SUM(goals_for) - SUM(goals_against) as goal_difference,
                 SUM(points) as points
             FROM team_matches
-            GROUP BY team_id, team_name
-            ORDER BY points DESC, goal_difference DESC, goals_for DESC, team_name ASC
+            GROUP BY division_id, division_name, team_id, team_name
+            ORDER BY division_name ASC, points DESC, goal_difference DESC, goals_for DESC, team_name ASC
         )";
         
         pqxx::result result = db_->query(sql, {leagueId, season});
@@ -3420,7 +3422,9 @@ Response SystemAdminController::handleGetStandings(const Request& request) {
         json << "[";
         for (size_t i = 0; i < result.size(); ++i) {
             if (i > 0) json << ",";
-            json << "{\"team_id\":" << result[i]["team_id"].c_str() << ","
+            json << "{\"division_id\":" << result[i]["division_id"].c_str() << ","
+                 << "\"division_name\":\"" << result[i]["division_name"].c_str() << "\","
+                 << "\"team_id\":" << result[i]["team_id"].c_str() << ","
                  << "\"team_name\":\"" << result[i]["team_name"].c_str() << "\","
                  << "\"games_played\":" << result[i]["games_played"].c_str() << ","
                  << "\"wins\":" << result[i]["wins"].c_str() << ","
