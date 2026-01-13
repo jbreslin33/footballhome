@@ -40,6 +40,30 @@
     },
     {
       "source_system_id": 2,
+      "source_system_name": "CASA",
+      "target_type": "league_structure",
+      "url": "https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090889",
+      "description": "CASA Select Schedule (Liga 1)",
+      "config": {"extracts": ["teams", "matches"], "league": "CASA Select", "season": "2025-2026"},
+      "fetch_frequency": "weekly",
+      "notes": "CASA Liga 1 - Select level teams",
+      "is_active": false,
+      "last_fetched_at": null
+    },
+    {
+      "source_system_id": 2,
+      "source_system_name": "CASA",
+      "target_type": "league_structure",
+      "url": "https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9096430",
+      "description": "CASA Traditional Schedule (Liga 2)",
+      "config": {"extracts": ["teams", "matches"], "league": "CASA Traditional", "season": "2025-2026"},
+      "fetch_frequency": "weekly",
+      "notes": "CASA Liga 2 - Traditional level teams",
+      "is_active": false,
+      "last_fetched_at": null
+    },
+    {
+      "source_system_id": 3,
       "source_system_name": "CSL",
       "target_type": "league_structure",
       "url": "https://www.cosmosoccerleague.com/CSL/Tables/",
@@ -48,54 +72,6 @@
       "fetch_frequency": "weekly",
       "notes": "Cosmopolitan Soccer League - feeder to APSL Metropolitan",
       "is_active": true,
-      "last_fetched_at": null
-    },
-    {
-      "source_system_id": 3,
-      "source_system_name": "CASA",
-      "target_type": "league_structure",
-      "url": "https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090889",
-      "description": "CASA Liga 1 Schedule",
-      "config": {"extracts": ["teams", "matches"], "division": "Liga 1", "season": "2025-2026"},
-      "fetch_frequency": "weekly",
-      "notes": "8 teams: Adé United, Oaklyn United II, Philly Sierra Stars, Persepolis, Phoenix SCM, Philly BlackStars, Illyrians, Lighthouse Boys Club",
-      "is_active": true,
-      "last_fetched_at": null
-    },
-    {
-      "source_system_id": 3,
-      "source_system_name": "CASA",
-      "target_type": "league_structure",
-      "url": "https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9096430",
-      "description": "CASA Liga 2 Schedule",
-      "config": {"extracts": ["teams", "matches"], "division": "Liga 2", "season": "2025-2026"},
-      "fetch_frequency": "weekly",
-      "notes": "5 teams: Persepolis United II, Phoenix SCR, Philadelphia SC II, Lighthouse Old Timers Club, CF Armada",
-      "is_active": true,
-      "last_fetched_at": null
-    },
-    {
-      "source_system_id": 3,
-      "source_system_name": "CASA",
-      "target_type": "roster_data",
-      "url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vSmsWzjTsLR81d-eQTLDM4EnaqzqUOy5OcWLy1Lna1NYVFY7gOj0nZAQdIk99e99g/pub?gid=480494399&output=csv",
-      "description": "CASA Liga 1 Rosters (Google Sheets)",
-      "config": {"extracts": ["players"], "division": "Liga 1", "format": "csv"},
-      "fetch_frequency": "monthly",
-      "notes": "Roster data from shared Google Sheet",
-      "is_active": false,
-      "last_fetched_at": null
-    },
-    {
-      "source_system_id": 3,
-      "source_system_name": "CASA",
-      "target_type": "roster_data",
-      "url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQsDtR6AQPgThg1105AinjkLqHMaWgQfCFJuWqfEtadH41k5OSKYZ2Hqb0N-CnO2Q/pub?gid=310279135&output=csv",
-      "description": "CASA Liga 2 Rosters (Google Sheets)",
-      "config": {"extracts": ["players"], "division": "Liga 2", "format": "csv"},
-      "fetch_frequency": "monthly",
-      "notes": "Roster data from shared Google Sheet",
-      "is_active": false,
       "last_fetched_at": null
     }
   ]

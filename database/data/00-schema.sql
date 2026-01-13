@@ -176,12 +176,7 @@ CREATE TABLE source_systems (
 INSERT INTO source_systems (id, name, description, is_active) VALUES
     (1, 'apsl', 'American Premier Soccer League', true),
     (2, 'casa', 'CASA Soccer Leagues', true),
-    (3, 'custom', 'User-created/custom data', true),
-    (4, 'groupme', 'GroupMe integration', true),
-    (5, 'google_places', 'Google Places API', true),
-    (6, 'rest_countries', 'REST Countries API', true),
-    (7, 'static_json', 'Static JSON configuration files', true),
-    (8, 'csl', 'Cosmopolitan Soccer League', true)
+    (3, 'csl', 'Cosmopolitan Soccer League', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Scrape Target System Tables
@@ -471,8 +466,7 @@ COMMENT ON TABLE organizations IS 'Universal top-level entities (governing bodie
 INSERT INTO organizations (id, name, short_name, website_url, is_active) VALUES
     (1, 'American Premier Soccer League', 'APSL', 'https://www.apslsoccer.com', true),
     (2, 'CASA Soccer Leagues', 'CASA', 'https://www.casasoccerleagues.com', true),
-    (3, 'Cosmopolitan Soccer League', 'CSL', 'https://www.cosmosoccerleague.com', true),
-    (4, 'Lighthouse 1893 Sports Club', 'Lighthouse 1893 SC', NULL, true)
+    (3, 'Cosmopolitan Soccer League', 'CSL', 'https://www.cosmosoccerleague.com', true)
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval('organizations_id_seq', (SELECT MAX(id) FROM organizations));
@@ -535,12 +529,9 @@ COMMENT ON COLUMN leagues.sanctioned_by_governing_body_id IS 'Governing body tha
 -- Insert static leagues
 INSERT INTO leagues (id, organization_id, name, website_url, sex_restriction, source_system_id, is_active) VALUES
     (1, 1, 'American Premier Soccer League', 'https://www.apslsoccer.com', 'open', 1, true),
-    (2, 2, 'CASA Soccer Leagues', 'https://www.casasoccerleagues.com', 'open', 2, true),
-    (3, 3, 'Cosmopolitan Soccer League', 'https://www.cosmosoccerleague.com', 'open', 8, true),
-    (4, 4, 'Lighthouse 1893 SC - Training', NULL, 'open', 3, true),
-    (5, 4, 'Lighthouse 1893 SC - APSL Team', 'https://www.apslsoccer.com', 'men', 1, true),
-    (6, 4, 'Lighthouse 1893 SC - Boys Club', NULL, 'men', 3, true),
-    (7, 4, 'Lighthouse 1893 SC - Old Timers', NULL, 'men', 3, true)
+    (2, 2, 'CASA Select', 'https://www.casasoccerleagues.com', 'open', 2, true),
+    (3, 2, 'CASA Traditional', 'https://www.casasoccerleagues.com', 'open', 2, true),
+    (4, 3, 'Cosmopolitan Soccer League', 'https://www.cosmosoccerleague.com', 'open', 3, true)
 ON CONFLICT (organization_id, name) DO NOTHING;
 
 SELECT setval('leagues_id_seq', (SELECT MAX(id) FROM leagues));
