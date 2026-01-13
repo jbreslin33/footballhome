@@ -9,6 +9,8 @@ class Arrow {
   }
 
   draw(ctx) {
+    ctx.save(); // Save canvas state
+    
     const headLength = 15;
     const angle = Math.atan2(this.endY - this.startY, this.endX - this.startX);
     
@@ -35,6 +37,8 @@ class Arrow {
     );
     ctx.closePath();
     ctx.fill();
+    
+    ctx.restore(); // Restore canvas state
   }
 
   distanceToPoint(px, py) {
