@@ -2,8 +2,8 @@ services:
   # PostgreSQL Database with pg_cron for scheduled jobs
   db:
     build:
-      context: ./.docker/postgres
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: .docker/postgres/Dockerfile
     container_name: footballhome_db
     restart: unless-stopped
     environment:
@@ -16,9 +16,7 @@ services:
       - "5432:5432"
     volumes:
       # Mount data folder to neutral location to prevent auto-loading
-      - ./database/data:/app/data:ro
-      # Mount only the loader script to initdb.d
-      - ./database/data/001-load-data.sh:/docker-entrypoint-initdb.d/001-load-data.sh:ro
+      - ./database/data:/app/data:ro,Z
       # Persistent data storage
       - db_data:/var/lib/postgresql/data
     networks:
