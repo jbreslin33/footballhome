@@ -21,6 +21,7 @@ class AdminSystemScreen extends Screen {
         <!-- Navigation Tabs -->
         <div class="admin-tabs">
           <button class="admin-tab active" data-view="matches">⚽ Matches</button>
+          <button class="admin-tab" data-view="teams">👥 Teams</button>
           <button class="admin-tab" data-view="standings">📊 Standings</button>
           <button class="admin-tab" data-view="coverage">📈 Match Event Coverage</button>
           <button class="admin-tab" data-view="data-quality">🔍 Data Quality</button>
@@ -88,6 +89,9 @@ class AdminSystemScreen extends Screen {
       switch(view) {
         case 'matches':
           await this.loadMatches();
+          break;
+        case 'teams':
+          await this.loadTeams();
           break;
         case 'standings':
           await this.loadStandings();
@@ -662,6 +666,183 @@ class AdminSystemScreen extends Screen {
       
     } catch (error) {
       content.innerHTML = `<div class="error-message">Error loading schema: ${error.message}</div>`;
+    }
+  }
+
+  async loadTeams() {
+    const content = this.element.querySelector('.admin-content');
+    
+    try {
+      // Fetch available leagues
+      const leaguesResponse = await fetch('/api/system-admin/leagues');
+      if (!leaguesResponse.ok) throw new Error('Failed to load leagues');
+      const leagues = await leaguesResponse.json();
+      
+      content.innerHTML = `
+        <div class="teams-view">
+          <h2>👥 Teams Report</h2>
+          <p class="subtitle">View all teams by league and season</p>
+          
+          <div class="filter-controls" style="margin: var(--space-4) 0; display: flex; gap: var(--space-3); align-items: center;">
+            <div>
+              <label for="teams-league-select" style="display: block; margin-bottom: var(--space-1); font-weight: 600;">League:</label>
+              <select id="teams-league-select" class="form-control" style="min-width: 250px;">
+                <option value="">-- Select League --</option>
+                ${leagues.map(l => `<option value="${l.id}">${l.name}</option>`).join('')}
+              </select>
+            </div>
+            
+            <div>
+              <label for="teams-season-select" style="display: block; margin-bottom: var(--space-1); font-weight: 600;">Season (Optional):</label>
+              <select id="teams-season-select" class="form-control" style="min-width: 150px;" disabled>
+                <option value="">All Seasons</option>
+              </select>
+            </div>
+            
+            <div style="margin-top: 24px;">
+              <button id="load-teams-btn" class="btn btn-primary" disabled>Load Teams</button>
+            </div>
+          </div>
+          
+          <div id="teams-results" style="margin-top: var(--space-4);">
+            <p style="color: var(--text-secondary); text-align: center; padding: var(--space-6);">
+              👆 Select a league above to view teams
+            </p>
+          </div>
+        </div>
+      `;
+      
+      // Event handlers
+      const leagueSelect = document.getElementById('teams-league-select');
+      const seasonSelect = document.getElementById('teams-season-select');
+      const loadBtn = document.getElementById('load-teams-btn');
+      
+      leagueSelect.addEventListener('change', async () => {
+        const leagueId = leagueSelect.value;
+        
+        if (!leagueId) {
+          seasonSelect.disabled = true;
+          seasonSelect.innerHTML = '<option value="">All Seasons</option>';
+          loadBtn.disabled = true;
+          return;
+        }
+        
+        try {
+          // Fetch seasons for this league
+          const seasonsResponse = await fetch(`/api/system-admin/standings/seasons?league_id=${leagueId}`);
+          if (!seasonsResponse.ok) {
+            console.error('Failed to load seasons');
+            seasonSelect.innerHTML = '<option value="">All Seasons</option>';
+            seasonSelect.disabled = false;
+            loadBtn.disabled = false;
+            return;
+          }
+          
+          const seasons = await seasonsResponse.json();
+          
+          seasonSelect.innerHTML = '<option value="">All Seasons</option>' + 
+            seasons.map(s => `<option value="${s.season}">${s.season}</option>`).join('');
+          seasonSelect.disabled = false;
+          loadBtn.disabled = false;
+        } catch (error) {
+          console.error('Error fetching seasons:', error);
+          seasonSelect.innerHTML = '<option value="">All Seasons</option>';
+          seasonSelect.disabled = false;
+          loadBtn.disabled = false;
+        }
+      });
+      
+      loadBtn.addEventListener('click', async () => {
+        const leagueId = leagueSelect.value;
+        const season = seasonSelect.value;
+        
+        if (!leagueId) return;
+        
+        const resultsDiv = document.getElementById('teams-results');
+        resultsDiv.innerHTML = '<div class="loading-indicator">Loading teams...</div>';
+        
+        try {
+          let url = `/api/system-admin/teams?league_id=${leagueId}`;
+          if (season) {
+            url += `&season=${season}`;
+          }
+          
+          const response = await fetch(url);
+          if (!response.ok) throw new Error('Failed to load teams');
+          
+          const teams = await response.json();
+          
+          if (teams.length === 0) {
+            resultsDiv.innerHTML = `
+              <div style="text-align: center; padding: var(--space-6); color: var(--text-secondary);">
+                <p>No teams found for selected league${season ? ' and season' : ''}.</p>
+              </div>
+            `;
+            return;
+          }
+          
+          // Group teams by division
+          const teamsByDivision = {};
+          teams.forEach(team => {
+            const divKey = team.division_name || 'No Division';
+            if (!teamsByDivision[divKey]) {
+              teamsByDivision[divKey] = [];
+            }
+            teamsByDivision[divKey].push(team);
+          });
+          
+          const divisionKeys = Object.keys(teamsByDivision).sort();
+          
+          resultsDiv.innerHTML = `
+            <div class="teams-results">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
+                <h3>${teams.length} Teams ${season ? 'in ' + season : 'Across All Seasons'}</h3>
+              </div>
+              
+              ${divisionKeys.map(divKey => {
+                const divTeams = teamsByDivision[divKey];
+                return `
+                  <div class="division-section" style="margin-bottom: var(--space-5);">
+                    <h4 style="background: var(--bg-secondary); padding: var(--space-2); border-radius: var(--radius-md); margin-bottom: var(--space-2);">
+                      ${divKey} (${divTeams.length} teams)
+                    </h4>
+                    
+                    <table class="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Team Name</th>
+                          <th>Club</th>
+                          ${!season ? '<th>Seasons</th>' : '<th>External ID</th>'}
+                          <th>Source</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${divTeams.map(team => `
+                          <tr>
+                            <td><strong>${team.team_name}</strong></td>
+                            <td>${team.club_name || '-'}</td>
+                            ${!season ? 
+                              `<td>${team.seasons || '-'}</td>` : 
+                              `<td>${team.external_id || '-'}</td>`
+                            }
+                            <td>${team.source_system || '-'}</td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+          
+        } catch (error) {
+          resultsDiv.innerHTML = `<div class="error-message">Error loading teams: ${error.message}</div>`;
+        }
+      });
+      
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading teams view: ${error.message}</div>`;
     }
   }
 

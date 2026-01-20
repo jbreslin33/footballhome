@@ -50,6 +50,11 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
     router.get(prefix + "/standings", [this](const Request& request) {
         return this->handleGetStandings(request);
     });
+    
+    // Teams Report
+    router.get(prefix + "/teams", [this](const Request& request) {
+        return this->handleGetTeams(request);
+    });
 
     // Integration Dashboards
     router.get(prefix + "/organizations", [this](const Request& request) {
@@ -3395,6 +3400,106 @@ Response SystemAdminController::handleGetStandings(const Request& request) {
         json << "]";
         
         return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetTeams(const Request& request) {
+    try {
+        // Get league_id (required) and season (optional) from query params
+        std::string leagueId = request.getQueryParam("league_id");
+        std::string season = request.getQueryParam("season");
+        
+        if (leagueId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"league_id parameter required\"}");
+        }
+        
+        std::string sql;
+        
+        if (season.empty()) {
+            // Get all teams across all seasons for this league
+            sql = R"(
+                SELECT DISTINCT
+                    t.id as team_id,
+                    t.name as team_name,
+                    t.external_id,
+                    c.name as club_name,
+                    d.name as division_name,
+                    ss.name as source_system,
+                    STRING_AGG(DISTINCT s.name, ', ' ORDER BY s.name) as seasons
+                FROM teams t
+                LEFT JOIN clubs c ON c.id = t.club_id
+                LEFT JOIN source_systems ss ON ss.id = t.source_system_id
+                JOIN division_teams dt ON dt.team_id = t.id
+                JOIN divisions d ON d.id = dt.division_id
+                JOIN seasons s ON s.id = d.season_id
+                WHERE s.league_id = $1
+                GROUP BY t.id, t.name, t.external_id, c.name, d.name, ss.name
+                ORDER BY d.name ASC, t.name ASC
+            )";
+            
+            pqxx::result result = db_->query(sql, {leagueId});
+            
+            std::ostringstream json;
+            json << "[";
+            for (size_t i = 0; i < result.size(); ++i) {
+                if (i > 0) json << ",";
+                json << "{"
+                     << "\"team_id\":" << result[i]["team_id"].c_str() << ","
+                     << "\"team_name\":\"" << result[i]["team_name"].c_str() << "\","
+                     << "\"external_id\":\"" << (result[i]["external_id"].is_null() ? "" : result[i]["external_id"].c_str()) << "\","
+                     << "\"club_name\":\"" << (result[i]["club_name"].is_null() ? "" : result[i]["club_name"].c_str()) << "\","
+                     << "\"division_name\":\"" << (result[i]["division_name"].is_null() ? "" : result[i]["division_name"].c_str()) << "\","
+                     << "\"source_system\":\"" << (result[i]["source_system"].is_null() ? "" : result[i]["source_system"].c_str()) << "\","
+                     << "\"seasons\":\"" << (result[i]["seasons"].is_null() ? "" : result[i]["seasons"].c_str()) << "\""
+                     << "}";
+            }
+            json << "]";
+            
+            return Response(HttpStatus::OK, json.str());
+            
+        } else {
+            // Get teams for specific season
+            sql = R"(
+                SELECT 
+                    t.id as team_id,
+                    t.name as team_name,
+                    t.external_id,
+                    c.name as club_name,
+                    d.name as division_name,
+                    ss.name as source_system
+                FROM teams t
+                LEFT JOIN clubs c ON c.id = t.club_id
+                LEFT JOIN source_systems ss ON ss.id = t.source_system_id
+                JOIN division_teams dt ON dt.team_id = t.id
+                JOIN divisions d ON d.id = dt.division_id
+                JOIN seasons s ON s.id = d.season_id
+                WHERE s.league_id = $1
+                    AND s.name = $2
+                ORDER BY d.name ASC, t.name ASC
+            )";
+            
+            pqxx::result result = db_->query(sql, {leagueId, season});
+            
+            std::ostringstream json;
+            json << "[";
+            for (size_t i = 0; i < result.size(); ++i) {
+                if (i > 0) json << ",";
+                json << "{"
+                     << "\"team_id\":" << result[i]["team_id"].c_str() << ","
+                     << "\"team_name\":\"" << result[i]["team_name"].c_str() << "\","
+                     << "\"external_id\":\"" << (result[i]["external_id"].is_null() ? "" : result[i]["external_id"].c_str()) << "\","
+                     << "\"club_name\":\"" << (result[i]["club_name"].is_null() ? "" : result[i]["club_name"].c_str()) << "\","
+                     << "\"division_name\":\"" << (result[i]["division_name"].is_null() ? "" : result[i]["division_name"].c_str()) << "\","
+                     << "\"source_system\":\"" << (result[i]["source_system"].is_null() ? "" : result[i]["source_system"].c_str()) << "\""
+                     << "}";
+            }
+            json << "]";
+            
+            return Response(HttpStatus::OK, json.str());
+        }
         
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
