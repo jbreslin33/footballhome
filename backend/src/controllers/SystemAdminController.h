@@ -30,6 +30,7 @@ private:
     Response handleGetSeasons(const Request& request);
     Response handleGetStandings(const Request& request);
     Response handleGetTeams(const Request& request);
+    Response handleGetPlayers(const Request& request);
     
     // System Settings
     Response handleGetSettings(const Request& request);

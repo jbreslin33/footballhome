@@ -55,6 +55,11 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
     router.get(prefix + "/teams", [this](const Request& request) {
         return this->handleGetTeams(request);
     });
+    
+    // Players Report
+    router.get(prefix + "/players", [this](const Request& request) {
+        return this->handleGetPlayers(request);
+    });
 
     // Integration Dashboards
     router.get(prefix + "/organizations", [this](const Request& request) {
@@ -3500,6 +3505,78 @@ Response SystemAdminController::handleGetTeams(const Request& request) {
             
             return Response(HttpStatus::OK, json.str());
         }
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetPlayers(const Request& request) {
+    try {
+        // Get league_id, season, and team_id from query params
+        std::string leagueId = request.getQueryParam("league_id");
+        std::string season = request.getQueryParam("season");
+        std::string teamId = request.getQueryParam("team_id");
+        
+        if (leagueId.empty() || season.empty() || teamId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"league_id, season, and team_id parameters required\"}");
+        }
+        
+        // Get team name
+        std::string teamNameSql = R"(
+            SELECT t.name as team_name
+            FROM teams t
+            WHERE t.id = $1
+        )";
+        
+        pqxx::result teamResult = db_->query(teamNameSql, {teamId});
+        std::string teamName = teamResult.size() > 0 ? teamResult[0]["team_name"].c_str() : "Unknown";
+        
+        // Get players for this team in this season
+        std::string sql = R"(
+            SELECT 
+                p.id as player_id,
+                per.first_name,
+                per.last_name,
+                per.birth_date,
+                p.external_id,
+                dtp.jersey_number,
+                pos.name as position_name
+            FROM players p
+            JOIN persons per ON per.id = p.person_id
+            JOIN division_team_players dtp ON dtp.player_id = p.id
+            JOIN division_teams dt ON dt.id = dtp.division_team_id
+            JOIN teams t ON t.id = dt.team_id
+            JOIN divisions d ON d.id = dt.division_id
+            JOIN seasons s ON s.id = d.season_id
+            LEFT JOIN division_team_player_positions dtpp ON dtpp.division_team_player_id = dtp.id AND dtpp.is_primary = true
+            LEFT JOIN positions pos ON pos.id = dtpp.position_id
+            WHERE t.id = $1
+                AND s.league_id = $2
+                AND s.name = $3
+                AND dtp.is_active = true
+            ORDER BY dtp.jersey_number ASC NULLS LAST, per.last_name ASC, per.first_name ASC
+        )";
+        
+        pqxx::result result = db_->query(sql, {teamId, leagueId, season});
+        
+        std::ostringstream json;
+        json << "{\"team_name\":\"" << teamName << "\",\"players\":[";
+        for (size_t i = 0; i < result.size(); ++i) {
+            if (i > 0) json << ",";
+            json << "{"
+                 << "\"player_id\":" << result[i]["player_id"].c_str() << ","
+                 << "\"first_name\":\"" << (result[i]["first_name"].is_null() ? "" : result[i]["first_name"].c_str()) << "\","
+                 << "\"last_name\":\"" << (result[i]["last_name"].is_null() ? "" : result[i]["last_name"].c_str()) << "\","
+                 << "\"date_of_birth\":" << (result[i]["birth_date"].is_null() ? "null" : ("\"" + std::string(result[i]["birth_date"].c_str()) + "\"")) << ","
+                 << "\"external_id\":\"" << (result[i]["external_id"].is_null() ? "" : result[i]["external_id"].c_str()) << "\","
+                 << "\"jersey_number\":" << (result[i]["jersey_number"].is_null() ? "null" : result[i]["jersey_number"].c_str()) << ","
+                 << "\"position_name\":\"" << (result[i]["position_name"].is_null() ? "" : result[i]["position_name"].c_str()) << "\""
+                 << "}";
+        }
+        json << "]}";
+        
+        return Response(HttpStatus::OK, json.str());
         
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");

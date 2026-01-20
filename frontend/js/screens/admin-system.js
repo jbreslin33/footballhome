@@ -22,6 +22,7 @@ class AdminSystemScreen extends Screen {
         <div class="admin-tabs">
           <button class="admin-tab active" data-view="matches">⚽ Matches</button>
           <button class="admin-tab" data-view="teams">👥 Teams</button>
+          <button class="admin-tab" data-view="players">🏃 Players</button>
           <button class="admin-tab" data-view="standings">📊 Standings</button>
           <button class="admin-tab" data-view="coverage">📈 Match Event Coverage</button>
           <button class="admin-tab" data-view="data-quality">🔍 Data Quality</button>
@@ -92,6 +93,9 @@ class AdminSystemScreen extends Screen {
           break;
         case 'teams':
           await this.loadTeams();
+          break;
+        case 'players':
+          await this.loadPlayers();
           break;
         case 'standings':
           await this.loadStandings();
@@ -843,6 +847,201 @@ class AdminSystemScreen extends Screen {
       
     } catch (error) {
       content.innerHTML = `<div class="error-message">Error loading teams view: ${error.message}</div>`;
+    }
+  }
+
+  async loadPlayers() {
+    const content = this.element.querySelector('.admin-content');
+    
+    try {
+      // Fetch available leagues
+      const leaguesResponse = await fetch('/api/system-admin/leagues');
+      if (!leaguesResponse.ok) throw new Error('Failed to load leagues');
+      const leagues = await leaguesResponse.json();
+      
+      content.innerHTML = `
+        <div class="players-view">
+          <h2>🏃 Players Report</h2>
+          <p class="subtitle">View all players by league, season, and team</p>
+          
+          <div class="filter-controls" style="margin: var(--space-4) 0; display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
+            <div>
+              <label for="players-league-select" style="display: block; margin-bottom: var(--space-1); font-weight: 600;">League:</label>
+              <select id="players-league-select" class="form-control" style="min-width: 250px;">
+                <option value="">-- Select League --</option>
+                ${leagues.map(l => `<option value="${l.id}">${l.name}</option>`).join('')}
+              </select>
+            </div>
+            
+            <div>
+              <label for="players-season-select" style="display: block; margin-bottom: var(--space-1); font-weight: 600;">Season:</label>
+              <select id="players-season-select" class="form-control" style="min-width: 150px;" disabled>
+                <option value="">-- Select Season --</option>
+              </select>
+            </div>
+            
+            <div>
+              <label for="players-team-select" style="display: block; margin-bottom: var(--space-1); font-weight: 600;">Team:</label>
+              <select id="players-team-select" class="form-control" style="min-width: 250px;" disabled>
+                <option value="">-- Select Team --</option>
+              </select>
+            </div>
+            
+            <div style="margin-top: 24px;">
+              <button id="load-players-btn" class="btn btn-primary" disabled>Load Players</button>
+            </div>
+          </div>
+          
+          <div id="players-results" style="margin-top: var(--space-4);">
+            <p style="color: var(--text-secondary); text-align: center; padding: var(--space-6);">
+              👆 Select a league, season, and team above to view players
+            </p>
+          </div>
+        </div>
+      `;
+      
+      // Event handlers
+      const leagueSelect = document.getElementById('players-league-select');
+      const seasonSelect = document.getElementById('players-season-select');
+      const teamSelect = document.getElementById('players-team-select');
+      const loadBtn = document.getElementById('load-players-btn');
+      
+      leagueSelect.addEventListener('change', async () => {
+        const leagueId = leagueSelect.value;
+        
+        seasonSelect.disabled = true;
+        seasonSelect.innerHTML = '<option value="">-- Select Season --</option>';
+        teamSelect.disabled = true;
+        teamSelect.innerHTML = '<option value="">-- Select Team --</option>';
+        loadBtn.disabled = true;
+        
+        if (!leagueId) return;
+        
+        try {
+          const seasonsResponse = await fetch(`/api/system-admin/standings/seasons?league_id=${leagueId}`);
+          if (!seasonsResponse.ok) {
+            console.error('Failed to load seasons');
+            return;
+          }
+          
+          const seasons = await seasonsResponse.json();
+          
+          seasonSelect.innerHTML = '<option value="">-- Select Season --</option>' + 
+            seasons.map(s => `<option value="${s.season}">${s.season}</option>`).join('');
+          seasonSelect.disabled = false;
+        } catch (error) {
+          console.error('Error fetching seasons:', error);
+        }
+      });
+      
+      seasonSelect.addEventListener('change', async () => {
+        const leagueId = leagueSelect.value;
+        const season = seasonSelect.value;
+        
+        teamSelect.disabled = true;
+        teamSelect.innerHTML = '<option value="">-- Select Team --</option>';
+        loadBtn.disabled = true;
+        
+        if (!leagueId || !season) return;
+        
+        try {
+          const teamsResponse = await fetch(`/api/system-admin/teams?league_id=${leagueId}&season=${season}`);
+          if (!teamsResponse.ok) {
+            console.error('Failed to load teams');
+            return;
+          }
+          
+          const teams = await teamsResponse.json();
+          
+          // Get unique teams
+          const uniqueTeams = [];
+          const seenIds = new Set();
+          teams.forEach(team => {
+            if (!seenIds.has(team.team_id)) {
+              seenIds.add(team.team_id);
+              uniqueTeams.push(team);
+            }
+          });
+          
+          uniqueTeams.sort((a, b) => a.team_name.localeCompare(b.team_name));
+          
+          teamSelect.innerHTML = '<option value="">-- Select Team --</option>' + 
+            uniqueTeams.map(t => `<option value="${t.team_id}">${t.team_name}</option>`).join('');
+          teamSelect.disabled = false;
+        } catch (error) {
+          console.error('Error fetching teams:', error);
+        }
+      });
+      
+      teamSelect.addEventListener('change', () => {
+        loadBtn.disabled = !teamSelect.value;
+      });
+      
+      loadBtn.addEventListener('click', async () => {
+        const leagueId = leagueSelect.value;
+        const season = seasonSelect.value;
+        const teamId = teamSelect.value;
+        
+        if (!leagueId || !season || !teamId) return;
+        
+        const resultsDiv = document.getElementById('players-results');
+        resultsDiv.innerHTML = '<div class="loading-indicator">Loading players...</div>';
+        
+        try {
+          const response = await fetch(`/api/system-admin/players?league_id=${leagueId}&season=${season}&team_id=${teamId}`);
+          if (!response.ok) throw new Error('Failed to load players');
+          
+          const result = await response.json();
+          const players = result.players || [];
+          const teamName = result.team_name || '';
+          
+          if (players.length === 0) {
+            resultsDiv.innerHTML = `
+              <div style="text-align: center; padding: var(--space-6); color: var(--text-secondary);">
+                <p>No players found for ${teamName} in ${season}.</p>
+              </div>
+            `;
+            return;
+          }
+          
+          resultsDiv.innerHTML = `
+            <div class="players-results">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
+                <h3>${players.length} Players - ${teamName} (${season})</h3>
+              </div>
+              
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Jersey #</th>
+                    <th>Player Name</th>
+                    <th>Position</th>
+                    <th>Date of Birth</th>
+                    <th>External ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${players.map(player => `
+                    <tr>
+                      <td><strong>${player.jersey_number || '-'}</strong></td>
+                      <td>${player.first_name || ''} ${player.last_name || ''}</td>
+                      <td>${player.position_name || '-'}</td>
+                      <td>${player.date_of_birth ? new Date(player.date_of_birth).toLocaleDateString() : '-'}</td>
+                      <td>${player.external_id || '-'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+          
+        } catch (error) {
+          resultsDiv.innerHTML = `<div class="error-message">Error loading players: ${error.message}</div>`;
+        }
+      });
+      
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading players view: ${error.message}</div>`;
     }
   }
 
