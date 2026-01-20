@@ -9,6 +9,7 @@ const DivisionRepository = require('../domain/repositories/DivisionRepository');
 const ScrapedTeamRepository = require('../domain/repositories/ScrapedTeamRepository');
 const ClubRepository = require('../domain/repositories/ClubRepository');
 const DivisionTeamRepository = require('../domain/repositories/DivisionTeamRepository');
+const StandingsRepository = require('../domain/repositories/StandingsRepository');
 const Organization = require('../domain/models/Organization');
 const Club = require('../domain/models/Club');
 
@@ -23,7 +24,7 @@ const Club = require('../domain/models/Club');
  * Data Source: scrape_targets table (id=1 for current season, 2-4 for historical)
  */
 class ApslStructureScraper {
-  constructor(scrapeTarget, fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo, divisionRepo, teamRepo, clubRepo, divisionTeamRepo) {
+  constructor(scrapeTarget, fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo, divisionRepo, teamRepo, clubRepo, divisionTeamRepo, standingsRepo) {
     this.scrapeTarget = scrapeTarget;
     this.fetcher = fetcher;
     this.parser = parser;
@@ -35,6 +36,7 @@ class ApslStructureScraper {
     this.teamRepo = teamRepo;
     this.clubRepo = clubRepo;
     this.divisionTeamRepo = divisionTeamRepo;
+    this.standingsRepo = standingsRepo;
   }
   
   /**
@@ -252,15 +254,17 @@ class ApslStructureScraper {
         );
       }
       
-      // 7. Populate division_teams (link teams to divisions)
+      // 7. Populate division_teams (link teams to divisions) and save standings
       if (divisionTeams && divisionTeams.length > 0) {
-        console.log('🔗 Linking teams to divisions...');
+        console.log('🔗 Linking teams to divisions and saving standings...');
         
         // Build maps for quick lookup
         const divisionsByName = new Map(savedDivisions.map(d => [d.name, d.id]));
         const teamsByName = new Map(savedTeams.map(t => [t.name, t.id]));
         
         let linksCreated = 0;
+        let standingsSaved = 0;
+        
         for (const divisionData of divisionTeams) {
           const divisionName = divisionData.conferenceName.replace(/\s+Conference$/i, '').trim();
           const divisionId = divisionsByName.get(divisionName);
@@ -270,7 +274,9 @@ class ApslStructureScraper {
             continue;
           }
           
-          for (const team of divisionData.teams) {
+          // Process each team in this division
+          for (let i = 0; i < divisionData.teams.length; i++) {
+            const team = divisionData.teams[i];
             const teamId = teamsByName.get(team.name);
             
             if (!teamId) {
@@ -278,12 +284,39 @@ class ApslStructureScraper {
               continue;
             }
             
+            // Link team to division
             await this.divisionTeamRepo.upsert(divisionId, teamId);
             linksCreated++;
+            
+            // Save standings data if available
+            if (divisionData.standings && divisionData.standings[i]) {
+              const stats = divisionData.standings[i];
+              
+              // For APSL, competition_id = division_id (each division is its own competition)
+              await this.standingsRepo.upsert({
+                competitionId: divisionId,  // APSL: division = competition
+                seasonId: seasonResult.id,
+                teamId: teamId,
+                position: stats.position,
+                played: stats.played,
+                wins: stats.wins,
+                draws: stats.draws,
+                losses: stats.losses,
+                goalsFor: stats.goalsFor,
+                goalsAgainst: stats.goalsAgainst,
+                goalDiff: stats.goalDiff,
+                points: stats.points,
+                fetchedAt: new Date(),
+                source: 'APSL Standings Page'
+              });
+              
+              standingsSaved++;
+            }
           }
         }
         
         console.log(`   ✓ Division-Team Links: ${linksCreated} created`);
+        console.log(`   ✓ Standings: ${standingsSaved} records saved`);
       }
     }
     
@@ -329,6 +362,7 @@ class ApslStructureScraper {
     const teamRepo = new ScrapedTeamRepository(client);
     const clubRepo = new ClubRepository(client);
     const divisionTeamRepo = new DivisionTeamRepository(client);
+    const standingsRepo = new StandingsRepository(client);
     
     // Inject dependencies
     const scraper = new ApslStructureScraper(
@@ -342,7 +376,8 @@ class ApslStructureScraper {
       divisionRepo,
       teamRepo,
       clubRepo,
-      divisionTeamRepo
+      divisionTeamRepo,
+      standingsRepo
     );
     
     // Store pool and client for cleanup

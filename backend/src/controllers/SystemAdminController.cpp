@@ -3347,73 +3347,29 @@ Response SystemAdminController::handleGetStandings(const Request& request) {
             return Response(HttpStatus::BAD_REQUEST, "{\"error\":\"league_id and season parameters required\"}");
         }
         
-        // Calculate standings from match results
+        // Query standings table (mirrored from APSL/source sites)
         std::string sql = R"(
-            WITH team_matches AS (
-                SELECT 
-                    d.id as division_id,
-                    d.name as division_name,
-                    t.id as team_id,
-                    t.name as team_name,
-                    m.id as match_id,
-                    m.home_team_id,
-                    m.away_team_id,
-                    m.home_score,
-                    m.away_score,
-                    CASE 
-                        WHEN m.home_team_id = t.id THEN m.home_score
-                        ELSE m.away_score
-                    END as goals_for,
-                    CASE 
-                        WHEN m.home_team_id = t.id THEN m.away_score
-                        ELSE m.home_score
-                    END as goals_against,
-                    CASE 
-                        WHEN m.home_team_id = t.id AND m.home_score > m.away_score THEN 3
-                        WHEN m.away_team_id = t.id AND m.away_score > m.home_score THEN 3
-                        WHEN m.home_score = m.away_score THEN 1
-                        ELSE 0
-                    END as points,
-                    CASE 
-                        WHEN m.home_team_id = t.id AND m.home_score > m.away_score THEN 1
-                        WHEN m.away_team_id = t.id AND m.away_score > m.home_score THEN 1
-                        ELSE 0
-                    END as win,
-                    CASE 
-                        WHEN m.home_score = m.away_score THEN 1
-                        ELSE 0
-                    END as draw,
-                    CASE 
-                        WHEN m.home_team_id = t.id AND m.home_score < m.away_score THEN 1
-                        WHEN m.away_team_id = t.id AND m.away_score < m.home_score THEN 1
-                        ELSE 0
-                    END as loss
-                FROM teams t
-                JOIN division_teams dt ON dt.team_id = t.id
-                JOIN divisions d ON d.id = dt.division_id
-                JOIN seasons s ON s.id = d.season_id
-                JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
-                WHERE s.league_id = $1
-                    AND s.name = $2
-                    AND m.home_score IS NOT NULL
-                    AND m.away_score IS NOT NULL
-            )
             SELECT 
-                division_id,
-                division_name,
-                team_id,
-                team_name,
-                COUNT(*) as games_played,
-                SUM(win) as wins,
-                SUM(draw) as draws,
-                SUM(loss) as losses,
-                SUM(goals_for) as goals_for,
-                SUM(goals_against) as goals_against,
-                SUM(goals_for) - SUM(goals_against) as goal_difference,
-                SUM(points) as points
-            FROM team_matches
-            GROUP BY division_id, division_name, team_id, team_name
-            ORDER BY division_name ASC, points DESC, goal_difference DESC, goals_for DESC, team_name ASC
+                d.id as division_id,
+                d.name as division_name,
+                t.id as team_id,
+                t.name as team_name,
+                st.position,
+                st.played as games_played,
+                st.wins,
+                st.draws,
+                st.losses,
+                st.goals_for,
+                st.goals_against,
+                st.goal_diff as goal_difference,
+                st.points
+            FROM standings st
+            JOIN divisions d ON d.id = st.competition_id
+            JOIN teams t ON t.id = st.team_id
+            JOIN seasons s ON s.id = st.season_id
+            WHERE s.league_id = $1
+                AND s.name = $2
+            ORDER BY d.name ASC, st.position ASC
         )";
         
         pqxx::result result = db_->query(sql, {leagueId, season});
@@ -3426,6 +3382,7 @@ Response SystemAdminController::handleGetStandings(const Request& request) {
                  << "\"division_name\":\"" << result[i]["division_name"].c_str() << "\","
                  << "\"team_id\":" << result[i]["team_id"].c_str() << ","
                  << "\"team_name\":\"" << result[i]["team_name"].c_str() << "\","
+                 << "\"position\":" << result[i]["position"].c_str() << ","
                  << "\"games_played\":" << result[i]["games_played"].c_str() << ","
                  << "\"wins\":" << result[i]["wins"].c_str() << ","
                  << "\"draws\":" << result[i]["draws"].c_str() << ","

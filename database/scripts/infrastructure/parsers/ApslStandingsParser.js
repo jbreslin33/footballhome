@@ -134,7 +134,7 @@ class ApslStandingsParser {
    * Extract teams grouped by division from standings page
    * @param {Document} document - jsdom document
    * @param {Array} conferences - Conference models from dropdown
-   * @returns {Object} { divisionTeams: [{conferenceName, teams}], allTeams: [ScrapedTeam] }
+   * @returns {Object} { divisionTeams: [{conferenceName, teams, standings}], allTeams: [ScrapedTeam] }
    */
   extractTeamsWithDivisions(document, conferences) {
     const divisionTeams = [];
@@ -166,13 +166,14 @@ class ApslStandingsParser {
       
       if (!accordBox) continue;
       
-      // Extract teams from this standings table
-      const teams = this.extractTeamsFromTable(accordBox, allTeamsMap);
+      // Extract teams and standings from this standings table
+      const { teams, standings } = this.extractTeamsFromTable(accordBox, allTeamsMap);
       
       if (teams.length > 0) {
         divisionTeams.push({
           conferenceName: conferenceName,
-          teams: teams
+          teams: teams,
+          standings: standings
         });
       }
     }
@@ -184,31 +185,57 @@ class ApslStandingsParser {
   }
   
   /**
-   * Extract teams from a standings table section
+   * Extract teams and standings from a standings table section
    * @param {Element} accordBox - The div.leagueAccordbox containing the standings table
    * @param {Map} allTeamsMap - Map to track unique teams (mutated)
-   * @returns {Array} ScrapedTeam models for this division
+   * @returns {Object} { teams: [ScrapedTeam], standings: [{teamName, stats}] }
    */
   extractTeamsFromTable(accordBox, allTeamsMap) {
     const teams = [];
+    const standings = [];
     
-    // Find all team links in this section
-    // Pattern: <a href="/APSL/Team/114814">
-    const teamLinks = accordBox.querySelectorAll('a[href*="/APSL/Team/"]');
+    // Find all table rows (each row is a team with stats)
+    const rows = accordBox.querySelectorAll('tr.TableRow0, tr.TableRow1');
     
-    for (const link of teamLinks) {
-      // Extract team name from the div inside the link
-      // Pattern: <div style="...">Lighthouse 1893 SC</div>
-      const nameDiv = link.querySelector('div[style*="margin-left"]');
+    for (const row of rows) {
+      // Extract position (rank)
+      const positionCell = row.querySelector('td:first-child');
+      if (!positionCell) continue;
+      const position = parseInt(positionCell.textContent.trim()) || 0;
+      
+      // Extract team link and name
+      const teamLink = row.querySelector('a[href*="/APSL/Team/"]');
+      if (!teamLink) continue;
+      
+      const nameDiv = teamLink.querySelector('div[style*="margin-left"]');
       if (!nameDiv) continue;
       
       const teamName = nameDiv.textContent.trim();
       if (!teamName || teamName.length < 3) continue;
       
       // Extract external ID from href: /APSL/Team/114814
-      const href = link.getAttribute('href');
+      const href = teamLink.getAttribute('href');
       const externalIdMatch = href.match(/\/Team\/(\d+)/);
       const externalId = externalIdMatch ? externalIdMatch[1] : null;
+      
+      // Extract standings stats from remaining cells
+      const cells = Array.from(row.querySelectorAll('td'));
+      // Format: Rank | Team | MP | W | D | L | GF | GA | GD | Pts
+      // cells[0] = rank, cells[1] = team, cells[2+] = stats
+      
+      let played = 0, wins = 0, draws = 0, losses = 0;
+      let goalsFor = 0, goalsAgainst = 0, goalDiff = 0, points = 0;
+      
+      if (cells.length >= 10) {
+        played = parseInt(cells[2]?.textContent.trim()) || 0;
+        wins = parseInt(cells[3]?.textContent.trim()) || 0;
+        draws = parseInt(cells[4]?.textContent.trim()) || 0;
+        losses = parseInt(cells[5]?.textContent.trim()) || 0;
+        goalsFor = parseInt(cells[6]?.textContent.trim()) || 0;
+        goalsAgainst = parseInt(cells[7]?.textContent.trim()) || 0;
+        goalDiff = parseInt(cells[8]?.textContent.trim()) || 0;
+        points = parseInt(cells[9]?.textContent.trim()) || 0;
+      }
       
       // Create or reuse team model
       if (!allTeamsMap.has(teamName)) {
@@ -221,9 +248,24 @@ class ApslStandingsParser {
       }
       
       teams.push(allTeamsMap.get(teamName));
+      
+      // Store standings stats
+      standings.push({
+        teamName,
+        externalId,
+        position,
+        played,
+        wins,
+        draws,
+        losses,
+        goalsFor,
+        goalsAgainst,
+        goalDiff,
+        points
+      });
     }
     
-    return teams;
+    return { teams, standings };
   }
   
   /**

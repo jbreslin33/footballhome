@@ -873,6 +873,61 @@ CREATE INDEX idx_division_teams_active ON division_teams(division_id, is_active)
 
 COMMENT ON TABLE division_teams IS 'Team registrations in divisions (league manages seasonal participation)';
 
+-- Standings table (mirrors standings from source sites - no calculations)
+CREATE TABLE standings (
+    id SERIAL PRIMARY KEY,
+    competition_id INTEGER NOT NULL,  -- For APSL: division_id (each division is a competition)
+    season_id INTEGER NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    position INTEGER,
+    played INTEGER,
+    wins INTEGER,
+    draws INTEGER,
+    losses INTEGER,
+    goals_for INTEGER,
+    goals_against INTEGER,
+    goal_diff INTEGER,
+    points INTEGER,
+    fetched_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    source TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (competition_id, season_id, team_id)
+);
+
+CREATE INDEX idx_standings_comp_season ON standings(competition_id, season_id);
+CREATE INDEX idx_standings_team ON standings(team_id);
+CREATE INDEX idx_standings_season ON standings(season_id);
+
+COMMENT ON TABLE standings IS 'League standings data mirrored from source sites (APSL, CSL, etc.) - no calculations, direct copy of published standings';
+COMMENT ON COLUMN standings.competition_id IS 'Competition identifier - for APSL this is the division_id since each division is its own competition';
+COMMENT ON COLUMN standings.source IS 'Source of standings data (e.g., "APSL Standings Page")';
+
+-- Optional snapshots for historical tracking
+CREATE TABLE standings_snapshots (
+    id SERIAL PRIMARY KEY,
+    competition_id INTEGER,
+    season_id INTEGER,
+    team_id INTEGER,
+    position INTEGER,
+    played INTEGER,
+    wins INTEGER,
+    draws INTEGER,
+    losses INTEGER,
+    goals_for INTEGER,
+    goals_against INTEGER,
+    goal_diff INTEGER,
+    points INTEGER,
+    fetched_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    source TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_snapshots_comp_season ON standings_snapshots(competition_id, season_id);
+CREATE INDEX idx_snapshots_fetched ON standings_snapshots(fetched_at);
+
+COMMENT ON TABLE standings_snapshots IS 'Historical snapshots of standings for tracking changes over time';
+
 -- Track external IDs for division team entries
 CREATE TABLE division_team_external_ids (
     id SERIAL PRIMARY KEY,
