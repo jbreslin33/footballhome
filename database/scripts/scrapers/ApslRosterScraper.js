@@ -59,16 +59,12 @@ class ApslRosterScraper {
           });
           
           // 2. Create/find player
-          const externalId = `${team.external_id}-${playerData.firstName}-${playerData.lastName}`
-            .toLowerCase()
-            .replace(/\s+/g, '-')
-            .replace(/[^a-z0-9-]/g, '');
-          
+          // NOTE: APSL does not provide unique player IDs, so we leave external_id as NULL
           const playerResult = await this.playerRepo.upsert({
             personId: personResult.id,
             photoUrl: playerData.photoUrl,
             sourceSystemId: 1, // APSL
-            externalId: externalId
+            externalId: null  // APSL doesn't provide player IDs
           });
           
           // 3. Create roster entry (division_team_players)
