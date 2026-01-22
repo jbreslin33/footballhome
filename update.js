@@ -68,7 +68,7 @@ async function downloadPhase(pool, targets) {
         console.log(`${colors.green}  ✓ Downloaded APSL structure HTML${colors.reset}\n`);
       }
       // CSL - Download standings + team pages  
-      else if (target.target_type_id === 1 && target.source_system_id === 8) {
+      else if (target.target_type_id === 1 && target.source_system_id === 3) {
         await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslStructureScraper.js'));
         console.log(`${colors.green}  ✓ Downloaded CSL structure HTML${colors.reset}\n`);
       }
@@ -147,7 +147,7 @@ async function parsePhase(pool, targets) {
         stats.success++;
       }
       // CSL - Parse everything from cached HTML
-      else if (target.target_type_id === 1 && target.source_system_id === 8) {
+      else if (target.target_type_id === 1 && target.source_system_id === 3) {
         await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslStructureScraper.js'));
         console.log('');
         await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslRosterScraper.js'));
