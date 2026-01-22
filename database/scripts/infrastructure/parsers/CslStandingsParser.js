@@ -27,7 +27,9 @@ class CslStandingsParser {
       const divisionMatch = text.match(/^(\d{4}\/\d{4})\s*-\s*(.+)$/);
       if (!divisionMatch) continue;
       
-      const divisionName = divisionMatch[2].trim();
+      // Keep full division name including season (e.g. "2025/2026 - Division 1")
+      // The scraper will extract and group by season later
+      const divisionName = text.trim();
       
       // Find the table that follows this div
       // Navigate through siblings to find the next table (with safety limit)
