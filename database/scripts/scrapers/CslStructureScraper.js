@@ -54,8 +54,9 @@ class CslStructureScraper {
    * Main scraping logic
    */
   async scrape() {
-    console.log(`\n⚽ CSL Structure Scraper - All Seasons`);
+    console.log(`\n⚽ CSL Structure Scraper - Teams Only`);
     console.log('============================================================');
+    console.log('⚠️  Assumes divisions/seasons already exist in database');
     
     try {
       // Get URL from scrapeTarget (injected from database)
@@ -70,21 +71,34 @@ class CslStructureScraper {
       const divisions = this.parser.parse(html);
       console.log(`   Found ${divisions.length} divisions`);
       
-      // Step 3: Ensure organization/league exists
-      const { league } = await this.ensureLeague();
-      
-      // Step 4: Group divisions by season
+      // Step 3: Group divisions by season
       const divisionsBySeason = this.groupDivisionsBySeason(divisions);
       console.log(`   Found ${Object.keys(divisionsBySeason).length} seasons`);
+      
+      // Step 4: Get CSL league ID
+      const leagueResult = await this.client.query(`
+        SELECT id FROM leagues WHERE name = $1
+      `, [this.leagueName]);
+      
+      if (leagueResult.rows.length === 0) {
+        throw new Error(`CSL league not found in database. Please create it first.`);
+      }
+      const leagueId = leagueResult.rows[0].id;
       
       // Step 5: Process each season
       for (const [seasonName, seasonDivisions] of Object.entries(divisionsBySeason)) {
         console.log(`\n📅 Processing season: ${seasonName}`);
-        const { season, conference } = await this.ensureSeasonAndConference(league.id, seasonName);
+        
+        // Look up existing season
+        const season = await this.seasonRepo.findByName(leagueId, seasonName);
+        if (!season) {
+          console.warn(`   ⚠️  Season ${seasonName} not found in database - skipping`);
+          continue;
+        }
         
         // Process each division in this season
         for (const divisionData of seasonDivisions) {
-          await this.processDivision(conference.id, season.id, divisionData);
+          await this.processDivision(season.id, divisionData);
         }
       }
       
@@ -258,27 +272,25 @@ class CslStructureScraper {
   
   /**
    * Process a division and its teams
+   * Now looks up existing divisions instead of creating them
    */
-  async processDivision(conferenceId, seasonId, divisionData) {
+  async processDivision(seasonId, divisionData) {
     console.log(`\n📂 Processing division: ${divisionData.divisionName}`);
     console.log(`   Teams: ${divisionData.teams.length}`);
     
-    // Create division model and upsert
-    const level = this.determineDivisionLevel(divisionData.divisionName);
-    const divisionModel = new Division({
-      seasonId: seasonId,
-      conferenceId: conferenceId,
-      name: divisionData.divisionName,
-      sourceSystemId: 3, // CSL
-      isActive: true
-    });
+    // Look up existing division by season and name
+    const division = await this.divisionRepo.findBySeasonAndName(seasonId, divisionData.divisionName);
     
-    const divisionResult = await this.divisionRepo.upsert(divisionModel);
-    console.log(`   ✅ ${divisionResult.inserted ? 'Created' : 'Found'} division: ${divisionData.divisionName} (id=${divisionResult.id})`);
+    if (!division) {
+      console.warn(`   ⚠️  Division "${divisionData.divisionName}" not found in database - skipping`);
+      return;
+    }
+    
+    console.log(`   ✅ Found division: ${divisionData.divisionName} (id=${division.id})`);
     
     // Process teams in this division
     for (const teamData of divisionData.teams) {
-      await this.processTeam(divisionResult.id, seasonId, teamData);
+      await this.processTeam(division.id, seasonId, teamData);
     }
   }
   
