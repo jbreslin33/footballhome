@@ -53,28 +53,38 @@ class CslStructureScraper {
    * Main scraping logic
    */
   async scrape() {
-    console.log(`\n⚽ CSL Structure Scraper - ${this.season}`);
+    console.log(`\n⚽ CSL Structure Scraper - All Seasons`);
     console.log('============================================================');
     
     try {
       // Step 1: Fetch standings page
       console.log(`\n📥 Fetching standings from: ${this.standingsUrl}`);
-      const html = await this.fetcher.fetch(this.standingsUrl, `csl-standings-${this.season}`);
+      const html = await this.fetcher.fetch(this.standingsUrl, `csl-standings-all`);
       
       // Step 2: Parse divisions and teams
       console.log('📊 Parsing divisions and teams...');
       const divisions = this.parser.parse(html);
       console.log(`   Found ${divisions.length} divisions`);
       
-      // Step 3: Ensure organization/league/season/conference hierarchy exists
-      const { league, season, conference } = await this.ensureHierarchy();
+      // Step 3: Ensure organization/league exists
+      const { league } = await this.ensureLeague();
       
-      // Step 4: Process each division
-      for (const divisionData of divisions) {
-        await this.processDivision(conference.id, season.id, divisionData);
+      // Step 4: Group divisions by season
+      const divisionsBySeason = this.groupDivisionsBySeason(divisions);
+      console.log(`   Found ${Object.keys(divisionsBySeason).length} seasons`);
+      
+      // Step 5: Process each season
+      for (const [seasonName, seasonDivisions] of Object.entries(divisionsBySeason)) {
+        console.log(`\n📅 Processing season: ${seasonName}`);
+        const { season, conference } = await this.ensureSeasonAndConference(league.id, seasonName);
+        
+        // Process each division in this season
+        for (const divisionData of seasonDivisions) {
+          await this.processDivision(conference.id, season.id, divisionData);
+        }
       }
       
-      // Step 5: Retry failed fetches
+      // Step 6: Retry failed fetches
       await this.retryFailedFetches();
       
       console.log('\n✅ CSL structure scraping completed');
@@ -87,7 +97,104 @@ class CslStructureScraper {
   }
   
   /**
-   * Ensure organization/league/season/conference hierarchy exists
+   * Group divisions by their season (extracted from division name)
+   * Division names are like "2025/2026 - Division 1"
+   */
+  groupDivisionsBySeason(divisions) {
+    const grouped = {};
+    
+    for (const division of divisions) {
+      // Extract season from division name (e.g., "2025/2026 - Division 1" → "2025/2026")
+      const seasonMatch = division.divisionName.match(/^(\d{4}\/\d{4})/);
+      if (!seasonMatch) {
+        console.warn(`   ⚠️  Could not extract season from: ${division.divisionName}`);
+        continue;
+      }
+      
+      const season = seasonMatch[1];
+      if (!grouped[season]) {
+        grouped[season] = [];
+      }
+      
+      // Strip season prefix from division name (e.g., "2025/2026 - Division 1" → "Division 1")
+      const cleanDivisionName = division.divisionName.replace(/^\d{4}\/\d{4}\s*-\s*/, '').trim();
+      grouped[season].push({
+        ...division,
+        divisionName: cleanDivisionName
+      });
+    }
+    
+    return grouped;
+  }
+  
+  /**
+   * Ensure organization/league exists (without season/conference)
+   */
+  async ensureLeague() {
+    // 1. Create or get CSL organization
+    let org = await this.orgRepo.findByName(this.leagueName);
+    if (!org) {
+      console.log(`\n🏢 Creating organization: ${this.leagueName}`);
+      const orgModel = new Organization({
+        name: this.leagueName,
+        isActive: true
+      });
+      const orgResult = await this.orgRepo.upsert(orgModel);
+      org = { id: orgResult.id, name: this.leagueName };
+    }
+    
+    // 2. Create or get league (same as organization for standalone leagues)
+    let league = await this.leagueRepo.findByName(org.id, this.leagueName);
+    if (!league) {
+      console.log(`🏆 Creating league: ${this.leagueName}`);
+      const leagueModel = new League({
+        name: this.leagueName,
+        organizationId: org.id,
+        isActive: true
+      });
+      const leagueResult = await this.leagueRepo.upsert(leagueModel);
+      league = { id: leagueResult.id, name: this.leagueName };
+    }
+    
+    return { league };
+  }
+  
+  /**
+   * Ensure season and conference exist for a given season name
+   */
+  async ensureSeasonAndConference(leagueId, seasonName) {
+    // Create or get season
+    let season = await this.seasonRepo.findByName(leagueId, seasonName);
+    if (!season) {
+      console.log(`   📅 Creating season: ${seasonName}`);
+      const seasonModel = new Season({
+        name: seasonName,
+        leagueId: leagueId,
+        isActive: true
+      });
+      const seasonResult = await this.seasonRepo.upsert(seasonModel);
+      season = { id: seasonResult.id, name: seasonName };
+    }
+    
+    // Create or get conference (CSL has only one conference per season)
+    const conferenceName = 'Main';
+    let conference = await this.conferenceRepo.findByName(season.id, conferenceName);
+    if (!conference) {
+      console.log(`   📋 Creating conference: ${conferenceName}`);
+      const conferenceModel = new Conference({
+        name: conferenceName,
+        seasonId: season.id,
+        isActive: true
+      });
+      const conferenceResult = await this.conferenceRepo.upsert(conferenceModel);
+      conference = { id: conferenceResult.id, name: conferenceName };
+    }
+    
+    return { season, conference };
+  }
+  
+  /**
+   * Ensure organization/league/season/conference hierarchy exists (DEPRECATED - kept for compatibility)
    */
   async ensureHierarchy() {
     // 1. Create or get CSL organization
