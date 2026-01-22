@@ -3325,7 +3325,6 @@ Response SystemAdminController::handleGetSeasons(const Request& request) {
             LEFT JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
             WHERE s.league_id = $1
             GROUP BY s.name, s.start_date
-            HAVING COUNT(DISTINCT m.id) > 0
             ORDER BY s.start_date DESC NULLS LAST, s.name DESC
         )";
         
