@@ -28,6 +28,7 @@ const ScrapedTeam = require('../domain/models/ScrapedTeam');
 class CslStructureScraper {
   constructor(client, config = {}) {
     this.client = client;
+    this.scrapeTarget = config.scrapeTarget; // Inject from database
     this.fetcher = new HtmlFetcher(path.join(__dirname, '../../scraped-html/csl'));
     this.parser = new CslStandingsParser();
     this.orgRepo = new OrganizationRepository(client);
@@ -42,7 +43,7 @@ class CslStructureScraper {
     // CSL configuration
     this.leagueName = 'Cosmopolitan Soccer League';
     this.leagueSlug = 'cosmopolitan-soccer-league';
-    this.standingsUrl = 'https://www.cosmosoccerleague.com/CSL/Tables/';
+    this.standingsUrl = 'https://www.cosmosoccerleague.com/CSL/Tables/'; // Fallback if no scrapeTarget
     this.season = config.season || '2025-2026';
     
     // Track failed fetches for retry
@@ -57,9 +58,12 @@ class CslStructureScraper {
     console.log('============================================================');
     
     try {
+      // Get URL from scrapeTarget (injected from database)
+      const url = this.scrapeTarget ? this.scrapeTarget.url : this.standingsUrl;
+      
       // Step 1: Fetch standings page
-      console.log(`\n📥 Fetching standings from: ${this.standingsUrl}`);
-      const html = await this.fetcher.fetch(this.standingsUrl, `csl-standings-all`);
+      console.log(`\n📥 Fetching standings from: ${url}`);
+      const html = await this.fetcher.fetch(url, `csl-standings-${this.scrapeTarget?.id || 'default'}`);
       
       // Step 2: Parse divisions and teams
       console.log('📊 Parsing divisions and teams...');
@@ -389,8 +393,21 @@ async function main() {
   const client = await pool.connect();
   
   try {
-    const scraper = new CslStructureScraper(client, { season: '2025-2026' });
-    await scraper.scrape();
+    // Load scrape_target from database (default to id=5 for current CSL season)
+    const scrapeTargetId = process.env.SCRAPE_TARGET_ID || 5;
+    const result = await client.query('SELECT * FROM scrape_targets WHERE id = $1', [scrapeTargetId]);
+    
+    if (result.rows.length === 0) {
+      console.log(`⚠️  scrape_target id=${scrapeTargetId} not found, using fallback URL`);
+      const scraper = new CslStructureScraper(client, { season: '2025-2026' });
+      await scraper.scrape();
+    } else {
+      const scrapeTarget = result.rows[0];
+      console.log(`📋 Loaded scrape_target: id=${scrapeTarget.id}, url=${scrapeTarget.url}`);
+      const scraper = new CslStructureScraper(client, { scrapeTarget });
+      await scraper.scrape();
+    }
+    
     console.log('CslStructureScraper completed successfully');
   } finally {
     client.release();

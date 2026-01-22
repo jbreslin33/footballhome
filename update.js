@@ -63,12 +63,12 @@ async function downloadPhase(pool, targets) {
       process.env.SCRAPE_MODE = 'download';  // Tell scrapers to only download
       
       // APSL - Download standings + team pages
-      if (target.target_type_id === 1 && target.source_system_id === 1) {
-        await runScraper(path.join(__dirname, 'database/scripts/scrapers/ApslStructureScraper.js'));
+      if (target.target_type_id === 1 && target.source_system_id === 1) {        process.env.SCRAPE_TARGET_ID = target.id;        await runScraper(path.join(__dirname, 'database/scripts/scrapers/ApslStructureScraper.js'));
         console.log(`${colors.green}  ✓ Downloaded APSL structure HTML${colors.reset}\n`);
       }
       // CSL - Download standings + team pages  
       else if (target.target_type_id === 1 && target.source_system_id === 3) {
+        process.env.SCRAPE_TARGET_ID = target.id;
         await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslStructureScraper.js'));
         console.log(`${colors.green}  ✓ Downloaded CSL structure HTML${colors.reset}\n`);
       }
@@ -148,6 +148,7 @@ async function parsePhase(pool, targets) {
       }
       // CSL - Parse everything from cached HTML
       else if (target.target_type_id === 1 && target.source_system_id === 3) {
+        process.env.SCRAPE_TARGET_ID = target.id;
         await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslStructureScraper.js'));
         console.log('');
         await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslRosterScraper.js'));
