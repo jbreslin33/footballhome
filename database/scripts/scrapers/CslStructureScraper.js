@@ -158,7 +158,7 @@ class CslStructureScraper {
       seasonId: seasonId,
       conferenceId: conferenceId,
       name: divisionData.divisionName,
-      sourceSystemId: 8, // CSL
+      sourceSystemId: 3, // CSL
       isActive: true
     });
     
@@ -178,7 +178,7 @@ class CslStructureScraper {
     // 1. Create scraped_teams entry using upsert (handles duplicates)
     const scrapedTeamModel = new ScrapedTeam({
       name: teamData.name,
-      sourceSystemId: 8, // CSL
+      sourceSystemId: 3, // CSL
       externalId: teamData.externalId // Store team ID for roster scraping
     });
     const scrapedTeamResult = await this.scrapedTeamRepo.upsert(scrapedTeamModel);

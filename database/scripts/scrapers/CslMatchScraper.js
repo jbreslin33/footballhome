@@ -115,13 +115,13 @@ class CslMatchScraper {
             homeScore: matchData.homeScore,
             awayScore: matchData.awayScore,
             venueId: null,
-            sourceSystemId: 8,
+            sourceSystemId: 3,
             externalId: externalId,
             scrapeTargetId: team.scrape_target_id
           });
           
           // Check if match exists
-          const existing = await this.matchRepo.findByExternalId(8, externalId);
+          const existing = await this.matchRepo.findByExternalId(3, externalId);
           
           if (existing) {
             // Update if scores changed
