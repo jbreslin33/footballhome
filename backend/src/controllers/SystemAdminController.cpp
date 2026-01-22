@@ -3430,7 +3430,7 @@ Response SystemAdminController::handleGetTeams(const Request& request) {
                     t.name as team_name,
                     t.external_id,
                     c.name as club_name,
-                    d.name as division_name,
+                    STRING_AGG(DISTINCT d.name, ', ' ORDER BY d.name) as division_name,
                     ss.name as source_system,
                     STRING_AGG(DISTINCT s.name, ', ' ORDER BY s.name) as seasons
                 FROM teams t
@@ -3440,8 +3440,8 @@ Response SystemAdminController::handleGetTeams(const Request& request) {
                 JOIN divisions d ON d.id = dt.division_id
                 JOIN seasons s ON s.id = d.season_id
                 WHERE s.league_id = $1
-                GROUP BY t.id, t.name, t.external_id, c.name, d.name, ss.name
-                ORDER BY d.name ASC, t.name ASC
+                GROUP BY t.id, t.name, t.external_id, c.name, ss.name
+                ORDER BY t.name ASC
             )";
             
             pqxx::result result = db_->query(sql, {leagueId});
