@@ -1035,6 +1035,7 @@ COMMENT ON TABLE player_positions IS 'Positions a player CAN play (general profi
 
 -- Player rosters for division team entries
 CREATE TABLE division_team_players (
+    id SERIAL PRIMARY KEY,
     division_team_id INTEGER NOT NULL REFERENCES division_teams(id) ON DELETE CASCADE,
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1045,7 +1046,7 @@ CREATE TABLE division_team_players (
     -- Current roster: WHERE left_at IS NULL
     -- History: All rows ordered by joined_at
     CHECK (left_at IS NULL OR left_at > joined_at),
-    PRIMARY KEY (division_team_id, player_id, joined_at)
+    UNIQUE (division_team_id, player_id, joined_at)
 );
 
 CREATE INDEX idx_division_team_players_team ON division_team_players(division_team_id);
