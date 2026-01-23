@@ -429,7 +429,7 @@ async function exportPlayers() {
     return;
   }
   
-  const sqlFile = path.join(DATA_DIR, '020a-players-complete.sql');
+  const sqlFile = path.join(DATA_DIR, '021-players-complete.sql');
   let sql = `-- Players (Complete Export)
 -- Generated: ${new Date().toISOString()}
 -- Total Players: ${result.rows.length}
