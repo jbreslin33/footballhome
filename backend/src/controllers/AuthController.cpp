@@ -564,7 +564,7 @@ Response AuthController::handleAdminContexts(const Request& request) {
                               "FROM organizations o "
                               "JOIN organization_admins oa ON o.id = oa.organization_id "
                               "JOIN admins a ON oa.admin_id = a.id "
-                              "WHERE a.user_id = $1 AND oa.is_active = true "
+                              "WHERE a.user_id = $1 AND oa.ended_at IS NULL "
                               "GROUP BY o.id, o.name";
         
         pqxx::result org_result = db_->query(org_sql, {user_id});

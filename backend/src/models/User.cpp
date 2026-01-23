@@ -75,7 +75,7 @@ UserData User::authenticate(const std::string& email, const std::string& passwor
                          "JOIN person_emails pe ON p.id = pe.person_id "
                          "LEFT JOIN admins a ON u.id = a.user_id "
                          "LEFT JOIN admin_levels al ON a.admin_level_id = al.id "
-                         "LEFT JOIN organization_admins oa ON a.id = oa.admin_id AND oa.is_active = true "
+                         "LEFT JOIN organization_admins oa ON a.id = oa.admin_id AND oa.ended_at IS NULL "
                          "LEFT JOIN organizations o ON oa.organization_id = o.id "
                          "WHERE pe.email = $1 AND pe.is_verified = true "
                          "LIMIT 1";
