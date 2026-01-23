@@ -10,44 +10,66 @@ class DivisionTeamRepository {
   }
   
   /**
-   * Find division_team by composite key
+   * Find division_team by composite key (current registration only)
    */
   async findByDivisionAndTeam(divisionId, teamId) {
     const result = await this.db.query(`
-      SELECT division_id, team_id, is_active
+      SELECT id, division_id, team_id, registered_at, unregistered_at
       FROM division_teams
       WHERE division_id = $1 AND team_id = $2
+        AND unregistered_at IS NULL
     `, [divisionId, teamId]);
     
     return result.rows[0] || null;
   }
   
   /**
-   * Find all teams in a division
+   * Find all teams in a division (current registrations only)
    */
   async findByDivision(divisionId) {
     const result = await this.db.query(`
-      SELECT dt.division_id, dt.team_id, dt.is_active,
-             t.display_name, t.short_name
+      SELECT dt.id, dt.division_id, dt.team_id,
+             dt.registered_at, dt.unregistered_at,
+             t.name as team_name
       FROM division_teams dt
       JOIN teams t ON dt.team_id = t.id
       WHERE dt.division_id = $1
-      ORDER BY t.display_name
+        AND dt.unregistered_at IS NULL
+      ORDER BY t.name
     `, [divisionId]);
     
     return result.rows;
   }
   
   /**
-   * Find all divisions a team is in
+   * Find all divisions a team is in (all history)
    */
   async findByTeam(teamId) {
     const result = await this.db.query(`
-      SELECT dt.division_id, dt.team_id, dt.is_active,
+      SELECT dt.id, dt.division_id, dt.team_id, 
+             dt.registered_at, dt.unregistered_at,
              d.name as division_name, d.season_id
       FROM division_teams dt
       JOIN divisions d ON dt.division_id = d.id
       WHERE dt.team_id = $1
+      ORDER BY d.season_id DESC, dt.registered_at DESC
+    `, [teamId]);
+    
+    return result.rows;
+  }
+  
+  /**
+   * Find active (current) divisions for a team
+   */
+  async findActiveByTeam(teamId) {
+    const result = await this.db.query(`
+      SELECT dt.id, dt.division_id, dt.team_id,
+             dt.registered_at, dt.unregistered_at,
+             d.name as division_name, d.season_id
+      FROM division_teams dt
+      JOIN divisions d ON dt.division_id = d.id
+      WHERE dt.team_id = $1
+        AND dt.unregistered_at IS NULL
       ORDER BY d.season_id DESC, d.name
     `, [teamId]);
     
@@ -55,47 +77,44 @@ class DivisionTeamRepository {
   }
   
   /**
-   * Upsert division_team link
+   * Register team in division (temporal pattern)
+   * If already registered, returns existing active registration
    * @param {number} divisionId
    * @param {number} teamId
-   * @param {boolean} isActive - Default: true
    */
-  async upsert(divisionId, teamId, isActive = true) {
+  async register(divisionId, teamId) {
+    // Check if already registered (unregistered_at IS NULL)
+    const existing = await this.db.query(`
+      SELECT id, division_id, team_id, registered_at, unregistered_at
+      FROM division_teams
+      WHERE division_id = $1 AND team_id = $2
+        AND unregistered_at IS NULL
+    `, [divisionId, teamId]);
+    
+    if (existing.rows.length > 0) {
+      return existing.rows[0]; // Already registered
+    }
+    
+    // Insert new registration
     const result = await this.db.query(`
-      INSERT INTO division_teams (division_id, team_id, is_active)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (division_id, team_id)
-      DO UPDATE SET
-        is_active = EXCLUDED.is_active,
-        created_at = CURRENT_TIMESTAMP
-      RETURNING division_id, team_id, is_active
-    `, [divisionId, teamId, isActive]);
+      INSERT INTO division_teams (division_id, team_id, registered_at)
+      VALUES ($1, $2, CURRENT_TIMESTAMP)
+      RETURNING id, division_id, team_id, registered_at, unregistered_at
+    `, [divisionId, teamId]);
     
     return result.rows[0];
   }
   
   /**
-   * Remove a team from a division
+   * Unregister team from division (close the temporal period)
    */
-  async delete(divisionId, teamId) {
-    const result = await this.db.query(`
-      DELETE FROM division_teams
-      WHERE division_id = $1 AND team_id = $2
-      RETURNING division_id, team_id
-    `, [divisionId, teamId]);
-    
-    return result.rows[0] || null;
-  }
-  
-  /**
-   * Mark a team as inactive in a division (soft delete)
-   */
-  async markInactive(divisionId, teamId) {
+  async unregister(divisionId, teamId) {
     const result = await this.db.query(`
       UPDATE division_teams
-      SET is_active = false
+      SET unregistered_at = CURRENT_TIMESTAMP
       WHERE division_id = $1 AND team_id = $2
-      RETURNING division_id, team_id, is_active
+        AND unregistered_at IS NULL
+      RETURNING id, division_id, team_id, registered_at, unregistered_at
     `, [divisionId, teamId]);
     
     return result.rows[0] || null;

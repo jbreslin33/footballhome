@@ -1,10 +1,16 @@
-# Data Loading Strategy
+# Data Loading Strategy (REVISED January 2026)
 
-## Overview
-Football Home uses a hybrid approach for data management:
-- **Static/Semi-Static Data**: Loaded from SQL files on database initialization (rebuild)
-- **Dynamic Data**: Scraped regularly via `update.sh` and persists across rebuilds
-- **One-Time Scraped Data**: Scraped once to generate SQL files, then committed to git
+## Core Principle: Historical vs. Current Season
+
+**STATIC DATA (SQL Files)**:
+- All data from **completed seasons** (2022-2025) → SQL files committed to git
+- **One-time scrape** to populate SQL files, then scrapers focus on current season only
+- Reproducible, version-controlled, no re-scraping of old data
+
+**DYNAMIC DATA (Scrapers)**:
+- Only **current season** (2025/2026) data scraped dynamically
+- New matches, rosters, standings updated as season progresses
+- Once season ends → export to SQL files, commit to git, stop scraping
 
 ## Data Categories
 
@@ -14,140 +20,96 @@ Football Home uses a hybrid approach for data management:
 **Source**: Manually created by developers
 
 **Files**:
-- `00-schema.sql` - Schema + lookup tables (match_types, positions, source_systems, etc.)
-- `013d-scrape-targets.sql` - Scrape target configurations
-- `013e-scrape-actions.sql` - Scrape action types
-- `013f-scrape-statuses.sql` - Scrape status types
-- `013g-scrape-targets-state-machine.sql` - Scrape state machine
-- `013h-scrape-target-junctions.sql` - Junction table definitions
+- `00-schema.sql` - Schema + lookup tables
+- `013d-h` - Scrape target state machine
 - `014-continents.sql` - Continents reference data
-- `020-persons.sql` - Manual person records
-- `021-users.sql` - User accounts
-- `022-user-emails.sql` - User email addresses
-- `023-user-phones.sql` - User phone numbers
-- `024-admins.sql` - Admin role assignments
+- `020-024` - Users, admins, persons (manual)
 
-**Philosophy**:
-- Lookup tables that rarely change
-- User/admin data created manually via admin dashboard
-- Configuration data (scrape targets)
-- Reference data (continents, countries, positions)
-
-### 2. League Structure (SQL Files - NEEDS TO BE CREATED)
-**Location**: `database/data/*.sql` (to be created)  
+### 2. League Structure (SQL Files - ✅ COMPLETE)
+**Location**: `database/data/030-034-*.sql`  
 **When Loaded**: Every rebuild  
-**Source**: Manually defined based on league knowledge
+**Source**: One-time scrape → exported to SQL → committed to git
 
-**Missing Files** (should be created):
-- `030-organizations.sql` - APSL, CSL, CASA organizations
-- `031-leagues.sql` - League definitions (APSL, CSL, CASA)
-- `032-seasons.sql` - Known seasons for each league
-- `033-conferences.sql` - Conference definitions (APSL: Metropolitan, National, etc.)
-- `034-divisions.sql` - Division definitions (CSL: Division 1, Division 2, etc.)
-- `035-clubs.sql` - Manually managed clubs (Lighthouse 1893 SC, etc.)
+**Files**:
+- `030-organizations.sql` - APSL, CSL, CASA, Lighthouse organizations (4 orgs)
+- `031-leagues.sql` - APSL, CSL, CASA leagues (4 leagues)
+- `032-seasons.sql` - All seasons 2022-2026 (8 seasons)
+- `033-conferences.sql` - APSL Metropolitan/National/etc (27 conferences)
+- `034-divisions.sql` - All divisions across all seasons (36 divisions)
 
-**Why These Should Be in SQL**:
-- League structures are known in advance
-- Prevents duplicate divisions/seasons when scrapers run multiple times
-- Allows scrapers to focus on dynamic data (teams, rosters, matches)
-- Clean separation: structure (SQL) vs content (scrapers)
+**✅ COMPLETE**: Divisions exist in SQL files. Scrapers should **NEVER** create divisions.
 
-**CSL Example**:
-- CSL has consistent divisions: Division 1, Division 1 Reserve, Division 2, Division 2 Reserve, Division 3, Division 4, Over-40 Division, Spring Division
-- These divisions repeat across seasons (2022/2023, 2023/2024, 2024/2025, etc.)
-- Scraper should only create teams and team assignments, not divisions
+### 3. Teams (SQL Files - ✅ COMPLETE)
+**Location**: `database/data/040-041-*.sql`  
+**When Loaded**: Every rebuild  
+**Source**: One-time scrape → exported to SQL → committed to git
 
-### 3. Dynamic Scraped Data (Database Only)
+**Files**:
+- `040-apsl-teams.sql` - 99 APSL teams (static, persist across seasons)
+- `041-csl-teams.sql` - 167 CSL teams (static, persist across seasons)
+
+**Philosophy**: Teams are organizations/clubs that persist across seasons. While their rosters change, the team entity itself is stable.
+
+### 4. Historical Data (SQL Files - 🔄 TO BE CREATED)
+**Location**: `database/data/050-0XX-*.sql`  
+**When Loaded**: Every rebuild  
+**Source**: One-time scrape of past seasons → export to SQL → commit to git
+
+**Files to Create**:
+- `050-standings.sql` - All standings from 2022-2024 seasons (current season stays dynamic)
+- `051-historical-matches.sql` - All matches from 2022-2024 seasons (current season stays dynamic)
+- `052-historical-match-events.sql` - Goals, cards, subs from 2022-2024 (current season stays dynamic)
+- `053-historical-players.sql` - Player records from past seasons
+- `054-historical-rosters.sql` - Team rosters from past seasons (division_team_players)
+
+**Why**:
+- Prevents re-scraping old games every time database rebuilds
+- Version-controlled historical data (reproducible)
+- Scrapers only process new/current season data (faster, more efficient)
+- Once current season ends (June 2026), export to SQL and stop scraping
+
+### 5. Dynamic Current Season Data (Scrapers Only)
 **Location**: Database only (NOT in SQL files)  
 **When Loaded**: Via `update.sh` (scraper runs)  
-**Source**: External websites (APSL, CSL, CASA, GroupMe)  
+**Source**: External websites (APSL, CSL for 2025/2026 season)  
 **Persistence**: Survives rebuilds via Docker volumes
 
 **Data Types**:
-- **Teams**: Team rosters change each season
-- **Players**: Player data (names, jerseys, etc.)
-- **Matches**: Match schedules and results
-- **Match Events**: Goals, substitutions, cards
-- **Standings**: Calculated from match results
-- **Team Assignments**: Which teams play in which divisions (division_teams table)
+- **2025/2026 Season Only**:
+  - Division assignments (division_teams) - which teams are playing this season
+  - Standings (current rankings)
+  - Matches (scheduled and played)
+  - Match events (goals, cards, subs)
+  - Rosters (division_team_players) - current jersey numbers, active players
 
-**Why NOT in SQL Files**:
-- Changes frequently (weekly for matches/events)
-- Large volume (1000+ players, 250+ matches)
-- External source of truth (league websites)
-- Would create massive git diffs on every scrape
+**Roster History Tracking (Fully Normalized)**:
+- Composite PRIMARY KEY (division_team_id, player_id, joined_at) - allows transfer history
+- Each row represents one period of team membership (joined_at → left_at)
+- NO `is_active` column - derived from `left_at IS NULL` (fully normalized)
+- Player transfers tracked automatically:
+  - Player found on new team → Close old period (set left_at=NOW)
+  - Create new period for new team (new row with joined_at=NOW)
+  - Example: John Doe played for Hoboken (Sept-Jan), then Lighthouse (Jan-June)
+- Query current roster: `WHERE left_at IS NULL`
+- Query player history: `WHERE player_id = X ORDER BY joined_at DESC`
+
+**Same Pattern Applied To**:
+- `division_team_coaches` - coaching tenure history (ended_at IS NULL = current)
+- `division_teams` - promotion/relegation history (unregistered_at IS NULL = current)
+- `club_admins`, `league_admins`, `team_admins` - admin tenure history (ended_at IS NULL = current)
 
 **Scraper Behavior**:
-- Upserts data (insert new, update existing)
-- Uses external_id + source_system_id for deduplication
-- Respects scrape_status_id state machine (not_started → in_progress → completed)
+- Check if match already exists in DB before scraping (avoid re-scraping old games)
+- Only scrape matches not yet in database
+- Upsert rosters: if player on different team, close old period and create new (transfer)
+- Update standings as matches are played
 
-### 4. One-Time Scraped Data (SQL Files Generated by Scrapers)
-**Location**: `database/data/*.sql` (generated, then committed)  
-**When Loaded**: Every rebuild  
-**Source**: Scraped once, then maintained manually
-
-**Use Cases**:
-- **Venues**: Scraped once from Google Places API, then maintained
-  - File: `036-venues.sql` (to be created)
-  - Command: Run venue scraper once, commit output, set scrape_action to 'skip'
-  
-- **Historical Reference Data**: One-time imports from external sources
-  - Example: Initial league/season/division setup from league websites
-
-**Workflow**:
-1. Write scraper to generate SQL INSERT statements
-2. Run scraper once: `./update.sh`
-3. Copy generated SQL to `database/data/0XX-name.sql`
-4. Commit file to git
-5. Set scrape target to `scrape_action_id = 2` (skip) or `is_active = false`
-6. Future rebuilds load from committed SQL file
-
-## Current State Analysis
-
-### ✅ What's Currently in SQL Files
-- Schema and lookup tables
-- Scrape target configurations
-- User/admin/person records (manual)
-- Continents reference data
-
-### ❌ What's Missing from SQL Files (Should Be Added)
-- **Organizations** (APSL, CSL, CASA) - currently scraped
-- **Leagues** (APSL, CSL, CASA) - currently scraped
-- **Seasons** (2022/2023, 2023/2024, 2024/2025, etc.) - currently scraped
-- **Conferences** (APSL: Metropolitan, National, etc.) - currently scraped
-- **Divisions** (CSL: Division 1, Division 2, etc.) - currently scraped
-- **Clubs** (Lighthouse 1893 SC, etc.) - currently scraped
-- **Venues** (should be one-time scrape → SQL file)
-
-### 🔄 What's Correctly Dynamic
-- Teams (change each season)
-- Players (rosters change)
-- Matches (scheduled weekly)
-- Match events (goals, subs, cards)
-- Standings (derived from matches)
-
-## Migration Plan
-
-### Phase 1: Extract League Structure to SQL Files
-Create these files:
-1. `database/data/030-organizations.sql` - APSL, CSL, CASA
-2. `database/data/031-leagues.sql` - League definitions
-3. `database/data/032-seasons.sql` - Known seasons (last 3 years + current)
-4. `database/data/033-conferences.sql` - APSL conferences
-5. `database/data/034-divisions.sql` - CSL divisions (all seasons)
-6. `database/data/035-clubs.sql` - Manually managed clubs
-
-### Phase 2: Update Scrapers
-Modify scrapers to:
-- **NOT** create organizations/leagues/seasons/conferences/divisions
-- **ONLY** create teams and team assignments (division_teams)
-- Look up existing structure by name/season
-- Log warnings if structure not found
-
-### Phase 3: Venues One-Time Scrape
-1. Run venue scraper to generate SQL
-2. Commit `036-venues.sql`
+**End of Season Workflow**:
+1. Season ends (June 2026)
+2. Export all 2025/2026 data to SQL files (standings, matches, events, rosters)
+3. Commit SQL files to git
+4. Update scrape targets to 2026/2027 season URLs
+5. Future scrapers only process 2026/2027 data
 3. Disable venue scraper
 
 ## Scraper Configuration
@@ -212,15 +174,198 @@ Use letter suffixes (a/b/c) when order matters within same number:
 - `032b-csl-seasons.sql`
 - `032c-casa-seasons.sql`
 
-## Verification Commands
+## Scraper Configuration Strategy
+
+### Rule 1: Divisions NEVER Created by Scrapers
+**FIXED**: `ApslStructureScraper.js` now looks up divisions instead of creating them.
+
+```javascript
+// ❌ OLD (WRONG):
+const divResult = await this.divisionRepo.upsertMany(divisions);
+
+// ✅ NEW (CORRECT):
+const savedDivisions = await this.divisionRepo.findBySeason(seasonResult.id);
+if (savedDivisions.length === 0) {
+  throw new Error(`No divisions found! Must exist in 034-divisions.sql`);
+}
+```
+
+All division creation must happen in `034-divisions.sql`.
+
+### Rule 2: Only Scrape What Doesn't Exist
+**TO BE IMPLEMENTED**: Match and standings scrapers should check database first.
+
+```javascript
+// Check if match already exists before scraping
+const existing = await this.matchRepo.findByExternalId(sourceSystemId, externalId);
+if (existing) {
+  console.log(`   ⏭️  Skipping match ${externalId} (already in database)`);
+  continue; // Skip to next match
+}
+// Only scrape if not found
+await scrapeMatch(matchUrl);
+```
+
+Benefits:
+- Faster scrapes (skip old games)
+- Less network traffic
+- Idempotent (safe to run multiple times)
+- Historical data preserved in SQL files
+
+### Rule 3: Season-Based Scraping
+Configure scrape targets to only process current season:
+
+**scrape-targets.json**:
+```json
+{
+  "id": 3,
+  "label": "APSL 2025/2026 Season",
+  "url": "https://www.apslsoccer.com/APSL/Standings/2025-26",
+  "is_active": true,
+  "config": {
+    "season_filter": "2025/2026"  // Only scrape this season
+  }
+}
+```
+
+**End of season workflow**:
+1. June 2026: Season ends
+2. Export all 2025/2026 data to SQL files
+3. Update scrape target URL to 2026/2027
+4. Historical 2025/2026 data now loads from SQL
+
+## Implementation Checklist
+
+### ✅ Completed
+- [x] Divisions exported to `034-divisions.sql`
+- [x] Teams exported to `040-apsl-teams.sql`, `041-csl-teams.sql`
+- [x] ApslStructureScraper refactored to lookup divisions (not create)
+- [x] Documentation updated with historical vs. current season strategy
+
+### 🔄 In Progress
+- [ ] Export historical standings to `050-standings.sql`
+- [ ] Export historical matches to `051-historical-matches.sql`
+- [ ] Export historical match events to `052-historical-match-events.sql`
+- [ ] Export historical players/rosters to `053-historical-players.sql`, `054-historical-rosters.sql`
+
+### ⏳ Todo
+- [ ] Add "skip if exists" logic to ApslMatchScraper
+- [ ] Add "skip if exists" logic to CslMatchScraper
+- [ ] Configure scrape targets to only scrape 2025/2026 season
+- [ ] Test full rebuild with historical SQL files
+- [ ] Document end-of-season export workflow
+
+## Complete Development Workflow
+
+### 1. Full Rebuild (Fresh Start)
+```bash
+# Destroy everything, rebuild from SQL files
+./build.sh
+
+# Check what loaded from SQL files (should show structure, no dynamic data)
+node database/scripts/audit-database.js
+# Expected: Teams/divisions/seasons present, 0 matches/standings/players
+
+# Populate dynamic data via scrapers
+./update.sh
+
+# Verify what was scraped
+node database/scripts/audit-database.js
+# Expected: Matches, standings, players now populated
+```
+
+### 2. Regular Updates (During Season)
+```bash
+# Before scraping: see what's missing
+node database/scripts/audit-database.js
+# Shows: "16 matches need results"
+
+# Run scrapers to get new data
+./update.sh
+
+# After scraping: verify changes
+node database/scripts/audit-database.js
+# Shows: "0 matches need results" (if successful)
+```
+
+### 3. Quick Check (Anytime)
+```bash
+# See current database state
+node database/scripts/audit-database.js
+
+# Output shows:
+# - Structure counts (teams, divisions, seasons)
+# - Current season data (matches, standings, rosters)
+# - What's missing (matches without results)
+# - Scrape target status
+```
+
+### 4. Debugging Workflow
+```bash
+# Something wrong? Check state
+node database/scripts/audit-database.js
+
+# Rebuild from clean slate
+./build.sh
+
+# Verify SQL files loaded
+node database/scripts/audit-database.js
+
+# Re-populate
+./update.sh
+
+# Verify again
+node database/scripts/audit-database.js
+```
+
+## How to Know What You Have vs What You Need
+
+### Quick Audit Script
+```bash
+# Run comprehensive database audit
+node database/scripts/audit-database.js
+```
+
+**Shows**:
+- ✅ What structure exists (orgs, leagues, divisions, teams)
+- 📅 Current season data (matches, standings, rosters)
+- 📚 Historical data (past seasons)
+- 🔍 What's missing (matches needing results)
+- 🎯 Scrape target status
+
+### Manual SQL Queries
 
 ```bash
-# Check what's loaded in database
+# What structure exists (from SQL files)?
 podman exec footballhome_db psql -U footballhome_user -d footballhome -c \
   "SELECT 'organizations', COUNT(*) FROM organizations UNION ALL 
    SELECT 'leagues', COUNT(*) FROM leagues UNION ALL 
    SELECT 'seasons', COUNT(*) FROM seasons UNION ALL 
-   SELECT 'divisions', COUNT(*) FROM divisions;"
+   SELECT 'divisions', COUNT(*) FROM divisions UNION ALL
+   SELECT 'teams', COUNT(*) FROM teams;"
+
+# Current season: what matches need results?
+podman exec footballhome_db psql -U footballhome_user -d footballhome -c \
+  "SELECT COUNT(*) as matches_needing_results
+   FROM matches m
+   JOIN divisions d ON m.division_id = d.id
+   JOIN seasons s ON d.season_id = s.id
+   WHERE s.name LIKE '%2025/2026%'
+     AND m.match_date < NOW()
+     AND m.home_score IS NULL;"
+
+# What teams don't have rosters?
+podman exec footballhome_db psql -U footballhome_user -d footballhome -c \
+  "SELECT t.display_name, COUNT(dtp.player_id) as roster_size
+   FROM division_teams dt
+   JOIN teams t ON dt.team_id = t.id
+   JOIN divisions d ON dt.division_id = d.id
+   JOIN seasons s ON d.season_id = s.id
+   LEFT JOIN division_team_players dtp ON dtp.division_team_id = dt.id
+   WHERE s.name LIKE '%2025/2026%'
+   GROUP BY t.id, t.display_name
+   HAVING COUNT(dtp.player_id) = 0
+   ORDER BY t.display_name;"
 
 # Check scrape target status
 podman exec footballhome_db psql -U footballhome_user -d footballhome -c \
@@ -236,13 +381,13 @@ podman exec footballhome_db psql -U footballhome_user -d footballhome -c \
 
 ## Summary
 
-**Current Issue**: League structure (organizations, leagues, seasons, divisions) is being scraped repeatedly, causing duplicates and rebuild inconsistencies.
+**Core Strategy**: Historical seasons in SQL files (committed to git), current season scraped dynamically.
 
-**Solution**: Move league structure to SQL files, scrapers only create dynamic content (teams, players, matches).
+**Key Benefits**: 
+- No re-scraping of old games (faster, more efficient)
+- Reproducible builds (historical data version-controlled)
+- No duplicate divisions (scrapers lookup, never create)
+- Clear data lifecycle (scrape → export → commit → stop scraping)
+- Easier debugging (historical data doesn't change)
 
-**Benefit**: 
-- No more duplicate divisions
-- Reproducible builds
-- Clear data ownership
-- Scrapers simpler and faster
-- Easy to add new seasons/divisions manually
+**Next Steps**: Export historical standings/matches/rosters to SQL files, configure scrapers for current season only.

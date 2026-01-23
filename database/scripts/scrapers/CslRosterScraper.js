@@ -64,7 +64,7 @@ class CslRosterScraper {
       JOIN seasons s ON c.season_id = s.id
       JOIN leagues l ON s.league_id = l.id
       WHERE l.name = 'Cosmopolitan Soccer League'
-        AND dt.is_active = true
+        AND dt.unregistered_at IS NULL
       ORDER BY t.id, t.name
     `);
     

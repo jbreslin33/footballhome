@@ -755,34 +755,40 @@ CREATE INDEX idx_admins_user ON admins(user_id);
 CREATE INDEX idx_admins_level ON admins(admin_level_id);
 
 CREATE TABLE organization_admins (
-    id SERIAL PRIMARY KEY,
     organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP,
     admin_role VARCHAR(50),
     is_primary BOOLEAN DEFAULT false,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(organization_id, admin_id)
+    -- No is_active - derived from ended_at IS NULL
+    -- Multiple rows track admin tenure history
+    CHECK (ended_at IS NULL OR ended_at > started_at),
+    PRIMARY KEY (organization_id, admin_id, started_at)
 );
 
 CREATE INDEX idx_organization_admins_organization ON organization_admins(organization_id);
 CREATE INDEX idx_organization_admins_admin ON organization_admins(admin_id);
+CREATE INDEX idx_organization_admins_current ON organization_admins(organization_id, admin_id) WHERE ended_at IS NULL;
 
 COMMENT ON TABLE organization_admins IS 'Admins assigned to organizations (Lighthouse 1893, etc.)';
 
 CREATE TABLE league_admins (
-    id SERIAL PRIMARY KEY,
     league_id INTEGER NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
     admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP,
     admin_role VARCHAR(50),
     is_primary BOOLEAN DEFAULT false,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(league_id, admin_id)
+    -- No is_active - derived from ended_at IS NULL
+    -- Multiple rows track admin tenure history
+    CHECK (ended_at IS NULL OR ended_at > started_at),
+    PRIMARY KEY (league_id, admin_id, started_at)
 );
 
 CREATE INDEX idx_league_admins_league ON league_admins(league_id);
 CREATE INDEX idx_league_admins_admin ON league_admins(admin_id);
+CREATE INDEX idx_league_admins_current ON league_admins(league_id, admin_id) WHERE ended_at IS NULL;
 
 COMMENT ON TABLE league_admins IS 'Admins assigned to leagues (APSL, CASA, etc.) - commissioners, schedulers, etc.';
 
@@ -805,18 +811,21 @@ CREATE INDEX idx_clubs_sport ON clubs(sport_id);
 COMMENT ON TABLE clubs IS 'Competitive units within organizations (e.g., "Lighthouse 1893 SC", "Boys Club")';
 
 CREATE TABLE club_admins (
-    id SERIAL PRIMARY KEY,
     club_id INTEGER NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
     admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP,
     admin_role VARCHAR(50),
     is_primary BOOLEAN DEFAULT false,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(club_id, admin_id)
+    -- No is_active - derived from ended_at IS NULL
+    -- Multiple rows track admin tenure history
+    CHECK (ended_at IS NULL OR ended_at > started_at),
+    PRIMARY KEY (club_id, admin_id, started_at)
 );
 
 CREATE INDEX idx_club_admins_club ON club_admins(club_id);
 CREATE INDEX idx_club_admins_admin ON club_admins(admin_id);
+CREATE INDEX idx_club_admins_current ON club_admins(club_id, admin_id) WHERE ended_at IS NULL;
 
 COMMENT ON TABLE club_admins IS 'Admins assigned to clubs (Lighthouse SC, Boys Club, etc.) - grants app permissions';
 
@@ -842,17 +851,20 @@ CREATE INDEX idx_teams_source ON teams(source_system_id);
 COMMENT ON TABLE teams IS 'Persistent team entities (e.g., "Lighthouse 1893 SC", "Lighthouse Boys Club")';
 
 CREATE TABLE team_admins (
-    id SERIAL PRIMARY KEY,
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     admin_id INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP,
     admin_role VARCHAR(50),
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(team_id, admin_id)
+    -- No is_active - derived from ended_at IS NULL
+    -- Multiple rows track admin tenure history
+    CHECK (ended_at IS NULL OR ended_at > started_at),
+    PRIMARY KEY (team_id, admin_id, started_at)
 );
 
 CREATE INDEX idx_team_admins_team ON team_admins(team_id);
 CREATE INDEX idx_team_admins_admin ON team_admins(admin_id);
+CREATE INDEX idx_team_admins_current ON team_admins(team_id, admin_id) WHERE ended_at IS NULL;
 
 COMMENT ON TABLE team_admins IS 'Admins assigned to teams - grants app permissions. Separate from coaches table (identity vs authorization).';
 
@@ -861,17 +873,20 @@ CREATE TABLE division_teams (
     id SERIAL PRIMARY KEY,
     division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(division_id, team_id)
+    registered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    unregistered_at TIMESTAMP,
+    -- No is_active - derived from unregistered_at IS NULL
+    -- No UNIQUE constraint - allows promotion/relegation history
+    -- Team can appear in multiple divisions over time
+    CHECK (unregistered_at IS NULL OR unregistered_at > registered_at)
 );
 
 CREATE INDEX idx_division_teams_division ON division_teams(division_id);
 CREATE INDEX idx_division_teams_team ON division_teams(team_id);
-CREATE INDEX idx_division_teams_active ON division_teams(division_id, is_active) WHERE is_active = true;
+CREATE INDEX idx_division_teams_current ON division_teams(division_id, team_id) WHERE unregistered_at IS NULL;
+CREATE INDEX idx_division_teams_history ON division_teams(team_id, registered_at, unregistered_at);
 
-COMMENT ON TABLE division_teams IS 'Team registrations in divisions (league manages seasonal participation)';
+COMMENT ON TABLE division_teams IS 'Team registrations in divisions - temporal history for promotion/relegation';
 
 -- Standings table (mirrors standings from source sites - no calculations)
 CREATE TABLE standings (
@@ -1020,21 +1035,25 @@ COMMENT ON TABLE player_positions IS 'Positions a player CAN play (general profi
 
 -- Player rosters for division team entries
 CREATE TABLE division_team_players (
-    id SERIAL PRIMARY KEY,
     division_team_id INTEGER NOT NULL REFERENCES division_teams(id) ON DELETE CASCADE,
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
-    jersey_number VARCHAR(10),
-    is_active BOOLEAN DEFAULT true,
-    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     left_at TIMESTAMP,
-    UNIQUE(division_team_id, player_id)
+    jersey_number VARCHAR(10),
+    -- No is_active - derived from left_at IS NULL
+    -- Multiple rows per player track transfer history
+    -- Current roster: WHERE left_at IS NULL
+    -- History: All rows ordered by joined_at
+    CHECK (left_at IS NULL OR left_at > joined_at),
+    PRIMARY KEY (division_team_id, player_id, joined_at)
 );
 
 CREATE INDEX idx_division_team_players_team ON division_team_players(division_team_id);
 CREATE INDEX idx_division_team_players_player ON division_team_players(player_id);
-CREATE INDEX idx_division_team_players_active ON division_team_players(division_team_id, is_active) WHERE is_active = true;
+CREATE INDEX idx_division_team_players_current ON division_team_players(division_team_id, player_id) WHERE left_at IS NULL;
+CREATE INDEX idx_division_team_players_history ON division_team_players(player_id, joined_at, left_at);
 
-COMMENT ON TABLE division_team_players IS 'Players assigned to division team entries (official league roster)';
+COMMENT ON TABLE division_team_players IS 'Players assigned to division team entries (official league roster). Multiple rows per player track transfer history - each row is one period of team membership.';
 
 -- Track external IDs for division team player entries
 CREATE TABLE division_team_player_external_ids (
@@ -1087,18 +1106,21 @@ CREATE INDEX idx_coaches_person ON coaches(person_id);
 CREATE INDEX idx_coaches_source ON coaches(source_system_id);
 
 CREATE TABLE division_team_coaches (
-    id SERIAL PRIMARY KEY,
     division_team_id INTEGER NOT NULL REFERENCES division_teams(id) ON DELETE CASCADE,
     coach_id INTEGER NOT NULL REFERENCES coaches(id) ON DELETE CASCADE,
+    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP,
     coach_role_id INTEGER REFERENCES coach_roles(id),
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(division_team_id, coach_id)
+    -- No is_active - derived from ended_at IS NULL
+    -- Multiple rows track coaching tenure history
+    CHECK (ended_at IS NULL OR ended_at > started_at),
+    PRIMARY KEY (division_team_id, coach_id, started_at)
 );
 
 CREATE INDEX idx_division_team_coaches_team ON division_team_coaches(division_team_id);
 CREATE INDEX idx_division_team_coaches_coach ON division_team_coaches(coach_id);
 CREATE INDEX idx_division_team_coaches_role ON division_team_coaches(coach_role_id);
+CREATE INDEX idx_division_team_coaches_current ON division_team_coaches(division_team_id, coach_id) WHERE ended_at IS NULL;
 
 COMMENT ON TABLE division_team_coaches IS 'Coaches assigned to division team entries (same level as players)';
 
@@ -1440,19 +1462,24 @@ CREATE INDEX idx_chat_integrations_chat ON chat_integrations(chat_id);
 CREATE INDEX idx_chat_integrations_provider ON chat_integrations(provider_id);
 CREATE INDEX idx_chat_integrations_primary ON chat_integrations(chat_id, is_primary) WHERE is_primary = true;
 
--- Simple: chat members are users, that's it
+-- Chat members with temporal tracking (people can leave and rejoin chats)
 CREATE TABLE chat_members (
-    id SERIAL PRIMARY KEY,
     chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    left_at TIMESTAMP,
     chat_role_id INTEGER REFERENCES chat_roles(id) DEFAULT 2,
-    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(chat_id, user_id)
+    -- No is_active - derived from left_at IS NULL
+    -- Multiple rows track chat membership history (leave and rejoin)
+    CHECK (left_at IS NULL OR left_at > joined_at),
+    PRIMARY KEY (chat_id, user_id, joined_at)
 );
 
 CREATE INDEX idx_chat_members_chat ON chat_members(chat_id);
 CREATE INDEX idx_chat_members_user ON chat_members(user_id);
 CREATE INDEX idx_chat_members_role ON chat_members(chat_role_id);
+CREATE INDEX idx_chat_members_current ON chat_members(chat_id, user_id) WHERE left_at IS NULL;
+CREATE INDEX idx_chat_members_history ON chat_members(user_id, joined_at, left_at);
 
 CREATE TABLE chat_messages (
     id SERIAL PRIMARY KEY,

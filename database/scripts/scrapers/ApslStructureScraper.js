@@ -133,19 +133,16 @@ class ApslStructureScraper {
       );
     }
     
-    // 5. Upsert divisions (link to conferences and season)
-    // Map divisions to their saved conference IDs (reuse savedConferences from above)
-    const conferenceMap = new Map(savedConferences.map(c => [c.external_id, c.id]));
+    // 5. LOOKUP divisions (they must exist in 034-divisions.sql - scrapers should NEVER create divisions)
+    console.log(`   🔍 Looking up ${divisions.length} divisions from database...`);
+    const savedDivisions = await this.divisionRepo.findBySeason(seasonResult.id);
+    console.log(`   ✓ Found ${savedDivisions.length} divisions in database for season ${seasonResult.id}`);
     
-    for (const division of divisions) {
-      division.seasonId = seasonResult.id;
-      division.conferenceId = conferenceMap.get(division.externalId);
+    if (savedDivisions.length === 0) {
+      throw new Error(`❌ No divisions found for season ${seasonResult.id}! Divisions must exist in 034-divisions.sql before running scrapers.`);
     }
-    const divResult = await this.divisionRepo.upsertMany(divisions);
-    console.log(`   ✓ Divisions: ${divResult.inserted} inserted, ${divResult.updated} updated`);
     
     // 5a. Link divisions to scrape_target (audit trail)
-    const savedDivisions = await this.divisionRepo.findBySeason(seasonResult.id);
     for (const div of savedDivisions) {
       await this._client.query(
         `INSERT INTO division_scrape_targets (scrape_target_id, division_id) 
@@ -285,7 +282,7 @@ class ApslStructureScraper {
             }
             
             // Link team to division
-            await this.divisionTeamRepo.upsert(divisionId, teamId);
+            await this.divisionTeamRepo.register(divisionId, teamId);
             linksCreated++;
             
             // Save standings data if available
