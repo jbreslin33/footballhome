@@ -10,6 +10,7 @@ const DivisionRepository = require('../domain/repositories/DivisionRepository');
 const ScrapedTeamRepository = require('../domain/repositories/ScrapedTeamRepository');
 const ClubRepository = require('../domain/repositories/ClubRepository');
 const DivisionTeamRepository = require('../domain/repositories/DivisionTeamRepository');
+const StandingsRepository = require('../domain/repositories/StandingsRepository');
 const Organization = require('../domain/models/Organization');
 const League = require('../domain/models/League');
 const Season = require('../domain/models/Season');
@@ -39,6 +40,7 @@ class CslStructureScraper {
     this.scrapedTeamRepo = new ScrapedTeamRepository(client);
     this.clubRepo = new ClubRepository(client);
     this.divisionTeamRepo = new DivisionTeamRepository(client);
+    this.standingsRepo = new StandingsRepository(client);
     
     // CSL configuration
     this.leagueName = 'Cosmopolitan Soccer League';
@@ -289,15 +291,19 @@ class CslStructureScraper {
     console.log(`   ✅ Found division: ${divisionData.divisionName} (id=${division.id})`);
     
     // Process teams in this division
-    for (const teamData of divisionData.teams) {
-      await this.processTeam(division.id, seasonId, teamData);
+    let standingsSaved = 0;
+    for (let i = 0; i < divisionData.teams.length; i++) {
+      const saved = await this.processTeam(division.id, seasonId, divisionData.teams[i], i);
+      if (saved) standingsSaved++;
     }
+    
+    console.log(`   ✓ Standings: ${standingsSaved} records saved`);
   }
   
   /**
    * Process a team and link it to division
    */
-  async processTeam(divisionId, seasonId, teamData) {
+  async processTeam(divisionId, seasonId, teamData, teamIndex) {
     // 1. Create scraped_teams entry using upsert (handles duplicates)
     const scrapedTeamModel = new ScrapedTeam({
       name: teamData.name,
@@ -325,8 +331,31 @@ class CslStructureScraper {
     const existing = await this.divisionTeamRepo.findByDivisionAndTeam(divisionId, scrapedTeamResult.id);
     
     if (!existing) {
-      await this.divisionTeamRepo.upsert(divisionId, scrapedTeamResult.id, true);
+      await this.divisionTeamRepo.register(divisionId, scrapedTeamResult.id);
     }
+    
+    // 4. Save standings data (CSL parser extracts standings from tables)
+    if (teamData.rank !== undefined && teamData.played !== undefined) {
+      await this.standingsRepo.upsert({
+        competitionId: divisionId,  // CSL: division = competition (like APSL)
+        seasonId: seasonId,
+        teamId: scrapedTeamResult.id,
+        position: teamData.rank,
+        played: teamData.played,
+        wins: teamData.wins,
+        draws: teamData.draws,
+        losses: teamData.losses,
+        goalsFor: teamData.goalsFor,
+        goalsAgainst: teamData.goalsAgainst,
+        goalDiff: teamData.goalDiff,
+        points: teamData.points,
+        fetchedAt: new Date(),
+        source: 'CSL Standings Page'
+      });
+      return true; // Standings saved
+    }
+    
+    return false; // No standings data
   }
   
   /**
