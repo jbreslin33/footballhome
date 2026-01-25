@@ -288,10 +288,6 @@ CREATE TABLE scrape_targets (
     last_error_at TIMESTAMP,
     last_error_message TEXT,
     retry_count INTEGER DEFAULT 0,
-    -- Legacy fields (for backward compatibility during migration)
-    is_active BOOLEAN DEFAULT true,
-    is_initialized BOOLEAN DEFAULT false,
-    last_synced_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -301,8 +297,6 @@ CREATE INDEX idx_scrape_targets_scraper ON scrape_targets(scraper_type_id);
 CREATE INDEX idx_scrape_targets_type ON scrape_targets(target_type_id);
 CREATE INDEX idx_scrape_targets_action ON scrape_targets(scrape_action_id);
 CREATE INDEX idx_scrape_targets_status ON scrape_targets(scrape_status_id);
-CREATE INDEX idx_scrape_targets_active ON scrape_targets(is_active);
-CREATE INDEX idx_scrape_targets_initialized ON scrape_targets(is_initialized);
 
 CREATE TABLE scrape_executions (
     id SERIAL PRIMARY KEY,
@@ -718,8 +712,6 @@ CREATE INDEX idx_person_phones_person ON person_phones(person_id);
 CREATE INDEX idx_person_phones_number ON person_phones(phone_number);
 CREATE INDEX idx_person_phones_type ON person_phones(phone_type_id);
 CREATE INDEX idx_person_phones_primary ON person_phones(person_id, is_primary) WHERE is_primary = true;
-
-COMMENT ON TABLE person_phones IS 'Phone numbers belong to persons';
 
 COMMENT ON TABLE person_phones IS 'Phone numbers belong to persons';
 

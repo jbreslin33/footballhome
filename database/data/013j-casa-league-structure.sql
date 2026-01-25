@@ -1,16 +1,13 @@
 -- CASA Select 2025 League Structure
 -- Season 100, Conferences 100-103, Divisions 100-104
 --
--- Covers 4 CASA Select conferences (South NJ and North NJ launching in Spring):
--- - Philadelphia (Liga 1, Liga 2) - 2 divisions, page_node_id values available
--- - Boston (Liga 1) - 1 division, page_node_id needed
--- - Lancaster (Liga 1) - 1 division, page_node_id needed
--- - Central NJ (Liga 1) - 1 division, page_node_id needed
+-- Covers 4 CASA Select conferences:
+-- - Philadelphia (Liga 1, Liga 2) - 2 divisions, continuous fall→spring season
+-- - Boston (Liga 1) - 1 division, continuous fall→spring season
+-- - Lancaster (Liga 1) - 1 division, continuous fall→spring season  
+-- - Central NJ (Liga 1) - 1 division, separate fall/spring seasons (not included)
 --
 -- Total: 4 conferences, 5 divisions (only Philadelphia has 2)
---
--- This file (013j) loads BEFORE 013i-casa-scrape-targets.sql (alphabetically)
--- to ensure divisions exist before scrape targets reference them.
 
 -- ============================================================================
 -- SEASON
@@ -39,7 +36,7 @@ INSERT INTO conferences (id, season_id, name, abbreviation, region, source_syste
 ON CONFLICT (season_id, name) DO NOTHING;
 
 INSERT INTO divisions (id, season_id, conference_id, name, division_type_id, skill_level, skill_label, source_system_id, external_id, sort_order) VALUES
-(102, 100, 101, 'Liga 1', 1, 1, 'Liga 1', 2, NULL, 1)
+(102, 100, 101, 'Liga 1', 1, 1, 'Liga 1', 2, '9090891', 1)
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
@@ -50,7 +47,7 @@ INSERT INTO conferences (id, season_id, name, abbreviation, region, source_syste
 ON CONFLICT (season_id, name) DO NOTHING;
 
 INSERT INTO divisions (id, season_id, conference_id, name, division_type_id, skill_level, skill_label, source_system_id, external_id, sort_order) VALUES
-(103, 100, 102, 'Liga 1', 1, 1, 'Liga 1', 2, NULL, 1)
+(103, 100, 102, 'Liga 1', 1, 1, 'Liga 1', 2, '9090893', 1)
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================
