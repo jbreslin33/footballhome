@@ -218,10 +218,10 @@ async function main() {
   const apslDir = path.join(__dirname, '../../scraped-html/apsl');
   
   try {
-    // Get all APSL HTML files (team roster pages are 6-digit IDs)
+    // Get all APSL HTML files (team roster pages from apsl-team-* pattern)
     const files = await fs.readdir(apslDir);
     const rosterFiles = files.filter(f => 
-      f.match(/^\d{6}-[a-f0-9]+\.html$/) && // Team roster files (6-digit ID)
+      f.match(/^apsl-team-\d+-[a-f0-9]+\.html$/) && // Team roster files
       !f.endsWith('.skip') // Skip files marked as skip
     );
     

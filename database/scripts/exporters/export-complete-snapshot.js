@@ -6,6 +6,7 @@
  * - Clubs (teams reference these)
  * - Teams (all teams, not just static ones)
  * - Division teams (team registrations)
+ * - Division team players (rosters)
  * - Historical matches (2022-2024)
  * - Match events
  * - Match divisions
@@ -26,7 +27,7 @@ const client = new Client({
   password: 'footballhome_pass'
 });
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+const DATA_DIR = path.join(__dirname, '../../data');
 
 async function exportOrganizations() {
   console.log('🏢 Exporting organizations...');
@@ -449,6 +450,60 @@ INSERT INTO players (id, person_id, height_cm, nationality, photo_url, scrape_ta
   console.log(`  ✓ Exported ${result.rows.length} players to ${path.basename(sqlFile)}`);
 }
 
+async function exportDivisionTeamPlayers() {
+  console.log('👥 Exporting division team players (rosters)...');
+  
+  const result = await client.query(`
+    SELECT dtp.id, dtp.division_team_id, dtp.player_id, 
+           dtp.joined_at, dtp.left_at, dtp.jersey_number
+    FROM division_team_players dtp
+    JOIN division_teams dt ON dtp.division_team_id = dt.id
+    JOIN divisions d ON dt.division_id = d.id
+    JOIN seasons s ON d.season_id = s.id
+    WHERE s.name NOT LIKE '%2026%'
+    ORDER BY dtp.id
+  `);
+  
+  if (result.rows.length === 0) {
+    console.log('  ℹ️  No historical rosters to export (all rosters are current season)');
+    return;
+  }
+  
+  const sqlFile = path.join(DATA_DIR, '046-division-team-players.sql');
+  let sql = `-- ============================================================================
+-- DIVISION TEAM PLAYERS (ROSTERS) - HISTORICAL EXPORT
+-- ============================================================================
+-- Generated: ${new Date().toISOString()}
+-- Total Roster Entries: ${result.rows.length}
+-- 
+-- Historical rosters from completed seasons (2022-2025 Fall).
+-- Spring 2026 and future rosters remain dynamic via scrapers.
+-- ============================================================================
+
+INSERT INTO division_team_players (
+  id, division_team_id, player_id, joined_at, left_at, jersey_number
+) VALUES\n`;
+  
+  const values = result.rows.map(row => {
+    const fields = [
+      row.id,
+      row.division_team_id,
+      row.player_id,
+      `'${row.joined_at.toISOString()}'`,
+      row.left_at ? `'${row.left_at.toISOString()}'` : 'NULL',
+      row.jersey_number ? client.escapeLiteral(row.jersey_number) : 'NULL'
+    ];
+    return `  (${fields.join(', ')})`;
+  });
+  
+  sql += values.join(',\n');
+  sql += '\nON CONFLICT (division_team_id, player_id, joined_at) DO NOTHING;\n\n';
+  sql += `SELECT setval('division_team_players_id_seq', (SELECT MAX(id) FROM division_team_players));\n`;
+  
+  fs.writeFileSync(sqlFile, sql);
+  console.log(`  ✓ Exported ${result.rows.length} roster entries to ${path.basename(sqlFile)}`);
+}
+
 async function main() {
   try {
     console.log('🚀 Starting complete database snapshot export...\n');
@@ -462,6 +517,7 @@ async function main() {
     await exportDivisionTeams();
     await exportPersons();  // Must come before players
     await exportPlayers();  // Must come before match events
+    await exportDivisionTeamPlayers();  // Rosters (after players and division_teams)
     await exportMatches();
     await exportMatchDivisions();
     await exportMatchEvents();

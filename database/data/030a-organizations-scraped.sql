@@ -1,5 +1,5 @@
 -- Organizations (scraped from leagues)
--- Generated: 2026-01-23T22:00:52.650Z
+-- Generated: 2026-01-26T22:25:56.408Z
 -- Total Organizations: 99
 --
 -- Note: IDs 1-3 are in 030-organizations.sql (APSL, CASA, CSL league operators)

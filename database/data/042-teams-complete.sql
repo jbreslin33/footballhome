@@ -1,5 +1,5 @@
 -- Complete Teams Export (ALL teams with explicit IDs)
--- Generated: 2026-01-23T22:00:52.661Z
+-- Generated: 2026-01-26T22:25:56.419Z
 -- Total Teams: 261
 --
 -- This file contains ALL teams (APSL, CSL, CASA, custom) with explicit IDs

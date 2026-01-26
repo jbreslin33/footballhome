@@ -1,5 +1,5 @@
 -- Clubs (organizations own clubs)
--- Generated: 2026-01-23T22:00:52.658Z
+-- Generated: 2026-01-26T22:25:56.416Z
 -- Total Clubs: 99
 
 INSERT INTO clubs (id, organization_id, name, sport_id, logo_url, website, is_active) VALUES

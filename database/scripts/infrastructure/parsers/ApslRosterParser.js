@@ -84,11 +84,16 @@ class ApslRosterParser {
   
   /**
    * Extract team ID from APSL team URL or filename
-   * @param {string} urlOrFilename - URL or filename like "114812-bc27d2da.html"
+   * @param {string} urlOrFilename - URL or filename like "apsl-team-114812-hash.html" or "114812-hash.html"
    * @returns {string|null} Team ID (e.g., "114812")
    */
   extractTeamId(urlOrFilename) {
-    const match = urlOrFilename.match(/(\d{6})/);
+    // Try apsl-team-XXXXX pattern first
+    let match = urlOrFilename.match(/apsl-team-(\d+)-/);
+    if (match) return match[1];
+    
+    // Fall back to XXXXX-hash pattern
+    match = urlOrFilename.match(/^(\d+)-/);
     return match ? match[1] : null;
   }
 }

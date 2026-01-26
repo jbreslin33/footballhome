@@ -1,5 +1,5 @@
 -- Match-Division Associations (Historical)
--- Generated: 2026-01-23T22:00:52.706Z
+-- Generated: 2026-01-26T22:25:56.486Z
 -- Total Associations: 245
 
 INSERT INTO match_divisions (match_id, division_id, counts_for_standings) VALUES
