@@ -115,7 +115,7 @@ async function parsePhase(pool, targets) {
     let errorMessage = null;
     
     try {
-      const mode = target.is_initialized ? 'sync' : 'discover';
+      const mode = 'discover';  // Always use discover mode
       process.env.SCRAPE_TARGET_ID = target.id;
       process.env.SCRAPE_MODE = 'parse';  // Tell scrapers to only parse cached files
       
@@ -180,7 +180,6 @@ async function parsePhase(pool, targets) {
         await pool.query(
           `UPDATE scrape_targets 
            SET scrape_action_id = 3, scrape_status_id = 3, last_success_at = CURRENT_TIMESTAMP,
-               is_initialized = true, last_synced_at = CURRENT_TIMESTAMP,
                updated_at = CURRENT_TIMESTAMP, retry_count = 0
            WHERE id = $1`,
           [target.id]
@@ -269,16 +268,15 @@ async function main() {
         sa.name as action_name,
         st.scrape_status_id,
         sst.name as status_name,
-        st.is_initialized,
-        st.last_synced_at
+        st.last_success_at,
+        st.last_error_at
       FROM scrape_targets st
       JOIN scrape_target_types stt ON st.target_type_id = stt.id
       JOIN scraper_types scrt ON st.scraper_type_id = scrt.id
       JOIN source_systems ss ON st.source_system_id = ss.id
       LEFT JOIN scrape_actions sa ON st.scrape_action_id = sa.id
       LEFT JOIN scrape_statuses sst ON st.scrape_status_id = sst.id
-      WHERE st.is_active = true
-        AND (sa.name IS NULL OR sa.name != 'skip')           -- Don't process 'skip' actions
+      WHERE (sa.name IS NULL OR sa.name != 'skip')           -- Don't process 'skip' actions
         AND (sst.name IS NULL OR sst.name NOT IN ('archived', 'in_progress'))  -- Don't process archived or already running
       ORDER BY st.id
     `);
