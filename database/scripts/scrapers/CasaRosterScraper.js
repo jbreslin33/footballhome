@@ -98,30 +98,38 @@ class CasaRosterScraper {
         return 0;
       }
       
-      // Parse CSV
-      const records = parse(csvData, {
-        columns: true,
+      // Parse CSV without auto-header detection (CASA sheets have metadata rows)
+      const allRows = parse(csvData, {
+        columns: false,
         skip_empty_lines: true,
-        trim: true
+        trim: true,
+        relax_column_count: true
       });
       
-      console.log(`   📋 Found ${records.length} roster entries`);
+      console.log(`   📋 Found ${allRows.length} total rows`);
       
-      if (records.length === 0) {
+      if (allRows.length === 0) {
         console.log(`   ⚠️  No data rows - skipping`);
         return 0;
       }
       
-      // Group by team
-      const teamGroups = this.groupByTeam(records);
-      console.log(`   🏆 Teams: ${Object.keys(teamGroups).length}`);
+      // Extract team name and players from CASA sheet structure
+      const { teamName, players } = this.parseCasaRosterSheet(allRows);
       
-      let playersAdded = 0;
-      
-      for (const [teamName, players] of Object.entries(teamGroups)) {
-        const added = await this.processTeamRoster(client, teamName, players, target);
-        playersAdded += added;
+      if (!teamName) {
+        console.log(`   ⚠️  Could not find team name - skipping`);
+        return 0;
       }
+      
+      console.log(`   🏆 Team: ${teamName} (${players.length} players)`);
+      
+      if (players.length === 0) {
+        console.log(`   ⚠️  No players found - skipping`);
+        return 0;
+      }
+      
+      // Process roster for this team
+      const playersAdded = await this.processTeamRoster(client, teamName, players, target);
       
       return playersAdded;
       
@@ -168,23 +176,69 @@ class CasaRosterScraper {
   }
   
   /**
-   * Group roster records by team name
+   * Parse CASA roster sheet structure
+   * Format:
+   *   Row 1-3: Title rows
+   *   Row 4: "Team Name:" label in column C (index 2), team name in column D (index 3)
+   *   Row 5: Empty
+   *   Row 6: "Manager:" label (optional)
+   *   Row 7: Empty
+   *   Row 8: Headers ("First Name", "Last Name", "Date of Birth", "Headshot", "Date Added", "Jersey #")
+   *   Row 9+: Player data
    */
-  groupByTeam(records) {
-    const groups = {};
+  parseCasaRosterSheet(rows) {
+    let teamName = null;
+    let headerRowIndex = -1;
+    let headers = [];
     
-    for (const record of records) {
-      // Common column names in CASA sheets: "Team", "Team Name", "Club"
-      const teamName = record.Team || record['Team Name'] || record.Club || 'Unknown Team';
+    // Find team name and header row
+    for (let i = 0; i < Math.min(rows.length, 20); i++) {
+      const row = rows[i];
       
-      if (!groups[teamName]) {
-        groups[teamName] = [];
+      // Look for "Team Name:" in column C (index 2)
+      if (row[2] && row[2].toLowerCase().includes('team name')) {
+        teamName = row[3]?.trim() || row[4]?.trim(); // Team name in column D or E
+        continue;
       }
       
-      groups[teamName].push(record);
+      // Look for header row (contains "First Name" and "Last Name")
+      if (row.some(cell => cell && cell.toLowerCase().includes('first name')) &&
+          row.some(cell => cell && cell.toLowerCase().includes('last name'))) {
+        headerRowIndex = i;
+        headers = row.map(h => h?.trim() || '');
+        break;
+      }
     }
     
-    return groups;
+    if (!teamName || headerRowIndex === -1) {
+      return { teamName: null, players: [] };
+    }
+    
+    // Parse player rows
+    const players = [];
+    for (let i = headerRowIndex + 1; i < rows.length; i++) {
+      const row = rows[i];
+      
+      // Skip empty rows or rows without enough data
+      if (!row || row.length < 3 || !row[1] || !row[2]) continue;
+      
+      // Build player object from row
+      const jerseyNum = row[0] ? String(row[0]).trim() : '';
+      const player = {
+        // Column 0 contains the jersey number (CASA uses row numbers as jersey numbers)
+        'Jersey #': jerseyNum
+      };
+      
+      for (let j = 1; j < headers.length && j < row.length; j++) {
+        if (headers[j] && headers[j] !== 'Jersey #') {  // Skip Jersey # - already set from row[0]
+          player[headers[j]] = row[j]?.trim() || '';
+        }
+      }
+      
+      players.push(player);
+    }
+    
+    return { teamName, players };
   }
   
   /**
@@ -362,18 +416,19 @@ class CasaRosterScraper {
         return false;
       }
       
-      // Jersey number (common columns: "Number", "Jersey", "#", "No")
-      const jerseyNumber = playerData.Number || playerData.Jersey || playerData['#'] || playerData.No || null;
+      // Jersey number (common columns: "Number", "Jersey", "#", "No", "Jersey #")
+      const jerseyNumber = playerData.Number || playerData.Jersey || playerData['#'] || 
+                           playerData.No || playerData['Jersey #'] || null;
       
       // Find or create person
-      const person = await this.personRepo.findOrCreate({
+      const personResult = await this.personRepo.upsert({
         firstName: parsedFirstName,
         lastName: parsedLastName
       });
       
       // Find or create player
-      const player = await this.playerRepo.findOrCreate({
-        personId: person.id,
+      const playerResult = await this.playerRepo.upsert({
+        personId: personResult.id,
         sourceSystemId: sourceSystemId
       });
       
@@ -381,7 +436,7 @@ class CasaRosterScraper {
       const existingResult = await client.query(
         `SELECT id FROM division_team_players 
          WHERE division_team_id = $1 AND player_id = $2 AND left_at IS NULL`,
-        [divisionTeamId, player.id]
+        [divisionTeamId, playerResult.id]
       );
       
       if (existingResult.rows.length > 0) {
@@ -392,7 +447,7 @@ class CasaRosterScraper {
       await client.query(
         `INSERT INTO division_team_players (division_team_id, player_id, jersey_number, joined_at)
          VALUES ($1, $2, $3, CURRENT_TIMESTAMP)`,
-        [divisionTeamId, player.id, jerseyNumber]
+        [divisionTeamId, playerResult.id, jerseyNumber]
       );
       
       return true;
