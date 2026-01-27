@@ -828,19 +828,22 @@ COMMENT ON TABLE club_admins IS 'Admins assigned to clubs (Lighthouse SC, Boys C
 CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
     club_id INTEGER REFERENCES clubs(id),  -- Nullable for standalone teams
-    name VARCHAR(255) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
     city VARCHAR(100),
     logo_url TEXT,
     source_system_id INTEGER REFERENCES source_systems(id),
-    external_id VARCHAR(100) UNIQUE,
+    external_id VARCHAR(100),
     scrape_target_id INTEGER REFERENCES scrape_targets(id),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_system_id, name),  -- Teams must be unique within a source system
+    UNIQUE(source_system_id, external_id)  -- External IDs unique within source system
 );
 
 CREATE INDEX idx_teams_club ON teams(club_id);
 CREATE INDEX idx_teams_source ON teams(source_system_id);
+CREATE INDEX idx_teams_name ON teams(name);  -- For searching by name
 
-COMMENT ON TABLE teams IS 'Persistent team entities (e.g., "Lighthouse 1893 SC", "Lighthouse Boys Club")';
+COMMENT ON TABLE teams IS 'Persistent team entities (e.g., "Lighthouse 1893 SC", "Lighthouse Boys Club"). Same name allowed across different source systems.';
 
 CREATE TABLE team_admins (
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
