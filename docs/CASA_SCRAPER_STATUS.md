@@ -37,6 +37,8 @@
 ### Rosters
 - **Status**: No data in Google Sheets CSVs
 - **Issue**: Sheets may be empty or URLs need updating
+- **Source**: CASA publishes roster links at https://www.casasoccerleagues.com/captainscorner
+  - Captain's Corner contains Google Sheets links for both CASA Select and CASA Traditional
 - **URLs**:
   - Liga 1: https://docs.google.com/spreadsheets/d/e/2PACX-1vSmsWzjTsLR81d-eQTLDM4EnaqzqUOy5OcWLy1Lna1NYVFY7gOj0nZAQdIk99e99g/pub?gid=480494399&output=csv
   - Liga 2: https://docs.google.com/spreadsheets/d/e/2PACX-1vQsDtR6AQPgThg1105AinjkLqHMaWgQfCFJuWqfEtadH41k5OSKYZ2Hqb0N-CnO2Q/pub?gid=310279135&output=csv

@@ -77,6 +77,14 @@ We need to update the scraper with:
 
 ---
 
+## Roster Data Source
+
+**CASA Captain's Corner**: https://www.casasoccerleagues.com/captainscorner
+- Central location for all roster Google Sheets links
+- Contains links for both CASA Select and CASA Traditional leagues
+- Organized by conference and division
+- Updated by league administrators
+
 ## Next Steps
 
 1. **Get all CASA Select URLs** (standings + schedules for each division)

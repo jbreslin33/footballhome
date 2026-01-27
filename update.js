@@ -27,7 +27,7 @@ async function runScraper(scraperPath, args = []) {
     console.log(`${colors.blue}  → Running: ${scraperPath}${colors.reset}`);
     
     const scraper = spawn('node', [scraperPath, ...args], {
-      cwd: path.dirname(scraperPath),
+      cwd: __dirname,  // Run from project root so node_modules is accessible
       stdio: 'inherit'
     });
     
@@ -71,6 +71,16 @@ async function downloadPhase(pool, targets) {
         process.env.SCRAPE_TARGET_ID = target.id;
         await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslStructureScraper.js'));
         console.log(`${colors.green}  ✓ Downloaded CSL structure HTML${colors.reset}\n`);
+      }
+      // CASA - Download standings + schedules (rosters are CSV downloads in parse phase)
+      else if ((target.target_type_id === 1 || target.target_type_id === 3) && target.source_system_id === 2) {
+        process.env.SCRAPE_TARGET_ID = target.id;
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/CasaStructureScraper.js'));
+        console.log(`${colors.green}  ✓ Downloaded CASA structure HTML${colors.reset}\n`);
+      }
+      // CASA Rosters - No download phase needed (direct CSV download in parse phase)
+      else if (target.target_type_id === 4 && target.source_system_id === 2 && target.scraper_type_id === 2) {
+        console.log(`${colors.green}  ↷ Skipping download (CSV fetched in parse phase)${colors.reset}\n`);
       }
       // Countries
       else if (target.target_type_id === 17 && target.source_system_id === 6) {
@@ -156,6 +166,20 @@ async function parsePhase(pool, targets) {
         await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslMatchScraper.js'));
         console.log('');
         await runScraper(path.join(__dirname, 'database/scripts/scrapers/CslMatchEventScraper.js'));
+        success = true;
+        stats.success++;
+      }
+      // CASA Schedules - SportsEngine pages (target_type_id = 3)
+      else if (target.target_type_id === 3 && target.source_system_id === 2) {
+        process.env.SCRAPE_TARGET_ID = target.id;
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/CasaStructureScraper.js'));
+        success = true;
+        stats.success++;
+      }
+      // CASA Rosters - Google Sheets CSVs (target_type_id = 4, scraper_type_id = 2)
+      else if (target.target_type_id === 4 && target.source_system_id === 2 && target.scraper_type_id === 2) {
+        process.env.SCRAPE_TARGET_ID = target.id;
+        await runScraper(path.join(__dirname, 'database/scripts/scrapers/CasaRosterScraper.js'));
         success = true;
         stats.success++;
       }

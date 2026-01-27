@@ -12,6 +12,7 @@
     "groupme:import:dry": "node scripts/groupme-import.js 108640377 --dry-run"
   },
   "dependencies": {
+    "csv-parse": "^6.1.0",
     "dotenv": "^16.0.0",
     "google-spreadsheet": "^4.1.2",
     "jsdom": "^23.2.0",

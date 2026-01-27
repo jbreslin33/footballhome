@@ -45,6 +45,7 @@ INSERT INTO scrape_targets (
 ) ON CONFLICT DO NOTHING;
 
 -- CASA Select Philadelphia Liga 1 - Rosters (Google Sheets)
+-- Source: https://www.casasoccerleagues.com/captainscorner
 INSERT INTO scrape_targets (
     source_system_id, 
     scraper_type_id, 
@@ -55,7 +56,7 @@ INSERT INTO scrape_targets (
     2,  -- CASA
     2,  -- google_sheets
     4,  -- team_roster
-    'https://docs.google.com/spreadsheets/d/e/2PACX-1vSmsWzjTsLR81d-eQTLDM4EnaqzqUOy5OcWLy1Lna1NYVFY7gOj0nZAQdIk99e99g/pub?gid=480494399&output=csv'
+    'https://docs.google.com/spreadsheets/d/14eQOJ60T0XNru6twNp59rP4RNrAuO2Gf/export?format=csv&gid=0',
     'CASA Select Philadelphia Liga 1 - Rosters'
 ) ON CONFLICT DO NOTHING;
 
@@ -92,19 +93,18 @@ INSERT INTO scrape_targets (
 ) ON CONFLICT DO NOTHING;
 
 -- CASA Select Philadelphia Liga 2 - Rosters (Google Sheets)
+-- Source: https://www.casasoccerleagues.com/captainscorner
 INSERT INTO scrape_targets (
     source_system_id, 
     scraper_type_id, 
     target_type_id, 
     url, 
     label
-    scrape_action_id
-    scrape_status_id
 ) VALUES (
     2,  -- CASA
     2,  -- google_sheets
     4,  -- team_roster
-    'https://docs.google.com/spreadsheets/d/e/2PACX-1vQsDtR6AQPgThg1105AinjkLqHMaWgQfCFJuWqfEtadH41k5OSKYZ2Hqb0N-CnO2Q/pub?gid=310279135&output=csv'
+    'https://docs.google.com/spreadsheets/d/195usWo3fmXLw4IUOY_vEdB4dAk7EVfTu/export?format=csv&gid=1361313939',
     'CASA Select Philadelphia Liga 2 - Rosters'
 ) ON CONFLICT DO NOTHING;
 
@@ -136,14 +136,28 @@ INSERT INTO scrape_targets (
     target_type_id, 
     url, 
     label
-    scrape_action_id
-    scrape_status_id
 ) VALUES (
     2,  -- CASA
     1,  -- teampass_html
     3,  -- schedule
-    'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090891'
+    'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090891',
     'CASA Select Boston Liga 1 - Schedule'
+) ON CONFLICT DO NOTHING;
+
+-- CASA Select Boston Liga 1 - Rosters (Google Sheets)
+-- Source: https://www.casasoccerleagues.com/captainscorner
+INSERT INTO scrape_targets (
+    source_system_id, 
+    scraper_type_id, 
+    target_type_id, 
+    url, 
+    label
+) VALUES (
+    2,  -- CASA
+    2,  -- google_sheets
+    4,  -- team_roster
+    'https://docs.google.com/spreadsheets/d/1OnHnhrSRA3Wp2eCs_9-dJhDBlVhSEoobFDGTYvQTfvE/export?format=csv&gid=661044352',
+    'CASA Select Boston Liga 1 - Rosters'
 ) ON CONFLICT DO NOTHING;
 
 -- ============================================================================
@@ -174,12 +188,26 @@ INSERT INTO scrape_targets (
     target_type_id, 
     url, 
     label
-    scrape_action_id
-    scrape_status_id
 ) VALUES (
     2,  -- CASA
     1,  -- teampass_html
     3,  -- schedule
-    'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090893'
+    'https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=9090893',
     'CASA Select Lancaster Liga 1 - Schedule'
+) ON CONFLICT DO NOTHING;
+
+-- CASA Select Lancaster Liga 1 - Rosters (Google Sheets)
+-- Source: https://www.casasoccerleagues.com/captainscorner
+INSERT INTO scrape_targets (
+    source_system_id, 
+    scraper_type_id, 
+    target_type_id, 
+    url, 
+    label
+) VALUES (
+    2,  -- CASA
+    2,  -- google_sheets
+    4,  -- team_roster
+    'https://docs.google.com/spreadsheets/d/1alzJMAccMT5IIBQ_YOAp6FMbADnfC77dxRMZtceMau4/export?format=csv&gid=682688852',
+    'CASA Select Lancaster Liga 1 - Rosters'
 ) ON CONFLICT DO NOTHING;
