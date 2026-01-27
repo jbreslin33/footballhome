@@ -27,14 +27,14 @@ services:
       timeout: 5s
       retries: 30
       start_period: 120s
-    # Required for pg_cron and enable verbose logging
+    # Required for pg_cron with reasonable logging (DDL only)
     command: >
       postgres
       -c shared_preload_libraries=pg_cron
       -c cron.database_name=footballhome
-      -c log_statement=all
-      -c log_duration=on
-      -c log_min_duration_statement=0
+      -c log_statement=ddl
+      -c log_duration=off
+      -c log_min_duration_statement=1000
       -c log_line_prefix='%t [%p] %u@%d '
       -c client_min_messages=notice
 
