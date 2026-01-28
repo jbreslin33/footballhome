@@ -25,12 +25,31 @@ DECLARE
     new_club_id INTEGER;
     teams_processed INTEGER := 0;
 BEGIN
-    -- Process each orphan CSL team
+    -- Process each orphan CSL team (excluding variants)
+    -- Skip teams with variant suffixes: II, III, IV, Old Boys, Legends, Masters, etc.
     FOR team_record IN 
         SELECT id, name 
         FROM teams 
         WHERE source_system_id = 3 
           AND club_id IS NULL
+          -- Exclude team variants
+          AND name NOT LIKE '% II'
+          AND name NOT LIKE '% III'
+          AND name NOT LIKE '% IV'
+          AND name NOT LIKE '% Old Boys'
+          AND name NOT LIKE '% Legends'
+          AND name NOT LIKE '% Masters'
+          AND name NOT LIKE '% Green'
+          AND name NOT LIKE '% Orange'
+          AND name NOT LIKE '% Red'
+          AND name NOT LIKE '% Blue'
+          AND name NOT LIKE '% Hudson'
+          AND name NOT LIKE '% Dawgz'
+          AND name NOT LIKE '% OG''S'
+          AND name NOT LIKE '% Kickoff'
+          AND name NOT LIKE '% Lower East'
+          AND name NOT LIKE '% United'
+          AND name NOT LIKE '% SBU%'  -- South Bronx United variations
         ORDER BY name
     LOOP
         -- Generate unique org_id (starting from 300 to avoid conflicts)

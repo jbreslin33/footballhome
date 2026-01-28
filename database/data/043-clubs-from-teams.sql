@@ -60,6 +60,26 @@ INSERT INTO organizations (id, name, short_name, is_active) VALUES
     (209, 'ERFC', 'ERFC', true)
 ON CONFLICT (name) DO NOTHING;
 
+-- Astoria Knights
+INSERT INTO organizations (id, name, short_name, is_active) VALUES
+    (210, 'Astoria Knights', 'Astoria Knights', true)
+ON CONFLICT (name) DO NOTHING;
+
+-- NY Irish SC
+INSERT INTO organizations (id, name, short_name, is_active) VALUES
+    (211, 'NY Irish SC', 'NY Irish', true)
+ON CONFLICT (name) DO NOTHING;
+
+-- South Bronx United
+INSERT INTO organizations (id, name, short_name, is_active) VALUES
+    (212, 'South Bronx United', 'SBU', true)
+ON CONFLICT (name) DO NOTHING;
+
+-- Sporting Astoria South Bronx United
+INSERT INTO organizations (id, name, short_name, is_active) VALUES
+    (213, 'Sporting Astoria South Bronx United', 'Sporting Astoria SBU', true)
+ON CONFLICT (name) DO NOTHING;
+
 -- Update sequence
 SELECT setval('organizations_id_seq', (SELECT MAX(id) FROM organizations));
 
@@ -115,6 +135,26 @@ ON CONFLICT (organization_id, name) DO NOTHING;
 -- ERFC
 INSERT INTO clubs (id, organization_id, name, is_active) VALUES
     (209, 209, 'ERFC', true)
+ON CONFLICT (organization_id, name) DO NOTHING;
+
+-- Astoria Knights
+INSERT INTO clubs (id, organization_id, name, is_active) VALUES
+    (210, 210, 'Astoria Knights', true)
+ON CONFLICT (organization_id, name) DO NOTHING;
+
+-- NY Irish SC
+INSERT INTO clubs (id, organization_id, name, is_active) VALUES
+    (211, 211, 'NY Irish SC', true)
+ON CONFLICT (organization_id, name) DO NOTHING;
+
+-- South Bronx United
+INSERT INTO clubs (id, organization_id, name, is_active) VALUES
+    (212, 212, 'South Bronx United', true)
+ON CONFLICT (organization_id, name) DO NOTHING;
+
+-- Sporting Astoria South Bronx United
+INSERT INTO clubs (id, organization_id, name, is_active) VALUES
+    (213, 213, 'Sporting Astoria South Bronx United', true)
 ON CONFLICT (organization_id, name) DO NOTHING;
 
 -- Update sequence

@@ -138,13 +138,81 @@ WHERE name IN ('Soricha Foot SC', 'Soricha Foot SC II');
 UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'South Bronx United') 
 WHERE name IN ('South Bronx United', 'South Bronx United II');
 
--- Sporting Astoria SC family
+-- Sporting Astoria SC family (all variants including SBU, Dawgz, OG'S)
 UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'Sporting Astoria SC') 
-WHERE name IN ('Sporting Astoria SC', 'Sporting Astoria SC II');
+WHERE name IN (
+    'Sporting Astoria SC',
+    'Sporting Astoria SC II',
+    'Sporting Astoria SC OG''S',
+    'Sporting Astoria SBU Dawgz',
+    'Sporting Astoria SBU OG''S',
+    'Sporting Astoria Dawgz'
+);
 
--- Sporting Astoria South Bronx United family
-UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'Sporting Astoria South Bronx United') 
-WHERE name IN ('Sporting Astoria South Bronx United', 'Sporting Astoria South Bronx United II');
+-- Sporting Astoria South Bronx United family (separate club from Sporting Astoria SC)
+UPDATE teams SET club_id = 213
+WHERE name IN (
+    'Sporting Astoria South Bronx United',
+    'Sporting Astoria South Bronx United II'
+);
+
+-- South Bronx United family
+UPDATE teams SET club_id = 212
+WHERE name IN (
+    'South Bronx United',
+    'South Bronx United II'
+);
+
+-- Manhattan Celtic family (including Masters)
+UPDATE teams SET club_id = 66
+WHERE name IN (
+    'Manhattan Celtic',
+    'Manhattan Celtic II',
+    'Manhattan Celtic III',
+    'Manhattan Celtic Masters'
+);
+
+-- Manhattan Kickers family (including Legends)
+UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'Manhattan Kickers') 
+WHERE name IN (
+    'Manhattan Kickers',
+    'Manhattan Kickers Legends'
+);
+
+-- Astoria Knights family
+UPDATE teams SET club_id = 210
+WHERE name IN (
+    'Astoria Knights',
+    'Astoria Knights II'
+);
+
+-- NY Irish SC family (including Legends)
+UPDATE teams SET club_id = 211
+WHERE name IN (
+    'NY Irish SC',
+    'NY Irish SC Legends'
+);
+
+-- NY Shamrocks family (including Legends)
+UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'NY Shamrocks') 
+WHERE name IN (
+    'NY Shamrocks',
+    'NY Shamrocks Legends'
+);
+
+-- SC Eintracht family (including Legends)
+UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'SC Eintracht') 
+WHERE name IN (
+    'SC Eintracht',
+    'SC Eintracht Legends'
+);
+
+-- NY Pancyprian Freedoms family
+UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'NY Pancyprian Freedoms') 
+WHERE name IN (
+    'NY Pancyprian Freedoms',
+    'NY Pancyprian Freedoms II'
+);
 
 -- Stal Mielec NY family
 UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'Stal Mielec NY') 
