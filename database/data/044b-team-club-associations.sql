@@ -276,6 +276,26 @@ WHERE name IN (
     'Villanovence F.C.'
 );
 
+-- ============================================================================
+-- APSL Team Associations
+-- ============================================================================
+
+-- Nova FC family (including O30 and WL variants)
+UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'Nova FC')
+WHERE name IN (
+    'Nova FC',
+    'Nova FC O30',
+    'Nova FC WL'
+);
+
+-- Vidas family (United FC, Elite, Inter Vidas)
+UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'Vidas United FC')
+WHERE name IN (
+    'Vidas United FC',
+    'Vidas Elite',
+    'Inter Vidas'
+);
+
 -- Verification query (comment out for production)
 -- SELECT t.id, t.name, t.club_id, c.name AS club_name
 -- FROM teams t
