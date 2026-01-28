@@ -35,11 +35,21 @@ UPDATE teams SET club_id = 205 WHERE name IN ('Borgetto FC', 'Borgetto FC II');
 -- CD Iberia family
 UPDATE teams SET club_id = 206 WHERE name IN ('CD Iberia', 'CD Iberia II');
 
--- Desportiva Sociedad family (multiple variants)
-UPDATE teams SET club_id = 207 WHERE name IN ('Desportiva Sociedad', 'Desportiva Sociedad II', 'Desportiva Sociedad City', 'Desportiva Sociedad Fury');
+-- Desportiva Sociedad family (multiple variants including City, Fury)
+UPDATE teams SET club_id = 207 
+WHERE name IN (
+    'Desportiva Sociedad',
+    'Desportiva Sociedad II',
+    'Desportiva Sociedad City',
+    'Desportiva Sociedad Fury'
+);
 
 -- Desportiva Sociedad NY family (separate club)
-UPDATE teams SET club_id = 208 WHERE name IN ('Desportiva Sociedad NY', 'Desportiva Sociedad NY II');
+UPDATE teams SET club_id = 208 
+WHERE name IN (
+    'Desportiva Sociedad NY',
+    'Desportiva Sociedad NY II'
+);
 
 -- ERFC family (includes Hudson location variant)
 UPDATE teams SET club_id = 209 WHERE name IN ('ERFC', 'ERFC II', 'ERFC Hudson');
@@ -163,13 +173,14 @@ WHERE name IN (
     'South Bronx United II'
 );
 
--- Manhattan Celtic family (including Masters)
+-- Manhattan Celtic family (including Masters, Bhoys)
 UPDATE teams SET club_id = 66
 WHERE name IN (
     'Manhattan Celtic',
     'Manhattan Celtic II',
     'Manhattan Celtic III',
-    'Manhattan Celtic Masters'
+    'Manhattan Celtic Masters',
+    'Manhattan Celtic Bhoys'
 );
 
 -- Manhattan Kickers family (including Legends)
@@ -232,6 +243,38 @@ WHERE name IN ('Yemen United SC', 'Yemen United SC II');
 
 -- Doxa SC family (club_id 65 already exists)
 UPDATE teams SET club_id = 65 WHERE name ILIKE 'Doxa SC%' OR name ILIKE 'Doxa FCW%';
+
+-- Lansdowne Yonkers FC family (including Metro variant)
+UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'Lansdowne Yonkers FC')
+WHERE name IN (
+    'Lansdowne Yonkers FC',
+    'Lansdowne Yonkers FC Metro'
+);
+
+-- SC Gjoa family (including Over-40 and Yellow Hook variants)
+UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'SC Gjoa')
+WHERE name ILIKE 'SC Gjoa%';
+
+-- NY Eagles family (FC vs SC variants)
+UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'NY Eagles FC')
+WHERE name IN (
+    'NY Eagles FC',
+    'NY Eagles SC'
+);
+
+-- VA Marauders FC family (including WL variant)
+UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'VA Marauders FC')
+WHERE name IN (
+    'VA Marauders FC',
+    'VA Marauders FC WL'
+);
+
+-- Villanovence FC family (F.C. vs FC variants)
+UPDATE teams SET club_id = (SELECT club_id FROM teams WHERE name = 'Villanovence FC')
+WHERE name IN (
+    'Villanovence FC',
+    'Villanovence F.C.'
+);
 
 -- Verification query (comment out for production)
 -- SELECT t.id, t.name, t.club_id, c.name AS club_name
