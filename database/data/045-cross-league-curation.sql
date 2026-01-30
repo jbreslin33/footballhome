@@ -1,0 +1,26 @@
+-- Cross-League Data Curation
+-- Purpose: Manual fixes for duplicates, merges, and associations across ALL leagues/countries
+-- This runs AFTER all 042-* bootstrap files have loaded raw scraped data
+--
+-- Philosophy: Bootstrap data (042-*) is "dumb" - trust the HTML source
+--             Curation (043) is "smart" - human knowledge fixes duplicates
+--
+-- Common fixes:
+-- - Merge duplicate clubs that appear in multiple leagues/countries
+-- - Fix organization hierarchy (assign clubs to parent orgs)
+-- - Correct team names and associations
+-- - Delete obvious data quality issues
+--
+-- Examples:
+-- -- Same club plays in multiple US leagues
+-- UPDATE teams SET club_id = 100 WHERE name = 'Lighthouse 1893 SC' AND club_id IN (101, 102, 103);
+-- DELETE FROM clubs WHERE id IN (101, 102, 103); -- Merge to id=100
+--
+-- -- Fix org hierarchy
+-- UPDATE clubs SET organization_id = 10 WHERE name LIKE 'New York Cosmos%';
+--
+-- -- Delete specific orphan we know is a duplicate
+-- DELETE FROM clubs WHERE id = 456 AND name = 'Central Park Rangers 1999'; -- Duplicate of id=50
+
+-- Add your manual curation SQL here
+-- Keep this file for human decisions only - no automation

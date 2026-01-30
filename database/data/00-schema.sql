@@ -839,11 +839,16 @@ CREATE TABLE teams (
     UNIQUE(source_system_id, external_id)  -- External IDs unique within source system
 );
 
+-- Partial unique constraint: (club_id, name, source_system_id) unique when club_id IS NOT NULL
+-- This allows same club to have teams with same name from different sources (APSL Flatley FC + CASA Flatley FC)
+-- Same team plays in multiple divisions via division_teams junction table
+CREATE UNIQUE INDEX idx_teams_club_name_source_unique ON teams(club_id, name, source_system_id) WHERE club_id IS NOT NULL;
+
 CREATE INDEX idx_teams_club ON teams(club_id);
 CREATE INDEX idx_teams_source ON teams(source_system_id);
 CREATE INDEX idx_teams_name ON teams(name);  -- For searching by name
 
-COMMENT ON TABLE teams IS 'Persistent team entities (e.g., "Lighthouse 1893 SC", "Lighthouse Boys Club"). Same name allowed across different source systems.';
+COMMENT ON TABLE teams IS 'Persistent team entities (e.g., "Lighthouse 1893 SC", "Lighthouse Boys Club"). Same name allowed across different source systems. Same club can have teams with same name from different leagues (tracked via source_system_id). Team plays in multiple divisions via division_teams junction table.';
 
 CREATE TABLE team_admins (
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,

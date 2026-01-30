@@ -39,12 +39,18 @@ INSERT INTO conferences (id, season_id, name) VALUES
 (9, 2, 'Delaware River Conference'),
 (10, 2, 'Mid-Atlantic Conference - Fall');
 
+-- CASA Select Conferences (by region)
+INSERT INTO conferences (id, season_id, name, region) VALUES
+(24, 5, 'Philadelphia', 'Philadelphia'),
+(25, 5, 'Boston', 'Boston'),
+(26, 5, 'Lancaster', 'Lancaster');
+
 -- CSL Conferences (one "Main" conference per season)
 INSERT INTO conferences (id, season_id, name) VALUES
-(24, 5, 'Main'),   -- 2025/2026
-(25, 6, 'Main'),  -- 2022/2023
-(26, 7, 'Main'),  -- 2023/2024
-(27, 8, 'Main');  -- 2024/2025
+(27, 6, 'Main'),   -- 2025/2026
+(28, 7, 'Main'),  -- 2022/2023
+(29, 8, 'Main'),  -- 2023/2024
+(30, 9, 'Main');  -- 2024/2025
 
 -- Update sequence
 SELECT setval('conferences_id_seq', (SELECT MAX(id) FROM conferences));
