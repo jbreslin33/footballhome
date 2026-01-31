@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db bootstrap init migrate
+.PHONY: all help clean build up down rebuild logs test ps shell-db bootstrap load
 
 # Default target - standard convention
 all: rebuild
@@ -19,8 +19,13 @@ help:
 	@echo ""
 	@echo "Custom targets:"
 	@echo "  make bootstrap   - Rebuild with bootstrap data only (no leagues)"
-	@echo "  make init        - Generate league SQL from cached HTML"
-	@echo "  make migrate     - Load league SQL into running database"
+	@echo "  make load        - Load all league SQL files to running database"
+	@echo ""
+	@echo "Per-league operations (manual):"
+	@echo "  cd database/scripts/leagues/usa-apsl"
+	@echo "  ./scrape.sh      - Fetch HTML from web"
+	@echo "  ./parse.sh       - Generate SQL from cached HTML"
+	@echo "  ./load.sh        - Load APSL SQL to database"
 	@echo ""
 	@echo "Development:"
 	@echo "  make ps          - Show running containers"
@@ -78,20 +83,24 @@ test:
 bootstrap: clean
 	@echo "🏗️  Bootstrap-only rebuild (no league data)..."
 	@mkdir -p .temp-league-data
-	@mv database/data/10[0-2].* .temp-league-data/ 2>/dev/null || true
-	@mv database/data/900.* .temp-league-data/ 2>/dev/null || true
+	@mv database/scripts/leagues/*/sql/*.sql .temp-league-data/ 2>/dev/null || true
 	@./build.sh
-	@mv .temp-league-data/* database/data/ 2>/dev/null || true
+	@mv .temp-league-data/*.sql database/scripts/leagues/usa-apsl/sql/ 2>/dev/null || true
+	@mv .temp-league-data/*.sql database/scripts/leagues/usa-csl/sql/ 2>/dev/null || true
+	@mv .temp-league-data/*.sql database/scripts/leagues/usa-casa/sql/ 2>/dev/null || true
 	@rmdir .temp-league-data 2>/dev/null || true
 	@echo "✓ Bootstrap complete - database ready for scrapers"
 
-init:
-	@echo "📄 Generating league SQL from cached HTML..."
-	@./init.sh parse
-
-migrate:
-	@echo "📥 Loading league SQL into running database..."
-	@./migrate.sh
+load:
+	@echo "📥 Loading all league SQL files..."
+	@for league in database/scripts/leagues/*/; do \
+		if [ -f "$$league/load.sh" ]; then \
+			echo ""; \
+			cd "$$league" && ./load.sh && cd - > /dev/null; \
+		fi \
+	done
+	@echo ""
+	@echo "✓ All leagues loaded"
 
 # ============================================================
 # Development Helpers

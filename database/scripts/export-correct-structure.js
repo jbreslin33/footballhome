@@ -30,8 +30,18 @@ async function exportAll() {
     await client.connect();
     console.log('Connected to database\n');
 
+    // Filter by EXPORT_LEAGUE if provided
+    const exportLeague = process.env.EXPORT_LEAGUE;
+    const leaguesToExport = exportLeague 
+      ? LEAGUE_CONFIGS.filter(c => c.slug === exportLeague)
+      : LEAGUE_CONFIGS;
+
+    if (leaguesToExport.length === 0) {
+      throw new Error(`League not found: ${exportLeague}`);
+    }
+
     // Export each league as a package: orgs, clubs, teams
-    for (const config of LEAGUE_CONFIGS) {
+    for (const config of leaguesToExport) {
       console.log(`Exporting league: ${config.name} (${config.slug})`);
       await exportOrganizations(client, config);
       await exportClubs(client, config);
@@ -157,7 +167,12 @@ function sqlString(value) {
 }
 
 function writeFile(filename, content) {
-  const outputPath = path.join(__dirname, '../data', filename);
+  // Use EXPORT_OUTPUT_DIR if provided, otherwise database/data
+  const outputDir = process.env.EXPORT_OUTPUT_DIR 
+    ? path.resolve(__dirname, '../../', process.env.EXPORT_OUTPUT_DIR)
+    : path.join(__dirname, '../data');
+  
+  const outputPath = path.join(outputDir, filename);
   fs.writeFileSync(outputPath, content);
 }
 
