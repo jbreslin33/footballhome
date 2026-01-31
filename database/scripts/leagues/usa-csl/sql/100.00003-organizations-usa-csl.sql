@@ -1,11 +1,73 @@
--- ============================================================================
--- 100.00003-organizations-usa-csl.sql
--- USA - CSL Organizations
--- ============================================================================
---
--- Generated: 2026-01-30T23:10:12.356Z
--- Total Records: 0
---
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Organizations - CSL
+-- Generated: 2026-01-31T21:47:34.266Z
+-- Total Records: 67
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
--- Note: Duplicates will be merged by 900-cross-league-curation.sql
-
+INSERT INTO organizations (id, name, source_system_id) VALUES (1, 'Central Park Rangers Red', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (2, 'NY Athletic Club', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (3, 'Richmond County FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (4, 'FC Sandzak', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (5, 'Borgetto FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (6, 'NY Shamrocks', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (7, 'Manhattan Kickers', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (8, 'Kelmendi FC NY', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (9, 'Polonia SC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (10, 'Zum Schneider FC 03', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (11, 'Missile FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (12, 'NY Ukrainians', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (13, 'NYPD FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (14, 'NY International FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (15, 'Manhattan Celtic', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (16, 'Block FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (17, 'Central Park Rangers United', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (18, 'Hoboken FC 1912', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (19, 'Brooklyn City FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (20, 'Stal Mielec NY', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (21, 'FC Japan', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (22, 'Williamsburg International FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (23, 'Yemen United SC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (24, 'Manhattan FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (25, 'Desportiva Sociedad', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (26, 'KidSuper Samba AC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (27, 'SC Gjoa Yellow Hook', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (28, 'SC Eintracht', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (29, 'CD Iberia', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (30, 'Central Park Rangers Green', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (31, 'Falco FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (32, 'Central Park Rangers Young Boys', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (33, 'NY Pancyprian Freedoms', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (34, 'NY Albanians FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (35, 'Laberia FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (36, 'Afghan Ittihad FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (37, 'Barnstonworth Rovers FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (38, 'Panatha USA', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (39, 'Aurora FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (40, 'Vera FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (41, 'Lansdowne Yonkers FC Metro', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (42, 'NY Legacy FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (43, 'Guyana Sunnydale Veterans FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (44, 'NY Galicia', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (45, 'NYC AlphaStars Club', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (46, 'Tibet FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (47, 'Vibes FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (48, 'Central Park Rangers 1999', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (49, 'Desportiva Sociedad City', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (50, 'NY Croatia', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (51, 'FC Partizani NY', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (52, 'Desportiva Sociedad Fury', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (53, 'Caribbean FCA', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (54, 'Riverside Squires', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (55, 'Astoria Knights', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (56, 'Bajas FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (57, 'Clarkstown SC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (58, 'Soccer Legion FC Men', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (59, 'NYPD FC Veterans', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (60, 'Ridgewood Romac SC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (61, 'Central Park Rangers', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (62, 'SC Gjoa Over-40', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (63, 'Cozmoz FC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (64, 'Barnstonworth Rovers', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (65, 'Doxa SC', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (66, 'Central Park Rangers Orange', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name, source_system_id) VALUES (67, 'NY Irish SC', 3) ON CONFLICT (id) DO NOTHING;

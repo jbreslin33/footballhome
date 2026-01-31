@@ -25,16 +25,13 @@ cd "$(dirname "$0")/../../../.."
 echo "📄 Parsing APSL HTML..."
 
 # Parse HTML → populate database
-SCRAPE_MODE=parse SCRAPE_LEAGUE=usa-apsl SCRAPE_USE_CACHE=true ./update.sh
+export SCRAPE_MODE=parse
+export SCRAPE_USE_CACHE=true
+node database/scripts/scrapers/ApslStructureScraper.js
 
 # Export database → SQL files
 echo "  Exporting to SQL..."
 cd database/scripts
 EXPORT_LEAGUE=usa-apsl EXPORT_LEAGUE_ID=00001 EXPORT_OUTPUT_DIR=../scripts/leagues/usa-apsl/sql node export-correct-structure.js
-
-# Generate curation SQL
-echo "  Generating curation..."
-cd leagues/usa-apsl
-node curate.js
 
 echo "✓ APSL SQL files generated in database/scripts/leagues/usa-apsl/sql/"

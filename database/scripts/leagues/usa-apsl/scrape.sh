@@ -16,6 +16,8 @@ set -e
 cd "$(dirname "$0")/../../../.."
 
 echo "🌐 Scraping APSL HTML from web..."
-SCRAPE_MODE=download SCRAPE_LEAGUE=usa-apsl ./update.sh
+export SCRAPE_MODE=download
+export SCRAPE_USE_CACHE=false
+node database/scripts/scrapers/ApslStructureScraper.js
 
 echo "✓ APSL HTML saved to database/scraped-html/apsl/"

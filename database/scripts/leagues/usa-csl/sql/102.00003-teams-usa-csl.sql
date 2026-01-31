@@ -1,179 +1,107 @@
--- ============================================================================
--- 102.00003-teams-usa-csl.sql
--- USA - CSL Teams
--- ============================================================================
---
--- Generated: 2026-01-30T23:10:12.359Z
--- Total Records: 167
---
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Teams - CSL
+-- Generated: 2026-01-31T21:47:34.267Z
+-- Total Records: 101
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
--- Note: club_id may reference clubs created in 044-clubs.sql
-
-INSERT INTO teams (id, club_id, name, city, logo_url, source_system_id, external_id) VALUES
-  (13, NULL, 'Caribbean FCA', NULL, NULL, 3, '12292'),
-  (20, NULL, 'NY International FC', NULL, NULL, 3, '75298'),
-  (21, NULL, 'Richmond County FC', NULL, NULL, 3, '37181'),
-  (25, NULL, 'NY Athletic Club', NULL, NULL, 3, '6817'),
-  (66, NULL, 'Manhattan Celtic', NULL, NULL, 3, '114828'),
-  (100, NULL, 'FC Sandzak', NULL, NULL, 3, '75268'),
-  (101, NULL, 'Block FC', NULL, NULL, 3, '75241'),
-  (102, NULL, 'Manhattan Kickers', NULL, NULL, 3, '75287'),
-  (103, NULL, 'Polonia SC', NULL, NULL, 3, '75311'),
-  (104, NULL, 'NY Ukrainians', NULL, NULL, 3, '75304'),
-  (105, NULL, 'Hoboken FC 1912 II', NULL, NULL, 3, '75270'),
-  (106, NULL, 'Laberia FC', NULL, NULL, 3, '75280'),
-  (107, NULL, 'Central Park Rangers II', NULL, NULL, 3, '75249'),
-  (108, NULL, 'Zum Schneider FC 03 II', NULL, NULL, 3, '75339'),
-  (109, NULL, 'Block FC II', NULL, NULL, 3, '75242'),
-  (110, NULL, 'Polonia SC II', NULL, NULL, 3, '75312'),
-  (111, NULL, 'NY Ukrainians II', NULL, NULL, 3, '75305'),
-  (112, NULL, 'Central Park Rangers III', NULL, NULL, 3, '75250'),
-  (113, NULL, 'FC Sandzak II', NULL, NULL, 3, '75269'),
-  (114, NULL, 'Zum Schneider FC 03 III', NULL, NULL, 3, '75340'),
-  (115, NULL, 'Hoboken FC 1912 III', NULL, NULL, 3, '75271'),
-  (116, NULL, 'Laberia FC II', NULL, NULL, 3, '75856'),
-  (117, NULL, 'Manhattan Kickers II', NULL, NULL, 3, '75288'),
-  (118, NULL, 'Manhattan Celtic II', NULL, NULL, 3, '75282'),
-  (119, NULL, 'NY International FC II', NULL, NULL, 3, '75299'),
-  (120, NULL, 'Brooklyn City FC', NULL, NULL, 3, '75245'),
-  (121, NULL, 'Stal Mielec NY', NULL, NULL, 3, '75329'),
-  (122, NULL, 'Vibes FC', NULL, NULL, 3, '75332'),
-  (123, NULL, 'NY Galicia', NULL, NULL, 3, '75296'),
-  (124, NULL, 'NY Shamrocks', NULL, NULL, 3, '75302'),
-  (125, NULL, 'NY Finest FC', NULL, NULL, 3, '116468'),
-  (126, NULL, 'Sporting Astoria South Bronx United', NULL, NULL, 3, '116487'),
-  (127, NULL, 'ERFC', NULL, NULL, 3, '117364'),
-  (128, NULL, 'Williamsburg International FC', NULL, NULL, 3, '75334'),
-  (129, NULL, 'FC Japan', NULL, NULL, 3, '75265'),
-  (130, NULL, 'SC Eintracht', NULL, NULL, 3, '75318'),
-  (131, NULL, 'Kickoff FC', NULL, NULL, 3, '117235'),
-  (132, NULL, 'Yemen United SC', NULL, NULL, 3, '37207'),
-  (133, NULL, 'Central Park Rangers Lower East', NULL, NULL, 3, '116422'),
-  (134, NULL, 'Vllaznia NYC', NULL, NULL, 3, '118202'),
-  (135, NULL, 'NY Finest FC II', NULL, NULL, 3, '116469'),
-  (136, NULL, 'Sporting Astoria South Bronx United II', NULL, NULL, 3, '116488'),
-  (137, NULL, 'NY International FC III', NULL, NULL, 3, '117234'),
-  (138, NULL, 'NY Shamrocks II', NULL, NULL, 3, '76531'),
-  (139, NULL, 'Williamsburg International FC II', NULL, NULL, 3, '75335'),
-  (140, NULL, 'Brooklyn City FC II', NULL, NULL, 3, '75246'),
-  (141, NULL, 'Central Park Rangers Lower East II', NULL, NULL, 3, '116423'),
-  (142, NULL, 'Stal Mielec NY II', NULL, NULL, 3, '75330'),
-  (143, NULL, 'Kickoff FC II', NULL, NULL, 3, '117236'),
-  (144, NULL, 'Yemen United SC II', NULL, NULL, 3, '38984'),
-  (145, NULL, 'Vllaznia NYC II', NULL, NULL, 3, '118203'),
-  (146, NULL, 'SC Eintracht II', NULL, NULL, 3, '75319'),
-  (147, NULL, 'ERFC II', NULL, NULL, 3, '117370'),
-  (148, NULL, 'FC Japan II', NULL, NULL, 3, '75266'),
-  (149, NULL, 'NY Galicia II', NULL, NULL, 3, '75297'),
-  (150, NULL, 'Vibes FC II', NULL, NULL, 3, '75853'),
-  (151, NULL, 'Braza Futbol', NULL, NULL, 3, '118354'),
-  (152, NULL, 'SC Football Crew', NULL, NULL, 3, '119337'),
-  (153, NULL, 'NY Athletic Club II', NULL, NULL, 3, '75293'),
-  (154, NULL, 'Sporting Astoria SBU Dawgz', NULL, NULL, 3, '116486'),
-  (155, NULL, 'FanDuel FC', NULL, NULL, 3, '77134'),
-  (156, NULL, 'Aurora FC', NULL, NULL, 3, '75079'),
-  (157, NULL, 'Riverside Squires', NULL, NULL, 3, '75317'),
-  (158, NULL, 'Panatha USA', NULL, NULL, 3, '75310'),
-  (159, NULL, 'Junior Mafia FC', NULL, NULL, 3, '92728'),
-  (160, NULL, 'NY Legacy FC', NULL, NULL, 3, '75300'),
-  (161, NULL, 'Brooklyn City FC III', NULL, NULL, 3, '118357'),
-  (162, NULL, 'Ollama FC', NULL, NULL, 3, '77372'),
-  (163, NULL, 'C.A. Islas Malvinas', NULL, NULL, 3, '96563'),
-  (164, NULL, 'ERFC Hudson', NULL, NULL, 3, '118356'),
-  (165, NULL, 'Barnstonworth Rovers FC', NULL, NULL, 3, '75239'),
-  (166, NULL, 'Warriors NYC', NULL, NULL, 3, '77138'),
-  (167, NULL, 'Williamsburg International FC III', NULL, NULL, 3, '75336'),
-  (168, NULL, 'NY Titans FC', NULL, NULL, 3, '118353'),
-  (169, NULL, 'NYC AlphaStars Club', NULL, NULL, 3, '75147'),
-  (170, NULL, 'Manhattan Celtic Bhoys', NULL, NULL, 3, '75281'),
-  (171, NULL, 'Al-Asad', NULL, NULL, 3, '92727'),
-  (172, NULL, 'SC Gjoa', NULL, NULL, 3, '75162'),
-  (173, NULL, 'Brooklyn New York SC', NULL, NULL, 3, '118355'),
-  (174, NULL, 'Pelham Parkway FC', NULL, NULL, 3, '119075'),
-  (175, NULL, 'Bolivia Si Existe FC', NULL, NULL, 3, '124917'),
-  (176, NULL, 'Central Park Rangers Old Boys', NULL, NULL, 3, '77140'),
-  (177, NULL, 'Manhattan Kickers Legends', NULL, NULL, 3, '75289'),
-  (178, NULL, 'Central Park Rangers Legends', NULL, NULL, 3, '75093'),
-  (179, NULL, 'Cozmoz FC', NULL, NULL, 3, '75099'),
-  (180, NULL, 'Sporting Astoria SBU OG''S', NULL, NULL, 3, '116489'),
-  (181, NULL, 'SC Gjoa Over-40', NULL, NULL, 3, '75163'),
-  (182, NULL, 'Manhattan Celtic Masters', NULL, NULL, 3, '75284'),
-  (183, NULL, 'Polonez SC', NULL, NULL, 3, '119370'),
-  (184, NULL, 'SC Eintracht Legends', NULL, NULL, 3, '75320'),
-  (185, NULL, 'NY Shamrocks Legends', NULL, NULL, 3, '75303'),
-  (186, NULL, 'Barnstonworth Rovers FC Old Boys', NULL, NULL, 3, '75240'),
-  (187, NULL, 'Central Park Rangers Red', NULL, NULL, 3, '6783'),
-  (188, NULL, 'Borgetto FC', NULL, NULL, 3, '75243'),
-  (189, NULL, 'Kelmendi FC NY', NULL, NULL, 3, '37178'),
-  (190, NULL, 'Missile FC', NULL, NULL, 3, '37224'),
-  (191, NULL, 'Central Park Rangers Red II', NULL, NULL, 3, '6784'),
-  (192, NULL, 'Borgetto FC II', NULL, NULL, 3, '75244'),
-  (193, NULL, 'Richmond County FC II', NULL, NULL, 3, '37195'),
-  (194, NULL, 'Kelmendi FC NY II', NULL, NULL, 3, '37197'),
-  (195, NULL, 'Missile FC II', NULL, NULL, 3, '38979'),
-  (196, NULL, 'NYPD FC', NULL, NULL, 3, '75307'),
-  (197, NULL, 'Central Park Rangers United', NULL, NULL, 3, '75254'),
-  (198, NULL, 'Manhattan FC', NULL, NULL, 3, '75285'),
-  (199, NULL, 'Desportiva Sociedad', NULL, NULL, 3, '6788'),
-  (200, NULL, 'KidSuper Samba AC II', NULL, NULL, 3, '75277'),
-  (201, NULL, 'SC Gjoa Yellow Hook', NULL, NULL, 3, '6852'),
-  (202, NULL, 'CD Iberia', NULL, NULL, 3, '39612'),
-  (203, NULL, 'Central Park Rangers United II', NULL, NULL, 3, '75255'),
-  (204, NULL, 'NYPD FC II', NULL, NULL, 3, '75308'),
-  (205, NULL, 'Manhattan Celtic III', NULL, NULL, 3, '75283'),
-  (206, NULL, 'Desportiva Sociedad II', NULL, NULL, 3, '6791'),
-  (207, NULL, 'KidSuper Samba AC III', NULL, NULL, 3, '75278'),
-  (208, NULL, 'CD Iberia II', NULL, NULL, 3, '7678'),
-  (209, NULL, 'Manhattan FC II', NULL, NULL, 3, '75286'),
-  (210, NULL, 'SC Gjoa Yellow Hook II', NULL, NULL, 3, '7211'),
-  (211, NULL, 'Central Park Rangers Green', NULL, NULL, 3, '6776'),
-  (212, NULL, 'Falco FC', NULL, NULL, 3, '37208'),
-  (213, NULL, 'Central Park Rangers Young Boys', NULL, NULL, 3, '39426'),
-  (214, NULL, 'NY Pancyprian Freedoms II', NULL, NULL, 3, '75301'),
-  (215, NULL, 'NY Albanians FC', NULL, NULL, 3, '6816'),
-  (216, NULL, 'Afghan Ittihad FC', NULL, NULL, 3, '39431'),
-  (217, NULL, 'Vera FC', NULL, NULL, 3, '7717'),
-  (218, NULL, 'Lansdowne Yonkers FC Metro', NULL, NULL, 3, '6807'),
-  (219, NULL, 'Guyana Sunnydale Veterans FC', NULL, NULL, 3, '7885'),
-  (220, NULL, 'Tibet FC', NULL, NULL, 3, '39582'),
-  (221, NULL, 'Central Park Rangers 1999', NULL, NULL, 3, '6775'),
-  (222, NULL, 'Desportiva Sociedad City', NULL, NULL, 3, '75259'),
-  (223, NULL, 'NY Croatia', NULL, NULL, 3, '6819'),
-  (224, NULL, 'FC Partizani NY', NULL, NULL, 3, '75267'),
-  (225, NULL, 'Desportiva Sociedad Fury', NULL, NULL, 3, '75260'),
-  (226, NULL, 'Astoria Knights II', NULL, NULL, 3, '11550'),
-  (227, NULL, 'Bajas FC', NULL, NULL, 3, '9849'),
-  (228, NULL, 'Clarkstown SC', NULL, NULL, 3, '12632'),
-  (229, NULL, 'Soccer Legion FC Men', NULL, NULL, 3, '8335'),
-  (230, NULL, 'NYPD FC Veterans', NULL, NULL, 3, '39301'),
-  (231, NULL, 'Ridgewood Romac SC', NULL, NULL, 3, '39303'),
-  (232, NULL, 'Barnstonworth Rovers Old Boys', NULL, NULL, 3, '6763'),
-  (233, NULL, 'Doxa SC Legends', NULL, NULL, 3, '7883'),
-  (234, NULL, 'Central Park Rangers Orange', NULL, NULL, 3, '39306'),
-  (235, NULL, 'NY Irish SC Legends', NULL, NULL, 3, '6825'),
-  (236, NULL, 'South Bronx United', NULL, NULL, 3, '75324'),
-  (237, NULL, 'Kaizen FC', NULL, NULL, 3, '37213'),
-  (238, NULL, 'Desportiva Sociedad NY', NULL, NULL, 3, '75261'),
-  (239, NULL, 'South Bronx United II', NULL, NULL, 3, '75325'),
-  (240, NULL, 'Kaizen FC II', NULL, NULL, 3, '38976'),
-  (241, NULL, 'Falco FC II', NULL, NULL, 3, '38975'),
-  (242, NULL, 'Desportiva Sociedad NY II', NULL, NULL, 3, '75262'),
-  (243, NULL, 'Central Park Rangers Kickoff', NULL, NULL, 3, '75251'),
-  (244, NULL, 'Sporting Astoria SC', NULL, NULL, 3, '75326'),
-  (245, NULL, 'Club Internacional', NULL, NULL, 3, '39757'),
-  (246, NULL, 'NY Eagles FC', NULL, NULL, 3, '40688'),
-  (247, NULL, 'Soricha Foot SC', NULL, NULL, 3, '75323'),
-  (248, NULL, 'Queens Tigers FC', NULL, NULL, 3, '77371'),
-  (249, NULL, 'Central Park Rangers FC 1999', NULL, NULL, 3, '49252'),
-  (250, NULL, 'Koru Soccer Academy', NULL, NULL, 3, '49253'),
-  (251, NULL, 'Sporting Astoria SC II', NULL, NULL, 3, '75327'),
-  (252, NULL, 'Whitestone FC', NULL, NULL, 3, '51443'),
-  (253, NULL, 'Sporting Astoria SC OG''S', NULL, NULL, 3, '75328'),
-  (254, NULL, 'FC Ulqini', NULL, NULL, 3, '75850'),
-  (255, NULL, 'FC Ulqini II', NULL, NULL, 3, '75851'),
-  (256, NULL, 'Soricha Foot SC II', NULL, NULL, 3, '75855'),
-  (257, NULL, 'NY Eagles SC', NULL, NULL, 3, '77139'),
-  (258, NULL, 'SmartSports FC', NULL, NULL, 3, '76940'),
-  (259, NULL, 'Sporting Astoria Dawgz', NULL, NULL, 3, '76939'),
-  (260, NULL, 'Central Park Rangers Kickoff II', NULL, NULL, 3, '77137'),
-  (261, NULL, 'Manhattan FC III', NULL, NULL, 3, '77135');
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (1, 'Central Park Rangers Red', '6783', 1, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (2, 'NY Athletic Club', '6817', 2, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (3, 'Richmond County FC', '6843', 3, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (4, 'FC Sandzak', '6797', 4, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (5, 'Borgetto FC', '6768', 5, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (6, 'NY Shamrocks', '6828', 6, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (7, 'Manhattan Kickers', '6811', 7, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (8, 'Kelmendi FC NY', '6802', 8, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (9, 'Polonia SC', '6841', 9, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (10, 'Zum Schneider FC 03 II', '6858', 10, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (11, 'Missile FC', '6814', 11, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (12, 'Central Park Rangers Red II', '6784', 1, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (13, 'Polonia SC II', '6842', 9, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (14, 'Borgetto FC II', '6770', 5, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (15, 'Manhattan Kickers II', '6813', 7, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (16, 'NY Shamrocks II', '6831', 6, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (17, 'NY Athletic Club II', '6818', 2, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (18, 'FC Sandzak II', '6798', 4, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (19, 'Richmond County FC II', '6844', 3, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (20, 'Zum Schneider FC 03 III', '6859', 10, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (21, 'Kelmendi FC NY II', '6803', 8, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (22, 'Missile FC II', '6815', 11, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (23, 'NY Ukrainians', '6832', 12, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (24, 'NYPD FC', '6836', 13, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (25, 'NY International FC', '6822', 14, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (26, 'Manhattan Celtic II', '6808', 15, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (27, 'Block FC', '6766', 16, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (28, 'Central Park Rangers United', '6779', 17, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (29, 'Hoboken FC 1912 II', '6800', 18, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (30, 'Brooklyn City FC', '6772', 19, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (31, 'Stal Mielec NY', '6850', 20, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (32, 'FC Japan', '6794', 21, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (33, 'Williamsburg International FC', '6854', 22, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (34, 'Yemen United SC', '6857', 23, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (35, 'Manhattan FC', '6908', 24, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (36, 'Desportiva Sociedad', '6788', 25, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (37, 'KidSuper Samba AC II', '6804', 26, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (38, 'SC Gjoa Yellow Hook', '6852', 27, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (39, 'SC Eintracht', '6846', 28, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (40, 'CD Iberia', '6774', 29, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (41, 'Central Park Rangers United II', '6781', 17, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (42, 'NY Ukrainians II', '6834', 12, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (43, 'Hoboken FC 1912 III', '6801', 18, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (44, 'Yemen United SC II', '7213', 23, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (45, 'NYPD FC II', '6837', 13, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (46, 'NY International FC II', '6823', 14, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (47, 'Manhattan Celtic III', '6809', 15, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (48, 'Desportiva Sociedad II', '6791', 25, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (49, 'KidSuper Samba AC III', '7584', 26, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (50, 'CD Iberia II', '7678', 29, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (51, 'Brooklyn City FC II', '6773', 19, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (52, 'SC Eintracht II', '6848', 28, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (53, 'Manhattan FC II', '7212', 24, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (54, 'SC Gjoa Yellow Hook II', '7211', 27, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (55, 'Block FC II', '6767', 16, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (56, 'Williamsburg International FC II', '6856', 22, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (57, 'FC Japan II', '6795', 21, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (58, 'Stal Mielec NY II', '6851', 20, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (59, 'Central Park Rangers Green', '6776', 30, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (60, 'Falco FC', '6793', 31, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (61, 'Central Park Rangers Young Boys', '6785', 32, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (62, 'NY Pancyprian Freedoms II', '6826', 33, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (63, 'NY Albanians FC', '6816', 34, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (64, 'Laberia FC', '6805', 35, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (65, 'Afghan Ittihad FC', '6759', 36, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (66, 'Barnstonworth Rovers FC', '6762', 37, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (67, 'Panatha USA', '6840', 38, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (68, 'Aurora FC', '6761', 39, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (69, 'Vera FC', '7717', 40, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (70, 'Lansdowne Yonkers FC Metro', '6807', 41, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (71, 'NY Legacy FC', '6909', 42, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (72, 'Guyana Sunnydale Veterans FC', '7885', 43, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (73, 'NY Galicia', '6820', 44, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (74, 'NYC AlphaStars Club', '6835', 45, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (75, 'Tibet FC', '6853', 46, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (76, 'Vibes FC', '7598', 47, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (77, 'Central Park Rangers 1999', '6775', 48, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (78, 'Williamsburg International FC III', '6855', 22, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (79, 'Desportiva Sociedad City', '6789', 49, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (80, 'NY Croatia', '6819', 50, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (81, 'FC Partizani NY', '6796', 51, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (82, 'Desportiva Sociedad Fury', '6790', 52, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (83, 'Caribbean FCA', '12292', 53, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (84, 'Riverside Squires', '10041', 54, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (85, 'Astoria Knights II', '11550', 55, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (86, 'Bajas FC', '9849', 56, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (87, 'Clarkstown SC', '12632', 57, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (88, 'Soccer Legion FC Men', '8335', 58, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (89, 'NYPD FC Veterans', '6838', 59, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (90, 'Ridgewood Romac SC', '6845', 60, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (91, 'Manhattan Kickers Legends', '6812', 7, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (92, 'Manhattan Celtic Masters', '6810', 15, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (93, 'Central Park Rangers Legends', '6780', 61, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (94, 'SC Gjoa Over-40', '6849', 62, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (95, 'Cozmoz FC', '6787', 63, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (96, 'SC Eintracht Legends', '6847', 28, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (97, 'Barnstonworth Rovers Old Boys', '6763', 64, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (98, 'Doxa SC Legends', '7883', 65, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (99, 'Central Park Rangers Orange', '6782', 66, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (100, 'NY Shamrocks Legends', '6829', 6, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;
+INSERT INTO scraped_teams (id, name, external_id, club_id, source_system_id) VALUES (101, 'NY Irish SC Legends', '6825', 67, 3) ON CONFLICT (external_id, source_system_id) DO NOTHING;

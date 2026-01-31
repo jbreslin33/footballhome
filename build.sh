@@ -4,14 +4,15 @@
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
 # Rebuilds containers and loads database schema.
-# Does NOT scrape data - use update.sh for that.
+# Does NOT load league data - use make load or league load.sh scripts.
 #
 # Usage:
 #   ./build.sh              Full rebuild (destroys volumes)
 #   ./build.sh --backend    Rebuild backend only (fast iteration)
 #
-# After building, populate data with:
-#   ./update.sh
+# After building, load leagues:
+#   make load              # Load all leagues
+#   cd database/scripts/leagues/usa-apsl && ./load.sh  # Load one league
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -90,8 +91,8 @@ for arg in "$@"; do
             echo "  ./build.sh           Full rebuild (destroys volumes)"
             echo "  ./build.sh --backend Rebuild backend only (fast iteration)"
             echo ""
-            echo "After building, populate data:"
-            echo "  ./update.sh          Run all scrapers"
+            echo "After building, load league data:"
+            echo "  make load            Load all leagues"
             echo ""
             exit 0
             ;;
@@ -138,7 +139,7 @@ echo "  ✓ Rebuild all images"
 echo "  ✓ Load database schema"
 echo "  ✓ Start all services"
 echo ""
-echo -e "${BLUE}Note: To populate data after build, run: ./update.sh${NC}"
+echo -e "${BLUE}Note: To load league data, run: make load${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -274,6 +275,7 @@ echo ""
 echo -e "${YELLOW}📊 Check what loaded from SQL files:${NC}"
 echo "  node database/scripts/audit-database.js"
 echo ""
-echo -e "${YELLOW}🔄 Next step: Populate dynamic data${NC}"
-echo "  ./update.sh"
+echo -e "${YELLOW}🔄 Next step: Load league data${NC}"
+echo "  make load                                      # Load all leagues"
+echo "  cd database/scripts/leagues/usa-apsl && ./load.sh   # Load one league"
 echo ""

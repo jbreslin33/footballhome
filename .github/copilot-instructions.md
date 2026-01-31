@@ -17,7 +17,7 @@
 
 ### File Organization Rules
 **Root folder is for:**
-- ✅ Primary scripts: `build.sh`, `setup.sh`, `update.sh`
+- ✅ Primary scripts: `build.sh`, `setup.sh`, `Makefile`
 - ✅ Config files: `package.json`, `docker-compose.yml`, `.env.example`
 - ✅ Documentation: `README.md`, `AI_TOOLS.md`, `*.md` design docs
 - ✅ Wrapper scripts: `./claude`, `./aider`
@@ -51,10 +51,12 @@
   - Creates fresh database with current schema and bootstrap data
   - Use for: schema changes, major updates, fresh start
   
-- **Update Scraped Data**: `./update.sh` - Runs scrapers and writes to database directly
-  - Reads active targets from `database/scrape-targets.json`
-  - Fetches fresh data from external sources (APSL, CASA, etc.)
-  - Writes directly to running database (no SQL file generation)
+- **Load League Data**: Self-contained per-league workflow
+  - Each league: `database/scripts/leagues/<league>/` (scrape.sh, parse.sh, load.sh, sql/)
+  - Scrape: `./scrape.sh` - Fetch HTML from web → `database/scraped-html/<league>/`
+  - Parse: `./parse.sh` - Parse HTML → populate DB → export SQL → curate
+  - Load: `./load.sh` - Load SQL files into database
+  - Or load all: `make load` (calls each league's load.sh)
   - Does NOT restart containers
   - Use for: refreshing match schedules, standings, rosters during development
 
@@ -79,7 +81,7 @@
 - NOT restored by running `./build.sh` (fresh database wipes this data)
 
 **Data Restoration:**
-- Development/Staging: Run `./build.sh` for fresh start with bootstrap data, then use `./update.sh` to refresh scraped data
+- Development/Staging: Run `./build.sh` for fresh start with bootstrap data, then `make load` to load league data
 - Production: Use `pg_dump` backups to restore live application data (user-generated content, scores, RSVPs, chat history)
 
 ### Database Changes
@@ -111,11 +113,11 @@
 
 ### Scraping Workflow
 1. Configure targets in `database/scrape-targets.json`
-2. Run `./update.sh` to fetch and write to database
-3. Scrapers fetch fresh HTML/JSON from external sources
+2. Run league scrape.sh to fetch HTML: `cd database/scripts/leagues/usa-apsl && ./scrape.sh`
+3. Run league parse.sh to populate database: `cd database/scripts/leagues/usa-apsl && ./parse.sh`
 4. Parsers extract data and write directly to database tables
-5. No SQL files generated (bootstrap data only in `database/data/`)
-6. For fresh database: `./build.sh` (bootstrap) then `./update.sh` (scrape current data)
+5. Export and curate into SQL files for version control
+6. For fresh database: `./build.sh` (bootstrap) then `make load` (all leagues)
 
 ### Parsing Pattern
 - When implementing new parsers, recover old scraper logic from git history if needed

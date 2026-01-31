@@ -7,6 +7,8 @@ set -e
 cd "$(dirname "$0")/../../../.."
 
 echo "🌐 Scraping CASA HTML from web..."
-SCRAPE_MODE=download SCRAPE_LEAGUE=usa-casa ./update.sh
+export SCRAPE_MODE=download
+export SCRAPE_USE_CACHE=false
+node database/scripts/scrapers/CasaStructureScraper.js
 
 echo "✓ CASA HTML saved to database/scraped-html/casa/"

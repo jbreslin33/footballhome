@@ -7,6 +7,8 @@ set -e
 cd "$(dirname "$0")/../../../.."
 
 echo "🌐 Scraping CSL HTML from web..."
-SCRAPE_MODE=download SCRAPE_LEAGUE=usa-csl ./update.sh
+export SCRAPE_MODE=download
+export SCRAPE_USE_CACHE=false
+node database/scripts/scrapers/CslStructureScraper.js
 
 echo "✓ CSL HTML saved to database/scraped-html/csl/"

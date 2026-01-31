@@ -169,7 +169,7 @@ function sqlString(value) {
 function writeFile(filename, content) {
   // Use EXPORT_OUTPUT_DIR if provided, otherwise database/data
   const outputDir = process.env.EXPORT_OUTPUT_DIR 
-    ? path.resolve(__dirname, '../../', process.env.EXPORT_OUTPUT_DIR)
+    ? path.join(__dirname, process.env.EXPORT_OUTPUT_DIR)
     : path.join(__dirname, '../data');
   
   const outputPath = path.join(outputDir, filename);
