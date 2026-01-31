@@ -81,15 +81,10 @@ test:
 # ============================================================
 
 bootstrap: clean
-	@echo "🏗️  Bootstrap-only rebuild (no league data)..."
-	@mkdir -p .temp-league-data
-	@mv database/scripts/leagues/*/sql/*.sql .temp-league-data/ 2>/dev/null || true
+	@echo "🏗️  Bootstrap rebuild (no league data loaded automatically)..."
 	@./build.sh
-	@mv .temp-league-data/*.sql database/scripts/leagues/usa-apsl/sql/ 2>/dev/null || true
-	@mv .temp-league-data/*.sql database/scripts/leagues/usa-csl/sql/ 2>/dev/null || true
-	@mv .temp-league-data/*.sql database/scripts/leagues/usa-casa/sql/ 2>/dev/null || true
-	@rmdir .temp-league-data 2>/dev/null || true
-	@echo "✓ Bootstrap complete - database ready for scrapers"
+	@echo "✓ Bootstrap complete - database ready"
+	@echo "  Run: make load    (to load all leagues)"
 
 load:
 	@echo "📥 Loading all league SQL files..."
