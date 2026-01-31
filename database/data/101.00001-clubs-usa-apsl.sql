@@ -1,8 +1,16 @@
--- Clubs (organizations own clubs)
--- Generated: 2026-01-26T22:25:56.416Z
--- Total Clubs: 99
+-- ============================================================================
+-- 101.00001-clubs-usa-apsl.sql
+-- USA - APSL Clubs
+-- ============================================================================
+--
+-- Generated: 2026-01-30T23:10:12.348Z
+-- Total Records: 87
+--
 
-INSERT INTO clubs (id, organization_id, name, sport_id, logo_url, website, is_active) VALUES
+-- Note: Duplicates will be merged by 900-cross-league-curation.sqln multiple leagues
+-- After curation (051), duplicates will be merged
+
+INSERT INTO clubs (id, organization_id, name, sport_id, website, logo_url, is_active) VALUES
   (1, 5, 'Falcons FC', 1, NULL, NULL, true),
   (2, 6, 'Scrub Nation', 1, NULL, NULL, true),
   (3, 7, 'Praia Kapital', 1, NULL, NULL, true),
@@ -15,19 +23,14 @@ INSERT INTO clubs (id, organization_id, name, sport_id, logo_url, website, is_ac
   (10, 14, 'Glastonbury Celtic', 1, NULL, NULL, true),
   (11, 15, 'Wildcat FC', 1, NULL, NULL, true),
   (12, 16, 'Hermandad Connecticut', 1, NULL, NULL, true),
-  (13, 17, 'Caribbean FCA', 1, NULL, NULL, true),
   (14, 18, 'NY Greek Americans', 1, NULL, NULL, true),
   (15, 19, 'Lansdowne Yonkers FC', 1, NULL, NULL, true),
   (16, 20, 'Hoboken FC 1912', 1, NULL, NULL, true),
   (17, 21, 'NY Pancyprian Freedoms', 1, NULL, NULL, true),
   (18, 22, 'Leros SC', 1, NULL, NULL, true),
-  (19, 23, 'Doxa FCW', 1, NULL, NULL, true),
-  (20, 24, 'NY International FC', 1, NULL, NULL, true),
-  (21, 25, 'Richmond County FC', 1, NULL, NULL, true),
   (22, 26, 'Central Park Rangers FC', 1, NULL, NULL, true),
   (23, 27, 'SC Vistula Garfield', 1, NULL, NULL, true),
   (24, 28, 'Zum Schneider FC 03', 1, NULL, NULL, true),
-  (25, 29, 'NY Athletic Club', 1, NULL, NULL, true),
   (26, 30, 'WC Predators', 1, NULL, NULL, true),
   (27, 31, 'Alloy Soccer Club', 1, NULL, NULL, true),
   (28, 32, 'Oaklyn United FC', 1, NULL, NULL, true),
@@ -68,13 +71,11 @@ INSERT INTO clubs (id, organization_id, name, sport_id, logo_url, website, is_ac
   (63, 68, 'Fall River Marksmen', 1, NULL, NULL, true),
   (64, 69, 'Boston Ethiopians', 1, NULL, NULL, true),
   (65, 74, 'Doxa SC', 1, NULL, NULL, true),
-  (66, 75, 'Manhattan Celtic', 1, NULL, NULL, true),
   (67, 76, 'KidSuper Samba AC', 1, NULL, NULL, true),
   (68, 77, 'Suffolk County FC', 1, NULL, NULL, true),
   (69, 78, 'Scots-American AC', 1, NULL, NULL, true),
   (70, 80, 'Seft F.C.', 1, NULL, NULL, true),
   (71, 84, 'Salone FC', 1, NULL, NULL, true),
-  (72, 85, 'Inter Vidas', 1, NULL, NULL, true),
   (73, 87, 'Kensington SC', 1, NULL, NULL, true),
   (74, 88, 'Albion SC Delaware', 1, NULL, NULL, true),
   (75, 89, 'FC Neman Philadelphia', 1, NULL, NULL, true),
@@ -84,24 +85,16 @@ INSERT INTO clubs (id, organization_id, name, sport_id, logo_url, website, is_ac
   (79, 96, 'Florence F.C.', 1, NULL, NULL, true),
   (80, 101, 'Flatley FC', 1, NULL, NULL, true),
   (81, 103, 'Strictly Nos FC', 1, NULL, NULL, true),
-  (82, 122, 'Vidas Elite', 1, NULL, NULL, true),
   (83, 130, 'BALL WORLD', 1, NULL, NULL, true),
   (84, 131, 'Glenmont FC', 1, NULL, NULL, true),
   (85, 132, 'Baltimore City FC', 1, NULL, NULL, true),
   (86, 134, 'Golden Ball Soccer Academy', 1, NULL, NULL, true),
   (87, 135, 'Salisbury Steaks', 1, NULL, NULL, true),
   (88, 136, 'Bobcats FC U23', 1, NULL, NULL, true),
-  (89, 137, 'Nova FC WL', 1, NULL, NULL, true),
   (90, 138, 'Unknown FC', 1, NULL, NULL, true),
-  (91, 139, 'VA Marauders FC WL', 1, NULL, NULL, true),
-  (92, 140, 'Nova FC O30', 1, NULL, NULL, true),
-  (93, 141, 'Villanovence F.C.', 1, NULL, NULL, true),
   (94, 148, 'Jaguars United FC', 1, NULL, NULL, true),
   (95, 149, 'Tres Barras', 1, NULL, NULL, true),
   (96, 155, 'Villanovence FC', 1, NULL, NULL, true),
   (97, 156, 'Guanabara SC', 1, NULL, NULL, true),
   (98, 176, 'AC Trilogy', 1, NULL, NULL, true),
-  (99, 187, 'Jessup Football Club', 1, NULL, NULL, true)
-ON CONFLICT (id) DO NOTHING;
-
-SELECT setval('clubs_id_seq', (SELECT MAX(id) FROM clubs));
+  (99, 187, 'Jessup Football Club', 1, NULL, NULL, true);

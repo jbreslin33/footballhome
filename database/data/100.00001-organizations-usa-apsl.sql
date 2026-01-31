@@ -1,11 +1,15 @@
--- Organizations (scraped from leagues)
--- Generated: 2026-01-26T22:25:56.408Z
--- Total Organizations: 99
+-- ============================================================================
+-- 100.00001-organizations-usa-apsl.sql
+-- USA - APSL Organizations
+-- ============================================================================
 --
--- Note: IDs 1-3 are in 030-organizations.sql (APSL, CASA, CSL league operators)
--- IDs 4+ are team clubs discovered by scrapers
+-- Generated: 2026-01-30T23:10:12.339Z
+-- Total Records: 87
+--
 
-INSERT INTO organizations (id, name, short_name, website_url, logo_url, description, is_active) VALUES
+-- Note: Duplicates will be merged by 900-cross-league-curation.sql
+
+INSERT INTO organizations (id, name, short_name, description, website_url, logo_url, is_active) VALUES
   (5, 'Falcons FC', NULL, NULL, NULL, NULL, true),
   (6, 'Scrub Nation', NULL, NULL, NULL, NULL, true),
   (7, 'Praia Kapital', NULL, NULL, NULL, NULL, true),
@@ -18,19 +22,14 @@ INSERT INTO organizations (id, name, short_name, website_url, logo_url, descript
   (14, 'Glastonbury Celtic', NULL, NULL, NULL, NULL, true),
   (15, 'Wildcat FC', NULL, NULL, NULL, NULL, true),
   (16, 'Hermandad Connecticut', NULL, NULL, NULL, NULL, true),
-  (17, 'Caribbean FCA', NULL, NULL, NULL, NULL, true),
   (18, 'NY Greek Americans', NULL, NULL, NULL, NULL, true),
   (19, 'Lansdowne Yonkers FC', NULL, NULL, NULL, NULL, true),
   (20, 'Hoboken FC 1912', NULL, NULL, NULL, NULL, true),
   (21, 'NY Pancyprian Freedoms', NULL, NULL, NULL, NULL, true),
   (22, 'Leros SC', NULL, NULL, NULL, NULL, true),
-  (23, 'Doxa FCW', NULL, NULL, NULL, NULL, true),
-  (24, 'NY International FC', NULL, NULL, NULL, NULL, true),
-  (25, 'Richmond County FC', NULL, NULL, NULL, NULL, true),
   (26, 'Central Park Rangers FC', NULL, NULL, NULL, NULL, true),
   (27, 'SC Vistula Garfield', NULL, NULL, NULL, NULL, true),
   (28, 'Zum Schneider FC 03', NULL, NULL, NULL, NULL, true),
-  (29, 'NY Athletic Club', NULL, NULL, NULL, NULL, true),
   (30, 'WC Predators', NULL, NULL, NULL, NULL, true),
   (31, 'Alloy Soccer Club', NULL, NULL, NULL, NULL, true),
   (32, 'Oaklyn United FC', NULL, NULL, NULL, NULL, true),
@@ -71,13 +70,11 @@ INSERT INTO organizations (id, name, short_name, website_url, logo_url, descript
   (68, 'Fall River Marksmen', NULL, NULL, NULL, NULL, true),
   (69, 'Boston Ethiopians', NULL, NULL, NULL, NULL, true),
   (74, 'Doxa SC', NULL, NULL, NULL, NULL, true),
-  (75, 'Manhattan Celtic', NULL, NULL, NULL, NULL, true),
   (76, 'KidSuper Samba AC', NULL, NULL, NULL, NULL, true),
   (77, 'Suffolk County FC', NULL, NULL, NULL, NULL, true),
   (78, 'Scots-American AC', NULL, NULL, NULL, NULL, true),
   (80, 'Seft F.C.', NULL, NULL, NULL, NULL, true),
   (84, 'Salone FC', NULL, NULL, NULL, NULL, true),
-  (85, 'Inter Vidas', NULL, NULL, NULL, NULL, true),
   (87, 'Kensington SC', NULL, NULL, NULL, NULL, true),
   (88, 'Albion SC Delaware', NULL, NULL, NULL, NULL, true),
   (89, 'FC Neman Philadelphia', NULL, NULL, NULL, NULL, true),
@@ -87,24 +84,16 @@ INSERT INTO organizations (id, name, short_name, website_url, logo_url, descript
   (96, 'Florence F.C.', NULL, NULL, NULL, NULL, true),
   (101, 'Flatley FC', NULL, NULL, NULL, NULL, true),
   (103, 'Strictly Nos FC', NULL, NULL, NULL, NULL, true),
-  (122, 'Vidas Elite', NULL, NULL, NULL, NULL, true),
   (130, 'BALL WORLD', NULL, NULL, NULL, NULL, true),
   (131, 'Glenmont FC', NULL, NULL, NULL, NULL, true),
   (132, 'Baltimore City FC', NULL, NULL, NULL, NULL, true),
   (134, 'Golden Ball Soccer Academy', NULL, NULL, NULL, NULL, true),
   (135, 'Salisbury Steaks', NULL, NULL, NULL, NULL, true),
   (136, 'Bobcats FC U23', NULL, NULL, NULL, NULL, true),
-  (137, 'Nova FC WL', NULL, NULL, NULL, NULL, true),
   (138, 'Unknown FC', NULL, NULL, NULL, NULL, true),
-  (139, 'VA Marauders FC WL', NULL, NULL, NULL, NULL, true),
-  (140, 'Nova FC O30', NULL, NULL, NULL, NULL, true),
-  (141, 'Villanovence F.C.', NULL, NULL, NULL, NULL, true),
   (148, 'Jaguars United FC', NULL, NULL, NULL, NULL, true),
   (149, 'Tres Barras', NULL, NULL, NULL, NULL, true),
   (155, 'Villanovence FC', NULL, NULL, NULL, NULL, true),
   (156, 'Guanabara SC', NULL, NULL, NULL, NULL, true),
   (176, 'AC Trilogy', NULL, NULL, NULL, NULL, true),
-  (187, 'Jessup Football Club', NULL, NULL, NULL, NULL, true)
-ON CONFLICT (id) DO NOTHING;
-
-SELECT setval('organizations_id_seq', (SELECT MAX(id) FROM organizations));
+  (187, 'Jessup Football Club', NULL, NULL, NULL, NULL, true);

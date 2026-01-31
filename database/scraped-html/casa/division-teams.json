@@ -1,0 +1,53 @@
+{
+  "generated": "2026-01-29T15:27:13.460Z",
+  "divisions": [
+    {
+      "id": 54,
+      "name": "Philadelphia Liga 1",
+      "external_id": "9090889",
+      "teams": [
+        "Adé United FC",
+        "Oaklyn United FC II",
+        "Persepolis FC",
+        "Phoenix SCM",
+        "Illyrians FC",
+        "Lighthouse Boys Club"
+      ]
+    },
+    {
+      "id": 55,
+      "name": "Philadelphia Liga 2",
+      "external_id": "9096430",
+      "teams": [
+        "Persepolis United FC II",
+        "Phoenix SCR",
+        "Philadelphia SC II",
+        "Lighthouse Old Timers Club",
+        "Club de Futbol Armada"
+      ]
+    },
+    {
+      "id": 56,
+      "name": "Boston Liga 1",
+      "external_id": "9090891",
+      "teams": [
+        "South Shore FC",
+        "Jaguars United FC",
+        "Strictly Nos Fc",
+        "BCFC All Stars",
+        "Flatley FC",
+        "Gambeta FC"
+      ]
+    },
+    {
+      "id": 57,
+      "name": "Lancaster Liga 1",
+      "external_id": "9090893",
+      "teams": [
+        "Alloy Soccer Club Reserves",
+        "F&M FC",
+        "Lancaster City FC"
+      ]
+    }
+  ]
+}
