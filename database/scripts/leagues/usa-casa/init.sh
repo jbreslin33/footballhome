@@ -26,25 +26,21 @@ MODE=${1:-parse}
 
 echo -e "${YELLOW}⚽ CASA Initialization (mode: $MODE)${NC}"
 
-# Step 1: Load APSL+CSL (prerequisites)
-echo "  1. Loading prerequisites (APSL + CSL)..."
-./build.sh > /dev/null 2>&1
-
-# Step 2: Parse CASA HTML → database
-echo "  2. Parsing CASA HTML..."
+# Step 1: Parse CASA HTML → database (APSL+CSL must already be loaded)
+echo "  1. Parsing CASA HTML..."
 if [ "$MODE" = "scrape" ]; then
     SCRAPE_MODE=download SCRAPE_LEAGUE=usa-casa ./update.sh
 else
     SCRAPE_MODE=parse SCRAPE_LEAGUE=usa-casa SCRAPE_USE_CACHE=true ./update.sh
 fi
 
-# Step 3: Export CASA data to SQL
-echo "  3. Exporting to SQL..."
+# Step 2: Export CASA data to SQL
+echo "  2. Exporting to SQL..."
 cd database/scripts
 EXPORT_LEAGUE=usa-casa EXPORT_LEAGUE_ID=00002 node export-correct-structure.js
 
-# Step 4: Generate curation (CASA merging into APSL+CSL)
-echo "  4. Generating curation..."
+# Step 3: Generate curation (CASA merging into APSL+CSL)
+echo "  3. Generating curation..."
 cd database/scripts/leagues/usa-casa
 node curate.js
 

@@ -27,25 +27,21 @@ MODE=${1:-parse}
 
 echo -e "${YELLOW}⚽ APSL Initialization (mode: $MODE)${NC}"
 
-# Step 1: Start fresh database with bootstrap
-echo "  1. Starting database..."
-./build.sh > /dev/null 2>&1
-
-# Step 2: Parse APSL HTML → database
-echo "  2. Parsing APSL HTML..."
+# Step 1: Parse APSL HTML → database
+echo "  1. Parsing APSL HTML..."
 if [ "$MODE" = "scrape" ]; then
     SCRAPE_MODE=download SCRAPE_LEAGUE=usa-apsl ./update.sh
 else
     SCRAPE_MODE=parse SCRAPE_LEAGUE=usa-apsl SCRAPE_USE_CACHE=true ./update.sh
 fi
 
-# Step 3: Export APSL data to SQL
-echo "  3. Exporting to SQL..."
+# Step 2: Export APSL data to SQL
+echo "  2. Exporting to SQL..."
 cd database/scripts
 EXPORT_LEAGUE=usa-apsl EXPORT_LEAGUE_ID=00001 node export-correct-structure.js
 
-# Step 4: Generate curation SQL
-echo "  4. Generating curation..."
+# Step 3: Generate curation SQL
+echo "  3. Generating curation..."
 cd database/scripts/leagues/usa-apsl
 node curate.js
 
