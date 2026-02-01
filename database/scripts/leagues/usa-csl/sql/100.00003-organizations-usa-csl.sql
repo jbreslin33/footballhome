@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Organizations - CSL (Curated)
--- Only new organizations not in APSL. Total: 47
+-- Only new organizations not in APSL. Total: 45
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO organizations (id, name) VALUES (10003, 'FC Sandzak') ON CONFLICT (id) DO NOTHING;
@@ -25,7 +25,6 @@ INSERT INTO organizations (id, name) VALUES (10024, 'KidSuper Samba AC') ON CONF
 INSERT INTO organizations (id, name) VALUES (10025, 'SC Gjoa') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10026, 'SC Eintracht') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10027, 'CD Iberia') ON CONFLICT (id) DO NOTHING;
-INSERT INTO organizations (id, name) VALUES (10028, 'Falco FC') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10030, 'NY Albanians FC') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10031, 'Laberia FC') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10032, 'Afghan Ittihad FC') ON CONFLICT (id) DO NOTHING;
@@ -48,5 +47,4 @@ INSERT INTO organizations (id, name) VALUES (10050, 'Clarkstown SC') ON CONFLICT
 INSERT INTO organizations (id, name) VALUES (10051, 'Soccer Legion FC Men') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10052, 'Ridgewood Romac SC') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10053, 'Cozmoz FC') ON CONFLICT (id) DO NOTHING;
-INSERT INTO organizations (id, name) VALUES (10054, 'Doxa SC') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10055, 'NY Irish SC') ON CONFLICT (id) DO NOTHING;

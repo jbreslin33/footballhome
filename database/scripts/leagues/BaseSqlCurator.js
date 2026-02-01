@@ -96,8 +96,8 @@ class BaseSqlCurator {
   normalizeClubName(name) {
     const base = this.getClubBaseName(name);
     return base
-      .replace(/\s+(FC|SC|CF|United|City|Club|AFC|SFC|CFC|SCM|SCR)$/i, '')
-      .replace(/\b(FC|SC|CF|United|City|Club|SCM|SCR)\b/gi, '')
+      .replace(/\s+(FC|SC|CF|United|City|Club|AFC|SFC|CFC|SCM|SCR|FCW|FCA)$/i, '')
+      .replace(/\b(FC|SC|CF|United|City|Club|SCM|SCR|FCW|FCA)\b/gi, '')
       .replace(/\s+/g, ' ')
       .trim()
       .toLowerCase();
@@ -135,18 +135,18 @@ class BaseSqlCurator {
    * Fuzzy match two club names
    */
   fuzzyMatch(name1, name2) {
-    const base1 = this.getClubBaseName(name1).toLowerCase();
-    const base2 = this.getClubBaseName(name2).toLowerCase();
+    const norm1 = this.normalizeClubName(name1);
+    const norm2 = this.normalizeClubName(name2);
     
-    // Exact match
-    if (base1 === base2) return true;
+    // Exact normalized match
+    if (norm1 === norm2) return true;
     
-    // One contains the other
-    if (base1.includes(base2) || base2.includes(base1)) return true;
+    // One normalized name contains the other
+    if (norm1.includes(norm2) || norm2.includes(norm1)) return true;
     
     // Check family mappings (override in subclass)
-    const slug1 = this.toSlug(base1);
-    const slug2 = this.toSlug(base2);
+    const slug1 = this.toSlug(norm1);
+    const slug2 = this.toSlug(norm2);
     const family1 = this.getClubFamily(slug1);
     const family2 = this.getClubFamily(slug2);
     if (family1 && family2 && family1 === family2) return true;

@@ -55,8 +55,8 @@ class BaseGenerator {
   normalizeClubName(name) {
     const base = this.getClubBaseName(name);
     return base
-      .replace(/\s+(FC|SC|CF|United|City|Club|AFC|SFC|CFC|SCM|SCR)$/i, '')
-      .replace(/\b(FC|SC|CF|United|City|Club|SCM|SCR)\b/gi, '')
+      .replace(/\s+(FC|SC|CF|United|City|Club|AFC|SFC|CFC|SCM|SCR|FCW|FCA)$/i, '')
+      .replace(/\b(FC|SC|CF|United|City|Club|SCM|SCR|FCW|FCA)\b/gi, '')
       .replace(/\s+/g, ' ')
       .trim()
       .toLowerCase();
