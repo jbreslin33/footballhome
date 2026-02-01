@@ -35,12 +35,17 @@ class BaseGenerator {
       .replace(/\s+Black$/i, '')
       .replace(/\s+Orange$/i, '')
       .replace(/\s+Yellow$/i, '')
+      .replace(/\s+Yellow\s+Hook$/i, '')
+      .replace(/\s+Over-?\d+$/i, '')
       .replace(/\s+Young\s+Boys$/i, '')
       .replace(/\s+United$/i, '')
       .replace(/\s+1999$/i, '')
       .replace(/\s+Veterans?$/i, '')
       .replace(/\s+Old\s+Timers?$/i, '')
       .replace(/\s+Boys?\s+Club$/i, '')
+      .replace(/\s+City$/i, '')
+      .replace(/\s+Fury$/i, '')
+      .replace(/\s+Kickoff$/i, '')
       .trim();
   }
 
