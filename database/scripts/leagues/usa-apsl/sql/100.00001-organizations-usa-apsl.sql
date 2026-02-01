@@ -44,7 +44,7 @@ INSERT INTO organizations (id, name) VALUES (137, 'Nova FC') ON CONFLICT (id) DO
 INSERT INTO organizations (id, name) VALUES (138, 'VA Marauders FC') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (139, 'Wave FC') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (140, 'PFA EPSL') ON CONFLICT (id) DO NOTHING;
-INSERT INTO organizations (id, name) VALUES (141, 'Grove Soccer United') ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name) VALUES (141, 'Grove Soccer') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (142, 'Christos FC') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (143, 'Delmarva Thunder') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (144, 'PW Nova') ON CONFLICT (id) DO NOTHING;

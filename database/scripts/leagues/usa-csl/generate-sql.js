@@ -12,19 +12,14 @@
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
+const BaseGenerator = require('../BaseGenerator');
 
-class CslSqlGenerator {
+class CslSqlGenerator extends BaseGenerator {
   constructor() {
-    this.sourceSystemId = 3; // CSL
-    this.leagueId = '00003'; // Dewey decimal
-    this.orgIdBase = 10000;
-    this.clubIdBase = 10000;
-    this.teamIdBase = 10000;
+    super('CSL', 3, '00003', 10000, 10000, 10000);
     this.organizations = new Map();
     this.clubs = new Map();
     this.teams = [];
-    this.sourceSystemId = 3; // CSL
-    this.leagueId = '00003';
   }
 
   /**
@@ -40,7 +35,14 @@ class CslSqlGenerator {
     this.parseStandingsPage(standingsHtml);
     
     console.log(`   Found ${this.teams.length} teams`);
-    console.log(`   Extracted ${this.clubs.size} unique clubs`);
+    
+    // Group teams by club (deduplicates clubs with multiple teams)
+    const teamGroups = this.groupTeamsByClub(this.teams);
+    this.clubs = this.extractClubsFromGroups(teamGroups);
+    this.organizations = this.extractOrganizationsFromClubs(this.clubs);
+    
+    console.log(`   Extracted ${this.clubs.size} unique clubs (grouped from teams)`);
+    console.log(`   Sample clubs: ${Array.from(this.clubs.keys()).slice(0, 5).join(', ')}`);
     console.log(`   Extracted ${this.organizations.size} unique organizations`);
     
     // Generate SQL files
@@ -128,34 +130,12 @@ class CslSqlGenerator {
   }
 
   /**
-   * Add team and extract club/org
+   * Add team (clubs/orgs will be extracted later via grouping)
    */
   addTeam(teamName, externalId, divisionName) {
-    // Extract club name (strip reserve indicators)
-    const clubName = this.getClubName(teamName);
-    
-    // Create organization (one per club)
-    if (!this.organizations.has(clubName)) {
-      this.organizations.set(clubName, {
-        name: clubName,
-        sourceSystemId: this.sourceSystemId
-      });
-    }
-    
-    // Create club
-    if (!this.clubs.has(clubName)) {
-      this.clubs.set(clubName, {
-        name: clubName,
-        organizationName: clubName,
-        sourceSystemId: this.sourceSystemId
-      });
-    }
-    
-    // Add team
     this.teams.push({
       name: teamName,
       externalId: externalId,
-      clubName: clubName,
       divisionName: divisionName,
       sourceSystemId: this.sourceSystemId
     });

@@ -12,19 +12,14 @@
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
+const BaseGenerator = require('../BaseGenerator');
 
-class ApslSqlGenerator {
+class ApslSqlGenerator extends BaseGenerator {
   constructor() {
-    this.sourceSystemId = 1; // APSL
-    this.leagueId = '00001'; // Dewey decimal
-    this.orgIdBase = 100;
-    this.clubIdBase = 100;
-    this.teamIdBase = 100;
+    super('APSL', 1, '00001', 100, 100, 100);
     this.organizations = new Map();
     this.clubs = new Map();
     this.teams = [];
-    this.sourceSystemId = 1; // APSL
-    this.leagueId = '00001';
   }
 
   /**
@@ -40,7 +35,13 @@ class ApslSqlGenerator {
     this.parseStandingsPage(standingsHtml);
     
     console.log(`   Found ${this.teams.length} teams`);
-    console.log(`   Extracted ${this.clubs.size} unique clubs`);
+    
+    // Group teams by club (deduplicates clubs with multiple teams)
+    const teamGroups = this.groupTeamsByClub(this.teams);
+    this.clubs = this.extractClubsFromGroups(teamGroups);
+    this.organizations = this.extractOrganizationsFromClubs(this.clubs);
+    
+    console.log(`   Extracted ${this.clubs.size} unique clubs (grouped from teams)`);
     console.log(`   Extracted ${this.organizations.size} unique organizations`);
     
     // Generate SQL files
@@ -125,54 +126,18 @@ class ApslSqlGenerator {
   }
 
   /**
-   * Add team and extract club/org
+   * Add team (clubs/orgs will be extracted later via grouping)
    */
   addTeam(teamName, externalId, divisionName) {
-    const clubName = this.getClubName(teamName);
-    
-    if (!this.organizations.has(clubName)) {
-      this.organizations.set(clubName, {
-        name: clubName,
-        sourceSystemId: this.sourceSystemId
-      });
-    }
-    
-    // Create club
-    if (!this.clubs.has(clubName)) {
-      this.clubs.set(clubName, {
-        name: clubName,
-        organizationName: clubName,
-        sourceSystemId: this.sourceSystemId
-      });
-    }
-    
-    // Add team
     this.teams.push({
       name: teamName,
       externalId: externalId,
-      clubName: clubName,
       divisionName: divisionName,
       sourceSystemId: this.sourceSystemId
     });
   }
 
-  /**
-   * Extract club name from team name
-   */
-  getClubName(teamName) {
-    return teamName
-      .replace(/\s+(II|III|IV|V|2|3|4|5)$/i, '')
-      .replace(/\s+Reserve$/i, '')
-      .replace(/\s+Reserves$/i, '')
-      .replace(/\s+Legends$/i, '')
-      .replace(/\s+Old Boys$/i, '')
-      .replace(/\s+Masters$/i, '')
-      .replace(/\s+Veterans$/i, '')
-      .replace(/\s+Red$/i, '')
-      .replace(/\s+Green$/i, '')
-      .replace(/\s+Blue$/i, '')
-      .trim();
-  }
+
 
   /**
    * Write organizations SQL
