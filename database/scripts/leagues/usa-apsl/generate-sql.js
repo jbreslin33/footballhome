@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * CSL SQL Generator
+ * APSL SQL Generator
  * 
  * Reads cached HTML files and generates SQL (no database writes).
- * Creates organizations, clubs, and teams from team names.
+ * Creates organizations, clubs, and teams from scraped data.
  * 
  * Workflow: HTML → SQL files → Manual curation → Load to DB
  */
@@ -13,25 +13,25 @@ const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
 
-class CslSqlGenerator {
+class ApslSqlGenerator {
   constructor() {
-    this.sourceSystemId = 3; // CSL
-    this.leagueId = '00003'; // Dewey decimal
-    this.orgIdBase = 10000;
-    this.clubIdBase = 10000;
-    this.teamIdBase = 10000;
+    this.sourceSystemId = 1; // APSL
+    this.leagueId = '00001'; // Dewey decimal
+    this.orgIdBase = 100;
+    this.clubIdBase = 100;
+    this.teamIdBase = 100;
     this.organizations = new Map();
     this.clubs = new Map();
     this.teams = [];
-    this.sourceSystemId = 3; // CSL
-    this.leagueId = '00003';
+    this.sourceSystemId = 1; // APSL
+    this.leagueId = '00001';
   }
 
   /**
    * Main workflow
    */
   async generate() {
-    console.log('\n📄 Generating CSL SQL from HTML...');
+    console.log('\n📄 Generating APSL SQL from HTML...');
     
     // Read standings HTML
     const standingsHtml = this.readStandingsHtml();
@@ -52,89 +52,84 @@ class CslSqlGenerator {
   }
 
   /**
-   * Read cached standings HTML
+   * Read cached standings HTML (uses most recent file)
    */
   readStandingsHtml() {
-    const htmlDir = path.join(__dirname, '../../../scraped-html/csl');
-    const files = fs.readdirSync(htmlDir).filter(f => f.startsWith('tables-'));
+    const htmlDir = path.join(__dirname, '../../../scraped-html/apsl');
+    const files = fs.readdirSync(htmlDir)
+      .filter(f => f.startsWith('tables-'))
+      .map(f => ({
+        name: f,
+        path: path.join(htmlDir, f),
+        mtime: fs.statSync(path.join(htmlDir, f)).mtime
+      }))
+      .sort((a, b) => b.mtime - a.mtime); // Sort by most recent first
     
     if (files.length === 0) {
       throw new Error('No standings HTML found. Run ./scrape.sh first.');
     }
     
-    const htmlPath = path.join(htmlDir, files[0]);
+    const htmlPath = files[0].path;
     console.log(`   Reading: ${htmlPath}`);
     return fs.readFileSync(htmlPath, 'utf-8');
   }
 
   /**
-   * Parse standings page to extract teams
+   * Parse APSL standings page
    */
   parseStandingsPage(html) {
     const dom = new JSDOM(html);
     const document = dom.window.document;
     
-    // Find all div elements that contain division names
-    const allDivs = document.querySelectorAll('div');
+    // APSL uses accordion titles like "2025/2026 - Mayflower Conference"
+    const accordionTitles = document.querySelectorAll('.leagueAccordTitle1');
     
-    for (const div of allDivs) {
-      const text = div.textContent.trim();
+    accordionTitles.forEach((title) => {
+      const titleText = title.textContent.trim();
+      const match = titleText.match(/\d{4}\/\d{4}\s*-\s*(.+)/);
+      if (!match) return;
       
-      // Match division headers like "2025/2026 - Division 1"
-      const divisionMatch = text.match(/^(\d{4}\/\d{4})\s*-\s*(.+)$/);
-      if (!divisionMatch) continue;
+      const divisionName = match[1];
       
-      const divisionName = divisionMatch[2]; // Just the division name without season
-      
-      // Find the table that follows this div
-      let current = div;
+      // Find the accordion box (div.leagueAccordbox) that follows this title
+      let current = title.parentElement;
       let table = null;
       let iterations = 0;
       
       while (current && !table && iterations < 100) {
         iterations++;
         current = current.nextElementSibling;
-        if (current && current.tagName === 'TABLE') {
-          table = current;
-        }
-        if (!current && div.parentElement) {
-          current = div.parentElement.nextElementSibling;
-          if (current) {
-            table = current.querySelector('table');
-          }
+        if (current && current.classList && current.classList.contains('leagueAccordbox')) {
+          table = current.querySelector('table');
         }
       }
       
-      if (!table) continue;
+      if (!table) return;
       
-      // Parse teams from table (no tbody in CSL HTML)
       const rows = table.querySelectorAll('tr');
       rows.forEach((row) => {
         const cells = row.querySelectorAll('td');
-        if (cells.length < 10) return; // Skip header rows
+        if (cells.length < 10) return;
         
-        // Team name is in second column (cells[1])
         const teamCell = cells[1];
         const teamName = teamCell.textContent.trim();
-        const teamLink = teamCell.querySelector('a[href*="/CSL/Team/"]');
+        const teamLink = teamCell.querySelector('a');
         const teamHref = teamLink?.getAttribute('href') || '';
-        const externalId = teamHref.match(/\/CSL\/Team\/(\d+)/)?.[1];
+        const externalId = teamHref.match(/\/Team\/(\d+)/i)?.[1];
         
         if (teamName && externalId) {
           this.addTeam(teamName, externalId, divisionName);
         }
       });
-    }
+    });
   }
 
   /**
    * Add team and extract club/org
    */
   addTeam(teamName, externalId, divisionName) {
-    // Extract club name (strip reserve indicators)
     const clubName = this.getClubName(teamName);
     
-    // Create organization (one per club)
     if (!this.organizations.has(clubName)) {
       this.organizations.set(clubName, {
         name: clubName,
@@ -168,14 +163,14 @@ class CslSqlGenerator {
     return teamName
       .replace(/\s+(II|III|IV|V|2|3|4|5)$/i, '')
       .replace(/\s+Reserve$/i, '')
+      .replace(/\s+Reserves$/i, '')
       .replace(/\s+Legends$/i, '')
       .replace(/\s+Old Boys$/i, '')
       .replace(/\s+Masters$/i, '')
-      .replace(/\s+Bhoys$/i, '')
-      .replace(/\s+Lower East$/i, '')
-      .replace(/\s+Hudson$/i, '')
-      .replace(/\s+OG'S$/i, '')
-      .replace(/\s+Dawgz$/i, '')
+      .replace(/\s+Veterans$/i, '')
+      .replace(/\s+Red$/i, '')
+      .replace(/\s+Green$/i, '')
+      .replace(/\s+Blue$/i, '')
       .trim();
   }
 
@@ -184,7 +179,7 @@ class CslSqlGenerator {
    */
   writeOrganizationsSql() {
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- Organizations - CSL
+-- Organizations - APSL
 -- Generated: ${new Date().toISOString()}
 -- Total Records: ${this.organizations.size}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -194,11 +189,11 @@ class CslSqlGenerator {
     let id = this.orgIdBase;
     for (const [name, org] of this.organizations) {
       sql += `INSERT INTO organizations (id, name) VALUES (${id}, '${this.escapeSql(name)}') ON CONFLICT (id) DO NOTHING;\n`;
-      org.id = id; // Store for club references
+      org.id = id;
       id++;
     }
 
-    const outputPath = path.join(__dirname, 'sql', `100.${this.leagueId}-organizations-usa-csl.sql`);
+    const outputPath = path.join(__dirname, 'sql', `100.${this.leagueId}-organizations-usa-apsl.sql`);
     fs.writeFileSync(outputPath, sql);
     console.log(`   ✓ ${outputPath}`);
   }
@@ -208,7 +203,7 @@ class CslSqlGenerator {
    */
   writeClubsSql() {
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- Clubs - CSL
+-- Clubs - APSL
 -- Generated: ${new Date().toISOString()}
 -- Total Records: ${this.clubs.size}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -219,11 +214,11 @@ class CslSqlGenerator {
     for (const [name, club] of this.clubs) {
       const org = this.organizations.get(club.organizationName);
       sql += `INSERT INTO clubs (id, name, organization_id) VALUES (${id}, '${this.escapeSql(name)}', ${org.id}) ON CONFLICT (id) DO NOTHING;\n`;
-      club.id = id; // Store for team references
+      club.id = id;
       id++;
     }
 
-    const outputPath = path.join(__dirname, 'sql', `101.${this.leagueId}-clubs-usa-csl.sql`);
+    const outputPath = path.join(__dirname, 'sql', `101.${this.leagueId}-clubs-usa-apsl.sql`);
     fs.writeFileSync(outputPath, sql);
     console.log(`   ✓ ${outputPath}`);
   }
@@ -233,7 +228,7 @@ class CslSqlGenerator {
    */
   writeTeamsSql() {
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- Teams - CSL
+-- Teams - APSL
 -- Generated: ${new Date().toISOString()}
 -- Total Records: ${this.teams.length}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -243,16 +238,11 @@ class CslSqlGenerator {
     let id = this.teamIdBase;
     for (const team of this.teams) {
       const club = this.clubs.get(team.clubName);
-      if (!club) {
-        console.error(`ERROR: Club not found for team "${team.name}", clubName="${team.clubName}"`);
-        console.error(`Available clubs: ${Array.from(this.clubs.keys()).slice(0,5).join(', ')}...`);
-        throw new Error('Club lookup failed');
-      }
       sql += `INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (${id}, '${this.escapeSql(team.name)}', '${team.externalId}', ${club.id}, ${team.sourceSystemId}) ON CONFLICT (source_system_id, external_id) DO NOTHING;\n`;
       id++;
     }
 
-    const outputPath = path.join(__dirname, 'sql', `102.${this.leagueId}-teams-usa-csl.sql`);
+    const outputPath = path.join(__dirname, 'sql', `102.${this.leagueId}-teams-usa-apsl.sql`);
     fs.writeFileSync(outputPath, sql);
     console.log(`   ✓ ${outputPath}`);
   }
@@ -267,7 +257,7 @@ class CslSqlGenerator {
 
 // CLI execution
 if (require.main === module) {
-  const generator = new CslSqlGenerator();
+  const generator = new ApslSqlGenerator();
   generator.generate()
     .then(() => process.exit(0))
     .catch(err => {
@@ -276,4 +266,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = CslSqlGenerator;
+module.exports = ApslSqlGenerator;

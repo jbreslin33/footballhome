@@ -22,16 +22,14 @@ set -e
 # Get to project root
 cd "$(dirname "$0")/../../../.."
 
-echo "📄 Parsing APSL HTML..."
+echo "📄 Parsing APSL HTML and generating SQL..."
 
-# Parse HTML → populate database
-export SCRAPE_MODE=parse
-export SCRAPE_USE_CACHE=true
-node database/scripts/scrapers/ApslStructureScraper.js
+# Parse HTML → Generate SQL (no database needed)
+node database/scripts/leagues/usa-apsl/generate-sql.js
 
-# Export database → SQL files
-echo "  Exporting to SQL..."
-cd database/scripts
-EXPORT_LEAGUE=usa-apsl EXPORT_LEAGUE_ID=00001 EXPORT_OUTPUT_DIR=../scripts/leagues/usa-apsl/sql node export-correct-structure.js
+echo "🔍 Curating APSL SQL (checking for pre-existing clubs)..."
 
-echo "✓ APSL SQL files generated in database/scripts/leagues/usa-apsl/sql/"
+# Curate SQL (match against other leagues if loaded first)
+node database/scripts/leagues/usa-apsl/curate-sql.js
+
+echo "✓ APSL SQL files curated and ready in database/scripts/leagues/usa-apsl/sql/"

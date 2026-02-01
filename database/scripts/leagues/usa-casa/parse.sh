@@ -1,21 +1,14 @@
 #!/bin/bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# CASA - Parse HTML and Generate SQL
+# CASA - Parse and Curate SQL
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set -e
-cd "$(dirname "$0")/../../../.."
+cd "$(dirname "$0")"
 
-echo "📄 Parsing CASA HTML..."
+echo "📄 Curating CASA teams against APSL + CSL..."
 
-# Parse HTML → populate database (APSL + CSL must be loaded first for curation)
-export SCRAPE_MODE=parse
-export SCRAPE_USE_CACHE=true
-node database/scripts/scrapers/CasaStructureScraper.js
+# Curate CASA SQL against APSL + CSL clubs
+node curate-sql.js
 
-# Export database → SQL files
-echo "  Exporting to SQL..."
-cd database/scripts
-EXPORT_LEAGUE=usa-casa EXPORT_LEAGUE_ID=00002 EXPORT_OUTPUT_DIR=../scripts/leagues/usa-casa/sql node export-correct-structure.js
-
-echo "✓ CASA SQL files generated in database/scripts/leagues/usa-casa/sql/"
+echo "✓ CASA SQL files curated in sql/"

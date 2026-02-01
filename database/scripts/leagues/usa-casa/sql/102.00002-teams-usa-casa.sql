@@ -1,32 +1,26 @@
--- ============================================================================
--- 102.00002-teams-usa-casa.sql
--- USA - CASA Teams
--- ============================================================================
---
--- Generated: 2026-01-30T23:10:12.353Z
--- Total Records: 20
---
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Teams - CASA (Curated)
+-- Teams linked to existing clubs where matched. Total: 20
+-- Generated: 2026-02-01T16:07:21.157Z
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
--- Note: club_id may reference clubs created in 044-clubs.sql
-
-INSERT INTO teams (id, club_id, name, city, logo_url, source_system_id, external_id) VALUES
-  (262, NULL, 'Adé United FC', NULL, NULL, 2, NULL),
-  (263, NULL, 'Alloy Soccer Club Reserves', NULL, NULL, 2, NULL),
-  (264, NULL, 'BCFC All Stars', NULL, NULL, 2, NULL),
-  (265, NULL, 'Club de Futbol Armada', NULL, NULL, 2, NULL),
-  (266, NULL, 'F&M FC', NULL, NULL, 2, NULL),
-  (267, NULL, 'Flatley FC', NULL, NULL, 2, NULL),
-  (268, NULL, 'Gambeta FC', NULL, NULL, 2, NULL),
-  (269, NULL, 'Illyrians FC', NULL, NULL, 2, NULL),
-  (270, NULL, 'Jaguars United FC', NULL, NULL, 2, NULL),
-  (271, NULL, 'Lancaster City FC', NULL, NULL, 2, NULL),
-  (272, NULL, 'Lighthouse Boys Club', NULL, NULL, 2, NULL),
-  (273, NULL, 'Lighthouse Old Timers Club', NULL, NULL, 2, NULL),
-  (274, NULL, 'Oaklyn United FC II', NULL, NULL, 2, NULL),
-  (275, NULL, 'Persepolis FC', NULL, NULL, 2, NULL),
-  (276, NULL, 'Persepolis United FC II', NULL, NULL, 2, NULL),
-  (277, NULL, 'Philadelphia SC II', NULL, NULL, 2, NULL),
-  (278, NULL, 'Phoenix SCM', NULL, NULL, 2, NULL),
-  (279, NULL, 'Phoenix SCR', NULL, NULL, 2, NULL),
-  (280, NULL, 'South Shore FC', NULL, NULL, 2, NULL),
-  (281, NULL, 'Strictly Nos Fc', NULL, NULL, 2, NULL);
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (262, 'Adé United FC', NULL, 20000, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (263, 'Alloy Soccer Club Reserves', NULL, 27, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (264, 'BCFC All Stars', NULL, 20001, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (265, 'Club de Futbol Armada', NULL, 20002, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (266, 'F&M FC', NULL, 20003, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (267, 'Flatley FC', NULL, 20004, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (268, 'Gambeta FC', NULL, 20005, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (269, 'Illyrians FC', NULL, 20006, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (270, 'Jaguars United FC', NULL, 20007, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (271, 'Lancaster City FC', NULL, 20008, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (272, 'Lighthouse Boys Club', NULL, 35, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (273, 'Lighthouse Old Timers Club', NULL, 35, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (274, 'Oaklyn United FC II', NULL, 28, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (275, 'Persepolis FC', NULL, 20009, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (276, 'Persepolis United FC II', NULL, 20009, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (277, 'Philadelphia SC II', NULL, 32, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (278, 'Phoenix SCM', NULL, 20010, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (279, 'Phoenix SCR', NULL, 20010, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (280, 'South Shore FC', NULL, 20011, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (281, 'Strictly Nos Fc', NULL, 20012, 2) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;

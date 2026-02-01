@@ -1,100 +1,65 @@
--- ============================================================================
--- 101.00001-clubs-usa-apsl.sql
--- USA - APSL Clubs
--- ============================================================================
---
--- Generated: 2026-01-30T23:10:12.348Z
--- Total Records: 87
---
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Clubs - APSL
+-- Generated: 2026-01-31T23:22:30.136Z
+-- Total Records: 59
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
--- Note: Duplicates will be merged by 900-cross-league-curation.sqln multiple leagues
--- After curation (051), duplicates will be merged
-
-INSERT INTO clubs (id, organization_id, name, sport_id, website, logo_url, is_active) VALUES
-  (1, 5, 'Falcons FC', 1, NULL, NULL, true),
-  (2, 6, 'Scrub Nation', 1, NULL, NULL, true),
-  (3, 7, 'Praia Kapital', 1, NULL, NULL, true),
-  (4, 8, 'South Coast Union', 1, NULL, NULL, true),
-  (5, 9, 'Project Football', 1, NULL, NULL, true),
-  (6, 10, 'Invictus FC', 1, NULL, NULL, true),
-  (7, 11, 'Fitchburg FC', 1, NULL, NULL, true),
-  (8, 12, 'Somerville United FC', 1, NULL, NULL, true),
-  (9, 13, 'KO Elites', 1, NULL, NULL, true),
-  (10, 14, 'Glastonbury Celtic', 1, NULL, NULL, true),
-  (11, 15, 'Wildcat FC', 1, NULL, NULL, true),
-  (12, 16, 'Hermandad Connecticut', 1, NULL, NULL, true),
-  (14, 18, 'NY Greek Americans', 1, NULL, NULL, true),
-  (15, 19, 'Lansdowne Yonkers FC', 1, NULL, NULL, true),
-  (16, 20, 'Hoboken FC 1912', 1, NULL, NULL, true),
-  (17, 21, 'NY Pancyprian Freedoms', 1, NULL, NULL, true),
-  (18, 22, 'Leros SC', 1, NULL, NULL, true),
-  (22, 26, 'Central Park Rangers FC', 1, NULL, NULL, true),
-  (23, 27, 'SC Vistula Garfield', 1, NULL, NULL, true),
-  (24, 28, 'Zum Schneider FC 03', 1, NULL, NULL, true),
-  (26, 30, 'WC Predators', 1, NULL, NULL, true),
-  (27, 31, 'Alloy Soccer Club', 1, NULL, NULL, true),
-  (28, 32, 'Oaklyn United FC', 1, NULL, NULL, true),
-  (29, 33, 'Real Central NJ Soccer', 1, NULL, NULL, true),
-  (30, 34, 'Philadelphia Heritage SC', 1, NULL, NULL, true),
-  (31, 35, 'Vidas United FC', 1, NULL, NULL, true),
-  (32, 36, 'Philadelphia Soccer Club', 1, NULL, NULL, true),
-  (33, 37, 'Jersey Shore Boca', 1, NULL, NULL, true),
-  (34, 38, 'GAK', 1, NULL, NULL, true),
-  (35, 39, 'Lighthouse 1893 SC', 1, NULL, NULL, true),
-  (36, 40, 'Sewell Old Boys FC', 1, NULL, NULL, true),
-  (37, 41, 'Medford Strikers', 1, NULL, NULL, true),
-  (38, 42, 'Nova FC', 1, NULL, NULL, true),
-  (39, 43, 'VA Marauders FC', 1, NULL, NULL, true),
-  (40, 44, 'Wave FC', 1, NULL, NULL, true),
-  (41, 45, 'PFA EPSL', 1, NULL, NULL, true),
-  (42, 46, 'Grove Soccer United', 1, NULL, NULL, true),
-  (43, 47, 'Christos FC', 1, NULL, NULL, true),
-  (44, 48, 'Delmarva Thunder', 1, NULL, NULL, true),
-  (45, 49, 'PW Nova', 1, NULL, NULL, true),
-  (46, 50, 'Germantown City FC', 1, NULL, NULL, true),
-  (47, 51, 'Terminus FC', 1, NULL, NULL, true),
-  (48, 52, 'Prima FC', 1, NULL, NULL, true),
-  (49, 53, 'Majestic SC', 1, NULL, NULL, true),
-  (50, 54, 'Peachtree FC', 1, NULL, NULL, true),
-  (51, 55, 'Bel Calcio FC', 1, NULL, NULL, true),
-  (52, 56, 'Buckhead SC', 1, NULL, NULL, true),
-  (53, 57, 'Alliance SC', 1, NULL, NULL, true),
-  (54, 58, 'Georgia United FC', 1, NULL, NULL, true),
-  (55, 59, 'SC Gwinnett', 1, NULL, NULL, true),
-  (56, 61, 'Fall River FC', 1, NULL, NULL, true),
-  (57, 62, 'Boston City FC', 1, NULL, NULL, true),
-  (58, 63, 'Mass United Rush', 1, NULL, NULL, true),
-  (59, 64, 'Trem Bala FC USA', 1, NULL, NULL, true),
-  (60, 65, 'Sete Setembro USA', 1, NULL, NULL, true),
-  (61, 66, 'Ruggles Pro FC', 1, NULL, NULL, true),
-  (62, 67, 'Santa Cruz FC EPSL', 1, NULL, NULL, true),
-  (63, 68, 'Fall River Marksmen', 1, NULL, NULL, true),
-  (64, 69, 'Boston Ethiopians', 1, NULL, NULL, true),
-  (65, 74, 'Doxa SC', 1, NULL, NULL, true),
-  (67, 76, 'KidSuper Samba AC', 1, NULL, NULL, true),
-  (68, 77, 'Suffolk County FC', 1, NULL, NULL, true),
-  (69, 78, 'Scots-American AC', 1, NULL, NULL, true),
-  (70, 80, 'Seft F.C.', 1, NULL, NULL, true),
-  (71, 84, 'Salone FC', 1, NULL, NULL, true),
-  (73, 87, 'Kensington SC', 1, NULL, NULL, true),
-  (74, 88, 'Albion SC Delaware', 1, NULL, NULL, true),
-  (75, 89, 'FC Neman Philadelphia', 1, NULL, NULL, true),
-  (76, 91, 'Columbia FC', 1, NULL, NULL, true),
-  (77, 92, 'Dulles N-Lite FC', 1, NULL, NULL, true),
-  (78, 93, 'Estudiantes FC', 1, NULL, NULL, true),
-  (79, 96, 'Florence F.C.', 1, NULL, NULL, true),
-  (80, 101, 'Flatley FC', 1, NULL, NULL, true),
-  (81, 103, 'Strictly Nos FC', 1, NULL, NULL, true),
-  (83, 130, 'BALL WORLD', 1, NULL, NULL, true),
-  (84, 131, 'Glenmont FC', 1, NULL, NULL, true),
-  (85, 132, 'Baltimore City FC', 1, NULL, NULL, true),
-  (86, 134, 'Golden Ball Soccer Academy', 1, NULL, NULL, true),
-  (87, 135, 'Salisbury Steaks', 1, NULL, NULL, true),
-  (88, 136, 'Bobcats FC U23', 1, NULL, NULL, true),
-  (90, 138, 'Unknown FC', 1, NULL, NULL, true),
-  (94, 148, 'Jaguars United FC', 1, NULL, NULL, true),
-  (95, 149, 'Tres Barras', 1, NULL, NULL, true),
-  (96, 155, 'Villanovence FC', 1, NULL, NULL, true),
-  (97, 156, 'Guanabara SC', 1, NULL, NULL, true),
-  (98, 176, 'AC Trilogy', 1, NULL, NULL, true),
-  (99, 187, 'Jessup Football Club', 1, NULL, NULL, true);
+INSERT INTO clubs (id, name, organization_id) VALUES (1, 'Falcons FC', 1) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (2, 'Scrub Nation', 2) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (3, 'Praia Kapital', 3) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (4, 'South Coast Union', 4) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (5, 'Project Football', 5) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (6, 'Invictus FC', 6) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (7, 'Fitchburg FC', 7) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (8, 'Somerville United FC', 8) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (9, 'KO Elites', 9) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (10, 'Glastonbury Celtic', 10) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (11, 'Wildcat FC', 11) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (12, 'Hermandad Connecticut', 12) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (13, 'Caribbean FCA', 13) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (14, 'NY Greek Americans', 14) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (15, 'Lansdowne Yonkers FC', 15) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (16, 'Hoboken FC 1912', 16) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (17, 'NY Pancyprian Freedoms', 17) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (18, 'Leros SC', 18) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (19, 'Doxa FCW', 19) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20, 'NY International FC', 20) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (21, 'Richmond County FC', 21) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (22, 'Central Park Rangers FC', 22) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (23, 'SC Vistula Garfield', 23) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (24, 'Zum Schneider FC 03', 24) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (25, 'NY Athletic Club', 25) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (26, 'WC Predators', 26) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (27, 'Alloy Soccer Club', 27) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (28, 'Oaklyn United FC', 28) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (29, 'Real Central NJ Soccer', 29) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (30, 'Philadelphia Heritage SC', 30) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (31, 'Vidas United FC', 31) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (32, 'Philadelphia Soccer Club', 32) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (33, 'Jersey Shore Boca', 33) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (34, 'GAK', 34) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (35, 'Lighthouse 1893 SC', 35) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (36, 'Sewell Old Boys FC', 36) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (37, 'Medford Strikers', 37) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (38, 'Nova FC', 38) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (39, 'VA Marauders FC', 39) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (40, 'Wave FC', 40) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (41, 'PFA EPSL', 41) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (42, 'Grove Soccer United', 42) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (43, 'Christos FC', 43) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (44, 'Delmarva Thunder', 44) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (45, 'PW Nova', 45) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (46, 'Germantown City FC', 46) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (47, 'Terminus FC', 47) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (48, 'Prima FC', 48) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (49, 'Majestic SC', 49) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (50, 'Peachtree FC', 50) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (51, 'Bel Calcio FC', 51) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (52, 'Buckhead SC', 52) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (53, 'Alliance SC', 53) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (54, 'Georgia United FC', 54) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (55, 'SC Gwinnett', 55) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (56, 'AC Arlington FC', 56) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (57, 'Foro SC', 57) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (58, 'North Texas Prowl FC', 58) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (59, 'Texas Rage FC', 59) ON CONFLICT (id) DO NOTHING;

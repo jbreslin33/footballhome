@@ -1,31 +1,40 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db bootstrap load
+.PHONY: all help clean build up down rebuild logs test ps shell-db bootstrap load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa refresh
 
-# Default target - standard convention
-all: rebuild
+# Default target - safe, non-destructive
+all: up
 
 # Help - show available targets
 help:
 	@echo "Football Home - Makefile Targets"
 	@echo ""
 	@echo "Standard targets:"
-	@echo "  make all         - Default: full rebuild with all data"
-	@echo "  make clean       - Destroy all containers and volumes"
-	@echo "  make build       - Build container images"
+	@echo "  make             - Default: start containers (safe, non-destructive)"
+	@echo "  make all         - Same as 'make' (just start containers)"
+	@echo "  make build       - Build images and start containers"
 	@echo "  make up          - Start containers"
 	@echo "  make down        - Stop containers"
-	@echo "  make rebuild     - clean + build + up (full data)"
+	@echo "  make clean       - Destroy all containers and volumes"
+	@echo "  make rebuild     - Nuclear: clean + build fresh (wipes all data)"
 	@echo "  make logs        - View all container logs"
 	@echo "  make test        - Run tests"
 	@echo ""
-	@echo "Custom targets:"
-	@echo "  make bootstrap   - Rebuild with bootstrap data only (no leagues)"
-	@echo "  make load        - Load all league SQL files to running database"
+	@echo "Database workflows:"
+	@echo "  make bootstrap   - Rebuild DB with bootstrap data only (no leagues)"
+	@echo "  make load        - Load all league SQL to running database"
+	@echo "  make parse       - Parse/curate all leagues (regenerate SQL files)"
+	@echo "  make refresh     - Full workflow: parse all + rebuild DB + load all"
 	@echo ""
-	@echo "Per-league operations (manual):"
-	@echo "  cd database/scripts/leagues/usa-apsl"
-	@echo "  ./scrape.sh      - Fetch HTML from web"
-	@echo "  ./parse.sh       - Generate SQL from cached HTML"
-	@echo "  ./load.sh        - Load APSL SQL to database"
+	@echo "Per-league operations:"
+	@echo "  make parse-apsl  - Parse/curate APSL only"
+	@echo "  make parse-csl   - Parse/curate CSL only (needs APSL SQL)"
+	@echo "  make parse-casa  - Parse/curate CASA only (needs APSL + CSL SQL)"
+	@echo "  make load-apsl   - Load APSL SQL to database"
+	@echo "  make load-csl    - Load CSL SQL to database"
+	@echo "  make load-casa   - Load CASA SQL to database"
+	@echo ""
+	@echo "Manual scraping (per-league):"
+	@echo "  cd database/scripts/leagues/usa-apsl && ./scrape.sh"
+	@echo "  cd database/scripts/leagues/usa-csl && ./scrape.sh"
 	@echo ""
 	@echo "Development:"
 	@echo "  make ps          - Show running containers"
@@ -50,8 +59,13 @@ clean:
 	@echo "✓ Cleanup complete"
 
 build:
-	@echo "🔨 Building container images..."
+	@echo "🔨 Building images and starting containers..."
 	@podman-compose --env-file env build
+	@podman-compose --env-file env up -d
+	@echo "✓ Build complete and containers started"
+	@echo ""
+	@echo "Frontend:  http://localhost:3000"
+	@echo "Backend:   http://localhost:3001"
 
 up:
 	@echo "🚀 Starting containers..."
@@ -87,15 +101,47 @@ bootstrap: clean
 	@echo "  Run: make load    (to load all leagues)"
 
 load:
-	@echo "📥 Loading all league SQL files..."
-	@for league in database/scripts/leagues/*/; do \
-		if [ -f "$$league/load.sh" ]; then \
-			echo ""; \
-			cd "$$league" && ./load.sh && cd - > /dev/null; \
-		fi \
-	done
+	@echo "📥 Loading league SQL in hierarchical order..."
+	@echo "   1. APSL (baseline)"
+	@cd database/scripts/leagues/usa-apsl && ./load.sh && cd - > /dev/null
+	@echo ""
+	@echo "   2. CSL (curated against APSL)"
+	@cd database/scripts/leagues/usa-csl && ./load.sh && cd - > /dev/null
+	@echo ""
+	@echo "   3. CASA (curated against APSL + CSL)"
+	@cd database/scripts/leagues/usa-casa && ./load.sh && cd - > /dev/null
 	@echo ""
 	@echo "✓ All leagues loaded"
+
+# Individual league targets
+parse:
+	@echo "📝 Parsing and curating all leagues..."
+	@cd database/scripts/leagues/usa-apsl && ./parse.sh && cd - > /dev/null
+	@cd database/scripts/leagues/usa-csl && ./parse.sh && cd - > /dev/null
+	@cd database/scripts/leagues/usa-casa && ./parse.sh && cd - > /dev/null
+	@echo "✓ All leagues parsed"
+
+parse-apsl:
+	@cd database/scripts/leagues/usa-apsl && ./parse.sh
+
+parse-csl:
+	@cd database/scripts/leagues/usa-csl && ./parse.sh
+
+parse-casa:
+	@cd database/scripts/leagues/usa-casa && ./parse.sh
+
+load-apsl:
+	@cd database/scripts/leagues/usa-apsl && ./load.sh
+
+load-csl:
+	@cd database/scripts/leagues/usa-csl && ./load.sh
+
+load-casa:
+	@cd database/scripts/leagues/usa-casa && ./load.sh
+
+# Full refresh: parse all, then bootstrap DB, then load all
+refresh: parse bootstrap load
+	@echo "✓ Full refresh complete (parsed all leagues, fresh DB, loaded all data)"
 
 # ============================================================
 # Development Helpers
