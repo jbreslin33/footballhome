@@ -125,7 +125,7 @@ class CasaSqlCurator extends BaseSqlCurator {
 
     const casaOrgs = this.parseOrganizationsSql(casaOrgsSql);
     const casaClubs = this.parseClubsSql(casaClubsSql);
-    const casaTeams = this.parseCasaTeamsSql(casaTeamsSql); // Use CASA-specific parser
+    const casaTeams = this.parseTeamsSql(casaTeamsSql); // Use base parser for standard format
 
     console.log(`\n📖 Parsed CASA (before curation):`);
     console.log(`   Organizations: ${casaOrgs.length}`);

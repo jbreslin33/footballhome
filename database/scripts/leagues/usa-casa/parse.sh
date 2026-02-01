@@ -6,9 +6,19 @@
 set -e
 cd "$(dirname "$0")"
 
-echo "📄 Curating CASA teams against APSL + CSL..."
+echo "📄 Parsing CASA JSON and generating SQL..."
 
-# Curate CASA SQL against APSL + CSL clubs
+# Generate SQL from JSON (no database needed)
+node generate-sql.js
+
+# Curate SQL (merge with APSL + CSL)
+echo ""
+echo "🔍 Curating CASA SQL (matching with APSL + CSL)..."
 node curate-sql.js
 
+echo ""
 echo "✓ CASA SQL files curated in sql/"
+echo ""
+echo "Next steps:"
+echo "  1. Review curated SQL files in sql/"
+echo "  2. Run: ./load.sh"
