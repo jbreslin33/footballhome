@@ -157,6 +157,27 @@ class CasaSqlCurator extends BaseSqlCurator {
       console.log(`      ${casaTeam.name} (CASA) → ${existingClub.name} (${existingClub.id < 10000 ? 'APSL' : 'CSL'} id=${existingClub.id})`);
     }
 
+    // Group new teams to extract clubs
+    const teamGroups = this.groupTeamsByClub(newTeams);
+    const newClubs = [];
+    for (const [normalized, teams] of teamGroups) {
+      const clubName = this.getClubBaseName(teams[0].name);
+      newClubs.push({ name: clubName, teams });
+    }
+
+    // Check for potential duplicates using BaseGenerator logic
+    const BaseGenerator = require('../BaseGenerator');
+    const baseGen = new BaseGenerator('CASA', 2, '00002', 20000, 20000, 20000);
+    const potentialDuplicates = baseGen.findPotentialDuplicates(existingClubs, newClubs);
+    
+    if (potentialDuplicates.length > 0) {
+      console.log(`\n   ⚠️  POTENTIAL DUPLICATES DETECTED:`);
+      for (const warning of potentialDuplicates) {
+        console.log(`      [${warning.severity}] "${warning.newClub}" may duplicate "${warning.existingClub}"`);
+        console.log(`              Matching words: ${warning.matchingWords.join(', ')}`);
+      }
+    }
+
     console.log(`\n   🆕 New CASA Teams (need new clubs):`);
     for (const team of newTeams) {
       console.log(`      ${team.name}`);

@@ -134,6 +134,109 @@ class BaseGenerator {
   }
 
   /**
+   * Extract distinctive words from club name (excluding common soccer terms)
+   * Returns array of significant words that could indicate club identity
+   */
+  extractDistinctiveWords(name) {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 2);
+  }
+
+  /**
+   * Check if a word is a common soccer/geographic term
+   */
+  isCommonWord(word) {
+    const commonTerms = new Set([
+      // Soccer org types
+      'fc', 'sc', 'cf', 'afc', 'sfc', 'cfc', 'scm', 'scr', 'fca', 'fcw',
+      'united', 'city', 'club', 'football', 'soccer',
+      'athletic', 'sports', 'sporting', 'association', 'academy',
+      
+      // Geographic - NYC
+      'ny', 'nyc', 'new', 'york', 'brooklyn', 'manhattan', 'queens', 'bronx',
+      'staten', 'island', 'yonkers', 'harlem', 'astoria',
+      
+      // Geographic - Other common
+      'north', 'south', 'east', 'west', 'central', 'upper', 'lower',
+      'shore', 'coast', 'county', 'valley', 'park', 'riverside',
+      'jersey', 'philadelphia', 'philly',
+      
+      // Common descriptors
+      'international', 'world', 'global', 'national',
+      'real', 'royal', 'inter', 'union',
+      
+      // Team types
+      'ii', 'iii', 'iv', 'reserve', 'reserves', 'legends',
+      'old', 'boys', 'masters', 'veterans', 'timers',
+      'young', 'youth', 'junior', 'senior',
+      
+      // Colors (common suffixes)
+      'red', 'blue', 'green', 'white', 'black', 'yellow', 'orange'
+    ]);
+    
+    return commonTerms.has(word.toLowerCase());
+  }
+
+  /**
+   * Find potential duplicate clubs based on distinctive word matches
+   * Compares existing clubs with new clubs and flags suspicious partial matches
+   * @param {Array} existingClubs - Clubs already in database (e.g., APSL clubs)
+   * @param {Array} newClubs - New clubs being added (e.g., CSL clubs)
+   * @returns {Array} Array of potential duplicate warnings
+   */
+  findPotentialDuplicates(existingClubs, newClubs) {
+    const warnings = [];
+    
+    for (const newClub of newClubs) {
+      const newWords = this.extractDistinctiveWords(newClub.name);
+      
+      for (const existingClub of existingClubs) {
+        const existingWords = this.extractDistinctiveWords(existingClub.name);
+        
+        // Check if any distinctive word matches
+        const matchingWords = newWords.filter(word => existingWords.includes(word));
+        
+        if (matchingWords.length > 0) {
+          // Check if they're already matched (normalized names equal)
+          const newNormalized = this.normalizeClubName(newClub.name);
+          const existingNormalized = this.normalizeClubName(existingClub.name);
+          
+          // Only warn if they share words but aren't already matched
+          if (newNormalized !== existingNormalized) {
+            // Determine severity based on match quality
+            let severity;
+            
+            // 2+ words match = HIGH (even if common words, the combination is distinctive)
+            if (matchingWords.length >= 2) {
+              severity = 'HIGH';
+            }
+            // 1 word matches and it's NOT common = MEDIUM
+            else if (matchingWords.length === 1 && !this.isCommonWord(matchingWords[0])) {
+              severity = 'MEDIUM';
+            }
+            // 1 common word match = ignore (too many false positives)
+            else {
+              continue;
+            }
+            
+            warnings.push({
+              newClub: newClub.name,
+              existingClub: existingClub.name,
+              matchingWords: matchingWords,
+              severity: severity
+            });
+          }
+        }
+      }
+    }
+    
+    return warnings;
+  }
+
+  /**
    * Escape SQL string
    */
   escapeSql(str) {

@@ -92,6 +92,19 @@ class CslSqlCurator extends BaseSqlCurator {
     console.log(`   Matched: ${matches.length} clubs`);
     console.log(`   New CSL-only: ${newClubs.length} clubs`);
     
+    // Check for potential duplicates using BaseGenerator logic
+    const BaseGenerator = require('../BaseGenerator');
+    const baseGen = new BaseGenerator('CSL', 3, '00003', 10000, 10000, 10000);
+    const potentialDuplicates = baseGen.findPotentialDuplicates(apslClubs, newClubs);
+    
+    if (potentialDuplicates.length > 0) {
+      console.log('\n   ⚠️  POTENTIAL DUPLICATES DETECTED:');
+      for (const warning of potentialDuplicates) {
+        console.log(`      [${warning.severity}] "${warning.newClub}" may duplicate "${warning.existingClub}"`);
+        console.log(`              Matching words: ${warning.matchingWords.join(', ')}`);
+      }
+    }
+    
     // Display matches for review
     console.log('\n   📋 Club Matches:');
     for (const { cslClub, apslClub } of matches) {

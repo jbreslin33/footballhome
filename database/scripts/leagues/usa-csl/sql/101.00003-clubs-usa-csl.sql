@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Clubs - CSL (Curated)
--- Only new clubs not in APSL. Matched clubs use APSL IDs. Total new: 49
+-- Only new clubs not in APSL. Matched clubs use APSL IDs. Total new: 47
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO clubs (id, name, organization_id) VALUES (10003, 'FC Sandzak', 10003) ON CONFLICT (id) DO NOTHING;
@@ -22,7 +22,7 @@ INSERT INTO clubs (id, name, organization_id) VALUES (10021, 'Yemen United SC', 
 INSERT INTO clubs (id, name, organization_id) VALUES (10022, 'Manhattan FC', 10022) ON CONFLICT (id) DO NOTHING;
 INSERT INTO clubs (id, name, organization_id) VALUES (10023, 'Desportiva Sociedad', 10023) ON CONFLICT (id) DO NOTHING;
 INSERT INTO clubs (id, name, organization_id) VALUES (10024, 'KidSuper Samba AC', 10024) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10025, 'SC Gjoa Yellow Hook', 10025) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (10025, 'SC Gjoa', 10025) ON CONFLICT (id) DO NOTHING;
 INSERT INTO clubs (id, name, organization_id) VALUES (10026, 'SC Eintracht', 10026) ON CONFLICT (id) DO NOTHING;
 INSERT INTO clubs (id, name, organization_id) VALUES (10027, 'CD Iberia', 10027) ON CONFLICT (id) DO NOTHING;
 INSERT INTO clubs (id, name, organization_id) VALUES (10028, 'Falco FC', 10028) ON CONFLICT (id) DO NOTHING;
@@ -41,14 +41,12 @@ INSERT INTO clubs (id, name, organization_id) VALUES (10042, 'Tibet FC', 10042) 
 INSERT INTO clubs (id, name, organization_id) VALUES (10043, 'Vibes FC', 10043) ON CONFLICT (id) DO NOTHING;
 INSERT INTO clubs (id, name, organization_id) VALUES (10044, 'NY Croatia', 10044) ON CONFLICT (id) DO NOTHING;
 INSERT INTO clubs (id, name, organization_id) VALUES (10045, 'FC Partizani NY', 10045) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10046, 'Desportiva Sociedad Fury', 10046) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10048, 'Riverside Squires', 10048) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10049, 'Astoria Knights', 10049) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10050, 'Bajas FC', 10050) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10051, 'Clarkstown SC', 10051) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10052, 'Soccer Legion FC Men', 10052) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10053, 'Ridgewood Romac SC', 10053) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10054, 'SC Gjoa Over-40', 10054) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10055, 'Cozmoz FC', 10055) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10056, 'Doxa SC', 10056) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (10057, 'NY Irish SC', 10057) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (10047, 'Riverside Squires', 10047) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (10048, 'Astoria Knights', 10048) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (10049, 'Bajas FC', 10049) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (10050, 'Clarkstown SC', 10050) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (10051, 'Soccer Legion FC Men', 10051) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (10052, 'Ridgewood Romac SC', 10052) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (10053, 'Cozmoz FC', 10053) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (10054, 'Doxa SC', 10054) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (10055, 'NY Irish SC', 10055) ON CONFLICT (id) DO NOTHING;
