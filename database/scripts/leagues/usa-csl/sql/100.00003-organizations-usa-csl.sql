@@ -1,7 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Organizations - CSL (Curated)
 -- Only new organizations not in APSL. Total: 57
--- Generated: 2026-01-31T23:48:10.983Z
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO organizations (id, name) VALUES (10003, 'FC Sandzak') ON CONFLICT (id) DO NOTHING;

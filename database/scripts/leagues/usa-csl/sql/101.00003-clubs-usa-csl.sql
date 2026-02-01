@@ -1,7 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Clubs - CSL (Curated)
 -- Only new clubs not in APSL. Matched clubs use APSL IDs. Total new: 57
--- Generated: 2026-01-31T23:48:10.984Z
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO clubs (id, name, organization_id) VALUES (10003, 'FC Sandzak', 10003) ON CONFLICT (id) DO NOTHING;

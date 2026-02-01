@@ -180,7 +180,6 @@ class ApslSqlGenerator {
   writeOrganizationsSql() {
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Organizations - APSL
--- Generated: ${new Date().toISOString()}
 -- Total Records: ${this.organizations.size}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -204,7 +203,6 @@ class ApslSqlGenerator {
   writeClubsSql() {
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Clubs - APSL
--- Generated: ${new Date().toISOString()}
 -- Total Records: ${this.clubs.size}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -229,7 +227,6 @@ class ApslSqlGenerator {
   writeTeamsSql() {
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Teams - APSL
--- Generated: ${new Date().toISOString()}
 -- Total Records: ${this.teams.length}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

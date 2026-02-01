@@ -1,7 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Organizations - CASA (Curated)
 -- Only new organizations not in APSL or CSL. Total: 13
--- Generated: 2026-02-01T16:07:21.154Z
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO organizations (id, name) VALUES (20000, 'Adé United FC') ON CONFLICT (id) DO NOTHING;

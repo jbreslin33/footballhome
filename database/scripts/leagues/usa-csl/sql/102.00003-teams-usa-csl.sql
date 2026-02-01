@@ -1,38 +1,37 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Teams - CSL (Curated)
 -- Teams linked to existing APSL clubs where matched. Total: 101
--- Generated: 2026-01-31T23:48:10.984Z
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10000, 'Central Park Rangers Red', '6783', 22, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10001, 'NY Athletic Club', '6817', 25, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10002, 'Richmond County FC', '6843', 21, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10000, 'Central Park Rangers Red', '6783', 121, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10001, 'NY Athletic Club', '6817', 124, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10002, 'Richmond County FC', '6843', 120, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10003, 'FC Sandzak', '6797', 10003, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10004, 'Borgetto FC', '6768', 10004, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10005, 'NY Shamrocks', '6828', 10005, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10006, 'Manhattan Kickers', '6811', 10006, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10007, 'Kelmendi FC NY', '6802', 10007, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10008, 'Polonia SC', '6841', 10008, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10009, 'Zum Schneider FC 03 II', '6858', 24, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10009, 'Zum Schneider FC 03 II', '6858', 123, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10010, 'Missile FC', '6814', 10010, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10011, 'Central Park Rangers Red II', '6784', 22, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10011, 'Central Park Rangers Red II', '6784', 121, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10012, 'Polonia SC II', '6842', 10008, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10013, 'Borgetto FC II', '6770', 10004, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10014, 'Manhattan Kickers II', '6813', 10006, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10015, 'NY Shamrocks II', '6831', 10005, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10016, 'NY Athletic Club II', '6818', 25, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10016, 'NY Athletic Club II', '6818', 124, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10017, 'FC Sandzak II', '6798', 10003, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10018, 'Richmond County FC II', '6844', 21, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10019, 'Zum Schneider FC 03 III', '6859', 24, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10018, 'Richmond County FC II', '6844', 120, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10019, 'Zum Schneider FC 03 III', '6859', 123, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10020, 'Kelmendi FC NY II', '6803', 10007, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10021, 'Missile FC II', '6815', 10010, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10022, 'NY Ukrainians', '6832', 10011, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10023, 'NYPD FC', '6836', 10012, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10024, 'NY International FC', '6822', 20, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10024, 'NY International FC', '6822', 119, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10025, 'Manhattan Celtic II', '6808', 10014, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10026, 'Block FC', '6766', 10015, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10027, 'Central Park Rangers United', '6779', 10016, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10028, 'Hoboken FC 1912 II', '6800', 16, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10028, 'Hoboken FC 1912 II', '6800', 115, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10029, 'Brooklyn City FC', '6772', 10018, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10030, 'Stal Mielec NY', '6850', 10019, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10031, 'FC Japan', '6794', 10020, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
@@ -46,10 +45,10 @@ INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (100
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10039, 'CD Iberia', '6774', 10028, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10040, 'Central Park Rangers United II', '6781', 10016, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10041, 'NY Ukrainians II', '6834', 10011, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10042, 'Hoboken FC 1912 III', '6801', 16, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10042, 'Hoboken FC 1912 III', '6801', 115, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10043, 'Yemen United SC II', '7213', 10022, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10044, 'NYPD FC II', '6837', 10012, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10045, 'NY International FC II', '6823', 20, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10045, 'NY International FC II', '6823', 119, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10046, 'Manhattan Celtic III', '6809', 10014, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10047, 'Desportiva Sociedad II', '6791', 10024, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10048, 'KidSuper Samba AC III', '7584', 10025, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
@@ -65,7 +64,7 @@ INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (100
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10058, 'Central Park Rangers Green', '6776', 10029, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10059, 'Falco FC', '6793', 10030, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10060, 'Central Park Rangers Young Boys', '6785', 10031, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10061, 'NY Pancyprian Freedoms II', '6826', 17, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10061, 'NY Pancyprian Freedoms II', '6826', 116, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10062, 'NY Albanians FC', '6816', 10033, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10063, 'Laberia FC', '6805', 10034, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10064, 'Afghan Ittihad FC', '6759', 10035, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
@@ -73,7 +72,7 @@ INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (100
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10066, 'Panatha USA', '6840', 10037, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10067, 'Aurora FC', '6761', 10038, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10068, 'Vera FC', '7717', 10039, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10069, 'Lansdowne Yonkers FC Metro', '6807', 15, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10069, 'Lansdowne Yonkers FC Metro', '6807', 114, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10070, 'NY Legacy FC', '6909', 10041, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10071, 'Guyana Sunnydale Veterans FC', '7885', 10042, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10072, 'NY Galicia', '6820', 10043, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
@@ -86,7 +85,7 @@ INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (100
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10079, 'NY Croatia', '6819', 10049, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10080, 'FC Partizani NY', '6796', 10050, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10081, 'Desportiva Sociedad Fury', '6790', 10051, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10082, 'Caribbean FCA', '12292', 13, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10082, 'Caribbean FCA', '12292', 112, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10083, 'Riverside Squires', '10041', 10053, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10084, 'Astoria Knights II', '11550', 10054, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10085, 'Bajas FC', '9849', 10055, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
@@ -96,7 +95,7 @@ INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (100
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10089, 'Ridgewood Romac SC', '6845', 10059, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10090, 'Manhattan Kickers Legends', '6812', 10006, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10091, 'Manhattan Celtic Masters', '6810', 10014, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
-INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10092, 'Central Park Rangers Legends', '6780', 22, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
+INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10092, 'Central Park Rangers Legends', '6780', 121, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10093, 'SC Gjoa Over-40', '6849', 10061, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10094, 'Cozmoz FC', '6787', 10062, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;
 INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (10095, 'SC Eintracht Legends', '6847', 10027, 3) ON CONFLICT (source_system_id, external_id) DO NOTHING;

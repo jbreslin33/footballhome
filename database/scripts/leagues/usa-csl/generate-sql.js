@@ -185,7 +185,6 @@ class CslSqlGenerator {
   writeOrganizationsSql() {
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Organizations - CSL
--- Generated: ${new Date().toISOString()}
 -- Total Records: ${this.organizations.size}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -209,7 +208,6 @@ class CslSqlGenerator {
   writeClubsSql() {
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Clubs - CSL
--- Generated: ${new Date().toISOString()}
 -- Total Records: ${this.clubs.size}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -234,7 +232,6 @@ class CslSqlGenerator {
   writeTeamsSql() {
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Teams - CSL
--- Generated: ${new Date().toISOString()}
 -- Total Records: ${this.teams.length}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

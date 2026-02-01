@@ -181,13 +181,12 @@ class BaseSqlCurator {
   }
 
   /**
-   * Generate SQL header
+   * Generate SQL header (no timestamp to avoid git noise)
    */
   generateSqlHeader(title, description) {
     return `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ${title}
 -- ${description}
--- Generated: ${new Date().toISOString()}
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
