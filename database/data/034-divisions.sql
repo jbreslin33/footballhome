@@ -118,5 +118,17 @@ INSERT INTO divisions (id, season_id, conference_id, name, source_system_id, sor
 (52, 9, 30, 'Division 4', 3, 6),
 (53, 9, 30, 'Over-40 Division', 3, 7);
 
+-- ==================================================
+-- CASA 2025/2026 Divisions (season_id=5)
+-- Philadelphia Conference (conference_id=24)
+-- Boston Conference (conference_id=25)
+-- Lancaster Conference (conference_id=26)
+-- ==================================================
+INSERT INTO divisions (id, season_id, conference_id, name, external_id, source_system_id, sort_order) VALUES
+(54, 5, 24, 'Philadelphia Liga 1', '9090889', 2, 1),
+(55, 5, 24, 'Philadelphia Liga 2', '9096430', 2, 2),
+(56, 5, 25, 'Boston Liga 1', '9090891', 2, 3),
+(57, 5, 26, 'Lancaster Liga 1', '9090893', 2, 4);
+
 -- Update sequence
 SELECT setval('divisions_id_seq', (SELECT MAX(id) FROM divisions));

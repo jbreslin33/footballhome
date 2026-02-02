@@ -127,7 +127,7 @@ async function parseStandingsPage(browser, external_id, divisionName) {
         }
         
         const frameTeams = await frame.evaluate(() => {
-          const teamNames = new Set();
+          const results = [];
           const tables = document.querySelectorAll('table');
           
           for (const table of tables) {
@@ -136,32 +136,60 @@ async function parseStandingsPage(browser, external_id, divisionName) {
             for (const row of rows) {
               const cells = row.querySelectorAll('td, th');
               
-              // Standings typically: Rank, Team, GP, W, D, L, GF, GA, GD, Pts
-              for (let i = 0; i < Math.min(3, cells.length); i++) {
-                const text = cells[i].textContent.trim();
+              // CASA standings format appears to be: Team, W, D, L, GF, GA, GD, Pts, GP (or similar)
+              // Need to find which column has team names
+              if (cells.length >= 8) {
+                // Try to find team name column - usually first non-numeric column
+                let teamName = null;
+                let teamColIndex = 0;
                 
-                if (text && 
-                    text.length > 3 && 
-                    text.length < 50 &&
-                    !text.match(/^\d+$/) && 
-                    !text.match(/^(rank|team|gp|pts|w|d|l|gf|ga|gd|pld|played)$/i)) {
-                  
-                  // Check if it looks like a team name
-                  if (text.match(/FC|SC|United|City|Athletic|Club/i) ||
-                      (i === 1 && cells.length >= 8)) {
-                    teamNames.add(text);
+                for (let i = 0; i < Math.min(3, cells.length); i++) {
+                  const text = cells[i]?.textContent?.trim();
+                  // Team name: not a pure number, longer than 2 chars, not a header
+                  if (text && text.length > 2 && !/^\d+$/.test(text) && 
+                      !text.match(/^(team|gp|pts|w|d|l|gf|ga|gd|pld|played|rank)$/i)) {
+                    teamName = text;
+                    teamColIndex = i;
+                    break;
                   }
                 }
+                
+                if (!teamName) continue;
+                
+                // Parse standings columns - try common patterns
+                // Pattern 1: Team, GP, W, D, L, GF, GA, GD, Pts
+                // Pattern 2: Rank, Team, GP, W, D, L, GF, GA, GD, Pts
+                const offset = teamColIndex;
+                const played = parseInt(cells[offset + 1]?.textContent?.trim()) || 0;
+                const wins = parseInt(cells[offset + 2]?.textContent?.trim()) || 0;
+                const draws = parseInt(cells[offset + 3]?.textContent?.trim()) || 0;
+                const losses = parseInt(cells[offset + 4]?.textContent?.trim()) || 0;
+                const goalsFor = parseInt(cells[offset + 5]?.textContent?.trim()) || 0;
+                const goalsAgainst = parseInt(cells[offset + 6]?.textContent?.trim()) || 0;
+                const goalDiff = parseInt(cells[offset + 7]?.textContent?.trim()) || 0;
+                const points = parseInt(cells[offset + 8]?.textContent?.trim()) || (wins * 3 + draws);
+                
+                results.push({
+                  teamName,
+                  played,
+                  wins,
+                  draws,
+                  losses,
+                  goalsFor,
+                  goalsAgainst,
+                  goalDiff,
+                  points
+                });
               }
             }
           }
           
-          return Array.from(teamNames);
+          return results;
         }).catch(() => []);
         
         if (frameTeams.length > 0) {
           teams = teams.concat(frameTeams);
-          console.log(`    Found ${frameTeams.length} teams in iframe`);
+          console.log(`    Found ${frameTeams.length} teams with standings in iframe`);
         }
       }
     }
@@ -169,7 +197,7 @@ async function parseStandingsPage(browser, external_id, divisionName) {
     // If no teams in iframes, try main page
     if (teams.length === 0) {
       teams = await page.evaluate(() => {
-        const teamNames = new Set();
+        const results = [];
         
         // Look for tables
         const tables = document.querySelectorAll('table');
@@ -180,29 +208,38 @@ async function parseStandingsPage(browser, external_id, divisionName) {
           for (const row of rows) {
             const cells = row.querySelectorAll('td, th');
             
-            // Standings typically: Rank, Team, GP, W, D, L, GF, GA, GD, Pts
-            // Team name is usually in column 1 or 2
-            for (let i = 0; i < Math.min(3, cells.length); i++) {
-              const text = cells[i].textContent.trim();
+            // Standings format: Rank, Team, GP, W, D, L, GF, GA, GD, Pts
+            if (cells.length >= 10) {
+              const teamName = cells[1]?.textContent?.trim();
               
-              // Filter: length 3-50, not a number, not a header keyword
-              if (text && 
-                  text.length > 3 && 
-                  text.length < 50 &&
-                  !text.match(/^\d+$/) && 
-                  !text.match(/^(rank|team|gp|pts|w|d|l|gf|ga|gd|pld|played)$/i)) {
+              // Skip header rows
+              if (teamName && !teamName.match(/^(rank|team|gp|pts|w|d|l|gf|ga|gd|pld|played)$/i)) {
+                const played = parseInt(cells[2]?.textContent?.trim()) || 0;
+                const wins = parseInt(cells[3]?.textContent?.trim()) || 0;
+                const draws = parseInt(cells[4]?.textContent?.trim()) || 0;
+                const losses = parseInt(cells[5]?.textContent?.trim()) || 0;
+                const goalsFor = parseInt(cells[6]?.textContent?.trim()) || 0;
+                const goalsAgainst = parseInt(cells[7]?.textContent?.trim()) || 0;
+                const goalDiff = parseInt(cells[8]?.textContent?.trim()) || 0;
+                const points = parseInt(cells[9]?.textContent?.trim()) || 0;
                 
-                // Check if it looks like a team name
-                if (text.match(/FC|SC|United|City|Athletic|Club/i) ||
-                    (i === 1 && cells.length >= 8)) { // 2nd column in wide table
-                  teamNames.add(text);
-                }
+                results.push({
+                  teamName,
+                  played,
+                  wins,
+                  draws,
+                  losses,
+                  goalsFor,
+                  goalsAgainst,
+                  goalDiff,
+                  points
+                });
               }
             }
           }
         }
         
-        return Array.from(teamNames);
+        return results;
       });
     }
     
@@ -220,7 +257,7 @@ async function main() {
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
   
-  const allTeams = new Set();
+  const allTeams = new Map(); // teamName → standings object
   const divisionTeams = {};
   
   try {
@@ -232,8 +269,8 @@ async function main() {
         
         console.log(`  ✓ Found ${teams.length} teams`);
         teams.forEach(team => {
-          console.log(`    - ${team}`);
-          allTeams.add(team);
+          console.log(`    - ${team.teamName}: ${team.wins}W-${team.draws}D-${team.losses}L, ${team.points}pts`);
+          allTeams.set(team.teamName, team);
         });
         
         divisionTeams[division.id] = teams;
@@ -250,8 +287,20 @@ async function main() {
   
   console.log(`\n✓ Parsed ${allTeams.size} unique teams across ${DIVISIONS.length} divisions\n`);
   
-  // Generate SQL
-  const teamsArray = Array.from(allTeams).sort();
+  // Save complete standings data to JSON
+  const standingsData = {
+    generated: new Date().toISOString(),
+    divisions: DIVISIONS.map(d => ({
+      ...d,
+      teams: divisionTeams[d.id] || []
+    }))
+  };
+  
+  fs.writeFileSync('database/scraped-html/casa/standings-data.json', JSON.stringify(standingsData, null, 2));
+  console.log('✓ Saved complete standings data to database/scraped-html/casa/standings-data.json\n');
+  
+  // Generate SQL (teams only - for backward compatibility)
+  const teamsArray = Array.from(allTeams.keys()).sort();
   
   const sqlHeader = `-- CASA Select Teams (2025/2026 Season)
 -- Generated: ${new Date().toISOString().split('T')[0]}

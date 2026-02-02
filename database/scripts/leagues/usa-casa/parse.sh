@@ -1,6 +1,15 @@
 #!/bin/bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # CASA - Parse and Curate SQL
+#
+# Generates:
+#   100-organizations-usa-casa.sql
+#   101-clubs-usa-casa.sql
+#   102-teams-usa-casa.sql
+#   103-division-teams-usa-casa.sql
+#   104-standings-usa-casa.sql (from standings HTML or schedule HTML)
+#   [105-players: Roster scraping needs fixing]
+#   [105-players: Roster scraping needs fixing]
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set -e
