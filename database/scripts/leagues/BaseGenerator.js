@@ -270,14 +270,14 @@ class BaseGenerator {
 
     let teamId = this.teamIdBase;
     for (const team of this.teams) {
-      // Division lookup by name for current season (2025/2026 = season_id 1)
+      // Division lookup by name for current season
       // No ON CONFLICT - table has no unique constraint (allows promotion/relegation history)
       sql += `INSERT INTO division_teams (division_id, team_id)
 SELECT d.id, ${teamId}
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = '${this.escapeSql(team.divisionName)}'
-  AND s.name = '2025/2026';\n`;
+  AND s.name = '${this.getSeasonName()}';\n`;
       teamId++;
     }
 
@@ -317,8 +317,8 @@ SELECT d.id, s.id, ${teamId}, ${st.position}, ${st.played}, ${st.wins}, ${st.dra
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = '${this.escapeSql(team.divisionName)}'
-  AND s.name = '2025/2026'
-  AND s.league_id = ${this.sourceSystemId}
+  AND s.name = '${this.getSeasonName()}'
+  AND s.league_id = ${this.getLeagueId()}
 ON CONFLICT (competition_id, season_id, team_id) DO UPDATE SET
   position = EXCLUDED.position,
   played = EXCLUDED.played,
@@ -393,6 +393,22 @@ ON CONFLICT (id) DO NOTHING;\n\n`;
    */
   getLeagueFolder() {
     throw new Error('getLeagueFolder() must be implemented by subclass');
+  }
+
+  /**
+   * Get active season name for this league (must be implemented by subclass)
+   * @returns {string} Season name (e.g., "2025/2026", "2022/2023")
+   */
+  getSeasonName() {
+    throw new Error('getSeasonName() must be implemented by subclass');
+  }
+
+  /**
+   * Get league ID from leagues table (must be implemented by subclass)
+   * @returns {number} League ID (e.g., 1=APSL, 4=CSL)
+   */
+  getLeagueId() {
+    throw new Error('getLeagueId() must be implemented by subclass');
   }
 }
 

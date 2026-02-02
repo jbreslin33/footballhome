@@ -37,6 +37,20 @@ class ApslSqlGenerator extends BaseGenerator {
   }
 
   /**
+   * Get active season name
+   */
+  getSeasonName() {
+    return '2025/2026'; // APSL active season
+  }
+
+  /**
+   * Get league ID
+   */
+  getLeagueId() {
+    return 1; // APSL league_id in leagues table
+  }
+
+  /**
    * Main workflow
    */
   async generate() {

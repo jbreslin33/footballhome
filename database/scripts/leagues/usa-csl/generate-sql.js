@@ -16,10 +16,27 @@ const BaseGenerator = require('../BaseGenerator');
 
 class CslSqlGenerator extends BaseGenerator {
   constructor() {
+    // CSL ID ranges: orgs 10000+, clubs 10000+, teams 10000+
     super('CSL', 3, '00003', 10000, 10000, 10000);
-    this.organizations = new Map();
-    this.clubs = new Map();
-    this.teams = [];
+  }
+
+  /**
+   * Required BaseGenerator methods
+   */
+  getLeagueFolder() {
+    return 'usa-csl';
+  }
+
+  getPlayerIdBase() {
+    return 20000; // CSL players start at 20000 (after APSL 10000-19999)
+  }
+
+  getSeasonName() {
+    return '2022/2023'; // CSL active season (they use older season names)
+  }
+
+  getLeagueId() {
+    return 4; // CSL league_id in leagues table
   }
 
   /**
@@ -31,10 +48,17 @@ class CslSqlGenerator extends BaseGenerator {
     // Read standings HTML
     const standingsHtml = this.readStandingsHtml();
     
-    // Parse teams
+    // Parse standings (populates teams, standings, divisions)
     this.parseStandingsPage(standingsHtml);
     
     console.log(`   Found ${this.teams.length} teams`);
+    console.log(`   Found ${this.standings.length} standings records`);
+    console.log(`   Found ${this.divisions.size} divisions`);
+    
+    // Parse player rosters from team pages
+    this.parseTeamRosters();
+    
+    console.log(`   Found ${this.players.length} players`);
     
     // Group teams by club (deduplicates clubs with multiple teams)
     const teamGroups = this.groupTeamsByClub(this.teams);
@@ -49,6 +73,9 @@ class CslSqlGenerator extends BaseGenerator {
     this.writeOrganizationsSql();
     this.writeClubsSql();
     this.writeTeamsSql();
+    this.writeDivisionTeamsSql();
+    this.writeStandingsSql();
+    this.writePlayersSql();
     
     console.log('✓ SQL generation complete\n');
   }
@@ -70,7 +97,7 @@ class CslSqlGenerator extends BaseGenerator {
   }
 
   /**
-   * Parse standings page to extract teams
+   * Parse standings page to extract teams and standings data
    */
   parseStandingsPage(html) {
     const dom = new JSDOM(html);
@@ -82,11 +109,20 @@ class CslSqlGenerator extends BaseGenerator {
     for (const div of allDivs) {
       const text = div.textContent.trim();
       
-      // Match division headers like "2025/2026 - Division 1"
+      // Match division headers like "2022/2023 - Division 1"
       const divisionMatch = text.match(/^(\d{4}\/\d{4})\s*-\s*(.+)$/);
       if (!divisionMatch) continue;
       
+      const season = divisionMatch[1]; // e.g., "2022/2023"
       const divisionName = divisionMatch[2]; // Just the division name without season
+      
+      // Only process current season (2022/2023 for CSL - they use older season names)
+      if (season !== '2022/2023') continue;
+      
+      // Track division
+      if (!this.divisions.has(divisionName)) {
+        this.divisions.set(divisionName, { name: divisionName });
+      }
       
       // Find the table that follows this div
       let current = div;
@@ -123,7 +159,30 @@ class CslSqlGenerator extends BaseGenerator {
         const externalId = teamHref.match(/\/CSL\/Team\/(\d+)/)?.[1];
         
         if (teamName && externalId) {
-          this.addTeam(teamName, externalId, divisionName);
+          // Extract standings data
+          // Column order: Rank, Team, MP, W, D, L, GF, GA, GD, Pts
+          const position = parseInt(cells[0].textContent.trim()) || null;
+          const played = parseInt(cells[2].textContent.trim()) || 0;
+          const wins = parseInt(cells[3].textContent.trim()) || 0;
+          const draws = parseInt(cells[4].textContent.trim()) || 0;
+          const losses = parseInt(cells[5].textContent.trim()) || 0;
+          const goalsFor = parseInt(cells[6].textContent.trim()) || 0;
+          const goalsAgainst = parseInt(cells[7].textContent.trim()) || 0;
+          const goalDiff = parseInt(cells[8].textContent.trim()) || 0;
+          const points = parseInt(cells[9].textContent.trim()) || 0;
+          
+          // Add team with standings data attached
+          this.addTeam(teamName, externalId, divisionName, {
+            position,
+            played,
+            wins,
+            draws,
+            losses,
+            goalsFor,
+            goalsAgainst,
+            goalDiff,
+            points
+          });
         }
       });
     }
@@ -132,12 +191,13 @@ class CslSqlGenerator extends BaseGenerator {
   /**
    * Add team (clubs/orgs will be extracted later via grouping)
    */
-  addTeam(teamName, externalId, divisionName) {
+  addTeam(teamName, externalId, divisionName, standings = null) {
     this.teams.push({
       name: teamName,
       externalId: externalId,
       divisionName: divisionName,
-      sourceSystemId: this.sourceSystemId
+      sourceSystemId: this.sourceSystemId,
+      standings: standings // Attach standings data to team
     });
   }
 
@@ -232,6 +292,60 @@ class CslSqlGenerator extends BaseGenerator {
     const outputPath = path.join(__dirname, 'sql', `102.${this.leagueId}-teams-usa-csl.sql`);
     fs.writeFileSync(outputPath, sql);
     console.log(`   ✓ ${outputPath}`);
+  }
+
+  /**
+   * Parse player rosters from team detail pages
+   */
+  parseTeamRosters() {
+    const htmlDir = path.join(__dirname, '../../../scraped-html/csl');
+    const files = fs.readdirSync(htmlDir).filter(f => 
+      f.endsWith('.html') && 
+      !f.startsWith('tables-') && 
+      !f.endsWith('.skip')
+    );
+    
+    const playersMap = new Map(); // Deduplicate by full name
+    
+    for (const file of files) {
+      const htmlPath = path.join(htmlDir, file);
+      const html = fs.readFileSync(htmlPath, 'utf-8');
+      const dom = new JSDOM(html);
+      const document = dom.window.document;
+      
+      // Find roster table (CSL uses same TableRoster class as APSL)
+      const tables = document.querySelectorAll('table.TableRoster');
+      
+      for (const table of tables) {
+        const rows = table.querySelectorAll('tr');
+        
+        for (const row of rows) {
+          const cells = row.querySelectorAll('td');
+          if (cells.length < 2) continue;
+          
+          // Player name is in cells[1], inside a div
+          const nameDiv = cells[1].querySelector('div');
+          if (!nameDiv) continue;
+          
+          const fullName = nameDiv.textContent.trim();
+          if (!fullName || fullName === 'Name') continue; // Skip header
+          
+          // Deduplicate: one player can appear on multiple team pages
+          const key = fullName.toLowerCase();
+          if (playersMap.has(key)) continue;
+          
+          // Split into first/last name
+          const nameParts = fullName.split(/\s+/);
+          const firstName = nameParts[0] || fullName;
+          const lastName = nameParts.slice(1).join(' ') || fullName;
+          
+          playersMap.set(key, { firstName, lastName });
+        }
+      }
+    }
+    
+    // Convert to array
+    this.players = Array.from(playersMap.values());
   }
 
   /**

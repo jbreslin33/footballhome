@@ -1,6 +1,8 @@
 #!/bin/bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # CSL - Parse HTML and Generate SQL
+# Creates: 100-organizations, 101-clubs, 102-teams, 103-division-teams,
+#          104-standings, 105-players, 900-curation
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set -e
