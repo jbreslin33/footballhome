@@ -3,13 +3,16 @@
 # APSL - Parse HTML and Generate SQL
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# Parses cached HTML and generates SQL files (orgs, clubs, teams, curation).
+# Parses cached HTML and generates SQL files (orgs, clubs, teams, division_teams, standings, players, curation).
 # Requires database with bootstrap data (run make bootstrap first).
 #
 # Creates:
 #   sql/100.00001-organizations-usa-apsl.sql
 #   sql/101.00001-clubs-usa-apsl.sql
 #   sql/102.00001-teams-usa-apsl.sql
+#   sql/103.00001-division-teams-usa-apsl.sql
+#   sql/104.00001-standings-usa-apsl.sql
+#   sql/105.00001-players-usa-apsl.sql
 #   sql/900.00001-curation-usa-apsl.sql
 #
 # Usage:

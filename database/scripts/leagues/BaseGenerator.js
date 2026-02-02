@@ -10,6 +10,15 @@ class BaseGenerator {
     this.orgIdBase = orgIdBase;
     this.clubIdBase = clubIdBase;
     this.teamIdBase = teamIdBase;
+    
+    // Common data structures for all leagues
+    this.organizations = new Map();
+    this.clubs = new Map();
+    this.teams = [];
+    this.standings = [];
+    this.divisionTeams = [];
+    this.divisions = new Map();
+    this.players = [];
   }
 
   /**
@@ -241,6 +250,149 @@ class BaseGenerator {
    */
   escapeSql(str) {
     return str.replace(/'/g, "''");
+  }
+
+  /**
+   * Write division_teams SQL (common for all leagues)
+   * Generates SQL file 103-division-teams-{league}.sql
+   */
+  writeDivisionTeamsSql() {
+    const fs = require('fs');
+    const path = require('path');
+    
+    let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Division Teams - ${this.leagueName}
+-- Associates teams with their divisions
+-- Total Records: ${this.teams.length}
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+
+    let teamId = this.teamIdBase;
+    for (const team of this.teams) {
+      // Division lookup by name for current season (2025/2026 = season_id 1)
+      // No ON CONFLICT - table has no unique constraint (allows promotion/relegation history)
+      sql += `INSERT INTO division_teams (division_id, team_id)
+SELECT d.id, ${teamId}
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = '${this.escapeSql(team.divisionName)}'
+  AND s.name = '2025/2026';\n`;
+      teamId++;
+    }
+
+    const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `103.${this.leagueId}-division-teams-${this.getLeagueFolder()}.sql`);
+    fs.writeFileSync(outputPath, sql);
+    console.log(`   ✓ ${outputPath}`);
+  }
+
+  /**
+   * Write standings SQL (common for all leagues)
+   * Generates SQL file 104-standings-{league}.sql
+   */
+  writeStandingsSql() {
+    const fs = require('fs');
+    const path = require('path');
+    
+    let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Standings - ${this.leagueName}
+-- Current season standings data
+-- Total Records: ${this.teams.length}
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+
+    const fetchedAt = new Date().toISOString();
+    let teamId = this.teamIdBase;
+    
+    for (const team of this.teams) {
+      const st = team.standings;
+      if (!st) continue; // Skip if no standings data
+      
+      // Lookup division_id and season_id for current season
+      // competition_id = division_id (each division is its own competition)
+      // JOIN divisions to seasons to avoid matching old divisions with same name
+      sql += `INSERT INTO standings (competition_id, season_id, team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT d.id, s.id, ${teamId}, ${st.position}, ${st.played}, ${st.wins}, ${st.draws}, ${st.losses}, ${st.goalsFor}, ${st.goalsAgainst}, ${st.goalDiff}, ${st.points}, '${fetchedAt}', '${this.leagueName} Scraper'
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = '${this.escapeSql(team.divisionName)}'
+  AND s.name = '2025/2026'
+  AND s.league_id = ${this.sourceSystemId}
+ON CONFLICT (competition_id, season_id, team_id) DO UPDATE SET
+  position = EXCLUDED.position,
+  played = EXCLUDED.played,
+  wins = EXCLUDED.wins,
+  draws = EXCLUDED.draws,
+  losses = EXCLUDED.losses,
+  goals_for = EXCLUDED.goals_for,
+  goals_against = EXCLUDED.goals_against,
+  goal_diff = EXCLUDED.goal_diff,
+  points = EXCLUDED.points,
+  fetched_at = EXCLUDED.fetched_at;\n`;
+  
+      teamId++;
+    }
+
+    const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `104.${this.leagueId}-standings-${this.getLeagueFolder()}.sql`);
+    fs.writeFileSync(outputPath, sql);
+    console.log(`   ✓ ${outputPath}`);
+  }
+
+  /**
+   * Write players SQL (common for all leagues)
+   * Generates SQL file 105-players-{league}.sql
+   */
+  writePlayersSql() {
+    const fs = require('fs');
+    const path = require('path');
+    
+    if (this.players.length === 0) {
+      console.log(`   ⚠ No players found - skipping 105-players SQL`);
+      return;
+    }
+    
+    let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Players - ${this.leagueName}
+-- Player roster data from team pages
+-- Total Records: ${this.players.length}
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+
+    let playerId = this.getPlayerIdBase();
+    for (const player of this.players) {
+      const firstName = player.firstName || '';
+      const lastName = player.lastName || '';
+      
+      sql += `INSERT INTO persons (id, first_name, last_name) 
+VALUES (${playerId}, '${this.escapeSql(firstName)}', '${this.escapeSql(lastName)}') 
+ON CONFLICT (id) DO NOTHING;\n`;
+      
+      sql += `INSERT INTO players (id, person_id) 
+VALUES (${playerId}, ${playerId}) 
+ON CONFLICT (id) DO NOTHING;\n\n`;
+      
+      playerId++;
+    }
+
+    const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `105.${this.leagueId}-players-${this.getLeagueFolder()}.sql`);
+    fs.writeFileSync(outputPath, sql);
+    console.log(`   ✓ ${outputPath}`);
+  }
+
+  /**
+   * Get player ID base (must be implemented by subclass)
+   */
+  getPlayerIdBase() {
+    throw new Error('getPlayerIdBase() must be implemented by subclass');
+  }
+
+  /**
+   * Get league folder name (must be implemented by subclass)
+   */
+  getLeagueFolder() {
+    throw new Error('getLeagueFolder() must be implemented by subclass');
   }
 }
 

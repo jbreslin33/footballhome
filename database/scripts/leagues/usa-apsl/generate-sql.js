@@ -17,9 +17,23 @@ const BaseGenerator = require('../BaseGenerator');
 class ApslSqlGenerator extends BaseGenerator {
   constructor() {
     super('APSL', 1, '00001', 100, 100, 100);
-    this.organizations = new Map();
-    this.clubs = new Map();
-    this.teams = [];
+    // Data structures inherited from BaseGenerator:
+    // this.organizations, this.clubs, this.teams, this.standings, 
+    // this.divisionTeams, this.divisions, this.players
+  }
+
+  /**
+   * Get league folder name
+   */
+  getLeagueFolder() {
+    return 'usa-apsl';
+  }
+
+  /**
+   * Get player ID base
+   */
+  getPlayerIdBase() {
+    return 10000; // Start player IDs at 10000
   }
 
   /**
@@ -31,10 +45,15 @@ class ApslSqlGenerator extends BaseGenerator {
     // Read standings HTML
     const standingsHtml = this.readStandingsHtml();
     
-    // Parse teams
+    // Parse teams and standings
     this.parseStandingsPage(standingsHtml);
     
-    console.log(`   Found ${this.teams.length} teams`);
+    console.log(`   Found ${this.teams.length} teams with standings data`);
+    
+    // Parse rosters from team detail pages
+    this.parseTeamRosters();
+    
+    console.log(`   Parsed ${this.players.length} players from team rosters`);
     
     // Group teams by club (deduplicates clubs with multiple teams)
     const teamGroups = this.groupTeamsByClub(this.teams);
@@ -43,12 +62,15 @@ class ApslSqlGenerator extends BaseGenerator {
     
     console.log(`   Extracted ${this.clubs.size} unique clubs (grouped from teams)`);
     console.log(`   Extracted ${this.organizations.size} unique organizations`);
+    console.log(`   Extracted ${this.divisions.size} divisions`);
+    console.log(`   Parsed standings: ${this.teams.length} team records`);
     
     // Generate SQL files
     this.writeOrganizationsSql();
     this.writeClubsSql();
     this.writeTeamsSql();
-    
+    this.writeDivisionTeamsSql();
+    this.writeStandingsSql();    this.writePlayersSql();    
     console.log('✓ SQL generation complete\n');
   }
 
@@ -108,7 +130,7 @@ class ApslSqlGenerator extends BaseGenerator {
       if (!table) return;
       
       const rows = table.querySelectorAll('tr');
-      rows.forEach((row) => {
+      rows.forEach((row, index) => {
         const cells = row.querySelectorAll('td');
         if (cells.length < 10) return;
         
@@ -118,23 +140,109 @@ class ApslSqlGenerator extends BaseGenerator {
         const teamHref = teamLink?.getAttribute('href') || '';
         const externalId = teamHref.match(/\/Team\/(\d+)/i)?.[1];
         
+        // Parse standings data
+        const position = parseInt(cells[0]?.textContent.trim()) || index + 1;
+        const played = parseInt(cells[2]?.textContent.trim()) || 0;
+        const wins = parseInt(cells[3]?.textContent.trim()) || 0;
+        const draws = parseInt(cells[4]?.textContent.trim()) || 0;
+        const losses = parseInt(cells[5]?.textContent.trim()) || 0;
+        const goalsFor = parseInt(cells[6]?.textContent.trim()) || 0;
+        const goalsAgainst = parseInt(cells[7]?.textContent.trim()) || 0;
+        const goalDiff = parseInt(cells[8]?.textContent.trim()) || 0;
+        const points = parseInt(cells[9]?.textContent.trim()) || 0;
+        
         if (teamName && externalId) {
-          this.addTeam(teamName, externalId, divisionName);
+          this.addTeam(teamName, externalId, divisionName, {
+            position,
+            played,
+            wins,
+            draws,
+            losses,
+            goalsFor,
+            goalsAgainst,
+            goalDiff,
+            points
+          });
         }
       });
     });
   }
 
   /**
+   * Parse team rosters from cached HTML files
+   */
+  parseTeamRosters() {
+    const htmlDir = path.join(__dirname, '../../../../database/scraped-html/apsl');
+    const files = fs.readdirSync(htmlDir);
+    
+    // Track unique players by name to avoid duplicates
+    const uniquePlayers = new Map();
+    
+    for (const file of files) {
+      // Skip non-HTML files and the standings file
+      if (!file.endsWith('.html') || file.includes('tables-') || file.endsWith('.skip')) continue;
+      
+      const filePath = path.join(htmlDir, file);
+      const html = fs.readFileSync(filePath, 'utf-8');
+      const dom = new JSDOM(html);
+      const document = dom.window.document;
+      
+      // Find roster table
+      const rosterTable = document.querySelector('table.TableRoster');
+      if (!rosterTable) continue;
+      
+      // Parse player rows
+      const rows = rosterTable.querySelectorAll('tr');
+      for (const row of rows) {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 2) continue;
+        
+        // Player name is in second cell
+        const nameDiv = cells[1].querySelector('div');
+        if (!nameDiv) continue;
+        
+        const fullName = nameDiv.textContent.trim();
+        if (!fullName) continue;
+        
+        // Split name into first/last
+        const nameParts = fullName.split(/\s+/);
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
+        // Use full name as key to avoid duplicates
+        const key = fullName.toLowerCase();
+        if (!uniquePlayers.has(key)) {
+          uniquePlayers.set(key, {
+            firstName: firstName,
+            lastName: lastName,
+            fullName: fullName
+          });
+        }
+      }
+    }
+    
+    // Convert to array
+    this.players = Array.from(uniquePlayers.values());
+  }
+
+  /**
    * Add team (clubs/orgs will be extracted later via grouping)
    */
-  addTeam(teamName, externalId, divisionName) {
-    this.teams.push({
+  addTeam(teamName, externalId, divisionName, standings) {
+    const team = {
       name: teamName,
       externalId: externalId,
       divisionName: divisionName,
-      sourceSystemId: this.sourceSystemId
-    });
+      sourceSystemId: this.sourceSystemId,
+      standings: standings
+    };
+    
+    this.teams.push(team);
+    
+    // Track division for later reference
+    if (!this.divisions.has(divisionName)) {
+      this.divisions.set(divisionName, { name: divisionName });
+    }
   }
 
 
@@ -209,12 +317,7 @@ class ApslSqlGenerator extends BaseGenerator {
     console.log(`   ✓ ${outputPath}`);
   }
 
-  /**
-   * Escape SQL string
-   */
-  escapeSql(str) {
-    return str.replace(/'/g, "''");
-  }
+  // writeDivisionTeamsSql() and writeStandingsSql() are now inherited from BaseGenerator
 }
 
 // CLI execution

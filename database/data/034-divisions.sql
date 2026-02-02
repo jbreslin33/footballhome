@@ -32,23 +32,24 @@ ON CONFLICT (id) DO NOTHING;
 -- APSL 2024/2025 Divisions (season_id=4)
 -- ==================================================
 INSERT INTO divisions (id, season_id, conference_id, name, source_system_id) VALUES
-(19, 4, 19, 'Mayflower', 1),
-(20, 4, 20, 'Constitution', 1),
-(21, 4, 21, 'Metropolitan', 1),
-(22, 4, 22, 'Delaware River', 1),
-(23, 4, 23, 'Mid-Atlantic', 1)
+(19, 4, 19, 'Mayflower Conference', 1),
+(20, 4, 20, 'Constitution Conference', 1),
+(21, 4, 21, 'Metropolitan Conference', 1),
+(22, 4, 22, 'Delaware River Conference', 1),
+(23, 4, 23, 'Mid-Atlantic Conference', 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ==================================================
 -- APSL 2025/2026 Divisions (season_id=1)
 -- ==================================================
 INSERT INTO divisions (id, season_id, conference_id, name, source_system_id) VALUES
-(1, 1, 1, 'Mayflower', 1),
-(2, 1, 2, 'Constitution', 1),
-(3, 1, 3, 'Metropolitan', 1),
-(4, 1, 4, 'Delaware River', 1),
-(5, 1, 5, 'Mid-Atlantic', 1),
-(6, 1, 6, 'Terminus', 1)
+(1, 1, 1, 'Mayflower Conference', 1),
+(2, 1, 2, 'Constitution Conference', 1),
+(3, 1, 3, 'Metropolitan Conference', 1),
+(4, 1, 4, 'Delaware River Conference', 1),
+(5, 1, 5, 'Mid-Atlantic Conference', 1),
+(6, 1, 6, 'Terminus Conference', 1),
+(24, 1, 7, 'Trinity Conference', 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ==================================================
