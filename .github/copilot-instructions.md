@@ -90,34 +90,28 @@
 - **Alphabetical Execution**: SQL files load alphabetically during initialization
 - **File Numbering**: Use prefixes (a/b/c) when order matters (e.g., `020-persons.sql`, `020a-players.sql`)
 
-## 🔄 Data Scraping Architecture (OOP)
-
-### Scrape Targets Configuration
-- **Configuration File**: `database/scrape-targets.json`
-  - Single source of truth for all scrape URLs and configurations
-  - Each target: `source_system_id`, `url`, `description`, `config`, `fetch_frequency`, `is_active`
-  - Target types: `reference_data`, `league_structure`, `roster_data`, `match_data`
-  - Scrapers read config and write directly to database (no SQL file generation)
+## 🔄 Data Scraping Architecture
 
 ### Scraper Architecture
+- **Hardcoded URLs**: Each scraper has its URL hardcoded in the scraper file (simple, version-controlled)
+- **Per-League Folders**: Each league has its own folder in `database/scripts/leagues/[league]/`
 - **Base Classes**: `Scraper`, `DataFetcher`, `HtmlParser` (in `database/scripts/`)
 - **Services**: `IdGenerator`, `SqlGenerator`, `DuplicateDetector`
 - **Models**: `League`, `Team`, `Player`, `Match`, `Venue`
 
 ### Scraper Implementations
-- `ApslScraper`: APSL league (apslsoccer.com) - ✅ Working
-- `CslScraper`: CSL league (cosmosoccerleague.com) - ⚠️ Needs implementation
-- `CasaScraper`: CASA league (casasoccerleagues.com + Google Sheets) - 🔄 Needs parsing implementation
+- `ApslStructureScraper`: APSL league (apslsoccer.com) - ✅ Working
+- `CslStructureScraper`: CSL league (cosmosoccerleague.com) - ✅ Working
+- `CasaParser`: CASA league (casasoccerleagues.com + Google Sheets) - 🔄 Needs parsing implementation
 - `GroupMeScraper`: 4 chat implementations (Training, APSL, Boys Club, Old Timers) - ⚠️ Untested
 - `VenueScraper`: Google Places API - ⚠️ Untested
 
 ### Scraping Workflow
-1. Configure targets in `database/scrape-targets.json`
-2. Run league scrape.sh to fetch HTML: `cd database/scripts/leagues/usa-apsl && ./scrape.sh`
-3. Run league parse.sh to populate database: `cd database/scripts/leagues/usa-apsl && ./parse.sh`
-4. Parsers extract data and write directly to database tables
-5. Export and curate into SQL files for version control
-6. For fresh database: `./build.sh` (bootstrap) then `make load` (all leagues)
+1. Run league scrape.sh to fetch HTML: `cd database/scripts/leagues/usa-apsl && ./scrape.sh`
+2. Run league parse.sh to populate database: `cd database/scripts/leagues/usa-apsl && ./parse.sh`
+3. Parsers extract data and write directly to database tables
+4. Export and curate into SQL files for version control
+5. For fresh database: `./build.sh` (bootstrap) then `make load` (all leagues)
 
 ### Parsing Pattern
 - When implementing new parsers, recover old scraper logic from git history if needed

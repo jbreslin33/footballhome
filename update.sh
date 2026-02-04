@@ -4,7 +4,7 @@
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
 # Runs scrapers to populate/update database.
-# Reads scrape_targets table to determine what to scrape.
+# Runs all active league scrapers (hardcoded URLs in scraper files).
 #
 # Usage:
 #   ./update.sh        Run all active scrapers
