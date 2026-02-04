@@ -253,42 +253,10 @@ class BaseGenerator {
   }
 
   /**
-   * Write division_teams SQL (common for all leagues)
-   * Generates SQL file 103-division-teams-{league}.sql
-   */
-  writeDivisionTeamsSql() {
-    const fs = require('fs');
-    const path = require('path');
-    
-    let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- Division Teams - ${this.leagueName}
--- Associates teams with their divisions
--- Total Records: ${this.teams.length}
--- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-`;
-
-    let teamId = this.teamIdBase;
-    for (const team of this.teams) {
-      // Division lookup by name for current season
-      // No ON CONFLICT - table has no unique constraint (allows promotion/relegation history)
-      sql += `INSERT INTO division_teams (division_id, team_id)
-SELECT d.id, ${teamId}
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = '${this.escapeSql(team.divisionName)}'
-  AND s.name = '${this.getSeasonName()}';\n`;
-      teamId++;
-    }
-
-    const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `103.${this.leagueId}-division-teams-${this.getLeagueFolder()}.sql`);
-    fs.writeFileSync(outputPath, sql);
-    console.log(`   ✓ ${outputPath}`);
-  }
-
-  /**
    * Write standings SQL (common for all leagues)
    * Generates SQL file 104-standings-{league}.sql
+   * 
+   * NEW SCHEMA: Simplified - team_id only (division/season implied via FK chain)
    */
   writeStandingsSql() {
     const fs = require('fs');
@@ -303,23 +271,23 @@ WHERE d.name = '${this.escapeSql(team.divisionName)}'
 `;
 
     const fetchedAt = new Date().toISOString();
-    let teamId = this.teamIdBase;
     
     for (const team of this.teams) {
       const st = team.standings;
       if (!st) continue; // Skip if no standings data
       
-      // Lookup division_id and season_id for current season
-      // competition_id = division_id (each division is its own competition)
-      // JOIN divisions to seasons to avoid matching old divisions with same name
-      sql += `INSERT INTO standings (competition_id, season_id, team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
-SELECT d.id, s.id, ${teamId}, ${st.position}, ${st.played}, ${st.wins}, ${st.draws}, ${st.losses}, ${st.goalsFor}, ${st.goalsAgainst}, ${st.goalDiff}, ${st.points}, '${fetchedAt}', '${this.leagueName} Scraper'
-FROM divisions d
+      // Lookup team_id by name and division
+      // Division/season context automatically included via team.division_id FK
+      sql += `INSERT INTO standings (team_id, position, played, wins, draws, losses, goals_for, goals_against, goal_diff, points, fetched_at, source)
+SELECT t.id, ${st.position}, ${st.played}, ${st.wins}, ${st.draws}, ${st.losses}, ${st.goalsFor}, ${st.goalsAgainst}, ${st.goalDiff}, ${st.points}, '${fetchedAt}', '${this.leagueName} Scraper'
+FROM teams t
+JOIN divisions d ON t.division_id = d.id
 JOIN seasons s ON d.season_id = s.id
-WHERE d.name = '${this.escapeSql(team.divisionName)}'
+WHERE t.name = '${this.escapeSql(team.name)}'
+  AND d.name = '${this.escapeSql(team.divisionName)}'
   AND s.name = '${this.getSeasonName()}'
   AND s.league_id = ${this.getLeagueId()}
-ON CONFLICT (competition_id, season_id, team_id) DO UPDATE SET
+ON CONFLICT (team_id) DO UPDATE SET
   position = EXCLUDED.position,
   played = EXCLUDED.played,
   wins = EXCLUDED.wins,
@@ -330,8 +298,6 @@ ON CONFLICT (competition_id, season_id, team_id) DO UPDATE SET
   goal_diff = EXCLUDED.goal_diff,
   points = EXCLUDED.points,
   fetched_at = EXCLUDED.fetched_at;\n`;
-  
-      teamId++;
     }
 
     const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `104.${this.leagueId}-standings-${this.getLeagueFolder()}.sql`);

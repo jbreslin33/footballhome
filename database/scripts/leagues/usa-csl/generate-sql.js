@@ -73,7 +73,6 @@ class CslSqlGenerator extends BaseGenerator {
     this.writeOrganizationsSql();
     this.writeClubsSql();
     this.writeTeamsSql();
-    this.writeDivisionTeamsSql();
     this.writeStandingsSql();
     this.writePlayersSql();
     
@@ -269,15 +268,19 @@ class CslSqlGenerator extends BaseGenerator {
   /**
    * Write teams SQL
    */
+  /**
+   * Write teams SQL
+   * NEW SCHEMA: Teams must have division_id (NOT NULL FK)
+   */
   writeTeamsSql() {
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Teams - CSL
 -- Total Records: ${this.teams.length}
+-- NOTE: division_id is now part of team identity (NOT NULL)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
 
-    let id = this.teamIdBase;
     for (const team of this.teams) {
       const club = this.clubs.get(team.clubName);
       if (!club) {
@@ -285,8 +288,17 @@ class CslSqlGenerator extends BaseGenerator {
         console.error(`Available clubs: ${Array.from(this.clubs.keys()).slice(0,5).join(', ')}...`);
         throw new Error('Club lookup failed');
       }
-      sql += `INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (${id}, '${this.escapeSql(team.name)}', '${team.externalId}', ${club.id}, ${team.sourceSystemId}) ON CONFLICT (source_system_id, external_id) DO NOTHING;\n`;
-      id++;
+      
+      // Lookup division_id by division name for current season
+      // Team identity is now bound to division (same club in different divisions = different teams)
+      sql += `INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT '${this.escapeSql(team.name)}', '${team.externalId}', ${club.id}, d.id, ${team.sourceSystemId}
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = '${this.escapeSql(team.divisionName)}'
+  AND s.name = '${this.getSeasonName()}'
+  AND s.league_id = ${this.getLeagueId()}
+ON CONFLICT (division_id, name) DO NOTHING;\n`;
     }
 
     const outputPath = path.join(__dirname, 'sql', `102.${this.leagueId}-teams-usa-csl.sql`);

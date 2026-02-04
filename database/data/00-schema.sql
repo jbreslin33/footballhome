@@ -1,24 +1,21 @@
 -- Football Home Database Schema - Real-World Aligned Architecture
--- Version: 7.0 - League-Centric Season Management
+-- Version: 8.0 - Competition-Centric Team Model
 --
 -- Architecture:
 -- 1. Lookup Tables - Reference data for all enums (age calculation, chat providers, etc.)
 -- 2. Governing Body Hierarchy - FIFA -> Confederations -> National -> Regional -> State
 -- 3. Organizations (Universal) - APSL, CASA, Lighthouse 1893, Falcons FC, etc.
--- 4. Club Structure - Organizations -> Clubs -> Teams (persistent entities)
--- 5. League Structure - Organizations -> Leagues -> Seasons -> Conferences -> Divisions
--- 6. Seasonal Rosters - Teams register in Divisions via division_teams (league manages)
--- 7. Roster Details - division_team_players + division_team_coaches
--- 8. Identity System - Persons, Users, Players, Coaches (normalized roles)
--- 9. Chat System - Generic messaging with external platform integrations
--- 10. Supporting Tables - Venues, matches, audit log
+-- 4. League Structure - Organizations -> Leagues -> Seasons -> Conferences -> Divisions
+-- 5. Competition Teams - Teams bound to divisions (same club in different divisions = different teams)
+-- 6. Rosters - team_id -> player_id with temporal tracking
+-- 7. Identity System - Persons, Users, Players, Coaches (normalized roles)
+-- 8. Chat System - Generic messaging with external platform integrations
+-- 9. Supporting Tables - Venues, matches, audit log
 --
 -- Key Principles:
--- - Real-world naming: clubs (not sport_divisions), seasons (not in leagues table)
--- - League-centric: Leagues manage seasonal registrations via division_teams
--- - Teams are persistent: Don't duplicate teams across seasons
--- - Rosters are seasonal: Players + coaches attached to division_teams
--- - History tracking: Via seasons -> divisions -> division_teams
+-- - Competition-centric: Teams ARE division entries (not persistent across competitions)
+-- - Simple rosters: Direct team -> player relationship with temporal tracking
+-- - Direct relationships: No junction tables (division_id in teams table)
 -- - NO table duplication (no apsl_* vs casa_*) - differentiate by FKs
 -- - ALL text enums replaced with lookup tables
 -- - Source tracking via source_system_id + external_id
@@ -827,6 +824,7 @@ COMMENT ON TABLE club_admins IS 'Admins assigned to clubs (Lighthouse SC, Boys C
 
 CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
+    division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
     club_id INTEGER REFERENCES clubs(id),  -- Nullable for standalone teams
     name VARCHAR(255) NOT NULL,
     city VARCHAR(100),
@@ -835,20 +833,16 @@ CREATE TABLE teams (
     external_id VARCHAR(100),
     scrape_target_id INTEGER REFERENCES scrape_targets(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(source_system_id, name),  -- Teams must be unique within a source system
+    UNIQUE(division_id, name),  -- Team name must be unique within division
     UNIQUE(source_system_id, external_id)  -- External IDs unique within source system
 );
 
--- Partial unique constraint: (club_id, name, source_system_id) unique when club_id IS NOT NULL
--- This allows same club to have teams with same name from different sources (APSL Flatley FC + CASA Flatley FC)
--- Same team plays in multiple divisions via division_teams junction table
-CREATE UNIQUE INDEX idx_teams_club_name_source_unique ON teams(club_id, name, source_system_id) WHERE club_id IS NOT NULL;
-
+CREATE INDEX idx_teams_division ON teams(division_id);
 CREATE INDEX idx_teams_club ON teams(club_id);
 CREATE INDEX idx_teams_source ON teams(source_system_id);
 CREATE INDEX idx_teams_name ON teams(name);  -- For searching by name
 
-COMMENT ON TABLE teams IS 'Persistent team entities (e.g., "Lighthouse 1893 SC", "Lighthouse Boys Club"). Same name allowed across different source systems. Same club can have teams with same name from different leagues (tracked via source_system_id). Team plays in multiple divisions via division_teams junction table.';
+COMMENT ON TABLE teams IS 'Competition-specific team entries. Each team is bound to a division/season. Same club competing in multiple divisions = multiple team records with different rosters.';
 
 CREATE TABLE team_admins (
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
@@ -868,31 +862,9 @@ CREATE INDEX idx_team_admins_current ON team_admins(team_id, admin_id) WHERE end
 
 COMMENT ON TABLE team_admins IS 'Admins assigned to teams - grants app permissions. Separate from coaches table (identity vs authorization).';
 
--- Teams register in divisions (seasonal participation)
-CREATE TABLE division_teams (
-    id SERIAL PRIMARY KEY,
-    division_id INTEGER NOT NULL REFERENCES divisions(id) ON DELETE CASCADE,
-    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    registered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    unregistered_at TIMESTAMP,
-    -- No is_active - derived from unregistered_at IS NULL
-    -- No UNIQUE constraint - allows promotion/relegation history
-    -- Team can appear in multiple divisions over time
-    CHECK (unregistered_at IS NULL OR unregistered_at > registered_at)
-);
-
-CREATE INDEX idx_division_teams_division ON division_teams(division_id);
-CREATE INDEX idx_division_teams_team ON division_teams(team_id);
-CREATE INDEX idx_division_teams_current ON division_teams(division_id, team_id) WHERE unregistered_at IS NULL;
-CREATE INDEX idx_division_teams_history ON division_teams(team_id, registered_at, unregistered_at);
-
-COMMENT ON TABLE division_teams IS 'Team registrations in divisions - temporal history for promotion/relegation';
-
 -- Standings table (mirrors standings from source sites - no calculations)
 CREATE TABLE standings (
     id SERIAL PRIMARY KEY,
-    competition_id INTEGER NOT NULL,  -- For APSL: division_id (each division is a competition)
-    season_id INTEGER NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
     team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     position INTEGER,
     played INTEGER,
@@ -907,22 +879,17 @@ CREATE TABLE standings (
     source TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (competition_id, season_id, team_id)
+    UNIQUE (team_id)
 );
 
-CREATE INDEX idx_standings_comp_season ON standings(competition_id, season_id);
 CREATE INDEX idx_standings_team ON standings(team_id);
-CREATE INDEX idx_standings_season ON standings(season_id);
 
-COMMENT ON TABLE standings IS 'League standings data mirrored from source sites (APSL, CSL, etc.) - no calculations, direct copy of published standings';
-COMMENT ON COLUMN standings.competition_id IS 'Competition identifier - for APSL this is the division_id since each division is its own competition';
+COMMENT ON TABLE standings IS 'League standings data mirrored from source sites (APSL, CSL, etc.) - no calculations, direct copy of published standings. Division/season implied via team.division_id FK chain.';
 COMMENT ON COLUMN standings.source IS 'Source of standings data (e.g., "APSL Standings Page")';
 
 -- Optional snapshots for historical tracking
 CREATE TABLE standings_snapshots (
     id SERIAL PRIMARY KEY,
-    competition_id INTEGER,
-    season_id INTEGER,
     team_id INTEGER,
     position INTEGER,
     played INTEGER,
@@ -938,28 +905,10 @@ CREATE TABLE standings_snapshots (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_snapshots_comp_season ON standings_snapshots(competition_id, season_id);
+CREATE INDEX idx_snapshots_team ON standings_snapshots(team_id);
 CREATE INDEX idx_snapshots_fetched ON standings_snapshots(fetched_at);
 
-COMMENT ON TABLE standings_snapshots IS 'Historical snapshots of standings for tracking changes over time';
-
--- Track external IDs for division team entries
-CREATE TABLE division_team_external_ids (
-    id SERIAL PRIMARY KEY,
-    division_team_id INTEGER NOT NULL REFERENCES division_teams(id) ON DELETE CASCADE,
-    source_system_id INTEGER NOT NULL REFERENCES source_systems(id),
-    external_id VARCHAR(255) NOT NULL,
-    metadata JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(source_system_id, external_id)
-);
-
-CREATE INDEX idx_division_team_external_ids_team ON division_team_external_ids(division_team_id);
-CREATE INDEX idx_division_team_external_ids_source ON division_team_external_ids(source_system_id, external_id);
-
-COMMENT ON TABLE division_team_external_ids IS 'Tracks external identifiers (e.g., APSL team ID) for division team entries';
-COMMENT ON COLUMN division_team_external_ids.external_id IS 'Source system identifier (e.g., "114808" from APSL)';
+COMMENT ON TABLE standings_snapshots IS 'Historical snapshots of standings for tracking changes over time. Division/season implied via team.division_id FK chain.';
 
 -- Lookup table for team alias types
 CREATE TABLE alias_types (
@@ -1033,63 +982,44 @@ CREATE INDEX idx_player_positions_primary ON player_positions(player_id, is_prim
 
 COMMENT ON TABLE player_positions IS 'Positions a player CAN play (general profile across all teams)';
 
--- Player rosters for division team entries
-CREATE TABLE division_team_players (
+-- Team rosters (replaces division_team_players)
+CREATE TABLE rosters (
     id SERIAL PRIMARY KEY,
-    division_team_id INTEGER NOT NULL REFERENCES division_teams(id) ON DELETE CASCADE,
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    jersey_number VARCHAR(10),
     joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     left_at TIMESTAMP,
-    jersey_number VARCHAR(10),
     -- No is_active - derived from left_at IS NULL
     -- Multiple rows per player track transfer history
     -- Current roster: WHERE left_at IS NULL
-    -- History: All rows ordered by joined_at
     CHECK (left_at IS NULL OR left_at > joined_at),
-    UNIQUE (division_team_id, player_id, joined_at)
+    UNIQUE (team_id, player_id, joined_at)
 );
 
-CREATE INDEX idx_division_team_players_team ON division_team_players(division_team_id);
-CREATE INDEX idx_division_team_players_player ON division_team_players(player_id);
-CREATE INDEX idx_division_team_players_current ON division_team_players(division_team_id, player_id) WHERE left_at IS NULL;
-CREATE INDEX idx_division_team_players_history ON division_team_players(player_id, joined_at, left_at);
+CREATE INDEX idx_rosters_team ON rosters(team_id);
+CREATE INDEX idx_rosters_player ON rosters(player_id);
+CREATE INDEX idx_rosters_current ON rosters(team_id, player_id) WHERE left_at IS NULL;
+CREATE INDEX idx_rosters_history ON rosters(player_id, joined_at, left_at);
 
-COMMENT ON TABLE division_team_players IS 'Players assigned to division team entries (official league roster). Multiple rows per player track transfer history - each row is one period of team membership.';
+COMMENT ON TABLE rosters IS 'Team rosters with temporal tracking. Each row represents one period of a player\'s membership on a team.';
 
--- Track external IDs for division team player entries
-CREATE TABLE division_team_player_external_ids (
+-- Position assignments for roster entries (what position player plays for THIS team)
+CREATE TABLE roster_positions (
     id SERIAL PRIMARY KEY,
-    division_team_player_id INTEGER NOT NULL REFERENCES division_team_players(id) ON DELETE CASCADE,
-    source_system_id INTEGER NOT NULL REFERENCES source_systems(id),
-    external_id VARCHAR(255) NOT NULL,
-    metadata JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(source_system_id, external_id)
-);
-
-CREATE INDEX idx_division_team_player_external_ids_team_player ON division_team_player_external_ids(division_team_player_id);
-CREATE INDEX idx_division_team_player_external_ids_source ON division_team_player_external_ids(source_system_id, external_id);
-
-COMMENT ON TABLE division_team_player_external_ids IS 'Tracks external identifiers (e.g., APSL roster entry) for team player entries';
-COMMENT ON COLUMN division_team_player_external_ids.external_id IS 'Source system roster entry identifier (e.g., "114808-chris-richards" from APSL)';
-
--- Position assignments for division team players (what position they play for THIS team in THIS division)
-CREATE TABLE division_team_player_positions (
-    id SERIAL PRIMARY KEY,
-    division_team_player_id INTEGER NOT NULL REFERENCES division_team_players(id) ON DELETE CASCADE,
+    roster_id INTEGER NOT NULL REFERENCES rosters(id) ON DELETE CASCADE,
     position_id INTEGER NOT NULL REFERENCES positions(id),
     is_primary BOOLEAN DEFAULT false,
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(division_team_player_id, position_id)
+    UNIQUE(roster_id, position_id)
 );
 
-CREATE INDEX idx_division_team_player_positions_team_player ON division_team_player_positions(division_team_player_id);
-CREATE INDEX idx_division_team_player_positions_position ON division_team_player_positions(position_id);
-CREATE INDEX idx_division_team_player_positions_primary ON division_team_player_positions(division_team_player_id, is_primary) WHERE is_primary = true;
+CREATE INDEX idx_roster_positions_roster ON roster_positions(roster_id);
+CREATE INDEX idx_roster_positions_position ON roster_positions(position_id);
+CREATE INDEX idx_roster_positions_primary ON roster_positions(roster_id, is_primary) WHERE is_primary = true;
 
-COMMENT ON TABLE division_team_player_positions IS 'Position assignment for team players (what position they play for THIS team in THIS division)';
+COMMENT ON TABLE roster_positions IS 'Position assignments for roster entries (what position player plays for THIS team)';
 
 CREATE TABLE coaches (
     id SERIAL PRIMARY KEY,
@@ -1106,24 +1036,24 @@ COMMENT ON COLUMN coaches.person_id IS 'FK to persons table - name stored in per
 CREATE INDEX idx_coaches_person ON coaches(person_id);
 CREATE INDEX idx_coaches_source ON coaches(source_system_id);
 
-CREATE TABLE division_team_coaches (
-    division_team_id INTEGER NOT NULL REFERENCES division_teams(id) ON DELETE CASCADE,
+CREATE TABLE team_coaches (
+    team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     coach_id INTEGER NOT NULL REFERENCES coaches(id) ON DELETE CASCADE,
+    coach_role_id INTEGER REFERENCES coach_roles(id),
     started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ended_at TIMESTAMP,
-    coach_role_id INTEGER REFERENCES coach_roles(id),
     -- No is_active - derived from ended_at IS NULL
     -- Multiple rows track coaching tenure history
     CHECK (ended_at IS NULL OR ended_at > started_at),
-    PRIMARY KEY (division_team_id, coach_id, started_at)
+    PRIMARY KEY (team_id, coach_id, started_at)
 );
 
-CREATE INDEX idx_division_team_coaches_team ON division_team_coaches(division_team_id);
-CREATE INDEX idx_division_team_coaches_coach ON division_team_coaches(coach_id);
-CREATE INDEX idx_division_team_coaches_role ON division_team_coaches(coach_role_id);
-CREATE INDEX idx_division_team_coaches_current ON division_team_coaches(division_team_id, coach_id) WHERE ended_at IS NULL;
+CREATE INDEX idx_team_coaches_team ON team_coaches(team_id);
+CREATE INDEX idx_team_coaches_coach ON team_coaches(coach_id);
+CREATE INDEX idx_team_coaches_role ON team_coaches(coach_role_id);
+CREATE INDEX idx_team_coaches_current ON team_coaches(team_id, coach_id) WHERE ended_at IS NULL;
 
-COMMENT ON TABLE division_team_coaches IS 'Coaches assigned to division team entries (same level as players)';
+COMMENT ON TABLE team_coaches IS 'Coaches assigned to teams with temporal tracking';
 
 -- Venues (shared across all matches)
 CREATE TABLE venues (

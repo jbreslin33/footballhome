@@ -54,19 +54,8 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ==================================================
 -- CASA Select 2025/2026 Divisions (season_id=5)
+-- See end of file for actual CASA division inserts
 -- ==================================================
--- Philadelphia Conference (conference_id=24)
-INSERT INTO divisions (id, season_id, conference_id, name, source_system_id, external_id, sort_order) VALUES
-(54, 5, 24, 'Liga 1', 2, '9090889', 1),
-(55, 5, 24, 'Liga 2', 2, '9096430', 2);
-
--- Boston Conference (conference_id=25)
-INSERT INTO divisions (id, season_id, conference_id, name, source_system_id, external_id, sort_order) VALUES
-(56, 5, 25, 'Liga 1', 2, '9090891', 1);
-
--- Lancaster Conference (conference_id=26)
-INSERT INTO divisions (id, season_id, conference_id, name, source_system_id, external_id, sort_order) VALUES
-(57, 5, 26, 'Liga 1', 2, '9090893', 1);
 
 -- ==================================================
 -- CSL 2025/2026 Divisions (season_id=6, conference_id=27)
