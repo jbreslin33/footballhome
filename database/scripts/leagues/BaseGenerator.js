@@ -19,6 +19,8 @@ class BaseGenerator {
     this.divisionTeams = [];
     this.divisions = new Map();
     this.players = [];
+    this.matches = [];  // NEW: Store parsed matches
+    this.venues = new Map();  // NEW: Store unique venues
   }
 
   /**
@@ -375,6 +377,35 @@ ON CONFLICT (id) DO NOTHING;\n\n`;
    */
   getLeagueId() {
     throw new Error('getLeagueId() must be implemented by subclass');
+  }
+
+  /**
+   * Add a match to the matches collection
+   * @param {Object} matchData - Match data from parser
+   */
+  addMatch(matchData) {
+    this.matches.push(matchData);
+  }
+
+  /**
+   * Add or get venue ID
+   * @param {string} venueName - Venue name
+   * @param {string} address - Venue address (optional)
+   * @returns {number} Venue ID
+   */
+  getOrCreateVenue(venueName, address = null) {
+    if (!venueName) return null;
+    
+    const key = venueName.toLowerCase().trim();
+    if (!this.venues.has(key)) {
+      const venueId = 1000 + this.venues.size;
+      this.venues.set(key, {
+        id: venueId,
+        name: venueName,
+        address: address
+      });
+    }
+    return this.venues.get(key).id;
   }
 }
 

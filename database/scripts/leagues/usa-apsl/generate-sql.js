@@ -13,13 +13,16 @@ const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
 const BaseGenerator = require('../BaseGenerator');
+const ApslMatchParser = require('../../infrastructure/parsers/ApslMatchParser');
 
 class ApslSqlGenerator extends BaseGenerator {
   constructor() {
     super('APSL', 1, '00001', 100, 100, 100);
     // Data structures inherited from BaseGenerator:
     // this.organizations, this.clubs, this.teams, this.standings, 
-    // this.divisionTeams, this.divisions, this.players
+    // this.divisionTeams, this.divisions, this.players, this.matches, this.venues
+    
+    this.matchParser = new ApslMatchParser();  // NEW: Match parser
   }
 
   /**
@@ -69,6 +72,11 @@ class ApslSqlGenerator extends BaseGenerator {
     
     console.log(`   Parsed ${this.players.length} players from team rosters`);
     
+    // Parse match schedules from team detail pages (NEW)
+    this.parseMatchSchedules();
+    
+    console.log(`   Parsed ${this.matches.length} matches`);
+    
     // Group teams by club (deduplicates clubs with multiple teams)
     const teamGroups = this.groupTeamsByClub(this.teams);
     this.clubs = this.extractClubsFromGroups(teamGroups);
@@ -85,6 +93,7 @@ class ApslSqlGenerator extends BaseGenerator {
     this.writeTeamsSql();
     this.writeStandingsSql();
     this.writePlayersSql();
+    this.writeMatchesSql();  // NEW
     
     console.log('✓ SQL generation complete\n');
   }
@@ -260,7 +269,51 @@ class ApslSqlGenerator extends BaseGenerator {
     }
   }
 
-
+  /**
+   * Parse match schedules from team HTML files (NEW)
+   */
+  parseMatchSchedules() {
+    const htmlDir = path.join(__dirname, '../../../../database/scraped-html/apsl');
+    const files = fs.readdirSync(htmlDir);
+    
+    for (const file of files) {
+      // Skip non-HTML files and the standings file
+      if (!file.endsWith('.html') || file.includes('tables-') || file.endsWith('.skip')) continue;
+      
+      const filePath = path.join(htmlDir, file);
+      const html = fs.readFileSync(filePath, 'utf-8');
+      
+      // Extract team external ID from filename (e.g., team-12345.html)
+      const match = file.match(/team-(\d+)\.html/);
+      if (!match) continue;
+      
+      const teamExternalId = match[1];
+      
+      // Parse matches for this team
+      const teamMatches = this.matchParser.parse(html, teamExternalId);
+      
+      // Process each match
+      for (const matchData of teamMatches) {
+        // Get or create venue
+        const venueId = matchData.venue ? this.getOrCreateVenue(matchData.venue, matchData.venueAddress) : null;
+        
+        // Add match
+        this.addMatch({
+          homeTeamExternalId: matchData.isHomeMatch ? teamExternalId : matchData.opponentExternalId,
+          awayTeamExternalId: matchData.isHomeMatch ? matchData.opponentExternalId : teamExternalId,
+          matchDate: matchData.date,
+          matchTime: matchData.time,
+          venueId: venueId,
+          homeScore: matchData.homeScore,
+          awayScore: matchData.awayScore,
+          matchType: matchData.matchType || 'league',
+          status: matchData.homeScore !== null ? 'completed' : 'scheduled',
+          sourceSystemId: this.sourceSystemId,
+          externalId: matchData.externalId
+        });
+      }
+    }
+  }
 
   /**
    * Write organizations SQL
@@ -345,6 +398,58 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     }
 
     const outputPath = path.join(__dirname, 'sql', `102.${this.leagueId}-teams-usa-apsl.sql`);
+    fs.writeFileSync(outputPath, sql);
+    console.log(`   ✓ ${outputPath}`);
+  }
+
+  /**
+   * Write matches SQL (NEW)
+   */
+  writeMatchesSql() {
+    let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Matches - APSL
+-- Total Records: ${this.matches.length}
+-- Match type: 1=league, 3=practice, 4=scrimmage
+-- Match status: 1=scheduled, 3=completed
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+
+    // Write venues first
+    if (this.venues.size > 0) {
+      sql += `-- Venues\n`;
+      for (const [key, venue] of this.venues) {
+        sql += `INSERT INTO venues (name, address) 
+VALUES ('${this.escapeSql(venue.name)}', ${venue.address ? `'${this.escapeSql(venue.address)}'` : 'NULL'})
+ON CONFLICT (name) DO NOTHING;\n`;
+      }
+      sql += `\n`;
+    }
+
+    // Write matches
+    sql += `-- Matches\n`;
+    for (const match of this.matches) {
+      const matchType = match.matchType === 'league' ? 1 : (match.matchType === 'practice' ? 3 : 4);
+      const matchStatus = match.status === 'completed' ? 3 : 1;
+      
+      sql += `INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  ${matchType}, '${match.matchDate}', ${match.matchTime ? `'${match.matchTime}'` : 'NULL'}, ${matchStatus},
+  ht.id, at.id, ${match.venueId ? `v.id` : 'NULL'},
+  ${match.homeScore !== null ? match.homeScore : 'NULL'}, ${match.awayScore !== null ? match.awayScore : 'NULL'},
+  ${match.sourceSystemId}, ${match.externalId ? `'${match.externalId}'` : 'NULL'}
+FROM teams ht
+JOIN teams at ON at.external_id = '${match.awayTeamExternalId}' AND at.source_system_id = ${match.sourceSystemId}
+${match.venueId ? `LEFT JOIN venues v ON v.name = '${this.escapeSql(Array.from(this.venues.values()).find(v => v.id === match.venueId).name)}'` : ''}
+WHERE ht.external_id = '${match.homeTeamExternalId}' AND ht.source_system_id = ${match.sourceSystemId}
+ON CONFLICT (source_system_id, external_id) DO NOTHING;\n\n`;
+    }
+
+    const outputPath = path.join(__dirname, 'sql', `106.${this.leagueId}-matches-usa-apsl.sql`);
     fs.writeFileSync(outputPath, sql);
     console.log(`   ✓ ${outputPath}`);
   }
