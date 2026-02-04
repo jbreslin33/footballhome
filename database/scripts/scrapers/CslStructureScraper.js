@@ -25,11 +25,12 @@ const ScrapedTeam = require('../domain/models/ScrapedTeam');
  * Organization → League → Season → Conference → Divisions → Teams
  * 
  * CSL is a feeder league to APSL Metropolitan Conference
+ * 
+ * Data Source: Hardcoded URL (managed in this file)
  */
 class CslStructureScraper {
   constructor(client, config = {}) {
     this.client = client;
-    this.scrapeTarget = config.scrapeTarget; // Inject from database
     this.fetcher = new HtmlFetcher(path.join(__dirname, '../../scraped-html/csl'));
     this.parser = new CslStandingsParser();
     this.orgRepo = new OrganizationRepository(client);
@@ -42,10 +43,10 @@ class CslStructureScraper {
     this.divisionTeamRepo = new DivisionTeamRepository(client);
     this.standingsRepo = new StandingsRepository(client);
     
-    // CSL configuration
+    // CSL configuration - hardcoded
     this.leagueName = 'Cosmopolitan Soccer League';
     this.leagueSlug = 'cosmopolitan-soccer-league';
-    this.standingsUrl = 'https://www.cosmosoccerleague.com/CSL/Tables/'; // Fallback if no scrapeTarget
+    this.standingsUrl = 'https://www.cosmosoccerleague.com/CSL/Tables/';
     this.season = config.season || '2025-2026';
     
     // Track failed fetches for retry
@@ -61,12 +62,12 @@ class CslStructureScraper {
     console.log('⚠️  Assumes divisions/seasons already exist in database');
     
     try {
-      // Get URL from scrapeTarget (injected from database)
-      const url = this.scrapeTarget ? this.scrapeTarget.url : this.standingsUrl;
+      // Use hardcoded URL
+      const url = this.standingsUrl;
       
       // Step 1: Fetch standings page
       console.log(`\n📥 Fetching standings from: ${url}`);
-      const html = await this.fetcher.fetch(url, `csl-standings-${this.scrapeTarget?.id || 'default'}`);
+      const html = await this.fetcher.fetch(url, 'csl-standings');
       
       // Step 2: Parse divisions and teams
       console.log('📊 Parsing divisions and teams...');

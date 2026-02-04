@@ -176,148 +176,6 @@ INSERT INTO source_systems (id, name, description, is_active) VALUES
     (3, 'csl', 'Cosmopolitan Soccer League', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Scrape Target System Tables
-CREATE TABLE scrape_target_types (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description TEXT,
-    sort_order INTEGER DEFAULT 0
-);
-
-INSERT INTO scrape_target_types (id, name, description, sort_order) VALUES
-    (1, 'conference_structure', 'League structure (conferences, divisions)', 1),
-    (2, 'standings', 'Division standings', 2),
-    (3, 'schedule', 'Match schedules', 3),
-    (4, 'team_roster', 'Team rosters', 4),
-    (5, 'team_stats', 'Team season statistics', 5),
-    (6, 'player_stats', 'Player season statistics', 6),
-    (7, 'player_profile', 'Player biographical data', 7),
-    (8, 'match_lineups', 'Match lineups (starters/subs)', 8),
-    (9, 'match_events', 'Match events (goals, cards, subs)', 9),
-    (10, 'match_score', 'Match scores', 10),
-    (11, 'venue_details', 'Venue information', 11),
-    (12, 'chat_messages', 'Chat messages', 12),
-    (13, 'chat_events', 'Chat events', 13),
-    (14, 'chat_members', 'Chat members', 14),
-    (15, 'chat_rsvps', 'Chat RSVPs', 15),
-    (16, 'venues', 'Venue information from Google Places', 16),
-    (17, 'countries', 'Country information', 17),
-    (18, 'governing_bodies', 'Soccer governing bodies hierarchy', 18)
-ON CONFLICT (id) DO NOTHING;
-
-CREATE TABLE scraper_types (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    parser_class VARCHAR(100),
-    platform VARCHAR(50),
-    description TEXT,
-    sort_order INTEGER DEFAULT 0
-);
-
-INSERT INTO scraper_types (id, name, parser_class, platform, description, sort_order) VALUES
-    (1, 'teampass_html', 'ApslHtmlParser', 'TeamPass', 'TeamPass HTML parser (APSL, other leagues)', 1),
-    (2, 'google_sheets', 'CasaGoogleSheetsParser', 'Google Sheets', 'Google Sheets API parser (CASA)', 2),
-    (3, 'groupme_api', 'GroupMeApiParser', 'GroupMe', 'GroupMe API v3 parser', 3),
-    (4, 'google_places', 'GooglePlacesParser', 'Google Places', 'Google Places API for venue data', 4)
-ON CONFLICT (id) DO NOTHING;
-
-CREATE TABLE scrape_execution_statuses (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description TEXT,
-    sort_order INTEGER DEFAULT 0
-);
-
-INSERT INTO scrape_execution_statuses (id, name, description, sort_order) VALUES
-    (1, 'pending', 'Scrape queued but not yet started', 1),
-    (2, 'running', 'Scrape currently in progress', 2),
-    (3, 'success', 'Scrape completed successfully', 3),
-    (4, 'partial', 'Scrape completed with some errors', 4),
-    (5, 'failed', 'Scrape failed completely', 5),
-    (6, 'timeout', 'Scrape exceeded time limit', 6),
-    (7, 'cancelled', 'Scrape manually cancelled', 7)
-ON CONFLICT (id) DO NOTHING;
-
--- Scrape Actions: What action to take on a scrape target
-CREATE TABLE scrape_actions (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description TEXT,
-    sort_order INTEGER DEFAULT 0
-);
-
-INSERT INTO scrape_actions (id, name, description, sort_order) VALUES
-    (1, 'download_and_parse', 'Fetch fresh HTML/API data and parse it', 1),
-    (2, 'use_cache_only', 'Parse existing cached HTML without fetching', 2),
-    (3, 'skip', 'Do not process this target (completed/archived)', 3),
-    (4, 'force_refresh', 'Force fresh download even if recently scraped', 4),
-    (5, 'verify_only', 'Check if data exists, report discrepancies', 5)
-ON CONFLICT (id) DO NOTHING;
-
--- Scrape Statuses: Current state of a scrape target
-CREATE TABLE scrape_statuses (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    description TEXT,
-    sort_order INTEGER DEFAULT 0
-);
-
-INSERT INTO scrape_statuses (id, name, description, sort_order) VALUES
-    (1, 'not_started', 'Never been scraped', 1),
-    (2, 'in_progress', 'Currently being scraped', 2),
-    (3, 'completed', 'Successfully scraped and up-to-date', 3),
-    (4, 'needs_refresh', 'Data exists but may be stale', 4),
-    (5, 'failed', 'Last scrape failed', 5),
-    (6, 'archived', 'Historical data, will not update', 6)
-ON CONFLICT (id) DO NOTHING;
-
-CREATE TABLE scrape_targets (
-    id SERIAL PRIMARY KEY,
-    source_system_id INTEGER NOT NULL REFERENCES source_systems(id),
-    scraper_type_id INTEGER NOT NULL REFERENCES scraper_types(id),
-    target_type_id INTEGER NOT NULL REFERENCES scrape_target_types(id),
-    url TEXT NOT NULL,
-    label VARCHAR(255),
-    -- State machine fields
-    scrape_action_id INTEGER REFERENCES scrape_actions(id) DEFAULT 1,
-    scrape_status_id INTEGER REFERENCES scrape_statuses(id) DEFAULT 1,
-    last_success_at TIMESTAMP,
-    last_error_at TIMESTAMP,
-    last_error_message TEXT,
-    retry_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_scrape_targets_source ON scrape_targets(source_system_id);
-CREATE INDEX idx_scrape_targets_scraper ON scrape_targets(scraper_type_id);
-CREATE INDEX idx_scrape_targets_type ON scrape_targets(target_type_id);
-CREATE INDEX idx_scrape_targets_action ON scrape_targets(scrape_action_id);
-CREATE INDEX idx_scrape_targets_status ON scrape_targets(scrape_status_id);
-
-CREATE TABLE scrape_executions (
-    id SERIAL PRIMARY KEY,
-    scrape_target_id INTEGER NOT NULL REFERENCES scrape_targets(id),
-    status_id INTEGER NOT NULL REFERENCES scrape_execution_statuses(id),
-    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP,
-    duration_ms INTEGER,
-    entities_created INTEGER DEFAULT 0,
-    entities_updated INTEGER DEFAULT 0,
-    error_message TEXT,
-    metadata JSONB
-);
-
-CREATE INDEX idx_scrape_executions_target ON scrape_executions(scrape_target_id);
-CREATE INDEX idx_scrape_executions_status ON scrape_executions(status_id);
-CREATE INDEX idx_scrape_executions_started ON scrape_executions(started_at DESC);
-
--- ============================================================================
--- ============================================================================
--- NOTE: Entity-specific scrape target tables moved to end of file
--- (after all entity tables are created to avoid forward references)
--- ============================================================================
-
 CREATE TABLE chat_providers (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
@@ -831,7 +689,6 @@ CREATE TABLE teams (
     logo_url TEXT,
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100),
-    scrape_target_id INTEGER REFERENCES scrape_targets(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(division_id, name),  -- Team name must be unique within division
     UNIQUE(source_system_id, external_id)  -- External IDs unique within source system
@@ -953,7 +810,6 @@ CREATE TABLE players (
     height_cm INTEGER,                      -- Height in centimeters
     nationality VARCHAR(3),                 -- ISO 3166-1 alpha-3 (USA, BRA, MEX)
     photo_url TEXT,
-    scrape_target_id INTEGER REFERENCES scrape_targets(id),
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1095,7 +951,6 @@ CREATE TABLE matches (
     
     source_system_id INTEGER REFERENCES source_systems(id),
     external_id VARCHAR(100),  -- Unique per source system
-    scrape_target_id INTEGER REFERENCES scrape_targets(id),
     created_by_user_id INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     

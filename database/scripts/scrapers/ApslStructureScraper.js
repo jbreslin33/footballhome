@@ -21,11 +21,11 @@ const Club = require('../domain/models/Club');
  * 
  * This is a thin orchestrator - all logic is in reusable components.
  * 
- * Data Source: scrape_targets table (id=1 for current season, 2-4 for historical)
+ * Data Source: Hardcoded URL (managed in this file)
  */
 class ApslStructureScraper {
-  constructor(scrapeTarget, fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo, divisionRepo, teamRepo, clubRepo, divisionTeamRepo, standingsRepo) {
-    this.scrapeTarget = scrapeTarget;
+  constructor(fetcher, parser, orgRepo, leagueRepo, seasonRepo, conferenceRepo, divisionRepo, teamRepo, clubRepo, divisionTeamRepo, standingsRepo) {
+    this.standingsUrl = 'https://www.apslsoccer.com/Standings';
     this.fetcher = fetcher;
     this.parser = parser;
     this.orgRepo = orgRepo;
@@ -57,8 +57,8 @@ class ApslStructureScraper {
   }
   
   async scrapeAndSave() {
-    // Fetch HTML from URL (respecting cache control from orchestrator)
-    const url = this.scrapeTarget.url;
+    // Fetch HTML from hardcoded URL
+    const url = this.standingsUrl;
     const useCache = process.env.SCRAPE_USE_CACHE === 'true';
     
     console.log('🌐 Fetching APSL standings...');
@@ -81,39 +81,15 @@ class ApslStructureScraper {
     const orgResult = await this.orgRepo.upsert(organization);
     console.log(`   ✓ Organization: ${orgResult.inserted ? 'inserted' : 'updated'} (id=${orgResult.id})`);
     
-    // 1a. Link organization to scrape_target (audit trail)
-    await this._client.query(
-      `INSERT INTO organization_scrape_targets (scrape_target_id, organization_id) 
-       VALUES ($1, $2) 
-       ON CONFLICT (scrape_target_id, organization_id) DO NOTHING`,
-      [this.scrapeTarget.id, orgResult.id]
-    );
-    
     // 2. Upsert league (link to organization)
     league.organizationId = orgResult.id;
     const leagueResult = await this.leagueRepo.upsert(league);
     console.log(`   ✓ League: ${leagueResult.inserted ? 'inserted' : 'updated'} (id=${leagueResult.id})`);
     
-    // 2a. Link league to scrape_target (audit trail)
-    await this._client.query(
-      `INSERT INTO league_scrape_targets (scrape_target_id, league_id) 
-       VALUES ($1, $2) 
-       ON CONFLICT (scrape_target_id, league_id) DO NOTHING`,
-      [this.scrapeTarget.id, leagueResult.id]
-    );
-    
     // 3. Upsert season (link to league)
     season.leagueId = leagueResult.id;
     const seasonResult = await this.seasonRepo.upsert(season);
     console.log(`   ✓ Season: ${seasonResult.inserted ? 'inserted' : 'updated'} (id=${seasonResult.id})`);
-    
-    // 3a. Link season to scrape_target (audit trail)
-    await this._client.query(
-      `INSERT INTO season_scrape_targets (scrape_target_id, season_id) 
-       VALUES ($1, $2) 
-       ON CONFLICT (scrape_target_id, season_id) DO NOTHING`,
-      [this.scrapeTarget.id, seasonResult.id]
-    );
     
     // 4. Upsert conferences (link to season)
     for (const conference of conferences) {
@@ -122,17 +98,6 @@ class ApslStructureScraper {
     const confResult = await this.conferenceRepo.upsertMany(conferences);
     console.log(`   ✓ Conferences: ${confResult.totalInserted} inserted, ${confResult.totalUpdated} updated`);
     
-    // 4a. Link conferences to scrape_target (audit trail)
-    const savedConferences = await this.conferenceRepo.findBySeason(seasonResult.id);
-    for (const conf of savedConferences) {
-      await this._client.query(
-        `INSERT INTO conference_scrape_targets (scrape_target_id, conference_id) 
-         VALUES ($1, $2) 
-         ON CONFLICT (scrape_target_id, conference_id) DO NOTHING`,
-        [this.scrapeTarget.id, conf.id]
-      );
-    }
-    
     // 5. LOOKUP divisions (they must exist in 034-divisions.sql - scrapers should NEVER create divisions)
     console.log(`   🔍 Looking up ${divisions.length} divisions from database...`);
     const savedDivisions = await this.divisionRepo.findBySeason(seasonResult.id);
@@ -140,16 +105,6 @@ class ApslStructureScraper {
     
     if (savedDivisions.length === 0) {
       throw new Error(`❌ No divisions found for season ${seasonResult.id}! Divisions must exist in 034-divisions.sql before running scrapers.`);
-    }
-    
-    // 5a. Link divisions to scrape_target (audit trail)
-    for (const div of savedDivisions) {
-      await this._client.query(
-        `INSERT INTO division_scrape_targets (scrape_target_id, division_id) 
-         VALUES ($1, $2) 
-         ON CONFLICT (scrape_target_id, division_id) DO NOTHING`,
-        [this.scrapeTarget.id, div.id]
-      );
     }
     
     // 6. Upsert teams (create club/organization for each team)
@@ -169,14 +124,6 @@ class ApslStructureScraper {
         const orgResult = await this.orgRepo.upsert(teamOrg);
         if (orgResult.inserted) clubsCreated++;
         
-        // Link team organization to scrape_target
-        await this._client.query(
-          `INSERT INTO organization_scrape_targets (scrape_target_id, organization_id) 
-           VALUES ($1, $2) 
-           ON CONFLICT (scrape_target_id, organization_id) DO NOTHING`,
-          [this.scrapeTarget.id, orgResult.id]
-        );
-        
         // Create club under that organization
         const club = new Club({
           name: team.name,
@@ -186,14 +133,6 @@ class ApslStructureScraper {
         });
         
         const clubResult = await this.clubRepo.upsert(club);
-        
-        // Link club to scrape_target
-        await this._client.query(
-          `INSERT INTO club_scrape_targets (scrape_target_id, club_id) 
-           VALUES ($1, $2) 
-           ON CONFLICT (scrape_target_id, club_id) DO NOTHING`,
-          [this.scrapeTarget.id, clubResult.id]
-        );
         
         // Link team to club
         team.clubId = clubResult.id;
@@ -337,17 +276,6 @@ class ApslStructureScraper {
     
     const client = await pool.connect();
     
-    // Load scrape_target from database (id=1 for current APSL season)
-    const scrapeTargetId = process.env.SCRAPE_TARGET_ID || 1;
-    const result = await client.query('SELECT * FROM scrape_targets WHERE id = $1', [scrapeTargetId]);
-    
-    if (result.rows.length === 0) {
-      throw new Error(`scrape_target id=${scrapeTargetId} not found`);
-    }
-    
-    const scrapeTarget = result.rows[0];
-    console.log(`📋 Loaded scrape_target: id=${scrapeTarget.id}, url=${scrapeTarget.url}`);
-    
     // Create all dependencies
     const fetcher = new HtmlFetcher();
     const parser = new ApslStandingsParser();
@@ -363,7 +291,6 @@ class ApslStructureScraper {
     
     // Inject dependencies
     const scraper = new ApslStructureScraper(
-      scrapeTarget,
       fetcher,
       parser,
       orgRepo,
