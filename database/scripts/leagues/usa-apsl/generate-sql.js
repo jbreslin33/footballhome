@@ -283,8 +283,8 @@ class ApslSqlGenerator extends BaseGenerator {
       const filePath = path.join(htmlDir, file);
       const html = fs.readFileSync(filePath, 'utf-8');
       
-      // Extract team external ID from filename (e.g., team-12345.html)
-      const match = file.match(/team-(\d+)\.html/);
+      // Extract team external ID from filename (e.g., apsl-team-12345-hash.html or team-12345.html)
+      const match = file.match(/(?:apsl-)?team-(\d+)(?:-[a-f0-9]+)?\.html/);
       if (!match) continue;
       
       const teamExternalId = match[1];
@@ -295,19 +295,21 @@ class ApslSqlGenerator extends BaseGenerator {
       // Process each match
       for (const matchData of teamMatches) {
         // Get or create venue
-        const venueId = matchData.venue ? this.getOrCreateVenue(matchData.venue, matchData.venueAddress) : null;
+        const venueId = matchData.venue && matchData.venue.name 
+          ? this.getOrCreateVenue(matchData.venue.name, matchData.venue.address) 
+          : null;
         
         // Add match
         this.addMatch({
-          homeTeamExternalId: matchData.isHomeMatch ? teamExternalId : matchData.opponentExternalId,
-          awayTeamExternalId: matchData.isHomeMatch ? matchData.opponentExternalId : teamExternalId,
-          matchDate: matchData.date,
-          matchTime: matchData.time,
+          homeTeamExternalId: matchData.homeTeamId,
+          awayTeamExternalId: matchData.awayTeamId,
+          matchDate: matchData.matchDate,
+          matchTime: matchData.matchTime,
           venueId: venueId,
           homeScore: matchData.homeScore,
           awayScore: matchData.awayScore,
           matchType: matchData.matchType || 'league',
-          status: matchData.homeScore !== null ? 'completed' : 'scheduled',
+          status: matchData.matchStatusId === 2 ? 'completed' : 'scheduled',
           sourceSystemId: this.sourceSystemId,
           externalId: matchData.externalId
         });
