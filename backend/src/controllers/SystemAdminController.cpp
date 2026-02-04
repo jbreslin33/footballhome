@@ -3048,8 +3048,7 @@ Response SystemAdminController::handleGetCoverageReport(const Request& request) 
             LEFT JOIN seasons s ON s.league_id = l.id
             LEFT JOIN conferences c ON c.season_id = s.id
             LEFT JOIN divisions d ON d.conference_id = c.id
-            LEFT JOIN division_teams dt ON dt.division_id = d.id
-            LEFT JOIN teams t ON t.id = dt.team_id
+            LEFT JOIN teams t ON t.division_id = d.id
             LEFT JOIN matches m ON m.home_team_id = t.id OR m.away_team_id = t.id
             LEFT JOIN match_events me ON me.match_id = m.id
             LEFT JOIN match_event_types met ON met.id = me.event_type_id
@@ -3110,8 +3109,7 @@ Response SystemAdminController::handleGetDataQuality(const Request& request) {
                 COUNT(DISTINCT m.id) as count
             FROM matches m
             LEFT JOIN teams ht ON m.home_team_id = ht.id
-            LEFT JOIN division_teams dt ON dt.team_id = ht.id
-            LEFT JOIN divisions d ON dt.division_id = d.id
+            LEFT JOIN divisions d ON d.id = ht.division_id
             LEFT JOIN conferences c ON d.conference_id = c.id
             LEFT JOIN seasons s ON c.season_id = s.id
             LEFT JOIN leagues l ON s.league_id = l.id
@@ -3182,8 +3180,7 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
                 FROM seasons se 
                 JOIN conferences c ON c.season_id = se.id
                 JOIN divisions d ON d.conference_id = c.id
-                JOIN division_teams dt ON dt.division_id = d.id
-                JOIN teams t ON t.id = dt.team_id
+                JOIN teams t ON t.division_id = d.id
                 JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
                 JOIN match_events me ON me.match_id = m.id
             )
@@ -3221,8 +3218,7 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
                 JOIN persons per ON per.id = p.person_id
                 JOIN match_event_types met ON met.id = me.event_type_id
                 JOIN teams t ON t.id = me.team_id
-                JOIN division_teams dt ON dt.team_id = t.id
-                JOIN divisions d ON d.id = dt.division_id
+                JOIN divisions d ON d.id = t.division_id
                 JOIN conferences c ON c.id = d.conference_id
                 WHERE c.season_id = $1 AND met.name = 'goal'
                 GROUP BY per.id, per.first_name, per.last_name
@@ -3249,8 +3245,7 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
                 JOIN players p ON p.id = me.assisted_by_player_id
                 JOIN persons per ON per.id = p.person_id
                 JOIN teams t ON t.id = me.team_id
-                JOIN division_teams dt ON dt.team_id = t.id
-                JOIN divisions d ON d.id = dt.division_id
+                JOIN divisions d ON d.id = t.division_id
                 JOIN conferences c ON c.id = d.conference_id
                 JOIN seasons s ON s.id = c.season_id
                 WHERE c.season_id = $1
@@ -3274,11 +3269,9 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
                     t.name as team_name,
                     COUNT(DISTINCT m.id) as match_count
                 FROM teams t
-                JOIN division_teams dt ON dt.team_id = t.id
-                JOIN divisions d ON d.id = dt.division_id
+                JOIN divisions d ON d.id = t.division_id
                 JOIN conferences c ON c.id = d.conference_id
                 JOIN seasons s ON s.id = c.season_id
-                LEFT JOIN matches m ON m.home_team_id = t.id OR m.away_team_id = t.id
                 LEFT JOIN matches m ON m.home_team_id = t.id OR m.away_team_id = t.id
                 WHERE c.season_id = $1
                 GROUP BY t.id, t.name
@@ -3320,8 +3313,7 @@ Response SystemAdminController::handleGetSeasons(const Request& request) {
                 COUNT(DISTINCT m.id) as match_count
             FROM seasons s
             LEFT JOIN divisions d ON d.season_id = s.id
-            LEFT JOIN division_teams dt ON dt.division_id = d.id
-            LEFT JOIN teams t ON t.id = dt.team_id
+            LEFT JOIN teams t ON t.division_id = d.id
             LEFT JOIN matches m ON (m.home_team_id = t.id OR m.away_team_id = t.id)
             WHERE s.league_id = $1
             GROUP BY s.name, s.start_date
@@ -3373,9 +3365,9 @@ Response SystemAdminController::handleGetStandings(const Request& request) {
                 st.goal_diff as goal_difference,
                 st.points
             FROM standings st
-            JOIN divisions d ON d.id = st.competition_id
             JOIN teams t ON t.id = st.team_id
-            JOIN seasons s ON s.id = st.season_id
+            JOIN divisions d ON d.id = t.division_id
+            JOIN seasons s ON s.id = d.season_id
             WHERE s.league_id = $1
                 AND s.name = $2
             ORDER BY d.name ASC, st.position ASC
@@ -3436,8 +3428,7 @@ Response SystemAdminController::handleGetTeams(const Request& request) {
                 FROM teams t
                 LEFT JOIN clubs c ON c.id = t.club_id
                 LEFT JOIN source_systems ss ON ss.id = t.source_system_id
-                JOIN division_teams dt ON dt.team_id = t.id
-                JOIN divisions d ON d.id = dt.division_id
+                JOIN divisions d ON d.id = t.division_id
                 JOIN seasons s ON s.id = d.season_id
                 WHERE s.league_id = $1
                 GROUP BY t.id, t.name, t.external_id, c.name, ss.name
@@ -3477,8 +3468,7 @@ Response SystemAdminController::handleGetTeams(const Request& request) {
                 FROM teams t
                 LEFT JOIN clubs c ON c.id = t.club_id
                 LEFT JOIN source_systems ss ON ss.id = t.source_system_id
-                JOIN division_teams dt ON dt.team_id = t.id
-                JOIN divisions d ON d.id = dt.division_id
+                JOIN divisions d ON d.id = t.division_id
                 JOIN seasons s ON s.id = d.season_id
                 WHERE s.league_id = $1
                     AND s.name = $2
@@ -3543,18 +3533,16 @@ Response SystemAdminController::handleGetPlayers(const Request& request) {
                 pos.name as position_name
             FROM players p
             JOIN persons per ON per.id = p.person_id
-            JOIN division_team_players dtp ON dtp.player_id = p.id
-            JOIN division_teams dt ON dt.id = dtp.division_team_id
-            JOIN teams t ON t.id = dt.team_id
-            JOIN divisions d ON d.id = dt.division_id
+            JOIN rosters r ON r.player_id = p.id AND r.left_at IS NULL
+            JOIN teams t ON t.id = r.team_id
+            JOIN divisions d ON d.id = t.division_id
             JOIN seasons s ON s.id = d.season_id
-            LEFT JOIN division_team_player_positions dtpp ON dtpp.division_team_player_id = dtp.id AND dtpp.is_primary = true
-            LEFT JOIN positions pos ON pos.id = dtpp.position_id
+            LEFT JOIN roster_positions rp ON rp.roster_id = r.id AND rp.is_primary = true
+            LEFT JOIN positions pos ON pos.id = rp.position_id
             WHERE t.id = $1
                 AND s.league_id = $2
                 AND s.name = $3
-                AND dtp.is_active = true
-            ORDER BY dtp.jersey_number ASC NULLS LAST, per.last_name ASC, per.first_name ASC
+            ORDER BY r.jersey_number ASC NULLS LAST, per.last_name ASC, per.first_name ASC
         )";
         
         pqxx::result result = db_->query(sql, {teamId, leagueId, season});

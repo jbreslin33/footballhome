@@ -41,7 +41,7 @@ bool Team::load(int id) {
 
 bool Team::loadByUuid(const std::string& uuid) {
     try {
-        std::string sql = "SELECT id, name, division_id, league_division_id FROM teams WHERE id = $1";
+        std::string sql = "SELECT id, name, division_id, club_id, source_system_id, external_id FROM teams WHERE id = $1";
         pqxx::result result = executeQuery(sql, {uuid});
         
         if (!result.empty()) {
@@ -49,7 +49,6 @@ bool Team::loadByUuid(const std::string& uuid) {
             id_ = row["id"].as<std::string>();
             name_ = row["name"].as<std::string>();
             division_id_ = row["division_id"].as<std::string>();
-            league_division_id_ = row["league_division_id"].is_null() ? "" : row["league_division_id"].as<std::string>();
             return true;
         }
         return false;
