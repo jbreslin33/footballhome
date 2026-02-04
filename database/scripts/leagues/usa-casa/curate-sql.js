@@ -65,22 +65,24 @@ class CasaSqlCurator extends BaseSqlCurator {
   }
 
   /**
-   * Parse CASA teams from old multi-row format
-   * Format: INSERT INTO teams (...) VALUES\n  (id, club_id, name, ...),\n  (id, club_id, name, ...);
+   * Parse CASA teams from new schema format
+   * Format: INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+   *         SELECT '...', '...', club_id, d.id, 2 FROM divisions d...
    */
   parseCasaTeamsSql(sql) {
     const teams = [];
-    // Match the full multi-row INSERT statement
-    const regex = /\((\d+),\s*(NULL|\d+),\s*'([^']+)',\s*[^)]+\)/g;
+    
+    // New schema format with division_id lookup (multi-line, use dotall flag)
+    const regex = /INSERT INTO teams \(name, external_id, club_id, division_id, source_system_id\)\s+SELECT '([^']+)', '([^']+)', (\d+), d\.id, (\d+)/gs;
     
     let match;
     while ((match = regex.exec(sql)) !== null) {
       teams.push({
-        id: parseInt(match[1]),
-        clubId: match[2] === 'NULL' ? null : parseInt(match[2]),
-        name: match[3],
-        externalId: null, // CASA teams don't have external_id
-        sourceSystemId: this.sourceSystemId
+        id: null, // Auto-generated
+        name: match[1],
+        externalId: match[2],
+        clubId: parseInt(match[3]),
+        sourceSystemId: parseInt(match[4])
       });
     }
     
@@ -258,32 +260,40 @@ class CasaSqlCurator extends BaseSqlCurator {
       sql.clubs += `INSERT INTO clubs (id, name, organization_id) VALUES (${club.id}, '${this.escapeSql(club.name)}', ${club.organizationId}) ON CONFLICT (id) DO NOTHING;\n`;
     }
 
-    // Teams: All teams, using existing or new club_id
+    // Teams: NEW SCHEMA - copy INSERT...SELECT statements and update club_id
     sql.teams = this.generateSqlHeader(
       'Teams - CASA (Curated)',
-      `Teams linked to existing clubs where matched. Total: ${casaTeams.length}`
+      `Teams with curated club_id references. Total: ${casaTeams.length}`
     );
 
-    // Create mapping of team → final club_id
-    const teamClubMap = new Map();
-    for (const { casaTeam, existingClub } of matches) {
-      teamClubMap.set(casaTeam.id, existingClub.id);
-    }
-    for (const team of newTeams) {
-      teamClubMap.set(team.id, team.newClubId);
-    }
-
-    for (const team of casaTeams) {
-      const finalClubId = teamClubMap.get(team.id);
-      if (!finalClubId) {
-        console.error(`⚠️  No club_id mapping for team: ${team.name} (id=${team.id})`);
-        continue;
+    // Read original teams SQL
+    const teamsPath = path.join(__dirname, 'sql', '102.00002-teams-usa-casa.sql');
+    if (fs.existsSync(teamsPath)) {
+      let originalTeamsSql = fs.readFileSync(teamsPath, 'utf8');
+      
+      // For each matched team, replace its club_id in the SQL
+      for (const { casaTeam, existingClub } of matches) {
+        // Find the team's INSERT statement by name
+        const escapedName = casaTeam.name.replace(/'/g, "''");
+        const oldClubId = casaTeam.clubId;
+        const newClubId = existingClub.id;
+        
+        // Replace club_id in the INSERT statement for this team
+        const oldPattern = `SELECT '${escapedName}', '${casaTeam.externalId}', ${oldClubId},`;
+        const newPattern = `SELECT '${escapedName}', '${casaTeam.externalId}', ${newClubId},`;
+        originalTeamsSql = originalTeamsSql.replace(oldPattern, newPattern);
       }
-
-      const externalId = team.externalId || 'NULL';
-      const externalIdStr = externalId === 'NULL' ? 'NULL' : `'${externalId}'`;
-
-      sql.teams += `INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (${team.id}, '${this.escapeSql(team.name)}', ${externalIdStr}, ${finalClubId}, ${team.sourceSystemId}) ON CONFLICT (source_system_id, external_id) DO UPDATE SET club_id = EXCLUDED.club_id;\n`;
+      
+      // Extract INSERT statements (multi-line, so split by INSERT and rejoin)
+      const insertStatements = originalTeamsSql
+        .split(/(?=INSERT INTO teams)/g)  // Split before each INSERT
+        .filter(stmt => stmt.trim().startsWith('INSERT'))  // Keep only INSERT statements
+        .map(stmt => stmt.trim())  // Trim whitespace
+        .join('\n');  // Join with newlines
+      
+      sql.teams += insertStatements + '\n';
+    } else {
+      console.log('   ⚠️  Original teams SQL not found at', teamsPath);
     }
 
     return sql;

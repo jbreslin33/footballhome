@@ -49,20 +49,25 @@ class BaseSqlCurator {
   }
 
   /**
-   * Parse team INSERT statements from SQL
+   * Parse team INSERT statements from SQL (NEW SCHEMA FORMAT)
+   * Format: INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+   *         SELECT '...', '...', club_id, d.id, source_id FROM divisions d...
    */
   parseTeamsSql(sql) {
     const teams = [];
-    const regex = /INSERT INTO teams \(id, name, external_id, club_id, source_system_id\) VALUES \((\d+), '([^']+)', '([^']+)', (\d+), (\d+)\)/g;
+    
+    // New schema format: INSERT...SELECT with division_id lookup (multi-line)
+    // Use dotall flag (s) to match across newlines
+    const regex = /INSERT INTO teams \(name, external_id, club_id, division_id, source_system_id\)\s+SELECT '([^']+)', '([^']+)', (\d+), d\.id, (\d+)/gs;
     
     let match;
     while ((match = regex.exec(sql)) !== null) {
       teams.push({
-        id: parseInt(match[1]),
-        name: match[2],
-        externalId: match[3],
-        clubId: parseInt(match[4]),
-        sourceSystemId: parseInt(match[5])
+        id: null, // ID is auto-generated, not in SQL anymore
+        name: match[1],
+        externalId: match[2],
+        clubId: parseInt(match[3]),
+        sourceSystemId: parseInt(match[4])
       });
     }
     

@@ -1,7 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
--- Teams - CASA
--- Total Records: 22
--- NOTE: division_id is now part of team identity (NOT NULL)
+-- Teams - CASA (Curated)
+-- Teams with curated club_id references. Total: 21
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
@@ -13,7 +12,7 @@ WHERE d.name = 'Philadelphia Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Oaklyn United FC II', '9090889-oaklyn-united-fc-ii', 20001, d.id, 2
+SELECT 'Oaklyn United FC II', '9090889-oaklyn-united-fc-ii', 127, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Philadelphia Liga 1'
@@ -85,7 +84,7 @@ WHERE d.name = 'Philadelphia Liga 2'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Philadelphia SC II', '9096430-philadelphia-sc-ii', 20008, d.id, 2
+SELECT 'Philadelphia SC II', '9096430-philadelphia-sc-ii', 129, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Philadelphia Liga 2'
@@ -149,7 +148,7 @@ WHERE d.name = 'Lancaster Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Alloy Soccer Club Reserves', '9090893-alloy-soccer-club-reserves', 20016, d.id, 2
+SELECT 'Alloy Soccer Club Reserves', '9090893-alloy-soccer-club-reserves', 126, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
