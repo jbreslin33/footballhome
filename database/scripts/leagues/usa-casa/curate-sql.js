@@ -284,6 +284,20 @@ class CasaSqlCurator extends BaseSqlCurator {
         originalTeamsSql = originalTeamsSql.replace(oldPattern, newPattern);
       }
       
+      // For each new team, replace its club_id with newClubId
+      for (const team of newTeams) {
+        if (team.newClubId) {
+          const escapedName = team.name.replace(/'/g, "''");
+          const oldClubId = team.clubId;
+          const newClubId = team.newClubId;
+          
+          // Replace club_id in the INSERT statement for this team
+          const oldPattern = `SELECT '${escapedName}', '${team.externalId}', ${oldClubId},`;
+          const newPattern = `SELECT '${escapedName}', '${team.externalId}', ${newClubId},`;
+          originalTeamsSql = originalTeamsSql.replace(oldPattern, newPattern);
+        }
+      }
+      
       // Extract INSERT statements (multi-line, so split by INSERT and rejoin)
       const insertStatements = originalTeamsSql
         .split(/(?=INSERT INTO teams)/g)  // Split before each INSERT
