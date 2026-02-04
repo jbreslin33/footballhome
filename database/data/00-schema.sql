@@ -914,7 +914,7 @@ COMMENT ON TABLE team_coaches IS 'Coaches assigned to teams with temporal tracki
 -- Venues (shared across all matches)
 CREATE TABLE venues (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
     address TEXT,
     city VARCHAR(100),
     state VARCHAR(2),
