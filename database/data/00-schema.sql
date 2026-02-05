@@ -858,7 +858,7 @@ CREATE INDEX idx_rosters_player ON rosters(player_id);
 CREATE INDEX idx_rosters_current ON rosters(team_id, player_id) WHERE left_at IS NULL;
 CREATE INDEX idx_rosters_history ON rosters(player_id, joined_at, left_at);
 
-COMMENT ON TABLE rosters IS 'Team rosters with temporal tracking. Each row represents one period of a player\'s membership on a team.';
+COMMENT ON TABLE rosters IS 'Team rosters with temporal tracking. Each row represents one period of a player''s membership on a team.';
 
 -- Position assignments for roster entries (what position player plays for THIS team)
 CREATE TABLE roster_positions (
