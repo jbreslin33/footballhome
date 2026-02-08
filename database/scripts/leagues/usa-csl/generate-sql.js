@@ -13,11 +13,13 @@ const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
 const BaseGenerator = require('../BaseGenerator');
+const CslMatchParser = require('../../infrastructure/parsers/CslMatchParser');
 
 class CslSqlGenerator extends BaseGenerator {
   constructor() {
     // CSL ID ranges: orgs 10000+, clubs 10000+, teams 10000+
     super('CSL', 3, '00003', 10000, 10000, 10000);
+    this.matchParser = new CslMatchParser();
   }
 
   /**
@@ -59,6 +61,12 @@ class CslSqlGenerator extends BaseGenerator {
     this.parseTeamRosters();
     
     console.log(`   Found ${this.players.length} players`);
+    console.log(`   Found ${this.rosters.length} roster entries (player-team relationships)`);
+    
+    // Parse match schedules from team pages
+    this.parseMatchSchedules();
+    
+    console.log(`   Found ${this.matches.length} matches`);
     
     // Group teams by club (deduplicates clubs with multiple teams)
     const teamGroups = this.groupTeamsByClub(this.teams);
@@ -75,6 +83,8 @@ class CslSqlGenerator extends BaseGenerator {
     this.writeTeamsSql();
     this.writeStandingsSql();
     this.writePlayersSql();
+    this.writeRostersSql();
+    this.writeMatchesSql();
     
     console.log('✓ SQL generation complete\n');
   }
@@ -219,6 +229,58 @@ class CslSqlGenerator extends BaseGenerator {
   }
 
   /**
+   * Write matches SQL
+   */
+  writeMatchesSql() {
+    let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Matches - CSL
+-- Total Records: ${this.matches.length}
+-- Match type: 1=league, 3=practice, 4=scrimmage
+-- Match status: 1=scheduled, 3=completed
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+
+    // Write venues first
+    if (this.venues.size > 0) {
+      sql += `-- Venues\n`;
+      for (const [key, venue] of this.venues) {
+        sql += `INSERT INTO venues (name, address) 
+VALUES ('${this.escapeSql(venue.name)}', ${venue.address ? `'${this.escapeSql(venue.address)}'` : 'NULL'})
+ON CONFLICT (name) DO NOTHING;\n`;
+      }
+      sql += `\n`;
+    }
+
+    // Write matches
+    sql += `-- Matches\n`;
+    for (const match of this.matches) {
+      const matchType = match.matchType === 'league' ? 1 : (match.matchType === 'practice' ? 3 : 4);
+      const matchStatus = match.status === 'completed' ? 3 : 1;
+      
+      sql += `INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  ${matchType}, '${match.matchDate}', ${match.matchTime ? `'${match.matchTime}'` : 'NULL'}, ${matchStatus},
+  ht.id, at.id, ${match.venueId ? `v.id` : 'NULL'},
+  ${match.homeScore !== null ? match.homeScore : 'NULL'}, ${match.awayScore !== null ? match.awayScore : 'NULL'},
+  ${match.sourceSystemId}, ${match.externalId ? `'${match.externalId}'` : 'NULL'}
+FROM teams ht
+JOIN teams at ON at.external_id = '${match.awayTeamExternalId}' AND at.source_system_id = ${match.sourceSystemId}
+${match.venueId ? `LEFT JOIN venues v ON v.name = '${this.escapeSql(Array.from(this.venues.values()).find(v => v.id === match.venueId).name)}'` : ''}
+WHERE ht.external_id = '${match.homeTeamExternalId}' AND ht.source_system_id = ${match.sourceSystemId}
+ON CONFLICT (source_system_id, external_id) DO NOTHING;\n\n`;
+    }
+
+    const outputPath = path.join(__dirname, 'sql', `106.${this.leagueId}-matches-usa-csl.sql`);
+    fs.writeFileSync(outputPath, sql);
+    console.log(`   ✓ ${outputPath}`);
+  }
+
+  /**
    * Write organizations SQL
    */
   writeOrganizationsSql() {
@@ -307,6 +369,54 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
   }
 
   /**
+   * Parse match schedules from team detail pages
+   */
+  parseMatchSchedules() {
+    const htmlDir = path.join(__dirname, '../../../scraped-html/csl');
+    const files = fs.readdirSync(htmlDir);
+    
+    for (const file of files) {
+      // Skip non-HTML files and the standings file
+      if (!file.endsWith('.html') || file.startsWith('tables-') || file.endsWith('.skip')) continue;
+      
+      const filePath = path.join(htmlDir, file);
+      const html = fs.readFileSync(filePath, 'utf-8');
+      
+      // Extract team external ID from filename (e.g., 10041-228e8c91.html)
+      const match = file.match(/^(\d+)-[a-f0-9]+\.html$/);
+      if (!match) continue;
+      
+      const teamExternalId = match[1];
+      
+      // Parse matches for this team
+      const teamMatches = this.matchParser.parse(html, teamExternalId);
+      
+      // Process each match
+      for (const matchData of teamMatches) {
+        // Get or create venue
+        const venueId = matchData.venue && matchData.venue.name 
+          ? this.getOrCreateVenue(matchData.venue.name, matchData.venue.address) 
+          : null;
+        
+        // Add match
+        this.addMatch({
+          homeTeamExternalId: matchData.homeTeamId,
+          awayTeamExternalId: matchData.awayTeamId,
+          matchDate: matchData.matchDate,
+          matchTime: matchData.matchTime,
+          venueId: venueId,
+          homeScore: matchData.homeScore,
+          awayScore: matchData.awayScore,
+          matchType: matchData.matchType || 'league',
+          status: matchData.matchStatusId === 2 ? 'completed' : 'scheduled',
+          sourceSystemId: this.sourceSystemId,
+          externalId: matchData.externalId
+        });
+      }
+    }
+  }
+
+  /**
    * Parse player rosters from team detail pages
    */
   parseTeamRosters() {
@@ -318,8 +428,13 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     );
     
     const playersMap = new Map(); // Deduplicate by full name
+    let playerId = this.getPlayerIdBase();
     
     for (const file of files) {
+      // Extract team external_id from filename (e.g., "114828-7c60e4e3.html" -> "114828")
+      const teamExternalId = file.match(/^(\d+)-/)?.[1];
+      if (!teamExternalId) continue;
+      
       const htmlPath = path.join(htmlDir, file);
       const html = fs.readFileSync(htmlPath, 'utf-8');
       const dom = new JSDOM(html);
@@ -335,6 +450,9 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
           const cells = row.querySelectorAll('td');
           if (cells.length < 2) continue;
           
+          // Jersey number in cells[0] (optional)
+          const jerseyNumber = cells[0].textContent.trim() || null;
+          
           // Player name is in cells[1], inside a div
           const nameDiv = cells[1].querySelector('div');
           if (!nameDiv) continue;
@@ -342,16 +460,32 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
           const fullName = nameDiv.textContent.trim();
           if (!fullName || fullName === 'Name') continue; // Skip header
           
-          // Deduplicate: one player can appear on multiple team pages
-          const key = fullName.toLowerCase();
-          if (playersMap.has(key)) continue;
-          
           // Split into first/last name
           const nameParts = fullName.split(/\s+/);
           const firstName = nameParts[0] || fullName;
           const lastName = nameParts.slice(1).join(' ') || fullName;
           
-          playersMap.set(key, { firstName, lastName });
+          // Deduplicate: one player can appear on multiple team pages
+          const key = fullName.toLowerCase();
+          let currentPlayerId;
+          
+          if (!playersMap.has(key)) {
+            currentPlayerId = playerId++;
+            playersMap.set(key, { 
+              firstName, 
+              lastName,
+              playerId: currentPlayerId
+            });
+          } else {
+            currentPlayerId = playersMap.get(key).playerId;
+          }
+          
+          // Add roster entry (player-team relationship)
+          this.rosters.push({
+            playerId: currentPlayerId,
+            teamExternalId: teamExternalId,
+            jerseyNumber: jerseyNumber
+          });
         }
       }
     }

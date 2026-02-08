@@ -288,20 +288,36 @@ class ApslMatchEventScraper {
       return result.rows[0];
     }
     
-    // Second try: Find player in team's division roster (official league roster)
+    // Second try: Find player in team's roster
     result = await this.client.query(`
       SELECT DISTINCT p.id, p.person_id, per.first_name, per.last_name
       FROM players p
       JOIN persons per ON p.person_id = per.id
-      JOIN division_team_players dtp ON p.id = dtp.player_id
-      JOIN division_teams dt ON dtp.division_team_id = dt.id
-      WHERE dt.team_id = $1
+      JOIN rosters r ON p.id = r.player_id
+      WHERE r.team_id = $1
+        AND (r.left_at IS NULL OR r.left_at > NOW())
         AND (
           (per.last_name ILIKE $2 AND per.first_name ILIKE $3)
           OR (per.last_name ILIKE $2)
         )
       LIMIT 1
     `, [teamId, lastName, firstName]);
+    
+    if (result.rows[0]) {
+      return result.rows[0];
+    }
+    
+    // Third try: Fuzzy match any APSL player by last name + first name
+    // (useful when roster data is incomplete)
+    result = await this.client.query(`
+      SELECT DISTINCT p.id, p.person_id, per.first_name, per.last_name
+      FROM players p
+      JOIN persons per ON p.person_id = per.id
+      WHERE p.id BETWEEN 10000 AND 20000
+        AND per.last_name ILIKE $1
+        AND (per.first_name ILIKE $2 OR $2 = '')
+      LIMIT 1
+    `, [lastName, firstName]);
     
     return result.rows[0] || null;
   }

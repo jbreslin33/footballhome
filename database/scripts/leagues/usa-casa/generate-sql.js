@@ -78,6 +78,12 @@ class CasaSqlGenerator extends BaseGenerator {
     await this.parseTeamRosters();
     this.writePlayersSql();
     
+    // Parse matches from JSON
+    console.log('\n⚽ Parsing matches from JSON...');
+    await this.parseMatches();
+    console.log(`   Found ${this.matches.length} matches`);
+    this.writeMatchesSql();
+    
     console.log('\n✓ SQL generation complete\n');
   }
 
@@ -102,8 +108,8 @@ class CasaSqlGenerator extends BaseGenerator {
   parseTeams(data) {
     for (const division of data.divisions) {
       for (const teamObj of division.teams) {
-        // Skip header/placeholder rows
-        if (teamObj.teamName === 'Teams' || teamObj.played === 0) continue;
+        // Skip header/placeholder rows (only skip if name is "Teams")
+        if (teamObj.teamName === 'Teams') continue;
         
         this.addTeam(teamObj.teamName, division.external_id, division.name);
       }
@@ -328,6 +334,132 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     console.log(`   ⚠️  Found ${files.length} roster files but parsing not yet implemented`);
     console.log('   ℹ️  CASA roster scraping needs to be fixed first');
     console.log('   ℹ️  Will generate empty players SQL file');
+  }
+
+  /**
+   * Parse matches from division-matches.json
+   */
+  async parseMatches() {
+    const jsonPath = path.join(__dirname, '../../../scraped-html/casa/division-matches.json');
+    
+    if (!fs.existsSync(jsonPath)) {
+      console.log('   ⚠️  division-matches.json not found');
+      return;
+    }
+    
+    const content = fs.readFileSync(jsonPath, 'utf-8');
+    const data = JSON.parse(content);
+    
+    // Team name aliases (inconsistent naming in scraped data)
+    const aliases = {
+      'illyrians': 'illyrians fc',
+      'phoenix reserves': 'phoenix scr'
+    };
+    
+    // Create a map of team name -> external_id for matching
+    const teamMap = new Map();
+    for (const team of this.teams) {
+      const key = team.name.toLowerCase().trim();
+      teamMap.set(key, team.externalId);
+      
+      // Also add without common suffixes for fuzzy matching
+      const baseKey = key.replace(/ (fc|sc|ii|reserves)$/i, '').trim();
+      if (baseKey !== key) {
+        teamMap.set(baseKey, team.externalId);
+      }
+    }
+    
+    // Parse each division's matches
+    for (const division of data.divisions) {
+      for (const match of division.matches) {
+        let homeTeamKey = match.home.toLowerCase().trim();
+        let awayTeamKey = match.away.toLowerCase().trim();
+        
+        // Apply aliases
+        homeTeamKey = aliases[homeTeamKey] || homeTeamKey;
+        awayTeamKey = aliases[awayTeamKey] || awayTeamKey;
+        
+        const homeExternalId = teamMap.get(homeTeamKey);
+        const awayExternalId = teamMap.get(awayTeamKey);
+        
+        if (!homeExternalId || !awayExternalId) {
+          console.log(`   ⚠️  Skipping match - team not found: ${match.home} vs ${match.away}`);
+          continue;
+        }
+        
+        // Parse score if final
+        let homeScore = null;
+        let awayScore = null;
+        let status = 'scheduled';
+        
+        if (match.status === 'Final' && match.score) {
+          const scoreMatch = match.score.match(/(\d+)\s*-\s*(\d+)/);
+          if (scoreMatch) {
+            homeScore = parseInt(scoreMatch[1]);
+            awayScore = parseInt(scoreMatch[2]);
+            status = 'completed';
+          }
+        }
+        
+        // Generate unique external ID for this match
+        const externalId = `${division.external_id}_${homeExternalId}_${awayExternalId}`;
+        
+        // Add match (will be deduplicated by BaseGenerator)
+        this.addMatch({
+          homeTeamExternalId: homeExternalId,
+          awayTeamExternalId: awayExternalId,
+          matchDate: '2026-01-01', // CASA doesn't have dates in JSON - use placeholder
+          matchTime: null,
+          venueId: null,
+          homeScore: homeScore,
+          awayScore: awayScore,
+          matchType: 'league',
+          status: status,
+          sourceSystemId: this.sourceSystemId,
+          externalId: externalId
+        });
+      }
+    }
+  }
+
+  /**
+   * Write matches SQL
+   */
+  writeMatchesSql() {
+    let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Matches - CASA
+-- Total Records: ${this.matches.length}
+-- Match type: 1=league
+-- Match status: 1=scheduled, 3=completed
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+
+    // Write matches
+    sql += `-- Matches\n`;
+    for (const match of this.matches) {
+      const matchType = 1; // league
+      const matchStatus = match.status === 'completed' ? 3 : 1;
+      
+      sql += `INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  ${matchType}, '${match.matchDate}', ${match.matchTime ? `'${match.matchTime}'` : 'NULL'}, ${matchStatus},
+  ht.id, at.id, NULL,
+  ${match.homeScore !== null ? match.homeScore : 'NULL'}, ${match.awayScore !== null ? match.awayScore : 'NULL'},
+  ${match.sourceSystemId}, '${this.escapeSql(match.externalId)}'
+FROM teams ht
+JOIN teams at ON at.external_id = '${this.escapeSql(match.awayTeamExternalId)}' AND at.source_system_id = ${match.sourceSystemId}
+WHERE ht.external_id = '${this.escapeSql(match.homeTeamExternalId)}' AND ht.source_system_id = ${match.sourceSystemId}
+ON CONFLICT (source_system_id, external_id) DO NOTHING;\n\n`;
+    }
+
+    const outputPath = path.join(__dirname, 'sql', `106.${this.leagueId}-matches-usa-casa.sql`);
+    fs.writeFileSync(outputPath, sql);
+    console.log(`   ✓ ${outputPath}`);
   }
 }
 

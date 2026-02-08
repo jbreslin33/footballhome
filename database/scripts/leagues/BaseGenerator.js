@@ -19,7 +19,9 @@ class BaseGenerator {
     this.divisionTeams = [];
     this.divisions = new Map();
     this.players = [];
+    this.rosters = [];  // NEW: Store player-team relationships
     this.matches = [];  // NEW: Store parsed matches
+    this.matchSet = new Set();  // NEW: Deduplicate matches
     this.venues = new Map();  // NEW: Store unique venues
   }
 
@@ -357,6 +359,44 @@ ON CONFLICT (id) DO NOTHING;\n\n`;
   }
 
   /**
+   * Write rosters SQL (player-team relationships)
+   */
+  writeRostersSql() {
+    const fs = require('fs');
+    const path = require('path');
+    
+    if (this.rosters.length === 0) {
+      console.log(`   ⚠ No rosters found - skipping 107-rosters SQL`);
+      return;
+    }
+
+    let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Rosters - ${this.leagueName}
+-- Player-team relationships from team roster pages
+-- Total Records: ${this.rosters.length}
+-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+
+    for (const roster of this.rosters) {
+      const { playerId, teamExternalId, jerseyNumber } = roster;
+      const jerseyNumSql = jerseyNumber ? `'${jerseyNumber}'` : 'NULL';
+      
+      sql += `INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+VALUES (
+  (SELECT id FROM teams WHERE external_id = '${this.escapeSql(teamExternalId)}' AND source_system_id = ${this.sourceSystemId}),
+  ${playerId},
+  ${jerseyNumSql},
+  NOW()
+);\n\n`;
+    }
+
+    const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `107.${this.leagueId}-rosters-${this.getLeagueFolder()}.sql`);
+    fs.writeFileSync(outputPath, sql);
+    console.log(`   ✓ ${outputPath}`);
+  }
+
+  /**
    * Get league folder name (must be implemented by subclass)
    */
   getLeagueFolder() {
@@ -381,9 +421,19 @@ ON CONFLICT (id) DO NOTHING;\n\n`;
 
   /**
    * Add a match to the matches collection
+   * Deduplicates by match key (date + teams)
    * @param {Object} matchData - Match data from parser
    */
   addMatch(matchData) {
+    // Create unique key: date-homeTeam-awayTeam
+    const key = `${matchData.matchDate}-${matchData.homeTeamExternalId}-${matchData.awayTeamExternalId}`;
+    
+    // Skip if already added (matches appear on both home and away team pages)
+    if (this.matchSet.has(key)) {
+      return;
+    }
+    
+    this.matchSet.add(key);
     this.matches.push(matchData);
   }
 

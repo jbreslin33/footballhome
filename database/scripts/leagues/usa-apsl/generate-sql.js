@@ -71,6 +71,7 @@ class ApslSqlGenerator extends BaseGenerator {
     this.parseTeamRosters();
     
     console.log(`   Parsed ${this.players.length} players from team rosters`);
+    console.log(`   Parsed ${this.rosters.length} roster entries (player-team relationships)`);
     
     // Parse match schedules from team detail pages (NEW)
     this.parseMatchSchedules();
@@ -93,6 +94,7 @@ class ApslSqlGenerator extends BaseGenerator {
     this.writeTeamsSql();
     this.writeStandingsSql();
     this.writePlayersSql();
+    this.writeRostersSql();  // NEW: Write roster relationships
     this.writeMatchesSql();  // NEW
     
     console.log('✓ SQL generation complete\n');
@@ -201,6 +203,7 @@ class ApslSqlGenerator extends BaseGenerator {
     
     // Track unique players by name to avoid duplicates
     const uniquePlayers = new Map();
+    let playerId = this.getPlayerIdBase();
     
     for (const file of files) {
       // Skip non-HTML files and the standings file
@@ -211,6 +214,10 @@ class ApslSqlGenerator extends BaseGenerator {
       const dom = new JSDOM(html);
       const document = dom.window.document;
       
+      // Extract team external_id from filename (e.g., "114812-bc27d2da.html" -> "114812")
+      const teamExternalId = file.match(/^(\d+)-/)?.[1];
+      if (!teamExternalId) continue;
+      
       // Find roster table
       const rosterTable = document.querySelector('table.TableRoster');
       if (!rosterTable) continue;
@@ -220,6 +227,9 @@ class ApslSqlGenerator extends BaseGenerator {
       for (const row of rows) {
         const cells = row.querySelectorAll('td');
         if (cells.length < 2) continue;
+        
+        // Jersey number is in first cell (optional)
+        const jerseyNumber = cells[0].textContent.trim() || null;
         
         // Player name is in second cell
         const nameDiv = cells[1].querySelector('div');
@@ -235,17 +245,30 @@ class ApslSqlGenerator extends BaseGenerator {
         
         // Use full name as key to avoid duplicates
         const key = fullName.toLowerCase();
+        let currentPlayerId;
+        
         if (!uniquePlayers.has(key)) {
+          currentPlayerId = playerId++;
           uniquePlayers.set(key, {
             firstName: firstName,
             lastName: lastName,
-            fullName: fullName
+            fullName: fullName,
+            playerId: currentPlayerId
           });
+        } else {
+          currentPlayerId = uniquePlayers.get(key).playerId;
         }
+        
+        // Add roster entry (player-team relationship)
+        this.rosters.push({
+          playerId: currentPlayerId,
+          teamExternalId: teamExternalId,
+          jerseyNumber: jerseyNumber
+        });
       }
     }
     
-    // Convert to array
+    // Convert to array (just the player info, not roster data)
     this.players = Array.from(uniquePlayers.values());
   }
 

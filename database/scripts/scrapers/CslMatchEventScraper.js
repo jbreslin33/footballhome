@@ -3,7 +3,6 @@ const HtmlFetcher = require('../infrastructure/fetchers/HtmlFetcher');
 const CslMatchEventParser = require('../infrastructure/parsers/CslMatchEventParser');
 const MatchRepository = require('../domain/repositories/MatchRepository');
 const MatchEventRepository = require('../domain/repositories/MatchEventRepository');
-const DivisionTeamPlayerRepository = require('../domain/repositories/DivisionTeamPlayerRepository');
 
 /**
  * Cosmopolitan Soccer League Match Event Scraper
@@ -21,7 +20,6 @@ class CslMatchEventScraper {
     this.parser = new CslMatchEventParser();
     this.matchRepo = new MatchRepository(client);
     this.matchEventRepo = new MatchEventRepository(client);
-    this.divisionTeamPlayerRepo = new DivisionTeamPlayerRepository(client);
     
     // Event type cache
     this.eventTypeCache = {};
@@ -138,7 +136,7 @@ class CslMatchEventScraper {
       FROM matches m
       JOIN teams ht ON m.home_team_id = ht.id
       JOIN teams at ON m.away_team_id = at.id
-      WHERE m.source_system_id = 8  -- CSL source system
+      WHERE m.source_system_id = 3  -- CSL source system
         AND m.home_score IS NOT NULL
         AND m.away_score IS NOT NULL
       ORDER BY m.match_date
@@ -236,38 +234,58 @@ class CslMatchEventScraper {
   }
   
   /**
-   * Find player by name in team roster
+   * Find player by name in team roster (with fuzzy fallback)
    */
   async findPlayerByName(playerName, teamId) {
-    // Try exact match first
-    const result = await this.client.query(`
-      SELECT DISTINCT p.id, p.first_name, p.last_name
-      FROM persons p
-      JOIN players pl ON p.id = pl.person_id
-      JOIN division_team_players dtp ON pl.id = dtp.player_id
-      JOIN division_teams dt ON dtp.division_team_id = dt.id
-      WHERE dt.team_id = $1
-        AND CONCAT(p.last_name, ', ', p.first_name) = $2
-    `, [teamId, playerName]);
+    // Parse name (format: "Last, First" or "First Last")
+    let firstName = '';
+    let lastName = '';
     
-    if (result.rows.length > 0) {
+    if (playerName.includes(',')) {
+      const parts = playerName.split(',');
+      lastName = parts[0].trim();
+      firstName = parts[1] ? parts[1].trim() : '';
+    } else {
+      const spaceParts = playerName.split(' ');
+      if (spaceParts.length >= 2) {
+        firstName = spaceParts[0];
+        lastName = spaceParts.slice(1).join(' ');
+      } else {
+        lastName = playerName;
+      }
+    }
+    
+    // First try: Find player in team's roster
+    let result = await this.client.query(`
+      SELECT DISTINCT p.id, per.first_name, per.last_name
+      FROM players p
+      JOIN persons per ON p.person_id = per.id
+      JOIN rosters r ON p.id = r.player_id
+      WHERE r.team_id = $1
+        AND (r.left_at IS NULL OR r.left_at > NOW())
+        AND (
+          (per.last_name ILIKE $2 AND per.first_name ILIKE $3)
+          OR (per.last_name ILIKE $2)
+        )
+      LIMIT 1
+    `, [teamId, lastName, firstName]);
+    
+    if (result.rows[0]) {
       return result.rows[0];
     }
     
-    // Try fuzzy match (last name match)
-    const lastName = playerName.split(',')[0].trim();
-    const fuzzyResult = await this.client.query(`
-      SELECT DISTINCT p.id, p.first_name, p.last_name
-      FROM persons p
-      JOIN players pl ON p.id = pl.person_id
-      JOIN division_team_players dtp ON pl.id = dtp.player_id
-      JOIN division_teams dt ON dtp.division_team_id = dt.id
-      WHERE dt.team_id = $1
-        AND p.last_name = $2
+    // Second try: Fuzzy match any CSL player by last name (player ID range 20000-30000)
+    result = await this.client.query(`
+      SELECT DISTINCT p.id, per.first_name, per.last_name
+      FROM players p
+      JOIN persons per ON p.person_id = per.id
+      WHERE p.id BETWEEN 20000 AND 30000
+        AND per.last_name ILIKE $1
+        AND (per.first_name ILIKE $2 OR $2 = '')
       LIMIT 1
-    `, [teamId, lastName]);
+    `, [lastName, firstName]);
     
-    return fuzzyResult.rows[0] || null;
+    return result.rows[0] || null;
   }
 }
 
