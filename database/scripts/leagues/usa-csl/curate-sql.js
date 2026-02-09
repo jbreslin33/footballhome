@@ -174,7 +174,17 @@ class CslSqlCurator extends BaseSqlCurator {
     for (const team of cslTeams) {
       // Use APSL club_id if matched, otherwise keep CSL club_id (for new clubs)
       const finalClubId = clubIdMap.get(team.clubId) || team.clubId;
-      sql.teams += `INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (${team.id}, '${this.escapeSql(team.name)}', '${team.externalId}', ${finalClubId}, ${team.sourceSystemId}) ON CONFLICT (source_system_id, external_id) DO NOTHING;\n`;
+      
+      // Must use SELECT to look up division_id (can't hardcode - teams move between divisions each season)
+      // Division lookup is done at INSERT time by querying the divisions table
+      sql.teams += `INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT '${this.escapeSql(team.name)}', '${team.externalId}', ${finalClubId}, d.id, ${team.sourceSystemId}
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name LIKE '%CSL%'
+  AND s.name = '2024-25'
+  AND s.league_id = 3
+ON CONFLICT (division_id, name) DO NOTHING;\n`;
     }
     
     return sql;
@@ -192,8 +202,10 @@ class CslSqlCurator extends BaseSqlCurator {
     fs.writeFileSync(path.join(outputDir, '101.00003-clubs-usa-csl.sql'), sql.clubs);
     console.log(`      ✓ 101.00003-clubs-usa-csl.sql`);
     
-    fs.writeFileSync(path.join(outputDir, '102.00003-teams-usa-csl.sql'), sql.teams);
-    console.log(`      ✓ 102.00003-teams-usa-csl.sql`);
+    // NOTE: Don't curate teams - keep uncurated version with division lookups
+    // fs.writeFileSync(path.join(outputDir, '102.00003-teams-usa-csl.sql'), sql.teams);
+    // console.log(`      ✓ 102.00003-teams-usa-csl.sql`);
+    console.log(`      ℹ 102.00003-teams-usa-csl.sql (using uncurated version - has division lookups)`);
   }
 }
 

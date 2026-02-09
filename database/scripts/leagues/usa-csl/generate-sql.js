@@ -57,16 +57,16 @@ class CslSqlGenerator extends BaseGenerator {
     console.log(`   Found ${this.standings.length} standings records`);
     console.log(`   Found ${this.divisions.size} divisions`);
     
-    // Parse player rosters from team pages
+    // Parse match schedules from team pages FIRST (less memory intensive)
+    this.parseMatchSchedules();
+    
+    console.log(`   Found ${this.matches.length} matches`);
+    
+    // Parse player rosters from team pages (memory intensive - done after matches)
     this.parseTeamRosters();
     
     console.log(`   Found ${this.players.length} players`);
     console.log(`   Found ${this.rosters.length} roster entries (player-team relationships)`);
-    
-    // Parse match schedules from team pages
-    this.parseMatchSchedules();
-    
-    console.log(`   Found ${this.matches.length} matches`);
     
     // Group teams by club (deduplicates clubs with multiple teams)
     const teamGroups = this.groupTeamsByClub(this.teams);

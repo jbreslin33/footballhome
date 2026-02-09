@@ -11,7 +11,8 @@ cd "$(dirname "$0")/../../../.."
 echo "📄 Parsing CSL HTML and generating SQL..."
 
 # Parse HTML → Generate SQL (no database needed)
-node database/scripts/leagues/usa-csl/generate-sql.js
+# Note: CSL parsing requires extra memory due to large number of files (677 teams)
+NODE_OPTIONS="--max-old-space-size=16384" node database/scripts/leagues/usa-csl/generate-sql.js
 
 # Curate SQL (merge with APSL)
 echo ""
