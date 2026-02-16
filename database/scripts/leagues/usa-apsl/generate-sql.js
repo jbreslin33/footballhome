@@ -204,7 +204,7 @@ class ApslSqlGenerator extends BaseGenerator {
     // Track unique players by name to avoid duplicates
     const uniquePlayers = new Map();
     let playerId = this.getPlayerIdBase();
-    const skippedTeams = [];
+    const createdTeams = [];
     
     for (const file of files) {
       // Skip non-HTML files and the standings file
@@ -220,10 +220,18 @@ class ApslSqlGenerator extends BaseGenerator {
       if (!teamExternalId) continue;
       
       // Find team by external_id to get team name
-      const team = this.teams.find(t => t.externalId === teamExternalId);
+      let team = this.teams.find(t => t.externalId === teamExternalId);
       if (!team) {
-        skippedTeams.push(teamExternalId);
-        continue;
+        // Create placeholder team for roster-only teams (not in current standings)
+        const teamName = `Team ${teamExternalId}`;
+        team = {
+          name: teamName,
+          externalId: teamExternalId,
+          divisionName: 'Unknown',
+          clubName: teamName
+        };
+        this.teams.push(team);
+        createdTeams.push(teamExternalId);
       }
       
       // Find roster table
@@ -279,8 +287,8 @@ class ApslSqlGenerator extends BaseGenerator {
     // Convert to array (just the player info, not roster data)
     this.players = Array.from(uniquePlayers.values());
     
-    if (skippedTeams.length > 0) {
-      console.log(`   ℹ️  Skipped ${skippedTeams.length} roster files (teams not in current standings)`);
+    if (createdTeams.length > 0) {
+      console.log(`   ℹ️  Created ${createdTeams.length} placeholder teams from roster files (not in current standings)`);
     }
   }
 

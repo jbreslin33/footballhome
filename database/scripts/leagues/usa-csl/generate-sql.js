@@ -429,7 +429,7 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     
     const playersMap = new Map(); // Deduplicate by full name
     let playerId = this.getPlayerIdBase();
-    const skippedTeams = [];
+    const createdTeams = [];
     
     for (const file of files) {
       // Extract team external_id from filename (e.g., "114828-7c60e4e3.html" -> "114828")
@@ -437,10 +437,18 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
       if (!teamExternalId) continue;
       
       // Find team by external_id to get team name
-      const team = this.teams.find(t => t.externalId === teamExternalId);
+      let team = this.teams.find(t => t.externalId === teamExternalId);
       if (!team) {
-        skippedTeams.push(teamExternalId);
-        continue;
+        // Create placeholder team for roster-only teams (not in current standings)
+        const teamName = `Team ${teamExternalId}`;
+        team = {
+          name: teamName,
+          externalId: teamExternalId,
+          divisionName: 'Unknown',
+          clubName: teamName
+        };
+        this.teams.push(team);
+        createdTeams.push(teamExternalId);
       }
       
       const htmlPath = path.join(htmlDir, file);
@@ -501,8 +509,8 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     // Convert to array
     this.players = Array.from(playersMap.values());
     
-    if (skippedTeams.length > 0) {
-      console.log(`   ℹ️  Skipped ${skippedTeams.length} roster files (teams not in current standings)`);
+    if (createdTeams.length > 0) {
+      console.log(`   ℹ️  Created ${createdTeams.length} placeholder teams from roster files (not in current standings)`);
     }
   }
 
