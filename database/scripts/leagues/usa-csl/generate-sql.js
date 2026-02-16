@@ -429,11 +429,19 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     
     const playersMap = new Map(); // Deduplicate by full name
     let playerId = this.getPlayerIdBase();
+    const skippedTeams = [];
     
     for (const file of files) {
       // Extract team external_id from filename (e.g., "114828-7c60e4e3.html" -> "114828")
       const teamExternalId = file.match(/^(\d+)-/)?.[1];
       if (!teamExternalId) continue;
+      
+      // Find team by external_id to get team name
+      const team = this.teams.find(t => t.externalId === teamExternalId);
+      if (!team) {
+        skippedTeams.push(teamExternalId);
+        continue;
+      }
       
       const htmlPath = path.join(htmlDir, file);
       const html = fs.readFileSync(htmlPath, 'utf-8');
@@ -480,10 +488,10 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
             currentPlayerId = playersMap.get(key).playerId;
           }
           
-          // Add roster entry (player-team relationship)
+          // Add roster entry (player-team relationship) using team NAME not external_id
           this.rosters.push({
             playerId: currentPlayerId,
-            teamExternalId: teamExternalId,
+            teamName: team.name,
             jerseyNumber: jerseyNumber
           });
         }
@@ -492,6 +500,10 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     
     // Convert to array
     this.players = Array.from(playersMap.values());
+    
+    if (skippedTeams.length > 0) {
+      console.log(`   ℹ️  Skipped ${skippedTeams.length} roster files (teams not in current standings)`);
+    }
   }
 
   /**

@@ -204,6 +204,7 @@ class ApslSqlGenerator extends BaseGenerator {
     // Track unique players by name to avoid duplicates
     const uniquePlayers = new Map();
     let playerId = this.getPlayerIdBase();
+    const skippedTeams = [];
     
     for (const file of files) {
       // Skip non-HTML files and the standings file
@@ -217,6 +218,13 @@ class ApslSqlGenerator extends BaseGenerator {
       // Extract team external_id from filename (e.g., "114812-bc27d2da.html" -> "114812")
       const teamExternalId = file.match(/^(\d+)-/)?.[1];
       if (!teamExternalId) continue;
+      
+      // Find team by external_id to get team name
+      const team = this.teams.find(t => t.externalId === teamExternalId);
+      if (!team) {
+        skippedTeams.push(teamExternalId);
+        continue;
+      }
       
       // Find roster table
       const rosterTable = document.querySelector('table.TableRoster');
@@ -259,10 +267,10 @@ class ApslSqlGenerator extends BaseGenerator {
           currentPlayerId = uniquePlayers.get(key).playerId;
         }
         
-        // Add roster entry (player-team relationship)
+        // Add roster entry (player-team relationship) using team NAME not external_id
         this.rosters.push({
           playerId: currentPlayerId,
-          teamExternalId: teamExternalId,
+          teamName: team.name,
           jerseyNumber: jerseyNumber
         });
       }
@@ -270,6 +278,10 @@ class ApslSqlGenerator extends BaseGenerator {
     
     // Convert to array (just the player info, not roster data)
     this.players = Array.from(uniquePlayers.values());
+    
+    if (skippedTeams.length > 0) {
+      console.log(`   ℹ️  Skipped ${skippedTeams.length} roster files (teams not in current standings)`);
+    }
   }
 
   /**

@@ -31,10 +31,8 @@ cd "$(dirname "$0")/../../../.."
 
 echo "📥 Loading APSL SQL to database..."
 
-# NOTE: Skipping 107.* (rosters) temporarily - some teams from HTML files not in standings table
-# This causes roster INSERT failures with NULL team_id for teams that exist in HTML but not in standings
-# Load SQL files in order
-for file in "$SQL_DIR"/100.* "$SQL_DIR"/101.* "$SQL_DIR"/102.* "$SQL_DIR"/103.* "$SQL_DIR"/104.* "$SQL_DIR"/105.* "$SQL_DIR"/106.* "$SQL_DIR"/900.*; do
+# Load SQL files in order (including 107 rosters now that we use team name lookups)
+for file in "$SQL_DIR"/100.* "$SQL_DIR"/101.* "$SQL_DIR"/102.* "$SQL_DIR"/103.* "$SQL_DIR"/104.* "$SQL_DIR"/105.* "$SQL_DIR"/106.* "$SQL_DIR"/107.* "$SQL_DIR"/900.*; do
     if [ -f "$file" ]; then
         echo "  Loading: $(basename "$file")"
         podman exec -i footballhome_db psql -U footballhome_user -d footballhome < "$file"

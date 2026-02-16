@@ -379,12 +379,13 @@ ON CONFLICT (id) DO NOTHING;\n\n`;
 `;
 
     for (const roster of this.rosters) {
-      const { playerId, teamExternalId, jerseyNumber } = roster;
+      const { playerId, teamName, jerseyNumber } = roster;
       const jerseyNumSql = jerseyNumber ? `'${jerseyNumber}'` : 'NULL';
       
+      // Look up team by name instead of external_id (more reliable for rosters)
       sql += `INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
 VALUES (
-  (SELECT id FROM teams WHERE external_id = '${this.escapeSql(teamExternalId)}' AND source_system_id = ${this.sourceSystemId}),
+  (SELECT id FROM teams WHERE name = '${this.escapeSql(teamName)}' AND source_system_id = ${this.sourceSystemId} LIMIT 1),
   ${playerId},
   ${jerseyNumSql},
   NOW()
