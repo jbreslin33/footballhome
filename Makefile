@@ -20,7 +20,7 @@ help:
 	@echo ""
 	@echo "Database workflows:"
 	@echo "  make bootstrap   - Rebuild DB with bootstrap data only (no leagues)"
-	@echo "  make load        - Load all league SQL to running database"
+	@echo "  make load        - Load all league SQL + scrape events"
 	@echo "  make events      - Scrape match events for all leagues"
 	@echo "  make parse       - Parse/curate all leagues (regenerate SQL files)"
 	@echo "  make refresh     - Full workflow: parse all + rebuild DB + load all"
@@ -104,9 +104,9 @@ bootstrap: clean
 	@echo "  Run: make load    (to load all leagues)"
 
 # Load all leagues (calls individual targets)
-load: load-apsl load-csl load-casa
+load: load-apsl load-csl load-casa events
 	@echo ""
-	@echo "✓ All leagues loaded"
+	@echo "✓ All leagues loaded and events scraped"
 
 # Individual league load targets
 load-apsl:
@@ -152,8 +152,8 @@ events-csl:
 	@echo "⚽ Scraping CSL match events..."
 	@cd database/scripts/scrapers && node CslMatchEventScraper.js || echo "   ℹ️  CSL event scraper not yet ready"
 
-# Full refresh: parse all, then bootstrap DB, then load all, then events
-refresh: parse bootstrap load events
+# Full refresh: parse all, then bootstrap DB, then load all (which includes events)
+refresh: parse bootstrap load
 	@echo "✓ Full refresh complete (parsed all leagues, fresh DB, loaded all data, scraped events)"
 
 # ============================================================
