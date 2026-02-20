@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Teams - CSL
--- Total Records: 1341
+-- Total Records: 1342
 -- NOTE: division_id is now part of team identity (NOT NULL)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -7597,7 +7597,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 40688', '40688', 10904, d.id, undefined
+SELECT 'Team 40463', '40463', 10904, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7605,7 +7605,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41546', '41546', 10905, d.id, undefined
+SELECT 'Team 40688', '40688', 10905, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7613,7 +7613,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41547', '41547', 10906, d.id, undefined
+SELECT 'Team 41546', '41546', 10906, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7621,7 +7621,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41550', '41550', 10907, d.id, undefined
+SELECT 'Team 41547', '41547', 10907, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7629,7 +7629,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41551', '41551', 10908, d.id, undefined
+SELECT 'Team 41550', '41550', 10908, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7637,7 +7637,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41554', '41554', 10909, d.id, undefined
+SELECT 'Team 41551', '41551', 10909, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7645,7 +7645,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41557', '41557', 10910, d.id, undefined
+SELECT 'Team 41554', '41554', 10910, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7653,7 +7653,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41558', '41558', 10911, d.id, undefined
+SELECT 'Team 41557', '41557', 10911, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7661,7 +7661,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41561', '41561', 10912, d.id, undefined
+SELECT 'Team 41558', '41558', 10912, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7669,7 +7669,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41562', '41562', 10913, d.id, undefined
+SELECT 'Team 41561', '41561', 10913, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7677,7 +7677,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41564', '41564', 10914, d.id, undefined
+SELECT 'Team 41562', '41562', 10914, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7685,7 +7685,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41566', '41566', 10915, d.id, undefined
+SELECT 'Team 41564', '41564', 10915, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7693,7 +7693,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41568', '41568', 10916, d.id, undefined
+SELECT 'Team 41566', '41566', 10916, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7701,7 +7701,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41569', '41569', 10917, d.id, undefined
+SELECT 'Team 41568', '41568', 10917, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7709,7 +7709,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41571', '41571', 10918, d.id, undefined
+SELECT 'Team 41569', '41569', 10918, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7717,7 +7717,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41572', '41572', 10919, d.id, undefined
+SELECT 'Team 41571', '41571', 10919, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7725,7 +7725,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41576', '41576', 10920, d.id, undefined
+SELECT 'Team 41572', '41572', 10920, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7733,7 +7733,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41577', '41577', 10921, d.id, undefined
+SELECT 'Team 41576', '41576', 10921, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7741,7 +7741,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41578', '41578', 10922, d.id, undefined
+SELECT 'Team 41577', '41577', 10922, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7749,7 +7749,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41580', '41580', 10923, d.id, undefined
+SELECT 'Team 41578', '41578', 10923, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7757,7 +7757,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41583', '41583', 10924, d.id, undefined
+SELECT 'Team 41580', '41580', 10924, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7765,7 +7765,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41584', '41584', 10925, d.id, undefined
+SELECT 'Team 41583', '41583', 10925, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7773,7 +7773,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41589', '41589', 10926, d.id, undefined
+SELECT 'Team 41584', '41584', 10926, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7781,7 +7781,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41591', '41591', 10927, d.id, undefined
+SELECT 'Team 41589', '41589', 10927, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7789,7 +7789,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41593', '41593', 10928, d.id, undefined
+SELECT 'Team 41591', '41591', 10928, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7797,7 +7797,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41594', '41594', 10929, d.id, undefined
+SELECT 'Team 41593', '41593', 10929, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7805,7 +7805,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41597', '41597', 10930, d.id, undefined
+SELECT 'Team 41594', '41594', 10930, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7813,7 +7813,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41598', '41598', 10931, d.id, undefined
+SELECT 'Team 41597', '41597', 10931, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7821,7 +7821,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41601', '41601', 10932, d.id, undefined
+SELECT 'Team 41598', '41598', 10932, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7829,7 +7829,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41604', '41604', 10933, d.id, undefined
+SELECT 'Team 41601', '41601', 10933, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7837,7 +7837,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41605', '41605', 10934, d.id, undefined
+SELECT 'Team 41604', '41604', 10934, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7845,7 +7845,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41608', '41608', 10935, d.id, undefined
+SELECT 'Team 41605', '41605', 10935, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7853,7 +7853,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41609', '41609', 10936, d.id, undefined
+SELECT 'Team 41608', '41608', 10936, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7861,7 +7861,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41611', '41611', 10937, d.id, undefined
+SELECT 'Team 41609', '41609', 10937, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7869,7 +7869,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41613', '41613', 10938, d.id, undefined
+SELECT 'Team 41611', '41611', 10938, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7877,7 +7877,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41615', '41615', 10939, d.id, undefined
+SELECT 'Team 41613', '41613', 10939, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7885,7 +7885,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41616', '41616', 10940, d.id, undefined
+SELECT 'Team 41615', '41615', 10940, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7893,7 +7893,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41618', '41618', 10941, d.id, undefined
+SELECT 'Team 41616', '41616', 10941, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7901,7 +7901,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41619', '41619', 10942, d.id, undefined
+SELECT 'Team 41618', '41618', 10942, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7909,7 +7909,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41623', '41623', 10943, d.id, undefined
+SELECT 'Team 41619', '41619', 10943, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7917,7 +7917,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41624', '41624', 10944, d.id, undefined
+SELECT 'Team 41623', '41623', 10944, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7925,7 +7925,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41625', '41625', 10945, d.id, undefined
+SELECT 'Team 41624', '41624', 10945, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7933,7 +7933,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41627', '41627', 10946, d.id, undefined
+SELECT 'Team 41625', '41625', 10946, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7941,7 +7941,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41630', '41630', 10947, d.id, undefined
+SELECT 'Team 41627', '41627', 10947, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7949,7 +7949,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41631', '41631', 10948, d.id, undefined
+SELECT 'Team 41630', '41630', 10948, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7957,7 +7957,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41634', '41634', 10949, d.id, undefined
+SELECT 'Team 41631', '41631', 10949, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7965,7 +7965,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41636', '41636', 10950, d.id, undefined
+SELECT 'Team 41634', '41634', 10950, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7973,7 +7973,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41637', '41637', 10951, d.id, undefined
+SELECT 'Team 41636', '41636', 10951, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7981,7 +7981,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41638', '41638', 10952, d.id, undefined
+SELECT 'Team 41637', '41637', 10952, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7989,7 +7989,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41640', '41640', 10953, d.id, undefined
+SELECT 'Team 41638', '41638', 10953, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -7997,7 +7997,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41643', '41643', 10954, d.id, undefined
+SELECT 'Team 41640', '41640', 10954, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8005,7 +8005,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41646', '41646', 10955, d.id, undefined
+SELECT 'Team 41643', '41643', 10955, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8013,7 +8013,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41762', '41762', 10956, d.id, undefined
+SELECT 'Team 41646', '41646', 10956, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8021,7 +8021,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41763', '41763', 10957, d.id, undefined
+SELECT 'Team 41762', '41762', 10957, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8029,7 +8029,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41764', '41764', 10958, d.id, undefined
+SELECT 'Team 41763', '41763', 10958, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8037,7 +8037,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41765', '41765', 10959, d.id, undefined
+SELECT 'Team 41764', '41764', 10959, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8045,7 +8045,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41767', '41767', 10960, d.id, undefined
+SELECT 'Team 41765', '41765', 10960, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8053,7 +8053,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41769', '41769', 10961, d.id, undefined
+SELECT 'Team 41767', '41767', 10961, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8061,7 +8061,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41771', '41771', 10962, d.id, undefined
+SELECT 'Team 41769', '41769', 10962, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8069,7 +8069,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41774', '41774', 10963, d.id, undefined
+SELECT 'Team 41771', '41771', 10963, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8077,7 +8077,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41775', '41775', 10964, d.id, undefined
+SELECT 'Team 41774', '41774', 10964, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8085,7 +8085,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41778', '41778', 10965, d.id, undefined
+SELECT 'Team 41775', '41775', 10965, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8093,7 +8093,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41779', '41779', 10966, d.id, undefined
+SELECT 'Team 41778', '41778', 10966, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8101,7 +8101,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41781', '41781', 10967, d.id, undefined
+SELECT 'Team 41779', '41779', 10967, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8109,7 +8109,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41782', '41782', 10968, d.id, undefined
+SELECT 'Team 41781', '41781', 10968, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8117,7 +8117,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41784', '41784', 10969, d.id, undefined
+SELECT 'Team 41782', '41782', 10969, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8125,7 +8125,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41785', '41785', 10970, d.id, undefined
+SELECT 'Team 41784', '41784', 10970, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8133,7 +8133,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41787', '41787', 10971, d.id, undefined
+SELECT 'Team 41785', '41785', 10971, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8141,7 +8141,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41789', '41789', 10972, d.id, undefined
+SELECT 'Team 41787', '41787', 10972, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8149,7 +8149,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41790', '41790', 10973, d.id, undefined
+SELECT 'Team 41789', '41789', 10973, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8157,7 +8157,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41791', '41791', 10974, d.id, undefined
+SELECT 'Team 41790', '41790', 10974, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8165,7 +8165,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41794', '41794', 10975, d.id, undefined
+SELECT 'Team 41791', '41791', 10975, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8173,7 +8173,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41801', '41801', 10976, d.id, undefined
+SELECT 'Team 41794', '41794', 10976, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8181,7 +8181,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41802', '41802', 10977, d.id, undefined
+SELECT 'Team 41801', '41801', 10977, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8189,7 +8189,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41803', '41803', 10978, d.id, undefined
+SELECT 'Team 41802', '41802', 10978, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8197,7 +8197,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41804', '41804', 10979, d.id, undefined
+SELECT 'Team 41803', '41803', 10979, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8205,7 +8205,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41805', '41805', 10980, d.id, undefined
+SELECT 'Team 41804', '41804', 10980, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8213,7 +8213,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41806', '41806', 10981, d.id, undefined
+SELECT 'Team 41805', '41805', 10981, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8221,7 +8221,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41807', '41807', 10982, d.id, undefined
+SELECT 'Team 41806', '41806', 10982, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8229,7 +8229,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41808', '41808', 10983, d.id, undefined
+SELECT 'Team 41807', '41807', 10983, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8237,7 +8237,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41810', '41810', 10984, d.id, undefined
+SELECT 'Team 41808', '41808', 10984, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8245,7 +8245,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41811', '41811', 10985, d.id, undefined
+SELECT 'Team 41810', '41810', 10985, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8253,7 +8253,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41812', '41812', 10986, d.id, undefined
+SELECT 'Team 41811', '41811', 10986, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8261,7 +8261,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41813', '41813', 10987, d.id, undefined
+SELECT 'Team 41812', '41812', 10987, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8269,7 +8269,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41814', '41814', 10988, d.id, undefined
+SELECT 'Team 41813', '41813', 10988, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8277,7 +8277,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41816', '41816', 10989, d.id, undefined
+SELECT 'Team 41814', '41814', 10989, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8285,7 +8285,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41818', '41818', 10990, d.id, undefined
+SELECT 'Team 41816', '41816', 10990, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8293,7 +8293,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41819', '41819', 10991, d.id, undefined
+SELECT 'Team 41818', '41818', 10991, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8301,7 +8301,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41820', '41820', 10992, d.id, undefined
+SELECT 'Team 41819', '41819', 10992, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8309,7 +8309,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41821', '41821', 10993, d.id, undefined
+SELECT 'Team 41820', '41820', 10993, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8317,7 +8317,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41822', '41822', 10994, d.id, undefined
+SELECT 'Team 41821', '41821', 10994, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8325,7 +8325,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41825', '41825', 10995, d.id, undefined
+SELECT 'Team 41822', '41822', 10995, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8333,7 +8333,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41826', '41826', 10996, d.id, undefined
+SELECT 'Team 41825', '41825', 10996, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8341,7 +8341,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41827', '41827', 10997, d.id, undefined
+SELECT 'Team 41826', '41826', 10997, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8349,7 +8349,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41828', '41828', 10998, d.id, undefined
+SELECT 'Team 41827', '41827', 10998, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8357,7 +8357,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41829', '41829', 10999, d.id, undefined
+SELECT 'Team 41828', '41828', 10999, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8365,7 +8365,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41830', '41830', 11000, d.id, undefined
+SELECT 'Team 41829', '41829', 11000, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8373,7 +8373,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41833', '41833', 11001, d.id, undefined
+SELECT 'Team 41830', '41830', 11001, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8381,7 +8381,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41834', '41834', 11002, d.id, undefined
+SELECT 'Team 41833', '41833', 11002, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8389,7 +8389,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41835', '41835', 11003, d.id, undefined
+SELECT 'Team 41834', '41834', 11003, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8397,7 +8397,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41836', '41836', 11004, d.id, undefined
+SELECT 'Team 41835', '41835', 11004, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8405,7 +8405,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41837', '41837', 11005, d.id, undefined
+SELECT 'Team 41836', '41836', 11005, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8413,7 +8413,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41838', '41838', 11006, d.id, undefined
+SELECT 'Team 41837', '41837', 11006, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8421,7 +8421,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41840', '41840', 11007, d.id, undefined
+SELECT 'Team 41838', '41838', 11007, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8429,7 +8429,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41841', '41841', 11008, d.id, undefined
+SELECT 'Team 41840', '41840', 11008, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8437,7 +8437,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41843', '41843', 11009, d.id, undefined
+SELECT 'Team 41841', '41841', 11009, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8445,7 +8445,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41844', '41844', 11010, d.id, undefined
+SELECT 'Team 41843', '41843', 11010, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8453,7 +8453,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41845', '41845', 11011, d.id, undefined
+SELECT 'Team 41844', '41844', 11011, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8461,7 +8461,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41846', '41846', 11012, d.id, undefined
+SELECT 'Team 41845', '41845', 11012, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8469,7 +8469,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41847', '41847', 11013, d.id, undefined
+SELECT 'Team 41846', '41846', 11013, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8477,7 +8477,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41848', '41848', 11014, d.id, undefined
+SELECT 'Team 41847', '41847', 11014, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8485,7 +8485,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41850', '41850', 11015, d.id, undefined
+SELECT 'Team 41848', '41848', 11015, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8493,7 +8493,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41851', '41851', 11016, d.id, undefined
+SELECT 'Team 41850', '41850', 11016, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8501,7 +8501,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41852', '41852', 11017, d.id, undefined
+SELECT 'Team 41851', '41851', 11017, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8509,7 +8509,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41853', '41853', 11018, d.id, undefined
+SELECT 'Team 41852', '41852', 11018, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8517,7 +8517,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41854', '41854', 11019, d.id, undefined
+SELECT 'Team 41853', '41853', 11019, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8525,7 +8525,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41856', '41856', 11020, d.id, undefined
+SELECT 'Team 41854', '41854', 11020, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8533,7 +8533,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41857', '41857', 11021, d.id, undefined
+SELECT 'Team 41856', '41856', 11021, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8541,7 +8541,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41858', '41858', 11022, d.id, undefined
+SELECT 'Team 41857', '41857', 11022, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8549,7 +8549,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41859', '41859', 11023, d.id, undefined
+SELECT 'Team 41858', '41858', 11023, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8557,7 +8557,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41860', '41860', 11024, d.id, undefined
+SELECT 'Team 41859', '41859', 11024, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8565,7 +8565,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41861', '41861', 11025, d.id, undefined
+SELECT 'Team 41860', '41860', 11025, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8573,7 +8573,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41862', '41862', 11026, d.id, undefined
+SELECT 'Team 41861', '41861', 11026, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8581,7 +8581,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41863', '41863', 11027, d.id, undefined
+SELECT 'Team 41862', '41862', 11027, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8589,7 +8589,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41865', '41865', 11028, d.id, undefined
+SELECT 'Team 41863', '41863', 11028, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8597,7 +8597,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41867', '41867', 11029, d.id, undefined
+SELECT 'Team 41865', '41865', 11029, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8605,7 +8605,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41868', '41868', 11030, d.id, undefined
+SELECT 'Team 41867', '41867', 11030, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8613,7 +8613,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41869', '41869', 11031, d.id, undefined
+SELECT 'Team 41868', '41868', 11031, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8621,7 +8621,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41870', '41870', 11032, d.id, undefined
+SELECT 'Team 41869', '41869', 11032, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8629,7 +8629,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41972', '41972', 11033, d.id, undefined
+SELECT 'Team 41870', '41870', 11033, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8637,7 +8637,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41973', '41973', 11034, d.id, undefined
+SELECT 'Team 41972', '41972', 11034, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8645,7 +8645,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41974', '41974', 11035, d.id, undefined
+SELECT 'Team 41973', '41973', 11035, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8653,7 +8653,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41975', '41975', 11036, d.id, undefined
+SELECT 'Team 41974', '41974', 11036, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8661,7 +8661,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41976', '41976', 11037, d.id, undefined
+SELECT 'Team 41975', '41975', 11037, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8669,7 +8669,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41977', '41977', 11038, d.id, undefined
+SELECT 'Team 41976', '41976', 11038, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8677,7 +8677,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41978', '41978', 11039, d.id, undefined
+SELECT 'Team 41977', '41977', 11039, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8685,7 +8685,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41979', '41979', 11040, d.id, undefined
+SELECT 'Team 41978', '41978', 11040, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8693,7 +8693,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41980', '41980', 11041, d.id, undefined
+SELECT 'Team 41979', '41979', 11041, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8701,7 +8701,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41981', '41981', 11042, d.id, undefined
+SELECT 'Team 41980', '41980', 11042, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8709,7 +8709,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41982', '41982', 11043, d.id, undefined
+SELECT 'Team 41981', '41981', 11043, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8717,7 +8717,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41983', '41983', 11044, d.id, undefined
+SELECT 'Team 41982', '41982', 11044, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8725,7 +8725,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41984', '41984', 11045, d.id, undefined
+SELECT 'Team 41983', '41983', 11045, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8733,7 +8733,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41985', '41985', 11046, d.id, undefined
+SELECT 'Team 41984', '41984', 11046, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8741,7 +8741,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41986', '41986', 11047, d.id, undefined
+SELECT 'Team 41985', '41985', 11047, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8749,7 +8749,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41987', '41987', 11048, d.id, undefined
+SELECT 'Team 41986', '41986', 11048, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8757,7 +8757,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41988', '41988', 11049, d.id, undefined
+SELECT 'Team 41987', '41987', 11049, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8765,7 +8765,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41989', '41989', 11050, d.id, undefined
+SELECT 'Team 41988', '41988', 11050, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8773,7 +8773,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41990', '41990', 11051, d.id, undefined
+SELECT 'Team 41989', '41989', 11051, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8781,7 +8781,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41991', '41991', 11052, d.id, undefined
+SELECT 'Team 41990', '41990', 11052, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8789,7 +8789,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41992', '41992', 11053, d.id, undefined
+SELECT 'Team 41991', '41991', 11053, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8797,7 +8797,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41993', '41993', 11054, d.id, undefined
+SELECT 'Team 41992', '41992', 11054, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8805,7 +8805,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41994', '41994', 11055, d.id, undefined
+SELECT 'Team 41993', '41993', 11055, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8813,7 +8813,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41995', '41995', 11056, d.id, undefined
+SELECT 'Team 41994', '41994', 11056, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8821,7 +8821,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41996', '41996', 11057, d.id, undefined
+SELECT 'Team 41995', '41995', 11057, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8829,7 +8829,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41997', '41997', 11058, d.id, undefined
+SELECT 'Team 41996', '41996', 11058, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8837,7 +8837,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41998', '41998', 11059, d.id, undefined
+SELECT 'Team 41997', '41997', 11059, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8845,7 +8845,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 41999', '41999', 11060, d.id, undefined
+SELECT 'Team 41998', '41998', 11060, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8853,7 +8853,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42000', '42000', 11061, d.id, undefined
+SELECT 'Team 41999', '41999', 11061, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8861,7 +8861,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42001', '42001', 11062, d.id, undefined
+SELECT 'Team 42000', '42000', 11062, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8869,7 +8869,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42002', '42002', 11063, d.id, undefined
+SELECT 'Team 42001', '42001', 11063, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8877,7 +8877,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42003', '42003', 11064, d.id, undefined
+SELECT 'Team 42002', '42002', 11064, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8885,7 +8885,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42004', '42004', 11065, d.id, undefined
+SELECT 'Team 42003', '42003', 11065, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8893,7 +8893,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42005', '42005', 11066, d.id, undefined
+SELECT 'Team 42004', '42004', 11066, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8901,7 +8901,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42006', '42006', 11067, d.id, undefined
+SELECT 'Team 42005', '42005', 11067, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8909,7 +8909,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42007', '42007', 11068, d.id, undefined
+SELECT 'Team 42006', '42006', 11068, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8917,7 +8917,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42008', '42008', 11069, d.id, undefined
+SELECT 'Team 42007', '42007', 11069, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8925,7 +8925,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42009', '42009', 11070, d.id, undefined
+SELECT 'Team 42008', '42008', 11070, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8933,7 +8933,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42010', '42010', 11071, d.id, undefined
+SELECT 'Team 42009', '42009', 11071, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8941,7 +8941,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42011', '42011', 11072, d.id, undefined
+SELECT 'Team 42010', '42010', 11072, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8949,7 +8949,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42012', '42012', 11073, d.id, undefined
+SELECT 'Team 42011', '42011', 11073, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8957,7 +8957,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42013', '42013', 11074, d.id, undefined
+SELECT 'Team 42012', '42012', 11074, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8965,7 +8965,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42014', '42014', 11075, d.id, undefined
+SELECT 'Team 42013', '42013', 11075, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8973,7 +8973,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42015', '42015', 11076, d.id, undefined
+SELECT 'Team 42014', '42014', 11076, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8981,7 +8981,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42021', '42021', 11077, d.id, undefined
+SELECT 'Team 42015', '42015', 11077, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8989,7 +8989,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42114', '42114', 11078, d.id, undefined
+SELECT 'Team 42021', '42021', 11078, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -8997,7 +8997,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42115', '42115', 11079, d.id, undefined
+SELECT 'Team 42114', '42114', 11079, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9005,7 +9005,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42116', '42116', 11080, d.id, undefined
+SELECT 'Team 42115', '42115', 11080, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9013,7 +9013,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42118', '42118', 11081, d.id, undefined
+SELECT 'Team 42116', '42116', 11081, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9021,7 +9021,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42119', '42119', 11082, d.id, undefined
+SELECT 'Team 42118', '42118', 11082, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9029,7 +9029,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42121', '42121', 11083, d.id, undefined
+SELECT 'Team 42119', '42119', 11083, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9037,7 +9037,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42122', '42122', 11084, d.id, undefined
+SELECT 'Team 42121', '42121', 11084, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9045,7 +9045,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42123', '42123', 11085, d.id, undefined
+SELECT 'Team 42122', '42122', 11085, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9053,7 +9053,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42125', '42125', 11086, d.id, undefined
+SELECT 'Team 42123', '42123', 11086, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9061,7 +9061,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42127', '42127', 11087, d.id, undefined
+SELECT 'Team 42125', '42125', 11087, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9069,7 +9069,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42129', '42129', 11088, d.id, undefined
+SELECT 'Team 42127', '42127', 11088, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9077,7 +9077,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42130', '42130', 11089, d.id, undefined
+SELECT 'Team 42129', '42129', 11089, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9085,7 +9085,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42132', '42132', 11090, d.id, undefined
+SELECT 'Team 42130', '42130', 11090, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9093,7 +9093,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42133', '42133', 11091, d.id, undefined
+SELECT 'Team 42132', '42132', 11091, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9101,7 +9101,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42134', '42134', 11092, d.id, undefined
+SELECT 'Team 42133', '42133', 11092, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9109,7 +9109,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42136', '42136', 11093, d.id, undefined
+SELECT 'Team 42134', '42134', 11093, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9117,7 +9117,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42137', '42137', 11094, d.id, undefined
+SELECT 'Team 42136', '42136', 11094, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9125,7 +9125,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42139', '42139', 11095, d.id, undefined
+SELECT 'Team 42137', '42137', 11095, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9133,7 +9133,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42140', '42140', 11096, d.id, undefined
+SELECT 'Team 42139', '42139', 11096, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9141,7 +9141,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42141', '42141', 11097, d.id, undefined
+SELECT 'Team 42140', '42140', 11097, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9149,7 +9149,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42142', '42142', 11098, d.id, undefined
+SELECT 'Team 42141', '42141', 11098, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9157,7 +9157,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42144', '42144', 11099, d.id, undefined
+SELECT 'Team 42142', '42142', 11099, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9165,7 +9165,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42145', '42145', 11100, d.id, undefined
+SELECT 'Team 42144', '42144', 11100, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9173,7 +9173,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42146', '42146', 11101, d.id, undefined
+SELECT 'Team 42145', '42145', 11101, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9181,7 +9181,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42148', '42148', 11102, d.id, undefined
+SELECT 'Team 42146', '42146', 11102, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9189,7 +9189,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42150', '42150', 11103, d.id, undefined
+SELECT 'Team 42148', '42148', 11103, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9197,7 +9197,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42151', '42151', 11104, d.id, undefined
+SELECT 'Team 42150', '42150', 11104, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9205,7 +9205,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42152', '42152', 11105, d.id, undefined
+SELECT 'Team 42151', '42151', 11105, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9213,7 +9213,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42153', '42153', 11106, d.id, undefined
+SELECT 'Team 42152', '42152', 11106, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9221,7 +9221,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42154', '42154', 11107, d.id, undefined
+SELECT 'Team 42153', '42153', 11107, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9229,7 +9229,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42155', '42155', 11108, d.id, undefined
+SELECT 'Team 42154', '42154', 11108, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9237,7 +9237,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42156', '42156', 11109, d.id, undefined
+SELECT 'Team 42155', '42155', 11109, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9245,7 +9245,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42158', '42158', 11110, d.id, undefined
+SELECT 'Team 42156', '42156', 11110, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9253,7 +9253,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42159', '42159', 11111, d.id, undefined
+SELECT 'Team 42158', '42158', 11111, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9261,7 +9261,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42160', '42160', 11112, d.id, undefined
+SELECT 'Team 42159', '42159', 11112, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9269,7 +9269,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42162', '42162', 11113, d.id, undefined
+SELECT 'Team 42160', '42160', 11113, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9277,7 +9277,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42163', '42163', 11114, d.id, undefined
+SELECT 'Team 42162', '42162', 11114, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9285,7 +9285,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42164', '42164', 11115, d.id, undefined
+SELECT 'Team 42163', '42163', 11115, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9293,7 +9293,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42167', '42167', 11116, d.id, undefined
+SELECT 'Team 42164', '42164', 11116, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9301,7 +9301,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42168', '42168', 11117, d.id, undefined
+SELECT 'Team 42167', '42167', 11117, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9309,7 +9309,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42169', '42169', 11118, d.id, undefined
+SELECT 'Team 42168', '42168', 11118, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9317,7 +9317,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42170', '42170', 11119, d.id, undefined
+SELECT 'Team 42169', '42169', 11119, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9325,7 +9325,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42171', '42171', 11120, d.id, undefined
+SELECT 'Team 42170', '42170', 11120, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9333,7 +9333,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42172', '42172', 11121, d.id, undefined
+SELECT 'Team 42171', '42171', 11121, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9341,7 +9341,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42173', '42173', 11122, d.id, undefined
+SELECT 'Team 42172', '42172', 11122, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9349,7 +9349,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42174', '42174', 11123, d.id, undefined
+SELECT 'Team 42173', '42173', 11123, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9357,7 +9357,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 42175', '42175', 11124, d.id, undefined
+SELECT 'Team 42174', '42174', 11124, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9365,7 +9365,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43742', '43742', 11125, d.id, undefined
+SELECT 'Team 42175', '42175', 11125, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9373,7 +9373,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43743', '43743', 11126, d.id, undefined
+SELECT 'Team 43742', '43742', 11126, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9381,7 +9381,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43805', '43805', 11127, d.id, undefined
+SELECT 'Team 43743', '43743', 11127, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9389,7 +9389,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43806', '43806', 11128, d.id, undefined
+SELECT 'Team 43805', '43805', 11128, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9397,7 +9397,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43807', '43807', 11129, d.id, undefined
+SELECT 'Team 43806', '43806', 11129, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9405,7 +9405,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43809', '43809', 11130, d.id, undefined
+SELECT 'Team 43807', '43807', 11130, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9413,7 +9413,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43810', '43810', 11131, d.id, undefined
+SELECT 'Team 43809', '43809', 11131, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9421,7 +9421,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43812', '43812', 11132, d.id, undefined
+SELECT 'Team 43810', '43810', 11132, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9429,7 +9429,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43813', '43813', 11133, d.id, undefined
+SELECT 'Team 43812', '43812', 11133, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9437,7 +9437,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43814', '43814', 11134, d.id, undefined
+SELECT 'Team 43813', '43813', 11134, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9445,7 +9445,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43816', '43816', 11135, d.id, undefined
+SELECT 'Team 43814', '43814', 11135, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9453,7 +9453,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43818', '43818', 11136, d.id, undefined
+SELECT 'Team 43816', '43816', 11136, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9461,7 +9461,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43821', '43821', 11137, d.id, undefined
+SELECT 'Team 43818', '43818', 11137, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9469,7 +9469,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43823', '43823', 11138, d.id, undefined
+SELECT 'Team 43821', '43821', 11138, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9477,7 +9477,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43824', '43824', 11139, d.id, undefined
+SELECT 'Team 43823', '43823', 11139, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9485,7 +9485,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43825', '43825', 11140, d.id, undefined
+SELECT 'Team 43824', '43824', 11140, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9493,7 +9493,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43826', '43826', 11141, d.id, undefined
+SELECT 'Team 43825', '43825', 11141, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9501,7 +9501,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43828', '43828', 11142, d.id, undefined
+SELECT 'Team 43826', '43826', 11142, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9509,7 +9509,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 43829', '43829', 11143, d.id, undefined
+SELECT 'Team 43828', '43828', 11143, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9517,7 +9517,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 48655', '48655', 11144, d.id, undefined
+SELECT 'Team 43829', '43829', 11144, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9525,7 +9525,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 48824', '48824', 11145, d.id, undefined
+SELECT 'Team 48655', '48655', 11145, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9533,7 +9533,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 48827', '48827', 11146, d.id, undefined
+SELECT 'Team 48824', '48824', 11146, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9541,7 +9541,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 48828', '48828', 11147, d.id, undefined
+SELECT 'Team 48827', '48827', 11147, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9549,7 +9549,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 48829', '48829', 11148, d.id, undefined
+SELECT 'Team 48828', '48828', 11148, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9557,7 +9557,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 48832', '48832', 11149, d.id, undefined
+SELECT 'Team 48829', '48829', 11149, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9565,7 +9565,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 49251', '49251', 11150, d.id, undefined
+SELECT 'Team 48832', '48832', 11150, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9573,7 +9573,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 49252', '49252', 11151, d.id, undefined
+SELECT 'Team 49251', '49251', 11151, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9581,7 +9581,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 49253', '49253', 11152, d.id, undefined
+SELECT 'Team 49252', '49252', 11152, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9589,7 +9589,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 49254', '49254', 11153, d.id, undefined
+SELECT 'Team 49253', '49253', 11153, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9597,7 +9597,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 49286', '49286', 11154, d.id, undefined
+SELECT 'Team 49254', '49254', 11154, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9605,7 +9605,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 51443', '51443', 11155, d.id, undefined
+SELECT 'Team 49286', '49286', 11155, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9613,7 +9613,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60131', '60131', 11156, d.id, undefined
+SELECT 'Team 51443', '51443', 11156, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9621,7 +9621,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60132', '60132', 11157, d.id, undefined
+SELECT 'Team 60131', '60131', 11157, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9629,7 +9629,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60133', '60133', 11158, d.id, undefined
+SELECT 'Team 60132', '60132', 11158, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9637,7 +9637,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60134', '60134', 11159, d.id, undefined
+SELECT 'Team 60133', '60133', 11159, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9645,7 +9645,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60135', '60135', 11160, d.id, undefined
+SELECT 'Team 60134', '60134', 11160, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9653,7 +9653,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60136', '60136', 11161, d.id, undefined
+SELECT 'Team 60135', '60135', 11161, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9661,7 +9661,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60137', '60137', 11162, d.id, undefined
+SELECT 'Team 60136', '60136', 11162, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9669,7 +9669,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60138', '60138', 11163, d.id, undefined
+SELECT 'Team 60137', '60137', 11163, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9677,7 +9677,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60139', '60139', 11164, d.id, undefined
+SELECT 'Team 60138', '60138', 11164, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9685,7 +9685,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60140', '60140', 11165, d.id, undefined
+SELECT 'Team 60139', '60139', 11165, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9693,7 +9693,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60202', '60202', 11166, d.id, undefined
+SELECT 'Team 60140', '60140', 11166, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9701,7 +9701,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60203', '60203', 11167, d.id, undefined
+SELECT 'Team 60202', '60202', 11167, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9709,7 +9709,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60204', '60204', 11168, d.id, undefined
+SELECT 'Team 60203', '60203', 11168, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9717,7 +9717,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60205', '60205', 11169, d.id, undefined
+SELECT 'Team 60204', '60204', 11169, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9725,7 +9725,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60380', '60380', 11170, d.id, undefined
+SELECT 'Team 60205', '60205', 11170, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9733,7 +9733,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60381', '60381', 11171, d.id, undefined
+SELECT 'Team 60380', '60380', 11171, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9741,7 +9741,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60382', '60382', 11172, d.id, undefined
+SELECT 'Team 60381', '60381', 11172, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9749,7 +9749,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60383', '60383', 11173, d.id, undefined
+SELECT 'Team 60382', '60382', 11173, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9757,7 +9757,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60384', '60384', 11174, d.id, undefined
+SELECT 'Team 60383', '60383', 11174, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9765,7 +9765,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60385', '60385', 11175, d.id, undefined
+SELECT 'Team 60384', '60384', 11175, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9773,7 +9773,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60386', '60386', 11176, d.id, undefined
+SELECT 'Team 60385', '60385', 11176, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9781,7 +9781,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60387', '60387', 11177, d.id, undefined
+SELECT 'Team 60386', '60386', 11177, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9789,7 +9789,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60388', '60388', 11178, d.id, undefined
+SELECT 'Team 60387', '60387', 11178, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9797,7 +9797,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60389', '60389', 11179, d.id, undefined
+SELECT 'Team 60388', '60388', 11179, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9805,7 +9805,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60390', '60390', 11180, d.id, undefined
+SELECT 'Team 60389', '60389', 11180, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9813,7 +9813,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60392', '60392', 11181, d.id, undefined
+SELECT 'Team 60390', '60390', 11181, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9821,7 +9821,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60393', '60393', 11182, d.id, undefined
+SELECT 'Team 60392', '60392', 11182, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9829,7 +9829,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60394', '60394', 11183, d.id, undefined
+SELECT 'Team 60393', '60393', 11183, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9837,7 +9837,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60395', '60395', 11184, d.id, undefined
+SELECT 'Team 60394', '60394', 11184, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9845,7 +9845,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60396', '60396', 11185, d.id, undefined
+SELECT 'Team 60395', '60395', 11185, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9853,7 +9853,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60397', '60397', 11186, d.id, undefined
+SELECT 'Team 60396', '60396', 11186, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9861,7 +9861,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60398', '60398', 11187, d.id, undefined
+SELECT 'Team 60397', '60397', 11187, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9869,7 +9869,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60399', '60399', 11188, d.id, undefined
+SELECT 'Team 60398', '60398', 11188, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9877,7 +9877,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60400', '60400', 11189, d.id, undefined
+SELECT 'Team 60399', '60399', 11189, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9885,7 +9885,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60401', '60401', 11190, d.id, undefined
+SELECT 'Team 60400', '60400', 11190, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9893,7 +9893,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 60403', '60403', 11191, d.id, undefined
+SELECT 'Team 60401', '60401', 11191, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9901,7 +9901,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 71096', '71096', 11192, d.id, undefined
+SELECT 'Team 60403', '60403', 11192, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9909,7 +9909,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 71513', '71513', 11193, d.id, undefined
+SELECT 'Team 71096', '71096', 11193, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9917,7 +9917,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 71516', '71516', 11194, d.id, undefined
+SELECT 'Team 71513', '71513', 11194, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9925,7 +9925,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 71517', '71517', 11195, d.id, undefined
+SELECT 'Team 71516', '71516', 11195, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9933,7 +9933,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 71518', '71518', 11196, d.id, undefined
+SELECT 'Team 71517', '71517', 11196, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9941,7 +9941,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 71519', '71519', 11197, d.id, undefined
+SELECT 'Team 71518', '71518', 11197, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9949,7 +9949,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 71520', '71520', 11198, d.id, undefined
+SELECT 'Team 71519', '71519', 11198, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9957,7 +9957,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 71536', '71536', 11199, d.id, undefined
+SELECT 'Team 71520', '71520', 11199, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9965,7 +9965,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 72495', '72495', 11200, d.id, undefined
+SELECT 'Team 71536', '71536', 11200, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9973,7 +9973,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 72497', '72497', 11201, d.id, undefined
+SELECT 'Team 72495', '72495', 11201, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9981,7 +9981,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 72498', '72498', 11202, d.id, undefined
+SELECT 'Team 72497', '72497', 11202, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9989,7 +9989,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75079', '75079', 11203, d.id, undefined
+SELECT 'Team 72498', '72498', 11203, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -9997,7 +9997,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75093', '75093', 11204, d.id, undefined
+SELECT 'Team 75079', '75079', 11204, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10005,7 +10005,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75099', '75099', 11205, d.id, undefined
+SELECT 'Team 75093', '75093', 11205, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10013,7 +10013,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75147', '75147', 11206, d.id, undefined
+SELECT 'Team 75099', '75099', 11206, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10021,7 +10021,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75162', '75162', 11207, d.id, undefined
+SELECT 'Team 75147', '75147', 11207, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10029,7 +10029,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75163', '75163', 11208, d.id, undefined
+SELECT 'Team 75162', '75162', 11208, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10037,7 +10037,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75239', '75239', 11209, d.id, undefined
+SELECT 'Team 75163', '75163', 11209, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10045,7 +10045,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75240', '75240', 11210, d.id, undefined
+SELECT 'Team 75239', '75239', 11210, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10053,7 +10053,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75241', '75241', 11211, d.id, undefined
+SELECT 'Team 75240', '75240', 11211, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10061,7 +10061,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75242', '75242', 11212, d.id, undefined
+SELECT 'Team 75241', '75241', 11212, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10069,7 +10069,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75243', '75243', 11213, d.id, undefined
+SELECT 'Team 75242', '75242', 11213, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10077,7 +10077,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75245', '75245', 11214, d.id, undefined
+SELECT 'Team 75243', '75243', 11214, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10085,7 +10085,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75246', '75246', 11215, d.id, undefined
+SELECT 'Team 75245', '75245', 11215, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10093,7 +10093,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75249', '75249', 11216, d.id, undefined
+SELECT 'Team 75246', '75246', 11216, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10101,7 +10101,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75250', '75250', 11217, d.id, undefined
+SELECT 'Team 75249', '75249', 11217, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10109,7 +10109,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75251', '75251', 11218, d.id, undefined
+SELECT 'Team 75250', '75250', 11218, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10117,7 +10117,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75254', '75254', 11219, d.id, undefined
+SELECT 'Team 75251', '75251', 11219, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10125,7 +10125,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75255', '75255', 11220, d.id, undefined
+SELECT 'Team 75254', '75254', 11220, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10133,7 +10133,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75259', '75259', 11221, d.id, undefined
+SELECT 'Team 75255', '75255', 11221, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10141,7 +10141,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75260', '75260', 11222, d.id, undefined
+SELECT 'Team 75259', '75259', 11222, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10149,7 +10149,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75261', '75261', 11223, d.id, undefined
+SELECT 'Team 75260', '75260', 11223, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10157,7 +10157,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75262', '75262', 11224, d.id, undefined
+SELECT 'Team 75261', '75261', 11224, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10165,7 +10165,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75265', '75265', 11225, d.id, undefined
+SELECT 'Team 75262', '75262', 11225, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10173,7 +10173,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75266', '75266', 11226, d.id, undefined
+SELECT 'Team 75265', '75265', 11226, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10181,7 +10181,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75267', '75267', 11227, d.id, undefined
+SELECT 'Team 75266', '75266', 11227, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10189,7 +10189,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75268', '75268', 11228, d.id, undefined
+SELECT 'Team 75267', '75267', 11228, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10197,7 +10197,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75269', '75269', 11229, d.id, undefined
+SELECT 'Team 75268', '75268', 11229, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10205,7 +10205,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75271', '75271', 11230, d.id, undefined
+SELECT 'Team 75269', '75269', 11230, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10213,7 +10213,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75277', '75277', 11231, d.id, undefined
+SELECT 'Team 75271', '75271', 11231, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10221,7 +10221,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75278', '75278', 11232, d.id, undefined
+SELECT 'Team 75277', '75277', 11232, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10229,7 +10229,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75280', '75280', 11233, d.id, undefined
+SELECT 'Team 75278', '75278', 11233, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10237,7 +10237,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75281', '75281', 11234, d.id, undefined
+SELECT 'Team 75280', '75280', 11234, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10245,7 +10245,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75282', '75282', 11235, d.id, undefined
+SELECT 'Team 75281', '75281', 11235, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10253,7 +10253,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75283', '75283', 11236, d.id, undefined
+SELECT 'Team 75282', '75282', 11236, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10261,7 +10261,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75284', '75284', 11237, d.id, undefined
+SELECT 'Team 75283', '75283', 11237, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10269,7 +10269,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75285', '75285', 11238, d.id, undefined
+SELECT 'Team 75284', '75284', 11238, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10277,7 +10277,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75286', '75286', 11239, d.id, undefined
+SELECT 'Team 75285', '75285', 11239, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10285,7 +10285,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75287', '75287', 11240, d.id, undefined
+SELECT 'Team 75286', '75286', 11240, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10293,7 +10293,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75288', '75288', 11241, d.id, undefined
+SELECT 'Team 75287', '75287', 11241, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10301,7 +10301,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75289', '75289', 11242, d.id, undefined
+SELECT 'Team 75288', '75288', 11242, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10309,7 +10309,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75293', '75293', 11243, d.id, undefined
+SELECT 'Team 75289', '75289', 11243, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10317,7 +10317,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75296', '75296', 11244, d.id, undefined
+SELECT 'Team 75293', '75293', 11244, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10325,7 +10325,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75297', '75297', 11245, d.id, undefined
+SELECT 'Team 75296', '75296', 11245, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10333,7 +10333,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75298', '75298', 11246, d.id, undefined
+SELECT 'Team 75297', '75297', 11246, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10341,7 +10341,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75299', '75299', 11247, d.id, undefined
+SELECT 'Team 75298', '75298', 11247, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10349,7 +10349,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75300', '75300', 11248, d.id, undefined
+SELECT 'Team 75299', '75299', 11248, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10357,7 +10357,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75301', '75301', 11249, d.id, undefined
+SELECT 'Team 75300', '75300', 11249, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10365,7 +10365,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75302', '75302', 11250, d.id, undefined
+SELECT 'Team 75301', '75301', 11250, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10373,7 +10373,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75303', '75303', 11251, d.id, undefined
+SELECT 'Team 75302', '75302', 11251, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10381,7 +10381,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75304', '75304', 11252, d.id, undefined
+SELECT 'Team 75303', '75303', 11252, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10389,7 +10389,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75305', '75305', 11253, d.id, undefined
+SELECT 'Team 75304', '75304', 11253, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10397,7 +10397,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75307', '75307', 11254, d.id, undefined
+SELECT 'Team 75305', '75305', 11254, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10405,7 +10405,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75308', '75308', 11255, d.id, undefined
+SELECT 'Team 75307', '75307', 11255, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10413,7 +10413,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75310', '75310', 11256, d.id, undefined
+SELECT 'Team 75308', '75308', 11256, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10421,7 +10421,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75311', '75311', 11257, d.id, undefined
+SELECT 'Team 75310', '75310', 11257, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10429,7 +10429,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75312', '75312', 11258, d.id, undefined
+SELECT 'Team 75311', '75311', 11258, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10437,7 +10437,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75317', '75317', 11259, d.id, undefined
+SELECT 'Team 75312', '75312', 11259, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10445,7 +10445,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75318', '75318', 11260, d.id, undefined
+SELECT 'Team 75317', '75317', 11260, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10453,7 +10453,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75319', '75319', 11261, d.id, undefined
+SELECT 'Team 75318', '75318', 11261, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10461,7 +10461,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75320', '75320', 11262, d.id, undefined
+SELECT 'Team 75319', '75319', 11262, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10469,7 +10469,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75323', '75323', 11263, d.id, undefined
+SELECT 'Team 75320', '75320', 11263, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10477,7 +10477,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75324', '75324', 11264, d.id, undefined
+SELECT 'Team 75323', '75323', 11264, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10485,7 +10485,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75325', '75325', 11265, d.id, undefined
+SELECT 'Team 75324', '75324', 11265, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10493,7 +10493,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75326', '75326', 11266, d.id, undefined
+SELECT 'Team 75325', '75325', 11266, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10501,7 +10501,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75327', '75327', 11267, d.id, undefined
+SELECT 'Team 75326', '75326', 11267, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10509,7 +10509,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75328', '75328', 11268, d.id, undefined
+SELECT 'Team 75327', '75327', 11268, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10517,7 +10517,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75329', '75329', 11269, d.id, undefined
+SELECT 'Team 75328', '75328', 11269, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10525,7 +10525,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75330', '75330', 11270, d.id, undefined
+SELECT 'Team 75329', '75329', 11270, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10533,7 +10533,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75332', '75332', 11271, d.id, undefined
+SELECT 'Team 75330', '75330', 11271, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10541,7 +10541,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75334', '75334', 11272, d.id, undefined
+SELECT 'Team 75332', '75332', 11272, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10549,7 +10549,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75335', '75335', 11273, d.id, undefined
+SELECT 'Team 75334', '75334', 11273, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10557,7 +10557,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75336', '75336', 11274, d.id, undefined
+SELECT 'Team 75335', '75335', 11274, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10565,7 +10565,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75339', '75339', 11275, d.id, undefined
+SELECT 'Team 75336', '75336', 11275, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10573,7 +10573,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75340', '75340', 11276, d.id, undefined
+SELECT 'Team 75339', '75339', 11276, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10581,7 +10581,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75850', '75850', 11277, d.id, undefined
+SELECT 'Team 75340', '75340', 11277, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10589,7 +10589,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75851', '75851', 11278, d.id, undefined
+SELECT 'Team 75850', '75850', 11278, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10597,7 +10597,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75853', '75853', 11279, d.id, undefined
+SELECT 'Team 75851', '75851', 11279, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10605,7 +10605,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75855', '75855', 11280, d.id, undefined
+SELECT 'Team 75853', '75853', 11280, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10613,7 +10613,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 75856', '75856', 11281, d.id, undefined
+SELECT 'Team 75855', '75855', 11281, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10621,7 +10621,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 76531', '76531', 11282, d.id, undefined
+SELECT 'Team 75856', '75856', 11282, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10629,7 +10629,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 76939', '76939', 11283, d.id, undefined
+SELECT 'Team 76531', '76531', 11283, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10637,7 +10637,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 76940', '76940', 11284, d.id, undefined
+SELECT 'Team 76939', '76939', 11284, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10645,7 +10645,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 77134', '77134', 11285, d.id, undefined
+SELECT 'Team 76940', '76940', 11285, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10653,7 +10653,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 77135', '77135', 11286, d.id, undefined
+SELECT 'Team 77134', '77134', 11286, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10661,7 +10661,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 77137', '77137', 11287, d.id, undefined
+SELECT 'Team 77135', '77135', 11287, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10669,7 +10669,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 77138', '77138', 11288, d.id, undefined
+SELECT 'Team 77137', '77137', 11288, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10677,7 +10677,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 77139', '77139', 11289, d.id, undefined
+SELECT 'Team 77138', '77138', 11289, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10685,7 +10685,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 77140', '77140', 11290, d.id, undefined
+SELECT 'Team 77139', '77139', 11290, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10693,7 +10693,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 77371', '77371', 11291, d.id, undefined
+SELECT 'Team 77140', '77140', 11291, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10701,7 +10701,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 77372', '77372', 11292, d.id, undefined
+SELECT 'Team 77371', '77371', 11292, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10709,7 +10709,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 92727', '92727', 11293, d.id, undefined
+SELECT 'Team 77372', '77372', 11293, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10717,7 +10717,7 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 92728', '92728', 11294, d.id, undefined
+SELECT 'Team 92727', '92727', 11294, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
@@ -10725,7 +10725,15 @@ WHERE d.name = 'Unknown'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Team 96563', '96563', 11295, d.id, undefined
+SELECT 'Team 92728', '92728', 11295, d.id, undefined
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Unknown'
+  AND s.name = '2022/2023'
+  AND s.league_id = 4
+ON CONFLICT (division_id, name) DO NOTHING;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Team 96563', '96563', 11296, d.id, undefined
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Unknown'
