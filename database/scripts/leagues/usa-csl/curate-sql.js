@@ -159,34 +159,26 @@ class CslSqlCurator extends BaseSqlCurator {
       sql.clubs += `INSERT INTO clubs (id, name, organization_id) VALUES (${club.id}, '${this.escapeSql(club.name)}', ${club.organizationId}) ON CONFLICT (id) DO NOTHING;\n`;
     }
     
-    // Teams: Update club_id to reference APSL clubs where matched
-    sql.teams = this.generateSqlHeader(
-      'Teams - CSL (Curated)',
-      `Teams linked to existing APSL clubs where matched. Total: ${cslTeams.length}`
-    );
-    
+    // Teams: Read original SQL and replace club_ids for matched clubs
+    // This preserves the SELECT...FROM divisions subqueries from the generator
+    const originalTeamsSql = fs.readFileSync(path.join(this.cslPath, '102.00003-teams-usa-csl.sql'), 'utf-8');
+    let curatedTeamsSql = originalTeamsSql;
+
     // Create mapping of CSL club_id → APSL club_id
     const clubIdMap = new Map();
     for (const { cslClub, apslClub } of matches) {
       clubIdMap.set(cslClub.id, apslClub.id);
     }
-    
-    for (const team of cslTeams) {
-      // Use APSL club_id if matched, otherwise keep CSL club_id (for new clubs)
-      const finalClubId = clubIdMap.get(team.clubId) || team.clubId;
-      
-      // Must use SELECT to look up division_id (can't hardcode - teams move between divisions each season)
-      // Division lookup is done at INSERT time by querying the divisions table
-      sql.teams += `INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT '${this.escapeSql(team.name)}', '${team.externalId}', ${finalClubId}, d.id, ${team.sourceSystemId}
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name LIKE '%CSL%'
-  AND s.name = '2024-25'
-  AND s.league_id = 3
-ON CONFLICT (division_id, name) DO NOTHING;\n`;
+
+    // Replace club_ids in the original SQL using regex
+    for (const [oldClubId, newClubId] of clubIdMap) {
+      // Match pattern: SELECT 'TeamName', 'externalId', OLD_CLUB_ID, d.id, SOURCE_SYSTEM_ID
+      const pattern = new RegExp(`(SELECT '[^']*(?:''[^']*)*', '[^']*', )${oldClubId}(, d\\.id, \\d+)`, 'g');
+      curatedTeamsSql = curatedTeamsSql.replace(pattern, `$1${newClubId}$2`);
     }
-    
+
+    sql.teams = curatedTeamsSql;
+
     return sql;
   }
 
@@ -202,10 +194,8 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     fs.writeFileSync(path.join(outputDir, '101.00003-clubs-usa-csl.sql'), sql.clubs);
     console.log(`      ✓ 101.00003-clubs-usa-csl.sql`);
     
-    // NOTE: Don't curate teams - keep uncurated version with division lookups
-    // fs.writeFileSync(path.join(outputDir, '102.00003-teams-usa-csl.sql'), sql.teams);
-    // console.log(`      ✓ 102.00003-teams-usa-csl.sql`);
-    console.log(`      ℹ 102.00003-teams-usa-csl.sql (using uncurated version - has division lookups)`);
+    fs.writeFileSync(path.join(outputDir, '102.00003-teams-usa-csl.sql'), sql.teams);
+    console.log(`      ✓ 102.00003-teams-usa-csl.sql`);
   }
 }
 

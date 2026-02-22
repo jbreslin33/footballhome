@@ -73,7 +73,8 @@ class CasaSqlCurator extends BaseSqlCurator {
     const teams = [];
     
     // New schema format with division_id lookup (multi-line, use dotall flag)
-    const regex = /INSERT INTO teams \(name, external_id, club_id, division_id, source_system_id\)\s+SELECT '([^']+)', '([^']+)', (\d+), d\.id, (\d+)/gs;
+    // Note: Use (?:[^']|'')+ to handle SQL-escaped apostrophes (e.g., "Men''s")
+    const regex = /INSERT INTO teams \(name, external_id, club_id, division_id, source_system_id\)\s+SELECT '((?:[^']|'')+)', '((?:[^']|'')+)', (\d+), d\.id, (\d+)/gs;
     
     let match;
     while ((match = regex.exec(sql)) !== null) {
@@ -273,27 +274,30 @@ class CasaSqlCurator extends BaseSqlCurator {
       
       // For each matched team, replace its club_id in the SQL
       for (const { casaTeam, existingClub } of matches) {
-        // Find the team's INSERT statement by name
+        // Re-escape names for matching against the original SQL (which has '' for apostrophes)
         const escapedName = casaTeam.name.replace(/'/g, "''");
+        const escapedExtId = casaTeam.externalId.replace(/'/g, "''");
         const oldClubId = casaTeam.clubId;
         const newClubId = existingClub.id;
         
         // Replace club_id in the INSERT statement for this team
-        const oldPattern = `SELECT '${escapedName}', '${casaTeam.externalId}', ${oldClubId},`;
-        const newPattern = `SELECT '${escapedName}', '${casaTeam.externalId}', ${newClubId},`;
+        const oldPattern = `SELECT '${escapedName}', '${escapedExtId}', ${oldClubId},`;
+        const newPattern = `SELECT '${escapedName}', '${escapedExtId}', ${newClubId},`;
         originalTeamsSql = originalTeamsSql.replace(oldPattern, newPattern);
       }
       
       // For each new team, replace its club_id with newClubId
       for (const team of newTeams) {
         if (team.newClubId) {
+          // Re-escape names for matching against the original SQL
           const escapedName = team.name.replace(/'/g, "''");
+          const escapedExtId = team.externalId.replace(/'/g, "''");
           const oldClubId = team.clubId;
           const newClubId = team.newClubId;
           
           // Replace club_id in the INSERT statement for this team
-          const oldPattern = `SELECT '${escapedName}', '${team.externalId}', ${oldClubId},`;
-          const newPattern = `SELECT '${escapedName}', '${team.externalId}', ${newClubId},`;
+          const oldPattern = `SELECT '${escapedName}', '${escapedExtId}', ${oldClubId},`;
+          const newPattern = `SELECT '${escapedName}', '${escapedExtId}', ${newClubId},`;
           originalTeamsSql = originalTeamsSql.replace(oldPattern, newPattern);
         }
       }

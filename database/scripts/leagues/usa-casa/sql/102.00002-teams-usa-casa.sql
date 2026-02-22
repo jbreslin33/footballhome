@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Teams - CASA (Curated)
--- Teams with curated club_id references. Total: 23
+-- Teams with curated club_id references. Total: 24
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
@@ -156,7 +156,7 @@ WHERE d.name = 'Boston Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Kutztown Men''s Soccer', '9090893-kutztown-men''s-soccer', 20017, d.id, 2
+SELECT 'Kutztown Men''s Soccer', '9090893-kutztown-men''s-soccer', 20015, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
@@ -172,7 +172,7 @@ WHERE d.name = 'Lancaster Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Keystone Elite', '9090893-keystone-elite', 20015, d.id, 2
+SELECT 'Keystone Elite', '9090893-keystone-elite', 20016, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
@@ -180,7 +180,7 @@ WHERE d.name = 'Lancaster Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'F&M FC', '9090893-f&m-fc', 20016, d.id, 2
+SELECT 'F&M FC', '9090893-f&m-fc', 20017, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
@@ -188,7 +188,7 @@ WHERE d.name = 'Lancaster Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Lancaster City FC', '9090893-lancaster-city-fc', 20017, d.id, 2
+SELECT 'Lancaster City FC', '9090893-lancaster-city-fc', 20018, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'

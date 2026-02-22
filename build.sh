@@ -153,13 +153,13 @@ npm install --silent
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo -e "${YELLOW}🧹 Cleaning containers, volumes, and build cache...${NC}"
 
-$DOCKER_COMPOSE down 2>&1 | grep -v "no container with" | grep -v "Error:" || true
+$DOCKER_COMPOSE down -v 2>&1 | grep -v "no container with" | grep -v "Error:" || true
 $DOCKER stop footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
 $DOCKER rm -f footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
-$DOCKER volume rm footballhome_db_data 2>/dev/null || true
-$DOCKER volume rm footballhome_footballhome_network 2>/dev/null || true
-$DOCKER network rm footballhome_footballhome_network 2>/dev/null || true
 $DOCKER pod rm -f pod_footballhome 2>/dev/null || true
+$DOCKER volume rm footballhome_db_data 2>/dev/null || true
+$DOCKER volume rm footballhome_pgadmin_data 2>/dev/null || true
+$DOCKER network rm footballhome_footballhome_network 2>/dev/null || true
 $DOCKER images | grep footballhome | awk '{print $3}' | xargs -r $DOCKER rmi -f 2>/dev/null || true
 
 echo -e "${GREEN}✓ Cleanup complete${NC}"

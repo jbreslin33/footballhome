@@ -21,6 +21,7 @@ class ApslMatchEventScraper {
     this.parser = parser;
     this.cacheDir = path.join(__dirname, '../../scraped-html/apsl');
     this.eventTypeCache = null; // Cache event type lookups
+    this.autoCreatedPlayers = new Map(); // Track players created from match events
   }
   
   async run() {
@@ -86,6 +87,10 @@ class ApslMatchEventScraper {
       console.log(`   Matches processed: ${totalMatches}`);
       console.log(`   Total events: ${totalEvents}`);
       console.log(`   Skipped (no HTML/data): ${skipped}`);
+      
+      if (this.autoCreatedPlayers.size > 0) {
+        console.log(`   Auto-created players (from match events, not on current roster): ${this.autoCreatedPlayers.size}`);
+      }
       
       if (Object.keys(eventCounts).length > 0) {
         console.log(`\n   Event breakdown:`);
@@ -171,13 +176,16 @@ class ApslMatchEventScraper {
       return false;
     }
     
-    // Look up player by name and team
-    const player = await this.findPlayerByName(event.playerName, teamId, matchId);
+    // Look up player by name and team, auto-creating if not found
+    let player = await this.findPlayerByName(event.playerName, teamId, matchId);
     
     if (!player) {
-      // Player not in roster - might be a guest player or typo
-      console.log(`   ⚠️  Player not found: "${event.playerName}" (${event.eventType}) for team ${teamId}`);
-      return false;
+      // Player not on any roster - auto-create from match event data
+      player = await this.autoCreatePlayer(event.playerName, teamId);
+      if (!player) {
+        console.log(`   ⚠️  Failed to auto-create player: "${event.playerName}" for team ${teamId}`);
+        return false;
+      }
     }
     
     // Get event type ID
@@ -191,7 +199,10 @@ class ApslMatchEventScraper {
     // Handle assisted_by if present
     let assistedByPlayerId = null;
     if (event.assistedByPlayerName) {
-      const assistPlayer = await this.findPlayerByName(event.assistedByPlayerName, teamId, matchId);
+      let assistPlayer = await this.findPlayerByName(event.assistedByPlayerName, teamId, matchId);
+      if (!assistPlayer) {
+        assistPlayer = await this.autoCreatePlayer(event.assistedByPlayerName, teamId);
+      }
       if (assistPlayer) {
         assistedByPlayerId = assistPlayer.id;
       }
@@ -308,18 +319,83 @@ class ApslMatchEventScraper {
     }
     
     // Third try: Fuzzy match any APSL player by last name + first name
-    // (useful when roster data is incomplete)
+    // Includes both SQL-loaded players (id 10000+) and auto-created players (source_system_id = 1)
     result = await this.client.query(`
       SELECT DISTINCT p.id, p.person_id, per.first_name, per.last_name
       FROM players p
       JOIN persons per ON p.person_id = per.id
-      WHERE p.id BETWEEN 10000 AND 20000
+      WHERE (p.source_system_id = 1 OR p.id BETWEEN 10000 AND 20000)
         AND per.last_name ILIKE $1
         AND (per.first_name ILIKE $2 OR $2 = '')
       LIMIT 1
     `, [lastName, firstName]);
     
     return result.rows[0] || null;
+  }
+  
+  /**
+   * Auto-create a player from match event data
+   * Creates person -> player -> roster chain for players not on current roster
+   * (e.g., players who left mid-season but appear in earlier match events)
+   */
+  async autoCreatePlayer(playerName, teamId) {
+    // Parse "LastName, FirstName" format
+    const parts = playerName.split(',').map(p => p.trim());
+    
+    let lastName, firstName;
+    if (parts.length === 2) {
+      lastName = parts[0];
+      firstName = parts[1];
+    } else {
+      const spaceParts = playerName.split(' ');
+      if (spaceParts.length >= 2) {
+        firstName = spaceParts[0];
+        lastName = spaceParts.slice(1).join(' ');
+      } else {
+        lastName = playerName;
+        firstName = '';
+      }
+    }
+    
+    // Check if we already auto-created this player for this team
+    const cacheKey = `${lastName.toLowerCase()}|${firstName.toLowerCase()}|${teamId}`;
+    if (this.autoCreatedPlayers.has(cacheKey)) {
+      return this.autoCreatedPlayers.get(cacheKey);
+    }
+    
+    try {
+      // Create person
+      const personResult = await this.client.query(`
+        INSERT INTO persons (first_name, last_name)
+        VALUES ($1, $2)
+        RETURNING id
+      `, [firstName, lastName]);
+      const personId = personResult.rows[0].id;
+      
+      // Create player linked to person (source_system_id = 1 for APSL)
+      const playerResult = await this.client.query(`
+        INSERT INTO players (person_id, source_system_id)
+        VALUES ($1, 1)
+        RETURNING id
+      `, [personId]);
+      const playerId = playerResult.rows[0].id;
+      
+      // Add to team roster (no left_at — we know they played for this team
+      // but don't know departure date just because they're off the current roster page)
+      await this.client.query(`
+        INSERT INTO rosters (team_id, player_id, joined_at)
+        VALUES ($1, $2, CURRENT_TIMESTAMP)
+        ON CONFLICT DO NOTHING
+      `, [teamId, playerId]);
+      
+      const player = { id: playerId, person_id: personId, first_name: firstName, last_name: lastName };
+      this.autoCreatedPlayers.set(cacheKey, player);
+      
+      return player;
+    } catch (error) {
+      console.log(`   ❌ Error auto-creating player "${playerName}": ${error.message}`);
+      return null;
+    }
   }
 }
 

@@ -439,16 +439,9 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
       // Find team by external_id to get team name
       let team = this.teams.find(t => t.externalId === teamExternalId);
       if (!team) {
-        // Create placeholder team for roster-only teams (not in current standings)
-        const teamName = `Team ${teamExternalId}`;
-        team = {
-          name: teamName,
-          externalId: teamExternalId,
-          divisionName: 'Unknown',
-          clubName: teamName
-        };
-        this.teams.push(team);
-        createdTeams.push(teamExternalId);
+        // Skip roster files for teams not in current standings
+        // (these are from previous seasons and would create broken placeholder teams)
+        continue;
       }
       
       const htmlPath = path.join(htmlDir, file);

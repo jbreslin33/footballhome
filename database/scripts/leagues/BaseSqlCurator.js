@@ -16,13 +16,13 @@ class BaseSqlCurator {
    */
   parseOrganizationsSql(sql) {
     const orgs = [];
-    const regex = /INSERT INTO organizations \(id, name\) VALUES \((\d+), '([^']+)'\)/g;
+    const regex = /INSERT INTO organizations \(id, name\) VALUES \((\d+), '((?:[^']|'')+)'\)/g;
     
     let match;
     while ((match = regex.exec(sql)) !== null) {
       orgs.push({
         id: parseInt(match[1]),
-        name: match[2]
+        name: match[2].replace(/''/g, "'")
       });
     }
     
@@ -35,12 +35,12 @@ class BaseSqlCurator {
   parseClubsSql(sql) {
     const clubs = [];
     
-    const regex = /INSERT INTO clubs \(id, name, organization_id\) VALUES \((\d+), '([^']+)', (\d+)\)/g;
+    const regex = /INSERT INTO clubs \(id, name, organization_id\) VALUES \((\d+), '((?:[^']|'')+)', (\d+)\)/g;
     let match;
     while ((match = regex.exec(sql)) !== null) {
       clubs.push({
         id: parseInt(match[1]),
-        name: match[2],
+        name: match[2].replace(/''/g, "'"),
         organizationId: parseInt(match[3])
       });
     }
@@ -58,14 +58,15 @@ class BaseSqlCurator {
     
     // New schema format: INSERT...SELECT with division_id lookup (multi-line)
     // Use dotall flag (s) to match across newlines
-    const regex = /INSERT INTO teams \(name, external_id, club_id, division_id, source_system_id\)\s+SELECT '([^']+)', '([^']+)', (\d+), d\.id, (\d+)/gs;
+    // Note: Use (?:[^']|'')+ to handle SQL-escaped apostrophes (e.g., "Men''s")
+    const regex = /INSERT INTO teams \(name, external_id, club_id, division_id, source_system_id\)\s+SELECT '((?:[^']|'')+)', '((?:[^']|'')+)', (\d+), d\.id, (\d+)/gs;
     
     let match;
     while ((match = regex.exec(sql)) !== null) {
       teams.push({
         id: null, // ID is auto-generated, not in SQL anymore
-        name: match[1],
-        externalId: match[2],
+        name: match[1].replace(/''/g, "'"),
+        externalId: match[2].replace(/''/g, "'"),
         clubId: parseInt(match[3]),
         sourceSystemId: parseInt(match[4])
       });

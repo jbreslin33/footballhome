@@ -52,13 +52,13 @@ help:
 
 clean:
 	@echo "🧹 Cleaning containers and volumes..."
-	@podman-compose --env-file env down 2>&1 | grep -v "no container with" | grep -v "Error:" || true
+	@command -v podman-compose >/dev/null 2>&1 && podman-compose --env-file env down -v 2>&1 | grep -v "no container with" | grep -v "Error:" || true
 	@podman stop footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
 	@podman rm -f footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
-	@podman volume rm footballhome_db_data 2>/dev/null || true
-	@podman volume rm footballhome_footballhome_network 2>/dev/null || true
-	@podman network rm footballhome_footballhome_network 2>/dev/null || true
 	@podman pod rm -f pod_footballhome 2>/dev/null || true
+	@podman volume rm footballhome_db_data 2>/dev/null || true
+	@podman volume rm footballhome_pgadmin_data 2>/dev/null || true
+	@podman network rm footballhome_footballhome_network 2>/dev/null || true
 	@echo "✓ Cleanup complete"
 
 build:

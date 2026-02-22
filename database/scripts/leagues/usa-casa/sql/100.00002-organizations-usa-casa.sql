@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Organizations - CASA (Curated)
--- Only new organizations not in APSL or CSL. Total: 18
+-- Only new organizations not in APSL or CSL. Total: 19
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO organizations (id, name) VALUES (20000, 'Adé United FC') ON CONFLICT (id) DO NOTHING;
@@ -18,6 +18,7 @@ INSERT INTO organizations (id, name) VALUES (20011, 'Strictly Nos Fc') ON CONFLI
 INSERT INTO organizations (id, name) VALUES (20012, 'BCFC All Stars') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (20013, 'Flatley FC') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (20014, 'Gambeta FC') ON CONFLICT (id) DO NOTHING;
-INSERT INTO organizations (id, name) VALUES (20015, 'Keystone Elite') ON CONFLICT (id) DO NOTHING;
-INSERT INTO organizations (id, name) VALUES (20016, 'F&M FC') ON CONFLICT (id) DO NOTHING;
-INSERT INTO organizations (id, name) VALUES (20017, 'Lancaster City FC') ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name) VALUES (20015, 'Kutztown Men''s Soccer') ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name) VALUES (20016, 'Keystone Elite') ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name) VALUES (20017, 'F&M FC') ON CONFLICT (id) DO NOTHING;
+INSERT INTO organizations (id, name) VALUES (20018, 'Lancaster City FC') ON CONFLICT (id) DO NOTHING;

@@ -118,6 +118,25 @@ class ApslSqlGenerator extends BaseGenerator {
       throw new Error('No standings HTML found. Run ./scrape.sh first.');
     }
     
+    // Select the file that matches the active season (not just most recent by mtime)
+    const targetSeason = this.getSeasonName();
+    const { JSDOM: JSDOMCheck } = require('jsdom');
+    
+    for (const file of files) {
+      const html = fs.readFileSync(file.path, 'utf-8');
+      const dom = new JSDOMCheck(html);
+      const firstHeading = dom.window.document.querySelector('.leagueAccordTitle1');
+      if (firstHeading) {
+        const headingText = firstHeading.textContent.trim();
+        if (headingText.startsWith(targetSeason)) {
+          console.log(`   Reading: ${file.path} (season: ${targetSeason})`);
+          return html;
+        }
+      }
+    }
+    
+    // Fallback: use first file if no season match found
+    console.warn(`   ⚠️  No HTML file found for season ${targetSeason}, using most recent file`);
     const htmlPath = files[0].path;
     console.log(`   Reading: ${htmlPath}`);
     return fs.readFileSync(htmlPath, 'utf-8');
@@ -206,32 +225,37 @@ class ApslSqlGenerator extends BaseGenerator {
     let playerId = this.getPlayerIdBase();
     const createdTeams = [];
     
+    // Collect roster files, preferring new format (apsl-team-*) over old format (NNNNN-*)
+    const rosterFiles = new Map(); // external_id -> filename
     for (const file of files) {
-      // Skip non-HTML files and the standings file
       if (!file.endsWith('.html') || file.includes('tables-') || file.endsWith('.skip')) continue;
       
+      // New format: apsl-team-114812-46798c01.html
+      const newMatch = file.match(/^apsl-team-(\d+)-[a-f0-9]+\.html$/);
+      if (newMatch) {
+        rosterFiles.set(newMatch[1], file); // Always prefer new format
+        continue;
+      }
+      
+      // Old format: 114812-bc27d2da.html (only use if no new format exists)
+      const oldMatch = file.match(/^(\d+)-[a-f0-9]+\.html$/);
+      if (oldMatch && !rosterFiles.has(oldMatch[1])) {
+        rosterFiles.set(oldMatch[1], file);
+      }
+    }
+    
+    for (const [teamExternalId, file] of rosterFiles) {
       const filePath = path.join(htmlDir, file);
       const html = fs.readFileSync(filePath, 'utf-8');
       const dom = new JSDOM(html);
       const document = dom.window.document;
       
-      // Extract team external_id from filename (e.g., "114812-bc27d2da.html" -> "114812")
-      const teamExternalId = file.match(/^(\d+)-/)?.[1];
-      if (!teamExternalId) continue;
-      
       // Find team by external_id to get team name
       let team = this.teams.find(t => t.externalId === teamExternalId);
       if (!team) {
-        // Create placeholder team for roster-only teams (not in current standings)
-        const teamName = `Team ${teamExternalId}`;
-        team = {
-          name: teamName,
-          externalId: teamExternalId,
-          divisionName: 'Unknown',
-          clubName: teamName
-        };
-        this.teams.push(team);
-        createdTeams.push(teamExternalId);
+        // Skip roster files for teams not in current standings
+        // (these are from previous seasons and would create broken placeholder teams)
+        continue;
       }
       
       // Find roster table
