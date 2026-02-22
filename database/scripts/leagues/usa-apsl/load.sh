@@ -15,7 +15,9 @@
 #   6. Players (105.00001)
 #   7. Matches (106.00001)
 #   8. Rosters (107.00001)
-#   9. Curation (900.00001)
+#   9. Event Players (108.00001)
+#  10. Match Events (109.00001)
+#  11. Curation (900.00001)
 #
 # Usage:
 #   ./load.sh
@@ -32,7 +34,7 @@ cd "$(dirname "$0")/../../../.."
 echo "📥 Loading APSL SQL to database..."
 
 # Load SQL files in order (including 107 rosters now that we use team name lookups)
-for file in "$SQL_DIR"/100.* "$SQL_DIR"/101.* "$SQL_DIR"/102.* "$SQL_DIR"/103.* "$SQL_DIR"/104.* "$SQL_DIR"/105.* "$SQL_DIR"/106.* "$SQL_DIR"/107.* "$SQL_DIR"/900.*; do
+for file in "$SQL_DIR"/100.* "$SQL_DIR"/101.* "$SQL_DIR"/102.* "$SQL_DIR"/103.* "$SQL_DIR"/104.* "$SQL_DIR"/105.* "$SQL_DIR"/106.* "$SQL_DIR"/107.* "$SQL_DIR"/108.* "$SQL_DIR"/109.* "$SQL_DIR"/900.*; do
     if [ -f "$file" ]; then
         echo "  Loading: $(basename "$file")"
         podman exec -i footballhome_db psql -U footballhome_user -d footballhome < "$file"

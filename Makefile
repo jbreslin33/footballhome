@@ -104,9 +104,10 @@ bootstrap: clean
 	@echo "  Run: make load    (to load all leagues)"
 
 # Load all leagues (calls individual targets)
-load: load-apsl load-csl load-casa events
+# Events are now in SQL files (108/109 series) - no need for live scraping
+load: load-apsl load-csl load-casa
 	@echo ""
-	@echo "✓ All leagues loaded and events scraped"
+	@echo "✓ All leagues loaded (events included in SQL files)"
 
 # Individual league load targets
 load-apsl:
@@ -138,7 +139,8 @@ parse-csl:
 parse-casa:
 	@cd database/scripts/leagues/usa-casa && ./parse.sh
 
-# Scrape all match events (calls individual targets)
+# Scrape match events from cached HTML into database (for re-scraping only)
+# Events are normally loaded from SQL files via load targets
 events: events-apsl events-csl
 	@echo ""
 	@echo "✓ Event scraping complete"
@@ -154,7 +156,7 @@ events-csl:
 
 # Full refresh: parse all, then bootstrap DB, then load all (which includes events)
 refresh: parse bootstrap load
-	@echo "✓ Full refresh complete (parsed all leagues, fresh DB, loaded all data, scraped events)"
+	@echo "✓ Full refresh complete (parsed all leagues, fresh DB, loaded all data including events)"
 
 # ============================================================
 # Development Helpers
