@@ -70,11 +70,10 @@ class CslMatchEventScraper {
     
     for (const match of matches) {
       const url = `https://www.cosmosoccerleague.com/CSL/Event/${match.external_id}`;
-      const filename = `${match.external_id}`;
       
       try {
-        // Fetch will use cache if available
-        const result = await this.fetcher.fetch(url, filename, true);
+        // Fetch will use cache if available (useCache=true)
+        const result = await this.fetcher.fetch(url, true);
         if (result && result.length > 0) {
           cached++;
         }
@@ -189,18 +188,29 @@ class CslMatchEventScraper {
   }
   
   /**
-   * Find HTML file for match event (mirrors APSL pattern)
+   * Find HTML file for match event using HtmlFetcher's cache naming convention
    */
   findEventHtmlFile(externalId) {
     const fs = require('fs');
     const path = require('path');
+    const crypto = require('crypto');
     
     try {
-      const files = fs.readdirSync(this.fetcher.cacheDir);
-      // Look for files starting with externalId
-      const pattern = new RegExp(`^${externalId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-[a-f0-9]+\\.html$`);
-      const match = files.find(f => pattern.test(f));
-      return match ? path.join(this.fetcher.cacheDir, match) : null;
+      // Replicate HtmlFetcher.getCacheFilename() logic:
+      // URL: https://www.cosmosoccerleague.com/CSL/Event/{externalId}
+      // Last path segment = externalId, lowercased, non-alphanumeric replaced with '-'
+      // Then append '-' + MD5(url).substring(0,8) + '.html'
+      const url = `https://www.cosmosoccerleague.com/CSL/Event/${externalId}`;
+      const hash = crypto.createHash('md5').update(url).digest('hex').substring(0, 8);
+      const baseName = externalId.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      const expectedFilename = `${baseName}-${hash}.html`;
+      
+      const fullPath = path.join(this.fetcher.cacheDir, expectedFilename);
+      if (fs.existsSync(fullPath)) {
+        return fullPath;
+      }
+      
+      return null;
     } catch (error) {
       return null;
     }

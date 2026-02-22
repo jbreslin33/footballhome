@@ -53,7 +53,7 @@ class CslMatchEventParser {
    * Parse player statistics from a team's stats table
    * Columns: Player (0), MP (1), G (2), A (3), OG (4), KS (5), KGA (6)
    * @param {Element} table - Table element
-   * @returns {Array<{playerName: string, goals: number, assists: number}>}
+   * @returns {Array<{playerName: string, goals: number, assists: number, ownGoals: number}>}
    */
   parsePlayerStatsTable(table) {
     const playerStats = [];
@@ -63,16 +63,19 @@ class CslMatchEventParser {
       const cells = row.querySelectorAll('td');
       if (cells.length < 7) continue; // Skip invalid rows
       
+      // Columns: Player(0), MP(1), G(2), A(3), OG(4), KS(5), KGA(6)
       const playerName = this.parsePlayerName(cells[0].textContent.trim());
       const goals = parseInt(cells[2].textContent.trim()) || 0;
       const assists = parseInt(cells[3].textContent.trim()) || 0;
+      const ownGoals = parseInt(cells[4].textContent.trim()) || 0;
       
-      // Only include players with goals or assists
-      if (goals > 0 || assists > 0) {
+      // Include players with any recorded event
+      if (goals > 0 || assists > 0 || ownGoals > 0) {
         playerStats.push({
           playerName,
           goals,
-          assists
+          assists,
+          ownGoals
         });
       }
     }
