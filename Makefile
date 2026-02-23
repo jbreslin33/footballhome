@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db bootstrap load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init init-apsl init-csl init-casa init-all scrape scrape-apsl scrape-csl scrape-casa
+.PHONY: all help clean build up down rebuild logs test ps shell-db bootstrap load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init init-apsl init-csl init-casa init-all scrape scrape-apsl scrape-csl scrape-casa backup restore safe-rebuild
 
 # Default target - safe, non-destructive
 all: up
@@ -49,7 +49,13 @@ help:
 	@echo "Full workflows:"
 	@echo "  make rebuild && make load   - Fresh DB from committed SQL"
 	@echo "  make rebuild && make init   - Full init from cached HTML"
+	@echo "  make safe-rebuild && make load - Backup, then fresh DB from SQL"
 	@echo "  make refresh               - parse + rebuild + load (fast refresh)"
+	@echo ""
+	@echo "Backup & restore:"
+	@echo "  make backup      - Snapshot DB to backups/ (pg_dump)"
+	@echo "  make restore     - Restore latest backup (or BACKUP=file.sql)"
+	@echo "  make safe-rebuild - Backup + rebuild (safe to run anytime)"
 	@echo ""
 	@echo "Development:"
 	@echo "  make ps          - Show running containers"
@@ -217,6 +223,28 @@ events-csl:
 # Full refresh: parse all, then bootstrap DB, then load all
 refresh: parse bootstrap load
 	@echo "✓ Full refresh complete (parsed all leagues, fresh DB, loaded all data including events)"
+
+# ============================================================
+# Backup & Restore (pg_dump snapshots)
+# ============================================================
+
+backup:
+	@mkdir -p backups
+	@echo "💾 Backing up database..."
+	@podman exec footballhome_db pg_dump -U footballhome_user footballhome > backups/backup-$$(date +%Y%m%d-%H%M%S).sql
+	@echo "✓ Backup saved: $$(ls -t backups/backup-*.sql | head -1)"
+
+restore:
+	$(eval BACKUP_FILE := $(or $(BACKUP),$(shell ls -t backups/backup-*.sql 2>/dev/null | head -1)))
+	@if [ -z "$(BACKUP_FILE)" ]; then echo "❌ No backup found. Run: make backup"; exit 1; fi
+	@echo "♻️  Restoring from $(BACKUP_FILE)..."
+	@podman exec -i footballhome_db psql -U footballhome_user -d footballhome < $(BACKUP_FILE)
+	@echo "✓ Restored from $(BACKUP_FILE)"
+
+safe-rebuild: backup rebuild
+	@echo "✓ Safe rebuild complete (backup in backups/)"
+	@echo "  Run: make load    (to load SQL files)"
+	@echo "  Or:  make restore (to restore from backup)"
 
 # ============================================================
 # Development Helpers
