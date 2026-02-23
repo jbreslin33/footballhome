@@ -23,57 +23,43 @@ cd footballhome
 # 3. Unlock encrypted credentials (ask team for the key file)
 git-crypt unlock /path/to/footballhome.key
 
-# 4. Full setup (scrape data + build + start)
-./dev.sh
+# 4. Build and start (fresh DB from committed SQL)
+make rebuild && make load
 
 # Access at http://localhost:3000
 ```
 
 **Note**: The `.env` file with Twilio credentials is encrypted. New team members need the git-crypt key to unlock it.
 
-**Podman/Docker**: This project defaults to Podman but supports Docker as a fallback. The `dev.sh` script automatically detects `podman-compose` or `docker-compose`.
+**Podman/Docker**: This project defaults to Podman but supports Docker as a fallback.
 
 ## 🔧 Development Workflows
 
 ```bash
-# Full rebuild with fresh APSL data (5-15 min)
-./dev.sh
+# Fresh DB from committed SQL (most common)
+make rebuild && make load
 
-# Quick restart after code changes (keeps database)
-./dev.sh --quick
+# Full init from cached HTML (one-time or re-scrape)
+make rebuild && make init
 
-# Just update APSL league data
-./dev.sh --scrape-only
+# Regenerate SQL from cached HTML (no DB needed)
+make parse
 
-# Rebuild without scraping (after git pull)
-./dev.sh --no-scrape
+# Fetch fresh HTML from web, then rebuild
+make scrape && make rebuild && make init
 
-# Show all options
-./dev.sh --help
+# Quick refresh (parse + rebuild + load)
+make refresh
+
+# Safe rebuild with backup first
+make safe-rebuild && make load
+
+# Start/stop without rebuilding
+make up          # Start containers
+make down        # Stop containers
 ```
 
-### dev.sh: verbose diagnostics
-
-The `dev.sh` script now includes additional diagnostic flags to help find build and database initialization bottlenecks:
-
-- `--verbose` : Enable shell tracing, collect slow SQL statements, and show per-service build timings.
-- `--summary-only` : Run builds and start services but skip live log-followers and DB sampling. Useful when you only want a compact summary.
-- `--persist-slow-sql` and `--slow-sql-out=<PATH>` : Save the collected slow-SQL log to a path for later analysis.
-- `--persist-db-sample` and `--db-sample-out=<PATH>` : Save the DB resource sampler log (docker stats) to a path.
-- `--alert-pattern=<REGEX>` : Customize the realtime alert regex used to highlight warnings/errors in logs.
-
-Examples:
-
-```bash
-# Verbose run with persisted logs
-./dev.sh --verbose --persist-slow-sql --slow-sql-out=/tmp/slow_sql.tsv --persist-db-sample --db-sample-out=/tmp/db_stats.log
-
-# Quick restart with summary-only output
-./dev.sh --quick --summary-only
-
-# Customize alert pattern to include 'duration' lines
-./dev.sh --verbose --alert-pattern='error|duration|deadlock'
-```
+See `make help` for all available targets.
 
 ## 🤖 AI Development Tools
 
@@ -105,7 +91,7 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 **Stack:**
 - **Frontend**: Vanilla JavaScript FSM-based UI (port 3000)
 - **Backend**: Custom C++ HTTP server (port 3001)
-- **Database**: PostgreSQL with APSL league data (port 5432)
+- **Database**: PostgreSQL with league data (port 5432)
 - **Admin**: pgAdmin interface (port 5050)
 
 ## 🔐 Demo Login
@@ -129,25 +115,26 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 │   │   ├── models/           # Database models
 │   │   └── database/         # PostgreSQL client
 │   └── CMakeLists.txt
-├── database/                  # PostgreSQL setup
-│   ├── data/                 # SQL data files
-│   │   ├── *.sql            # INSERT format
-│   │   └── *.copy.sql       # COPY format (100x faster)
+├── database/
+│   ├── data/                 # Bootstrap SQL (schema + lookups)
+│   ├── scraped-html/         # Cached HTML from league websites
 │   └── scripts/
-│       └── apsl-scraper/    # APSL league data scraper
-├── docker/                   # Docker configuration
-│   └── postgres/
-│       └── init-with-progress.sh
-├── docker-compose.yml        # Container orchestration
-└── dev.sh                    # Unified development script
+│       ├── leagues/          # Per-league pipeline (generate-sql, curate-sql, etc.)
+│       │   └── north-america/usa/{apsl,csl,casa}/
+│       ├── scrapers/         # Web scrapers (structure + event scrapers)
+│       ├── domain/           # Domain models + repositories
+│       └── infrastructure/   # Parsers + fetchers
+├── backups/                  # pg_dump snapshots (gitignored)
+├── Makefile                  # All build/load/parse/init targets
+└── docker-compose.yml        # Container orchestration
 ```
 
 ## 🏈 Features
 
 ### League Management
-- **APSL Integration**: Automatically scrapes teams, players, rosters, matches from American Premier Soccer League
-- **Multiple Leagues**: Support for APSL, CASA, TCWL with division tracking
-- **Bulk Data Loading**: PostgreSQL COPY format for 100x faster database initialization
+- **Multi-League Support**: APSL, CSL, CASA with automated scraping and SQL generation
+- **Division Tracking**: Conferences, divisions, standings per league
+- **Cross-League Curation**: Automatic deduplication of shared clubs across leagues
 
 ### Team Management
 - **Roster Management**: Track players, jersey numbers, positions
@@ -159,70 +146,36 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 - **Match Tracking**: View upcoming and past matches from league schedule
 - **RSVP System**: Players can respond to events
 
-### Technical Features
-- **Fast Database Initialization**: COPY format loads 1000s of rows in seconds
-- **Automatic Data Updates**: Scraper regenerates both INSERT and COPY SQL formats
-- **Health Monitoring**: Built-in health checks and progress logging
-- **Docker Development**: Complete containerized workflow with single command
+## 🗄️ Data Pipeline
 
-## 🗄️ Database
+### Two Tiers of SQL
 
-### Data Sources
+1. **Bootstrap Data** (`database/data/`) — Schema, lookups, manual reference data
+2. **League Data** (`database/scripts/leagues/*/sql/`) — Generated from scraped HTML, committed to git
 
-1. **Manual Data** (in `database/data/`):
-   - Core lookups (sports, event types, statuses)
-   - Venues
-   - Manual users and teams
-
-2. **Scraped APSL Data** (auto-generated):
-   - Leagues and conferences
-   - Clubs and sport divisions
-   - Teams and rosters
-   - Players (1000+ from APSL)
-   - Match schedules
-
-### Database Initialization
-
-The system uses two SQL formats for optimal performance:
-
-- **`.sql` files**: Traditional INSERT statements with `ON CONFLICT DO UPDATE`
-- **`.copy.sql` files**: PostgreSQL COPY format (100x faster for bulk inserts)
-
-The init script automatically prefers `.copy.sql` when available.
-
-### Regenerating APSL Data
-
-```bash
-# Scrape latest APSL data (generates both .sql and .copy.sql)
-./dev.sh --scrape-only
-
-# Review changes
-git diff database/data/
-
-# Commit if needed
-git add database/data/
-git commit -m "Update APSL data"
+### Data Flow
+```
+Web → make scrape → cached HTML → make parse → SQL files → make load → DB
+                                                    ↑
+                                              committed to git
 ```
 
-## 🐳 Docker Services
+### Backup Strategy
+```bash
+make backup         # pg_dump → backups/backup-YYYYMMDD-HHMMSS.sql
+make restore        # Restore latest (or BACKUP=file.sql)
+make safe-rebuild   # Backup + rebuild (safety net)
+```
+
+## 🐳 Container Services
 
 ```bash
-# View logs
-docker logs -f footballhome_backend
-docker logs -f footballhome_db
-docker logs -f footballhome_frontend
+make ps             # Show running containers
+make logs           # View logs
+make shell-db       # Connect to database shell
 
 # Access database directly
-docker exec -it footballhome_db psql -U footballhome footballhome
-
-# Restart single service
-docker compose restart backend
-
-# Stop everything
-docker compose down
-
-# Stop and remove volumes (fresh database)
-docker compose down -v
+podman exec -it footballhome_db psql -U footballhome footballhome
 ```
 
 ## 📊 pgAdmin
@@ -232,37 +185,18 @@ Access database admin at http://localhost:5050
 - **Email**: `admin@footballhome.org`
 - **Password**: `admin`
 
-Connection settings are pre-configured in `docker/pgadmin-servers.json`.
-
 ## 🔍 Troubleshooting
 
-### Database won't initialize
 ```bash
 # Check database logs
-docker logs footballhome_db
-
-# Verify SQL files exist
-ls -lh database/data/*.copy.sql
+make logs
 
 # Force full rebuild
-docker compose down -v
-./dev.sh
+make rebuild && make load
+
+# Run data audit
+make audit
 ```
-
-### Backend won't start
-```bash
-# Check backend logs
-docker logs footballhome_backend
-
-# Rebuild C++ backend
-docker compose build --no-cache backend
-docker compose up -d backend
-```
-
-### Slow database loading
-The system uses COPY format for fast bulk loading. If you see slow performance:
-- Ensure `.copy.sql` files are generated (run `./dev.sh --scrape-only`)
-- Check init script prefers COPY files in `docker/postgres/init-with-progress.sh`
 
 ## 🤝 Contributing
 

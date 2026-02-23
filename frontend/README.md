@@ -1,19 +1,16 @@
 # Football Home - Vanilla JS Frontend
 
-This is an experimental vanilla JavaScript frontend implementation of the Football Home application, built to demonstrate:
+A vanilla JavaScript frontend implementation of the Football Home application, built with:
 
 - **Finite State Machine (FSM)** architecture for predictable state management
 - **Class inheritance** for reusable UI components
 - **Pure CSS** design system without external frameworks
 - **Event-driven architecture** with custom events
-- **API integration** with existing Express backend
+- **API integration** with C++ backend
 
 ## 🚀 **Quick Start**
 
-The vanilla JS frontend runs alongside the React version:
-
-- **React Frontend**: http://localhost:3000
-- **Vanilla JS Frontend**: http://localhost:3002
+- **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:3001
 
 ## 🏗️ **Architecture Overview**
@@ -179,13 +176,6 @@ Potential additions to explore:
 - **Forms**: Reusable form components with validation
 - **Testing**: Unit tests for components and FSM
 
-## 🔄 **Switching Between Versions**
-
-- **React**: http://localhost:3000 (Full-featured)
-- **Vanilla**: http://localhost:3002 (Experimental)
-
-Both use the same backend API, so you can compare approaches directly!
-
 ---
 
-This vanilla JS implementation demonstrates that modern web applications can be built with pure JavaScript while maintaining clean architecture, predictable state management, and excellent performance.
+This vanilla JS implementation demonstrates that web applications can be built with pure JavaScript while maintaining clean architecture, predictable state management, and excellent performance.

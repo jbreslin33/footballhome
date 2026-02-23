@@ -69,8 +69,12 @@
 | **Workflows** | `make rebuild && make load` | Fresh DB from committed SQL |
 | | `make rebuild && make init` | Full init from cached HTML |
 | | `make refresh` | parse + rebuild + load (fast refresh) |
+| **Backup** | `make backup` | pg_dump → backups/backup-YYYYMMDD-HHMMSS.sql |
+| | `make restore` | Restore latest backup (or `BACKUP=file.sql`) |
+| | `make safe-rebuild` | Backup + rebuild (safety net for live data) |
 | **Dev** | `make shell-db` | Connect to database shell |
 | | `make ps` / `make logs` | Show containers / view logs |
+| | `make audit` | Run data quality audit |
 
 ### Common Workflows
 
@@ -129,7 +133,15 @@ make rebuild && make init
 **Data Restoration:**
 - Development: `make rebuild && make load` (fresh DB from git)
 - Full re-init: `make rebuild && make init` (re-parse from cached HTML)
-- Production: `pg_dump` backups for live user data (RSVPs, chat, scores)
+- Safe rebuild: `make safe-rebuild && make load` (pg_dump before wipe)
+- Restore from backup: `make restore` (latest) or `make restore BACKUP=file.sql`
+
+**Backup Strategy:**
+- `make backup` runs pg_dump → `backups/backup-YYYYMMDD-HHMMSS.sql`
+- Captures everything: schema + league data + user data
+- `backups/` is gitignored — snapshots are local insurance
+- SQL files in git remain the buildable source for league data
+- pg_dump is for milestones/safety, not version control
 
 ### Database Changes
 - **Schema Changes**: Update `00-schema.sql`, then `make rebuild` to apply
@@ -233,17 +245,19 @@ CASA (curates against APSL + CSL)
 - `make load` loads all three in this order
 - Cross-league curation reads SQL files on disk, NOT the database
 
-### Scraper Implementations
-- `ApslStructureScraper`: APSL league (apslsoccer.com) - ✅ Working
-- `CslStructureScraper`: CSL league (cosmosoccerleague.com) - ✅ Working
-- `CasaParser`: CASA league (casasoccerleagues.com + Google Sheets) - ✅ Working (no events)
-- `GroupMeScraper`: 4 chat implementations (Training, APSL, Boys Club, Old Timers) - ⚠️ Untested
-- `VenueScraper`: Google Places API - ⚠️ Untested
+### Active Scrapers
+- `ApslStructureScraper`: Fetches APSL HTML (apslsoccer.com) — used by `make scrape-apsl`
+- `CslStructureScraper`: Fetches CSL HTML (cosmosoccerleague.com) — used by `make scrape-csl`
+- `CasaStructureScraper`: Fetches CASA HTML (casasoccerleagues.com) — used by `make scrape-casa`
+- `ApslMatchEventScraper`: Scrapes match events into DB — used by `make events-apsl`
+- `CslMatchEventScraper`: Scrapes match events into DB — used by `make events-csl`
 
-### Scraper Base Classes
-- **Base Classes**: `Scraper`, `DataFetcher`, `HtmlParser` (in `database/scripts/`)
-- **Services**: `IdGenerator`, `SqlGenerator`, `DuplicateDetector`
-- **Models**: `League`, `Team`, `Player`, `Match`, `Venue`
+### Supporting Infrastructure
+- **Parsers**: `ApslMatchParser`, `CslMatchParser`, `ApslMatchEventParser`, `CslMatchEventParser`, `ApslStandingsParser`, `CslStandingsParser` (in `infrastructure/parsers/`)
+- **Fetchers**: `HtmlFetcher` (in `infrastructure/fetchers/`)
+- **Repositories**: Match, MatchEvent, Organization, League, Season, Conference, Division, Club, etc. (in `domain/repositories/`)
+- **Models**: Organization, Club, League, Season, Conference, Division, ScrapedTeam (in `domain/models/`)
+- **Base Classes**: `BaseGenerator`, `BaseSqlCurator` (in `database/scripts/leagues/`)
 
 ## 📅 Season Management
 
