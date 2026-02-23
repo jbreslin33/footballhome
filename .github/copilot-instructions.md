@@ -19,8 +19,7 @@
 **Root folder is for:**
 - ✅ Primary scripts: `build.sh`, `setup.sh`, `Makefile`
 - ✅ Config files: `package.json`, `docker-compose.yml`, `.env.example`
-- ✅ Documentation: `README.md`, `AI_TOOLS.md`, `*.md` design docs
-- ✅ Wrapper scripts: `./claude`, `./aider`
+- ✅ Documentation: `README.md`, `*.md` design docs
 
 **Root folder is NOT for:**
 - ❌ Temporary HTML dumps (`team_schedule.html`, `standings_dump.html`)
