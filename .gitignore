@@ -56,4 +56,4 @@ footballhome-git-crypt.key
 .env
 env
 .aider*
-frontend/vendor/
+# frontend/vendor/ is tracked - vis-network library needed for schema viewer
