@@ -405,267 +405,91 @@ class AdminSystemScreen extends Screen {
       if (!response.ok) throw new Error('Failed to load schema');
       const data = await response.json();
       
-      // Create container with instructions
+      // Build table list with search
       content.innerHTML = `
         <div class="schema-view">
           <h2>🗂️ Database Schema Viewer</h2>
-          <div class="schema-controls">
-            <button id="schema-fit" class="btn btn-secondary">📐 Fit to Screen</button>
-            <button id="schema-zoom-in" class="btn btn-secondary">🔍+ Zoom In</button>
-            <button id="schema-zoom-out" class="btn btn-secondary">🔍- Zoom Out</button>
-            <button id="schema-reset" class="btn btn-secondary">🔄 Reset</button>
-            <button id="schema-fullscreen" class="btn btn-primary">⛶ Fullscreen</button>
-            <button id="schema-new-window" class="btn btn-primary">🗗 New Window</button>
-            <span class="schema-info">
-              💡 <strong>Drag</strong> to pan, <strong>Scroll</strong> to zoom, <strong>Click</strong> table to highlight relationships
-            </span>
+          <p class="subtitle">${data.tables.length} tables</p>
+          <div style="margin: var(--space-3) 0;">
+            <input type="text" id="schema-search" placeholder="Search tables..." 
+              class="form-control" style="max-width: 400px;">
           </div>
-          <div id="schema-network" class="schema-network"></div>
-          <div id="schema-details" class="schema-details">
-            <p style="color: var(--text-secondary); text-align: center; padding: var(--space-4);">
-              👆 Click on any table above to view its columns and data
-            </p>
-          </div>
+          <div id="schema-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-3); margin-top: var(--space-3);"></div>
+          <div id="schema-details" class="schema-details" style="margin-top: var(--space-4);"></div>
         </div>
       `;
       
-      // Prepare nodes (tables) and edges (foreign keys)
-      const nodes = [];
-      const edges = [];
+      const grid = document.getElementById('schema-grid');
       const tableMap = {};
       
-      data.tables.forEach((table, index) => {
-        // Build label with table name and all columns
-        const columnLines = table.columns.map(col => {
-          const pk = col.primary_key ? '🔑 ' : '  ';
-          const fk = table.foreign_keys.some(f => f.column === col.name) ? ' →' : '';
-          const type = col.type.length > 15 ? col.type.substring(0, 12) + '...' : col.type;
-          return `${pk}${col.name}: ${type}${fk}`;
-        });
+      // Render table cards
+      const renderCards = (filter = '') => {
+        const filtered = data.tables.filter(t => 
+          !filter || t.name.toLowerCase().includes(filter.toLowerCase())
+        );
         
-        const fullLabel = `${table.name}\n${'─'.repeat(table.name.length)}\n${columnLines.join('\n')}`;
+        grid.innerHTML = filtered.map(table => {
+          tableMap[table.name] = table;
+          const cols = table.columns.map(col => {
+            const pk = col.primary_key ? '🔑 ' : '';
+            const fk = table.foreign_keys.some(f => f.column === col.name) ? ' →' : '';
+            return `<div style="font-size: 12px; padding: 1px 0; font-family: monospace;">${pk}${col.name}: <span style="color: var(--text-secondary);">${col.type}</span>${fk}</div>`;
+          }).join('');
+          
+          return `
+            <div class="schema-card" data-table="${table.name}" style="border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; cursor: pointer;">
+              <div style="background: var(--color-primary); color: white; padding: var(--space-2); font-weight: 600; font-size: 14px;">
+                ${table.name}
+                <span style="float: right; opacity: 0.7; font-weight: normal; font-size: 12px;">${table.columns.length} cols</span>
+              </div>
+              <div style="padding: var(--space-2); max-height: 200px; overflow-y: auto;">
+                ${cols}
+              </div>
+              ${table.foreign_keys.length > 0 ? `<div style="border-top: 1px solid var(--border-color); padding: var(--space-1) var(--space-2); font-size: 11px; color: var(--text-secondary);">FK: ${table.foreign_keys.map(fk => fk.foreign_table).join(', ')}</div>` : ''}
+            </div>
+          `;
+        }).join('');
         
-        // Tooltip with more details
-        const columnDetails = table.columns.map(col => {
-          const pk = col.primary_key ? '🔑 ' : '';
-          const nullable = col.nullable === 'NO' ? ' NOT NULL' : '';
-          const def = col.default ? ` DEFAULT ${col.default}` : '';
-          return `${pk}${col.name}: ${col.type}${nullable}${def}`;
-        }).join('\\n');
-        
-        nodes.push({
-          id: table.name,
-          label: fullLabel,
-          title: `<b>${table.name}</b>\\n\\n${columnDetails}`,
-          shape: 'box',
-          color: {
-            background: '#ffffff',
-            border: '#2196F3',
-            highlight: { background: '#e3f2fd', border: '#1976d2' }
-          },
-          font: { size: 11, face: 'Monaco, Consolas, "Courier New", monospace', align: 'left' },
-          margin: 10,
-          widthConstraint: { minimum: 200, maximum: 350 }
-        });
-        
-        tableMap[table.name] = table;
-        
-        // Add foreign key relationships as edges
-        table.foreign_keys.forEach(fk => {
-          edges.push({
-            from: table.name,
-            to: fk.foreign_table,
-            label: fk.column,
-            arrows: 'to',
-            color: { color: '#2196F3', highlight: '#ff5722' },
-            font: { size: 10, align: 'middle' },
-            title: `${table.name}.${fk.column} → ${fk.foreign_table}.${fk.foreign_column}`
+        // Click handlers for cards
+        grid.querySelectorAll('.schema-card').forEach(card => {
+          card.addEventListener('click', () => {
+            const tableName = card.dataset.table;
+            const table = tableMap[tableName];
+            const detailsDiv = document.getElementById('schema-details');
+            
+            // Highlight selected
+            grid.querySelectorAll('.schema-card').forEach(c => c.style.boxShadow = '');
+            card.style.boxShadow = '0 0 0 2px var(--color-primary)';
+            
+            let html = `<h3>📋 ${tableName}</h3>`;
+            html += `<table class="data-table"><thead><tr><th>Column</th><th>Type</th><th>Nullable</th><th>Default</th><th>Key</th></tr></thead><tbody>`;
+            table.columns.forEach(col => {
+              html += `<tr><td><strong>${col.name}</strong></td><td>${col.type}</td><td>${col.nullable}</td><td>${col.default || '-'}</td><td>${col.primary_key ? '🔑 PK' : ''}${table.foreign_keys.some(f => f.column === col.name) ? ' → FK' : ''}</td></tr>`;
+            });
+            html += `</tbody></table>`;
+            
+            if (table.foreign_keys.length > 0) {
+              html += `<h4>Foreign Keys</h4><table class="data-table"><thead><tr><th>Column</th><th>References</th></tr></thead><tbody>`;
+              table.foreign_keys.forEach(fk => {
+                html += `<tr><td><strong>${fk.column}</strong></td><td>→ ${fk.foreign_table}.${fk.foreign_column}</td></tr>`;
+              });
+              html += `</tbody></table>`;
+            }
+            
+            detailsDiv.innerHTML = html;
+            detailsDiv.scrollIntoView({ behavior: 'smooth' });
+          });
+          
+          card.addEventListener('dblclick', () => {
+            this.viewTableData(card.dataset.table);
           });
         });
-      });
-      
-      // Create vis.js network
-      const container = document.getElementById('schema-network');
-      const networkData = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
-      
-      const options = {
-        physics: {
-          enabled: true,
-          barnesHut: {
-            gravitationalConstant: -30000,
-            centralGravity: 0.2,
-            springLength: 220,
-            springConstant: 0.01,
-            damping: 0.2,
-            avoidOverlap: 1
-          },
-          stabilization: {
-            enabled: true,
-            iterations: 800,
-            updateInterval: 50
-          },
-          minVelocity: 0.75
-        },
-        interaction: {
-          hover: true,
-          tooltipDelay: 100,
-          navigationButtons: true,
-          keyboard: true
-        },
-        nodes: {
-          borderWidth: 2,
-          borderWidthSelected: 4,
-          shapeProperties: {
-            borderRadius: 4
-          },
-          margin: 10,
-          heightConstraint: { minimum: 60 }
-        },
-        edges: {
-          width: 2,
-          smooth: {
-            type: 'curvedCW',
-            roundness: 0.2
-          },
-          arrows: {
-            to: {
-              enabled: true,
-              scaleFactor: 0.5
-            }
-          },
-          color: {
-            inherit: false
-          }
-        },
-        layout: {
-          improvedLayout: true
-        }
       };
       
-      const network = new vis.Network(container, networkData, options);
+      renderCards();
       
-      // Event handlers
-      document.getElementById('schema-fit').addEventListener('click', () => {
-        network.fit({ animation: true });
-      });
-      
-      document.getElementById('schema-zoom-in').addEventListener('click', () => {
-        const scale = network.getScale();
-        network.moveTo({ scale: scale * 1.2, animation: true });
-      });
-      
-      document.getElementById('schema-zoom-out').addEventListener('click', () => {
-        const scale = network.getScale();
-        network.moveTo({ scale: scale * 0.8, animation: true });
-      });
-      
-      document.getElementById('schema-reset').addEventListener('click', () => {
-        network.fit({ animation: true });
-      });
-      
-      // Fullscreen toggle
-      document.getElementById('schema-fullscreen').addEventListener('click', () => {
-        const schemaView = document.querySelector('.schema-view');
-        if (!document.fullscreenElement) {
-          schemaView.requestFullscreen().catch(err => {
-            console.error('Error attempting to enable fullscreen:', err);
-          });
-        } else {
-          document.exitFullscreen();
-        }
-      });
-      
-      // Open in new window
-      document.getElementById('schema-new-window').addEventListener('click', () => {
-        window.open('/schema-viewer.html', 'SchemaViewer', 'width=1400,height=900,menubar=no,toolbar=no,location=no');
-      });
-      
-      // Show table details on single click
-      network.on('click', (params) => {
-        const detailsDiv = document.getElementById('schema-details');
-        
-        if (params.nodes.length > 0) {
-          const tableName = params.nodes[0];
-          const table = tableMap[tableName];
-          
-          let detailsHTML = `
-            <h3>📋 ${tableName}</h3>
-            <p style="color: var(--text-secondary); margin: var(--space-2) 0;">💡 Double-click this table to view its data</p>
-            <h4>Columns (${table.columns.length})</h4>
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Nullable</th>
-                  <th>Default</th>
-                  <th>Primary Key</th>
-                </tr>
-              </thead>
-              <tbody>
-          `;
-          
-          table.columns.forEach(col => {
-            detailsHTML += `
-              <tr>
-                <td><strong>${col.name}</strong></td>
-                <td>${col.type}</td>
-                <td>${col.nullable}</td>
-                <td>${col.default || '-'}</td>
-                <td>${col.primary_key ? '🔑 Yes' : 'No'}</td>
-              </tr>
-            `;
-          });
-          
-          detailsHTML += `
-              </tbody>
-            </table>
-          `;
-          
-          if (table.foreign_keys.length > 0) {
-            detailsHTML += `
-              <h4>Foreign Keys (${table.foreign_keys.length})</h4>
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Column</th>
-                    <th>References</th>
-                  </tr>
-                </thead>
-                <tbody>
-            `;
-            
-            table.foreign_keys.forEach(fk => {
-              detailsHTML += `
-                <tr>
-                  <td><strong>${fk.column}</strong></td>
-                  <td>→ ${fk.foreign_table}.${fk.foreign_column}</td>
-                </tr>
-              `;
-            });
-            
-            detailsHTML += `
-                </tbody>
-              </table>
-            `;
-          }
-          
-          detailsDiv.innerHTML = detailsHTML;
-        } else {
-          detailsDiv.innerHTML = '<p class="info-message">Click on a table to see details</p>';
-        }
-      });
-      
-      // Double-click to view table data
-      network.on('doubleClick', (params) => {
-        console.log('Double-click detected:', params);
-        if (params.nodes.length > 0) {
-          const tableName = params.nodes[0];
-          console.log('Opening table:', tableName);
-          this.viewTableData(tableName);
-        } else {
-          console.log('No node selected');
-        }
+      document.getElementById('schema-search').addEventListener('input', (e) => {
+        renderCards(e.target.value);
       });
       
     } catch (error) {
