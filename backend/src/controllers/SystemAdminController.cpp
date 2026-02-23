@@ -3280,6 +3280,7 @@ Response SystemAdminController::handleGetLeagueStats(const Request& request) {
             )";
             
             pqxx::result teams = db_->query(teamsSql, {seasonIdStr});
+            json << "\"most_active_teams\":[";
             for (size_t j = 0; j < teams.size(); ++j) {
                 if (j > 0) json << ",";
                 json << "{\"team_name\":\"" << teams[j]["team_name"].c_str() << "\","
