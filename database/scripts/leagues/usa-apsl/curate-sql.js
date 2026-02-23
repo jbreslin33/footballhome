@@ -24,38 +24,16 @@ const BaseSqlCurator = require('../BaseSqlCurator');
 class ApslSqlCurator extends BaseSqlCurator {
   constructor() {
     super();
-    this.sourceSystemId = 1; // APSL
+    this.config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+    this.sourceSystemId = this.config.sourceSystemId;
     this.sqlDir = path.join(__dirname, 'sql');
   }
 
   /**
-   * Define APSL club family mappings
-   * Maps club base names to family identifiers for matching
+   * Define APSL club family mappings from config
    */
   getClubFamily(clubBaseName) {
-    const families = {
-      'central park rangers': 'central-park-rangers',
-      'manhattan celtic': 'manhattan-celtic',
-      'manhattan kickers': 'manhattan-kickers',
-      'brooklyn city': 'brooklyn-city',
-      'zum schneider': 'zum-schneider',
-      'shamrocks': 'shamrocks',
-      'hoboken': 'hoboken',
-      'ny international': 'ny-international',
-      'ny international fc': 'ny-international',
-      'little italy': 'little-italy',
-      'greek american': 'greek-american',
-      'greek americans': 'greek-american',
-      'zum': 'zum-schneider',
-      'zum schneider fc': 'zum-schneider',
-      'zum schneider manhattan': 'zum-schneider',
-      'lansdowne yonkers': 'lansdowne-yonkers',
-      'lansdowne bhoys': 'lansdowne-yonkers',
-      'ny pancyprian freedoms': 'ny-pancyprian-freedoms',
-      'pancyprian freedoms': 'ny-pancyprian-freedoms'
-    };
-    
-    return families[clubBaseName.toLowerCase()] || null;
+    return this.config.clubFamilies[clubBaseName.toLowerCase()] || null;
   }
 
   /**
@@ -66,9 +44,11 @@ class ApslSqlCurator extends BaseSqlCurator {
     console.log('\n=== APSL SQL Curation ===\n');
     
     // Read APSL SQL files (our newly generated data)
-    const apslOrgsFile = path.join(this.sqlDir, '100.00001-organizations-usa-apsl.sql');
-    const apslClubsFile = path.join(this.sqlDir, '101.00001-clubs-usa-apsl.sql');
-    const apslTeamsFile = path.join(this.sqlDir, '102.00001-teams-usa-apsl.sql');
+    const fc = this.config.fileCode;
+    const slug = this.config.leagueSlug;
+    const apslOrgsFile = path.join(this.sqlDir, `100.${fc}-organizations-${slug}.sql`);
+    const apslClubsFile = path.join(this.sqlDir, `101.${fc}-clubs-${slug}.sql`);
+    const apslTeamsFile = path.join(this.sqlDir, `102.${fc}-teams-${slug}.sql`);
     
     if (!fs.existsSync(apslOrgsFile)) {
       console.log('No APSL SQL files found. Run generate-sql.js first.');

@@ -23,45 +23,18 @@ const BaseSqlCurator = require('../BaseSqlCurator');
 class CasaSqlCurator extends BaseSqlCurator {
   constructor() {
     super('CASA', 'usa-casa');
-    this.sourceSystemId = 2;
-    this.orgIdBase = 20000;
-    this.clubIdBase = 20000;
-    this.teamIdBase = 20000;
+    this.config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+    this.sourceSystemId = this.config.sourceSystemId;
+    this.orgIdBase = this.config.orgIdBase;
+    this.clubIdBase = this.config.clubIdBase;
+    this.teamIdBase = this.config.teamIdBase;
   }
 
   /**
-   * Club family mappings for CASA teams
-   * Maps CASA base names to existing club base names
+   * Club family mappings from config
    */
   getClubFamily(baseName) {
-    const families = {
-      // Lighthouse family
-      'lighthouse-boys-club': 'lighthouse-1893-sc',
-      'lighthouse-old-timers-club': 'lighthouse-1893-sc',
-      'lighthouse-1893-sc': 'lighthouse-1893-sc',
-      
-      // Philadelphia family (in APSL)
-      'philadelphia-sc': 'philadelphia-soccer-club',
-      'philadelphia-soccer-club': 'philadelphia-soccer-club',
-      
-      // Phoenix family (CASA-only)
-      'phoenix-scm': 'phoenix-sc',
-      'phoenix-scr': 'phoenix-sc',
-      'phoenix-sc': 'phoenix-sc',
-      
-      // Persepolis family (CASA-only)
-      'persepolis-fc': 'persepolis-fc',
-      'persepolis-united-fc': 'persepolis-fc',
-      
-      // Oaklyn United (in APSL)
-      'oaklyn-united-fc': 'oaklyn-united-fc',
-      
-      // Alloy (in APSL)
-      'alloy-soccer-club': 'alloy-sc',
-      'alloy-sc': 'alloy-sc'
-    };
-
-    return families[baseName] || baseName;
+    return this.config.clubFamilies[baseName] || baseName;
   }
 
   /**
@@ -99,18 +72,20 @@ class CasaSqlCurator extends BaseSqlCurator {
     console.log(`${'='.repeat(80)}\n`);
 
     // Read APSL SQL files
+    const apslConfig = JSON.parse(fs.readFileSync(path.join(__dirname, '../usa-apsl/config.json'), 'utf8'));
     const apslDir = path.join(__dirname, '../usa-apsl/sql');
-    const apslOrgs = this.parseOrganizationsSql(fs.readFileSync(path.join(apslDir, '100.00001-organizations-usa-apsl.sql'), 'utf8'));
-    const apslClubs = this.parseClubsSql(fs.readFileSync(path.join(apslDir, '101.00001-clubs-usa-apsl.sql'), 'utf8'));
+    const apslOrgs = this.parseOrganizationsSql(fs.readFileSync(path.join(apslDir, `100.${apslConfig.fileCode}-organizations-${apslConfig.leagueSlug}.sql`), 'utf8'));
+    const apslClubs = this.parseClubsSql(fs.readFileSync(path.join(apslDir, `101.${apslConfig.fileCode}-clubs-${apslConfig.leagueSlug}.sql`), 'utf8'));
 
     console.log(`📖 Parsed APSL:`);
     console.log(`   Organizations: ${apslOrgs.length}`);
     console.log(`   Clubs: ${apslClubs.length}`);
 
     // Read CSL SQL files
+    const cslConfig = JSON.parse(fs.readFileSync(path.join(__dirname, '../usa-csl/config.json'), 'utf8'));
     const cslDir = path.join(__dirname, '../usa-csl/sql');
-    const cslOrgs = this.parseOrganizationsSql(fs.readFileSync(path.join(cslDir, '100.00003-organizations-usa-csl.sql'), 'utf8'));
-    const cslClubs = this.parseClubsSql(fs.readFileSync(path.join(cslDir, '101.00003-clubs-usa-csl.sql'), 'utf8'));
+    const cslOrgs = this.parseOrganizationsSql(fs.readFileSync(path.join(cslDir, `100.${cslConfig.fileCode}-organizations-${cslConfig.leagueSlug}.sql`), 'utf8'));
+    const cslClubs = this.parseClubsSql(fs.readFileSync(path.join(cslDir, `101.${cslConfig.fileCode}-clubs-${cslConfig.leagueSlug}.sql`), 'utf8'));
 
     console.log(`\n📖 Parsed CSL:`);
     console.log(`   Organizations: ${cslOrgs.length}`);
@@ -121,10 +96,12 @@ class CasaSqlCurator extends BaseSqlCurator {
     console.log(`\n📊 Total existing clubs to match against: ${existingClubs.length}`);
 
     // Read current CASA SQL files
+    const fc = this.config.fileCode;
+    const slug = this.config.leagueSlug;
     const sqlDir = path.join(__dirname, 'sql');
-    const casaOrgsSql = fs.readFileSync(path.join(sqlDir, '100.00002-organizations-usa-casa.sql'), 'utf8');
-    const casaClubsSql = fs.readFileSync(path.join(sqlDir, '101.00002-clubs-usa-casa.sql'), 'utf8');
-    const casaTeamsSql = fs.readFileSync(path.join(sqlDir, '102.00002-teams-usa-casa.sql'), 'utf8');
+    const casaOrgsSql = fs.readFileSync(path.join(sqlDir, `100.${fc}-organizations-${slug}.sql`), 'utf8');
+    const casaClubsSql = fs.readFileSync(path.join(sqlDir, `101.${fc}-clubs-${slug}.sql`), 'utf8');
+    const casaTeamsSql = fs.readFileSync(path.join(sqlDir, `102.${fc}-teams-${slug}.sql`), 'utf8');
 
     const casaOrgs = this.parseOrganizationsSql(casaOrgsSql);
     const casaClubs = this.parseClubsSql(casaClubsSql);
@@ -157,7 +134,7 @@ class CasaSqlCurator extends BaseSqlCurator {
 
     console.log(`\n   📋 Team Matches:`);
     for (const { casaTeam, existingClub } of matches) {
-      console.log(`      ${casaTeam.name} (CASA) → ${existingClub.name} (${existingClub.id < 10000 ? 'APSL' : 'CSL'} id=${existingClub.id})`);
+      console.log(`      ${casaTeam.name} (CASA) → ${existingClub.name} (id=${existingClub.id})`);
     }
 
     // Group new teams to extract clubs
@@ -170,7 +147,7 @@ class CasaSqlCurator extends BaseSqlCurator {
 
     // Check for potential duplicates using BaseGenerator logic
     const BaseGenerator = require('../BaseGenerator');
-    const baseGen = new BaseGenerator('CASA', 2, '00002', 20000, 20000, 20000);
+    const baseGen = new BaseGenerator(this.config.leagueName, this.config.sourceSystemId, this.config.fileCode, this.config.orgIdBase, this.config.clubIdBase, this.config.teamIdBase);
     const potentialDuplicates = baseGen.findPotentialDuplicates(existingClubs, newClubs);
     
     if (potentialDuplicates.length > 0) {
@@ -196,9 +173,9 @@ class CasaSqlCurator extends BaseSqlCurator {
     );
 
     // Write curated SQL back to files
-    fs.writeFileSync(path.join(sqlDir, '100.00002-organizations-usa-casa.sql'), curatedSql.organizations);
-    fs.writeFileSync(path.join(sqlDir, '101.00002-clubs-usa-casa.sql'), curatedSql.clubs);
-    fs.writeFileSync(path.join(sqlDir, '102.00002-teams-usa-casa.sql'), curatedSql.teams);
+    fs.writeFileSync(path.join(sqlDir, `100.${fc}-organizations-${slug}.sql`), curatedSql.organizations);
+    fs.writeFileSync(path.join(sqlDir, `101.${fc}-clubs-${slug}.sql`), curatedSql.clubs);
+    fs.writeFileSync(path.join(sqlDir, `102.${fc}-teams-${slug}.sql`), curatedSql.teams);
 
     console.log(`\n✓ Curated SQL files written to ${sqlDir}`);
     console.log(`   Matched teams: ${matches.length}`);
@@ -268,7 +245,7 @@ class CasaSqlCurator extends BaseSqlCurator {
     );
 
     // Read original teams SQL
-    const teamsPath = path.join(__dirname, 'sql', '102.00002-teams-usa-casa.sql');
+    const teamsPath = path.join(__dirname, 'sql', `102.${this.config.fileCode}-teams-${this.config.leagueSlug}.sql`);
     if (fs.existsSync(teamsPath)) {
       let originalTeamsSql = fs.readFileSync(teamsPath, 'utf8');
       

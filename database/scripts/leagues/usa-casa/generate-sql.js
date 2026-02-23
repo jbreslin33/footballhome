@@ -15,7 +15,9 @@ const BaseGenerator = require('../BaseGenerator');
 
 class CasaSqlGenerator extends BaseGenerator {
   constructor() {
-    super('CASA', 2, '00002', 20000, 20000, 20000);
+    const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+    super(config.leagueName, config.sourceSystemId, config.fileCode, config.orgIdBase, config.clubIdBase, config.teamIdBase);
+    this.config = config;
     this.organizations = new Map();
     this.clubs = new Map();
     this.teams = [];
@@ -26,19 +28,19 @@ class CasaSqlGenerator extends BaseGenerator {
    * Abstract method implementations
    */
   getLeagueFolder() {
-    return 'usa-casa';
+    return this.config.leagueSlug;
   }
 
   getPlayerIdBase() {
-    return 30000;
+    return this.config.playerIdBase;
   }
 
   getSeasonName() {
-    return '2025/2026';
+    return this.config.activeSeason;
   }
 
   getLeagueId() {
-    return 2; // CASA Select
+    return this.config.leagueDbId;
   }
 
   /**

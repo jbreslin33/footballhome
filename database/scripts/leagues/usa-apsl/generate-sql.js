@@ -17,40 +17,27 @@ const ApslMatchParser = require('../../infrastructure/parsers/ApslMatchParser');
 
 class ApslSqlGenerator extends BaseGenerator {
   constructor() {
-    super('APSL', 1, '00001', 100, 100, 100);
-    // Data structures inherited from BaseGenerator:
-    // this.organizations, this.clubs, this.teams, this.standings, 
-    // this.divisionTeams, this.divisions, this.players, this.matches, this.venues
+    const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+    super(config.leagueName, config.sourceSystemId, config.fileCode, config.orgIdBase, config.clubIdBase, config.teamIdBase);
+    this.config = config;
     
-    this.matchParser = new ApslMatchParser();  // NEW: Match parser
+    this.matchParser = new ApslMatchParser();
   }
 
-  /**
-   * Get league folder name
-   */
   getLeagueFolder() {
-    return 'usa-apsl';
+    return this.config.leagueSlug;
   }
 
-  /**
-   * Get player ID base
-   */
   getPlayerIdBase() {
-    return 10000; // Start player IDs at 10000
+    return this.config.playerIdBase;
   }
 
-  /**
-   * Get active season name
-   */
   getSeasonName() {
-    return '2025/2026'; // APSL active season
+    return this.config.activeSeason;
   }
 
-  /**
-   * Get league ID
-   */
   getLeagueId() {
-    return 1; // APSL league_id in leagues table
+    return this.config.leagueDbId;
   }
 
   /**

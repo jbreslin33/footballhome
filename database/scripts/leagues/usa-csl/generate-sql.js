@@ -17,8 +17,9 @@ const CslMatchParser = require('../../infrastructure/parsers/CslMatchParser');
 
 class CslSqlGenerator extends BaseGenerator {
   constructor() {
-    // CSL ID ranges: orgs 10000+, clubs 10000+, teams 10000+
-    super('CSL', 3, '00003', 10000, 10000, 10000);
+    const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+    super(config.leagueName, config.sourceSystemId, config.fileCode, config.orgIdBase, config.clubIdBase, config.teamIdBase);
+    this.config = config;
     this.matchParser = new CslMatchParser();
   }
 
@@ -26,19 +27,19 @@ class CslSqlGenerator extends BaseGenerator {
    * Required BaseGenerator methods
    */
   getLeagueFolder() {
-    return 'usa-csl';
+    return this.config.leagueSlug;
   }
 
   getPlayerIdBase() {
-    return 20000; // CSL players start at 20000 (after APSL 10000-19999)
+    return this.config.playerIdBase;
   }
 
   getSeasonName() {
-    return '2022/2023'; // CSL active season (they use older season names)
+    return this.config.activeSeason;
   }
 
   getLeagueId() {
-    return 4; // CSL league_id in leagues table
+    return this.config.leagueDbId;
   }
 
   /**

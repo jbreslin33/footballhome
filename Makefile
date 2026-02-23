@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db bootstrap load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh
+.PHONY: all help clean build up down rebuild logs test ps shell-db bootstrap load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init-apsl init-csl init-casa init-all
 
 # Default target - safe, non-destructive
 all: up
@@ -9,7 +9,6 @@ help:
 	@echo ""
 	@echo "Standard targets:"
 	@echo "  make             - Default: start containers (safe, non-destructive)"
-	@echo "  make all         - Same as 'make' (just start containers)"
 	@echo "  make build       - Build images and start containers"
 	@echo "  make up          - Start containers"
 	@echo "  make down        - Stop containers"
@@ -18,26 +17,38 @@ help:
 	@echo "  make logs        - View all container logs"
 	@echo "  make test        - Run tests"
 	@echo ""
-	@echo "Database workflows:"
-	@echo "  make bootstrap   - Rebuild DB with bootstrap data only (no leagues)"
-	@echo "  make load        - Load all league SQL + scrape events"
-	@echo "  make events      - Scrape match events for all leagues"
-	@echo "  make parse       - Parse/curate all leagues (regenerate SQL files)"
-	@echo "  make refresh     - Full workflow: parse all + rebuild DB + load all"
+	@echo "Daily use (load committed SQL into DB):"
+	@echo "  make load        - Load all league SQL into database"
+	@echo "  make load-apsl   - Load APSL SQL only"
+	@echo "  make load-csl    - Load CSL SQL only (needs APSL loaded)"
+	@echo "  make load-casa   - Load CASA SQL only (needs APSL+CSL loaded)"
 	@echo ""
-	@echo "Per-league operations:"
-	@echo "  make parse-apsl  - Parse/curate APSL only"
-	@echo "  make parse-csl   - Parse/curate CSL only (needs APSL SQL)"
-	@echo "  make parse-casa  - Parse/curate CASA only (needs APSL + CSL SQL)"
-	@echo "  make load-apsl   - Load APSL SQL to database"
-	@echo "  make load-csl    - Load CSL SQL to database"
-	@echo "  make load-casa   - Load CASA SQL to database"
+	@echo "League init (one-time onboarding, generates SQL files):"
+	@echo "  make init-apsl   - Full APSL init: parse + load + events + export"
+	@echo "  make init-csl    - Full CSL init: parse + load + events + export"
+	@echo "  make init-casa   - Full CASA init: parse + load"
+	@echo "  make init-all    - Init all leagues (fresh DB required: make rebuild first)"
+	@echo ""
+	@echo "Parse only (regenerate SQL from cached HTML, no DB needed):"
+	@echo "  make parse       - Parse all leagues (in dependency order)"
+	@echo "  make parse-apsl  - Parse APSL only (baseline, no dependencies)"
+	@echo "  make parse-csl   - Parse CSL only (needs APSL parsed)"
+	@echo "  make parse-casa  - Parse CASA only (needs APSL+CSL parsed)"
+	@echo ""
+	@echo "Events (scrape match events, needs DB with matches loaded):"
+	@echo "  make events      - Scrape events for all leagues"
 	@echo "  make events-apsl - Scrape APSL match events only"
 	@echo "  make events-csl  - Scrape CSL match events only"
 	@echo ""
-	@echo "Manual scraping (per-league):"
+	@echo "Full workflows:"
+	@echo "  make rebuild && make load   - Fresh DB from committed SQL"
+	@echo "  make rebuild && make init-all - Full init from cached HTML"
+	@echo "  make refresh               - parse + rebuild + load (fast refresh)"
+	@echo ""
+	@echo "Manual scraping (fetch HTML from web):"
 	@echo "  cd database/scripts/leagues/usa-apsl && ./scrape.sh"
 	@echo "  cd database/scripts/leagues/usa-csl && ./scrape.sh"
+	@echo "  cd database/scripts/leagues/usa-casa && ./scrape.sh"
 	@echo ""
 	@echo "Development:"
 	@echo "  make ps          - Show running containers"
@@ -103,8 +114,32 @@ bootstrap: clean
 	@echo "✓ Bootstrap complete - database ready"
 	@echo "  Run: make load    (to load all leagues)"
 
-# Load all leagues (calls individual targets)
-# Events are now in SQL files (108/109 series) - no need for live scraping
+# ============================================================
+# League Init (one-time onboarding, generates SQL files)
+# ============================================================
+
+# Full init for each league (parse + load + events + export SQL)
+# These require a running DB with bootstrap data loaded
+init-apsl:
+	@cd database/scripts/leagues/usa-apsl && ./init.sh
+
+init-csl:
+	@cd database/scripts/leagues/usa-csl && ./init.sh
+
+init-casa:
+	@cd database/scripts/leagues/usa-casa && ./init.sh
+
+# Init all leagues in dependency order (requires make rebuild first)
+init-all: init-apsl init-csl init-casa
+	@echo ""
+	@echo "✓ All leagues initialized"
+	@echo "  SQL files ready to commit in database/scripts/leagues/*/sql/"
+
+# ============================================================
+# Load (load committed SQL files into database)
+# ============================================================
+
+# Load all leagues (calls individual targets in dependency order)
 load: load-apsl load-csl load-casa
 	@echo ""
 	@echo "✓ All leagues loaded (events included in SQL files)"
@@ -122,7 +157,10 @@ load-casa:
 	@echo "📥 Loading CASA SQL..."
 	@cd database/scripts/leagues/usa-casa && ./load.sh
 
-# Individual league targets
+# ============================================================
+# Parse (regenerate SQL from cached HTML, no DB needed)
+# ============================================================
+
 parse:
 	@echo "📝 Parsing and curating all leagues..."
 	@cd database/scripts/leagues/usa-apsl && ./parse.sh && cd - > /dev/null
@@ -139,13 +177,14 @@ parse-csl:
 parse-casa:
 	@cd database/scripts/leagues/usa-casa && ./parse.sh
 
-# Scrape match events from cached HTML into database (for re-scraping only)
-# Events are normally loaded from SQL files via load targets
+# ============================================================
+# Events (scrape match events, requires DB with matches loaded)
+# ============================================================
+
 events: events-apsl events-csl
 	@echo ""
 	@echo "✓ Event scraping complete"
 
-# Individual league event targets
 events-apsl:
 	@echo "⚽ Scraping APSL match events..."
 	@cd database/scripts/scrapers && node ApslMatchEventScraper.js
@@ -154,7 +193,7 @@ events-csl:
 	@echo "⚽ Scraping CSL match events..."
 	@cd database/scripts/scrapers && node CslMatchEventScraper.js || echo "   ℹ️  CSL event scraper not yet ready"
 
-# Full refresh: parse all, then bootstrap DB, then load all (which includes events)
+# Full refresh: parse all, then bootstrap DB, then load all
 refresh: parse bootstrap load
 	@echo "✓ Full refresh complete (parsed all leagues, fresh DB, loaded all data including events)"
 

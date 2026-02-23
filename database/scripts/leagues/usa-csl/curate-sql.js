@@ -15,35 +15,17 @@ const BaseSqlCurator = require('../BaseSqlCurator');
 class CslSqlCurator extends BaseSqlCurator {
   constructor() {
     super();
+    this.config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+    this.apslConfig = JSON.parse(fs.readFileSync(path.join(__dirname, '../usa-apsl/config.json'), 'utf8'));
     this.apslPath = path.join(__dirname, '../usa-apsl/sql');
-    this.cslPath = path.join(__dirname, '../usa-csl/sql');
+    this.cslPath = path.join(__dirname, 'sql');
   }
 
   /**
-   * CSL-specific club family mappings
+   * CSL-specific club family mappings from config
    */
   getClubFamily(baseName) {
-    const families = {
-      'central park rangers': 'central-park-rangers',
-      'manhattan celtic': 'manhattan-celtic',
-      'manhattan kickers': 'manhattan-kickers',
-      'sporting astoria': 'sporting-astoria',
-      'sporting astoria south bronx united': 'sporting-astoria',
-      'zum schneider': 'zum-schneider',
-      'zum schneider fc 03': 'zum-schneider',
-      'hoboken fc': 'hoboken-fc',
-      'hoboken fc 1912': 'hoboken-fc',
-      'polonia': 'polonia',
-      'polonia sc': 'polonia',
-      'sc eintracht': 'sc-eintracht',
-      'ny shamrocks': 'ny-shamrocks',
-      'ny ukrainians': 'ny-ukrainians',
-      'fc sandzak': 'fc-sandzak',
-      'laberia fc': 'laberia-fc',
-      'block fc': 'block-fc',
-    };
-    
-    return families[baseName.toLowerCase()] || null;
+    return this.config.clubFamilies[baseName.toLowerCase()] || null;
   }
 
   /**
@@ -53,24 +35,28 @@ class CslSqlCurator extends BaseSqlCurator {
     console.log('\n🔍 CSL SQL Curation Starting...');
     
     // Read APSL SQL files
+    const afc = this.apslConfig.fileCode;
+    const aslug = this.apslConfig.leagueSlug;
     console.log('   Reading APSL SQL...');
-    const apslOrgsSql = fs.readFileSync(path.join(this.apslPath, '100.00001-organizations-usa-apsl.sql'), 'utf-8');
-    const apslClubsSql = fs.readFileSync(path.join(this.apslPath, '101.00001-clubs-usa-apsl.sql'), 'utf-8');
+    const apslOrgsSql = fs.readFileSync(path.join(this.apslPath, `100.${afc}-organizations-${aslug}.sql`), 'utf-8');
+    const apslClubsSql = fs.readFileSync(path.join(this.apslPath, `101.${afc}-clubs-${aslug}.sql`), 'utf-8');
     
-    const apslOrgs = this.parseOrganizationsSql(apslOrgsSql, 1);
-    const apslClubs = this.parseClubsSql(apslClubsSql, 1);
+    const apslOrgs = this.parseOrganizationsSql(apslOrgsSql, this.apslConfig.sourceSystemId);
+    const apslClubs = this.parseClubsSql(apslClubsSql, this.apslConfig.sourceSystemId);
     
     console.log(`   APSL: ${apslOrgs.length} orgs, ${apslClubs.length} clubs`);
     
     // Read CSL SQL files
+    const cfc = this.config.fileCode;
+    const cslug = this.config.leagueSlug;
     console.log('   Reading CSL SQL...');
-    const cslOrgsSql = fs.readFileSync(path.join(this.cslPath, '100.00003-organizations-usa-csl.sql'), 'utf-8');
-    const cslClubsSql = fs.readFileSync(path.join(this.cslPath, '101.00003-clubs-usa-csl.sql'), 'utf-8');
-    const cslTeamsSql = fs.readFileSync(path.join(this.cslPath, '102.00003-teams-usa-csl.sql'), 'utf-8');
+    const cslOrgsSql = fs.readFileSync(path.join(this.cslPath, `100.${cfc}-organizations-${cslug}.sql`), 'utf-8');
+    const cslClubsSql = fs.readFileSync(path.join(this.cslPath, `101.${cfc}-clubs-${cslug}.sql`), 'utf-8');
+    const cslTeamsSql = fs.readFileSync(path.join(this.cslPath, `102.${cfc}-teams-${cslug}.sql`), 'utf-8');
     
-    const cslOrgs = this.parseOrganizationsSql(cslOrgsSql, 3);
-    const cslClubs = this.parseClubsSql(cslClubsSql, 3);
-    const cslTeams = this.parseTeamsSql(cslTeamsSql, 3);
+    const cslOrgs = this.parseOrganizationsSql(cslOrgsSql, this.config.sourceSystemId);
+    const cslClubs = this.parseClubsSql(cslClubsSql, this.config.sourceSystemId);
+    const cslTeams = this.parseTeamsSql(cslTeamsSql, this.config.sourceSystemId);
     
     console.log(`   CSL: ${cslOrgs.length} orgs, ${cslClubs.length} clubs, ${cslTeams.length} teams`);
     
@@ -94,7 +80,7 @@ class CslSqlCurator extends BaseSqlCurator {
     
     // Check for potential duplicates using BaseGenerator logic
     const BaseGenerator = require('../BaseGenerator');
-    const baseGen = new BaseGenerator('CSL', 3, '00003', 10000, 10000, 10000);
+    const baseGen = new BaseGenerator(this.config.leagueName, this.config.sourceSystemId, this.config.fileCode, this.config.orgIdBase, this.config.clubIdBase, this.config.teamIdBase);
     const potentialDuplicates = baseGen.findPotentialDuplicates(apslClubs, newClubs);
     
     if (potentialDuplicates.length > 0) {
@@ -161,7 +147,7 @@ class CslSqlCurator extends BaseSqlCurator {
     
     // Teams: Read original SQL and replace club_ids for matched clubs
     // This preserves the SELECT...FROM divisions subqueries from the generator
-    const originalTeamsSql = fs.readFileSync(path.join(this.cslPath, '102.00003-teams-usa-csl.sql'), 'utf-8');
+    const originalTeamsSql = fs.readFileSync(path.join(this.cslPath, `102.${this.config.fileCode}-teams-${this.config.leagueSlug}.sql`), 'utf-8');
     let curatedTeamsSql = originalTeamsSql;
 
     // Create mapping of CSL club_id → APSL club_id
@@ -187,15 +173,17 @@ class CslSqlCurator extends BaseSqlCurator {
    */
   writeCuratedSql(sql) {
     const outputDir = this.cslPath;
+    const fc = this.config.fileCode;
+    const slug = this.config.leagueSlug;
     
-    fs.writeFileSync(path.join(outputDir, '100.00003-organizations-usa-csl.sql'), sql.organizations);
-    console.log(`      ✓ 100.00003-organizations-usa-csl.sql`);
+    fs.writeFileSync(path.join(outputDir, `100.${fc}-organizations-${slug}.sql`), sql.organizations);
+    console.log(`      ✓ 100.${fc}-organizations-${slug}.sql`);
     
-    fs.writeFileSync(path.join(outputDir, '101.00003-clubs-usa-csl.sql'), sql.clubs);
-    console.log(`      ✓ 101.00003-clubs-usa-csl.sql`);
+    fs.writeFileSync(path.join(outputDir, `101.${fc}-clubs-${slug}.sql`), sql.clubs);
+    console.log(`      ✓ 101.${fc}-clubs-${slug}.sql`);
     
-    fs.writeFileSync(path.join(outputDir, '102.00003-teams-usa-csl.sql'), sql.teams);
-    console.log(`      ✓ 102.00003-teams-usa-csl.sql`);
+    fs.writeFileSync(path.join(outputDir, `102.${fc}-teams-${slug}.sql`), sql.teams);
+    console.log(`      ✓ 102.${fc}-teams-${slug}.sql`);
   }
 }
 

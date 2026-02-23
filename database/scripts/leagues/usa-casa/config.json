@@ -1,0 +1,27 @@
+{
+  "leagueName": "CASA",
+  "leagueFullName": "CASA Soccer Leagues",
+  "leagueSlug": "usa-casa",
+  "sourceSystemId": 2,
+  "fileCode": "00002",
+  "leagueDbId": 2,
+  "activeSeason": "2025/2026",
+  "orgIdBase": 20000,
+  "clubIdBase": 20000,
+  "teamIdBase": 20000,
+  "playerIdBase": 30000,
+  "standingsUrl": "https://www.casasoccerleagues.com",
+  "cacheDir": "casa",
+  "curateAgainst": ["usa-apsl", "usa-csl"],
+  "clubFamilies": {
+    "lighthouse boys club": "lighthouse-1893-sc",
+    "lighthouse old timers club": "lighthouse-1893-sc",
+    "lighthouse 1893 sc": "lighthouse-1893-sc",
+    "oaklyn united fc ii": "oaklyn-united",
+    "oaklyn united fc": "oaklyn-united",
+    "philadelphia sc ii": "philadelphia-sc",
+    "philadelphia heritage sc": "philadelphia-sc",
+    "alloy soccer club reserves": "alloy-soccer-club",
+    "alloy soccer club": "alloy-soccer-club"
+  }
+}
