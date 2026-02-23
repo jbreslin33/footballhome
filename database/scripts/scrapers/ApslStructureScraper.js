@@ -179,18 +179,8 @@ class ApslStructureScraper {
       console.log(`   ✓ Teams: ${teamResult.inserted} inserted, ${teamResult.updated} updated`);
       console.log(`   ✓ Clubs/Organizations: ${clubsCreated} created, ${teamsLinked} teams linked to clubs`);
       
-      // 6a. Link teams to scrape_target (audit trail)
-      const savedTeams = await this.teamRepo.findBySourceSystem(1); // APSL source_system_id = 1
-      for (const team of savedTeams) {
-        await this._client.query(
-          `INSERT INTO team_scrape_targets (scrape_target_id, team_id) 
-           VALUES ($1, $2) 
-           ON CONFLICT (scrape_target_id, team_id) DO NOTHING`,
-          [this.scrapeTarget.id, team.id]
-        );
-      }
-      
       // 7. Populate division_teams (link teams to divisions) and save standings
+      const savedTeams = await this.teamRepo.findBySourceSystem(1); // APSL source_system_id = 1
       if (divisionTeams && divisionTeams.length > 0) {
         console.log('🔗 Linking teams to divisions and saving standings...');
         

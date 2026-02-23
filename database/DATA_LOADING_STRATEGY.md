@@ -108,34 +108,9 @@
 1. Season ends (June 2026)
 2. Export all 2025/2026 data to SQL files (standings, matches, events, rosters)
 3. Commit SQL files to git
-4. Update scrape targets to 2026/2027 season URLs
+4. Update scraper URLs for 2026/2027 season
 5. Future scrapers only process 2026/2027 data
 3. Disable venue scraper
-
-## Scraper Configuration
-
-### Scrape Actions
-Set `scrape_action_id` in `scrape_targets` table:
-- `1` (download_and_parse) - Active scraping
-- `2` (skip) - Don't run (data in SQL files)
-- `3` (download_only) - Cache HTML only
-- `4` (parse_only) - Parse cached HTML
-
-### Scrape Status State Machine
-- `1` (not_started) - Ready to run
-- `2` (in_progress) - Currently running
-- `3` (completed) - Successfully completed
-- `4` (needs_refresh) - Needs re-scraping
-- `5` (failed) - Error occurred
-- `6` (archived) - Old/deprecated target
-
-### Example: Disable a Scraper After One-Time Run
-```sql
--- Mark venue scraper as skip (data now in SQL file)
-UPDATE scrape_targets 
-SET scrape_action_id = 2  -- skip
-WHERE scraper_type_id = 6 AND label LIKE '%Venue%';
-```
 
 ## Best Practices
 
@@ -366,14 +341,6 @@ podman exec footballhome_db psql -U footballhome_user -d footballhome -c \
    GROUP BY t.id, t.display_name
    HAVING COUNT(dtp.player_id) = 0
    ORDER BY t.display_name;"
-
-# Check scrape target status
-podman exec footballhome_db psql -U footballhome_user -d footballhome -c \
-  "SELECT id, label, sa.name as action, ss.name as status 
-   FROM scrape_targets st 
-   LEFT JOIN scrape_actions sa ON st.scrape_action_id = sa.id 
-   LEFT JOIN scrape_statuses ss ON st.scrape_status_id = ss.id 
-   ORDER BY id;"
 
 # Test full rebuild (destroys data, recreates from SQL files)
 ./build.sh

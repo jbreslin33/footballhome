@@ -177,11 +177,9 @@ ORDER BY id;
 **Action**: Run venue scraper once to generate SQL, then commit
 
 **Steps**:
-1. Enable venue scraper in scrape_targets
-2. Run `./update.sh`
-3. Export venues to SQL INSERT statements
-4. Commit `036-venues.sql`
-5. Set venue scraper to `scrape_action_id = 2` (skip)
+1. Run venue scraper manually
+2. Export venues to SQL INSERT statements
+3. Commit `036-venues.sql`
 
 **Query to Export**:
 ```sql

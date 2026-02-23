@@ -15,7 +15,7 @@ database/scripts/
 │   ├── fetchers/         # Generic data fetching (ApiFetcher, HtmlFetcher)
 │   └── parsers/          # Domain-specific parsing (RestCountriesParser, ApslParser)
 ├── application/
-│   └── services/         # Business logic (ScrapeTargetService)
+│   └── services/         # Business logic
 └── scrapers/             # Thin orchestrators (CountryScraperV2, ApslScraper)
 ```
 
@@ -48,14 +48,13 @@ database/scripts/
 
 ### 5. Services (application/services/)
 - **Business logic and coordination**
-- `ScrapeTargetService` - Manages scrape_targets table (URLs, state tracking)
-- Can have other services as needed
+- Can have services for data validation, export, etc.
 
 ### 6. Scrapers (scrapers/)
 - **Thin orchestrators** - wire components together
 - Use dependency injection (all components passed in constructor)
 - Example workflow:
-  1. Get URL from `ScrapeTargetService`
+  1. Get URL from hardcoded config in scraper class
   2. Fetch data with `ApiFetcher` or `HtmlFetcher`
   3. Parse with domain-specific parser
   4. Save with repository

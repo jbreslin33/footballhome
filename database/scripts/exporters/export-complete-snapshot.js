@@ -184,7 +184,7 @@ async function exportMatches() {
       m.match_status_id, m.home_score, m.away_score,
       m.round_name, m.bracket_position, m.next_match_id, m.loser_next_match_id,
       m.seed_home, m.seed_away,
-      m.source_system_id, m.external_id, m.scrape_target_id,
+      m.source_system_id, m.external_id,
       m.created_by_user_id, m.created_at,
       s.name as season_name, l.name as league_name
     FROM matches m
@@ -218,7 +218,7 @@ INSERT INTO matches (
   match_status_id, home_score, away_score,
   round_name, bracket_position, next_match_id, loser_next_match_id,
   seed_home, seed_away,
-  source_system_id, external_id, scrape_target_id,
+  source_system_id, external_id,
   created_by_user_id, created_at
 ) VALUES\n`;
   
@@ -244,7 +244,6 @@ INSERT INTO matches (
       row.seed_away || 'NULL',
       row.source_system_id || 'NULL',
       row.external_id ? client.escapeLiteral(row.external_id) : 'NULL',
-      row.scrape_target_id || 'NULL',
       row.created_by_user_id || 'NULL',
       `'${row.created_at.toISOString()}'`
     ];
@@ -420,7 +419,7 @@ async function exportPlayers() {
   
   const result = await client.query(`
     SELECT p.id, p.person_id, p.height_cm, p.nationality, p.photo_url, 
-           p.scrape_target_id, p.source_system_id, p.external_id
+           p.source_system_id, p.external_id
     FROM players p
     ORDER BY p.id
   `);
@@ -436,10 +435,10 @@ async function exportPlayers() {
 -- Total Players: ${result.rows.length}
 -- Note: Must load AFTER 020-persons.sql and BEFORE match events (052-*)
 
-INSERT INTO players (id, person_id, height_cm, nationality, photo_url, scrape_target_id, source_system_id, external_id) VALUES\n`;
+INSERT INTO players (id, person_id, height_cm, nationality, photo_url, source_system_id, external_id) VALUES\n`;
   
   const values = result.rows.map(row => 
-    `  (${row.id}, ${row.person_id}, ${row.height_cm || 'NULL'}, ${row.nationality ? client.escapeLiteral(row.nationality) : 'NULL'}, ${row.photo_url ? client.escapeLiteral(row.photo_url) : 'NULL'}, ${row.scrape_target_id || 'NULL'}, ${row.source_system_id || 'NULL'}, ${row.external_id ? client.escapeLiteral(row.external_id) : 'NULL'})`
+    `  (${row.id}, ${row.person_id}, ${row.height_cm || 'NULL'}, ${row.nationality ? client.escapeLiteral(row.nationality) : 'NULL'}, ${row.photo_url ? client.escapeLiteral(row.photo_url) : 'NULL'}, ${row.source_system_id || 'NULL'}, ${row.external_id ? client.escapeLiteral(row.external_id) : 'NULL'})`
   );
   
   sql += values.join(',\n');

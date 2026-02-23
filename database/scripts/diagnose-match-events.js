@@ -113,40 +113,7 @@ async function main() {
     console.log(`  CSL event HTML files:  ${cslCount}`);
     console.log('');
     
-    // 4. Check scrape_executions for match event scrapers
-    console.log(`${colors.yellow}📝 SCRAPER EXECUTION HISTORY${colors.reset}`);
-    console.log('─'.repeat(60));
-    const executions = await pool.query(`
-      SELECT 
-        st.label,
-        sst.name as status,
-        se.started_at,
-        se.duration_ms,
-        se.error_message
-      FROM scrape_executions se
-      JOIN scrape_targets st ON se.scrape_target_id = st.id
-      JOIN scrape_statuses sst ON se.status_id = sst.id
-      WHERE st.label ILIKE '%event%' OR st.label ILIKE '%match%'
-      ORDER BY se.started_at DESC
-      LIMIT 10
-    `);
-    
-    if (executions.rows.length === 0) {
-      console.log(`  ${colors.yellow}⚠️  No scraper execution history found${colors.reset}`);
-    } else {
-      for (const row of executions.rows) {
-        const statusColor = row.status === 'completed' ? colors.green : colors.red;
-        console.log(`  ${statusColor}${row.status}${colors.reset} - ${row.label}`);
-        console.log(`    Started: ${row.started_at}`);
-        console.log(`    Duration: ${row.duration_ms}ms`);
-        if (row.error_message) {
-          console.log(`    Error: ${row.error_message}`);
-        }
-      }
-    }
-    console.log('');
-    
-    // 5. Check sample matches missing events
+    // 4. Check sample matches missing events
     console.log(`${colors.yellow}🔍 SAMPLE MATCHES WITHOUT EVENTS${colors.reset}`);
     console.log('─'.repeat(60));
     const sampleMatches = await pool.query(`

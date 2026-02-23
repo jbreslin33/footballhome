@@ -116,8 +116,7 @@ class CslMatchScraper {
             awayScore: matchData.awayScore,
             venueId: null,
             sourceSystemId: 3,
-            externalId: externalId,
-            scrapeTargetId: team.scrape_target_id
+            externalId: externalId
           });
           
           // Check if match exists
@@ -158,8 +157,7 @@ class CslMatchScraper {
       SELECT DISTINCT ON (t.id)
         t.id as team_id,
         t.external_id,
-        t.name,
-        t.scrape_target_id
+        t.name
       FROM teams t
       WHERE t.source_system_id = 8 
         AND t.external_id IS NOT NULL

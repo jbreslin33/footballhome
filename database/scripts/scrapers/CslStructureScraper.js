@@ -435,20 +435,8 @@ async function main() {
   const client = await pool.connect();
   
   try {
-    // Load scrape_target from database (default to id=5 for current CSL season)
-    const scrapeTargetId = process.env.SCRAPE_TARGET_ID || 5;
-    const result = await client.query('SELECT * FROM scrape_targets WHERE id = $1', [scrapeTargetId]);
-    
-    if (result.rows.length === 0) {
-      console.log(`⚠️  scrape_target id=${scrapeTargetId} not found, using fallback URL`);
-      const scraper = new CslStructureScraper(client, { season: '2025-2026' });
-      await scraper.scrape();
-    } else {
-      const scrapeTarget = result.rows[0];
-      console.log(`📋 Loaded scrape_target: id=${scrapeTarget.id}, url=${scrapeTarget.url}`);
-      const scraper = new CslStructureScraper(client, { scrapeTarget });
-      await scraper.scrape();
-    }
+    const scraper = new CslStructureScraper(client, { season: '2025-2026' });
+    await scraper.scrape();
     
     console.log('CslStructureScraper completed successfully');
   } finally {

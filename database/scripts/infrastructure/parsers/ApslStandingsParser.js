@@ -20,15 +20,11 @@ class ApslStandingsParser {
   /**
    * Parse APSL standings HTML
    * @param {string} html - Raw HTML from standings page
-   * @param {number} scrapeTargetId - ID of the scrape_target this data came from
    * @returns {Object} { organization, league, season, conferences, divisions, divisionTeams }
    */
-  parse(html, scrapeTargetId = null) {
+  parse(html) {
     const dom = new JSDOM(html);
     const document = dom.window.document;
-    
-    // Store scrapeTargetId for use throughout parsing
-    this.scrapeTargetId = scrapeTargetId;
     
     // Extract organization
     const organization = new Organization({

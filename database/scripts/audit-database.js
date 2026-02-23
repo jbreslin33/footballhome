@@ -92,21 +92,6 @@ async function auditDatabase() {
     console.log(`   Total Players: ${players}`);
     console.log(`   Roster Assignments: ${rosters}`);
     
-    // 5. SCRAPE TARGETS
-    console.log('\n🎯 SCRAPE TARGETS:');
-    const { stdout: targets } = await execAsync(`
-      podman exec footballhome_db psql -U footballhome_user -d footballhome -c "
-        SELECT st.id, st.label, st.is_active, 
-               COALESCE(sa.name, 'null') as action,
-               COALESCE(ss.name, 'null') as status
-        FROM scrape_targets st
-        LEFT JOIN scrape_actions sa ON st.scrape_action_id = sa.id
-        LEFT JOIN scrape_statuses ss ON st.scrape_status_id = ss.id
-        ORDER BY st.id
-      "
-    `);
-    console.log(targets);
-    
     console.log('\n' + '='.repeat(80));
     console.log('✅ Audit complete!\n');
     

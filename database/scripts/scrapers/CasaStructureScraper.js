@@ -54,23 +54,12 @@ class CasaStructureScraper {
   }
   
   /**
-   * Get CASA schedule scrape targets
+   * Get CASA schedule targets
+   * TODO: Replace with config file or hardcoded URLs when CASA scraping is implemented
    */
   async getScheduleTargets(client) {
-    const result = await client.query(`
-      SELECT 
-        st.id,
-        st.url,
-        st.label
-      FROM scrape_targets st
-      WHERE st.source_system_id = 2  -- CASA
-        AND st.target_type_id = 3      -- schedule
-        AND st.scraper_type_id = 1     -- teampass_html (SportsEngine)
-        AND st.scrape_action_id IN (1, 4)  -- download_and_parse or force_refresh
-      ORDER BY st.id
-    `);
-    
-    return result.rows;
+    console.log('  ⚠️  CASA schedule targets not configured (scrape_targets table removed)');
+    return [];
   }
 }
 

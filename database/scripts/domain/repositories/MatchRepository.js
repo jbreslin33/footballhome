@@ -60,19 +60,6 @@ class MatchRepository {
   }
   
   /**
-   * Find all matches for a scrape target
-   */
-  async findByScrapeTarget(scrapeTargetId) {
-    const result = await this.db.query(`
-      SELECT * FROM matches
-      WHERE scrape_target_id = $1
-      ORDER BY match_date DESC, match_time DESC NULLS LAST
-    `, [scrapeTargetId]);
-    
-    return result.rows;
-  }
-  
-  /**
    * Create a new match
    * @param {Match} match - Match domain model
    * @returns {Object} Created match record
@@ -83,17 +70,17 @@ class MatchRepository {
         match_type_id, home_team_id, away_team_id, match_date, match_time,
         venue_id, title, description, match_status_id, home_score, away_score,
         round_name, bracket_position, next_match_id, loser_next_match_id,
-        seed_home, seed_away, source_system_id, external_id, scrape_target_id,
+        seed_home, seed_away, source_system_id, external_id,
         created_by_user_id
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
       )
       RETURNING *
     `, [
       match.matchTypeId, match.homeTeamId, match.awayTeamId, match.matchDate, match.matchTime,
       match.venueId, match.title, match.description, match.matchStatusId, match.homeScore, match.awayScore,
       match.roundName, match.bracketPosition, match.nextMatchId, match.loserNextMatchId,
-      match.seedHome, match.seedAway, match.sourceSystemId, match.externalId, match.scrapeTargetId,
+      match.seedHome, match.seedAway, match.sourceSystemId, match.externalId,
       match.createdByUserId
     ]);
     
@@ -127,15 +114,14 @@ class MatchRepository {
         seed_home = $16,
         seed_away = $17,
         source_system_id = $18,
-        external_id = $19,
-        scrape_target_id = $20
-      WHERE id = $21
+        external_id = $19
+      WHERE id = $20
       RETURNING *
     `, [
       match.matchTypeId, match.homeTeamId, match.awayTeamId, match.matchDate, match.matchTime,
       match.venueId, match.title, match.description, match.matchStatusId, match.homeScore, match.awayScore,
       match.roundName, match.bracketPosition, match.nextMatchId, match.loserNextMatchId,
-      match.seedHome, match.seedAway, match.sourceSystemId, match.externalId, match.scrapeTargetId,
+      match.seedHome, match.seedAway, match.sourceSystemId, match.externalId,
       id
     ]);
     

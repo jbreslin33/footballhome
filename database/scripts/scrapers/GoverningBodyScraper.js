@@ -81,14 +81,6 @@ class GoverningBodyScraper {
       console.log('💾 Writing to database...');
       await this.writeToDatabase(client, parsed);
       
-      // 4. Mark as initialized
-      console.log('✓ Marking scrape target as initialized...');
-      await client.query(`
-        UPDATE scrape_targets
-        SET is_initialized = true, last_synced_at = NOW()
-        WHERE source_system_id = $1 AND target_type_id = $2
-      `, [this.sourceSystemId, this.targetTypeId]);
-      
       await client.query('COMMIT');
       console.log('✓ Discovery complete - data imported and initialized');
     } catch (error) {
@@ -114,13 +106,6 @@ class GoverningBodyScraper {
       
       console.log('🔄 Updating existing records...');
       await this.writeToDatabase(client, parsed);
-      
-      console.log('✓ Updating sync timestamp...');
-      await client.query(`
-        UPDATE scrape_targets
-        SET last_synced_at = NOW()
-        WHERE source_system_id = $1 AND target_type_id = $2
-      `, [this.sourceSystemId, this.targetTypeId]);
       
       await client.query('COMMIT');
       console.log('✓ Sync complete - data updated');

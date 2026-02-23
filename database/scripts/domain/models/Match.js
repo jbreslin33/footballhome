@@ -25,7 +25,6 @@ class Match {
     seedAway = null,
     sourceSystemId = null,
     externalId = null,
-    scrapeTargetId = null,
     createdByUserId = null,
     createdAt = null
   }) {
@@ -49,7 +48,6 @@ class Match {
     this.seedAway = seedAway;
     this.sourceSystemId = sourceSystemId;
     this.externalId = externalId;
-    this.scrapeTargetId = scrapeTargetId;
     this.createdByUserId = createdByUserId;
     this.createdAt = createdAt;
   }

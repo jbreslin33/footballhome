@@ -119,8 +119,7 @@ class ApslMatchScraper {
             homeScore: matchData.homeScore,
             awayScore: matchData.awayScore,
             sourceSystemId: 1, // APSL
-            externalId: externalId,
-            scrapeTargetId: team.scrape_target_id
+            externalId: externalId
           });
           
           // Upsert match (will find existing by external_id and update, or create new)
@@ -161,7 +160,6 @@ class ApslMatchScraper {
         t.id as team_id,
         t.name,
         t.external_id,
-        t.scrape_target_id,
         dt.id as division_team_id,
         dt.division_id
       FROM teams t

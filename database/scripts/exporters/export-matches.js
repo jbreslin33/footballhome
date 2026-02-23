@@ -80,7 +80,6 @@ async function exportMatches() {
         m.seed_away,
         m.source_system_id,
         m.external_id,
-        m.scrape_target_id,
         m.created_by_user_id,
         m.created_at,
         s.name as season_name,
@@ -149,7 +148,7 @@ async function exportMatches() {
       sql += '  match_status_id, home_score, away_score,\n';
       sql += '  round_name, bracket_position, next_match_id, loser_next_match_id,\n';
       sql += '  seed_home, seed_away,\n';
-      sql += '  source_system_id, external_id, scrape_target_id,\n';
+      sql += '  source_system_id, external_id,\n';
       sql += '  created_by_user_id, created_at\n';
       sql += ') VALUES\n';
 
@@ -162,7 +161,7 @@ async function exportMatches() {
           `${escapeString(m.round_name)}, ${escapeString(m.bracket_position)}, ` +
           `${m.next_match_id || 'NULL'}, ${m.loser_next_match_id || 'NULL'}, ` +
           `${m.seed_home || 'NULL'}, ${m.seed_away || 'NULL'}, ` +
-          `${m.source_system_id || 'NULL'}, ${escapeString(m.external_id)}, ${m.scrape_target_id || 'NULL'}, ` +
+          `${m.source_system_id || 'NULL'}, ${escapeString(m.external_id)}, ` +
           `${m.created_by_user_id || 'NULL'}, ${formatTimestamp(m.created_at)})`;
         return line + (idx < records.length - 1 ? ',' : '');
       });

@@ -3,7 +3,6 @@ const ApiFetcher = require('../infrastructure/fetchers/ApiFetcher');
 const RestCountriesParser = require('../infrastructure/parsers/RestCountriesParser');
 const CountryRepository = require('../domain/repositories/CountryRepository');
 const ContinentRepository = require('../domain/repositories/ContinentRepository');
-const ScrapeTargetService = require('../application/services/ScrapeTargetService');
 
 /**
  * Country Scraper V2 - Clean OOP Architecture
@@ -12,21 +11,18 @@ const ScrapeTargetService = require('../application/services/ScrapeTargetService
  * 1. Fetcher gets data from API
  * 2. Parser transforms to domain models
  * 3. Repository saves to database
- * 4. Service tracks scrape state
- * 
+ *
+ * Data Source: Hardcoded URL (managed in this file)
+ *
  * This is a thin orchestrator - all logic is in reusable components.
  */
 class CountryScraperV2 {
-  constructor(fetcher, parser, countryRepo, continentRepo, targetService) {
+  constructor(fetcher, parser, countryRepo, continentRepo) {
+    this.apiUrl = 'https://restcountries.com/v3.1/all?fields=cca3,name,fifa,continents';
     this.fetcher = fetcher;
     this.parser = parser;
     this.countryRepo = countryRepo;
     this.continentRepo = continentRepo;
-    this.targetService = targetService;
-  }
-  
-  /**
-   * Main entry point
    */
   async run(mode = 'discover') {
     console.log(`\n🌍 Country Scraper V2 (OOP) - ${mode.toUpperCase()} mode`);
@@ -49,41 +45,18 @@ class CountryScraperV2 {
   }
   
   async discover() {
-    console.log('📋 Getting/creating scrape target...');
-    const target = await this.targetService.getOrCreate({
-      sourceSystemId: 6,  // REST Countries API (we'll add this to source_systems)
-      scraperTypeId: 3,   // api_client
-      targetTypeId: 17,   // countries (we'll add this to scrape_target_types)
-      url: 'https://restcountries.com/v3.1/all?fields=cca3,name,fifa,continents',
-      label: 'REST Countries API - All Countries'
-    });
-    console.log(`   Target ID: ${target.id}, URL: ${target.url}`);
-    
-    await this.scrapeAndSave(target);
-    
-    console.log('✓ Marking target as initialized...');
-    await this.targetService.markInitialized(target.id);
+    await this.scrapeAndSave();
+    console.log('✓ Discovery complete');
   }
   
   async sync() {
-    console.log('📋 Getting scrape target...');
-    const target = await this.targetService.getTarget(6, 17);
-    
-    if (!target) {
-      throw new Error('Scrape target not found. Run discover mode first.');
-    }
-    
-    console.log(`   Target ID: ${target.id}, Last synced: ${target.last_synced_at}`);
-    
-    await this.scrapeAndSave(target);
-    
-    console.log('✓ Updating sync timestamp...');
-    await this.targetService.updateSyncTime(target.id);
+    await this.scrapeAndSave();
+    console.log('✓ Sync complete');
   }
   
-  async scrapeAndSave(target) {
+  async scrapeAndSave() {
     console.log('📥 Fetching data from API...');
-    const rawData = await this.fetcher.fetch(target.url);
+    const rawData = await this.fetcher.fetch(this.apiUrl);
     console.log(`   Received ${rawData.length} countries`);
     
     console.log('🔍 Parsing data into domain models...');
@@ -118,15 +91,13 @@ class CountryScraperV2 {
     const parser = new RestCountriesParser();
     const countryRepo = new CountryRepository(client);
     const continentRepo = new ContinentRepository(client);
-    const targetService = new ScrapeTargetService(client);
     
     // Inject dependencies
     const scraper = new CountryScraperV2(
       fetcher,
       parser,
       countryRepo,
-      continentRepo,
-      targetService
+      continentRepo
     );
     
     // Store pool and client for cleanup
