@@ -5,8 +5,7 @@
 # Run this ONCE when first cloning the repository.
 #
 # After this script completes, use:
-#   ./build.sh            # Full rebuild (destroys containers/volumes)
-#   ./update.sh           # Run scrapers to populate/update data
+#   make rebuild && make load   # Build containers and load data
 #
 
 set -e
@@ -292,18 +291,6 @@ if [ -f "package.json" ]; then
 fi
 
 # ============================================================
-# Step 3.5: Ensure Puppeteer and plugins are installed
-# ============================================================
-print_status "Ensuring Puppeteer and plugins are installed..."
-if [ -f "package.json" ]; then
-    npm install --silent puppeteer puppeteer-extra puppeteer-extra-plugin-stealth || {
-        print_error "Failed to install Puppeteer dependencies. Please check your npm setup."
-        exit 1
-    }
-    print_success "Puppeteer and plugins installed"
-fi
-
-# ============================================================
 # Step 4: Verify Podman is Running
 # ============================================================
 print_status "Verifying Podman..."
@@ -441,30 +428,7 @@ else
 fi
 
 # ============================================================
-# Step 7: Optional AI Development Tools
-# ============================================================
-echo ""
-echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}Installing AI Development Tools${NC}"
-echo -e "${BLUE}========================================${NC}"
-echo ""
-print_status "Setting up Claude CLI..."
-if ./scripts/setup/setup-claude.sh; then
-    print_success "Claude CLI installed"
-else
-    print_warning "Claude CLI setup skipped or failed"
-fi
-
-echo ""
-print_status "Setting up Aider..."
-if ./scripts/setup/setup-aider.sh; then
-    print_success "Aider installed"
-else
-    print_warning "Aider setup skipped or failed"
-fi
-
-# ============================================================
-# Step 8: Success and Next Steps
+# Step 7: Success and Next Steps
 # ============================================================
 echo ""
 echo -e "${GREEN}========================================${NC}"
@@ -475,16 +439,13 @@ echo "Your development environment is ready!"
 echo ""
 echo "Next steps:"
 echo ""
-echo "  1. Build and start containers:"
-echo -e "     ${YELLOW}./build.sh${NC}"
+echo "  1. Build containers and load data:"
+echo -e "     ${YELLOW}make rebuild && make load${NC}"
 echo ""
-echo "  2. Populate data (run scrapers):"
-echo -e "     ${YELLOW}./update.sh${NC}"
-echo ""
-echo "  3. Once running, open in your browser:"
+echo "  2. Once running, open in your browser:"
 echo -e "     ${YELLOW}http://localhost:3000${NC}"
 echo ""
-echo "  4. Log in with credentials:"
+echo "  3. Log in with credentials:"
 echo "     Email:    soccer@lighthouse1893.org"
 echo "     Password: 1893Soccer!"
 echo "     Name:     James Breslin"
