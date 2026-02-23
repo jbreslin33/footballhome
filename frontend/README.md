@@ -49,14 +49,14 @@ frontend/
 ├── css/
 │   └── main.css           # Pure CSS design system
 ├── js/
-│   ├── core/
-│   │   ├── StateMachine.js # FSM implementation
-│   │   └── Component.js    # Base component class
-│   ├── services/
-│   │   └── AuthService.js  # API integration
-│   ├── components/
-│   │   └── LoginForm.js    # Login component
-│   └── App.js             # Main application
+│   ├── app.js             # Application bootstrap
+│   ├── auth.js            # Authentication service
+│   ├── navigation.js      # Navigation state machine
+│   ├── screen-base.js     # Base Screen class
+│   ├── screen-manager.js  # Screen lifecycle manager
+│   ├── screens/           # Screen implementations
+│   ├── entities/          # Field entities (Player, Ball, etc.)
+│   └── tactical-board/    # Tactical board feature
 ├── Dockerfile             # Container configuration
 └── nginx.conf            # Web server config
 ```
@@ -87,7 +87,7 @@ frontend/
 
 ## 🔌 **API Integration**
 
-Uses the same backend as the React app:
+Uses the C++ backend API:
 
 ```javascript
 // Login example
@@ -103,7 +103,7 @@ if (result.success) {
 
 ## 🧪 **Testing the Login**
 
-1. **Visit**: http://localhost:3002
+1. **Visit**: http://localhost:3000
 2. **Test FSM**: Watch browser console for state transitions
 3. **Valid Login**: Use existing user credentials
 4. **Invalid Data**: Try empty fields to see validation states
@@ -123,10 +123,9 @@ FSM: submitting --[LOGIN_SUCCESS]--> success
 
 ## ⚡ **Performance Benefits**
 
-Compared to React version:
-- **Smaller bundle size** - No framework overhead
-- **Faster startup** - Direct DOM manipulation
-- **Lower memory usage** - No virtual DOM
+- **Small bundle size** - No framework overhead
+- **Fast startup** - Direct DOM manipulation
+- **Low memory usage** - No virtual DOM
 - **Predictable performance** - Explicit state management
 
 ## 🔧 **Development**

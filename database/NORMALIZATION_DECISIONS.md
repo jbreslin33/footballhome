@@ -224,10 +224,9 @@ LEFT JOIN users u ON c.user_id = u.id;
 ## 🚀 Next Steps
 
 ### **Before Running Migration:**
-1. Review migration script: `database/migrations/001-normalize-schema-fixes.sql`
-2. Test on development database first
-3. Backup production database
-4. Run verification queries (included in migration)
+1. Review changes in `00-schema.sql`
+2. Test with `make rebuild && make load`
+3. Backup first: `make backup`
 
 ### **Application Changes Required:**
 1. Update scrapers to set `players.user_id = NULL` for unclaimed players
@@ -237,9 +236,8 @@ LEFT JOIN users u ON c.user_id = u.id;
 5. Remove any code referencing deleted `player_users` table
 
 ### **Scraper Updates:**
-- `CasaScraper.js` - Create user+player pairs with `user_id` nullable
-- `ApslScraper.js` - Same pattern as CASA
-- Set `players.user_id = NULL` initially, let users claim accounts later
+- Scrapers create player records with `user_id = NULL` (unclaimed)
+- Users can claim players later via admin verification
 
 ---
 

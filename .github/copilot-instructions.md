@@ -40,7 +40,7 @@
   - **No Frameworks**: Do not suggest Crow, Drogon, or Boost.Beast unless explicitly requested. The server uses standard sockets and a custom `Router`/`Controller` implementation.
   - **Database Access**: Uses `libpqxx` for PostgreSQL interactions.
 - **Database**: PostgreSQL with `pg_cron`.
-  - **Schema Management**: SQL scripts in `database/data/` executed alphabetically (e.g., `00-schema.sql`, `01-core-lookups.sql`).
+  - **Schema Management**: SQL scripts in `database/data/` executed alphabetically (e.g., `00-schema.sql`, `014-continents.sql`).
 
 ## 🔧 Development Workflow
 
@@ -144,7 +144,7 @@ make rebuild && make init
 
 ### Database Changes
 - **Schema Changes**: Update `00-schema.sql`, then `make rebuild` to apply
-- **Manual Static Data**: Add/update numbered SQL files in `database/data/` (e.g., `026-club-admins.sql`)
+- **Manual Static Data**: Add/update numbered SQL files in `database/data/` (e.g., `024-admins.sql`)
 - **Alphabetical Execution**: SQL files load alphabetically during initialization
 - **File Numbering**: Use prefixes (a/b/c) when order matters (e.g., `020-persons.sql`, `020a-players.sql`)
 
@@ -373,8 +373,8 @@ When a new season starts:
 - `division_players`: Aggregated view of all players in a division (via division_teams.sql views)
 
 ### Persistent Data Initialization
-- Manual users added to `50-users-manual.sql`
-- Admin role assignment in `51-admins.sql`
-- Coach info in `52-coaches.sql`
-- Club admin associations in `75-club-admins.sql`
+- Persons added via `020-persons.sql`
+- Users added via `021-users.sql`
+- User emails via `022-user-emails.sql`
+- Admin role assignment via `024-admins.sql`
 - All persist across full rebuilds via SQL init scripts
