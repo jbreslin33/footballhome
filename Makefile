@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db bootstrap load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init-apsl init-csl init-casa init-all
+.PHONY: all help clean build up down rebuild logs test ps shell-db bootstrap load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init init-apsl init-csl init-casa init-all scrape scrape-apsl scrape-csl scrape-casa
 
 # Default target - safe, non-destructive
 all: up
@@ -24,16 +24,22 @@ help:
 	@echo "  make load-casa   - Load CASA SQL only (needs APSL+CSL loaded)"
 	@echo ""
 	@echo "League init (one-time onboarding, generates SQL files):"
+	@echo "  make init        - Init all leagues (fresh DB required: make rebuild first)"
 	@echo "  make init-apsl   - Full APSL init: parse + load + events + export"
 	@echo "  make init-csl    - Full CSL init: parse + load + events + export"
 	@echo "  make init-casa   - Full CASA init: parse + load"
-	@echo "  make init-all    - Init all leagues (fresh DB required: make rebuild first)"
 	@echo ""
 	@echo "Parse only (regenerate SQL from cached HTML, no DB needed):"
 	@echo "  make parse       - Parse all leagues (in dependency order)"
 	@echo "  make parse-apsl  - Parse APSL only (baseline, no dependencies)"
 	@echo "  make parse-csl   - Parse CSL only (needs APSL parsed)"
 	@echo "  make parse-casa  - Parse CASA only (needs APSL+CSL parsed)"
+	@echo ""
+	@echo "Scrape (fetch fresh HTML from web):"
+	@echo "  make scrape      - Scrape all leagues"
+	@echo "  make scrape-apsl - Scrape APSL only"
+	@echo "  make scrape-csl  - Scrape CSL only"
+	@echo "  make scrape-casa - Scrape CASA only"
 	@echo ""
 	@echo "Events (scrape match events, needs DB with matches loaded):"
 	@echo "  make events      - Scrape events for all leagues"
@@ -42,13 +48,8 @@ help:
 	@echo ""
 	@echo "Full workflows:"
 	@echo "  make rebuild && make load   - Fresh DB from committed SQL"
-	@echo "  make rebuild && make init-all - Full init from cached HTML"
+	@echo "  make rebuild && make init   - Full init from cached HTML"
 	@echo "  make refresh               - parse + rebuild + load (fast refresh)"
-	@echo ""
-	@echo "Manual scraping (fetch HTML from web):"
-	@echo "  cd database/scripts/leagues/north-america/usa/apsl && ./scrape.sh"
-	@echo "  cd database/scripts/leagues/north-america/usa/csl && ./scrape.sh"
-	@echo "  cd database/scripts/leagues/north-america/usa/casa && ./scrape.sh"
 	@echo ""
 	@echo "Development:"
 	@echo "  make ps          - Show running containers"
@@ -130,10 +131,13 @@ init-casa:
 	@cd database/scripts/leagues/north-america/usa/casa && ./init.sh
 
 # Init all leagues in dependency order (requires make rebuild first)
-init-all: init-apsl init-csl init-casa
+init: init-apsl init-csl init-casa
 	@echo ""
 	@echo "✓ All leagues initialized"
 	@echo "  SQL files ready to commit in database/scripts/leagues/*/sql/"
+
+# Backwards-compatible alias
+init-all: init
 
 # ============================================================
 # Load (load committed SQL files into database)
@@ -176,6 +180,23 @@ parse-csl:
 
 parse-casa:
 	@cd database/scripts/leagues/north-america/usa/casa && ./parse.sh
+
+# ============================================================
+# Scrape (fetch fresh HTML from web)
+# ============================================================
+
+scrape: scrape-apsl scrape-csl scrape-casa
+	@echo ""
+	@echo "✓ All leagues scraped"
+
+scrape-apsl:
+	@cd database/scripts/leagues/north-america/usa/apsl && ./scrape.sh
+
+scrape-csl:
+	@cd database/scripts/leagues/north-america/usa/csl && ./scrape.sh
+
+scrape-casa:
+	@cd database/scripts/leagues/north-america/usa/casa && ./scrape.sh
 
 # ============================================================
 # Events (scrape match events, requires DB with matches loaded)

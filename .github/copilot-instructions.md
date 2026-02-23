@@ -56,16 +56,18 @@
 | | `make load-apsl` | Load APSL only |
 | | `make load-csl` | Load CSL only (needs APSL loaded) |
 | | `make load-casa` | Load CASA only (needs APSL+CSL loaded) |
-| **League init** | `make init-apsl` | Full APSL: parse → curate → load → events → export |
+| **League init** | `make init` | Init all leagues (requires `make rebuild` first) |
+| | `make init-apsl` | Full APSL: parse → curate → load → events → export |
 | | `make init-csl` | Full CSL: parse → curate → load → events → export |
 | | `make init-casa` | Full CASA: parse → curate → load (no events yet) |
-| | `make init-all` | Init all leagues (requires `make rebuild` first) |
 | **Parse only** | `make parse` | Regenerate SQL from cached HTML (all leagues, no DB needed) |
 | | `make parse-apsl/csl/casa` | Parse individual league |
 | **Events** | `make events` | Scrape match events for APSL + CSL |
 | | `make events-apsl/csl` | Scrape events for individual league |
+| **Scrape** | `make scrape` | Fetch fresh HTML from web (all leagues) |
+| | `make scrape-apsl/csl/casa` | Scrape individual league |
 | **Workflows** | `make rebuild && make load` | Fresh DB from committed SQL |
-| | `make rebuild && make init-all` | Full init from cached HTML |
+| | `make rebuild && make init` | Full init from cached HTML |
 | | `make refresh` | parse + rebuild + load (fast refresh) |
 | **Dev** | `make shell-db` | Connect to database shell |
 | | `make ps` / `make logs` | Show containers / view logs |
@@ -79,7 +81,7 @@ make rebuild && make load
 
 **Full init from cached HTML (one-time onboarding or re-scrape):**
 ```bash
-make rebuild && make init-all
+make rebuild && make init
 ```
 
 **Regenerate SQL without touching DB:**
@@ -89,10 +91,8 @@ make parse   # regenerates sql/ files from cached HTML
 
 **Fetch fresh HTML from web, then rebuild everything:**
 ```bash
-cd database/scripts/leagues/north-america/usa/apsl && ./scrape.sh && cd -
-cd database/scripts/leagues/north-america/usa/csl && ./scrape.sh && cd -
-cd database/scripts/leagues/north-america/usa/casa && ./scrape.sh && cd -
-make rebuild && make init-all
+make scrape
+make rebuild && make init
 ```
 
 ### Data Management Philosophy
@@ -128,7 +128,7 @@ make rebuild && make init-all
 
 **Data Restoration:**
 - Development: `make rebuild && make load` (fresh DB from git)
-- Full re-init: `make rebuild && make init-all` (re-parse from cached HTML)
+- Full re-init: `make rebuild && make init` (re-parse from cached HTML)
 - Production: `pg_dump` backups for live user data (RSVPs, chat, scores)
 
 ### Database Changes
@@ -265,7 +265,7 @@ When a new season starts:
 3. Add new divisions to `034-divisions.sql`
 4. Update `activeSeason` in each league's `config.json`
 5. Run `make rebuild` to apply bootstrap changes
-6. Run scrape → `make init-all` to generate new season data
+6. Run `make scrape` → `make init` to generate new season data
 
 ### Adding a New League
 1. Create directory: `database/scripts/leagues/<continent>/<country>/<league>/`
@@ -274,7 +274,7 @@ When a new season starts:
 4. Implement `generate-sql.js`, `curate-sql.js`, `scrape.sh`, `parse.sh`, `load.sh`, `init.sh`
 5. Add `curateAgainst` entries in `config.json` for upstream league slugs
 6. Add Makefile targets: `init-<league>`, `load-<league>`, `parse-<league>`
-7. Update `init-all`, `load`, `parse` to include new league in dependency order
+7. Update `init`, `load`, `parse`, `scrape` to include new league in dependency order
 
 ## 📝 Coding Conventions
 
