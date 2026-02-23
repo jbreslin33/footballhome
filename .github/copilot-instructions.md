@@ -89,9 +89,9 @@ make parse   # regenerates sql/ files from cached HTML
 
 **Fetch fresh HTML from web, then rebuild everything:**
 ```bash
-cd database/scripts/leagues/usa-apsl && ./scrape.sh && cd -
-cd database/scripts/leagues/usa-csl && ./scrape.sh && cd -
-cd database/scripts/leagues/usa-casa && ./scrape.sh && cd -
+cd database/scripts/leagues/north-america/usa/apsl && ./scrape.sh && cd -
+cd database/scripts/leagues/north-america/usa/csl && ./scrape.sh && cd -
+cd database/scripts/leagues/north-america/usa/casa && ./scrape.sh && cd -
 make rebuild && make init-all
 ```
 
@@ -105,7 +105,7 @@ make rebuild && make init-all
    - Manual reference data (seasons, conferences, divisions, admin users)
    - Loaded once during container initialization
 
-2. **League Data** (`database/scripts/leagues/<league>/sql/` — loaded by `make load`):
+2. **League Data** (`database/scripts/leagues/<continent>/<country>/<league>/sql/` — loaded by `make load`):
    - Generated from scraped HTML by parse pipeline
    - Per-league SQL files numbered 100-109
    - Committed to git — SQL files ARE the source of truth
@@ -140,12 +140,13 @@ make rebuild && make init-all
 ## 🔄 Data Scraping Architecture
 
 ### Per-League Configuration (`config.json`)
-Each league has a `config.json` in `database/scripts/leagues/<league>/` containing all league-specific values:
+Each league has a `config.json` in `database/scripts/leagues/<continent>/<country>/<league>/` containing all league-specific values:
 
 ```json
 {
   "leagueName": "APSL",
-  "leagueSlug": "usa-apsl",
+  "leagueSlug": "apsl",
+  "leaguePath": "north-america/usa/apsl",
   "sourceSystemId": 1,
   "fileCode": "00001",
   "leagueDbId": 1,
@@ -160,21 +161,34 @@ Each league has a `config.json` in `database/scripts/leagues/<league>/` containi
 ```
 
 **Key fields:**
+- `leagueSlug`: Short identifier for filenames (e.g., `apsl`). Folder hierarchy provides geographic context.
+- `leaguePath`: Relative path from `leagues/` directory (e.g., `north-america/usa/apsl`). Used for directory operations.
 - `sourceSystemId` / `fileCode` / `leagueDbId`: Database foreign keys
 - `orgIdBase` / `clubIdBase` / `teamIdBase` / `playerIdBase`: ID ranges to avoid collisions (APSL=100s, CSL=10000s, CASA=20000s)
-- `curateAgainst`: Which upstream leagues to deduplicate against (APSL=none, CSL=APSL, CASA=APSL+CSL)
+- `curateAgainst`: Which upstream league slugs to deduplicate against (APSL=none, CSL=APSL, CASA=APSL+CSL)
 - `clubFamilies`: Maps team display names to canonical club slugs for cross-league deduplication
 
 **Current leagues:**
-| League | Slug | Source System | ID Bases | Curates Against |
-|--------|------|---------------|----------|-----------------|
-| APSL | usa-apsl | 1 | 100+ | — (baseline) |
-| CASA | usa-casa | 2 | 20000+ | APSL, CSL |
-| CSL | usa-csl | 3 | 10000+ | APSL |
+| League | Slug | Path | Source System | ID Bases | Curates Against |
+|--------|------|------|---------------|----------|-----------------|
+| APSL | apsl | north-america/usa/apsl | 1 | 100+ | — (baseline) |
+| CASA | casa | north-america/usa/casa | 2 | 20000+ | APSL, CSL |
+| CSL | csl | north-america/usa/csl | 3 | 10000+ | APSL |
+
+### League Directory Hierarchy
+Leagues are organized by continent → country → league:
+```
+database/scripts/leagues/
+└── north-america/
+    └── usa/
+        ├── apsl/
+        ├── casa/
+        └── csl/
+```
 
 ### Per-League Directory Structure
 ```
-database/scripts/leagues/usa-apsl/
+database/scripts/leagues/north-america/usa/apsl/
 ├── config.json          # League configuration (IDs, season, club families)
 ├── scrape.sh            # Fetch HTML from web → scraped-html/apsl/
 ├── parse.sh             # generate-sql.js + curate-sql.js (no DB needed)
@@ -183,10 +197,10 @@ database/scripts/leagues/usa-apsl/
 ├── generate-sql.js      # Parse cached HTML → generate sql/ files (100-107)
 ├── curate-sql.js        # Cross-league dedup → generate 900-curation.sql
 └── sql/                 # Generated SQL files (committed to git)
-    ├── 100-00001-usa-apsl-orgs.sql
-    ├── 101-00001-usa-apsl-clubs.sql
+    ├── 100.00001-organizations-apsl.sql
+    ├── 101.00001-clubs-apsl.sql
     ├── ...
-    └── 900-00001-usa-apsl-curation.sql
+    └── 900.00001-curation-apsl.sql
 ```
 
 ### Parse Pipeline (offline, no DB needed)
@@ -254,11 +268,11 @@ When a new season starts:
 6. Run scrape → `make init-all` to generate new season data
 
 ### Adding a New League
-1. Create directory: `database/scripts/leagues/<slug>/`
-2. Create `config.json` with unique ID ranges (avoid collisions with existing leagues)
+1. Create directory: `database/scripts/leagues/<continent>/<country>/<league>/`
+2. Create `config.json` with unique ID ranges, `leagueSlug`, and `leaguePath` (avoid collisions with existing leagues)
 3. Add season/conference/division rows to bootstrap SQL (`032-034`)
 4. Implement `generate-sql.js`, `curate-sql.js`, `scrape.sh`, `parse.sh`, `load.sh`, `init.sh`
-5. Add `curateAgainst` entries in `config.json` for upstream leagues
+5. Add `curateAgainst` entries in `config.json` for upstream league slugs
 6. Add Makefile targets: `init-<league>`, `load-<league>`, `parse-<league>`
 7. Update `init-all`, `load`, `parse` to include new league in dependency order
 
@@ -302,7 +316,7 @@ When a new season starts:
   - **Application Features** (050-080): Chat, events, stats, etc.
   - **Views & Functions** (090-099): Database views and helper functions
   - Files load alphabetically — use prefixes (a/b/c) when order matters within same number
-- **League SQL File Organization** (`database/scripts/leagues/<league>/sql/`):
+- **League SQL File Organization** (`database/scripts/leagues/<continent>/<country>/<league>/sql/`):
   - Files numbered 100-109, 900 (see SQL File Numbering table above)
   - Generated by parse pipeline, committed to git
   - Loaded by `make load` in dependency order (APSL → CSL → CASA)
@@ -313,10 +327,10 @@ When a new season starts:
 - `frontend/js/app.js`: Frontend bootstrap and screen registration.
 - `backend/src/main.cpp`: Backend server setup and route registration.
 - `backend/src/core/Router.cpp`: Custom routing logic.
-- `database/scripts/leagues/*/config.json`: Per-league configuration (IDs, seasons, club families).
-- `database/scripts/leagues/*/init.sh`: Full init pipeline per league.
-- `database/scripts/leagues/*/generate-sql.js`: HTML→SQL generator per league.
-- `database/scripts/leagues/*/curate-sql.js`: Cross-league deduplication per league.
+- `database/scripts/leagues/<continent>/<country>/<league>/config.json`: Per-league configuration (IDs, seasons, club families).
+- `database/scripts/leagues/<continent>/<country>/<league>/init.sh`: Full init pipeline per league.
+- `database/scripts/leagues/<continent>/<country>/<league>/generate-sql.js`: HTML→SQL generator per league.
+- `database/scripts/leagues/<continent>/<country>/<league>/curate-sql.js`: Cross-league deduplication per league.
 
 ## 👥 User & Club Architecture
 

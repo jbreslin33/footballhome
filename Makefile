@@ -46,9 +46,9 @@ help:
 	@echo "  make refresh               - parse + rebuild + load (fast refresh)"
 	@echo ""
 	@echo "Manual scraping (fetch HTML from web):"
-	@echo "  cd database/scripts/leagues/usa-apsl && ./scrape.sh"
-	@echo "  cd database/scripts/leagues/usa-csl && ./scrape.sh"
-	@echo "  cd database/scripts/leagues/usa-casa && ./scrape.sh"
+	@echo "  cd database/scripts/leagues/north-america/usa/apsl && ./scrape.sh"
+	@echo "  cd database/scripts/leagues/north-america/usa/csl && ./scrape.sh"
+	@echo "  cd database/scripts/leagues/north-america/usa/casa && ./scrape.sh"
 	@echo ""
 	@echo "Development:"
 	@echo "  make ps          - Show running containers"
@@ -121,13 +121,13 @@ bootstrap: clean
 # Full init for each league (parse + load + events + export SQL)
 # These require a running DB with bootstrap data loaded
 init-apsl:
-	@cd database/scripts/leagues/usa-apsl && ./init.sh
+	@cd database/scripts/leagues/north-america/usa/apsl && ./init.sh
 
 init-csl:
-	@cd database/scripts/leagues/usa-csl && ./init.sh
+	@cd database/scripts/leagues/north-america/usa/csl && ./init.sh
 
 init-casa:
-	@cd database/scripts/leagues/usa-casa && ./init.sh
+	@cd database/scripts/leagues/north-america/usa/casa && ./init.sh
 
 # Init all leagues in dependency order (requires make rebuild first)
 init-all: init-apsl init-csl init-casa
@@ -147,15 +147,15 @@ load: load-apsl load-csl load-casa
 # Individual league load targets
 load-apsl:
 	@echo "📥 Loading APSL SQL..."
-	@cd database/scripts/leagues/usa-apsl && ./load.sh
+	@cd database/scripts/leagues/north-america/usa/apsl && ./load.sh
 
 load-csl:
 	@echo "📥 Loading CSL SQL..."
-	@cd database/scripts/leagues/usa-csl && ./load.sh
+	@cd database/scripts/leagues/north-america/usa/csl && ./load.sh
 
 load-casa:
 	@echo "📥 Loading CASA SQL..."
-	@cd database/scripts/leagues/usa-casa && ./load.sh
+	@cd database/scripts/leagues/north-america/usa/casa && ./load.sh
 
 # ============================================================
 # Parse (regenerate SQL from cached HTML, no DB needed)
@@ -163,19 +163,19 @@ load-casa:
 
 parse:
 	@echo "📝 Parsing and curating all leagues..."
-	@cd database/scripts/leagues/usa-apsl && ./parse.sh && cd - > /dev/null
-	@cd database/scripts/leagues/usa-csl && ./parse.sh && cd - > /dev/null
-	@cd database/scripts/leagues/usa-casa && ./parse.sh && cd - > /dev/null
+	@cd database/scripts/leagues/north-america/usa/apsl && ./parse.sh && cd - > /dev/null
+	@cd database/scripts/leagues/north-america/usa/csl && ./parse.sh && cd - > /dev/null
+	@cd database/scripts/leagues/north-america/usa/casa && ./parse.sh && cd - > /dev/null
 	@echo "✓ All leagues parsed"
 
 parse-apsl:
-	@cd database/scripts/leagues/usa-apsl && ./parse.sh
+	@cd database/scripts/leagues/north-america/usa/apsl && ./parse.sh
 
 parse-csl:
-	@cd database/scripts/leagues/usa-csl && ./parse.sh
+	@cd database/scripts/leagues/north-america/usa/csl && ./parse.sh
 
 parse-casa:
-	@cd database/scripts/leagues/usa-casa && ./parse.sh
+	@cd database/scripts/leagues/north-america/usa/casa && ./parse.sh
 
 # ============================================================
 # Events (scrape match events, requires DB with matches loaded)

@@ -12,9 +12,9 @@ const fs = require('fs');
 const path = require('path');
 
 const LEAGUE_CONFIGS = [
-  { source_system_id: 1, leagueId: '00001', slug: 'usa-apsl', name: 'APSL', country: 'USA' },
-  { source_system_id: 2, leagueId: '00002', slug: 'usa-casa', name: 'CASA', country: 'USA' },
-  { source_system_id: 3, leagueId: '00003', slug: 'usa-csl', name: 'CSL', country: 'USA' }
+  { source_system_id: 1, leagueId: '00001', slug: 'apsl', name: 'APSL', country: 'USA' },
+  { source_system_id: 2, leagueId: '00002', slug: 'casa', name: 'CASA', country: 'USA' },
+  { source_system_id: 3, leagueId: '00003', slug: 'csl', name: 'CSL', country: 'USA' }
 ];
 
 async function exportAll() {

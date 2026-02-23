@@ -304,7 +304,7 @@ ON CONFLICT (team_id) DO UPDATE SET
   fetched_at = EXCLUDED.fetched_at;\n`;
     }
 
-    const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `104.${this.leagueId}-standings-${this.getLeagueFolder()}.sql`);
+    const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `104.${this.leagueId}-standings-${this.getLeagueSlug()}.sql`);
     fs.writeFileSync(outputPath, sql);
     console.log(`   ✓ ${outputPath}`);
   }
@@ -346,7 +346,7 @@ ON CONFLICT (id) DO NOTHING;\n\n`;
       playerId++;
     }
 
-    const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `105.${this.leagueId}-players-${this.getLeagueFolder()}.sql`);
+    const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `105.${this.leagueId}-players-${this.getLeagueSlug()}.sql`);
     fs.writeFileSync(outputPath, sql);
     console.log(`   ✓ ${outputPath}`);
   }
@@ -392,16 +392,25 @@ VALUES (
 );\n\n`;
     }
 
-    const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `107.${this.leagueId}-rosters-${this.getLeagueFolder()}.sql`);
+    const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `107.${this.leagueId}-rosters-${this.getLeagueSlug()}.sql`);
     fs.writeFileSync(outputPath, sql);
     console.log(`   ✓ ${outputPath}`);
   }
 
   /**
-   * Get league folder name (must be implemented by subclass)
+   * Get league folder path relative to leagues/ directory
+   * e.g., 'north-america/usa/apsl'
    */
   getLeagueFolder() {
     throw new Error('getLeagueFolder() must be implemented by subclass');
+  }
+
+  /**
+   * Get league slug for SQL filenames
+   * e.g., 'apsl', 'csl', 'casa'
+   */
+  getLeagueSlug() {
+    throw new Error('getLeagueSlug() must be implemented by subclass');
   }
 
   /**

@@ -10,10 +10,10 @@
  * without needing to run live scrapers.
  * 
  * Outputs:
- *   - usa-apsl/sql/108.00001-event-players-usa-apsl.sql  (auto-created persons/players/rosters)
- *   - usa-apsl/sql/109.00001-match-events-usa-apsl.sql   (APSL match_events)
- *   - usa-csl/sql/108.00003-event-players-usa-csl.sql    (placeholder for future auto-created CSL players)
- *   - usa-csl/sql/109.00003-match-events-usa-csl.sql     (CSL match_events)
+ *   - north-america/usa/apsl/sql/108.00001-event-players-apsl.sql  (auto-created persons/players/rosters)
+ *   - north-america/usa/apsl/sql/109.00001-match-events-apsl.sql   (APSL match_events)
+ *   - north-america/usa/csl/sql/108.00003-event-players-csl.sql    (placeholder for future auto-created CSL players)
+ *   - north-america/usa/csl/sql/109.00003-match-events-csl.sql     (CSL match_events)
  */
 
 const { Client } = require('pg');
@@ -127,7 +127,7 @@ class EventSqlExporter {
       sql += `\n`;
     }
 
-    const outFile = path.join(LEAGUES_DIR, 'usa-apsl', 'sql', '108.00001-event-players-usa-apsl.sql');
+    const outFile = path.join(LEAGUES_DIR, 'north-america/usa/apsl', 'sql', '108.00001-event-players-apsl.sql');
     fs.writeFileSync(outFile, sql);
     console.log(`  ✓ Exported ${result.rows.length} auto-created APSL players → ${path.basename(outFile)}`);
   }
@@ -135,7 +135,7 @@ class EventSqlExporter {
   /**
    * Export match events for a league
    */
-  async exportMatchEvents(leagueKey, sourceSystemId, fileCode) {
+  async exportMatchEvents(leaguePath, leagueSlug, sourceSystemId, fileCode) {
     const result = await this.client.query(`
       SELECT 
         me.player_id,
@@ -156,11 +156,11 @@ class EventSqlExporter {
     `, [sourceSystemId]);
 
     if (result.rows.length === 0) {
-      console.log(`  No ${leagueKey} match events found`);
+      console.log(`  No ${leagueSlug} match events found`);
       return;
     }
 
-    const leagueName = leagueKey.toUpperCase().replace('USA-', '');
+    const leagueName = leagueSlug.toUpperCase();
     let sql = `-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Match Events - ${leagueName}
 -- Goals, assists, cards, etc. from match event pages
@@ -193,7 +193,7 @@ class EventSqlExporter {
       sql += `WHERE m.external_id = '${this.esc(row.match_external_id)}' AND m.source_system_id = ${row.match_ss_id};\n\n`;
     }
 
-    const outFile = path.join(LEAGUES_DIR, leagueKey, 'sql', `109.${fileCode}-match-events-${leagueKey}.sql`);
+    const outFile = path.join(LEAGUES_DIR, leaguePath, 'sql', `109.${fileCode}-match-events-${leagueSlug}.sql`);
     fs.writeFileSync(outFile, sql);
     console.log(`  ✓ Exported ${result.rows.length} ${leagueName} match events (${matchCount} matches) → ${path.basename(outFile)}`);
   }
@@ -210,10 +210,10 @@ class EventSqlExporter {
 
       console.log('\nMatch events:');
       // 2. Export APSL match events (source_system_id = 1)
-      await this.exportMatchEvents('usa-apsl', 1, '00001');
+      await this.exportMatchEvents('north-america/usa/apsl', 'apsl', 1, '00001');
 
       // 3. Export CSL match events (source_system_id = 3)
-      await this.exportMatchEvents('usa-csl', 3, '00003');
+      await this.exportMatchEvents('north-america/usa/csl', 'csl', 3, '00003');
 
       console.log('\n✓ Export complete');
     } finally {

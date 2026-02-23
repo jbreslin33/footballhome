@@ -12,7 +12,7 @@
 #
 # After building, load leagues:
 #   make load              # Load all leagues
-#   cd database/scripts/leagues/usa-apsl && ./load.sh  # Load one league
+#   cd database/scripts/leagues/north-america/usa/apsl && ./load.sh  # Load one league
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -277,5 +277,5 @@ echo "  node database/scripts/audit-database.js"
 echo ""
 echo -e "${YELLOW}🔄 Next step: Load league data${NC}"
 echo "  make load                                      # Load all leagues"
-echo "  cd database/scripts/leagues/usa-apsl && ./load.sh   # Load one league"
+echo "  cd database/scripts/leagues/north-america/usa/apsl && ./load.sh   # Load one league"
 echo ""

@@ -2,7 +2,7 @@
 
 /**
  * Export teams to separate SQL files by league (source_system)
- * Creates: 042.1-teams-usa-apsl.sql, 042.2-teams-usa-casa.sql, 042.3-teams-usa-csl.sql
+ * Creates: 042.1-teams-apsl.sql, 042.2-teams-casa.sql, 042.3-teams-csl.sql
  */
 
 const { Client } = require('pg');
@@ -10,9 +10,9 @@ const fs = require('fs');
 const path = require('path');
 
 const LEAGUE_CONFIGS = [
-  { source_system_id: 1, filename: '042.1-teams-usa-apsl.sql', name: 'APSL', country: 'USA' },
-  { source_system_id: 2, filename: '042.2-teams-usa-casa.sql', name: 'CASA', country: 'USA' },
-  { source_system_id: 3, filename: '042.3-teams-usa-csl.sql', name: 'CSL', country: 'USA' }
+  { source_system_id: 1, filename: '042.1-teams-apsl.sql', name: 'APSL', country: 'USA' },
+  { source_system_id: 2, filename: '042.2-teams-casa.sql', name: 'CASA', country: 'USA' },
+  { source_system_id: 3, filename: '042.3-teams-csl.sql', name: 'CSL', country: 'USA' }
 ];
 
 async function exportTeams() {
