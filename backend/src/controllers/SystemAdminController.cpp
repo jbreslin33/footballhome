@@ -3529,7 +3529,7 @@ Response SystemAdminController::handleGetPlayers(const Request& request) {
                 per.last_name,
                 per.birth_date,
                 p.external_id,
-                dtp.jersey_number,
+                r.jersey_number,
                 pos.name as position_name
             FROM players p
             JOIN persons per ON per.id = p.person_id
