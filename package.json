@@ -3,13 +3,7 @@
   "version": "1.0.0",
   "description": "Football Home - Team management application",
   "scripts": {
-    "groupme:list": "node scripts/groupme-scraper.js list",
-    "groupme:messages": "node scripts/groupme-scraper.js messages",
-    "groupme:rsvp": "node scripts/groupme-scraper.js rsvp",
-    "groupme:events": "node scripts/groupme-scraper.js events",
-    "groupme:calendar": "node scripts/groupme-calendar-scraper.js",
-    "groupme:import": "node scripts/groupme-import.js",
-    "groupme:import:dry": "node scripts/groupme-import.js 108640377 --dry-run"
+    "groupme:import": "node scripts/import-all-groupme-users.js"
   },
   "dependencies": {
     "csv-parse": "^6.1.0",
