@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db bootstrap load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init init-apsl init-csl init-casa init-all scrape scrape-apsl scrape-csl scrape-casa backup restore safe-rebuild
+.PHONY: all help clean build up down rebuild logs test ps shell-db load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init init-apsl init-csl init-casa init-all scrape scrape-apsl scrape-csl scrape-casa backup restore safe-rebuild
 
 # Default target - safe, non-destructive
 all: up
@@ -75,7 +75,6 @@ clean:
 	@podman rm -f footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
 	@podman pod rm -f pod_footballhome 2>/dev/null || true
 	@podman volume rm footballhome_db_data 2>/dev/null || true
-	@podman volume rm footballhome_pgadmin_data 2>/dev/null || true
 	@podman network rm footballhome_footballhome_network 2>/dev/null || true
 	@echo "✓ Cleanup complete"
 
@@ -101,7 +100,7 @@ down:
 	@podman-compose --env-file env down
 
 rebuild: clean
-	@echo "🏗️  Full rebuild with all data..."
+	@echo "🏗️  Full rebuild..."
 	@./build.sh
 
 logs:
@@ -114,12 +113,6 @@ test:
 # ============================================================
 # Custom Targets (Domain-Specific)
 # ============================================================
-
-bootstrap: clean
-	@echo "🏗️  Bootstrap rebuild (no league data loaded automatically)..."
-	@./build.sh
-	@echo "✓ Bootstrap complete - database ready"
-	@echo "  Run: make load    (to load all leagues)"
 
 # ============================================================
 # League Init (one-time onboarding, generates SQL files)
@@ -220,8 +213,8 @@ events-csl:
 	@echo "⚽ Scraping CSL match events..."
 	@cd database/scripts/scrapers && node CslMatchEventScraper.js || echo "   ℹ️  CSL event scraper not yet ready"
 
-# Full refresh: parse all, then bootstrap DB, then load all
-refresh: parse bootstrap load
+# Full refresh: parse all, then rebuild DB, then load all
+refresh: parse rebuild load
 	@echo "✓ Full refresh complete (parsed all leagues, fresh DB, loaded all data including events)"
 
 # ============================================================

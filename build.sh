@@ -3,16 +3,16 @@
 # Football Home - Build Script
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# Rebuilds containers and loads database schema.
-# Does NOT load league data - use make load or league load.sh scripts.
+# Builds container images, starts services, and waits for health checks.
+# Called by: make rebuild (which runs make clean first)
 #
 # Usage:
-#   ./build.sh              Full rebuild (destroys volumes)
-#   ./build.sh --backend    Rebuild backend only (fast iteration)
+#   make rebuild            # Recommended: clean + build (via Makefile)
+#   ./build.sh              # Build only (assumes already cleaned)
+#   ./build.sh --backend    # Rebuild backend only (fast iteration)
 #
 # After building, load leagues:
 #   make load              # Load all leagues
-#   cd database/scripts/leagues/north-america/usa/apsl && ./load.sh  # Load one league
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -133,8 +133,6 @@ echo ""
 
 # Show plan
 echo -e "${YELLOW}📋 Plan:${NC}"
-echo "  ✓ Delete all containers and volumes (fresh database)"
-echo "  ✓ Clear Docker build cache"
 echo "  ✓ Rebuild all images"
 echo "  ✓ Load database schema"
 echo "  ✓ Start all services"
@@ -149,24 +147,7 @@ echo -e "${YELLOW}📦 Installing npm dependencies...${NC}"
 npm install --silent
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 2: CLEAN EVERYTHING
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo -e "${YELLOW}🧹 Cleaning containers, volumes, and build cache...${NC}"
-
-$DOCKER_COMPOSE down -v 2>&1 | grep -v "no container with" | grep -v "Error:" || true
-$DOCKER stop footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
-$DOCKER rm -f footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
-$DOCKER pod rm -f pod_footballhome 2>/dev/null || true
-$DOCKER volume rm footballhome_db_data 2>/dev/null || true
-$DOCKER volume rm footballhome_pgadmin_data 2>/dev/null || true
-$DOCKER network rm footballhome_footballhome_network 2>/dev/null || true
-$DOCKER images | grep footballhome | awk '{print $3}' | xargs -r $DOCKER rmi -f 2>/dev/null || true
-
-echo -e "${GREEN}✓ Cleanup complete${NC}"
-echo ""
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 3: BUILD
+# STEP 2: BUILD
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo -e "${YELLOW}🔨 Building images...${NC}"
 $DOCKER_COMPOSE build
@@ -174,7 +155,7 @@ echo -e "${GREEN}✓ Build complete${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 4: START
+# STEP 3: START
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo -e "${YELLOW}🚀 Starting containers...${NC}"
 
@@ -206,7 +187,7 @@ echo -e "${GREEN}✓ Containers started${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 5: WAIT FOR SERVICES
+# STEP 4: WAIT FOR SERVICES
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo -e "${YELLOW}⏳ Waiting for services...${NC}"
 
@@ -253,7 +234,7 @@ done
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 6: SETUP PG_CRON
+# STEP 5: SETUP PG_CRON
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo -e "${YELLOW}⏰ Setting up pg_cron...${NC}"
 $DOCKER_COMPOSE exec -T db bash /docker-entrypoint-initdb.d/999-pg-cron-setup.sh 2>/dev/null || true
