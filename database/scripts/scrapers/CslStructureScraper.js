@@ -439,6 +439,7 @@ async function main() {
     await scraper.scrape();
     
     console.log('CslStructureScraper completed successfully');
+    await scraper.fetcher.closeBrowser();
   } finally {
     client.release();
     await pool.end();

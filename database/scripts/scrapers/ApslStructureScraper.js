@@ -302,6 +302,9 @@ class ApslStructureScraper {
   }
   
   async cleanup() {
+    if (this.fetcher) {
+      await this.fetcher.closeBrowser();
+    }
     if (this._client) {
       this._client.release();
     }

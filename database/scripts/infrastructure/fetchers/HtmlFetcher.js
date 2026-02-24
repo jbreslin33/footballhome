@@ -6,8 +6,11 @@ const crypto = require('crypto');
  * HTML Fetcher
  * 
  * Fetches HTML from URLs and caches to disk.
+ * Uses puppeteer-extra with stealth plugin to bypass bot protection (403s).
+ * Falls back to plain fetch for simple requests.
+ * 
  * This allows:
- * 1. Scraping from live URLs
+ * 1. Scraping from live URLs (with bot protection bypass)
  * 2. Saving HTML for replay/debugging
  * 3. Rebuilding database from cached HTML without re-fetching
  */
@@ -15,6 +18,53 @@ class HtmlFetcher {
   constructor(cacheDir = null) {
     // Default cache directory
     this.cacheDir = cacheDir || path.join(__dirname, '../../../scraped-html/apsl');
+    this._browser = null;
+  }
+
+  /**
+   * Get or launch a shared Puppeteer browser instance
+   * Uses puppeteer-extra with stealth plugin to avoid bot detection
+   */
+  async _getBrowser() {
+    if (this._browser) return this._browser;
+
+    const puppeteer = require('puppeteer-extra');
+    const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+    puppeteer.use(StealthPlugin());
+
+    console.log('   🚀 Launching headless browser (stealth mode)...');
+    this._browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    return this._browser;
+  }
+
+  /**
+   * Fetch HTML using Puppeteer headless browser
+   * Used when plain fetch returns 403 (bot protection)
+   */
+  async _fetchWithBrowser(url, timeoutMs = 30000) {
+    const browser = await this._getBrowser();
+    const page = await browser.newPage();
+
+    try {
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: timeoutMs });
+      const html = await page.content();
+      return html;
+    } finally {
+      await page.close();
+    }
+  }
+
+  /**
+   * Close the shared browser instance (call when done scraping)
+   */
+  async closeBrowser() {
+    if (this._browser) {
+      await this._browser.close();
+      this._browser = null;
+    }
   }
   
   /**
@@ -88,81 +138,83 @@ class HtmlFetcher {
     }
     
     // Fetch from URL with timeout
-    const timeoutMs = retryAttempt > 0 ? 5000 : 10000; // Shorter timeout on retries
+    const timeoutMs = retryAttempt > 0 ? 15000 : 30000;
     
     if (retryAttempt === 0) {
       console.log(`   🌐 Fetching: ${url}`);
     }
     
+    let html;
+    
+    // Try plain fetch first, fall back to Puppeteer on 403
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const plainTimeoutId = setTimeout(() => controller.abort(), 10000);
     
     try {
       const response = await fetch(url, { 
         signal: controller.signal,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
         }
       });
-      clearTimeout(timeoutId);
+      clearTimeout(plainTimeoutId);
       
-      if (!response.ok) {
+      if (response.status === 403) {
+        // Bot protection detected — use Puppeteer with stealth
+        console.log(`   🛡️  403 detected, using headless browser...`);
+        html = await this._fetchWithBrowser(url, timeoutMs);
+      } else if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      } else {
+        html = await response.text();
       }
-      
-      const html = await response.text();
-      
-      // Validate response
-      if (!html || html.trim().length === 0) {
-        // Empty response - only create skip marker on final retry
-        if (retryAttempt >= 2) {
-          await fs.mkdir(this.cacheDir, { recursive: true });
-          await fs.writeFile(skipMarker, `Empty response after ${retryAttempt + 1} attempts at ${new Date().toISOString()}`, 'utf-8');
-        }
-        throw new Error('Empty response from server');
-      }
-      
-      // Save to cache
-      try {
-        await fs.mkdir(this.cacheDir, { recursive: true });
-        await fs.writeFile(cacheFile, html, 'utf-8');
-        
-        // Remove skip marker if it exists (successful fetch)
-        try {
-          await fs.unlink(skipMarker);
-        } catch {
-          // Ignore if skip marker doesn't exist
-        }
-        
-        const sizeKB = (html.length / 1024).toFixed(1);
-        if (retryAttempt === 0) {
-          console.log(`   💾 Cached: ${path.basename(cacheFile)} (${sizeKB} KB)`);
-        } else {
-          console.log(`   ✅ Retry #${retryAttempt} succeeded: ${path.basename(cacheFile)} (${sizeKB} KB)`);
-        }
-      } catch (error) {
-        console.warn(`   ⚠️  Failed to cache HTML: ${error.message}`);
-      }
-      
-      return html;
     } catch (error) {
-      clearTimeout(timeoutId);
-      
-      // On final retry, create skip marker
-      if (retryAttempt >= 2) {
-        try {
-          await fs.mkdir(this.cacheDir, { recursive: true });
-          await fs.writeFile(skipMarker, `Failed after ${retryAttempt + 1} attempts: ${error.message} at ${new Date().toISOString()}`, 'utf-8');
-        } catch {
-          // Ignore skip marker write errors
-        }
-      }
-      
+      clearTimeout(plainTimeoutId);
       if (error.name === 'AbortError') {
-        throw new Error(`Request timeout after ${timeoutMs/1000}s`);
+        // Plain fetch timed out — try Puppeteer
+        console.log(`   ⏱️  Plain fetch timed out, using headless browser...`);
+        html = await this._fetchWithBrowser(url, timeoutMs);
+      } else if (error.message && error.message.includes('403')) {
+        console.log(`   🛡️  403 detected, using headless browser...`);
+        html = await this._fetchWithBrowser(url, timeoutMs);
+      } else {
+        throw error;
       }
-      throw error;
     }
+      
+    // Validate response
+    if (!html || html.trim().length === 0) {
+      // Empty response - only create skip marker on final retry
+      if (retryAttempt >= 2) {
+        await fs.mkdir(this.cacheDir, { recursive: true });
+        await fs.writeFile(skipMarker, `Empty response after ${retryAttempt + 1} attempts at ${new Date().toISOString()}`, 'utf-8');
+      }
+      throw new Error('Empty response from server');
+    }
+    
+    // Save to cache
+    try {
+      await fs.mkdir(this.cacheDir, { recursive: true });
+      await fs.writeFile(cacheFile, html, 'utf-8');
+      
+      // Remove skip marker if it exists (successful fetch)
+      try {
+        await fs.unlink(skipMarker);
+      } catch {
+        // Ignore if skip marker doesn't exist
+      }
+      
+      const sizeKB = (html.length / 1024).toFixed(1);
+      if (retryAttempt === 0) {
+        console.log(`   💾 Cached: ${path.basename(cacheFile)} (${sizeKB} KB)`);
+      } else {
+        console.log(`   ✅ Retry #${retryAttempt} succeeded: ${path.basename(cacheFile)} (${sizeKB} KB)`);
+      }
+    } catch (error) {
+      console.warn(`   ⚠️  Failed to cache HTML: ${error.message}`);
+    }
+    
+    return html;
   }
   
   /**
