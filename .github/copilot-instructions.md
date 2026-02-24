@@ -100,19 +100,53 @@ make rebuild && make init
 
 ### Data Management Philosophy
 
-**Two tiers of SQL files:**
+**Two phases of data management:**
+
+#### Phase 1: League Onboarding (SQL files)
+Used only when adding a new league. SQL files enable iterative development:
+```
+scrape → parse → generate SQL → review diff → fix parser → repeat until correct
+make rebuild && make load  (iterate from scratch each time)
+```
+- SQL files are committed to git so you can review diffs between iterations
+- Once the league data is verified and loaded, SQL files become a historical snapshot
+- SQL files are NEVER re-run on a live database after initial load
+
+#### Phase 2: Live Operation (pg_dump + direct DB updates)
+Once leagues are loaded and users are creating data (RSVPs, practices, attendance):
+```
+make backup                    # snapshot before any update
+make update-apsl               # scrape → UPSERT directly into live DB
+```
+- **pg_dump is the source of truth** — captures everything (schema + league data + user data)
+- League updates (standings, scores, rosters) go directly into the live DB via scraper → UPSERT
+- User-generated data (RSVPs, practices, chat) lives only in the DB — never in SQL files
+- If an update goes wrong: `make restore`, fix parser, retry
+- League websites are always available to re-scrape — scraper errors are recoverable
+
+**Three categories of data:**
+
+| Category | Source | Update Method | Recoverable? |
+|----------|--------|---------------|-------------|
+| Bootstrap (schema, lookups) | `database/data/` SQL files | `make rebuild` | Always — from git |
+| League data (standings, matches, rosters) | League websites | Scrape → UPSERT into live DB | Always — re-scrape from website |
+| User data (RSVPs, practices, attendance) | User input in app | Written by backend to DB | Only from pg_dump backup |
+
+**Two tiers of SQL files (Phase 1 only):**
 
 1. **Bootstrap Data** (`database/data/` — loaded by `./build.sh`):
    - Schema definitions (`00-schema.sql`)
    - Lookup tables (match types, positions, source systems)
    - Manual reference data (seasons, conferences, divisions, admin users)
    - Loaded once during container initialization
+   - These are permanent — needed for every rebuild
 
 2. **League Data** (`database/scripts/leagues/<continent>/<country>/<league>/sql/` — loaded by `make load`):
-   - Generated from scraped HTML by parse pipeline
+   - Generated from scraped HTML during league onboarding
    - Per-league SQL files numbered 100-109
-   - Committed to git — SQL files ARE the source of truth
-   - Loaded after bootstrap in dependency order (APSL → CSL → CASA)
+   - Committed to git as a snapshot of the initial load
+   - Only used during onboarding iteration and fresh dev rebuilds
+   - NOT re-run on a live database — updates go directly to DB
 
 **SQL File Numbering per League:**
 | File | Content |
@@ -130,17 +164,18 @@ make rebuild && make init
 | `900-*-curation.sql` | Cross-league deduplication (UPDATE statements) |
 
 **Data Restoration:**
-- Development: `make rebuild && make load` (fresh DB from git)
-- Full re-init: `make rebuild && make init` (re-parse from cached HTML)
+- Development reset: `make rebuild && make load` (fresh DB from git — wipes user data)
+- Full re-init: `make rebuild && make init` (re-parse from cached HTML — wipes user data)
+- Live restore: `make restore` (latest pg_dump) or `make restore BACKUP=file.sql`
 - Safe rebuild: `make safe-rebuild && make load` (pg_dump before wipe)
-- Restore from backup: `make restore` (latest) or `make restore BACKUP=file.sql`
 
 **Backup Strategy:**
 - `make backup` runs pg_dump → `backups/backup-YYYYMMDD-HHMMSS.sql`
 - Captures everything: schema + league data + user data
 - `backups/` is gitignored — snapshots are local insurance
-- SQL files in git remain the buildable source for league data
-- pg_dump is for milestones/safety, not version control
+- **Always run `make backup` before any update or rebuild**
+- pg_dump is the source of truth for live databases
+- `make rebuild && make load` is for dev resets only (destroys user data)
 
 ### Database Changes
 - **Schema Changes**: Update `00-schema.sql`, then `make rebuild` to apply

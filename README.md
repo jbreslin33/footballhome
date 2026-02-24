@@ -128,17 +128,22 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 
 ## 🗄️ Data Pipeline
 
-### Two Tiers of SQL
+### Two Phases
 
-1. **Bootstrap Data** (`database/data/`) — Schema, lookups, manual reference data
-2. **League Data** (`database/scripts/leagues/*/sql/`) — Generated from scraped HTML, committed to git
+**Phase 1: League Onboarding** (SQL files for iterative development)
+```
+Web → make scrape → cached HTML → make parse → SQL files → review → iterate
+make rebuild && make load   (fresh DB from SQL each iteration)
+```
+SQL files are committed to git for diff review during onboarding. Once a league is loaded and verified, its SQL files become a historical snapshot.
 
-### Data Flow
+**Phase 2: Live Operation** (pg_dump + direct DB updates)
 ```
-Web → make scrape → cached HTML → make parse → SQL files → make load → DB
-                                                    ↑
-                                              committed to git
+make backup                 # always backup first
+make update-apsl            # scrape → UPSERT directly into live DB (future)
+make restore                # roll back if something went wrong
 ```
+pg_dump is the source of truth for live databases. User data (RSVPs, practices) lives only in the DB.
 
 ### Backup Strategy
 ```bash
