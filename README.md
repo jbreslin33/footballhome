@@ -20,8 +20,9 @@ cd footballhome
 # 2. Run first-time setup (installs Podman, Node, etc.)
 ./setup.sh
 
-# 3. Unlock encrypted credentials (ask team for the key file)
-git-crypt unlock /path/to/footballhome.key
+# 3. Copy env template and fill in credentials
+cp .env.example env
+# Edit env with your Twilio / Google OAuth / Docker Hub credentials (optional)
 
 # 4. Build and start (fresh DB from committed SQL)
 make rebuild && make load
@@ -29,7 +30,7 @@ make rebuild && make load
 # Access at http://localhost:3000
 ```
 
-**Note**: The `.env` file with Twilio credentials is encrypted. New team members need the git-crypt key to unlock it.
+**Note**: The `env` file (gitignored) holds optional credentials (Twilio, Google OAuth, Docker Hub). Copy `.env.example` to `env` and fill in values as needed.
 
 **Podman/Docker**: This project defaults to Podman but supports Docker as a fallback.
 
@@ -71,11 +72,10 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 - **Frontend**: Vanilla JavaScript FSM-based UI (port 3000)
 - **Backend**: Custom C++ HTTP server (port 3001)
 - **Database**: PostgreSQL with league data (port 5432)
-- **Admin**: pgAdmin interface (port 5050)
 
 ## 🔐 Demo Login
 
-- **Email**: `jbreslin@footballhome.org`
+- **Email**: `soccer@lighthouse1893.org`
 - **Password**: `1893Soccer!`
 
 ## 📁 Project Structure
@@ -91,6 +91,7 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 │   ├── src/
 │   │   ├── core/             # HTTP framework
 │   │   ├── controllers/      # Route handlers
+│   │   ├── services/         # Business logic
 │   │   ├── models/           # Database models
 │   │   └── database/         # PostgreSQL client
 │   └── CMakeLists.txt
@@ -108,7 +109,7 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 └── docker-compose.yml        # Container orchestration
 ```
 
-## 🏈 Features
+## ⚽ Features
 
 ### League Management
 - **Multi-League Support**: APSL, CSL, CASA with automated scraping and SQL generation
@@ -157,14 +158,7 @@ make shell-db       # Connect to database shell
 podman exec -it footballhome_db psql -U footballhome footballhome
 ```
 
-## 📊 pgAdmin
-
-Access database admin at http://localhost:5050
-
-- **Email**: `admin@footballhome.org`
-- **Password**: `admin`
-
-## 🔍 Troubleshooting
+##  Troubleshooting
 
 ```bash
 # Check database logs
