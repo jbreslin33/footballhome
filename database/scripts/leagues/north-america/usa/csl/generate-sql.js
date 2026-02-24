@@ -91,6 +91,9 @@ class CslSqlGenerator extends BaseGenerator {
     this.writeRostersSql();
     this.writeMatchesSql();
     
+    // Save universal JSON snapshot for diff-based updates
+    this.saveSnapshot();
+    
     console.log('✓ SQL generation complete\n');
   }
 

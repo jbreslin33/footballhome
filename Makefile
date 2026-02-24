@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init init-apsl init-csl init-casa init-all scrape scrape-apsl scrape-csl scrape-casa backup restore safe-rebuild
+.PHONY: all help clean build up down rebuild logs test ps shell-db load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init init-apsl init-csl init-casa init-all scrape scrape-apsl scrape-csl scrape-casa update-casa update-casa-dry baseline-casa backup restore safe-rebuild
 
 # Default target - safe, non-destructive
 all: up
@@ -51,6 +51,11 @@ help:
 	@echo "  make rebuild && make init   - Full init from cached HTML"
 	@echo "  make safe-rebuild && make load - Backup, then fresh DB from SQL"
 	@echo "  make refresh               - parse + rebuild + load (fast refresh)"
+	@echo ""
+	@echo "Update (diff-based, safe for live DB):"
+	@echo "  make update-casa     - Scrape CASA + diff + update SQL files + run against DB"
+	@echo "  make update-casa-dry - Scrape CASA + diff only (preview changes, no writes)"
+	@echo "  make baseline-casa   - Create initial snapshot from existing JSON"
 	@echo ""
 	@echo "Backup & restore:"
 	@echo "  make backup      - Snapshot DB to backups/ (pg_dump)"
@@ -216,6 +221,22 @@ events-csl:
 # Full refresh: parse all, then rebuild DB, then load all
 refresh: parse rebuild load
 	@echo "✓ Full refresh complete (parsed all leagues, fresh DB, loaded all data including events)"
+
+# ============================================================
+# Update (diff-based, safe for live DB)
+# ============================================================
+
+update-casa:
+	@echo "🔄 Updating CASA (scrape → diff → SQL → DB)..."
+	@node database/scripts/leagues/north-america/usa/casa/update-casa.js --db
+
+update-casa-dry:
+	@echo "🔍 CASA update dry run (scrape → diff → preview)..."
+	@node database/scripts/leagues/north-america/usa/casa/update-casa.js --dry-run
+
+baseline-casa:
+	@echo "📦 Creating CASA baseline snapshot from existing JSON..."
+	@node database/scripts/leagues/north-america/usa/casa/update-casa.js --baseline
 
 # ============================================================
 # Backup & Restore (pg_dump snapshots)

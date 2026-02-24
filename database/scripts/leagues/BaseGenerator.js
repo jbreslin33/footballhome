@@ -467,6 +467,118 @@ VALUES (
     }
     return this.venues.get(key).id;
   }
+
+  /**
+   * Convert current generator state to a LeagueSnapshot
+   * Call after all parsing is complete, before or alongside SQL writing.
+   * 
+   * This allows all leagues to produce the same universal JSON format
+   * for diff-based updates.
+   * 
+   * @returns {LeagueSnapshot}
+   */
+  toSnapshot() {
+    const LeagueSnapshot = require('../update/LeagueSnapshot');
+    
+    const snapshot = new LeagueSnapshot({
+      league: this.getLeagueSlug ? this.getLeagueSlug() : this.leagueName.toLowerCase(),
+      season: this.getSeasonName ? this.getSeasonName() : 'unknown',
+      sourceSystemId: this.sourceSystemId
+    });
+
+    // Add teams
+    for (const team of this.teams) {
+      snapshot.addTeam({
+        name: team.name,
+        divisionName: team.divisionName || '',
+        divisionExternalId: team.divisionExternalId || '',
+        externalId: team.externalId || ''
+      });
+
+      // Add standings if present on the team
+      if (team.standings) {
+        const s = team.standings;
+        snapshot.addStanding({
+          teamName: team.name,
+          divisionName: team.divisionName || '',
+          played: s.played || s.gamesPlayed || 0,
+          wins: s.wins || 0,
+          draws: s.draws || s.ties || 0,
+          losses: s.losses || 0,
+          goalsFor: s.goalsFor || s.gf || 0,
+          goalsAgainst: s.goalsAgainst || s.ga || 0,
+          goalDiff: s.goalDiff || s.gd || 0,
+          points: s.points || s.pts || 0
+        });
+      }
+    }
+
+    // Add standings from separate standings array (if not already added via teams)
+    if (this.standings.length > 0 && snapshot.standings.length === 0) {
+      for (const s of this.standings) {
+        snapshot.addStanding({
+          teamName: s.teamName || s.name,
+          divisionName: s.divisionName || '',
+          played: s.played || s.gamesPlayed || 0,
+          wins: s.wins || 0,
+          draws: s.draws || s.ties || 0,
+          losses: s.losses || 0,
+          goalsFor: s.goalsFor || s.gf || 0,
+          goalsAgainst: s.goalsAgainst || s.ga || 0,
+          goalDiff: s.goalDiff || s.gd || 0,
+          points: s.points || s.pts || 0
+        });
+      }
+    }
+
+    // Add matches
+    for (const m of this.matches) {
+      snapshot.addMatch({
+        homeTeam: m.homeTeamName || '',
+        awayTeam: m.awayTeamName || '',
+        divisionName: m.divisionName || '',
+        divisionExternalId: m.divisionExternalId || '',
+        date: m.matchDate || m.date || null,
+        time: m.matchTime || m.time || null,
+        status: m.matchStatusId === 3 ? 'completed' : m.matchStatusId === 4 ? 'cancelled' : 'scheduled',
+        homeScore: m.homeScore != null ? m.homeScore : null,
+        awayScore: m.awayScore != null ? m.awayScore : null,
+        externalId: m.externalId || ''
+      });
+    }
+
+    // Add players
+    for (const p of this.players) {
+      // Find which team this player is on via rosters
+      const rosterEntry = this.rosters.find(r => r.playerId === p.playerId);
+      snapshot.addPlayer({
+        firstName: p.firstName || '',
+        lastName: p.lastName || '',
+        teamName: rosterEntry ? rosterEntry.teamName : '',
+        divisionName: '', // Could be resolved from team, but not critical
+        jerseyNumber: rosterEntry ? rosterEntry.jerseyNumber : null,
+        position: p.position || null
+      });
+    }
+
+    return snapshot;
+  }
+
+  /**
+   * Save LeagueSnapshot to the league's cache directory
+   * @param {string} [outputDir] - Directory to save to (defaults to scraped-html/<league>/)
+   */
+  saveSnapshot(outputDir) {
+    const snapshot = this.toSnapshot();
+    const path = require('path');
+    const fs = require('fs');
+    const snapshotDir = outputDir || path.join(__dirname, '../../scraped-html', this.getLeagueSlug());
+    fs.mkdirSync(snapshotDir, { recursive: true });
+    snapshot.save(path.join(snapshotDir, 'snapshot.json'));
+    console.log(`   💾 Saved snapshot: ${snapshotDir}/snapshot.json`);
+    console.log(`      Teams: ${snapshot.teams.length}, Matches: ${snapshot.matches.length}, Standings: ${snapshot.standings.length}, Players: ${snapshot.players.length}`);
+    return snapshot;
+  }
 }
 
 module.exports = BaseGenerator;

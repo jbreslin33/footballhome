@@ -90,6 +90,9 @@ class CasaSqlGenerator extends BaseGenerator {
     console.log(`   Found ${this.matches.length} matches`);
     this.writeMatchesSql();
     
+    // Save universal JSON snapshot for diff-based updates
+    this.saveSnapshot();
+    
     console.log('\n✓ SQL generation complete\n');
   }
 
