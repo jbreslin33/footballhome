@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Clubs - CASA (Curated)
--- Only new clubs not in APSL or CSL. Matched teams use existing club IDs. Total new: 19
+-- Only new clubs not in APSL or CSL. Matched teams use existing club IDs. Total new: 21
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO clubs (id, name, organization_id) VALUES (20000, 'Adé United FC', 20000) ON CONFLICT (id) DO NOTHING;
@@ -10,15 +10,17 @@ INSERT INTO clubs (id, name, organization_id) VALUES (20003, 'Phoenix SCM', 2000
 INSERT INTO clubs (id, name, organization_id) VALUES (20004, 'Philly BlackStars', 20004) ON CONFLICT (id) DO NOTHING;
 INSERT INTO clubs (id, name, organization_id) VALUES (20005, 'Illyrians FC', 20005) ON CONFLICT (id) DO NOTHING;
 INSERT INTO clubs (id, name, organization_id) VALUES (20006, 'Lighthouse Boys Club', 20006) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20007, 'Lighthouse Old Timers Club', 20007) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20008, 'Club de Futbol Armada', 20008) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20009, 'South Shore FC', 20009) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20010, 'Jaguars United FC', 20010) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20011, 'Strictly Nos Fc', 20011) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20012, 'BCFC All Stars', 20012) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20013, 'Flatley FC', 20013) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20014, 'Gambeta FC', 20014) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20015, 'Kutztown Men''s Soccer', 20015) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20016, 'Keystone Elite', 20016) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20017, 'F&M FC', 20017) ON CONFLICT (id) DO NOTHING;
-INSERT INTO clubs (id, name, organization_id) VALUES (20018, 'Lancaster City FC', 20018) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20007, 'Philadelphia SC Select', 20007) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20008, 'Lighthouse Old Timers Club', 20008) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20009, 'Club de Futbol Armada', 20009) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20010, 'Sewell''s', 20010) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20011, 'South Shore FC', 20011) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20012, 'Jaguars United FC', 20012) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20013, 'Strictly Nos Fc', 20013) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20014, 'BCFC All Stars', 20014) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20015, 'Flatley FC', 20015) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20016, 'Gambeta FC', 20016) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20017, 'Kutztown Men''s Soccer', 20017) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20018, 'Keystone Elite', 20018) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20019, 'F&M FC', 20019) ON CONFLICT (id) DO NOTHING;
+INSERT INTO clubs (id, name, organization_id) VALUES (20020, 'Lancaster City FC', 20020) ON CONFLICT (id) DO NOTHING;

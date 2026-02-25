@@ -23,11 +23,12 @@ echo "📥 Loading CASA SQL to database..."
 # - 102: Teams
 # - 103: Division Teams
 # - 104: Standings (from schedule HTML)
-# - [105: Players - Roster scraping needs fixing]
+# - 105: Players (persons + players from roster XLSX)
 # - 106: Matches
+# - 107: Rosters (player-team assignments)
 # - 900: Cleanup scripts
 
-for file in "$SQL_DIR"/100.* "$SQL_DIR"/101.* "$SQL_DIR"/102.* "$SQL_DIR"/103.* "$SQL_DIR"/104.* "$SQL_DIR"/106.* "$SQL_DIR"/900.*; do
+for file in "$SQL_DIR"/100.* "$SQL_DIR"/101.* "$SQL_DIR"/102.* "$SQL_DIR"/103.* "$SQL_DIR"/104.* "$SQL_DIR"/105.* "$SQL_DIR"/106.* "$SQL_DIR"/107.* "$SQL_DIR"/900.*; do
     if [ -f "$file" ]; then
         echo "  Loading: $(basename "$file")"
         podman exec -i footballhome_db psql -U footballhome_user -d footballhome < "$file"

@@ -60,3 +60,5 @@ footballhome-git-crypt.key
 env
 .aider*
 # frontend/vendor/ is tracked - vis-network library needed for schema viewer
+# Large binary files from roster scraping
+*.xlsx

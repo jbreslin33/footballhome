@@ -17,4 +17,8 @@ export SCRAPE_MODE=download
 export SCRAPE_USE_CACHE=false
 node database/scripts/scrapers/CasaStructureScraper.js
 
+echo ""
+echo "📥 Downloading CASA roster sheets from Google Sheets..."
+node database/scripts/scrapers/CasaRosterScraper.js
+
 echo "✓ CASA HTML saved to database/scraped-html/casa/"

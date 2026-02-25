@@ -42,14 +42,28 @@ class SqlAppender {
     this.sqlStatements = [];
     const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
-    // Teams: INSERT added, DELETE removed
-    if (diff.teams.added.length > 0 || diff.teams.removed.length > 0) {
-      this._appendTeamsSql(diff.teams, timestamp);
+    // === ORDER MATTERS FOR FK CONSTRAINTS ===
+    // 1. DELETEs: matches before teams (matches reference teams via FK)
+    // 2. INSERTs: teams before matches (matches need team rows to exist)
+
+    // Phase 1: DELETE matches first (FK: matches → teams)
+    if (diff.matches.removed.length > 0) {
+      this._appendMatchDeletesSql(diff.matches.removed, timestamp);
     }
 
-    // Matches: INSERT added, DELETE removed, UPDATE changed
-    if (diff.matches.added.length > 0 || diff.matches.removed.length > 0 || diff.matches.updated.length > 0) {
-      this._appendMatchesSql(diff.matches, timestamp);
+    // Phase 2: DELETE teams (now safe — no matches referencing them)
+    if (diff.teams.removed.length > 0) {
+      this._appendTeamDeletesSql(diff.teams.removed, timestamp);
+    }
+
+    // Phase 3: INSERT teams (must exist before inserting matches)
+    if (diff.teams.added.length > 0) {
+      this._appendTeamInsertsSql(diff.teams.added, timestamp);
+    }
+
+    // Phase 4: INSERT + UPDATE matches
+    if (diff.matches.added.length > 0 || diff.matches.updated.length > 0) {
+      this._appendMatchChangesSql(diff.matches, timestamp);
     }
 
     // Standings: Full rewrite (standings are "current state")
@@ -65,21 +79,43 @@ class SqlAppender {
   }
 
   /**
-   * Append team changes to 102-teams SQL file
+   * Append team DELETE statements to SQL file
    */
-  _appendTeamsSql(teamsDiff, timestamp) {
+  _appendTeamDeletesSql(removedTeams, timestamp) {
     const filePath = this._findSqlFile('102');
     if (!filePath) return;
 
     const lines = [];
-    lines.push(`\n-- === UPDATE ${timestamp} ===`);
+    lines.push(`\n-- === REMOVALS ${timestamp} ===`);
+
+    const sourceSystemId = this.config.sourceSystemId;
+
+    for (const team of removedTeams) {
+      const sql = `DELETE FROM teams WHERE source_system_id = ${sourceSystemId} AND external_id = '${this.escapeSql(team.externalId)}';`;
+      lines.push(`-- Removed: ${team.name} (${team.divisionName})`);
+      lines.push(sql);
+      this.sqlStatements.push(sql);
+    }
+
+    fs.appendFileSync(filePath, lines.join('\n') + '\n');
+    console.log(`   ✏️  Appended ${removedTeams.length} team removes to ${path.basename(filePath)}`);
+  }
+
+  /**
+   * Append team INSERT statements to SQL file
+   */
+  _appendTeamInsertsSql(addedTeams, timestamp) {
+    const filePath = this._findSqlFile('102');
+    if (!filePath) return;
+
+    const lines = [];
+    lines.push(`\n-- === ADDITIONS ${timestamp} ===`);
 
     const sourceSystemId = this.config.sourceSystemId;
     const season = this.config.activeSeason;
     const leagueId = this.config.leagueDbId;
 
-    // Added teams
-    for (const team of teamsDiff.added) {
+    for (const team of addedTeams) {
       const externalId = team.externalId;
       const sql = `INSERT INTO teams (name, external_id, division_id, source_system_id)
 SELECT '${this.escapeSql(team.name)}', '${this.escapeSql(externalId)}', d.id, ${sourceSystemId}
@@ -94,36 +130,51 @@ ON CONFLICT (division_id, name) DO NOTHING;`;
       this.sqlStatements.push(sql);
     }
 
-    // Removed teams
-    for (const team of teamsDiff.removed) {
-      const sql = `DELETE FROM teams WHERE source_system_id = ${sourceSystemId} AND external_id = '${this.escapeSql(team.externalId)}';`;
-      lines.push(`-- Removed: ${team.name} (${team.divisionName})`);
+    fs.appendFileSync(filePath, lines.join('\n') + '\n');
+    console.log(`   ✏️  Appended ${addedTeams.length} team adds to ${path.basename(filePath)}`);
+  }
+
+  /**
+   * Append match DELETE statements to SQL file (run BEFORE team deletes)
+   */
+  _appendMatchDeletesSql(removedMatches, timestamp) {
+    const filePath = this._findSqlFile('106');
+    if (!filePath) return;
+
+    const lines = [];
+    lines.push(`\n-- === REMOVALS ${timestamp} ===`);
+
+    const sourceSystemId = this.config.sourceSystemId;
+
+    for (const match of removedMatches) {
+      const sql = `DELETE FROM matches WHERE source_system_id = ${sourceSystemId} AND external_id = '${this.escapeSql(match.externalId)}';`;
+      lines.push(`-- Removed: ${match.homeTeam} vs ${match.awayTeam}`);
       lines.push(sql);
       this.sqlStatements.push(sql);
     }
 
     fs.appendFileSync(filePath, lines.join('\n') + '\n');
-    console.log(`   ✏️  Appended ${teamsDiff.added.length} adds, ${teamsDiff.removed.length} removes to ${path.basename(filePath)}`);
+    console.log(`   ✏️  Appended ${removedMatches.length} match removes to ${path.basename(filePath)}`);
   }
 
   /**
-   * Append match changes to 106-matches SQL file
+   * Append match INSERT + UPDATE statements to SQL file (run AFTER team inserts)
    */
-  _appendMatchesSql(matchesDiff, timestamp) {
+  _appendMatchChangesSql(matchesDiff, timestamp) {
     const filePath = this._findSqlFile('106');
     if (!filePath) return;
 
     const lines = [];
-    lines.push(`\n-- === UPDATE ${timestamp} ===`);
-    lines.push(`-- Added: ${matchesDiff.added.length}, Removed: ${matchesDiff.removed.length}, Updated: ${matchesDiff.updated.length}`);
+    lines.push(`\n-- === CHANGES ${timestamp} ===`);
+    lines.push(`-- Added: ${matchesDiff.added.length}, Updated: ${matchesDiff.updated.length}`);
 
     const sourceSystemId = this.config.sourceSystemId;
 
     // Added matches
     for (const match of matchesDiff.added) {
       const matchStatus = match.status === 'completed' ? 3 : 1;
-      const homeTeamExternalId = `${match.divisionExternalId}-${match.homeTeam.toLowerCase().replace(/\\s+/g, '-')}`;
-      const awayTeamExternalId = `${match.divisionExternalId}-${match.awayTeam.toLowerCase().replace(/\\s+/g, '-')}`;
+      const homeTeamExternalId = `${match.divisionExternalId}-${match.homeTeam.toLowerCase().replace(/\s+/g, '-')}`;
+      const awayTeamExternalId = `${match.divisionExternalId}-${match.awayTeam.toLowerCase().replace(/\s+/g, '-')}`;
 
       const sql = `INSERT INTO matches (
   match_type_id, match_date, match_time, match_status_id,
@@ -140,14 +191,6 @@ JOIN teams at ON at.external_id = '${this.escapeSql(awayTeamExternalId)}' AND at
 WHERE ht.external_id = '${this.escapeSql(homeTeamExternalId)}' AND ht.source_system_id = ${sourceSystemId}
 ON CONFLICT (source_system_id, external_id) DO NOTHING;`;
       lines.push(`-- Added: ${match.homeTeam} vs ${match.awayTeam}`);
-      lines.push(sql);
-      this.sqlStatements.push(sql);
-    }
-
-    // Removed matches
-    for (const match of matchesDiff.removed) {
-      const sql = `DELETE FROM matches WHERE source_system_id = ${sourceSystemId} AND external_id = '${this.escapeSql(match.externalId)}';`;
-      lines.push(`-- Removed: ${match.homeTeam} vs ${match.awayTeam}`);
       lines.push(sql);
       this.sqlStatements.push(sql);
     }

@@ -1,0 +1,5179 @@
+{
+  "players": [
+    {
+      "firstName": "Sammy",
+      "lastName": "Amin",
+      "dateOfBirth": "2003-10-14",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Jeffrey",
+      "lastName": "Asiedu",
+      "dateOfBirth": "2004-02-02",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Theo",
+      "lastName": "Biddle",
+      "dateOfBirth": "2000-07-19",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Tyler",
+      "lastName": "Caton",
+      "dateOfBirth": "1995-04-04",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Jorge",
+      "lastName": "Cervantes",
+      "dateOfBirth": "2002-05-17",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Manuel",
+      "lastName": "Chacon Fallas",
+      "dateOfBirth": "1998-12-05",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Miguel",
+      "lastName": "Cortes",
+      "dateOfBirth": "1991-10-28",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Tyler",
+      "lastName": "Dautrich",
+      "dateOfBirth": "1992-08-07",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Cameron",
+      "lastName": "Dennis",
+      "dateOfBirth": "1995-11-03",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Aaron",
+      "lastName": "Endres",
+      "dateOfBirth": "1999-03-28",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Evan",
+      "lastName": "Kent",
+      "dateOfBirth": "2003-07-08",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Lekan",
+      "lastName": "King",
+      "dateOfBirth": "1992-09-14",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Mateo",
+      "lastName": "Loyo",
+      "dateOfBirth": "2004-11-17",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Christopher",
+      "lastName": "Manful",
+      "dateOfBirth": "2001-07-07",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Sammy",
+      "lastName": "Monistere",
+      "dateOfBirth": "1993-09-22",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Rocco",
+      "lastName": "Monteiro",
+      "dateOfBirth": "2004-02-29",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Eli",
+      "lastName": "Moraru",
+      "dateOfBirth": "2000-06-27",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Zachery",
+      "lastName": "Moyer",
+      "dateOfBirth": "2002-06-26",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Michael",
+      "lastName": "Oh",
+      "dateOfBirth": "1992-10-17",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "David",
+      "lastName": "Olukoya",
+      "dateOfBirth": "2005-05-28",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Tamer",
+      "lastName": "Ozturk",
+      "dateOfBirth": "2000-02-11",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Joao",
+      "lastName": "Patelli Ramos dos Santos",
+      "dateOfBirth": "2000-10-16",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Ethan",
+      "lastName": "Reta",
+      "dateOfBirth": "2005-01-13",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Gonzalo",
+      "lastName": "Reyes",
+      "dateOfBirth": "2002-02-18",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "justin",
+      "lastName": "reynoso",
+      "dateOfBirth": "2006-09-08",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Cole",
+      "lastName": "Roddy",
+      "dateOfBirth": "2002-04-12",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Adam",
+      "lastName": "Silberg",
+      "dateOfBirth": "2000-09-07",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Ethan",
+      "lastName": "Spence",
+      "dateOfBirth": "2001-05-29",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Kevin",
+      "lastName": "Taipe",
+      "dateOfBirth": "2004-10-02",
+      "jerseyNumber": null,
+      "teamName": "Adé United FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Djalilou",
+      "lastName": "Adam-Djobo",
+      "dateOfBirth": "1990-12-15",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Mitchel",
+      "lastName": "Alfaro",
+      "dateOfBirth": "1998-02-19",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Luke",
+      "lastName": "Archibald",
+      "dateOfBirth": "2000-05-12",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Noah",
+      "lastName": "Blodget",
+      "dateOfBirth": "1996-02-13",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Gonazalo",
+      "lastName": "Chiang",
+      "dateOfBirth": "1999-12-20",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Hayden",
+      "lastName": "Cote",
+      "dateOfBirth": "2006-12-11",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Brandon",
+      "lastName": "Da Silva",
+      "dateOfBirth": "2007-03-08",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Brandon",
+      "lastName": "DeAngelo",
+      "dateOfBirth": "2003-07-06",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Khadim",
+      "lastName": "Drame",
+      "dateOfBirth": "1994-03-04",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Emin",
+      "lastName": "Gunaydin",
+      "dateOfBirth": "2000-11-14",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Vincent",
+      "lastName": "Guzzo",
+      "dateOfBirth": "1995-02-16",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Rabah",
+      "lastName": "Hameg",
+      "dateOfBirth": "1997-06-27",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Anthony",
+      "lastName": "Jenkins",
+      "dateOfBirth": "2000-09-15",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Sincere",
+      "lastName": "Kato",
+      "dateOfBirth": "2003-07-09",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Cooper",
+      "lastName": "Lang",
+      "dateOfBirth": "1999-06-24",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Alex",
+      "lastName": "Lewis",
+      "dateOfBirth": "1990-05-01",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Lucien",
+      "lastName": "Maslin",
+      "dateOfBirth": "2005-05-27",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Dayvon",
+      "lastName": "Mbu",
+      "dateOfBirth": "2002-11-04",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Kevin",
+      "lastName": "Munive",
+      "dateOfBirth": "2003-05-29",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Matthew",
+      "lastName": "Pastore",
+      "dateOfBirth": "1995-08-22",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Ethan",
+      "lastName": "Spinatto",
+      "dateOfBirth": "2005-05-26",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Travis",
+      "lastName": "Spotts",
+      "dateOfBirth": "1997-02-26",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Marc",
+      "lastName": "M’bia M’bida-Essind Pastor",
+      "dateOfBirth": "2002-06-28",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Logan",
+      "lastName": "Shaw",
+      "dateOfBirth": "2007-02-27",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Adrian",
+      "lastName": "Rodriquez",
+      "dateOfBirth": "2008-10-22",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Veysel",
+      "lastName": "Tut",
+      "dateOfBirth": "2005-09-27",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "John",
+      "lastName": "Waddell",
+      "dateOfBirth": "2005-11-08",
+      "jerseyNumber": null,
+      "teamName": "Oaklyn United FC II",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Issac",
+      "lastName": "Agyapong",
+      "dateOfBirth": "1994-09-18",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Abdul Razak",
+      "lastName": "Alhassan",
+      "dateOfBirth": "2005-05-13",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Hassan",
+      "lastName": "Bah",
+      "dateOfBirth": "1995-11-14",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Abu",
+      "lastName": "Bangura",
+      "dateOfBirth": "1998-08-24",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Mustapha",
+      "lastName": "Bangura",
+      "dateOfBirth": "1989-10-06",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Abubakarr",
+      "lastName": "Bangura",
+      "dateOfBirth": "2001-12-01",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Demba",
+      "lastName": "Camara",
+      "dateOfBirth": "1996-08-11",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Cephas",
+      "lastName": "Forson",
+      "dateOfBirth": "1993-05-09",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Richardo",
+      "lastName": "Gaye",
+      "dateOfBirth": "1996-10-15",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "John",
+      "lastName": "Gwah",
+      "dateOfBirth": "1996-01-07",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Abraham",
+      "lastName": "Kamara",
+      "dateOfBirth": "2007-05-22",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Francis",
+      "lastName": "Kamara",
+      "dateOfBirth": "1996-12-23",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Mohamed",
+      "lastName": "Kamara",
+      "dateOfBirth": "2004-01-07",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Alpha",
+      "lastName": "Kanu",
+      "dateOfBirth": "1994-08-03",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Nyakeh",
+      "lastName": "Kiawoh",
+      "dateOfBirth": "1997-10-26",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Sory",
+      "lastName": "Konneh",
+      "dateOfBirth": "1979-07-17",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Idrissa",
+      "lastName": "Konobundor",
+      "dateOfBirth": "2007-05-27",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Yayah",
+      "lastName": "Koroma",
+      "dateOfBirth": "2000-05-17",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Alpha",
+      "lastName": "Koroma",
+      "dateOfBirth": "2004-06-06",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Moses",
+      "lastName": "Kpalu",
+      "dateOfBirth": "1980-04-14",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Foday",
+      "lastName": "Kuyateh",
+      "dateOfBirth": "1997-01-10",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Badamasie",
+      "lastName": "Mujtabah",
+      "dateOfBirth": "1994-11-11",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Benedict",
+      "lastName": "Olaloye",
+      "dateOfBirth": "2003-04-29",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Emmanuel",
+      "lastName": "Onwubiko",
+      "dateOfBirth": "1996-10-29",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Samuel",
+      "lastName": "Sandi",
+      "dateOfBirth": "2003-06-18",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Alim",
+      "lastName": "Sesay",
+      "dateOfBirth": "2006-12-01",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Abdul",
+      "lastName": "Sesay",
+      "dateOfBirth": "1988-08-10",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Favor",
+      "lastName": "WeahJr",
+      "dateOfBirth": "1997-02-16",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia Sierra Stars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Sulaiman",
+      "lastName": "Adegoke",
+      "dateOfBirth": "2002-02-14",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Promise",
+      "lastName": "Adeyi",
+      "dateOfBirth": "2003-04-26",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Ashkon",
+      "lastName": "Ashrafiuon",
+      "dateOfBirth": "1998-10-14",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Thomas",
+      "lastName": "Attamante",
+      "dateOfBirth": "1993-09-29",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Mama",
+      "lastName": "Bah",
+      "dateOfBirth": "2000-08-01",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Cee",
+      "lastName": "Brown",
+      "dateOfBirth": "1992-07-15",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "John",
+      "lastName": "Costello",
+      "dateOfBirth": "1994-08-08",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "patrick",
+      "lastName": "cronin",
+      "dateOfBirth": "1998-02-27",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Jorge",
+      "lastName": "Diaz",
+      "dateOfBirth": "1994-04-07",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "T-Ben",
+      "lastName": "Donnie",
+      "dateOfBirth": "1994-07-12",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Oluwaseun",
+      "lastName": "Falayi",
+      "dateOfBirth": "2002-10-11",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Alfred Wakai",
+      "lastName": "Gibson jr",
+      "dateOfBirth": "1992-11-11",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Peter",
+      "lastName": "Jakubik",
+      "dateOfBirth": "2002-11-30",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Mark",
+      "lastName": "Manis",
+      "dateOfBirth": "1972-03-29",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Kevin",
+      "lastName": "Sadeghipour",
+      "dateOfBirth": "1990-02-01",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Zouma",
+      "lastName": "Sanya",
+      "dateOfBirth": "1999-06-17",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Christopher",
+      "lastName": "Selekpoh",
+      "dateOfBirth": "2004-09-05",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "CJ",
+      "lastName": "Smolyn",
+      "dateOfBirth": "1997-11-12",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Fawaz",
+      "lastName": "Somoye",
+      "dateOfBirth": "2005-03-04",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Sebastain",
+      "lastName": "Stelmach",
+      "dateOfBirth": "1996-03-17",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Tonny",
+      "lastName": "Temple",
+      "dateOfBirth": "2000-09-02",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Christian",
+      "lastName": "Toussaint",
+      "dateOfBirth": "1999-10-12",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Henry",
+      "lastName": "Tye",
+      "dateOfBirth": "1993-04-06",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Bill",
+      "lastName": "Wilson",
+      "dateOfBirth": "2002-10-01",
+      "jerseyNumber": null,
+      "teamName": "Persepolis FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Kevin",
+      "lastName": "Bowers",
+      "dateOfBirth": "1999-02-11",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Emile",
+      "lastName": "Diderot",
+      "dateOfBirth": "1998-08-09",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Joseph",
+      "lastName": "Duddy",
+      "dateOfBirth": "1999-02-11",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Ayoub",
+      "lastName": "Fask",
+      "dateOfBirth": "2004-03-05",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Alexander",
+      "lastName": "Graul",
+      "dateOfBirth": "1998-01-28",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Brendan",
+      "lastName": "Hanratty",
+      "dateOfBirth": "1998-10-22",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Kevin",
+      "lastName": "Hanuscin",
+      "dateOfBirth": "1999-09-07",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Malcolm",
+      "lastName": "Kane",
+      "dateOfBirth": "1995-08-26",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Nicholas",
+      "lastName": "LeFevre",
+      "dateOfBirth": "1998-09-11",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Juan",
+      "lastName": "López",
+      "dateOfBirth": "2001-01-11",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Jimmy",
+      "lastName": "Manning",
+      "dateOfBirth": "2004-07-05",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Alejandro",
+      "lastName": "Medina",
+      "dateOfBirth": "1997-02-12",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Diego",
+      "lastName": "Moreira Pereira",
+      "dateOfBirth": "1992-09-03",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Jose",
+      "lastName": "Moura Filho",
+      "dateOfBirth": "2006-01-24",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Khalidi",
+      "lastName": "Ponela",
+      "dateOfBirth": "2004-12-17",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Alec",
+      "lastName": "Power",
+      "dateOfBirth": "1999-04-23",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Jim",
+      "lastName": "Power",
+      "dateOfBirth": "1967-05-27",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCM",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Myles",
+      "lastName": "Addy",
+      "dateOfBirth": "1988-10-26",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Charles",
+      "lastName": "Afful",
+      "dateOfBirth": "1997-02-04",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Ahmed",
+      "lastName": "Ali",
+      "dateOfBirth": "1997-09-09",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Fred",
+      "lastName": "Amadi",
+      "dateOfBirth": "1977-10-22",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Edmond",
+      "lastName": "Ansah",
+      "dateOfBirth": "2001-05-06",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Joe",
+      "lastName": "Attakora",
+      "dateOfBirth": "1991-06-12",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Christian",
+      "lastName": "Bamba",
+      "dateOfBirth": "1995-11-12",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Al hassane",
+      "lastName": "Belemou",
+      "dateOfBirth": "1993-03-03",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Prince",
+      "lastName": "Boafo",
+      "dateOfBirth": "1995-06-23",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Dilan",
+      "lastName": "Carrasco-Palma",
+      "dateOfBirth": "2006-10-30",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Michael",
+      "lastName": "Danquah",
+      "dateOfBirth": "1995-06-17",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Bartels",
+      "lastName": "Danquah",
+      "dateOfBirth": "2004-05-20",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Joshua",
+      "lastName": "Deets",
+      "dateOfBirth": "2002-01-30",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Landon",
+      "lastName": "Goodison",
+      "dateOfBirth": "2007-03-16",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Bernard",
+      "lastName": "Kyei-Mensah",
+      "dateOfBirth": "1993-04-15",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Imoro",
+      "lastName": "latif",
+      "dateOfBirth": "1998-03-25",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Trinidad",
+      "lastName": "Maldonado",
+      "dateOfBirth": "2006-11-20",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Landon",
+      "lastName": "Neison",
+      "dateOfBirth": "2007-01-19",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Richard",
+      "lastName": "Sarpong",
+      "dateOfBirth": "1993-04-24",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Kwamina",
+      "lastName": "Thompson",
+      "dateOfBirth": "1990-03-19",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Patrick",
+      "lastName": "Tierney",
+      "dateOfBirth": "2003-12-18",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Logan",
+      "lastName": "Brock",
+      "dateOfBirth": "2006-10-24",
+      "jerseyNumber": null,
+      "teamName": "Philly BlackStars",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Eljo",
+      "lastName": "Agolli",
+      "dateOfBirth": "2003-01-12",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Carlos",
+      "lastName": "Aroche",
+      "dateOfBirth": "2002-12-25",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Jayden",
+      "lastName": "Barragan",
+      "dateOfBirth": "2004-10-20",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Christian",
+      "lastName": "Cardenas",
+      "dateOfBirth": "2002-11-05",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Ermal",
+      "lastName": "Caushi",
+      "dateOfBirth": "1986-02-03",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Ilir",
+      "lastName": "Cepani",
+      "dateOfBirth": "1984-11-05",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Klevisi",
+      "lastName": "Dervishi",
+      "dateOfBirth": "2005-05-29",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Sidiki",
+      "lastName": "Fofana",
+      "dateOfBirth": "2002-01-07",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Evlad",
+      "lastName": "Fonda",
+      "dateOfBirth": "2002-02-02",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Zakaria",
+      "lastName": "Gueddar",
+      "dateOfBirth": "2007-04-26",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Gavin",
+      "lastName": "Hagen",
+      "dateOfBirth": "2004-02-13",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Mario",
+      "lastName": "Kureta",
+      "dateOfBirth": "1997-04-17",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Olen",
+      "lastName": "Laze",
+      "dateOfBirth": "1984-05-28",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Mario",
+      "lastName": "Morina",
+      "dateOfBirth": "1995-05-14",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Ramadan",
+      "lastName": "Nazeraj",
+      "dateOfBirth": "1983-01-25",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Youssef",
+      "lastName": "Omer",
+      "dateOfBirth": "2004-08-11",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Eldion",
+      "lastName": "Pajollari",
+      "dateOfBirth": "1984-05-19",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Albion",
+      "lastName": "Pajollari",
+      "dateOfBirth": "2006-10-31",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Elsion",
+      "lastName": "Pajollari",
+      "dateOfBirth": "1987-02-14",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Brahim",
+      "lastName": "Saouid",
+      "dateOfBirth": "2002-08-10",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Temur",
+      "lastName": "Temirov",
+      "dateOfBirth": "2006-07-08",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Achilles",
+      "lastName": "Triantafyllos",
+      "dateOfBirth": "2004-10-12",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Brendan",
+      "lastName": "Werner",
+      "dateOfBirth": "2002-02-04",
+      "jerseyNumber": null,
+      "teamName": "Illyrians FC",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Victor",
+      "lastName": "Baidel",
+      "dateOfBirth": "2004-09-09",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Weder",
+      "lastName": "Barretos",
+      "dateOfBirth": "2000-11-01",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Aboubacar",
+      "lastName": "Bayo",
+      "dateOfBirth": "2006-05-29",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Igor",
+      "lastName": "Bonfim",
+      "dateOfBirth": "1991-10-16",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Samuel",
+      "lastName": "Botelho",
+      "dateOfBirth": "1997-01-06",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Inaldo",
+      "lastName": "Botelho",
+      "dateOfBirth": "1991-05-24",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Luke",
+      "lastName": "Breslin",
+      "dateOfBirth": "2005-08-17",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Walter",
+      "lastName": "Candido",
+      "dateOfBirth": "1992-08-04",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Christopher",
+      "lastName": "Da Silva",
+      "dateOfBirth": "2004-05-14",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Nycolas",
+      "lastName": "De Jesus",
+      "dateOfBirth": "1998-03-03",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Lucas",
+      "lastName": "De Morais",
+      "dateOfBirth": "1995-01-01",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Abdoul",
+      "lastName": "Diallo",
+      "dateOfBirth": "2006-06-11",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Cloves",
+      "lastName": "Filho",
+      "dateOfBirth": "1997-12-19",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Abouya",
+      "lastName": "Gangue",
+      "dateOfBirth": "2003-10-14",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Andy",
+      "lastName": "Hizdri",
+      "dateOfBirth": "2005-02-09",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Alexander",
+      "lastName": "Lara",
+      "dateOfBirth": "1997-08-14",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Pedro",
+      "lastName": "Lara",
+      "dateOfBirth": "1999-02-25",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Reginaldo",
+      "lastName": "Leite",
+      "dateOfBirth": "1981-10-11",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Valentino",
+      "lastName": "Martinez",
+      "dateOfBirth": "2002-10-18",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "David",
+      "lastName": "Masi",
+      "dateOfBirth": "2002-07-07",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "John",
+      "lastName": "Oladele",
+      "dateOfBirth": "2000-06-30",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Junior",
+      "lastName": "Oliveira",
+      "dateOfBirth": "1993-09-12",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Christian",
+      "lastName": "Oliveira",
+      "dateOfBirth": "1998-10-21",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Jemirkel",
+      "lastName": "Ornaque",
+      "dateOfBirth": "1995-08-05",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Marcos",
+      "lastName": "Ribeiro",
+      "dateOfBirth": "2000-09-18",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Denis",
+      "lastName": "Sousa",
+      "dateOfBirth": "1999-12-27",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Esnayder",
+      "lastName": "Josue",
+      "dateOfBirth": "1998-04-05",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Majid",
+      "lastName": "Kawa",
+      "dateOfBirth": "2001-12-08",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Boys Club",
+      "divisionName": "Philadelphia Liga 1"
+    },
+    {
+      "firstName": "Hamid",
+      "lastName": "Afolabi",
+      "dateOfBirth": "2003-01-25",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Bassam",
+      "lastName": "Ahmed",
+      "dateOfBirth": "2005-03-27",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Clement",
+      "lastName": "Atebi",
+      "dateOfBirth": "2007-09-11",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Nicholas",
+      "lastName": "Bowman",
+      "dateOfBirth": "2001-07-31",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Donavan",
+      "lastName": "Brady",
+      "dateOfBirth": "1999-04-27",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Uriel",
+      "lastName": "Cabello",
+      "dateOfBirth": "1994-09-02",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Clarence",
+      "lastName": "Cole",
+      "dateOfBirth": "2005-03-02",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Joseph",
+      "lastName": "Cunningham",
+      "dateOfBirth": "1996-06-27",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Erick",
+      "lastName": "David",
+      "dateOfBirth": "2004-07-07",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Tushaar",
+      "lastName": "Godbole",
+      "dateOfBirth": "1995-04-07",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Benjamin",
+      "lastName": "Goudvis",
+      "dateOfBirth": "2000-05-16",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Jesse",
+      "lastName": "Haines",
+      "dateOfBirth": "1999-03-12",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Evan",
+      "lastName": "Hodulik",
+      "dateOfBirth": "1994-01-11",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Francis",
+      "lastName": "Kanu",
+      "dateOfBirth": "1999-07-21",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Alex",
+      "lastName": "Kebuz",
+      "dateOfBirth": "2004-08-23",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Sean",
+      "lastName": "Khazael",
+      "dateOfBirth": "1994-02-03",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Osman",
+      "lastName": "Lopez",
+      "dateOfBirth": "2003-12-06",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Payman",
+      "lastName": "Mirzaei",
+      "dateOfBirth": "1996-09-29",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Jevin",
+      "lastName": "Nathaniel",
+      "dateOfBirth": "1996-04-04",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Armando",
+      "lastName": "Samukai",
+      "dateOfBirth": "2002-09-05",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Michael",
+      "lastName": "Sottle",
+      "dateOfBirth": "1997-08-12",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Boubacar",
+      "lastName": "Traire",
+      "dateOfBirth": "2004-02-20",
+      "jerseyNumber": null,
+      "teamName": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Hassane",
+      "lastName": "Abdellaoui",
+      "dateOfBirth": "1999-07-30",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Erwa",
+      "lastName": "Babiker",
+      "dateOfBirth": "1996-01-01",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Oumar",
+      "lastName": "Barry",
+      "dateOfBirth": "2003-10-17",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Logan",
+      "lastName": "Bersani",
+      "dateOfBirth": "1998-06-18",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "James",
+      "lastName": "Breslin",
+      "dateOfBirth": "1972-07-24",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Luis",
+      "lastName": "De Jesus",
+      "dateOfBirth": "2007-04-16",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Marco",
+      "lastName": "Delgado",
+      "dateOfBirth": "2001-12-18",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Edwin",
+      "lastName": "Garcia",
+      "dateOfBirth": "2006-02-19",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "John",
+      "lastName": "Gonzalez",
+      "dateOfBirth": "2000-01-01",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Sangin",
+      "lastName": "Hedayatullah",
+      "dateOfBirth": "2007-07-13",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Miles",
+      "lastName": "Henry",
+      "dateOfBirth": "2000-06-20",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Arif",
+      "lastName": "Hossain",
+      "dateOfBirth": "2003-12-31",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Zuhab",
+      "lastName": "Imran",
+      "dateOfBirth": "2006-10-26",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Carl",
+      "lastName": "Laroche",
+      "dateOfBirth": "1996-10-20",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Jervin",
+      "lastName": "Lemus",
+      "dateOfBirth": "2007-06-15",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Christian",
+      "lastName": "Lopez",
+      "dateOfBirth": "2007-06-15",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "John",
+      "lastName": "Madureira",
+      "dateOfBirth": "2006-12-08",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Elmer",
+      "lastName": "Mendoza",
+      "dateOfBirth": "2003-08-04",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Dylan",
+      "lastName": "Moreno",
+      "dateOfBirth": "2005-02-18",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Ibrahim",
+      "lastName": "Nassar",
+      "dateOfBirth": "1993-06-10",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Babacar",
+      "lastName": "Ndiaye",
+      "dateOfBirth": "2005-02-28",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Zion",
+      "lastName": "Nwalipenja",
+      "dateOfBirth": "2005-01-07",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Fabian",
+      "lastName": "Padilla",
+      "dateOfBirth": "1995-11-01",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Caleb",
+      "lastName": "Rojas",
+      "dateOfBirth": "2001-12-03",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Anthony",
+      "lastName": "Sagustume",
+      "dateOfBirth": "1995-07-10",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Ali",
+      "lastName": "Salah",
+      "dateOfBirth": "2007-03-10",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Daniel",
+      "lastName": "Salmanca",
+      "dateOfBirth": "2007-07-12",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Leo",
+      "lastName": "Santa",
+      "dateOfBirth": "1977-12-12",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Christopher",
+      "lastName": "Solis",
+      "dateOfBirth": "2005-10-21",
+      "jerseyNumber": null,
+      "teamName": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Fritz",
+      "lastName": "Amazan",
+      "dateOfBirth": "2000-06-19",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "David",
+      "lastName": "Aquino",
+      "dateOfBirth": "2004-04-11",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Christian",
+      "lastName": "Aurand",
+      "dateOfBirth": "2000-11-14",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "TJ",
+      "lastName": "Butler",
+      "dateOfBirth": "2002-02-22",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Troy",
+      "lastName": "Eutermoser",
+      "dateOfBirth": "1996-06-23",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Alex",
+      "lastName": "Freeman",
+      "dateOfBirth": "2004-06-07",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "William",
+      "lastName": "Hanratty",
+      "dateOfBirth": "2000-01-02",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Ryan",
+      "lastName": "Kerr",
+      "dateOfBirth": "2004-03-09",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Jake",
+      "lastName": "Kucowski",
+      "dateOfBirth": "2000-08-07",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Rood charleson",
+      "lastName": "Labossiere",
+      "dateOfBirth": "1995-04-02",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Ed-steeve",
+      "lastName": "Madere",
+      "dateOfBirth": "2001-08-31",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Daniel",
+      "lastName": "Maggio",
+      "dateOfBirth": "1999-02-09",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Christopher",
+      "lastName": "McDonnell",
+      "dateOfBirth": "1998-09-10",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Merabi",
+      "lastName": "Megreladze",
+      "dateOfBirth": "1999-10-29",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Marc Jerry",
+      "lastName": "Midy",
+      "dateOfBirth": "2002-08-12",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Giorgi",
+      "lastName": "Nikabadze",
+      "dateOfBirth": "2003-10-09",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Fran",
+      "lastName": "Pitonyak",
+      "dateOfBirth": "1982-08-17",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Chris",
+      "lastName": "Rutledge",
+      "dateOfBirth": "1994-03-01",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Revazi",
+      "lastName": "Tcheshmaritashvili",
+      "dateOfBirth": "1993-05-11",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Nick",
+      "lastName": "Webster",
+      "dateOfBirth": "1992-11-13",
+      "jerseyNumber": null,
+      "teamName": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Costas",
+      "lastName": "Angelis",
+      "dateOfBirth": "1999-06-03",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Jesus",
+      "lastName": "Colin",
+      "dateOfBirth": "2004-10-16",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Bryan",
+      "lastName": "Da Silva",
+      "dateOfBirth": null,
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Yoofi",
+      "lastName": "Danquah",
+      "dateOfBirth": "2004-05-20",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Bryan",
+      "lastName": "De Quadros",
+      "dateOfBirth": "2004-12-27",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Robert",
+      "lastName": "Ertel",
+      "dateOfBirth": "1993-09-08",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Julio",
+      "lastName": "Evangilista",
+      "dateOfBirth": "2006-10-11",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Ahmed",
+      "lastName": "Faik",
+      "dateOfBirth": "1991-04-04",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Kaua",
+      "lastName": "Freitas",
+      "dateOfBirth": null,
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Kareem",
+      "lastName": "Green",
+      "dateOfBirth": "1998-10-06",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Nigel",
+      "lastName": "Johnson",
+      "dateOfBirth": "1997-12-25",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Paul",
+      "lastName": "Kwoyelo",
+      "dateOfBirth": "1990-01-11",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Jonatan",
+      "lastName": "Lopez",
+      "dateOfBirth": "2004-11-12",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Zach",
+      "lastName": "Morrison",
+      "dateOfBirth": "2002-02-24",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Diego",
+      "lastName": "Murillo",
+      "dateOfBirth": "2005-07-29",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Paolo",
+      "lastName": "Musumeci",
+      "dateOfBirth": "2004-04-12",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Zabi",
+      "lastName": "Naseri",
+      "dateOfBirth": "1994-02-28",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Roni",
+      "lastName": "Rountree",
+      "dateOfBirth": "2000-11-03",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Luca",
+      "lastName": "Ruggiero",
+      "dateOfBirth": "1991-08-13",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Mohammad",
+      "lastName": "Sanim",
+      "dateOfBirth": null,
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Aaron",
+      "lastName": "Sexton",
+      "dateOfBirth": "1997-06-02",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Lamin",
+      "lastName": "Sidibeh",
+      "dateOfBirth": "1989-05-31",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Anis",
+      "lastName": "Slimane",
+      "dateOfBirth": "2000-06-26",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Casey",
+      "lastName": "Sorell",
+      "dateOfBirth": "2000-10-20",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Cavit",
+      "lastName": "ULA",
+      "dateOfBirth": "1996-05-16",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Thiago",
+      "lastName": "Vazquez",
+      "dateOfBirth": "2003-02-10",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Sergio",
+      "lastName": "Villanueva",
+      "dateOfBirth": "2001-03-28",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Michael",
+      "lastName": "Wambold",
+      "dateOfBirth": null,
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Phillip",
+      "lastName": "Washington",
+      "dateOfBirth": "2001-07-02",
+      "jerseyNumber": null,
+      "teamName": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Michael",
+      "lastName": "Abarca",
+      "dateOfBirth": "1991-02-10",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Victor",
+      "lastName": "Agudelo",
+      "dateOfBirth": "1984-12-10",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Jonatan",
+      "lastName": "Alberto",
+      "dateOfBirth": "1985-05-09",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Colon",
+      "lastName": "Anthony",
+      "dateOfBirth": "2003-11-22",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Diego",
+      "lastName": "Beltran Vega",
+      "dateOfBirth": "1984-08-07",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Johan",
+      "lastName": "Bolton",
+      "dateOfBirth": "1989-05-29",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Manuel",
+      "lastName": "Camayo",
+      "dateOfBirth": "1988-09-15",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Errol",
+      "lastName": "Castro",
+      "dateOfBirth": "1990-12-17",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Carlos",
+      "lastName": "Chacon",
+      "dateOfBirth": "1999-09-13",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Jose",
+      "lastName": "Duarte",
+      "dateOfBirth": "1981-03-01",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Arnoldo",
+      "lastName": "Emeiler",
+      "dateOfBirth": "2000-07-29",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Balron",
+      "lastName": "Escobar",
+      "dateOfBirth": "2002-09-20",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Marcelo",
+      "lastName": "Gamboa",
+      "dateOfBirth": "1995-10-01",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Miguel",
+      "lastName": "Garcia",
+      "dateOfBirth": "1997-10-07",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Juan Carlos",
+      "lastName": "Guevara",
+      "dateOfBirth": "1985-03-30",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Gustavo",
+      "lastName": "Guitierez Cuervo",
+      "dateOfBirth": "1992-04-15",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Fabricio",
+      "lastName": "Guzman",
+      "dateOfBirth": "2004-07-12",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Smaikel Sibaja",
+      "lastName": "Guzman",
+      "dateOfBirth": "1998-09-21",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Eder",
+      "lastName": "Guzman",
+      "dateOfBirth": "1982-01-05",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Danior",
+      "lastName": "Hernandez",
+      "dateOfBirth": "1995-02-10",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Yerald",
+      "lastName": "Jimenez",
+      "dateOfBirth": "2001-02-05",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Maicol",
+      "lastName": "Martinez",
+      "dateOfBirth": "1982-12-07",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Obed",
+      "lastName": "Mayorga Curtis",
+      "dateOfBirth": "1987-10-27",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Melber",
+      "lastName": "Ortega",
+      "dateOfBirth": "2001-10-03",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Gelder",
+      "lastName": "Ortiz",
+      "dateOfBirth": "1994-05-12",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Joseph",
+      "lastName": "Piedra Retana",
+      "dateOfBirth": "1998-01-14",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Luis",
+      "lastName": "Retana",
+      "dateOfBirth": "2000-10-21",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Ronny",
+      "lastName": "Rodriquez",
+      "dateOfBirth": "1993-12-10",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Alexander",
+      "lastName": "Rodriquez",
+      "dateOfBirth": "1999-12-13",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Andres",
+      "lastName": "Rojas",
+      "dateOfBirth": "2003-08-14",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Kenneth",
+      "lastName": "Salazar",
+      "dateOfBirth": "2000-01-21",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Adilcer",
+      "lastName": "Santiago",
+      "dateOfBirth": "2003-08-13",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Axel",
+      "lastName": "Villanueva",
+      "dateOfBirth": "1993-10-08",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Sergio",
+      "lastName": "Zuluaga",
+      "dateOfBirth": "1996-12-31",
+      "jerseyNumber": null,
+      "teamName": "Club de Futbol Armada",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Alexander",
+      "lastName": "Garcia",
+      "dateOfBirth": "2006-06-12",
+      "jerseyNumber": null,
+      "teamName": "Sewell's Old Boys",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Jeshohaih",
+      "lastName": "Hernandez",
+      "dateOfBirth": "2005-09-01",
+      "jerseyNumber": null,
+      "teamName": "Sewell's Old Boys",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Adam",
+      "lastName": "Leal",
+      "dateOfBirth": "2006-02-17",
+      "jerseyNumber": null,
+      "teamName": "Sewell's Old Boys",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Alexander",
+      "lastName": "Patton",
+      "dateOfBirth": "2006-02-24",
+      "jerseyNumber": null,
+      "teamName": "Sewell's Old Boys",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Fred",
+      "lastName": "Renzulli",
+      "dateOfBirth": "2002-11-26",
+      "jerseyNumber": null,
+      "teamName": "Sewell's Old Boys",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Jackson",
+      "lastName": "Stuetz",
+      "dateOfBirth": "2006-07-20",
+      "jerseyNumber": null,
+      "teamName": "Sewell's Old Boys",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Joseph",
+      "lastName": "Romano",
+      "dateOfBirth": "2004-02-03",
+      "jerseyNumber": null,
+      "teamName": "Sewell's Old Boys",
+      "divisionName": "Philadelphia Liga 2"
+    },
+    {
+      "firstName": "Hector Ivan",
+      "lastName": "Acosta",
+      "dateOfBirth": "1994-07-29",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Yousef",
+      "lastName": "Atrous",
+      "dateOfBirth": "2001-04-20",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "James",
+      "lastName": "Barden",
+      "dateOfBirth": "2000-04-06",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Oseche",
+      "lastName": "Buliro",
+      "dateOfBirth": "2003-10-09",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "John",
+      "lastName": "Burke",
+      "dateOfBirth": "2000-09-24",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Kevin",
+      "lastName": "Callanan",
+      "dateOfBirth": "1998-11-15",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Michael",
+      "lastName": "Chang",
+      "dateOfBirth": "1999-12-30",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Andrew",
+      "lastName": "Cooke",
+      "dateOfBirth": "2001-09-17",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Alex",
+      "lastName": "Cooper-Hohn",
+      "dateOfBirth": "2001-06-22",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Leon",
+      "lastName": "Djusberg",
+      "dateOfBirth": "2000-03-01",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Trey",
+      "lastName": "Donovan",
+      "dateOfBirth": "2000-11-08",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Irobosa",
+      "lastName": "Enabulele",
+      "dateOfBirth": "2000-07-20",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jack",
+      "lastName": "Garrity",
+      "dateOfBirth": "2002-04-01",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Kevin",
+      "lastName": "Gilligan",
+      "dateOfBirth": "1999-11-01",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Ian",
+      "lastName": "Goodine",
+      "dateOfBirth": "1999-06-03",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Trevor",
+      "lastName": "Grafton",
+      "dateOfBirth": "2005-01-17",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Nicholas",
+      "lastName": "Harper",
+      "dateOfBirth": "2000-03-23",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Josh",
+      "lastName": "Harper",
+      "dateOfBirth": "2000-03-23",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "James",
+      "lastName": "Helf",
+      "dateOfBirth": "1998-02-16",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Lewis",
+      "lastName": "Mustoe",
+      "dateOfBirth": "1998-03-01",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Osasenaga",
+      "lastName": "Owens",
+      "dateOfBirth": "2002-02-08",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Nathan",
+      "lastName": "Plano",
+      "dateOfBirth": "1999-03-06",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jack",
+      "lastName": "Sarkisian",
+      "dateOfBirth": "1999-04-05",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Joaquin",
+      "lastName": "Silvani",
+      "dateOfBirth": "2002-11-02",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Stanislaus",
+      "lastName": "Sokolov",
+      "dateOfBirth": "1999-05-24",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Kohei",
+      "lastName": "Tomita",
+      "dateOfBirth": "1999-06-28",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Tomas",
+      "lastName": "Trejo",
+      "dateOfBirth": "2001-09-13",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Caleb",
+      "lastName": "Weinstock",
+      "dateOfBirth": "1999-12-02",
+      "jerseyNumber": null,
+      "teamName": "BCFC All Stars",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Moycir",
+      "lastName": "Amarante",
+      "dateOfBirth": "2003-10-05",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Ryan",
+      "lastName": "Beardsley",
+      "dateOfBirth": "2001-10-26",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Thomas",
+      "lastName": "Bell",
+      "dateOfBirth": "1994-11-30",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jaime",
+      "lastName": "Cortez",
+      "dateOfBirth": "2006-09-27",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jah",
+      "lastName": "Cyrus",
+      "dateOfBirth": "1993-04-18",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Raney",
+      "lastName": "Figueiredo",
+      "dateOfBirth": "2005-09-09",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Paolo",
+      "lastName": "Filippi",
+      "dateOfBirth": "1997-12-13",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Alpha",
+      "lastName": "Fofanah",
+      "dateOfBirth": "1997-09-08",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Patrick",
+      "lastName": "Freire",
+      "dateOfBirth": "2005-10-18",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Matheus",
+      "lastName": "Gomes",
+      "dateOfBirth": "2007-02-14",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Ronnie",
+      "lastName": "Gomez",
+      "dateOfBirth": "1997-02-27",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Matthew",
+      "lastName": "Kearney",
+      "dateOfBirth": "1992-04-07",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Ousmane",
+      "lastName": "Keita",
+      "dateOfBirth": "1995-10-18",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "William",
+      "lastName": "Martinez",
+      "dateOfBirth": "2006-07-06",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Ryan",
+      "lastName": "McGourty",
+      "dateOfBirth": "2005-04-24",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Zion",
+      "lastName": "Monteiro",
+      "dateOfBirth": "2004-03-20",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Alejandro",
+      "lastName": "Monterroso",
+      "dateOfBirth": "2006-12-10",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Gracian",
+      "lastName": "Moreira",
+      "dateOfBirth": "2004-06-01",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Carlos",
+      "lastName": "Neves",
+      "dateOfBirth": "2005-02-13",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Lucas",
+      "lastName": "Oliveira",
+      "dateOfBirth": "2006-10-17",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Felipe",
+      "lastName": "Palacio",
+      "dateOfBirth": "2001-11-06",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Markelos",
+      "lastName": "Papa",
+      "dateOfBirth": "2007-03-09",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Angelos",
+      "lastName": "Papa",
+      "dateOfBirth": "2003-06-28",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Michael",
+      "lastName": "Rendon",
+      "dateOfBirth": "1995-01-18",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Edson",
+      "lastName": "Robledano",
+      "dateOfBirth": "1992-03-29",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "gustavo",
+      "lastName": "sampaio",
+      "dateOfBirth": "2007-07-03",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Tjamael",
+      "lastName": "Sillah",
+      "dateOfBirth": "2004-01-28",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "William",
+      "lastName": "Sousa",
+      "dateOfBirth": "2003-06-09",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Vlad",
+      "lastName": "Ventura",
+      "dateOfBirth": "1998-06-17",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Albert",
+      "lastName": "Williams",
+      "dateOfBirth": "1994-02-19",
+      "jerseyNumber": null,
+      "teamName": "Flatley FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Marouen",
+      "lastName": "Ben Guebila",
+      "dateOfBirth": "1986-09-03",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Muhammad Uzair",
+      "lastName": "Butt",
+      "dateOfBirth": "1998-05-12",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Fredy",
+      "lastName": "Castillo Hernandez",
+      "dateOfBirth": "1989-07-26",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Ethan",
+      "lastName": "Champlin",
+      "dateOfBirth": "2003-04-25",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Kevin",
+      "lastName": "De Leon",
+      "dateOfBirth": "2002-06-21",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Ian",
+      "lastName": "Dhar",
+      "dateOfBirth": "2003-02-10",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "William",
+      "lastName": "Garcia",
+      "dateOfBirth": "1984-11-12",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Joshua",
+      "lastName": "Hardester",
+      "dateOfBirth": "1981-09-26",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Norman",
+      "lastName": "Jimenez Laverde",
+      "dateOfBirth": "1989-10-22",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Andrew",
+      "lastName": "Lee",
+      "dateOfBirth": "1999-07-17",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Mateus",
+      "lastName": "Loesch",
+      "dateOfBirth": "1992-10-24",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Austin",
+      "lastName": "MBaye",
+      "dateOfBirth": "2002-05-15",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Sam",
+      "lastName": "McGrath",
+      "dateOfBirth": "1995-06-05",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Mike",
+      "lastName": "Mizhirumbay",
+      "dateOfBirth": "2004-03-25",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Leo",
+      "lastName": "Mosquera",
+      "dateOfBirth": "1990-10-22",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Matt",
+      "lastName": "Mourges",
+      "dateOfBirth": "1993-08-09",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Kevin",
+      "lastName": "Ortiz",
+      "dateOfBirth": "1992-03-05",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jose",
+      "lastName": "Osorto",
+      "dateOfBirth": "1997-12-15",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Haorui",
+      "lastName": "Qin",
+      "dateOfBirth": "2007-06-26",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Daniel",
+      "lastName": "Ra",
+      "dateOfBirth": "1992-10-09",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Ethan",
+      "lastName": "Rowe",
+      "dateOfBirth": "1999-09-02",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Rafael",
+      "lastName": "Santos",
+      "dateOfBirth": "1989-04-29",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Harrison",
+      "lastName": "Snodgrass",
+      "dateOfBirth": "1993-06-08",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Marshall",
+      "lastName": "Tekell",
+      "dateOfBirth": "1996-01-30",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jose",
+      "lastName": "Velazquez",
+      "dateOfBirth": "1997-12-18",
+      "jerseyNumber": null,
+      "teamName": "Gambeta FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Gabriel",
+      "lastName": "Barbosa",
+      "dateOfBirth": "2004-01-31",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Juliano",
+      "lastName": "Bento",
+      "dateOfBirth": "1996-09-12",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Andrés",
+      "lastName": "Bustamante",
+      "dateOfBirth": "1996-02-12",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Itamar",
+      "lastName": "Caldeira",
+      "dateOfBirth": "2000-05-30",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Vinicius",
+      "lastName": "De Oliveira",
+      "dateOfBirth": "2005-04-29",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "William",
+      "lastName": "Dos Santos",
+      "dateOfBirth": "2000-07-04",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Leonardo",
+      "lastName": "Fortunato",
+      "dateOfBirth": "1994-12-28",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Lucas",
+      "lastName": "Franco",
+      "dateOfBirth": "1998-08-07",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Javier",
+      "lastName": "Garcia",
+      "dateOfBirth": "2000-09-13",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "edson",
+      "lastName": "junior",
+      "dateOfBirth": "2003-01-17",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Diego",
+      "lastName": "Lorett",
+      "dateOfBirth": "1997-03-14",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Vitor",
+      "lastName": "Magalhaes",
+      "dateOfBirth": "2004-03-25",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Juann",
+      "lastName": "Melo",
+      "dateOfBirth": "2001-10-22",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Frank",
+      "lastName": "Messina",
+      "dateOfBirth": "1997-04-17",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Sidnei",
+      "lastName": "Monteiro",
+      "dateOfBirth": "1982-02-04",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jefferson",
+      "lastName": "Oliveira",
+      "dateOfBirth": "1995-07-28",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Lenine",
+      "lastName": "Pereira",
+      "dateOfBirth": "1995-12-31",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Wenderson Kenedy",
+      "lastName": "Pereira",
+      "dateOfBirth": "1999-10-17",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Gustavo",
+      "lastName": "Ribeiro",
+      "dateOfBirth": "2000-11-25",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Marek",
+      "lastName": "Rutkowki",
+      "dateOfBirth": "2005-08-09",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Malek",
+      "lastName": "Sakhri",
+      "dateOfBirth": "2006-01-18",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Souare",
+      "lastName": "Saliou",
+      "dateOfBirth": "2001-02-10",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Silvio",
+      "lastName": "Silva",
+      "dateOfBirth": "2002-08-18",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Marcos",
+      "lastName": "Souto",
+      "dateOfBirth": "2002-10-23",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jhordan",
+      "lastName": "Souza",
+      "dateOfBirth": "1998-05-18",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Carlos",
+      "lastName": "Teixeira",
+      "dateOfBirth": "2000-02-19",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Elton j",
+      "lastName": "Teixeira",
+      "dateOfBirth": "1991-01-11",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Willian",
+      "lastName": "Zanetti",
+      "dateOfBirth": "2001-04-28",
+      "jerseyNumber": null,
+      "teamName": "Jaguars United FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Elohim",
+      "lastName": "Alves",
+      "dateOfBirth": "2004-02-09",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Luis",
+      "lastName": "Araujo",
+      "dateOfBirth": "2003-12-15",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Wesley",
+      "lastName": "Borges",
+      "dateOfBirth": "1985-05-29",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Adriel",
+      "lastName": "Cordeiro",
+      "dateOfBirth": "1989-09-13",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Wagner",
+      "lastName": "Da Silva",
+      "dateOfBirth": "1998-11-09",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Luan",
+      "lastName": "De Souza",
+      "dateOfBirth": "1992-01-18",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Carlos",
+      "lastName": "De Souza",
+      "dateOfBirth": "1977-01-23",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Israel",
+      "lastName": "Duarte",
+      "dateOfBirth": "2001-04-23",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Gabriel",
+      "lastName": "Fernandes",
+      "dateOfBirth": "2001-09-10",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Marcelino",
+      "lastName": "Ferreira",
+      "dateOfBirth": "2003-06-12",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Walafy",
+      "lastName": "Leonor",
+      "dateOfBirth": "1993-09-10",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Felipe",
+      "lastName": "Lopes",
+      "dateOfBirth": "2006-05-24",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Gustavo",
+      "lastName": "Lopes",
+      "dateOfBirth": "2002-06-18",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Raimon",
+      "lastName": "marques",
+      "dateOfBirth": "1990-04-24",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Rafael",
+      "lastName": "Medeiros",
+      "dateOfBirth": "1996-02-22",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Leandro",
+      "lastName": "Pereira Ramos.",
+      "dateOfBirth": "1992-10-27",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Leandro",
+      "lastName": "Pires",
+      "dateOfBirth": "1995-01-02",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Douglas",
+      "lastName": "Pires",
+      "dateOfBirth": "1989-09-03",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Leandro",
+      "lastName": "Ramos",
+      "dateOfBirth": "1988-04-01",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Caique",
+      "lastName": "Reginaldo",
+      "dateOfBirth": "1995-02-23",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Eduardo",
+      "lastName": "Reis",
+      "dateOfBirth": "1999-01-02",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Maxsuel",
+      "lastName": "Ribeiro",
+      "dateOfBirth": "1995-10-06",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Luis",
+      "lastName": "Santos",
+      "dateOfBirth": "1996-08-29",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Vanilson",
+      "lastName": "Santos",
+      "dateOfBirth": "1998-09-20",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Deyvit",
+      "lastName": "Silva",
+      "dateOfBirth": "1994-11-30",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Wenderson",
+      "lastName": "Silva",
+      "dateOfBirth": "1999-05-09",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Pedro",
+      "lastName": "Silva",
+      "dateOfBirth": "1993-06-28",
+      "jerseyNumber": null,
+      "teamName": "South Shore FC",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Eder",
+      "lastName": "Amado",
+      "dateOfBirth": "1989-11-26",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Helton",
+      "lastName": "Brandao",
+      "dateOfBirth": "2003-02-11",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Yuri",
+      "lastName": "Brandao",
+      "dateOfBirth": "1996-06-17",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Derik",
+      "lastName": "Brito",
+      "dateOfBirth": "2002-01-11",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Erick",
+      "lastName": "Brito",
+      "dateOfBirth": "2002-01-11",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Belvick",
+      "lastName": "da Silva",
+      "dateOfBirth": "2000-09-09",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Brandon",
+      "lastName": "Daluz",
+      "dateOfBirth": "2003-10-06",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jaylon",
+      "lastName": "Darosa",
+      "dateOfBirth": "2002-09-13",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Janilson",
+      "lastName": "Debrito",
+      "dateOfBirth": "2007-11-10",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jayden",
+      "lastName": "Depina",
+      "dateOfBirth": "2003-11-21",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Lucas",
+      "lastName": "Fernandes",
+      "dateOfBirth": "2002-04-22",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Luis",
+      "lastName": "Fortes",
+      "dateOfBirth": "2006-04-27",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Ty",
+      "lastName": "Gomes",
+      "dateOfBirth": "2000-12-25",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jorge",
+      "lastName": "Goncalves",
+      "dateOfBirth": "1999-12-16",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Ricardo",
+      "lastName": "Monteiro",
+      "dateOfBirth": "2004-10-30",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Carlos",
+      "lastName": "Morais",
+      "dateOfBirth": "2003-06-26",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Gracian",
+      "lastName": "Moreira",
+      "dateOfBirth": "2004-06-01",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Dany",
+      "lastName": "Pina",
+      "dateOfBirth": "1994-11-21",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Johnathan",
+      "lastName": "Pires",
+      "dateOfBirth": "1996-06-18",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Danny",
+      "lastName": "Resende",
+      "dateOfBirth": "2002-03-03",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Anthony",
+      "lastName": "Rodrigues",
+      "dateOfBirth": "2003-04-03",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jonathan",
+      "lastName": "Rodrigues",
+      "dateOfBirth": "2000-12-12",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Jeremias",
+      "lastName": "Rosa",
+      "dateOfBirth": "2003-05-23",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Kevin",
+      "lastName": "Soares",
+      "dateOfBirth": "1995-08-11",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Junior",
+      "lastName": "Tavares",
+      "dateOfBirth": "2001-07-28",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Edmilson",
+      "lastName": "Vaz Tavares",
+      "dateOfBirth": "1998-07-17",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Vanilton",
+      "lastName": "Xavier",
+      "dateOfBirth": "2003-08-05",
+      "jerseyNumber": null,
+      "teamName": "Strictly Nos Fc",
+      "divisionName": "Boston Liga 1"
+    },
+    {
+      "firstName": "Mohammed",
+      "lastName": "Abdulrahman",
+      "dateOfBirth": "1998-01-04",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Omar",
+      "lastName": "Ahmed",
+      "dateOfBirth": "2002-08-21",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Zain",
+      "lastName": "AL-Ashoor",
+      "dateOfBirth": "1999-02-20",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Elhadj",
+      "lastName": "Bah",
+      "dateOfBirth": "2003-03-26",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Ethan",
+      "lastName": "Buss",
+      "dateOfBirth": "2006-08-06",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Shamanuel",
+      "lastName": "Dominique",
+      "dateOfBirth": "2004-10-19",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Filip",
+      "lastName": "Dordevic",
+      "dateOfBirth": "2002-02-18",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Habib",
+      "lastName": "Emami",
+      "dateOfBirth": "1997-06-11",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Yeremosi",
+      "lastName": "Foste",
+      "dateOfBirth": "2005-11-11",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Terah",
+      "lastName": "Garnett",
+      "dateOfBirth": "1992-11-06",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Ermias",
+      "lastName": "Getnet",
+      "dateOfBirth": "1997-09-12",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Jesse",
+      "lastName": "Gutierrez",
+      "dateOfBirth": "1999-10-13",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Mohammed",
+      "lastName": "Hassan",
+      "dateOfBirth": "1997-09-02",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Miguel",
+      "lastName": "Ikomo",
+      "dateOfBirth": "1995-10-14",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Stylianos",
+      "lastName": "Ioannou",
+      "dateOfBirth": "2005-03-29",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Samuel",
+      "lastName": "Kihorezo",
+      "dateOfBirth": "2000-02-05",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Joshua",
+      "lastName": "Logan",
+      "dateOfBirth": "1998-09-07",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Abdoul",
+      "lastName": "Mamaoudou",
+      "dateOfBirth": "2002-02-20",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "John",
+      "lastName": "Moore",
+      "dateOfBirth": "1989-10-04",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Moussa",
+      "lastName": "Oumarou",
+      "dateOfBirth": "2006-01-12",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Edicson",
+      "lastName": "Sabogal",
+      "dateOfBirth": "2004-01-26",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Fernando",
+      "lastName": "Salazar",
+      "dateOfBirth": "2005-11-17",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Gerrit",
+      "lastName": "Stech",
+      "dateOfBirth": "2002-02-22",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Shengda",
+      "lastName": "Sun Lopez",
+      "dateOfBirth": "2004-01-22",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Daniel",
+      "lastName": "Tema",
+      "dateOfBirth": "2002-08-20",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Makan",
+      "lastName": "Traore",
+      "dateOfBirth": "2003-11-07",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Robby",
+      "lastName": "Waller",
+      "dateOfBirth": "1990-04-08",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Jereme",
+      "lastName": "Wells",
+      "dateOfBirth": "1996-10-24",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Shenoda",
+      "lastName": "Youssef",
+      "dateOfBirth": "1997-08-20",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Robby",
+      "lastName": "Waller",
+      "dateOfBirth": null,
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Harein",
+      "lastName": "Abeysekera",
+      "dateOfBirth": "2005-05-13",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Sebastian",
+      "lastName": "Carrilo",
+      "dateOfBirth": "2003-09-10",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Drake",
+      "lastName": "DeJute",
+      "dateOfBirth": "2004-04-19",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Kabeer",
+      "lastName": "Ferhan",
+      "dateOfBirth": "2006-03-11",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Jackson",
+      "lastName": "Hellmann",
+      "dateOfBirth": "2005-06-04",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Marc",
+      "lastName": "Iglesias",
+      "dateOfBirth": "2007-07-27",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Yussif Attabio",
+      "lastName": "Ismail",
+      "dateOfBirth": "2003-05-23",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "An",
+      "lastName": "Jaeyun",
+      "dateOfBirth": "2001-09-07",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Parth",
+      "lastName": "Karki",
+      "dateOfBirth": "2007-06-11",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Sergio",
+      "lastName": "Marin Miralles",
+      "dateOfBirth": "2004-05-27",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Calix",
+      "lastName": "Milligan",
+      "dateOfBirth": "2004-07-18",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Adeon",
+      "lastName": "Muyskens",
+      "dateOfBirth": "2003-02-20",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Faisal",
+      "lastName": "Niazi",
+      "dateOfBirth": "2004-02-26",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Vincent",
+      "lastName": "Okyere",
+      "dateOfBirth": "2007-02-13",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Devin",
+      "lastName": "Putnam",
+      "dateOfBirth": "2005-03-22",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Bernard",
+      "lastName": "Sakyi",
+      "dateOfBirth": "2003-12-14",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Jordan",
+      "lastName": "Samuels",
+      "dateOfBirth": "2003-04-01",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Sanzhar",
+      "lastName": "Sarynzhiev",
+      "dateOfBirth": "2007-03-10",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Sam",
+      "lastName": "Scherzer",
+      "dateOfBirth": "2007-02-02",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Gabriel Antonio",
+      "lastName": "Silva Gomes",
+      "dateOfBirth": "2006-04-19",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Benjamin",
+      "lastName": "Winograd",
+      "dateOfBirth": "2005-09-02",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Muhyadin",
+      "lastName": "Yusuf",
+      "dateOfBirth": "2003-05-02",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Alex",
+      "lastName": "Jacobs",
+      "dateOfBirth": "2004-01-11",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Christopher",
+      "lastName": "Wann",
+      "dateOfBirth": "2006-02-13",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Mohammed",
+      "lastName": "Al Qudsi",
+      "dateOfBirth": "1997-08-09",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Gurnoor",
+      "lastName": "Bagri",
+      "dateOfBirth": "2008-01-20",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Quinn",
+      "lastName": "Bertoncini-Troutman",
+      "dateOfBirth": "2006-08-24",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Braedon",
+      "lastName": "Bickford",
+      "dateOfBirth": "2006-11-17",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Albert",
+      "lastName": "Corea",
+      "dateOfBirth": "2004-07-04",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Dylan",
+      "lastName": "Crills",
+      "dateOfBirth": "2007-09-24",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Amini",
+      "lastName": "Diye",
+      "dateOfBirth": "2007-02-05",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Vincent",
+      "lastName": "Edmond",
+      "dateOfBirth": "2007-12-21",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Chri",
+      "lastName": "Ehgay",
+      "dateOfBirth": "2004-10-13",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Ian",
+      "lastName": "Frisbie",
+      "dateOfBirth": "2005-04-14",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Mason",
+      "lastName": "Harris",
+      "dateOfBirth": "2005-12-07",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Bita",
+      "lastName": "Imani",
+      "dateOfBirth": "2007-06-10",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Michael",
+      "lastName": "Kasampilo",
+      "dateOfBirth": "2004-06-28",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Asende",
+      "lastName": "Lubende",
+      "dateOfBirth": "2000-12-05",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Faustin",
+      "lastName": "Mucunguzi",
+      "dateOfBirth": "2003-01-01",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Jack",
+      "lastName": "Ngoy",
+      "dateOfBirth": "2005-12-19",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Ibrahim",
+      "lastName": "Ntege",
+      "dateOfBirth": "2004-06-11",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Brandon",
+      "lastName": "Perez",
+      "dateOfBirth": "2004-09-22",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Lata",
+      "lastName": "Petros",
+      "dateOfBirth": "1997-09-01",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Gavin",
+      "lastName": "Roberts",
+      "dateOfBirth": "2006-09-02",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Ben",
+      "lastName": "Singizwa",
+      "dateOfBirth": "2005-07-01",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Babo",
+      "lastName": "Tereffe",
+      "dateOfBirth": "1999-04-30",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Gavin",
+      "lastName": "Wiley",
+      "dateOfBirth": "1998-06-25",
+      "jerseyNumber": null,
+      "teamName": "Keystone Elite",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Antonio",
+      "lastName": "Alonso-Hernandez",
+      "dateOfBirth": "2006-09-30",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Daniel",
+      "lastName": "Arraiz",
+      "dateOfBirth": "2003-11-25",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Daviont",
+      "lastName": "Baker-Alston",
+      "dateOfBirth": "2005-02-07",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Lucas",
+      "lastName": "Cherniak",
+      "dateOfBirth": "2004-03-01",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Andrew",
+      "lastName": "Cui",
+      "dateOfBirth": "2007-01-16",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Blake",
+      "lastName": "Deluca",
+      "dateOfBirth": "2004-09-13",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Matthew",
+      "lastName": "DiCarlo",
+      "dateOfBirth": "2005-08-17",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Sleem",
+      "lastName": "Emam",
+      "dateOfBirth": "2006-05-02",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Rhenan",
+      "lastName": "Ferreira",
+      "dateOfBirth": "2006-03-31",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Aiden",
+      "lastName": "Fogarty",
+      "dateOfBirth": "2006-03-28",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Leonardo",
+      "lastName": "Guzman",
+      "dateOfBirth": "2006-08-09",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Luke",
+      "lastName": "Jones",
+      "dateOfBirth": "2005-03-09",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Samuel",
+      "lastName": "Kaganzev",
+      "dateOfBirth": "2006-05-09",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "William",
+      "lastName": "Maurek",
+      "dateOfBirth": "2005-11-16",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Jared",
+      "lastName": "Mikloski",
+      "dateOfBirth": "2006-07-18",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Logan",
+      "lastName": "Rogers",
+      "dateOfBirth": "2007-04-12",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Ethan",
+      "lastName": "Schrampf",
+      "dateOfBirth": "2005-09-24",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Alex",
+      "lastName": "Schrampf",
+      "dateOfBirth": "2006-12-26",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Caden",
+      "lastName": "Thompson",
+      "dateOfBirth": "2007-03-19",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "David",
+      "lastName": "Turchi",
+      "dateOfBirth": "2006-04-20",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Johnny",
+      "lastName": "Turchi",
+      "dateOfBirth": "2006-04-20",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Jacob",
+      "lastName": "Warner",
+      "dateOfBirth": "2006-08-30",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Koye",
+      "lastName": "Whitman",
+      "dateOfBirth": "2003-09-08",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Tim",
+      "lastName": "Zellner",
+      "dateOfBirth": "2006-08-18",
+      "jerseyNumber": null,
+      "teamName": "Kutztown Men's Soccer",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Erick",
+      "lastName": "Bernal",
+      "dateOfBirth": "1998-01-25",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Jordan",
+      "lastName": "Brubaker",
+      "dateOfBirth": "1993-01-03",
+      "jerseyNumber": 25,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Ian",
+      "lastName": "Byrnes",
+      "dateOfBirth": "1995-12-15",
+      "jerseyNumber": 26,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Julian",
+      "lastName": "Carvajal",
+      "dateOfBirth": "1990-12-15",
+      "jerseyNumber": 12,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Joel",
+      "lastName": "Chachapoya",
+      "dateOfBirth": "1996-07-21",
+      "jerseyNumber": 5,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Andrea",
+      "lastName": "DiSomma",
+      "dateOfBirth": "0200-11-18",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Tyler",
+      "lastName": "Hambright",
+      "dateOfBirth": "2004-11-14",
+      "jerseyNumber": 22,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Jessie",
+      "lastName": "Herb",
+      "dateOfBirth": "1996-05-14",
+      "jerseyNumber": 10,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Shaquille",
+      "lastName": "Hudson",
+      "dateOfBirth": "1991-03-12",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Asher",
+      "lastName": "Klahold",
+      "dateOfBirth": "1993-09-22",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Jordan",
+      "lastName": "McMullen",
+      "dateOfBirth": "1997-08-30",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Alex",
+      "lastName": "Morales",
+      "dateOfBirth": "2000-01-11",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Garmonger",
+      "lastName": "Morris",
+      "dateOfBirth": "1990-10-09",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Caden",
+      "lastName": "Mullen",
+      "dateOfBirth": "2005-06-02",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Zach",
+      "lastName": "Oster",
+      "dateOfBirth": "1993-12-06",
+      "jerseyNumber": 4,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Nikita",
+      "lastName": "Patrushev",
+      "dateOfBirth": "1998-07-01",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Joshua",
+      "lastName": "Patrushey",
+      "dateOfBirth": "0204-01-09",
+      "jerseyNumber": 9,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Andrey",
+      "lastName": "Patrushey",
+      "dateOfBirth": "1999-11-09",
+      "jerseyNumber": 7,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Aaron",
+      "lastName": "Pearson",
+      "dateOfBirth": "1986-09-24",
+      "jerseyNumber": 18,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Josiah",
+      "lastName": "Schendel",
+      "dateOfBirth": "1994-11-06",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Chris",
+      "lastName": "Sosa",
+      "dateOfBirth": "1994-11-30",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Daniel",
+      "lastName": "Sosa",
+      "dateOfBirth": "1991-08-21",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Ashton",
+      "lastName": "Taughinbaugh",
+      "dateOfBirth": "1987-09-05",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Michael",
+      "lastName": "Tolley",
+      "dateOfBirth": "1997-09-04",
+      "jerseyNumber": 8,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Andrew",
+      "lastName": "Weaver",
+      "dateOfBirth": "1996-03-27",
+      "jerseyNumber": null,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Tye",
+      "lastName": "White",
+      "dateOfBirth": "2005-06-25",
+      "jerseyNumber": 3,
+      "teamName": "Lancaster City FC",
+      "divisionName": "Lancaster Liga 1"
+    }
+  ],
+  "teamSummaries": {
+    "Adé United FC": {
+      "division": "Philadelphia Liga 1",
+      "tab": "Ade United",
+      "playerCount": 29
+    },
+    "Oaklyn United FC II": {
+      "division": "Philadelphia Liga 1",
+      "tab": "Oaklyn II",
+      "playerCount": 27
+    },
+    "Philadelphia Sierra Stars": {
+      "division": "Philadelphia Liga 1",
+      "tab": "Sierra Stars",
+      "playerCount": 28
+    },
+    "Persepolis FC": {
+      "division": "Philadelphia Liga 1",
+      "tab": "Persepolis I",
+      "playerCount": 24
+    },
+    "Phoenix SCM": {
+      "division": "Philadelphia Liga 1",
+      "tab": "Phoenix I",
+      "playerCount": 17
+    },
+    "Philly BlackStars": {
+      "division": "Philadelphia Liga 1",
+      "tab": "Black Stars",
+      "playerCount": 22
+    },
+    "Illyrians FC": {
+      "division": "Philadelphia Liga 1",
+      "tab": "Illyrians FC",
+      "playerCount": 23
+    },
+    "Lighthouse Boys Club": {
+      "division": "Philadelphia Liga 1",
+      "tab": "Lighthouse Boys Club",
+      "playerCount": 28
+    },
+    "Persepolis United FC II": {
+      "division": "Philadelphia Liga 2",
+      "tab": "Persepolis II",
+      "playerCount": 22
+    },
+    "Lighthouse Old Timers Club": {
+      "division": "Philadelphia Liga 2",
+      "tab": "Lighthouse Old Timers Club",
+      "playerCount": 29
+    },
+    "Phoenix SCR": {
+      "division": "Philadelphia Liga 2",
+      "tab": "Phoenix II",
+      "playerCount": 20
+    },
+    "Philadelphia SC Select": {
+      "division": "Philadelphia Liga 2",
+      "tab": "PSC II",
+      "playerCount": 29
+    },
+    "Club de Futbol Armada": {
+      "division": "Philadelphia Liga 2",
+      "tab": "CR FÚTBOL CLUB",
+      "playerCount": 34
+    },
+    "Sewell's Old Boys": {
+      "division": "Philadelphia Liga 2",
+      "tab": "Sewells Old Boys",
+      "playerCount": 7
+    },
+    "BCFC All Stars": {
+      "division": "Boston Liga 1",
+      "tab": "BCFC All-Stars",
+      "playerCount": 28
+    },
+    "Flatley FC": {
+      "division": "Boston Liga 1",
+      "tab": "Flatley FC",
+      "playerCount": 30
+    },
+    "Gambeta FC": {
+      "division": "Boston Liga 1",
+      "tab": "Gambeta FC",
+      "playerCount": 25
+    },
+    "Jaguars United FC": {
+      "division": "Boston Liga 1",
+      "tab": "Jaguars United",
+      "playerCount": 28
+    },
+    "South Shore FC": {
+      "division": "Boston Liga 1",
+      "tab": "South Shore FC",
+      "playerCount": 27
+    },
+    "Strictly Nos Fc": {
+      "division": "Boston Liga 1",
+      "tab": "Strictly Nos",
+      "playerCount": 27
+    },
+    "Alloy Soccer Club Reserves": {
+      "division": "Lancaster Liga 1",
+      "tab": "Alloy SC II (Liga 1)",
+      "playerCount": 30
+    },
+    "F&M FC": {
+      "division": "Lancaster Liga 1",
+      "tab": "F&M FC (Liga 1)",
+      "playerCount": 24
+    },
+    "Keystone Elite": {
+      "division": "Lancaster Liga 1",
+      "tab": "Keystone Elite (Liga 1)",
+      "playerCount": 23
+    },
+    "Kutztown Men's Soccer": {
+      "division": "Lancaster Liga 1",
+      "tab": "Kutztown (Liga 1)",
+      "playerCount": 24
+    },
+    "Lancaster City FC": {
+      "division": "Lancaster Liga 1",
+      "tab": "LCFC (Liga 1)",
+      "playerCount": 26
+    }
+  }
+}

@@ -14,6 +14,53 @@
   "standingsUrl": "https://www.casasoccerleagues.com",
   "cacheDir": "casa",
   "curateAgainst": ["apsl", "csl"],
+  "rosterSheets": {
+    "Philadelphia Liga 1": {
+      "sheetId": "14eQOJ60T0XNru6twNp59rP4RNrAuO2Gf",
+      "tabMap": {
+        "Ade United": "Adé United FC",
+        "Oaklyn II": "Oaklyn United FC II",
+        "Sierra Stars": "Philadelphia Sierra Stars",
+        "Persepolis I": "Persepolis FC",
+        "Phoenix I": "Phoenix SCM",
+        "Black Stars": "Philly BlackStars",
+        "Illyrians FC": "Illyrians FC",
+        "Lighthouse Boys Club": "Lighthouse Boys Club"
+      }
+    },
+    "Philadelphia Liga 2": {
+      "sheetId": "195usWo3fmXLw4IUOY_vEdB4dAk7EVfTu",
+      "tabMap": {
+        "Persepolis II": "Persepolis United FC II",
+        "Lighthouse Old Timers Club": "Lighthouse Old Timers Club",
+        "Phoenix II": "Phoenix SCR",
+        "PSC II": "Philadelphia SC Select",
+        "CR FÚTBOL CLUB": "Club de Futbol Armada",
+        "Sewells Old Boys": "Sewell's Old Boys"
+      }
+    },
+    "Boston Liga 1": {
+      "sheetId": "1OnHnhrSRA3Wp2eCs_9-dJhDBlVhSEoobFDGTYvQTfvE",
+      "tabMap": {
+        "BCFC All-Stars": "BCFC All Stars",
+        "Flatley FC": "Flatley FC",
+        "Gambeta FC": "Gambeta FC",
+        "Jaguars United": "Jaguars United FC",
+        "South Shore FC": "South Shore FC",
+        "Strictly Nos": "Strictly Nos Fc"
+      }
+    },
+    "Lancaster Liga 1": {
+      "sheetId": "1alzJMAccMT5IIBQ_YOAp6FMbADnfC77dxRMZtceMau4",
+      "tabMap": {
+        "Alloy SC II (Liga 1)": "Alloy Soccer Club Reserves",
+        "F&M FC (Liga 1)": "F&M FC",
+        "Keystone Elite (Liga 1)": "Keystone Elite",
+        "Kutztown (Liga 1)": "Kutztown Men's Soccer",
+        "LCFC (Liga 1)": "Lancaster City FC"
+      }
+    }
+  },
   "clubFamilies": {
     "lighthouse boys club": "lighthouse-1893-sc",
     "lighthouse old timers club": "lighthouse-1893-sc",

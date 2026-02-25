@@ -334,13 +334,14 @@ ON CONFLICT (team_id) DO UPDATE SET
     for (const player of this.players) {
       const firstName = player.firstName || '';
       const lastName = player.lastName || '';
+      const birthDate = player.dateOfBirth ? `'${player.dateOfBirth}'` : 'NULL';
       
-      sql += `INSERT INTO persons (id, first_name, last_name) 
-VALUES (${playerId}, '${this.escapeSql(firstName)}', '${this.escapeSql(lastName)}') 
+      sql += `INSERT INTO persons (id, first_name, last_name, birth_date) 
+VALUES (${playerId}, '${this.escapeSql(firstName)}', '${this.escapeSql(lastName)}', ${birthDate}) 
 ON CONFLICT (id) DO NOTHING;\n`;
       
-      sql += `INSERT INTO players (id, person_id) 
-VALUES (${playerId}, ${playerId}) 
+      sql += `INSERT INTO players (id, person_id, source_system_id) 
+VALUES (${playerId}, ${playerId}, ${this.sourceSystemId}) 
 ON CONFLICT (id) DO NOTHING;\n\n`;
       
       playerId++;

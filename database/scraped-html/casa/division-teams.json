@@ -1,22 +1,11 @@
 {
-  "generated": "2026-02-02T02:17:27.040Z",
+  "generated": "2026-02-24T15:19:37.965Z",
   "divisions": [
     {
       "id": 54,
       "name": "Philadelphia Liga 1",
       "external_id": "9090889",
       "teams": [
-        {
-          "teamName": "Teams",
-          "played": 0,
-          "wins": 0,
-          "draws": 0,
-          "losses": 0,
-          "goalsFor": 0,
-          "goalsAgainst": 0,
-          "goalDiff": 0,
-          "points": 0
-        },
         {
           "teamName": "Adé United FC",
           "played": 25,
@@ -113,17 +102,6 @@
       "external_id": "9096430",
       "teams": [
         {
-          "teamName": "Teams",
-          "played": 0,
-          "wins": 0,
-          "draws": 0,
-          "losses": 0,
-          "goalsFor": 0,
-          "goalsAgainst": 0,
-          "goalDiff": 0,
-          "points": 0
-        },
-        {
           "teamName": "Persepolis United FC II",
           "played": 9,
           "wins": 3,
@@ -146,7 +124,7 @@
           "points": -12
         },
         {
-          "teamName": "Philadelphia SC II",
+          "teamName": "Philadelphia SC Select",
           "played": 8,
           "wins": 2,
           "draws": 4,
@@ -177,16 +155,9 @@
           "goalsAgainst": 0,
           "goalDiff": 0,
           "points": 0
-        }
-      ]
-    },
-    {
-      "id": 56,
-      "name": "Boston Liga 1",
-      "external_id": "9090891",
-      "teams": [
+        },
         {
-          "teamName": "Teams",
+          "teamName": "Sewell's Old Boys",
           "played": 0,
           "wins": 0,
           "draws": 0,
@@ -195,7 +166,14 @@
           "goalsAgainst": 0,
           "goalDiff": 0,
           "points": 0
-        },
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "name": "Boston Liga 1",
+      "external_id": "9090891",
+      "teams": [
         {
           "teamName": "South Shore FC",
           "played": 21,
@@ -270,17 +248,6 @@
       "external_id": "9090893",
       "teams": [
         {
-          "teamName": "Teams",
-          "played": 0,
-          "wins": 0,
-          "draws": 0,
-          "losses": 0,
-          "goalsFor": 0,
-          "goalsAgainst": 0,
-          "goalDiff": 0,
-          "points": 0
-        },
-        {
           "teamName": "Kutztown Men's Soccer",
           "played": 17,
           "wins": 5,
@@ -311,7 +278,7 @@
           "goalsFor": 8,
           "goalsAgainst": 17,
           "goalDiff": 17,
-          "points": 14
+          "points": 0
         },
         {
           "teamName": "F&M FC",

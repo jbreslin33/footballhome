@@ -83,6 +83,7 @@ class CasaSqlGenerator extends BaseGenerator {
     console.log('\n👥 Parsing player rosters...');
     await this.parseTeamRosters();
     this.writePlayersSql();
+    this.writeRostersSql();
     
     // Parse matches from JSON
     console.log('\n⚽ Parsing matches from JSON...');
@@ -136,6 +137,7 @@ class CasaSqlGenerator extends BaseGenerator {
       name: teamName,
       externalId: externalId,
       divisionName: divisionName,
+      divisionExternalId: divisionExternalId,
       sourceSystemId: this.sourceSystemId
     });
   }
@@ -328,21 +330,43 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
   }
 
   /**
-   * Parse team rosters from HTML files
-   * TODO: Implement when roster HTML scraping is fixed
+   * Parse team rosters from cached XLSX files (downloaded from Google Sheets)
+   * Populates this.players and this.rosters arrays for SQL generation
    */
   async parseTeamRosters() {
-    const rosterDir = path.join(__dirname, '../../../../../scraped-html/casa');
-    const files = fs.readdirSync(rosterDir).filter(f => f.startsWith('roster-viewer-') && f.endsWith('.html'));
-    
-    if (files.length === 0) {
-      console.log('   ⚠️  No roster HTML files found - skipping player parsing');
+    const CasaRosterScraper = require('../../../../scrapers/CasaRosterScraper');
+    const cacheDir = path.join(__dirname, '../../../../../scraped-html/casa');
+
+    const scraper = new CasaRosterScraper(this.config, cacheDir);
+    const { players: rosterPlayers, teamSummaries } = scraper.parseFromCache();
+
+    if (rosterPlayers.length === 0) {
+      console.log('   ⚠️  No roster data found in cache — skipping player SQL');
+      console.log('   ℹ️  Run roster scraper first to download XLSX from Google Sheets');
       return;
     }
-    
-    console.log(`   ⚠️  Found ${files.length} roster files but parsing not yet implemented`);
-    console.log('   ℹ️  CASA roster scraping needs to be fixed first');
-    console.log('   ℹ️  Will generate empty players SQL file');
+
+    // Assign sequential player IDs starting from playerIdBase
+    let playerId = this.getPlayerIdBase();
+
+    for (const rp of rosterPlayers) {
+      this.players.push({
+        playerId,
+        firstName: rp.firstName,
+        lastName: rp.lastName,
+        dateOfBirth: rp.dateOfBirth || null
+      });
+
+      this.rosters.push({
+        playerId,
+        teamName: rp.teamName,
+        jerseyNumber: rp.jerseyNumber || null
+      });
+
+      playerId++;
+    }
+
+    console.log(`   ✅ Loaded ${this.players.length} players across ${Object.keys(teamSummaries).length} teams`);
   }
 
   /**
@@ -380,6 +404,9 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     
     // Parse each division's matches
     for (const division of data.divisions) {
+      // Occurrence counter for duplicate matchups (same teams playing twice)
+      const matchCounters = {};
+
       for (const match of division.matches) {
         let homeTeamKey = match.home.toLowerCase().trim();
         let awayTeamKey = match.away.toLowerCase().trim();
@@ -410,13 +437,23 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
           }
         }
         
-        // Generate unique external ID for this match
-        const externalId = `${division.external_id}_${homeExternalId}_${awayExternalId}`;
+        // Generate stable external ID matching scraper format:
+        // {divExtId}_{homeSlug}_vs_{awaySlug}_{occurrence}
+        const homeSlug = match.home.toLowerCase().replace(/\s+/g, '-');
+        const awaySlug = match.away.toLowerCase().replace(/\s+/g, '-');
+        const pairKey = `${homeSlug}::${awaySlug}`;
+        matchCounters[pairKey] = (matchCounters[pairKey] || 0) + 1;
+        const occurrence = matchCounters[pairKey];
+        const externalId = `${division.external_id}_${homeSlug}_vs_${awaySlug}_${occurrence}`;
         
         // Add match (will be deduplicated by BaseGenerator)
         this.addMatch({
           homeTeamExternalId: homeExternalId,
           awayTeamExternalId: awayExternalId,
+          homeTeamName: match.home,
+          awayTeamName: match.away,
+          divisionName: division.name,
+          divisionExternalId: division.external_id,
           matchDate: '2026-01-01', // CASA doesn't have dates in JSON - use placeholder
           matchTime: null,
           venueId: null,
