@@ -121,35 +121,31 @@ std::string Team::getTeamRoster(const std::string& team_id) {
     json << "[";
     
     try {
-        // Get all players for the team (including roster status info)
+        // Get all active players for the team
+        // rosters → players → persons for names
+        // LEFT JOIN roster_positions → positions for position
+        // LEFT JOIN users (via person_id) for email/avatar
         std::string sql = 
             "SELECT "
-            "  u.id as user_id, "
-            "  u.first_name, "
-            "  u.last_name, "
-            "  u.email, "
-            "  u.avatar_url, "
-            "  tp.jersey_number, "
-            "  p.display_name as position, "
-            "  tp.is_captain, "
-            "  tp.is_vice_captain, "
-            "  tp.is_active, "
-            "  tp.roster_status_id, "
-            "  rs.code as roster_status_code, "
-            "  rs.display_name as roster_status, "
-            "  rs.show_in_rsvp, "
-            "  rs.show_in_official_roster, "
-            "  DATE(tp.joined_at) as joined_date "
-            "FROM team_division_players tp "
-            "JOIN players pl ON tp.player_id = pl.id "
-            "JOIN users u ON pl.id = u.id "
-            "LEFT JOIN positions p ON tp.position_id = p.id "
-            "LEFT JOIN roster_statuses rs ON tp.roster_status_id = rs.id "
-            "WHERE tp.team_id = $1 "
+            "  pl.id as player_id, "
+            "  pe.first_name, "
+            "  pe.last_name, "
+            "  pem.email, "
+            "  pl.photo_url as avatar_url, "
+            "  r.jersey_number, "
+            "  pos.name as position, "
+            "  (r.left_at IS NULL) as is_active, "
+            "  DATE(r.joined_at) as joined_date "
+            "FROM rosters r "
+            "JOIN players pl ON r.player_id = pl.id "
+            "JOIN persons pe ON pl.person_id = pe.id "
+            "LEFT JOIN roster_positions rp ON rp.roster_id = r.id AND rp.is_primary = true "
+            "LEFT JOIN positions pos ON rp.position_id = pos.id "
+            "LEFT JOIN person_emails pem ON pem.person_id = pe.id AND pem.is_primary = true "
+            "WHERE r.team_id = $1 AND r.left_at IS NULL "
             "ORDER BY "
-            "  rs.sort_order, "
-            "  tp.jersey_number NULLS LAST, "
-            "  u.last_name, u.first_name";
+            "  r.jersey_number NULLS LAST, "
+            "  pe.last_name, pe.first_name";
         
         pqxx::result result = executeQuery(sql, {team_id});
         
@@ -162,29 +158,24 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             std::string full_name = escapeJSON(first_name + " " + last_name);
             std::string email = row["email"].is_null() ? "" : escapeJSON(row["email"].as<std::string>());
             std::string avatar_url = row["avatar_url"].is_null() ? "" : escapeJSON(row["avatar_url"].as<std::string>());
-            std::string position = row["position"].is_null() ? "No Position" : escapeJSON(row["position"].as<std::string>());
+            std::string position = row["position"].is_null() ? "" : escapeJSON(row["position"].as<std::string>());
             std::string joined_date = row["joined_date"].is_null() ? "" : row["joined_date"].as<std::string>();
-            std::string roster_status = row["roster_status"].is_null() ? "Active Player" : escapeJSON(row["roster_status"].as<std::string>());
-            std::string roster_status_code = row["roster_status_code"].is_null() ? "active" : row["roster_status_code"].as<std::string>();
-            int roster_status_id = row["roster_status_id"].is_null() ? 1 : row["roster_status_id"].as<int>();
-            bool show_in_rsvp = row["show_in_rsvp"].is_null() ? true : row["show_in_rsvp"].as<bool>();
-            bool show_in_official = row["show_in_official_roster"].is_null() ? true : row["show_in_official_roster"].as<bool>();
             
             json << "{";
-            json << "\"id\":\"" << row["user_id"].as<std::string>() << "\",";
+            json << "\"id\":\"" << row["player_id"].as<std::string>() << "\",";
             json << "\"name\":\"" << full_name << "\",";
             json << "\"email\":\"" << email << "\",";
             json << "\"photoUrl\":\"" << avatar_url << "\",";
-            json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].as<std::string>()) << ",";
+            json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : "\"" + row["jersey_number"].as<std::string>() + "\"") << ",";
             json << "\"position\":\"" << position << "\",";
-            json << "\"isCaptain\":" << (row["is_captain"].as<bool>() ? "true" : "false") << ",";
-            json << "\"isViceCaptain\":" << (row["is_vice_captain"].as<bool>() ? "true" : "false") << ",";
+            json << "\"isCaptain\":false,";
+            json << "\"isViceCaptain\":false,";
             json << "\"isActive\":" << (row["is_active"].as<bool>() ? "true" : "false") << ",";
-            json << "\"rosterStatusId\":" << roster_status_id << ",";
-            json << "\"rosterStatusCode\":\"" << roster_status_code << "\",";
-            json << "\"rosterStatus\":\"" << roster_status << "\",";
-            json << "\"showInRsvp\":" << (show_in_rsvp ? "true" : "false") << ",";
-            json << "\"showInOfficialRoster\":" << (show_in_official ? "true" : "false") << ",";
+            json << "\"rosterStatusId\":null,";
+            json << "\"rosterStatusCode\":null,";
+            json << "\"rosterStatus\":null,";
+            json << "\"showInRsvp\":true,";
+            json << "\"showInOfficialRoster\":true,";
             json << "\"joinedDate\":\"" << joined_date << "\",";
             json << "\"roleType\":\"PLAYER\"";
             json << "}";
@@ -195,18 +186,19 @@ std::string Team::getTeamRoster(const std::string& team_id) {
         // Also get coaches for the team
         std::string coach_sql = 
             "SELECT "
-            "  u.id as user_id, "
-            "  u.first_name, "
-            "  u.last_name, "
-            "  u.email, "
-            "  u.avatar_url, "
-            "  tc.coach_role, "
-            "  tc.is_primary "
+            "  c.id as coach_id, "
+            "  pe.first_name, "
+            "  pe.last_name, "
+            "  pem.email, "
+            "  cr.name as coach_role, "
+            "  tc.coach_role_id "
             "FROM team_coaches tc "
             "JOIN coaches c ON tc.coach_id = c.id "
-            "JOIN users u ON c.id = u.id "
-            "WHERE tc.team_id = $1 AND tc.is_active = true "
-            "ORDER BY tc.is_primary DESC, u.last_name, u.first_name";
+            "JOIN persons pe ON c.person_id = pe.id "
+            "LEFT JOIN coach_roles cr ON tc.coach_role_id = cr.id "
+            "LEFT JOIN person_emails pem ON pem.person_id = pe.id AND pem.is_primary = true "
+            "WHERE tc.team_id = $1 AND tc.ended_at IS NULL "
+            "ORDER BY pe.last_name, pe.first_name";
         
         pqxx::result coach_result = executeQuery(coach_sql, {team_id});
         
@@ -217,14 +209,13 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             std::string last_name = row["last_name"].is_null() ? "" : row["last_name"].as<std::string>();
             std::string full_name = escapeJSON(first_name + " " + last_name);
             std::string email = row["email"].is_null() ? "" : escapeJSON(row["email"].as<std::string>());
-            std::string avatar_url = row["avatar_url"].is_null() ? "" : escapeJSON(row["avatar_url"].as<std::string>());
             std::string coach_role = row["coach_role"].is_null() ? "Coach" : escapeJSON(row["coach_role"].as<std::string>());
             
             json << "{";
-            json << "\"id\":\"" << row["user_id"].as<std::string>() << "\",";
+            json << "\"id\":\"" << row["coach_id"].as<std::string>() << "\",";
             json << "\"name\":\"" << full_name << "\",";
             json << "\"email\":\"" << email << "\",";
-            json << "\"photoUrl\":\"" << avatar_url << "\",";
+            json << "\"photoUrl\":\"\",";
             json << "\"jerseyNumber\":null,";
             json << "\"position\":\"" << coach_role << "\",";
             json << "\"isCaptain\":false,";

@@ -447,7 +447,6 @@ Response EventController::handleGetMatches(const Request& request) {
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
         query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
         query << "WHERE (m.home_team_id = '" << team_id << "' OR m.away_team_id = '" << team_id << "') ";
-        query << "AND m.match_date >= (CURRENT_DATE - INTERVAL '1 day') ";
         query << "ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST ";
         query << "LIMIT 100";
         
