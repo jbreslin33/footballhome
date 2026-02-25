@@ -262,7 +262,8 @@ std::string Team::getDivisionStandings(const std::string& team_id) {
             "FROM teams t "
             "JOIN divisions d ON t.division_id = d.id "
             "JOIN conferences c ON d.conference_id = c.id "
-            "JOIN leagues l ON c.league_id = l.id "
+            "JOIN seasons s ON c.season_id = s.id "
+            "JOIN leagues l ON s.league_id = l.id "
             "WHERE t.id = $1";
         
         pqxx::result div_result = executeQuery(div_sql, {team_id});

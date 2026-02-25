@@ -93,12 +93,12 @@ Response TeamController::handleGetRosterStatuses(const Request& request) {
 }
 
 std::string TeamController::extractTeamIdFromPath(const std::string& path) {
-    // Extract UUID from path like "/api/teams/d37eb44b-8e47-0005-9060-f0cbe96fe089/roster"
-    // or "/api/teams/d37eb44b-8e47-0005-9060-f0cbe96fe089/roster/player-id"
-    std::regex uuid_regex(R"(/api/teams/([a-f0-9-]{36})/roster)");
+    // Extract team ID (integer or UUID) from path like "/api/teams/35/roster"
+    // or "/api/teams/d37eb44b-8e47-0005-9060-f0cbe96fe089/roster"
+    std::regex id_regex(R"(/api/teams/([^/]+)/roster)");
     std::smatch match;
     
-    if (std::regex_search(path, match, uuid_regex)) {
+    if (std::regex_search(path, match, id_regex)) {
         return match[1].str();
     }
     
@@ -106,11 +106,11 @@ std::string TeamController::extractTeamIdFromPath(const std::string& path) {
 }
 
 std::string TeamController::extractPlayerIdFromPath(const std::string& path) {
-    // Extract player UUID from path like "/api/teams/team-id/roster/player-id"
-    std::regex uuid_regex(R"(/api/teams/[a-f0-9-]{36}/roster/([a-f0-9-]{36}))");
+    // Extract player ID from path like "/api/teams/team-id/roster/player-id"
+    std::regex id_regex(R"(/api/teams/[^/]+/roster/([^/]+))");
     std::smatch match;
     
-    if (std::regex_search(path, match, uuid_regex)) {
+    if (std::regex_search(path, match, id_regex)) {
         return match[1].str();
     }
     

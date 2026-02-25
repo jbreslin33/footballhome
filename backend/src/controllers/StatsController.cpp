@@ -139,7 +139,7 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
                 (p.first_name || ' ' || p.last_name) as player_name,
                 t.name as team_name,
                 d.name as division_name,
-                l.season,
+                s.name as season,
                 COUNT(DISTINCT ps.match_id) as games_played,
                 COALESCE(SUM(ps.goals), 0) as goals,
                 COALESCE(SUM(ps.assists), 0) as assists,
@@ -150,9 +150,10 @@ Response StatsController::handleGetPlayerStats(const Request& request) {
             JOIN teams t ON ps.team_id = t.id
             JOIN divisions d ON t.division_id = d.id OR ps.match_id IS NOT NULL
             JOIN conferences c ON d.conference_id = c.id
-            JOIN leagues l ON c.league_id = l.id
+            JOIN seasons s ON c.season_id = s.id
+            JOIN leagues l ON s.league_id = l.id
             WHERE t.source_system_id = 1
-            GROUP BY p.id, player_name, t.name, d.name, l.season
+            GROUP BY p.id, player_name, t.name, d.name, s.name
             HAVING COUNT(DISTINCT ps.match_id) > 0
             ORDER BY goals DESC, assists DESC, player_name
         )";

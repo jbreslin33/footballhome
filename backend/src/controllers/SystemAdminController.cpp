@@ -2573,10 +2573,11 @@ Response SystemAdminController::handleGetApslDashboard(const Request& request) {
 Response SystemAdminController::handleGetApslDivisions(const Request& request) {
     try {
         auto result = db_->query(
-            "SELECT d.id, d.name, c.name as conference_name, l.season "
+            "SELECT d.id, d.name, c.name as conference_name, s.name as season "
             "FROM divisions d "
             "JOIN conferences c ON d.conference_id = c.id "
-            "JOIN leagues l ON c.league_id = l.id "
+            "JOIN seasons s ON c.season_id = s.id "
+            "JOIN leagues l ON s.league_id = l.id "
             "WHERE d.source_system_id = 1 "
             "ORDER BY d.name"
         );

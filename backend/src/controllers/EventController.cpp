@@ -429,20 +429,26 @@ Response EventController::handleGetMatches(const Request& request) {
         // Show: all upcoming matches + matches ended within last 8 hours
         // Include has_ended flag so frontend knows whether to show RSVP buttons
         std::ostringstream query;
-        query << "SELECT e.id, e.title, e.event_date, e.duration_minutes, et.name as event_type, ";
-        query << "m.home_team_score, m.away_team_score, m.match_status, m.competition_name, v.name as venue_name, ";
-        query << "CASE WHEN (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) < NOW() ";
-        query << "THEN true ELSE false END as has_ended, ";
-        query << "ht.logo_url as home_team_logo, at.logo_url as away_team_logo ";
-        query << "FROM events e ";
-        query << "JOIN event_types et ON e.event_type_id = et.id ";
-        query << "JOIN matches m ON e.id = m.id ";
-        query << "LEFT JOIN venues v ON e.venue_id = v.id ";
+        query << "SELECT m.id, COALESCE(m.title, CONCAT(ht.name, ' vs ', awt.name)) as title, ";
+        query << "m.match_date::text || ' ' || COALESCE(m.match_time::text, '00:00:00') as event_date, ";
+        query << "90 as duration_minutes, mt.name as event_type, ";
+        query << "m.home_score as home_team_score, m.away_score as away_team_score, ";
+        query << "ms.name as match_status, '' as competition_name, v.name as venue_name, ";
+        query << "CASE WHEN m.match_status_id = 3 THEN true ";
+        query << "WHEN m.match_date < CURRENT_DATE THEN true ";
+        query << "WHEN m.match_date = CURRENT_DATE AND m.match_time IS NOT NULL ";
+        query << "AND (m.match_time + INTERVAL '90 minutes') < CURRENT_TIME THEN true ";
+        query << "ELSE false END as has_ended, ";
+        query << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo ";
+        query << "FROM matches m ";
+        query << "JOIN match_types mt ON m.match_type_id = mt.id ";
+        query << "JOIN match_statuses ms ON m.match_status_id = ms.id ";
+        query << "LEFT JOIN venues v ON m.venue_id = v.id ";
         query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
-        query << "LEFT JOIN teams at ON m.away_team_id = at.id ";
+        query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
         query << "WHERE (m.home_team_id = '" << team_id << "' OR m.away_team_id = '" << team_id << "') ";
-        query << "AND (e.event_date + INTERVAL '1 minute' * COALESCE(e.duration_minutes, et.default_duration)) > (NOW() - INTERVAL '8 hours') ";
-        query << "ORDER BY e.event_date ASC ";
+        query << "AND m.match_date >= (CURRENT_DATE - INTERVAL '1 day') ";
+        query << "ORDER BY m.match_date ASC, m.match_time ASC NULLS LAST ";
         query << "LIMIT 100";
         
         pqxx::result result = db_->query(query.str());
