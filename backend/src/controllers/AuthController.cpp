@@ -404,18 +404,19 @@ Response AuthController::handleUserTeams(const Request& request) {
         auto db = Database::getInstance();
         
         // Query to get all teams for this user (both as player and coach)
-        // Note: players.id and coaches.id ARE the user_id (FK to users table)
+        // Look up person_id from users table, then find teams via coaches/players
         std::ostringstream query;
         query << "SELECT DISTINCT t.id, t.name, "
               << "CASE WHEN tp.player_id IS NOT NULL THEN 'player' "
               << "     WHEN tc.coach_id IS NOT NULL THEN 'coach' "
               << "     ELSE 'unknown' END as role "
               << "FROM teams t "
-              << "LEFT JOIN team_division_players tp ON t.id = tp.team_id AND tp.is_active = true "
+              << "LEFT JOIN team_division_players tp ON t.id = tp.team_id "
               << "LEFT JOIN players p ON tp.player_id = p.id "
-              << "LEFT JOIN team_coaches tc ON t.id = tc.team_id AND tc.is_active = true "
+              << "LEFT JOIN team_coaches tc ON t.id = tc.team_id AND tc.ended_at IS NULL "
               << "LEFT JOIN coaches c ON tc.coach_id = c.id "
-              << "WHERE (p.id = '" << user_id << "' OR c.id = '" << user_id << "')";
+              << "WHERE p.person_id = (SELECT person_id FROM users WHERE id = " << user_id << ") "
+              << "   OR c.person_id = (SELECT person_id FROM users WHERE id = " << user_id << ")";
         
         std::cout << "🔍 Query: " << query.str() << std::endl;
         
@@ -455,14 +456,14 @@ Response AuthController::handleCoachTeams(const Request& request) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
         }
         
-        std::string sql = "SELECT DISTINCT t.id, t.name, sd.club_id, COUNT(tp.player_id) as player_count "
+        std::string sql = "SELECT DISTINCT t.id, t.name, t.club_id, COUNT(tp.player_id) as player_count "
                          "FROM coaches co "
                          "JOIN team_coaches tc ON co.id = tc.coach_id "
                          "JOIN teams t ON tc.team_id = t.id "
                          "JOIN clubs sd ON t.club_id = sd.id "
                          "LEFT JOIN team_division_players tp ON t.id = tp.team_id "
-                         "WHERE co.id = $1 "
-                         "GROUP BY t.id, t.name, sd.club_id "
+                         "WHERE co.person_id = (SELECT person_id FROM users WHERE id = $1) "
+                         "GROUP BY t.id, t.name, t.club_id "
                          "ORDER BY t.name";
         
         pqxx::result result = db_->query(sql, {user_id});
@@ -498,12 +499,12 @@ Response AuthController::handlePlayerTeams(const Request& request) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Invalid or missing authentication token"));
         }
         
-        std::string sql = "SELECT DISTINCT t.id, t.name, sd.display_name as division_name, sd.club_id "
+        std::string sql = "SELECT DISTINCT t.id, t.name, sd.name as division_name, t.club_id "
                          "FROM team_division_players tp "
                          "JOIN teams t ON tp.team_id = t.id "
                          "JOIN clubs sd ON t.club_id = sd.id "
                          "JOIN players p ON tp.player_id = p.id "
-                         "WHERE p.id = $1 "
+                         "WHERE p.person_id = (SELECT person_id FROM users WHERE id = $1) "
                          "ORDER BY t.name";
         
         pqxx::result result = db_->query(sql, {user_id});

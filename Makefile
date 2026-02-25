@@ -1,5 +1,22 @@
 .PHONY: all help clean build up down rebuild logs test ps shell-db load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init init-apsl init-csl init-casa init-all scrape scrape-apsl scrape-csl scrape-casa update-casa update-casa-dry baseline-casa backup restore safe-rebuild
 
+# Ensure Python user bin is in PATH (for podman-compose)
+PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
+export PATH := $(PYTHON_USER_BIN):$(PATH)
+
+# Auto-detect compose tool: prefer podman-compose, fall back to docker-compose
+COMPOSE := $(shell PATH="$(PYTHON_USER_BIN):$$PATH" command -v podman-compose 2>/dev/null || command -v docker-compose 2>/dev/null)
+# Auto-detect container engine: prefer podman, fall back to docker
+ENGINE := $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
+# DB exec command: use compose exec for docker, direct exec for podman
+ifeq ($(findstring podman,$(ENGINE)),podman)
+  DB_EXEC = $(ENGINE) exec -i footballhome_db
+  DB_EXEC_IT = $(ENGINE) exec -it footballhome_db
+else
+  DB_EXEC = $(COMPOSE) --env-file env exec -T db
+  DB_EXEC_IT = $(COMPOSE) --env-file env exec db
+endif
+
 # Default target - safe, non-destructive
 all: up
 
@@ -75,18 +92,18 @@ help:
 
 clean:
 	@echo "🧹 Cleaning containers and volumes..."
-	@command -v podman-compose >/dev/null 2>&1 && podman-compose --env-file env down -v 2>&1 | grep -v "no container with" | grep -v "Error:" || true
-	@podman stop footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
-	@podman rm -f footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
-	@podman pod rm -f pod_footballhome 2>/dev/null || true
-	@podman volume rm footballhome_db_data 2>/dev/null || true
-	@podman network rm footballhome_footballhome_network 2>/dev/null || true
+	@$(COMPOSE) --env-file env down -v 2>&1 | grep -v "no container with" | grep -v "Error:" || true
+	@$(ENGINE) stop footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
+	@$(ENGINE) rm -f footballhome_db footballhome_backend footballhome_frontend 2>/dev/null || true
+	@$(ENGINE) pod rm -f pod_footballhome 2>/dev/null || true
+	@$(ENGINE) volume rm footballhome_db_data 2>/dev/null || true
+	@$(ENGINE) network rm footballhome_footballhome_network 2>/dev/null || true
 	@echo "✓ Cleanup complete"
 
 build:
 	@echo "🔨 Building images and starting containers..."
-	@podman-compose --env-file env build
-	@podman-compose --env-file env up -d
+	@$(COMPOSE) --env-file env build
+	@$(COMPOSE) --env-file env up -d
 	@echo "✓ Build complete and containers started"
 	@echo ""
 	@echo "Frontend:  http://localhost:3000"
@@ -94,7 +111,7 @@ build:
 
 up:
 	@echo "🚀 Starting containers..."
-	@podman-compose --env-file env up -d
+	@$(COMPOSE) --env-file env up -d
 	@echo "✓ Containers started"
 	@echo ""
 	@echo "Frontend:  http://localhost:3000"
@@ -102,14 +119,14 @@ up:
 
 down:
 	@echo "🛑 Stopping containers..."
-	@podman-compose --env-file env down
+	@$(COMPOSE) --env-file env down
 
 rebuild: clean
 	@echo "🏗️  Full rebuild..."
 	@./build.sh
 
 logs:
-	@podman-compose --env-file env logs -f
+	@$(COMPOSE) --env-file env logs -f
 
 test:
 	@echo "🧪 Running tests..."
@@ -245,14 +262,14 @@ baseline-casa:
 backup:
 	@mkdir -p backups
 	@echo "💾 Backing up database..."
-	@podman exec footballhome_db pg_dump -U footballhome_user footballhome > backups/backup-$$(date +%Y%m%d-%H%M%S).sql
+	@$(DB_EXEC) pg_dump -U footballhome_user footballhome > backups/backup-$$(date +%Y%m%d-%H%M%S).sql
 	@echo "✓ Backup saved: $$(ls -t backups/backup-*.sql | head -1)"
 
 restore:
 	$(eval BACKUP_FILE := $(or $(BACKUP),$(shell ls -t backups/backup-*.sql 2>/dev/null | head -1)))
 	@if [ -z "$(BACKUP_FILE)" ]; then echo "❌ No backup found. Run: make backup"; exit 1; fi
 	@echo "♻️  Restoring from $(BACKUP_FILE)..."
-	@podman exec -i footballhome_db psql -U footballhome_user -d footballhome < $(BACKUP_FILE)
+	@$(DB_EXEC) psql -U footballhome_user -d footballhome < $(BACKUP_FILE)
 	@echo "✓ Restored from $(BACKUP_FILE)"
 
 safe-rebuild: backup rebuild
@@ -265,16 +282,16 @@ safe-rebuild: backup rebuild
 # ============================================================
 
 ps:
-	@podman ps --filter "name=footballhome"
+	@$(COMPOSE) --env-file env ps
 
 shell-db:
-	@podman exec -it footballhome_db psql -U footballhome_user -d footballhome
+	@$(DB_EXEC_IT) psql -U footballhome_user -d footballhome
 
 logs-db:
-	@podman logs -f footballhome_db
+	@$(COMPOSE) --env-file env logs -f db
 
 logs-backend:
-	@podman logs -f footballhome_backend
+	@$(COMPOSE) --env-file env logs -f backend
 
 audit:
 	@echo "📊 Auditing database..."

@@ -23,6 +23,11 @@ void TeamController::registerRoutes(Router& router, const std::string& prefix) {
         return this->handleGetRoster(request);
     });
     
+    // Get division standings for a team
+    router.get(prefix + "/:teamId/standings", [this](const Request& request) {
+        return this->handleGetDivisionStandings(request);
+    });
+    
     // Update roster member (jersey number, position, captain status, roster status)
     router.put(prefix + "/:teamId/roster/:playerId", [this](const Request& request) {
         return this->handleUpdateRosterMember(request);
@@ -251,6 +256,48 @@ Response TeamController::handleGetAllTeams(const Request& request) {
         std::string json = createJSONResponse(false, "Failed to retrieve teams");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
+}
+
+Response TeamController::handleGetDivisionStandings(const Request& request) {
+    try {
+        std::string team_id = extractTeamIdGeneric(request.getPath());
+        
+        if (team_id.empty()) {
+            std::string json = createJSONResponse(false, "Invalid team ID in path");
+            return Response(HttpStatus::BAD_REQUEST, json);
+        }
+        
+        std::cout << "🔍 Getting division standings for team: " << team_id << std::endl;
+        
+        std::string standings_json = team_model_->getDivisionStandings(team_id);
+        
+        std::ostringstream json;
+        json << "{";
+        json << "\"success\":true,";
+        json << "\"message\":\"Division standings retrieved successfully\",";
+        json << "\"data\":" << standings_json;
+        json << "}";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ TeamController::handleGetDivisionStandings error: " << e.what() << std::endl;
+        std::string json = createJSONResponse(false, "Failed to retrieve division standings");
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
+    }
+}
+
+std::string TeamController::extractTeamIdGeneric(const std::string& path) {
+    // Extract team ID from path like "/api/teams/123/standings" or "/api/teams/uuid/standings"
+    // Matches any non-slash characters between /teams/ and /standings
+    std::regex id_regex(R"(/api/teams/([^/]+)/standings)");
+    std::smatch match;
+    
+    if (std::regex_search(path, match, id_regex)) {
+        return match[1].str();
+    }
+    
+    return "";
 }
 
 std::string TeamController::createJSONResponse(bool success, const std::string& message) {

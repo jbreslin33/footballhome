@@ -498,6 +498,21 @@ CREATE INDEX idx_users_person ON users(person_id);
 CREATE INDEX idx_users_active ON users(is_active);
 
 COMMENT ON TABLE users IS 'Authentication entity - a person who can log in';
+
+-- Login audit trail
+CREATE TABLE login_history (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    success BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_login_history_user ON login_history(user_id);
+CREATE INDEX idx_login_history_created ON login_history(created_at DESC);
+
+COMMENT ON TABLE login_history IS 'Audit log of login attempts';
 COMMENT ON COLUMN users.person_id IS 'FK to persons table - every user must be a person';
 
 -- Email types lookup (must come BEFORE person_emails)
@@ -859,6 +874,18 @@ CREATE INDEX idx_rosters_current ON rosters(team_id, player_id) WHERE left_at IS
 CREATE INDEX idx_rosters_history ON rosters(player_id, joined_at, left_at);
 
 COMMENT ON TABLE rosters IS 'Team rosters with temporal tracking. Each row represents one period of a player''s membership on a team.';
+
+-- Compatibility view: legacy code references team_division_players
+CREATE OR REPLACE VIEW team_division_players AS
+SELECT
+    id,
+    team_id,
+    player_id,
+    jersey_number,
+    (left_at IS NULL) AS is_active,
+    joined_at AS created_at,
+    COALESCE(left_at, joined_at) AS updated_at
+FROM rosters;
 
 -- Position assignments for roster entries (what position player plays for THIS team)
 CREATE TABLE roster_positions (

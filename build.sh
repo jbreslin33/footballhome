@@ -52,8 +52,9 @@ fi
 echo -e "${GREEN}✓ Found env file${NC}"
 
 # ============================================================
-# PODMAN AVAILABILITY CHECK
+# CONTAINER ENGINE AVAILABILITY CHECK
 # ============================================================
+# Prefer podman, fall back to docker
 if podman ps &> /dev/null 2>&1; then
     DOCKER="podman"
     if command -v podman-compose &> /dev/null; then
@@ -61,17 +62,13 @@ if podman ps &> /dev/null 2>&1; then
     else
         DOCKER_COMPOSE="docker-compose --env-file env"
     fi
-elif sudo podman ps &> /dev/null 2>&1; then
-    DOCKER="sudo podman"
-    if command -v podman-compose &> /dev/null; then
-        DOCKER_COMPOSE="sudo podman-compose --env-file env"
-    else
-        DOCKER_COMPOSE="sudo docker-compose --env-file env"
-    fi
+elif /usr/local/bin/docker ps &> /dev/null 2>&1; then
+    DOCKER="/usr/local/bin/docker"
+    DOCKER_COMPOSE="/usr/local/bin/docker-compose --env-file env"
 else
-    echo -e "${RED}Error: Podman is not accessible${NC}"
+    echo -e "${RED}Error: No container engine found${NC}"
     echo ""
-    echo "Podman is required. Install with: ./setup.sh"
+    echo "Install podman or docker to continue."
     echo ""
     exit 1
 fi

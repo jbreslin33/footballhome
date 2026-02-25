@@ -61,13 +61,14 @@ ON CONFLICT (id) DO NOTHING;
 -- CSL 2025/2026 Divisions (season_id=6, conference_id=27)
 -- ==================================================
 INSERT INTO divisions (id, season_id, conference_id, name, source_system_id, sort_order) VALUES
-(24, 6, 27, 'Division 1', 3, 1),
-(25, 6, 27, 'Division 1 Reserve', 3, 2),
-(26, 6, 27, 'Division 2', 3, 3),
-(27, 6, 27, 'Division 2 Reserve', 3, 4),
-(28, 6, 27, 'Division 3', 3, 5),
-(29, 6, 27, 'Division 4', 3, 6),
-(30, 6, 27, 'Over-40 Division', 3, 7);
+(54, 6, 27, 'Division 1', 3, 1),
+(55, 6, 27, 'Division 1 Reserve', 3, 2),
+(56, 6, 27, 'Division 2', 3, 3),
+(57, 6, 27, 'Division 2 Reserve', 3, 4),
+(58, 6, 27, 'Division 3', 3, 5),
+(59, 6, 27, 'Division 4', 3, 6),
+(60, 6, 27, 'Over-40 Division', 3, 7),
+(65, 6, 27, 'Spring Division', 3, 8);
 
 -- ==================================================
 -- CSL 2022/2023 Divisions (season_id=7, conference_id=28)
@@ -114,10 +115,10 @@ INSERT INTO divisions (id, season_id, conference_id, name, source_system_id, sor
 -- Lancaster Conference (conference_id=26)
 -- ==================================================
 INSERT INTO divisions (id, season_id, conference_id, name, external_id, source_system_id, sort_order) VALUES
-(54, 5, 24, 'Philadelphia Liga 1', '9090889', 2, 1),
-(55, 5, 24, 'Philadelphia Liga 2', '9096430', 2, 2),
-(56, 5, 25, 'Boston Liga 1', '9090891', 2, 3),
-(57, 5, 26, 'Lancaster Liga 1', '9090893', 2, 4);
+(61, 5, 24, 'Philadelphia Liga 1', '9090889', 2, 1),
+(62, 5, 24, 'Philadelphia Liga 2', '9096430', 2, 2),
+(63, 5, 25, 'Boston Liga 1', '9090891', 2, 3),
+(64, 5, 26, 'Lancaster Liga 1', '9090893', 2, 4);
 
 -- Update sequence
 SELECT setval('divisions_id_seq', (SELECT MAX(id) FROM divisions));

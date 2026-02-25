@@ -250,6 +250,87 @@ std::string Team::getTeamRoster(const std::string& team_id) {
     return json.str();
 }
 
+std::string Team::getDivisionStandings(const std::string& team_id) {
+    std::ostringstream json;
+    json << "{";
+    
+    try {
+        // First get the division info for this team
+        std::string div_sql = 
+            "SELECT t.division_id, d.name as division_name, "
+            "       c.name as conference_name, l.name as league_name "
+            "FROM teams t "
+            "JOIN divisions d ON t.division_id = d.id "
+            "JOIN conferences c ON d.conference_id = c.id "
+            "JOIN leagues l ON c.league_id = l.id "
+            "WHERE t.id = $1";
+        
+        pqxx::result div_result = executeQuery(div_sql, {team_id});
+        
+        if (div_result.empty()) {
+            json << "\"division_name\":\"Unknown\",\"standings\":[]";
+            json << "}";
+            return json.str();
+        }
+        
+        std::string division_id = div_result[0]["division_id"].as<std::string>();
+        std::string division_name = div_result[0]["division_name"].is_null() ? "Unknown" : div_result[0]["division_name"].as<std::string>();
+        std::string conference_name = div_result[0]["conference_name"].is_null() ? "" : div_result[0]["conference_name"].as<std::string>();
+        std::string league_name = div_result[0]["league_name"].is_null() ? "" : div_result[0]["league_name"].as<std::string>();
+        
+        json << "\"division_name\":\"" << escapeJSON(division_name) << "\",";
+        json << "\"conference_name\":\"" << escapeJSON(conference_name) << "\",";
+        json << "\"league_name\":\"" << escapeJSON(league_name) << "\",";
+        json << "\"team_id\":\"" << team_id << "\",";
+        json << "\"standings\":[";
+        
+        // Get standings for all teams in the same division
+        std::string standings_sql = 
+            "SELECT s.position, t.id as team_id, t.name as team_name, t.logo_url, "
+            "       s.played, s.wins, s.draws, s.losses, "
+            "       s.goals_for, s.goals_against, s.goal_diff, s.points "
+            "FROM standings s "
+            "JOIN teams t ON s.team_id = t.id "
+            "WHERE t.division_id = $1 "
+            "ORDER BY s.points DESC, s.goal_diff DESC, s.goals_for DESC, t.name";
+        
+        pqxx::result standings_result = executeQuery(standings_sql, {division_id});
+        
+        bool first = true;
+        for (const auto& row : standings_result) {
+            if (!first) json << ",";
+            
+            std::string logo_url = row["logo_url"].is_null() ? "" : escapeJSON(row["logo_url"].as<std::string>());
+            
+            json << "{";
+            json << "\"position\":" << (row["position"].is_null() ? 0 : row["position"].as<int>()) << ",";
+            json << "\"team_id\":\"" << row["team_id"].as<std::string>() << "\",";
+            json << "\"team_name\":\"" << escapeJSON(row["team_name"].as<std::string>()) << "\",";
+            json << "\"logo_url\":\"" << logo_url << "\",";
+            json << "\"played\":" << (row["played"].is_null() ? 0 : row["played"].as<int>()) << ",";
+            json << "\"wins\":" << (row["wins"].is_null() ? 0 : row["wins"].as<int>()) << ",";
+            json << "\"draws\":" << (row["draws"].is_null() ? 0 : row["draws"].as<int>()) << ",";
+            json << "\"losses\":" << (row["losses"].is_null() ? 0 : row["losses"].as<int>()) << ",";
+            json << "\"goals_for\":" << (row["goals_for"].is_null() ? 0 : row["goals_for"].as<int>()) << ",";
+            json << "\"goals_against\":" << (row["goals_against"].is_null() ? 0 : row["goals_against"].as<int>()) << ",";
+            json << "\"goal_diff\":" << (row["goal_diff"].is_null() ? 0 : row["goal_diff"].as<int>()) << ",";
+            json << "\"points\":" << (row["points"].is_null() ? 0 : row["points"].as<int>());
+            json << "}";
+            
+            first = false;
+        }
+        
+        json << "]";
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ getDivisionStandings error: " << e.what() << std::endl;
+        json << "\"division_name\":\"Error\",\"standings\":[]";
+    }
+    
+    json << "}";
+    return json.str();
+}
+
 std::string Team::getRosterStatuses() {
     std::ostringstream json;
     json << "[";

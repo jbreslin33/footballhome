@@ -1505,3 +1505,304 @@ a, button, [role="button"], input[type="submit"], input[type="button"] {
     display: none;
   }
 }
+
+/* =====================================================
+   TEAM PAGE - TABS
+   ===================================================== */
+
+.team-page-header {
+    gap: var(--space-3);
+}
+
+.team-page-header h1 {
+    flex: 1;
+    margin: 0;
+}
+
+.team-tabs {
+    display: flex;
+    background: white;
+    border-bottom: 2px solid var(--gray-200);
+    padding: 0 var(--space-4);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.team-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.team-tab {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-3) var(--space-4);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: var(--text-base);
+    font-weight: 500;
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    min-height: 44px;
+}
+
+.team-tab:hover {
+    color: var(--gray-900);
+    background: var(--gray-50);
+}
+
+.team-tab.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    font-weight: 600;
+}
+
+.team-tab-content {
+    max-width: 800px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.tab-panel {
+    padding: var(--space-4);
+}
+
+/* =====================================================
+   TEAM PAGE - ROSTER CARDS
+   ===================================================== */
+
+.roster-section {
+    margin-bottom: var(--space-6);
+}
+
+.roster-section-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 2px solid var(--gray-200);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.roster-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    background: white;
+    border-radius: var(--radius);
+    margin-bottom: var(--space-2);
+    border: 1px solid var(--gray-200);
+    transition: background 0.15s ease;
+}
+
+.roster-card:hover {
+    background: var(--gray-50);
+}
+
+.roster-card-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+}
+
+.roster-jersey {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--primary-color);
+    min-width: 36px;
+    text-align: center;
+}
+
+.roster-card-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.roster-name {
+    font-weight: 500;
+    color: var(--gray-900);
+    font-size: var(--text-base);
+}
+
+.roster-detail {
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+}
+
+.roster-card-right {
+    display: flex;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+
+.roster-position {
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+}
+
+/* =====================================================
+   TEAM PAGE - STANDINGS TABLE
+   ===================================================== */
+
+.standings-wrapper {
+    background: white;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--gray-200);
+}
+
+.standings-header-info {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.standings-header-info h3 {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 0;
+}
+
+.standings-header-info .text-muted {
+    font-size: var(--text-sm);
+    color: var(--gray-500);
+}
+
+.standings-table-wrapper {
+    overflow-x: auto;
+}
+
+.standings-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+}
+
+.standings-table thead {
+    background: var(--gray-100);
+}
+
+.standings-table th {
+    padding: var(--space-2) var(--space-3);
+    text-align: center;
+    font-weight: 600;
+    color: var(--gray-600);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--gray-300);
+}
+
+.standings-table th.standings-team {
+    text-align: left;
+}
+
+.standings-table td {
+    padding: var(--space-2) var(--space-3);
+    text-align: center;
+    border-bottom: 1px solid var(--gray-100);
+    color: var(--gray-700);
+}
+
+.standings-table td.standings-team {
+    text-align: left;
+    font-weight: 500;
+    color: var(--gray-900);
+}
+
+.standings-table td.standings-pos {
+    font-weight: 600;
+    color: var(--gray-500);
+}
+
+.standings-table td.standings-pts {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.standings-table tbody tr:hover {
+    background: var(--gray-50);
+}
+
+.standings-table .standings-highlight {
+    background: rgba(37, 99, 235, 0.06);
+}
+
+.standings-table .standings-highlight td {
+    font-weight: 600;
+}
+
+.standings-table .standings-highlight:hover {
+    background: rgba(37, 99, 235, 0.1);
+}
+
+/* =====================================================
+   TEAM PAGE - MATCH SCORE
+   ===================================================== */
+
+.match-score {
+    text-align: center;
+    margin: var(--space-2) 0;
+}
+
+.match-score .score {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--gray-900);
+}
+
+.match-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
+    padding: var(--space-3);
+    background: var(--gray-50);
+    border-radius: var(--radius);
+}
+
+.match-card-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+.match-card-actions .btn {
+    flex: 1;
+    justify-content: center;
+}
+
+/* Mobile adjustments for team page */
+@media (max-width: 640px) {
+    .team-tab-content {
+        padding: 0;
+    }
+    
+    .tab-panel {
+        padding: var(--space-3);
+    }
+    
+    .hide-mobile {
+        display: none;
+    }
+    
+    .standings-table th,
+    .standings-table td {
+        padding: var(--space-1) var(--space-2);
+    }
+    
+    .match-card-actions .btn {
+        font-size: var(--text-sm);
+        padding: 8px 12px;
+    }
+}

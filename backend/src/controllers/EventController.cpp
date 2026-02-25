@@ -1061,10 +1061,11 @@ Response EventController::handleDeleteEvent(const Request& request) {
 
 std::string EventController::extractTeamIdFromPath(const std::string& path) {
     // Match /api/events/team/:teamId, /api/matches/team/:teamId, and /api/practices/team/:teamId
-    std::regex uuid_regex(R"(/api/(events|matches|practices)/team/([a-f0-9-]{36}))");
+    // Support both UUID and numeric team IDs
+    std::regex id_regex(R"(/api/(events|matches|practices)/team/([a-f0-9-]{36}|\d+))");
     std::smatch match;
     
-    if (std::regex_search(path, match, uuid_regex)) {
+    if (std::regex_search(path, match, id_regex)) {
         return match[2].str();  // Return second capture group (team ID)
     }
     
@@ -1073,10 +1074,11 @@ std::string EventController::extractTeamIdFromPath(const std::string& path) {
 
 std::string EventController::extractEventIdFromPath(const std::string& path) {
     // Extract event ID from paths like /api/events/:eventId
-    std::regex uuid_regex(R"(/api/events/([a-f0-9-]{36}))");
+    // Support both UUID and numeric IDs
+    std::regex id_regex(R"(/api/events/([a-f0-9-]{36}|\d+))");
     std::smatch match;
     
-    if (std::regex_search(path, match, uuid_regex)) {
+    if (std::regex_search(path, match, id_regex)) {
         return match[1].str();
     }
     
@@ -1085,10 +1087,11 @@ std::string EventController::extractEventIdFromPath(const std::string& path) {
 
 std::string EventController::extractMatchIdFromPath(const std::string& path) {
     // Extract match ID from paths like /api/matches/:matchId/...
-    std::regex uuid_regex(R"(/api/matches/([a-f0-9-]{36}))");
+    // Support both UUID and numeric IDs
+    std::regex id_regex(R"(/api/matches/([a-f0-9-]{36}|\d+))");
     std::smatch match;
     
-    if (std::regex_search(path, match, uuid_regex)) {
+    if (std::regex_search(path, match, id_regex)) {
         return match[1].str();
     }
     

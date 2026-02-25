@@ -15,6 +15,15 @@ while [ ! -f "$PROJECT_ROOT/Makefile" ] && [ "$PROJECT_ROOT" != "/" ]; do
 done
 cd "$PROJECT_ROOT"
 
+# Auto-detect container engine
+if command -v podman-compose &> /dev/null; then
+    DB_EXEC="podman exec -i footballhome_db"
+elif command -v docker-compose &> /dev/null; then
+    DB_EXEC="docker-compose --env-file env exec -T db"
+else
+    echo "Error: No container compose tool found"; exit 1
+fi
+
 echo "📥 Loading CASA SQL to database..."
 
 # Load available files:
@@ -31,7 +40,7 @@ echo "📥 Loading CASA SQL to database..."
 for file in "$SQL_DIR"/100.* "$SQL_DIR"/101.* "$SQL_DIR"/102.* "$SQL_DIR"/103.* "$SQL_DIR"/104.* "$SQL_DIR"/105.* "$SQL_DIR"/106.* "$SQL_DIR"/107.* "$SQL_DIR"/900.*; do
     if [ -f "$file" ]; then
         echo "  Loading: $(basename "$file")"
-        podman exec -i footballhome_db psql -U footballhome_user -d footballhome < "$file"
+        $DB_EXEC psql -U footballhome_user -d footballhome < "$file"
     fi
 done
 
