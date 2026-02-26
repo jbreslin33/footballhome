@@ -426,6 +426,9 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
 
   /**
    * Parse player rosters from team detail pages
+   * 
+   * NEW: No longer assigns hardcoded player IDs. Instead stores
+   * firstName, lastName, teamName, teamExternalId for name-based SQL generation.
    */
   parseTeamRosters() {
     const htmlDir = path.join(__dirname, '../../../../../scraped-html/csl');
@@ -436,8 +439,6 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     );
     
     const playersMap = new Map(); // Deduplicate by full name
-    let playerId = this.getPlayerIdBase();
-    const createdTeams = [];
     
     for (const file of files) {
       // Extract team external_id from filename (e.g., "114828-7c60e4e3.html" -> "114828")
@@ -484,22 +485,20 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
           
           // Deduplicate: one player can appear on multiple team pages
           const key = fullName.toLowerCase();
-          let currentPlayerId;
           
           if (!playersMap.has(key)) {
-            currentPlayerId = playerId++;
             playersMap.set(key, { 
               firstName, 
               lastName,
-              playerId: currentPlayerId
+              teamName: team.name,
+              teamExternalId: teamExternalId
             });
-          } else {
-            currentPlayerId = playersMap.get(key).playerId;
           }
           
-          // Add roster entry (player-team relationship) using team NAME not external_id
+          // Add roster entry (player-team relationship) with name data for lookup
           this.rosters.push({
-            playerId: currentPlayerId,
+            firstName: firstName,
+            lastName: lastName,
             teamName: team.name,
             jerseyNumber: jerseyNumber
           });
@@ -507,12 +506,8 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
       }
     }
     
-    // Convert to array
+    // Convert to array (player info with team context for player_sources)
     this.players = Array.from(playersMap.values());
-    
-    if (createdTeams.length > 0) {
-      console.log(`   ℹ️  Created ${createdTeams.length} placeholder teams from roster files (not in current standings)`);
-    }
   }
 
   /**

@@ -332,6 +332,9 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
   /**
    * Parse team rosters from cached XLSX files (downloaded from Google Sheets)
    * Populates this.players and this.rosters arrays for SQL generation
+   * 
+   * NEW: No longer assigns hardcoded player IDs. Instead stores
+   * firstName, lastName, teamName for name-based SQL generation.
    */
   async parseTeamRosters() {
     const CasaRosterScraper = require('../../../../scrapers/CasaRosterScraper');
@@ -346,27 +349,32 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
       return;
     }
 
-    // Assign sequential player IDs starting from playerIdBase
-    let playerId = this.getPlayerIdBase();
+    // Track unique players by name to avoid duplicates within this league
+    const uniquePlayers = new Map();
 
     for (const rp of rosterPlayers) {
-      this.players.push({
-        playerId,
-        firstName: rp.firstName,
-        lastName: rp.lastName,
-        dateOfBirth: rp.dateOfBirth || null
-      });
+      const key = `${rp.firstName} ${rp.lastName}`.toLowerCase();
+      
+      if (!uniquePlayers.has(key)) {
+        uniquePlayers.set(key, {
+          firstName: rp.firstName,
+          lastName: rp.lastName,
+          dateOfBirth: rp.dateOfBirth || null,
+          teamName: rp.teamName,
+          teamExternalId: ''
+        });
+      }
 
       this.rosters.push({
-        playerId,
+        firstName: rp.firstName,
+        lastName: rp.lastName,
         teamName: rp.teamName,
         jerseyNumber: rp.jerseyNumber || null
       });
-
-      playerId++;
     }
 
-    console.log(`   ✅ Loaded ${this.players.length} players across ${Object.keys(teamSummaries).length} teams`);
+    this.players = Array.from(uniquePlayers.values());
+    console.log(`   ✅ Loaded ${this.players.length} unique players across ${Object.keys(teamSummaries).length} teams`);
   }
 
   /**

@@ -310,8 +310,25 @@ ON CONFLICT (team_id) DO UPDATE SET
   }
 
   /**
+   * Slugify a string for use as an external_id component
+   */
+  slugify(str) {
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')  // Remove diacritics
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  /**
    * Write players SQL (common for all leagues)
    * Generates SQL file 105-players-{league}.sql
+   * 
+   * NEW: Uses auto-generated IDs with name-based conflict resolution.
+   * - persons: ON CONFLICT (first_name, last_name) DO NOTHING
+   * - players: ON CONFLICT (person_id) DO NOTHING (one player per person)
+   * - player_sources: tracks which source system each player came from
    */
   writePlayersSql() {
     const fs = require('fs');
@@ -326,25 +343,40 @@ ON CONFLICT (team_id) DO UPDATE SET
 -- Players - ${this.leagueName}
 -- Player roster data from team pages
 -- Total Records: ${this.players.length}
+-- 
+-- Architecture: Auto-generated IDs, name-based deduplication
+-- Same name = same person across all sources (curation overrides via name change)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
 
-    let playerId = this.getPlayerIdBase();
     for (const player of this.players) {
       const firstName = player.firstName || '';
       const lastName = player.lastName || '';
       const birthDate = player.dateOfBirth ? `'${player.dateOfBirth}'` : 'NULL';
       
-      sql += `INSERT INTO persons (id, first_name, last_name, birth_date) 
-VALUES (${playerId}, '${this.escapeSql(firstName)}', '${this.escapeSql(lastName)}', ${birthDate}) 
-ON CONFLICT (id) DO NOTHING;\n`;
+      // 1. Insert person (auto-gen ID, skip if name already exists)
+      sql += `INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('${this.escapeSql(firstName)}', '${this.escapeSql(lastName)}', ${birthDate}) 
+ON CONFLICT (first_name, last_name) DO NOTHING;\n`;
       
-      sql += `INSERT INTO players (id, person_id, source_system_id) 
-VALUES (${playerId}, ${playerId}, ${this.sourceSystemId}) 
-ON CONFLICT (id) DO NOTHING;\n\n`;
+      // 2. Insert player (auto-gen ID, one per person, skip if person already has a player record)
+      sql += `INSERT INTO players (person_id, source_system_id) 
+SELECT id, ${this.sourceSystemId} FROM persons 
+WHERE first_name = '${this.escapeSql(firstName)}' AND last_name = '${this.escapeSql(lastName)}' 
+ON CONFLICT (person_id) DO NOTHING;\n`;
       
-      playerId++;
+      // 3. Insert player_source (track this source system observation)
+      const teamName = player.teamName || '';
+      const externalId = this.slugify(teamName + '-' + firstName + '-' + lastName);
+      const teamExternalId = player.teamExternalId || '';
+      
+      sql += `INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, ${this.sourceSystemId}, '${this.escapeSql(externalId)}', ${teamExternalId ? `'${this.escapeSql(teamExternalId)}'` : 'NULL'}
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = '${this.escapeSql(firstName)}' AND per.last_name = '${this.escapeSql(lastName)}' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;\n\n`;
     }
 
     const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `105.${this.leagueId}-players-${this.getLeagueSlug()}.sql`);
@@ -361,6 +393,9 @@ ON CONFLICT (id) DO NOTHING;\n\n`;
 
   /**
    * Write rosters SQL (player-team relationships)
+   * 
+   * NEW: Looks up player by person name instead of hardcoded ID.
+   * Players are matched via persons(first_name, last_name) → players(person_id).
    */
   writeRostersSql() {
     const fs = require('fs');
@@ -375,22 +410,24 @@ ON CONFLICT (id) DO NOTHING;\n\n`;
 -- Rosters - ${this.leagueName}
 -- Player-team relationships from team roster pages
 -- Total Records: ${this.rosters.length}
+-- 
+-- Architecture: Players looked up by name (no hardcoded IDs)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
 
     for (const roster of this.rosters) {
-      const { playerId, teamName, jerseyNumber } = roster;
+      const { firstName, lastName, teamName, jerseyNumber } = roster;
       const jerseyNumSql = jerseyNumber ? `'${jerseyNumber}'` : 'NULL';
       
-      // Look up team by name instead of external_id (more reliable for rosters)
+      // Look up team by name and player by person name
       sql += `INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-VALUES (
-  (SELECT id FROM teams WHERE name = '${this.escapeSql(teamName)}' AND source_system_id = ${this.sourceSystemId} LIMIT 1),
-  ${playerId},
-  ${jerseyNumSql},
-  NOW()
-);\n\n`;
+SELECT t.id, pl.id, ${jerseyNumSql}, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = '${this.escapeSql(teamName)}' AND t.source_system_id = ${this.sourceSystemId}
+  AND per.first_name = '${this.escapeSql(firstName)}' AND per.last_name = '${this.escapeSql(lastName)}'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;\n\n`;
     }
 
     const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `107.${this.leagueId}-rosters-${this.getLeagueSlug()}.sql`);
@@ -550,12 +587,15 @@ VALUES (
 
     // Add players
     for (const p of this.players) {
-      // Find which team this player is on via rosters
-      const rosterEntry = this.rosters.find(r => r.playerId === p.playerId);
+      // Find which team this player is on via rosters (match by name since no hardcoded IDs)
+      const playerKey = `${p.firstName} ${p.lastName}`.toLowerCase();
+      const rosterEntry = this.rosters.find(r => 
+        `${r.firstName} ${r.lastName}`.toLowerCase() === playerKey
+      );
       snapshot.addPlayer({
         firstName: p.firstName || '',
         lastName: p.lastName || '',
-        teamName: rosterEntry ? rosterEntry.teamName : '',
+        teamName: p.teamName || (rosterEntry ? rosterEntry.teamName : ''),
         divisionName: '', // Could be resolved from team, but not critical
         jerseyNumber: rosterEntry ? rosterEntry.jerseyNumber : null,
         position: p.position || null

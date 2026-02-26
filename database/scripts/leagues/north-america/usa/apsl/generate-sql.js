@@ -209,15 +209,16 @@ class ApslSqlGenerator extends BaseGenerator {
 
   /**
    * Parse team rosters from cached HTML files
+   * 
+   * NEW: No longer assigns hardcoded player IDs. Instead stores
+   * firstName, lastName, teamName, teamExternalId for name-based SQL generation.
    */
   parseTeamRosters() {
     const htmlDir = path.join(__dirname, '../../../../../scraped-html/apsl');
     const files = fs.readdirSync(htmlDir);
     
-    // Track unique players by name to avoid duplicates
+    // Track unique players by name to avoid duplicates within this league
     const uniquePlayers = new Map();
-    let playerId = this.getPlayerIdBase();
-    const createdTeams = [];
     
     // Collect roster files, preferring new format (apsl-team-*) over old format (NNNNN-*)
     const rosterFiles = new Map(); // external_id -> filename
@@ -277,37 +278,31 @@ class ApslSqlGenerator extends BaseGenerator {
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
         
-        // Use full name as key to avoid duplicates
+        // Use full name as key to avoid duplicates within this league
         const key = fullName.toLowerCase();
-        let currentPlayerId;
         
         if (!uniquePlayers.has(key)) {
-          currentPlayerId = playerId++;
           uniquePlayers.set(key, {
             firstName: firstName,
             lastName: lastName,
             fullName: fullName,
-            playerId: currentPlayerId
+            teamName: team.name,
+            teamExternalId: teamExternalId
           });
-        } else {
-          currentPlayerId = uniquePlayers.get(key).playerId;
         }
         
-        // Add roster entry (player-team relationship) using team NAME not external_id
+        // Add roster entry (player-team relationship) with name data for lookup
         this.rosters.push({
-          playerId: currentPlayerId,
+          firstName: firstName,
+          lastName: lastName,
           teamName: team.name,
           jerseyNumber: jerseyNumber
         });
       }
     }
     
-    // Convert to array (just the player info, not roster data)
+    // Convert to array (player info with team context for player_sources)
     this.players = Array.from(uniquePlayers.values());
-    
-    if (createdTeams.length > 0) {
-      console.log(`   ℹ️  Created ${createdTeams.length} placeholder teams from roster files (not in current standings)`);
-    }
   }
 
   /**

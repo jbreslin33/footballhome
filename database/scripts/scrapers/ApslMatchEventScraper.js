@@ -364,21 +364,27 @@ class ApslMatchEventScraper {
     }
     
     try {
-      // Create person
-      const personResult = await this.client.query(`
+      // Create or find person (UNIQUE on first_name, last_name)
+      await this.client.query(`
         INSERT INTO persons (first_name, last_name)
         VALUES ($1, $2)
-        RETURNING id
+        ON CONFLICT (first_name, last_name) DO NOTHING
       `, [firstName, lastName]);
-      const personId = personResult.rows[0].id;
+      const personLookup = await this.client.query(`
+        SELECT id FROM persons WHERE first_name = $1 AND last_name = $2
+      `, [firstName, lastName]);
+      const personId = personLookup.rows[0].id;
       
-      // Create player linked to person (source_system_id = 1 for APSL)
-      const playerResult = await this.client.query(`
+      // Create player linked to person (one player per person)
+      await this.client.query(`
         INSERT INTO players (person_id, source_system_id)
         VALUES ($1, 1)
-        RETURNING id
+        ON CONFLICT (person_id) DO NOTHING
       `, [personId]);
-      const playerId = playerResult.rows[0].id;
+      const playerLookup = await this.client.query(`
+        SELECT id FROM players WHERE person_id = $1
+      `, [personId]);
+      const playerId = playerLookup.rows[0].id;
       
       // Add to team roster (no left_at — we know they played for this team
       // but don't know departure date just because they're off the current roster page)

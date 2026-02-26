@@ -2,7 +2,7 @@
   "league": "casa",
   "season": "2025/2026",
   "sourceSystemId": 2,
-  "scrapedAt": "2026-02-24T23:29:15.722Z",
+  "scrapedAt": "2026-02-25T21:56:30.473Z",
   "teams": [
     {
       "name": "Adé United FC",
@@ -5286,15 +5286,6 @@
       "_key": "::Strictly Nos Fc::Morais::Carlos"
     },
     {
-      "firstName": "Gracian",
-      "lastName": "Moreira",
-      "teamName": "Strictly Nos Fc",
-      "divisionName": "",
-      "jerseyNumber": null,
-      "position": null,
-      "_key": "::Strictly Nos Fc::Moreira::Gracian"
-    },
-    {
       "firstName": "Dany",
       "lastName": "Pina",
       "teamName": "Strictly Nos Fc",
@@ -5644,15 +5635,6 @@
       "jerseyNumber": null,
       "position": null,
       "_key": "::Alloy Soccer Club Reserves::Youssef::Shenoda"
-    },
-    {
-      "firstName": "Robby",
-      "lastName": "Waller",
-      "teamName": "Alloy Soccer Club Reserves",
-      "divisionName": "",
-      "jerseyNumber": null,
-      "position": null,
-      "_key": "::Alloy Soccer Club Reserves::Waller::Robby"
     },
     {
       "firstName": "Harein",

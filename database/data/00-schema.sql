@@ -473,10 +473,10 @@ CREATE TABLE persons (
     last_name VARCHAR(100) NOT NULL,
     birth_date DATE,  -- Required for age verification/safety
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(first_name, last_name)  -- Same name = same person (curation overrides via name change)
 );
 
-CREATE INDEX idx_persons_name ON persons(first_name, last_name);
 CREATE INDEX idx_persons_birth_date ON persons(birth_date);
 
 COMMENT ON TABLE persons IS 'Core identity for all people in the system (players, coaches, admins, etc.)';
@@ -825,17 +825,34 @@ CREATE TABLE players (
     height_cm INTEGER,                      -- Height in centimeters
     nationality VARCHAR(3),                 -- ISO 3166-1 alpha-3 (USA, BRA, MEX)
     photo_url TEXT,
-    source_system_id INTEGER REFERENCES source_systems(id),
-    external_id VARCHAR(100),
+    source_system_id INTEGER REFERENCES source_systems(id),  -- Legacy: primary source
+    external_id VARCHAR(100),               -- Legacy: primary external ID
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(source_system_id, external_id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_players_person ON players(person_id);
 
-COMMENT ON TABLE players IS 'Sports role - links persons to soccer player data. Person may or may not have user account.';
+COMMENT ON TABLE players IS 'Sports role - links persons to soccer player data. One player per person across all sources.';
 COMMENT ON COLUMN players.person_id IS 'FK to persons table - name and birth_date stored in persons';
+
+-- Player sources: tracks which source systems a player was seen in
+-- Replaces the old UNIQUE(source_system_id, external_id) on players
+-- A player from APSL and CSL gets TWO rows here (one per source)
+CREATE TABLE player_sources (
+    id SERIAL PRIMARY KEY,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    source_system_id INTEGER NOT NULL REFERENCES source_systems(id),
+    external_id VARCHAR(255) NOT NULL,       -- Constructed: team-slug-player-name
+    team_external_id VARCHAR(100),           -- Source system's team identifier
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(source_system_id, external_id)
+);
+
+CREATE INDEX idx_player_sources_player ON player_sources(player_id);
+CREATE INDEX idx_player_sources_source ON player_sources(source_system_id);
+
+COMMENT ON TABLE player_sources IS 'Multi-source tracking for players. One row per source system where a player was seen.';
 
 -- Player positions (player profile - multiple positions a player CAN play)
 CREATE TABLE player_positions (
