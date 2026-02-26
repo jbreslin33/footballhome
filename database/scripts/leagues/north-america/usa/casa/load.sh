@@ -44,4 +44,16 @@ for file in "$SQL_DIR"/100.* "$SQL_DIR"/101.* "$SQL_DIR"/102.* "$SQL_DIR"/103.* 
     fi
 done
 
+# Post-load: assign coaches to CASA teams (teams must exist before this runs)
+echo "  Assigning coaches to CASA teams..."
+$DB_EXEC psql -U footballhome_user -d footballhome -c "
+INSERT INTO team_coaches (team_id, coach_id, coach_role_id)
+SELECT t.id, c.id, cr.id
+FROM teams t
+JOIN coaches c ON c.person_id = 1
+JOIN coach_roles cr ON cr.name = 'head'
+WHERE t.name IN ('Lighthouse Boys Club', 'Lighthouse Old Timers Club')
+ON CONFLICT DO NOTHING;
+"
+
 echo "✓ CASA loaded"
