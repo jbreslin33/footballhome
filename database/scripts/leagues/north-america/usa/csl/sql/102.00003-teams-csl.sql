@@ -309,7 +309,7 @@ WHERE d.name = 'Division 2'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'SC Eintracht', '6846', 10026, d.id, 3
+SELECT 'SC Eintracht', '6846', 162, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 2'
@@ -413,7 +413,7 @@ WHERE d.name = 'Division 2 Reserve'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'SC Eintracht II', '6848', 10026, d.id, 3
+SELECT 'SC Eintracht II', '6848', 162, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 2 Reserve'
@@ -765,7 +765,7 @@ WHERE d.name = 'Over-40 Division'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'SC Eintracht Legends', '6847', 10026, d.id, 3
+SELECT 'SC Eintracht Legends', '6847', 162, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Over-40 Division'
@@ -781,7 +781,7 @@ WHERE d.name = 'Over-40 Division'
   AND s.league_id = 4
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Doxa SC Legends', '7883', 118, d.id, 3
+SELECT 'Doxa SC Legends', '7883', 117, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Over-40 Division'

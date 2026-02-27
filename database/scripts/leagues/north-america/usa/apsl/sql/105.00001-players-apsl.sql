@@ -1,7 +1,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Players - APSL
 -- Player roster data from team pages
--- Total Records: 1570
+-- Total Records: 1573
 -- 
 -- Architecture: Auto-generated IDs, name-based deduplication
 -- Same name = same person across all sources (curation overrides via name change)
@@ -1349,496 +1349,6 @@ SELECT pl.id, 1, 'christos-fc-alexander-wardle', '114812'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Alexander' AND per.last_name = 'Wardle' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Adrian', 'Aguilera', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Adrian' AND last_name = 'Aguilera' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-adrian-aguilera', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Adrian' AND per.last_name = 'Aguilera' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Julian', 'Anderson', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Julian' AND last_name = 'Anderson' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-julian-anderson', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Julian' AND per.last_name = 'Anderson' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Balint', 'Barabas', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Balint' AND last_name = 'Barabas' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-balint-barabas', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Balint' AND per.last_name = 'Barabas' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Vasilios', 'Brisnovalis', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Vasilios' AND last_name = 'Brisnovalis' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-vasilios-brisnovalis', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Vasilios' AND per.last_name = 'Brisnovalis' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Robert', 'Cabrera', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Robert' AND last_name = 'Cabrera' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-robert-cabrera', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Robert' AND per.last_name = 'Cabrera' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Murat', 'Edgar Calkap', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Murat' AND last_name = 'Edgar Calkap' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-murat-edgar-calkap', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Murat' AND per.last_name = 'Edgar Calkap' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Daniel', 'Curmi', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Daniel' AND last_name = 'Curmi' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-daniel-curmi', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Daniel' AND per.last_name = 'Curmi' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Duga', 'Dambelly', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Duga' AND last_name = 'Dambelly' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-duga-dambelly', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Duga' AND per.last_name = 'Dambelly' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Khaled', 'Daoud', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Khaled' AND last_name = 'Daoud' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-khaled-daoud', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Khaled' AND per.last_name = 'Daoud' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mohamed', 'Diaw', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Mohamed' AND last_name = 'Diaw' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-mohamed-diaw', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mohamed' AND per.last_name = 'Diaw' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Julio', 'Espinal', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Julio' AND last_name = 'Espinal' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-julio-espinal', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Julio' AND per.last_name = 'Espinal' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jeison', 'Gonzalez Sanchez', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jeison' AND last_name = 'Gonzalez Sanchez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-jeison-gonzalez-sanchez', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jeison' AND per.last_name = 'Gonzalez Sanchez' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('James', 'Greco', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'James' AND last_name = 'Greco' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-james-greco', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'James' AND per.last_name = 'Greco' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Grady', 'Kozak', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Grady' AND last_name = 'Kozak' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-grady-kozak', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Grady' AND per.last_name = 'Kozak' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Antonio', 'Linge', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Antonio' AND last_name = 'Linge' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-antonio-linge', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Antonio' AND per.last_name = 'Linge' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Tyrone', 'Malango', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Tyrone' AND last_name = 'Malango' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-tyrone-malango', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Tyrone' AND per.last_name = 'Malango' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('William', 'Marment', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'William' AND last_name = 'Marment' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-william-marment', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'William' AND per.last_name = 'Marment' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Augustus', 'Manuel Mcgiff', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Augustus' AND last_name = 'Manuel Mcgiff' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-augustus-manuel-mcgiff', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Augustus' AND per.last_name = 'Manuel Mcgiff' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Christopher', 'Morandi', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Christopher' AND last_name = 'Morandi' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-christopher-morandi', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Christopher' AND per.last_name = 'Morandi' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Richard', 'Morel', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Richard' AND last_name = 'Morel' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-richard-morel', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Richard' AND per.last_name = 'Morel' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Peter', 'Myrianthopoulos', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Peter' AND last_name = 'Myrianthopoulos' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-peter-myrianthopoulos', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Peter' AND per.last_name = 'Myrianthopoulos' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Stefen', 'Nikolic', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Stefen' AND last_name = 'Nikolic' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-stefen-nikolic', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Stefen' AND per.last_name = 'Nikolic' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Martin', 'Nikprelaj', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Martin' AND last_name = 'Nikprelaj' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-martin-nikprelaj', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Martin' AND per.last_name = 'Nikprelaj' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sergio', 'Peralta', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Sergio' AND last_name = 'Peralta' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-sergio-peralta', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sergio' AND per.last_name = 'Peralta' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Marco', 'Primavera', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Marco' AND last_name = 'Primavera' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-marco-primavera', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Marco' AND per.last_name = 'Primavera' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Paolo', 'Cerruto Primavera', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Paolo' AND last_name = 'Cerruto Primavera' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-paolo-cerruto-primavera', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Paolo' AND per.last_name = 'Cerruto Primavera' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Chris', 'Riordan', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Chris' AND last_name = 'Riordan' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-chris-riordan', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Chris' AND per.last_name = 'Riordan' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('David', 'Rodriguez', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'David' AND last_name = 'Rodriguez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-david-rodriguez', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'David' AND per.last_name = 'Rodriguez' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ronaldo', 'Rodriguez Jurado', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Ronaldo' AND last_name = 'Rodriguez Jurado' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-ronaldo-rodriguez-jurado', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ronaldo' AND per.last_name = 'Rodriguez Jurado' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Fredy', 'Rosales', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Fredy' AND last_name = 'Rosales' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-fredy-rosales', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Fredy' AND per.last_name = 'Rosales' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Duvan', 'Sanchez', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Duvan' AND last_name = 'Sanchez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-duvan-sanchez', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Duvan' AND per.last_name = 'Sanchez' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Giuliano', 'Santucci', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Giuliano' AND last_name = 'Santucci' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-giuliano-santucci', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Giuliano' AND per.last_name = 'Santucci' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Navruz', 'Shukroev', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Navruz' AND last_name = 'Shukroev' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-navruz-shukroev', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Navruz' AND per.last_name = 'Shukroev' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Milorad', 'Sobot', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Milorad' AND last_name = 'Sobot' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-milorad-sobot', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Milorad' AND per.last_name = 'Sobot' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Michalis', 'Stylianou', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Michalis' AND last_name = 'Stylianou' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'doxa-fcw-michalis-stylianou', '114813'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Michalis' AND per.last_name = 'Stylianou' 
 ON CONFLICT (source_system_id, external_id) DO NOTHING;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
@@ -6168,496 +5678,6 @@ WHERE per.first_name = 'Alton' AND per.last_name = 'West'
 ON CONFLICT (source_system_id, external_id) DO NOTHING;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Dominik', 'Brulinski', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Dominik' AND last_name = 'Brulinski' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-dominik-brulinski', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Dominik' AND per.last_name = 'Brulinski' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mathew', 'Contino', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Mathew' AND last_name = 'Contino' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-mathew-contino', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mathew' AND per.last_name = 'Contino' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Joseph', 'Core', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Joseph' AND last_name = 'Core' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-joseph-core', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Joseph' AND per.last_name = 'Core' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jacob', 'Denison', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jacob' AND last_name = 'Denison' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-jacob-denison', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jacob' AND per.last_name = 'Denison' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jack', 'Doran', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jack' AND last_name = 'Doran' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-jack-doran', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jack' AND per.last_name = 'Doran' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Javiar', 'Edwards', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Javiar' AND last_name = 'Edwards' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-javiar-edwards', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Javiar' AND per.last_name = 'Edwards' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Humbert', 'Ferrer', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Humbert' AND last_name = 'Ferrer' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-humbert-ferrer', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Humbert' AND per.last_name = 'Ferrer' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Spencer', 'Fleurant', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Spencer' AND last_name = 'Fleurant' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-spencer-fleurant', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Spencer' AND per.last_name = 'Fleurant' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jason', 'Gaylord', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jason' AND last_name = 'Gaylord' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-jason-gaylord', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jason' AND per.last_name = 'Gaylord' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Daniel', 'Giorgi', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Daniel' AND last_name = 'Giorgi' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-daniel-giorgi', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Daniel' AND per.last_name = 'Giorgi' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Kevin', 'Harrington', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Kevin' AND last_name = 'Harrington' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-kevin-harrington', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Kevin' AND per.last_name = 'Harrington' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Stephanos', 'Hondrakis', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Stephanos' AND last_name = 'Hondrakis' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-stephanos-hondrakis', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Stephanos' AND per.last_name = 'Hondrakis' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Cris', 'Huacon', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Cris' AND last_name = 'Huacon' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-cris-huacon', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Cris' AND per.last_name = 'Huacon' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Samuka', 'Kenneh', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Samuka' AND last_name = 'Kenneh' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-samuka-kenneh', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Samuka' AND per.last_name = 'Kenneh' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Evan', 'Kim', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Evan' AND last_name = 'Kim' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-evan-kim', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Evan' AND per.last_name = 'Kim' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Brent', 'McKeown', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Brent' AND last_name = 'McKeown' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-brent-mckeown', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Brent' AND per.last_name = 'McKeown' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Enrique', 'Montana III', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Enrique' AND last_name = 'Montana III' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-enrique-montana-iii', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Enrique' AND per.last_name = 'Montana III' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jack', 'Mulhare', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jack' AND last_name = 'Mulhare' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-jack-mulhare', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jack' AND per.last_name = 'Mulhare' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Curtis', 'Oberg', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Curtis' AND last_name = 'Oberg' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-curtis-oberg', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Curtis' AND per.last_name = 'Oberg' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Farouk', 'Osman', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Farouk' AND last_name = 'Osman' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-farouk-osman', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Farouk' AND per.last_name = 'Osman' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Cole', 'Parete', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Cole' AND last_name = 'Parete' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-cole-parete', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Cole' AND per.last_name = 'Parete' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('William', 'Pearce', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'William' AND last_name = 'Pearce' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-william-pearce', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'William' AND per.last_name = 'Pearce' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Akeem', 'Phipps', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Akeem' AND last_name = 'Phipps' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-akeem-phipps', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Akeem' AND per.last_name = 'Phipps' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Layton', 'Purchase', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Layton' AND last_name = 'Purchase' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-layton-purchase', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Layton' AND per.last_name = 'Purchase' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Nabeel', 'Qawasmi', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Nabeel' AND last_name = 'Qawasmi' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-nabeel-qawasmi', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Nabeel' AND per.last_name = 'Qawasmi' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Yannick', 'Rihs', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Yannick' AND last_name = 'Rihs' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-yannick-rihs', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Yannick' AND per.last_name = 'Rihs' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Antonio', 'Rocha', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Antonio' AND last_name = 'Rocha' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-antonio-rocha', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Antonio' AND per.last_name = 'Rocha' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jake', 'Rozhansky', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jake' AND last_name = 'Rozhansky' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-jake-rozhansky', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jake' AND per.last_name = 'Rozhansky' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Yahli', 'Saltsberg', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Yahli' AND last_name = 'Saltsberg' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-yahli-saltsberg', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Yahli' AND per.last_name = 'Saltsberg' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Frank', 'Shkreli', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Frank' AND last_name = 'Shkreli' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-frank-shkreli', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Frank' AND per.last_name = 'Shkreli' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Michael', 'Soboff', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Michael' AND last_name = 'Soboff' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-michael-soboff', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Michael' AND per.last_name = 'Soboff' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Tom', 'Wallenstein', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Tom' AND last_name = 'Wallenstein' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-tom-wallenstein', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Tom' AND per.last_name = 'Wallenstein' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Michael', 'Wampler', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Michael' AND last_name = 'Wampler' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-michael-wampler', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Michael' AND per.last_name = 'Wampler' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Peter', 'Wentzel', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Peter' AND last_name = 'Wentzel' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-peter-wentzel', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Peter' AND per.last_name = 'Wentzel' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Edwin', 'Zuniga Lopez', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Edwin' AND last_name = 'Zuniga Lopez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-athletic-club-edwin-zuniga-lopez', '114830'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Edwin' AND per.last_name = 'Zuniga Lopez' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
 VALUES ('Hermanus', 'Achterkamp', NULL) 
 ON CONFLICT (first_name, last_name) DO NOTHING;
 INSERT INTO players (person_id, source_system_id) 
@@ -7148,482 +6168,6 @@ WHERE per.first_name = 'El' AND per.last_name = 'Mahdi Youssoufi'
 ON CONFLICT (source_system_id, external_id) DO NOTHING;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Pablo', 'Ablanedo Llaneza', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Pablo' AND last_name = 'Ablanedo Llaneza' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-pablo-ablanedo-llaneza', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Pablo' AND per.last_name = 'Ablanedo Llaneza' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jordan', 'Bailon', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jordan' AND last_name = 'Bailon' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-jordan-bailon', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jordan' AND per.last_name = 'Bailon' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Filip', 'Basili', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Filip' AND last_name = 'Basili' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-filip-basili', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Filip' AND per.last_name = 'Basili' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Axel', 'Berglund', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Axel' AND last_name = 'Berglund' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-axel-berglund', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Axel' AND per.last_name = 'Berglund' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Christopher', 'Bermudez', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Christopher' AND last_name = 'Bermudez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-christopher-bermudez', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Christopher' AND per.last_name = 'Bermudez' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Victor', 'Castel', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Victor' AND last_name = 'Castel' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-victor-castel', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Victor' AND per.last_name = 'Castel' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Rikard', 'Cederberg', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Rikard' AND last_name = 'Cederberg' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-rikard-cederberg', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Rikard' AND per.last_name = 'Cederberg' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Nicolas', 'Cifuentes DIaz', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Nicolas' AND last_name = 'Cifuentes DIaz' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-nicolas-cifuentes-diaz', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Nicolas' AND per.last_name = 'Cifuentes DIaz' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sergio', 'Diaz', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Sergio' AND last_name = 'Diaz' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-sergio-diaz', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sergio' AND per.last_name = 'Diaz' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Eric', 'Frimpong', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Eric' AND last_name = 'Frimpong' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-eric-frimpong', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Eric' AND per.last_name = 'Frimpong' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('George', 'Gantalis', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'George' AND last_name = 'Gantalis' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-george-gantalis', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'George' AND per.last_name = 'Gantalis' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Gonzalo', 'Gil de Pareja', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Gonzalo' AND last_name = 'Gil de Pareja' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-gonzalo-gil-de-pareja', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Gonzalo' AND per.last_name = 'Gil de Pareja' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ede', 'Mateo Gramberg', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Ede' AND last_name = 'Mateo Gramberg' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-ede-mateo-gramberg', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ede' AND per.last_name = 'Mateo Gramberg' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Thomas', 'Gray', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Thomas' AND last_name = 'Gray' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-thomas-gray', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Thomas' AND per.last_name = 'Gray' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Antreas', 'Hadjigavriel', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Antreas' AND last_name = 'Hadjigavriel' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-antreas-hadjigavriel', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Antreas' AND per.last_name = 'Hadjigavriel' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Harri', 'Hawkins', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Harri' AND last_name = 'Hawkins' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-harri-hawkins', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Harri' AND per.last_name = 'Hawkins' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Devin', 'Heanue', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Devin' AND last_name = 'Heanue' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-devin-heanue', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Devin' AND per.last_name = 'Heanue' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Christopher', 'Heckenberg', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Christopher' AND last_name = 'Heckenberg' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-christopher-heckenberg', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Christopher' AND per.last_name = 'Heckenberg' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Kevin', 'Hernandez', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Kevin' AND last_name = 'Hernandez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-kevin-hernandez', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Kevin' AND per.last_name = 'Hernandez' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jens', 'Mannhart Hoff', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jens' AND last_name = 'Mannhart Hoff' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-jens-mannhart-hoff', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jens' AND per.last_name = 'Mannhart Hoff' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Joseph', 'Holland', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Joseph' AND last_name = 'Holland' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-joseph-holland', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Joseph' AND per.last_name = 'Holland' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Filip', 'Jauk', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Filip' AND last_name = 'Jauk' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-filip-jauk', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Filip' AND per.last_name = 'Jauk' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Konstantinos', 'Karousis', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Konstantinos' AND last_name = 'Karousis' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-konstantinos-karousis', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Konstantinos' AND per.last_name = 'Karousis' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Benny', 'Lafortune', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Benny' AND last_name = 'Lafortune' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-benny-lafortune', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Benny' AND per.last_name = 'Lafortune' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Joshua', 'Levine', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Joshua' AND last_name = 'Levine' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-joshua-levine', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Joshua' AND per.last_name = 'Levine' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Juan', 'Martinez Moreno', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Juan' AND last_name = 'Martinez Moreno' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-juan-martinez-moreno', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Juan' AND per.last_name = 'Martinez Moreno' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Filip', 'Mirkovic', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Filip' AND last_name = 'Mirkovic' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-filip-mirkovic', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Filip' AND per.last_name = 'Mirkovic' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Christoforos', 'Moulinos', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Christoforos' AND last_name = 'Moulinos' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-christoforos-moulinos', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Christoforos' AND per.last_name = 'Moulinos' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Stephen', 'O’ Connell', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Stephen' AND last_name = 'O’ Connell' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-stephen-o-connell', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Stephen' AND per.last_name = 'O’ Connell' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Alex', 'Palas', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Alex' AND last_name = 'Palas' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-alex-palas', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Alex' AND per.last_name = 'Palas' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sebastian', 'Ruiz', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Sebastian' AND last_name = 'Ruiz' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-sebastian-ruiz', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sebastian' AND per.last_name = 'Ruiz' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Athanasis', 'Shehadeh', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Athanasis' AND last_name = 'Shehadeh' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-athanasis-shehadeh', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Athanasis' AND per.last_name = 'Shehadeh' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('James', 'Thristino', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'James' AND last_name = 'Thristino' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-james-thristino', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'James' AND per.last_name = 'Thristino' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sean', 'Towey', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Sean' AND last_name = 'Towey' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'ny-pancyprian-freedoms-sean-towey', '114832'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sean' AND per.last_name = 'Towey' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
 VALUES ('Osman', 'Barrie', NULL) 
 ON CONFLICT (first_name, last_name) DO NOTHING;
 INSERT INTO players (person_id, source_system_id) 
@@ -8107,7 +6651,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Kennison' AND last_name = 'Akuro' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-kennison-akuro', '114834'
+SELECT pl.id, 1, 'pfa-apsl-kennison-akuro', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Kennison' AND per.last_name = 'Akuro' 
@@ -8121,7 +6665,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Melvin' AND last_name = 'Asanji' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-melvin-asanji', '114834'
+SELECT pl.id, 1, 'pfa-apsl-melvin-asanji', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Melvin' AND per.last_name = 'Asanji' 
@@ -8135,7 +6679,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Brandon' AND last_name = 'Betts' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-brandon-betts', '114834'
+SELECT pl.id, 1, 'pfa-apsl-brandon-betts', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Brandon' AND per.last_name = 'Betts' 
@@ -8149,7 +6693,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Isaac' AND last_name = 'Carvajal' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-isaac-carvajal', '114834'
+SELECT pl.id, 1, 'pfa-apsl-isaac-carvajal', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Isaac' AND per.last_name = 'Carvajal' 
@@ -8163,7 +6707,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Elido' AND last_name = 'Noel Chun Reyes' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-elido-noel-chun-reyes', '114834'
+SELECT pl.id, 1, 'pfa-apsl-elido-noel-chun-reyes', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Elido' AND per.last_name = 'Noel Chun Reyes' 
@@ -8177,7 +6721,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Jenovic' AND last_name = 'Elumbu' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-jenovic-elumbu', '114834'
+SELECT pl.id, 1, 'pfa-apsl-jenovic-elumbu', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Jenovic' AND per.last_name = 'Elumbu' 
@@ -8191,7 +6735,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Anderson' AND last_name = 'Fernandez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-anderson-fernandez', '114834'
+SELECT pl.id, 1, 'pfa-apsl-anderson-fernandez', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Anderson' AND per.last_name = 'Fernandez' 
@@ -8205,7 +6749,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Angello' AND last_name = 'Fernandez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-angello-fernandez', '114834'
+SELECT pl.id, 1, 'pfa-apsl-angello-fernandez', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Angello' AND per.last_name = 'Fernandez' 
@@ -8219,7 +6763,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Terry' AND last_name = 'Fon' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-terry-fon', '114834'
+SELECT pl.id, 1, 'pfa-apsl-terry-fon', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Terry' AND per.last_name = 'Fon' 
@@ -8233,7 +6777,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Eduardo' AND last_name = 'Fuentes' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-eduardo-fuentes', '114834'
+SELECT pl.id, 1, 'pfa-apsl-eduardo-fuentes', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Eduardo' AND per.last_name = 'Fuentes' 
@@ -8247,7 +6791,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Christian' AND last_name = 'Garavito' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-christian-garavito', '114834'
+SELECT pl.id, 1, 'pfa-apsl-christian-garavito', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Christian' AND per.last_name = 'Garavito' 
@@ -8261,7 +6805,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Thaddeus' AND last_name = 'Goddard' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-thaddeus-goddard', '114834'
+SELECT pl.id, 1, 'pfa-apsl-thaddeus-goddard', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Thaddeus' AND per.last_name = 'Goddard' 
@@ -8275,7 +6819,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Alexis' AND last_name = 'Gonzalez Ayala' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-alexis-gonzalez-ayala', '114834'
+SELECT pl.id, 1, 'pfa-apsl-alexis-gonzalez-ayala', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Alexis' AND per.last_name = 'Gonzalez Ayala' 
@@ -8289,7 +6833,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Chayton' AND last_name = 'Kuidlan' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-chayton-kuidlan', '114834'
+SELECT pl.id, 1, 'pfa-apsl-chayton-kuidlan', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Chayton' AND per.last_name = 'Kuidlan' 
@@ -8303,7 +6847,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Tobias' AND last_name = 'Lane' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-tobias-lane', '114834'
+SELECT pl.id, 1, 'pfa-apsl-tobias-lane', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Tobias' AND per.last_name = 'Lane' 
@@ -8317,7 +6861,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Jonathan' AND last_name = 'Lemus Morales' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-jonathan-lemus-morales', '114834'
+SELECT pl.id, 1, 'pfa-apsl-jonathan-lemus-morales', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Jonathan' AND per.last_name = 'Lemus Morales' 
@@ -8331,7 +6875,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Creasy' AND last_name = 'Lopez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-creasy-lopez', '114834'
+SELECT pl.id, 1, 'pfa-apsl-creasy-lopez', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Creasy' AND per.last_name = 'Lopez' 
@@ -8345,7 +6889,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Lutho' AND last_name = 'Mlunguza' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-lutho-mlunguza', '114834'
+SELECT pl.id, 1, 'pfa-apsl-lutho-mlunguza', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Lutho' AND per.last_name = 'Mlunguza' 
@@ -8359,7 +6903,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Toju' AND last_name = 'Okonedo' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-toju-okonedo', '114834'
+SELECT pl.id, 1, 'pfa-apsl-toju-okonedo', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Toju' AND per.last_name = 'Okonedo' 
@@ -8373,7 +6917,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'David' AND last_name = 'Pawlowski' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-david-pawlowski', '114834'
+SELECT pl.id, 1, 'pfa-apsl-david-pawlowski', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'David' AND per.last_name = 'Pawlowski' 
@@ -8387,7 +6931,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Danny' AND last_name = 'Paz' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-danny-paz', '114834'
+SELECT pl.id, 1, 'pfa-apsl-danny-paz', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Danny' AND per.last_name = 'Paz' 
@@ -8401,7 +6945,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Brayan' AND last_name = 'Perez Mendez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-brayan-perez-mendez', '114834'
+SELECT pl.id, 1, 'pfa-apsl-brayan-perez-mendez', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Brayan' AND per.last_name = 'Perez Mendez' 
@@ -8415,7 +6959,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Bronson' AND last_name = 'Shepherd' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-bronson-shepherd', '114834'
+SELECT pl.id, 1, 'pfa-apsl-bronson-shepherd', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Bronson' AND per.last_name = 'Shepherd' 
@@ -8429,7 +6973,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Nicholas' AND last_name = 'Tziamouranis' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-nicholas-tziamouranis', '114834'
+SELECT pl.id, 1, 'pfa-apsl-nicholas-tziamouranis', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Nicholas' AND per.last_name = 'Tziamouranis' 
@@ -8443,7 +6987,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'William' AND last_name = 'Villatoro Velasquez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-william-villatoro-velasquez', '114834'
+SELECT pl.id, 1, 'pfa-apsl-william-villatoro-velasquez', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'William' AND per.last_name = 'Villatoro Velasquez' 
@@ -8457,7 +7001,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Brian' AND last_name = 'Ware' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-brian-ware', '114834'
+SELECT pl.id, 1, 'pfa-apsl-brian-ware', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Brian' AND per.last_name = 'Ware' 
@@ -18026,468 +16570,6 @@ WHERE per.first_name = 'Skylar' AND per.last_name = 'Zugay'
 ON CONFLICT (source_system_id, external_id) DO NOTHING;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Keirol', 'Aaron', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Keirol' AND last_name = 'Aaron' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-keirol-aaron', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Keirol' AND per.last_name = 'Aaron' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Matthais', 'Adamek', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Matthais' AND last_name = 'Adamek' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-matthais-adamek', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Matthais' AND per.last_name = 'Adamek' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Yohance', 'Alexander', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Yohance' AND last_name = 'Alexander' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-yohance-alexander', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Yohance' AND per.last_name = 'Alexander' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Andrea', 'Andreou', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Andrea' AND last_name = 'Andreou' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-andrea-andreou', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Andrea' AND per.last_name = 'Andreou' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Luis', 'Argudo', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Luis' AND last_name = 'Argudo' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-luis-argudo', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Luis' AND per.last_name = 'Argudo' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Theodore', 'Bernhard', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Theodore' AND last_name = 'Bernhard' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-theodore-bernhard', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Theodore' AND per.last_name = 'Bernhard' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Antonio', 'Biggs', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Antonio' AND last_name = 'Biggs' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-antonio-biggs', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Antonio' AND per.last_name = 'Biggs' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mason', 'Chetti', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Mason' AND last_name = 'Chetti' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-mason-chetti', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mason' AND per.last_name = 'Chetti' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jarvis', 'Cleal', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jarvis' AND last_name = 'Cleal' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-jarvis-cleal', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jarvis' AND per.last_name = 'Cleal' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Joel', 'Cunningham', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Joel' AND last_name = 'Cunningham' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-joel-cunningham', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Joel' AND per.last_name = 'Cunningham' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Caleb', 'Danquah', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Caleb' AND last_name = 'Danquah' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-caleb-danquah', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Caleb' AND per.last_name = 'Danquah' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Eric', 'Danquah', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Eric' AND last_name = 'Danquah' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-eric-danquah', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Eric' AND per.last_name = 'Danquah' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sameer', 'Fathazada', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Sameer' AND last_name = 'Fathazada' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-sameer-fathazada', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sameer' AND per.last_name = 'Fathazada' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Leo', 'Folla', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Leo' AND last_name = 'Folla' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-leo-folla', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Leo' AND per.last_name = 'Folla' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jakob', 'Friedman', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jakob' AND last_name = 'Friedman' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-jakob-friedman', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jakob' AND per.last_name = 'Friedman' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sebastian', 'Goicochea', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Sebastian' AND last_name = 'Goicochea' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-sebastian-goicochea', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sebastian' AND per.last_name = 'Goicochea' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Juan', 'Antonio Gomez', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Juan' AND last_name = 'Antonio Gomez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-juan-antonio-gomez', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Juan' AND per.last_name = 'Antonio Gomez' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Alessio', 'Hernandez', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Alessio' AND last_name = 'Hernandez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-alessio-hernandez', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Alessio' AND per.last_name = 'Hernandez' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Selcuk', 'Kahveci', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Selcuk' AND last_name = 'Kahveci' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-selcuk-kahveci', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Selcuk' AND per.last_name = 'Kahveci' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Chad', 'Mark', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Chad' AND last_name = 'Mark' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-chad-mark', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Chad' AND per.last_name = 'Mark' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Eoin', 'Martin', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Eoin' AND last_name = 'Martin' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-eoin-martin', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Eoin' AND per.last_name = 'Martin' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Leonardo', 'Martinelli', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Leonardo' AND last_name = 'Martinelli' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-leonardo-martinelli', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Leonardo' AND per.last_name = 'Martinelli' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Alexander', 'McLachlan', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Alexander' AND last_name = 'McLachlan' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-alexander-mclachlan', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Alexander' AND per.last_name = 'McLachlan' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Giovanny', 'Morales', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Giovanny' AND last_name = 'Morales' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-giovanny-morales', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Giovanny' AND per.last_name = 'Morales' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Bradley', 'Nestor', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Bradley' AND last_name = 'Nestor' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-bradley-nestor', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Bradley' AND per.last_name = 'Nestor' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Godwin', 'Partey', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Godwin' AND last_name = 'Partey' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-godwin-partey', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Godwin' AND per.last_name = 'Partey' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Junior', 'Rosero', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Junior' AND last_name = 'Rosero' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-junior-rosero', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Junior' AND per.last_name = 'Rosero' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Karim', 'Russell', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Karim' AND last_name = 'Russell' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-karim-russell', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Karim' AND per.last_name = 'Russell' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sanoussi', 'Sangary', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Sanoussi' AND last_name = 'Sangary' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-sanoussi-sangary', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sanoussi' AND per.last_name = 'Sangary' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Shaquille', 'Saunchez', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Shaquille' AND last_name = 'Saunchez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-shaquille-saunchez', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Shaquille' AND per.last_name = 'Saunchez' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Kendell', 'Thomas', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Kendell' AND last_name = 'Thomas' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-kendell-thomas', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Kendell' AND per.last_name = 'Thomas' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Dillon', 'Woods', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Dillon' AND last_name = 'Woods' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-dillon-woods', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Dillon' AND per.last_name = 'Woods' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('George', 'Yusuff', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'George' AND last_name = 'Yusuff' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'leros-sc-george-yusuff', '115315'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'George' AND per.last_name = 'Yusuff' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
 VALUES ('Nour', 'Alamri', NULL) 
 ON CONFLICT (first_name, last_name) DO NOTHING;
 INSERT INTO players (person_id, source_system_id) 
@@ -19227,482 +17309,6 @@ SELECT pl.id, 1, 'lighthouse-1893-sc-oumar-sylla', '116079'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Oumar' AND per.last_name = 'Sylla' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Dylan', 'Frank Aportela', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Dylan' AND last_name = 'Frank Aportela' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-dylan-frank-aportela', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Dylan' AND per.last_name = 'Frank Aportela' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Monsif', 'Atify', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Monsif' AND last_name = 'Atify' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-monsif-atify', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Monsif' AND per.last_name = 'Atify' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Shane', 'Baker', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Shane' AND last_name = 'Baker' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-shane-baker', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Shane' AND per.last_name = 'Baker' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mava', 'Mboko Celestin', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Mava' AND last_name = 'Mboko Celestin' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-mava-mboko-celestin', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mava' AND per.last_name = 'Mboko Celestin' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Gunnar', 'William Christensen', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Gunnar' AND last_name = 'William Christensen' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-gunnar-william-christensen', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Gunnar' AND per.last_name = 'William Christensen' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Bailey', 'Cifone', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Bailey' AND last_name = 'Cifone' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-bailey-cifone', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Bailey' AND per.last_name = 'Cifone' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Emmett', 'Dougherty', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Emmett' AND last_name = 'Dougherty' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-emmett-dougherty', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Emmett' AND per.last_name = 'Dougherty' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Sean', 'Fatiga', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Sean' AND last_name = 'Fatiga' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-sean-fatiga', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Sean' AND per.last_name = 'Fatiga' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Gil', 'Ferreira', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Gil' AND last_name = 'Ferreira' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-gil-ferreira', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Gil' AND per.last_name = 'Ferreira' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Greg', 'Ferreira', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Greg' AND last_name = 'Ferreira' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-greg-ferreira', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Greg' AND per.last_name = 'Ferreira' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ryan', 'Gale', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Ryan' AND last_name = 'Gale' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-ryan-gale', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ryan' AND per.last_name = 'Gale' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Elvis', 'Gboho', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Elvis' AND last_name = 'Gboho' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-elvis-gboho', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Elvis' AND per.last_name = 'Gboho' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('McCarthy', 'Tyler Gomes', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'McCarthy' AND last_name = 'Tyler Gomes' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-mccarthy-tyler-gomes', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'McCarthy' AND per.last_name = 'Tyler Gomes' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jeshohaih', 'Hernandez', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jeshohaih' AND last_name = 'Hernandez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-jeshohaih-hernandez', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jeshohaih' AND per.last_name = 'Hernandez' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ahmir', 'Lamar Johnson', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Ahmir' AND last_name = 'Lamar Johnson' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-ahmir-lamar-johnson', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ahmir' AND per.last_name = 'Lamar Johnson' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Ahsan', 'Johnson', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Ahsan' AND last_name = 'Johnson' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-ahsan-johnson', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Ahsan' AND per.last_name = 'Johnson' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Bugra', 'Kumas', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Bugra' AND last_name = 'Kumas' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-bugra-kumas', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Bugra' AND per.last_name = 'Kumas' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jake', 'Kuzmick', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jake' AND last_name = 'Kuzmick' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-jake-kuzmick', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jake' AND per.last_name = 'Kuzmick' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Dominic', 'Antonio lodise', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Dominic' AND last_name = 'Antonio lodise' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-dominic-antonio-lodise', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Dominic' AND per.last_name = 'Antonio lodise' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Gavin', 'O''Neill', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Gavin' AND last_name = 'O''Neill' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-gavin-o-neill', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Gavin' AND per.last_name = 'O''Neill' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Krish', 'Olmedo', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Krish' AND last_name = 'Olmedo' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-krish-olmedo', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Krish' AND per.last_name = 'Olmedo' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Alexander', 'Charles Patton', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Alexander' AND last_name = 'Charles Patton' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-alexander-charles-patton', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Alexander' AND per.last_name = 'Charles Patton' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Noam', 'Raz', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Noam' AND last_name = 'Raz' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-noam-raz', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Noam' AND per.last_name = 'Raz' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Mason', 'James Regan', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Mason' AND last_name = 'James Regan' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-mason-james-regan', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Mason' AND per.last_name = 'James Regan' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Fred', 'Renzulli', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Fred' AND last_name = 'Renzulli' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-fred-renzulli', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Fred' AND per.last_name = 'Renzulli' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Joseph', 'Romano', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Joseph' AND last_name = 'Romano' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-joseph-romano', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Joseph' AND per.last_name = 'Romano' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Joshua', 'Rossell', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Joshua' AND last_name = 'Rossell' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-joshua-rossell', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Joshua' AND per.last_name = 'Rossell' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Brian', 'Sharkey', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Brian' AND last_name = 'Sharkey' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-brian-sharkey', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Brian' AND per.last_name = 'Sharkey' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Christopher', 'John Spicer', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Christopher' AND last_name = 'John Spicer' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-christopher-john-spicer', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Christopher' AND per.last_name = 'John Spicer' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Kyle', 'William Stone', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Kyle' AND last_name = 'William Stone' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-kyle-william-stone', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Kyle' AND per.last_name = 'William Stone' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Owen', 'Strohm', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Owen' AND last_name = 'Strohm' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-owen-strohm', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Owen' AND per.last_name = 'Strohm' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Jackson', 'M Stuetz', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Jackson' AND last_name = 'M Stuetz' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-jackson-m-stuetz', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Jackson' AND per.last_name = 'M Stuetz' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Melcohol', 'Velasquez', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Melcohol' AND last_name = 'Velasquez' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-melcohol-velasquez', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Melcohol' AND per.last_name = 'Velasquez' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Christian', 'Vetter', NULL) 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 1 FROM persons 
-WHERE first_name = 'Christian' AND last_name = 'Vetter' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'sewell-old-boys-fc-christian-vetter', '116136'
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Christian' AND per.last_name = 'Vetter' 
 ON CONFLICT (source_system_id, external_id) DO NOTHING;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
@@ -21987,115 +19593,2439 @@ JOIN persons per ON pl.person_id = per.id
 WHERE per.first_name = 'John' AND per.last_name = 'Warwick' 
 ON CONFLICT (source_system_id, external_id) DO NOTHING;
 
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Paul', 'Xavier Chamberland', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Paul' AND last_name = 'Xavier Chamberland' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'delmarva-thunder-paul-xavier-chamberland', '140730'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Paul' AND per.last_name = 'Xavier Chamberland' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
 
--- === UPDATE 2026-02-27 ===
--- Added: Kennison Akuro → PFA APSL
--- TODO: INSERT person + player for Kennison Akuro
--- Added: Melvin Asanji → PFA APSL
--- TODO: INSERT person + player for Melvin Asanji
--- Added: Brandon Betts → PFA APSL
--- TODO: INSERT person + player for Brandon Betts
--- Added: Isaac Carvajal → PFA APSL
--- TODO: INSERT person + player for Isaac Carvajal
--- Added: Elido Noel Chun Reyes → PFA APSL
--- TODO: INSERT person + player for Elido Noel Chun Reyes
--- Added: Jenovic Elumbu → PFA APSL
--- TODO: INSERT person + player for Jenovic Elumbu
--- Added: Anderson Fernandez → PFA APSL
--- TODO: INSERT person + player for Anderson Fernandez
--- Added: Angello Fernandez → PFA APSL
--- TODO: INSERT person + player for Angello Fernandez
--- Added: Terry Fon → PFA APSL
--- TODO: INSERT person + player for Terry Fon
--- Added: Eduardo Fuentes → PFA APSL
--- TODO: INSERT person + player for Eduardo Fuentes
--- Added: Christian Garavito → PFA APSL
--- TODO: INSERT person + player for Christian Garavito
--- Added: Thaddeus Goddard → PFA APSL
--- TODO: INSERT person + player for Thaddeus Goddard
--- Added: Alexis Gonzalez Ayala → PFA APSL
--- TODO: INSERT person + player for Alexis Gonzalez Ayala
--- Added: Chayton Kuidlan → PFA APSL
--- TODO: INSERT person + player for Chayton Kuidlan
--- Added: Tobias Lane → PFA APSL
--- TODO: INSERT person + player for Tobias Lane
--- Added: Jonathan Lemus Morales → PFA APSL
--- TODO: INSERT person + player for Jonathan Lemus Morales
--- Added: Creasy Lopez → PFA APSL
--- TODO: INSERT person + player for Creasy Lopez
--- Added: Lutho Mlunguza → PFA APSL
--- TODO: INSERT person + player for Lutho Mlunguza
--- Added: Toju Okonedo → PFA APSL
--- TODO: INSERT person + player for Toju Okonedo
--- Added: David Pawlowski → PFA APSL
--- TODO: INSERT person + player for David Pawlowski
--- Added: Danny Paz → PFA APSL
--- TODO: INSERT person + player for Danny Paz
--- Added: Brayan Perez Mendez → PFA APSL
--- TODO: INSERT person + player for Brayan Perez Mendez
--- Added: Bronson Shepherd → PFA APSL
--- TODO: INSERT person + player for Bronson Shepherd
--- Added: Nicholas Tziamouranis → PFA APSL
--- TODO: INSERT person + player for Nicholas Tziamouranis
--- Added: William Villatoro Velasquez → PFA APSL
--- TODO: INSERT person + player for William Villatoro Velasquez
--- Added: Brian Ware → PFA APSL
--- TODO: INSERT person + player for Brian Ware
--- Added: Paul Xavier Chamberland → Delmarva Thunder
--- TODO: INSERT person + player for Paul Xavier Chamberland
--- Added: Herley Fevrier → Delmarva Thunder
--- TODO: INSERT person + player for Herley Fevrier
--- Added: Jhonatan Javier Ramirez → Delmarva Thunder
--- TODO: INSERT person + player for Jhonatan Javier Ramirez
--- Removed: Kennison Akuro from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Melvin Asanji from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Brandon Betts from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Isaac Carvajal from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Elido Noel Chun Reyes from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Jenovic Elumbu from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Anderson Fernandez from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Angello Fernandez from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Terry Fon from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Eduardo Fuentes from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Christian Garavito from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Thaddeus Goddard from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Alexis Gonzalez Ayala from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Chayton Kuidlan from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Tobias Lane from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Jonathan Lemus Morales from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Creasy Lopez from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Lutho Mlunguza from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Toju Okonedo from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: David Pawlowski from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Danny Paz from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Brayan Perez Mendez from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Bronson Shepherd from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Nicholas Tziamouranis from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: William Villatoro Velasquez from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
--- Removed: Brian Ware from PFA EPSL
--- TODO: Mark player inactive on PFA EPSL
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Herley', 'Fevrier', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Herley' AND last_name = 'Fevrier' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'delmarva-thunder-herley-fevrier', '140730'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Herley' AND per.last_name = 'Fevrier' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jhonatan', 'Javier Ramirez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jhonatan' AND last_name = 'Javier Ramirez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'delmarva-thunder-jhonatan-javier-ramirez', '140730'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jhonatan' AND per.last_name = 'Javier Ramirez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Adrian', 'Aguilera', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Adrian' AND last_name = 'Aguilera' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-adrian-aguilera', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Adrian' AND per.last_name = 'Aguilera' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Julian', 'Anderson', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Julian' AND last_name = 'Anderson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-julian-anderson', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Julian' AND per.last_name = 'Anderson' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Balint', 'Barabas', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Balint' AND last_name = 'Barabas' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-balint-barabas', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Balint' AND per.last_name = 'Barabas' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Vasilios', 'Brisnovalis', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Vasilios' AND last_name = 'Brisnovalis' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-vasilios-brisnovalis', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Vasilios' AND per.last_name = 'Brisnovalis' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Robert', 'Cabrera', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Robert' AND last_name = 'Cabrera' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-robert-cabrera', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Robert' AND per.last_name = 'Cabrera' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Murat', 'Edgar Calkap', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Murat' AND last_name = 'Edgar Calkap' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-murat-edgar-calkap', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Murat' AND per.last_name = 'Edgar Calkap' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Daniel', 'Curmi', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Daniel' AND last_name = 'Curmi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-daniel-curmi', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Daniel' AND per.last_name = 'Curmi' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Duga', 'Dambelly', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Duga' AND last_name = 'Dambelly' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-duga-dambelly', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Duga' AND per.last_name = 'Dambelly' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Khaled', 'Daoud', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Khaled' AND last_name = 'Daoud' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-khaled-daoud', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Khaled' AND per.last_name = 'Daoud' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mohamed', 'Diaw', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mohamed' AND last_name = 'Diaw' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-mohamed-diaw', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mohamed' AND per.last_name = 'Diaw' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Julio', 'Espinal', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Julio' AND last_name = 'Espinal' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-julio-espinal', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Julio' AND per.last_name = 'Espinal' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jeison', 'Gonzalez Sanchez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jeison' AND last_name = 'Gonzalez Sanchez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-jeison-gonzalez-sanchez', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jeison' AND per.last_name = 'Gonzalez Sanchez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('James', 'Greco', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'James' AND last_name = 'Greco' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-james-greco', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'James' AND per.last_name = 'Greco' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Grady', 'Kozak', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Grady' AND last_name = 'Kozak' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-grady-kozak', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Grady' AND per.last_name = 'Kozak' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Antonio', 'Linge', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Antonio' AND last_name = 'Linge' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-antonio-linge', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Antonio' AND per.last_name = 'Linge' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Tyrone', 'Malango', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Tyrone' AND last_name = 'Malango' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-tyrone-malango', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Tyrone' AND per.last_name = 'Malango' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('William', 'Marment', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'William' AND last_name = 'Marment' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-william-marment', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'William' AND per.last_name = 'Marment' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Augustus', 'Manuel Mcgiff', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Augustus' AND last_name = 'Manuel Mcgiff' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-augustus-manuel-mcgiff', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Augustus' AND per.last_name = 'Manuel Mcgiff' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christopher', 'Morandi', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christopher' AND last_name = 'Morandi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-christopher-morandi', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christopher' AND per.last_name = 'Morandi' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Richard', 'Morel', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Richard' AND last_name = 'Morel' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-richard-morel', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Richard' AND per.last_name = 'Morel' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Peter', 'Myrianthopoulos', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Peter' AND last_name = 'Myrianthopoulos' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-peter-myrianthopoulos', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Peter' AND per.last_name = 'Myrianthopoulos' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Stefen', 'Nikolic', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Stefen' AND last_name = 'Nikolic' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-stefen-nikolic', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Stefen' AND per.last_name = 'Nikolic' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Martin', 'Nikprelaj', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Martin' AND last_name = 'Nikprelaj' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-martin-nikprelaj', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Martin' AND per.last_name = 'Nikprelaj' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sergio', 'Peralta', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sergio' AND last_name = 'Peralta' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-sergio-peralta', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sergio' AND per.last_name = 'Peralta' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Marco', 'Primavera', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Marco' AND last_name = 'Primavera' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-marco-primavera', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Marco' AND per.last_name = 'Primavera' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Paolo', 'Cerruto Primavera', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Paolo' AND last_name = 'Cerruto Primavera' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-paolo-cerruto-primavera', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Paolo' AND per.last_name = 'Cerruto Primavera' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Chris', 'Riordan', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Chris' AND last_name = 'Riordan' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-chris-riordan', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Chris' AND per.last_name = 'Riordan' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('David', 'Rodriguez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'David' AND last_name = 'Rodriguez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-david-rodriguez', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'David' AND per.last_name = 'Rodriguez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ronaldo', 'Rodriguez Jurado', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ronaldo' AND last_name = 'Rodriguez Jurado' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-ronaldo-rodriguez-jurado', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ronaldo' AND per.last_name = 'Rodriguez Jurado' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Fredy', 'Rosales', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Fredy' AND last_name = 'Rosales' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-fredy-rosales', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Fredy' AND per.last_name = 'Rosales' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Duvan', 'Sanchez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Duvan' AND last_name = 'Sanchez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-duvan-sanchez', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Duvan' AND per.last_name = 'Sanchez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Giuliano', 'Santucci', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Giuliano' AND last_name = 'Santucci' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-giuliano-santucci', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Giuliano' AND per.last_name = 'Santucci' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Navruz', 'Shukroev', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Navruz' AND last_name = 'Shukroev' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-navruz-shukroev', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Navruz' AND per.last_name = 'Shukroev' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Milorad', 'Sobot', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Milorad' AND last_name = 'Sobot' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-milorad-sobot', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Milorad' AND per.last_name = 'Sobot' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Michalis', 'Stylianou', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Michalis' AND last_name = 'Stylianou' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'doxa-fcw-michalis-stylianou', '114813'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Michalis' AND per.last_name = 'Stylianou' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Dominik', 'Brulinski', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Dominik' AND last_name = 'Brulinski' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-dominik-brulinski', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Dominik' AND per.last_name = 'Brulinski' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mathew', 'Contino', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mathew' AND last_name = 'Contino' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-mathew-contino', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mathew' AND per.last_name = 'Contino' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Joseph', 'Core', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Joseph' AND last_name = 'Core' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-joseph-core', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Joseph' AND per.last_name = 'Core' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jacob', 'Denison', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jacob' AND last_name = 'Denison' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-jacob-denison', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jacob' AND per.last_name = 'Denison' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jack', 'Doran', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jack' AND last_name = 'Doran' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-jack-doran', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jack' AND per.last_name = 'Doran' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Javiar', 'Edwards', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Javiar' AND last_name = 'Edwards' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-javiar-edwards', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Javiar' AND per.last_name = 'Edwards' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Humbert', 'Ferrer', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Humbert' AND last_name = 'Ferrer' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-humbert-ferrer', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Humbert' AND per.last_name = 'Ferrer' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Spencer', 'Fleurant', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Spencer' AND last_name = 'Fleurant' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-spencer-fleurant', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Spencer' AND per.last_name = 'Fleurant' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jason', 'Gaylord', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jason' AND last_name = 'Gaylord' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-jason-gaylord', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jason' AND per.last_name = 'Gaylord' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Daniel', 'Giorgi', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Daniel' AND last_name = 'Giorgi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-daniel-giorgi', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Daniel' AND per.last_name = 'Giorgi' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kevin', 'Harrington', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kevin' AND last_name = 'Harrington' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-kevin-harrington', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kevin' AND per.last_name = 'Harrington' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Stephanos', 'Hondrakis', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Stephanos' AND last_name = 'Hondrakis' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-stephanos-hondrakis', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Stephanos' AND per.last_name = 'Hondrakis' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Cris', 'Huacon', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Cris' AND last_name = 'Huacon' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-cris-huacon', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Cris' AND per.last_name = 'Huacon' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Samuka', 'Kenneh', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Samuka' AND last_name = 'Kenneh' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-samuka-kenneh', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Samuka' AND per.last_name = 'Kenneh' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Evan', 'Kim', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Evan' AND last_name = 'Kim' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-evan-kim', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Evan' AND per.last_name = 'Kim' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Brent', 'McKeown', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Brent' AND last_name = 'McKeown' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-brent-mckeown', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Brent' AND per.last_name = 'McKeown' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Enrique', 'Montana III', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Enrique' AND last_name = 'Montana III' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-enrique-montana-iii', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Enrique' AND per.last_name = 'Montana III' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jack', 'Mulhare', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jack' AND last_name = 'Mulhare' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-jack-mulhare', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jack' AND per.last_name = 'Mulhare' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Curtis', 'Oberg', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Curtis' AND last_name = 'Oberg' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-curtis-oberg', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Curtis' AND per.last_name = 'Oberg' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Farouk', 'Osman', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Farouk' AND last_name = 'Osman' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-farouk-osman', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Farouk' AND per.last_name = 'Osman' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Cole', 'Parete', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Cole' AND last_name = 'Parete' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-cole-parete', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Cole' AND per.last_name = 'Parete' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('William', 'Pearce', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'William' AND last_name = 'Pearce' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-william-pearce', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'William' AND per.last_name = 'Pearce' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Akeem', 'Phipps', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Akeem' AND last_name = 'Phipps' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-akeem-phipps', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Akeem' AND per.last_name = 'Phipps' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Layton', 'Purchase', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Layton' AND last_name = 'Purchase' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-layton-purchase', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Layton' AND per.last_name = 'Purchase' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nabeel', 'Qawasmi', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nabeel' AND last_name = 'Qawasmi' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-nabeel-qawasmi', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nabeel' AND per.last_name = 'Qawasmi' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Yannick', 'Rihs', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Yannick' AND last_name = 'Rihs' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-yannick-rihs', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Yannick' AND per.last_name = 'Rihs' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Antonio', 'Rocha', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Antonio' AND last_name = 'Rocha' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-antonio-rocha', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Antonio' AND per.last_name = 'Rocha' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jake', 'Rozhansky', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jake' AND last_name = 'Rozhansky' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-jake-rozhansky', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jake' AND per.last_name = 'Rozhansky' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Yahli', 'Saltsberg', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Yahli' AND last_name = 'Saltsberg' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-yahli-saltsberg', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Yahli' AND per.last_name = 'Saltsberg' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Frank', 'Shkreli', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Frank' AND last_name = 'Shkreli' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-frank-shkreli', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Frank' AND per.last_name = 'Shkreli' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Michael', 'Soboff', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Michael' AND last_name = 'Soboff' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-michael-soboff', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Michael' AND per.last_name = 'Soboff' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Tom', 'Wallenstein', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Tom' AND last_name = 'Wallenstein' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-tom-wallenstein', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Tom' AND per.last_name = 'Wallenstein' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Michael', 'Wampler', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Michael' AND last_name = 'Wampler' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-michael-wampler', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Michael' AND per.last_name = 'Wampler' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Peter', 'Wentzel', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Peter' AND last_name = 'Wentzel' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-peter-wentzel', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Peter' AND per.last_name = 'Wentzel' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Edwin', 'Zuniga Lopez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Edwin' AND last_name = 'Zuniga Lopez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-athletic-club-edwin-zuniga-lopez', '114830'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Edwin' AND per.last_name = 'Zuniga Lopez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Pablo', 'Ablanedo Llaneza', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Pablo' AND last_name = 'Ablanedo Llaneza' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-pablo-ablanedo-llaneza', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Pablo' AND per.last_name = 'Ablanedo Llaneza' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jordan', 'Bailon', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jordan' AND last_name = 'Bailon' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-jordan-bailon', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jordan' AND per.last_name = 'Bailon' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Filip', 'Basili', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Filip' AND last_name = 'Basili' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-filip-basili', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Filip' AND per.last_name = 'Basili' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Axel', 'Berglund', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Axel' AND last_name = 'Berglund' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-axel-berglund', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Axel' AND per.last_name = 'Berglund' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christopher', 'Bermudez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christopher' AND last_name = 'Bermudez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-christopher-bermudez', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christopher' AND per.last_name = 'Bermudez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Victor', 'Castel', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Victor' AND last_name = 'Castel' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-victor-castel', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Victor' AND per.last_name = 'Castel' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Rikard', 'Cederberg', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Rikard' AND last_name = 'Cederberg' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-rikard-cederberg', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Rikard' AND per.last_name = 'Cederberg' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Nicolas', 'Cifuentes DIaz', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Nicolas' AND last_name = 'Cifuentes DIaz' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-nicolas-cifuentes-diaz', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Nicolas' AND per.last_name = 'Cifuentes DIaz' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sergio', 'Diaz', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sergio' AND last_name = 'Diaz' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-sergio-diaz', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sergio' AND per.last_name = 'Diaz' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Eric', 'Frimpong', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Eric' AND last_name = 'Frimpong' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-eric-frimpong', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Eric' AND per.last_name = 'Frimpong' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('George', 'Gantalis', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'George' AND last_name = 'Gantalis' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-george-gantalis', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'George' AND per.last_name = 'Gantalis' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Gonzalo', 'Gil de Pareja', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Gonzalo' AND last_name = 'Gil de Pareja' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-gonzalo-gil-de-pareja', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Gonzalo' AND per.last_name = 'Gil de Pareja' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ede', 'Mateo Gramberg', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ede' AND last_name = 'Mateo Gramberg' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-ede-mateo-gramberg', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ede' AND per.last_name = 'Mateo Gramberg' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Thomas', 'Gray', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Thomas' AND last_name = 'Gray' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-thomas-gray', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Thomas' AND per.last_name = 'Gray' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Antreas', 'Hadjigavriel', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Antreas' AND last_name = 'Hadjigavriel' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-antreas-hadjigavriel', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Antreas' AND per.last_name = 'Hadjigavriel' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Harri', 'Hawkins', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Harri' AND last_name = 'Hawkins' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-harri-hawkins', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Harri' AND per.last_name = 'Hawkins' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Devin', 'Heanue', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Devin' AND last_name = 'Heanue' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-devin-heanue', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Devin' AND per.last_name = 'Heanue' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christopher', 'Heckenberg', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christopher' AND last_name = 'Heckenberg' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-christopher-heckenberg', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christopher' AND per.last_name = 'Heckenberg' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kevin', 'Hernandez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kevin' AND last_name = 'Hernandez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-kevin-hernandez', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kevin' AND per.last_name = 'Hernandez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jens', 'Mannhart Hoff', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jens' AND last_name = 'Mannhart Hoff' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-jens-mannhart-hoff', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jens' AND per.last_name = 'Mannhart Hoff' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Joseph', 'Holland', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Joseph' AND last_name = 'Holland' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-joseph-holland', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Joseph' AND per.last_name = 'Holland' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Filip', 'Jauk', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Filip' AND last_name = 'Jauk' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-filip-jauk', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Filip' AND per.last_name = 'Jauk' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Konstantinos', 'Karousis', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Konstantinos' AND last_name = 'Karousis' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-konstantinos-karousis', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Konstantinos' AND per.last_name = 'Karousis' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Benny', 'Lafortune', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Benny' AND last_name = 'Lafortune' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-benny-lafortune', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Benny' AND per.last_name = 'Lafortune' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Joshua', 'Levine', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Joshua' AND last_name = 'Levine' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-joshua-levine', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Joshua' AND per.last_name = 'Levine' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Juan', 'Martinez Moreno', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Juan' AND last_name = 'Martinez Moreno' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-juan-martinez-moreno', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Juan' AND per.last_name = 'Martinez Moreno' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Filip', 'Mirkovic', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Filip' AND last_name = 'Mirkovic' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-filip-mirkovic', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Filip' AND per.last_name = 'Mirkovic' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christoforos', 'Moulinos', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christoforos' AND last_name = 'Moulinos' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-christoforos-moulinos', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christoforos' AND per.last_name = 'Moulinos' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Stephen', 'O’ Connell', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Stephen' AND last_name = 'O’ Connell' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-stephen-o-connell', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Stephen' AND per.last_name = 'O’ Connell' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Alex', 'Palas', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Alex' AND last_name = 'Palas' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-alex-palas', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Alex' AND per.last_name = 'Palas' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sebastian', 'Ruiz', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sebastian' AND last_name = 'Ruiz' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-sebastian-ruiz', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sebastian' AND per.last_name = 'Ruiz' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Athanasis', 'Shehadeh', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Athanasis' AND last_name = 'Shehadeh' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-athanasis-shehadeh', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Athanasis' AND per.last_name = 'Shehadeh' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('James', 'Thristino', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'James' AND last_name = 'Thristino' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-james-thristino', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'James' AND per.last_name = 'Thristino' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sean', 'Towey', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sean' AND last_name = 'Towey' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'ny-pancyprian-freedoms-sean-towey', '114832'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sean' AND per.last_name = 'Towey' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Keirol', 'Aaron', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Keirol' AND last_name = 'Aaron' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-keirol-aaron', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Keirol' AND per.last_name = 'Aaron' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Matthais', 'Adamek', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Matthais' AND last_name = 'Adamek' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-matthais-adamek', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Matthais' AND per.last_name = 'Adamek' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Yohance', 'Alexander', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Yohance' AND last_name = 'Alexander' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-yohance-alexander', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Yohance' AND per.last_name = 'Alexander' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Andrea', 'Andreou', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Andrea' AND last_name = 'Andreou' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-andrea-andreou', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Andrea' AND per.last_name = 'Andreou' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Luis', 'Argudo', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Luis' AND last_name = 'Argudo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-luis-argudo', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Luis' AND per.last_name = 'Argudo' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Theodore', 'Bernhard', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Theodore' AND last_name = 'Bernhard' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-theodore-bernhard', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Theodore' AND per.last_name = 'Bernhard' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Antonio', 'Biggs', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Antonio' AND last_name = 'Biggs' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-antonio-biggs', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Antonio' AND per.last_name = 'Biggs' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mason', 'Chetti', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mason' AND last_name = 'Chetti' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-mason-chetti', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mason' AND per.last_name = 'Chetti' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jarvis', 'Cleal', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jarvis' AND last_name = 'Cleal' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-jarvis-cleal', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jarvis' AND per.last_name = 'Cleal' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Joel', 'Cunningham', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Joel' AND last_name = 'Cunningham' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-joel-cunningham', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Joel' AND per.last_name = 'Cunningham' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Caleb', 'Danquah', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Caleb' AND last_name = 'Danquah' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-caleb-danquah', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Caleb' AND per.last_name = 'Danquah' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Eric', 'Danquah', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Eric' AND last_name = 'Danquah' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-eric-danquah', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Eric' AND per.last_name = 'Danquah' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sameer', 'Fathazada', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sameer' AND last_name = 'Fathazada' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-sameer-fathazada', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sameer' AND per.last_name = 'Fathazada' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Leo', 'Folla', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Leo' AND last_name = 'Folla' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-leo-folla', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Leo' AND per.last_name = 'Folla' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jakob', 'Friedman', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jakob' AND last_name = 'Friedman' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-jakob-friedman', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jakob' AND per.last_name = 'Friedman' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sebastian', 'Goicochea', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sebastian' AND last_name = 'Goicochea' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-sebastian-goicochea', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sebastian' AND per.last_name = 'Goicochea' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Juan', 'Antonio Gomez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Juan' AND last_name = 'Antonio Gomez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-juan-antonio-gomez', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Juan' AND per.last_name = 'Antonio Gomez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Alessio', 'Hernandez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Alessio' AND last_name = 'Hernandez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-alessio-hernandez', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Alessio' AND per.last_name = 'Hernandez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Selcuk', 'Kahveci', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Selcuk' AND last_name = 'Kahveci' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-selcuk-kahveci', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Selcuk' AND per.last_name = 'Kahveci' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Chad', 'Mark', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Chad' AND last_name = 'Mark' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-chad-mark', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Chad' AND per.last_name = 'Mark' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Eoin', 'Martin', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Eoin' AND last_name = 'Martin' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-eoin-martin', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Eoin' AND per.last_name = 'Martin' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Leonardo', 'Martinelli', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Leonardo' AND last_name = 'Martinelli' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-leonardo-martinelli', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Leonardo' AND per.last_name = 'Martinelli' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Alexander', 'McLachlan', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Alexander' AND last_name = 'McLachlan' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-alexander-mclachlan', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Alexander' AND per.last_name = 'McLachlan' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Giovanny', 'Morales', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Giovanny' AND last_name = 'Morales' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-giovanny-morales', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Giovanny' AND per.last_name = 'Morales' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Bradley', 'Nestor', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Bradley' AND last_name = 'Nestor' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-bradley-nestor', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Bradley' AND per.last_name = 'Nestor' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Godwin', 'Partey', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Godwin' AND last_name = 'Partey' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-godwin-partey', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Godwin' AND per.last_name = 'Partey' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Junior', 'Rosero', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Junior' AND last_name = 'Rosero' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-junior-rosero', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Junior' AND per.last_name = 'Rosero' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Karim', 'Russell', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Karim' AND last_name = 'Russell' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-karim-russell', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Karim' AND per.last_name = 'Russell' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sanoussi', 'Sangary', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sanoussi' AND last_name = 'Sangary' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-sanoussi-sangary', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sanoussi' AND per.last_name = 'Sangary' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Shaquille', 'Saunchez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Shaquille' AND last_name = 'Saunchez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-shaquille-saunchez', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Shaquille' AND per.last_name = 'Saunchez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kendell', 'Thomas', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kendell' AND last_name = 'Thomas' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-kendell-thomas', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kendell' AND per.last_name = 'Thomas' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Dillon', 'Woods', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Dillon' AND last_name = 'Woods' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-dillon-woods', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Dillon' AND per.last_name = 'Woods' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('George', 'Yusuff', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'George' AND last_name = 'Yusuff' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'leros-sc-george-yusuff', '115315'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'George' AND per.last_name = 'Yusuff' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Dylan', 'Frank Aportela', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Dylan' AND last_name = 'Frank Aportela' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-dylan-frank-aportela', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Dylan' AND per.last_name = 'Frank Aportela' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Monsif', 'Atify', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Monsif' AND last_name = 'Atify' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-monsif-atify', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Monsif' AND per.last_name = 'Atify' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Shane', 'Baker', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Shane' AND last_name = 'Baker' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-shane-baker', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Shane' AND per.last_name = 'Baker' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mava', 'Mboko Celestin', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mava' AND last_name = 'Mboko Celestin' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-mava-mboko-celestin', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mava' AND per.last_name = 'Mboko Celestin' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Gunnar', 'William Christensen', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Gunnar' AND last_name = 'William Christensen' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-gunnar-william-christensen', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Gunnar' AND per.last_name = 'William Christensen' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Bailey', 'Cifone', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Bailey' AND last_name = 'Cifone' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-bailey-cifone', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Bailey' AND per.last_name = 'Cifone' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Emmett', 'Dougherty', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Emmett' AND last_name = 'Dougherty' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-emmett-dougherty', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Emmett' AND per.last_name = 'Dougherty' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Sean', 'Fatiga', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Sean' AND last_name = 'Fatiga' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-sean-fatiga', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Sean' AND per.last_name = 'Fatiga' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Gil', 'Ferreira', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Gil' AND last_name = 'Ferreira' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-gil-ferreira', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Gil' AND per.last_name = 'Ferreira' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Greg', 'Ferreira', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Greg' AND last_name = 'Ferreira' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-greg-ferreira', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Greg' AND per.last_name = 'Ferreira' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ryan', 'Gale', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ryan' AND last_name = 'Gale' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-ryan-gale', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ryan' AND per.last_name = 'Gale' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Elvis', 'Gboho', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Elvis' AND last_name = 'Gboho' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-elvis-gboho', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Elvis' AND per.last_name = 'Gboho' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('McCarthy', 'Tyler Gomes', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'McCarthy' AND last_name = 'Tyler Gomes' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-mccarthy-tyler-gomes', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'McCarthy' AND per.last_name = 'Tyler Gomes' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jeshohaih', 'Hernandez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jeshohaih' AND last_name = 'Hernandez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-jeshohaih-hernandez', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jeshohaih' AND per.last_name = 'Hernandez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ahmir', 'Lamar Johnson', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ahmir' AND last_name = 'Lamar Johnson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-ahmir-lamar-johnson', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ahmir' AND per.last_name = 'Lamar Johnson' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Ahsan', 'Johnson', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Ahsan' AND last_name = 'Johnson' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-ahsan-johnson', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Ahsan' AND per.last_name = 'Johnson' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Bugra', 'Kumas', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Bugra' AND last_name = 'Kumas' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-bugra-kumas', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Bugra' AND per.last_name = 'Kumas' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jake', 'Kuzmick', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jake' AND last_name = 'Kuzmick' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-jake-kuzmick', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jake' AND per.last_name = 'Kuzmick' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Dominic', 'Antonio lodise', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Dominic' AND last_name = 'Antonio lodise' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-dominic-antonio-lodise', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Dominic' AND per.last_name = 'Antonio lodise' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Gavin', 'O''Neill', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Gavin' AND last_name = 'O''Neill' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-gavin-o-neill', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Gavin' AND per.last_name = 'O''Neill' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Krish', 'Olmedo', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Krish' AND last_name = 'Olmedo' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-krish-olmedo', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Krish' AND per.last_name = 'Olmedo' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Alexander', 'Charles Patton', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Alexander' AND last_name = 'Charles Patton' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-alexander-charles-patton', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Alexander' AND per.last_name = 'Charles Patton' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Noam', 'Raz', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Noam' AND last_name = 'Raz' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-noam-raz', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Noam' AND per.last_name = 'Raz' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Mason', 'James Regan', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Mason' AND last_name = 'James Regan' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-mason-james-regan', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Mason' AND per.last_name = 'James Regan' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Fred', 'Renzulli', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Fred' AND last_name = 'Renzulli' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-fred-renzulli', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Fred' AND per.last_name = 'Renzulli' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Joseph', 'Romano', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Joseph' AND last_name = 'Romano' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-joseph-romano', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Joseph' AND per.last_name = 'Romano' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Joshua', 'Rossell', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Joshua' AND last_name = 'Rossell' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-joshua-rossell', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Joshua' AND per.last_name = 'Rossell' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Brian', 'Sharkey', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Brian' AND last_name = 'Sharkey' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-brian-sharkey', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Brian' AND per.last_name = 'Sharkey' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christopher', 'John Spicer', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christopher' AND last_name = 'John Spicer' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-christopher-john-spicer', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christopher' AND per.last_name = 'John Spicer' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Kyle', 'William Stone', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Kyle' AND last_name = 'William Stone' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-kyle-william-stone', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Kyle' AND per.last_name = 'William Stone' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Owen', 'Strohm', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Owen' AND last_name = 'Strohm' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-owen-strohm', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Owen' AND per.last_name = 'Strohm' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jackson', 'M Stuetz', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jackson' AND last_name = 'M Stuetz' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-jackson-m-stuetz', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jackson' AND per.last_name = 'M Stuetz' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Melcohol', 'Velasquez', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Melcohol' AND last_name = 'Velasquez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-melcohol-velasquez', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Melcohol' AND per.last_name = 'Velasquez' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Christian', 'Vetter', NULL) 
+ON CONFLICT (first_name, last_name) DO NOTHING;
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Christian' AND last_name = 'Vetter' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'sewell-old-boys-fc-christian-vetter', '116136'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Christian' AND per.last_name = 'Vetter' 
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+

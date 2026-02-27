@@ -468,6 +468,17 @@ ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;\n\n`;
   }
 
   /**
+   * Look up a team name by its external ID
+   * @param {string} externalId - Team external ID
+   * @returns {string} Team name or empty string
+   */
+  getTeamNameByExternalId(externalId) {
+    if (!externalId) return '';
+    const team = this.teams.find(t => t.externalId === String(externalId));
+    return team ? team.name : '';
+  }
+
+  /**
    * Add a match to the matches collection
    * Deduplicates by match key (date + teams)
    * @param {Object} matchData - Match data from parser
@@ -574,6 +585,8 @@ ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;\n\n`;
       snapshot.addMatch({
         homeTeam: m.homeTeamName || '',
         awayTeam: m.awayTeamName || '',
+        homeTeamExternalId: m.homeTeamExternalId || '',
+        awayTeamExternalId: m.awayTeamExternalId || '',
         divisionName: m.divisionName || '',
         divisionExternalId: m.divisionExternalId || '',
         date: m.matchDate || m.date || null,

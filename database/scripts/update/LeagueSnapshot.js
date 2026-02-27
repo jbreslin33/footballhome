@@ -70,11 +70,13 @@ class LeagueSnapshot {
    * @param {number} [match.awayScore] - Away score (null if not played)
    * @param {string} [match.externalId] - Match external ID from source system
    */
-  addMatch({ homeTeam, awayTeam, divisionName, divisionExternalId, date, time, status, homeScore, awayScore, externalId }) {
+  addMatch({ homeTeam, awayTeam, homeTeamExternalId, awayTeamExternalId, divisionName, divisionExternalId, date, time, status, homeScore, awayScore, externalId }) {
     const matchExternalId = externalId || `${divisionExternalId}_${homeTeam.toLowerCase().replace(/\s+/g, '-')}_${awayTeam.toLowerCase().replace(/\s+/g, '-')}`;
     this.matches.push({
       homeTeam,
       awayTeam,
+      homeTeamExternalId: homeTeamExternalId || '',
+      awayTeamExternalId: awayTeamExternalId || '',
       divisionName,
       divisionExternalId,
       date: date || null,

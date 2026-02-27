@@ -100,7 +100,7 @@ WHERE d.name = 'Philadelphia Liga 2'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Club de Futbol Armada', '9096430-club-de-futbol-armada', 20009, d.id, 2
+SELECT 'Club de Futbol Armada', '9096430-club-de-futbol-armada', 146, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Philadelphia Liga 2'
@@ -108,7 +108,7 @@ WHERE d.name = 'Philadelphia Liga 2'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Sewell''s Old Boys', '9096430-sewell''s-old-boys', 20010, d.id, 2
+SELECT 'Sewell''s Old Boys', '9096430-sewell''s-old-boys', 20009, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Philadelphia Liga 2'
@@ -116,7 +116,7 @@ WHERE d.name = 'Philadelphia Liga 2'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'South Shore FC', '9090891-south-shore-fc', 20011, d.id, 2
+SELECT 'South Shore FC', '9090891-south-shore-fc', 20010, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -124,7 +124,7 @@ WHERE d.name = 'Boston Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Jaguars United FC', '9090891-jaguars-united-fc', 20012, d.id, 2
+SELECT 'Jaguars United FC', '9090891-jaguars-united-fc', 20011, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -132,7 +132,7 @@ WHERE d.name = 'Boston Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Strictly Nos Fc', '9090891-strictly-nos-fc', 20013, d.id, 2
+SELECT 'Strictly Nos Fc', '9090891-strictly-nos-fc', 20012, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -140,7 +140,7 @@ WHERE d.name = 'Boston Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'BCFC All Stars', '9090891-bcfc-all-stars', 20014, d.id, 2
+SELECT 'BCFC All Stars', '9090891-bcfc-all-stars', 20013, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -148,7 +148,7 @@ WHERE d.name = 'Boston Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Flatley FC', '9090891-flatley-fc', 20015, d.id, 2
+SELECT 'Flatley FC', '9090891-flatley-fc', 20014, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -156,7 +156,7 @@ WHERE d.name = 'Boston Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Gambeta FC', '9090891-gambeta-fc', 20016, d.id, 2
+SELECT 'Gambeta FC', '9090891-gambeta-fc', 20015, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -164,7 +164,7 @@ WHERE d.name = 'Boston Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Kutztown Men''s Soccer', '9090893-kutztown-men''s-soccer', 20017, d.id, 2
+SELECT 'Kutztown Men''s Soccer', '9090893-kutztown-men''s-soccer', 20016, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
@@ -180,7 +180,7 @@ WHERE d.name = 'Lancaster Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Keystone Elite', '9090893-keystone-elite', 20018, d.id, 2
+SELECT 'Keystone Elite', '9090893-keystone-elite', 20017, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
@@ -188,7 +188,7 @@ WHERE d.name = 'Lancaster Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'F&M FC', '9090893-f&m-fc', 20019, d.id, 2
+SELECT 'F&M FC', '9090893-f&m-fc', 20018, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
@@ -196,162 +196,7 @@ WHERE d.name = 'Lancaster Liga 1'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO NOTHING;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Lancaster City FC', '9090893-lancaster-city-fc', 20020, d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Lancaster Liga 1'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
-
--- === ADDITIONS 2026-02-27 ===
--- Added: Persepolis United FC II (Philadelphia Liga 2)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Persepolis United FC II', '9096430-persepolis-united-fc-ii', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Philadelphia Liga 2'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Phoenix SCR (Philadelphia Liga 2)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Phoenix SCR', '9096430-phoenix-scr', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Philadelphia Liga 2'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Philadelphia SC Select (Philadelphia Liga 2)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Philadelphia SC Select', '9096430-philadelphia-sc-select', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Philadelphia Liga 2'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Lighthouse Old Timers Club (Philadelphia Liga 2)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Lighthouse Old Timers Club', '9096430-lighthouse-old-timers-club', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Philadelphia Liga 2'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Club de Futbol Armada (Philadelphia Liga 2)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Club de Futbol Armada', '9096430-club-de-futbol-armada', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Philadelphia Liga 2'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Sewell's Old Boys (Philadelphia Liga 2)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Sewell''s Old Boys', '9096430-sewell''s-old-boys', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Philadelphia Liga 2'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: South Shore FC (Boston Liga 1)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'South Shore FC', '9090891-south-shore-fc', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Boston Liga 1'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Jaguars United FC (Boston Liga 1)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Jaguars United FC', '9090891-jaguars-united-fc', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Boston Liga 1'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Strictly Nos Fc (Boston Liga 1)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Strictly Nos Fc', '9090891-strictly-nos-fc', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Boston Liga 1'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: BCFC All Stars (Boston Liga 1)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'BCFC All Stars', '9090891-bcfc-all-stars', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Boston Liga 1'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Flatley FC (Boston Liga 1)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Flatley FC', '9090891-flatley-fc', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Boston Liga 1'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Gambeta FC (Boston Liga 1)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Gambeta FC', '9090891-gambeta-fc', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Boston Liga 1'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Kutztown Men's Soccer (Lancaster Liga 1)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Kutztown Men''s Soccer', '9090893-kutztown-men''s-soccer', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Lancaster Liga 1'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Alloy Soccer Club Reserves (Lancaster Liga 1)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Alloy Soccer Club Reserves', '9090893-alloy-soccer-club-reserves', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Lancaster Liga 1'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Keystone Elite (Lancaster Liga 1)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Keystone Elite', '9090893-keystone-elite', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Lancaster Liga 1'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: F&M FC (Lancaster Liga 1)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'F&M FC', '9090893-f&m-fc', d.id, 2
-FROM divisions d
-JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Lancaster Liga 1'
-  AND s.name = '2025/2026'
-  AND s.league_id = 2
-ON CONFLICT (division_id, name) DO NOTHING;
--- Added: Lancaster City FC (Lancaster Liga 1)
-INSERT INTO teams (name, external_id, division_id, source_system_id)
-SELECT 'Lancaster City FC', '9090893-lancaster-city-fc', d.id, 2
+SELECT 'Lancaster City FC', '9090893-lancaster-city-fc', 20019, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'

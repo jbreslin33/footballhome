@@ -167,6 +167,11 @@ class HtmlFetcher {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       } else {
         html = await response.text();
+        // Some sites return 200 with empty body (JS-rendered pages) — fall back to browser
+        if (!html || html.trim().length === 0) {
+          console.log(`   📭 Empty 200 response, using headless browser...`);
+          html = await this._fetchWithBrowser(url, timeoutMs);
+        }
       }
     } catch (error) {
       clearTimeout(plainTimeoutId);

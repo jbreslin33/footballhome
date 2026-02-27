@@ -1,7 +1,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Rosters - APSL
 -- Player-team relationships from team roster pages
--- Total Records: 1573
+-- Total Records: 1820
 -- 
 -- Architecture: Players looked up by name (no hardcoded IDs)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -772,286 +772,6 @@ FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
 WHERE t.name = 'Christos FC' AND t.source_system_id = 1
   AND per.first_name = 'Alexander' AND per.last_name = 'Wardle'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Adrian' AND per.last_name = 'Aguilera'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Julian' AND per.last_name = 'Anderson'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Balint' AND per.last_name = 'Barabas'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Vasilios' AND per.last_name = 'Brisnovalis'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Robert' AND per.last_name = 'Cabrera'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Murat' AND per.last_name = 'Edgar Calkap'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Daniel' AND per.last_name = 'Curmi'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Duga' AND per.last_name = 'Dambelly'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Khaled' AND per.last_name = 'Daoud'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Mohamed' AND per.last_name = 'Diaw'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Julio' AND per.last_name = 'Espinal'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Jeison' AND per.last_name = 'Gonzalez Sanchez'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'James' AND per.last_name = 'Greco'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Grady' AND per.last_name = 'Kozak'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Antonio' AND per.last_name = 'Linge'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Tyrone' AND per.last_name = 'Malango'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'William' AND per.last_name = 'Marment'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Augustus' AND per.last_name = 'Manuel Mcgiff'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Christopher' AND per.last_name = 'Morandi'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Richard' AND per.last_name = 'Morel'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Peter' AND per.last_name = 'Myrianthopoulos'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Stefen' AND per.last_name = 'Nikolic'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Martin' AND per.last_name = 'Nikprelaj'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Sergio' AND per.last_name = 'Peralta'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Marco' AND per.last_name = 'Primavera'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Paolo' AND per.last_name = 'Cerruto Primavera'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Chris' AND per.last_name = 'Riordan'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'David' AND per.last_name = 'Rodriguez'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Ronaldo' AND per.last_name = 'Rodriguez Jurado'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Fredy' AND per.last_name = 'Rosales'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Duvan' AND per.last_name = 'Sanchez'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Giuliano' AND per.last_name = 'Santucci'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Navruz' AND per.last_name = 'Shukroev'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Milorad' AND per.last_name = 'Sobot'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
-  AND per.first_name = 'Michalis' AND per.last_name = 'Stylianou'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
 INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
@@ -3530,286 +3250,6 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Dominik' AND per.last_name = 'Brulinski'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Mathew' AND per.last_name = 'Contino'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Joseph' AND per.last_name = 'Core'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Jacob' AND per.last_name = 'Denison'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Jack' AND per.last_name = 'Doran'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Javiar' AND per.last_name = 'Edwards'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Humbert' AND per.last_name = 'Ferrer'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Spencer' AND per.last_name = 'Fleurant'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Jason' AND per.last_name = 'Gaylord'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Daniel' AND per.last_name = 'Giorgi'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Kevin' AND per.last_name = 'Harrington'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Stephanos' AND per.last_name = 'Hondrakis'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Cris' AND per.last_name = 'Huacon'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Samuka' AND per.last_name = 'Kenneh'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Evan' AND per.last_name = 'Kim'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Brent' AND per.last_name = 'McKeown'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Enrique' AND per.last_name = 'Montana III'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Jack' AND per.last_name = 'Mulhare'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Curtis' AND per.last_name = 'Oberg'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Farouk' AND per.last_name = 'Osman'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Cole' AND per.last_name = 'Parete'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'William' AND per.last_name = 'Pearce'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Akeem' AND per.last_name = 'Phipps'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Layton' AND per.last_name = 'Purchase'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Nabeel' AND per.last_name = 'Qawasmi'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Yannick' AND per.last_name = 'Rihs'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Antonio' AND per.last_name = 'Rocha'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Jake' AND per.last_name = 'Rozhansky'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Yahli' AND per.last_name = 'Saltsberg'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Frank' AND per.last_name = 'Shkreli'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Michael' AND per.last_name = 'Soboff'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Tom' AND per.last_name = 'Wallenstein'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Michael' AND per.last_name = 'Wampler'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Peter' AND per.last_name = 'Wentzel'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
-  AND per.first_name = 'Edwin' AND per.last_name = 'Zuniga Lopez'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
 WHERE t.name = 'NY Greek Americans' AND t.source_system_id = 1
   AND per.first_name = 'Hermanus' AND per.last_name = 'Achterkamp'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
@@ -4090,278 +3530,6 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Pablo' AND per.last_name = 'Ablanedo Llaneza'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Jordan' AND per.last_name = 'Bailon'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Filip' AND per.last_name = 'Basili'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Axel' AND per.last_name = 'Berglund'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Christopher' AND per.last_name = 'Bermudez'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Victor' AND per.last_name = 'Castel'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Rikard' AND per.last_name = 'Cederberg'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Nicolas' AND per.last_name = 'Cifuentes DIaz'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Sergio' AND per.last_name = 'Diaz'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Eric' AND per.last_name = 'Frimpong'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'George' AND per.last_name = 'Gantalis'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Gonzalo' AND per.last_name = 'Gil de Pareja'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Ede' AND per.last_name = 'Mateo Gramberg'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Thomas' AND per.last_name = 'Gray'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Antreas' AND per.last_name = 'Hadjigavriel'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Harri' AND per.last_name = 'Hawkins'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Devin' AND per.last_name = 'Heanue'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Christopher' AND per.last_name = 'Heckenberg'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Kevin' AND per.last_name = 'Hernandez'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Jens' AND per.last_name = 'Mannhart Hoff'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Joseph' AND per.last_name = 'Holland'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Filip' AND per.last_name = 'Jauk'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Konstantinos' AND per.last_name = 'Karousis'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Benny' AND per.last_name = 'Lafortune'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Joshua' AND per.last_name = 'Levine'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Juan' AND per.last_name = 'Martinez Moreno'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Filip' AND per.last_name = 'Mirkovic'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Christoforos' AND per.last_name = 'Moulinos'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Stephen' AND per.last_name = 'O’ Connell'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Alex' AND per.last_name = 'Palas'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Sebastian' AND per.last_name = 'Ruiz'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Athanasis' AND per.last_name = 'Shehadeh'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'James' AND per.last_name = 'Thristino'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
-  AND per.first_name = 'Sean' AND per.last_name = 'Towey'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
 WHERE t.name = 'Oaklyn United FC' AND t.source_system_id = 1
   AND per.first_name = 'Osman' AND per.last_name = 'Barrie'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
@@ -4634,7 +3802,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Kennison' AND per.last_name = 'Akuro'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4642,7 +3810,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Melvin' AND per.last_name = 'Asanji'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4650,7 +3818,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Brandon' AND per.last_name = 'Betts'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4658,7 +3826,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Isaac' AND per.last_name = 'Carvajal'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4666,7 +3834,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Elido' AND per.last_name = 'Noel Chun Reyes'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4674,7 +3842,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Jenovic' AND per.last_name = 'Elumbu'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4682,7 +3850,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Anderson' AND per.last_name = 'Fernandez'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4690,7 +3858,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Angello' AND per.last_name = 'Fernandez'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4698,7 +3866,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Terry' AND per.last_name = 'Fon'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4706,7 +3874,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Eduardo' AND per.last_name = 'Fuentes'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4714,7 +3882,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Christian' AND per.last_name = 'Garavito'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4722,7 +3890,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Thaddeus' AND per.last_name = 'Goddard'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4730,7 +3898,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Alexis' AND per.last_name = 'Gonzalez Ayala'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4738,7 +3906,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Chayton' AND per.last_name = 'Kuidlan'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4746,7 +3914,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Tobias' AND per.last_name = 'Lane'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4754,7 +3922,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Jonathan' AND per.last_name = 'Lemus Morales'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4762,7 +3930,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Creasy' AND per.last_name = 'Lopez'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4770,7 +3938,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Lutho' AND per.last_name = 'Mlunguza'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4778,7 +3946,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Toju' AND per.last_name = 'Okonedo'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4786,7 +3954,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'David' AND per.last_name = 'Pawlowski'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4794,7 +3962,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Danny' AND per.last_name = 'Paz'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4802,7 +3970,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Brayan' AND per.last_name = 'Perez Mendez'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4810,7 +3978,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Bronson' AND per.last_name = 'Shepherd'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4818,7 +3986,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Nicholas' AND per.last_name = 'Tziamouranis'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4826,7 +3994,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'William' AND per.last_name = 'Villatoro Velasquez'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -4834,7 +4002,7 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'PFA EPSL' AND t.source_system_id = 1
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
   AND per.first_name = 'Brian' AND per.last_name = 'Ware'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
@@ -10314,278 +9482,6 @@ INSERT INTO rosters (team_id, player_id, jersey_number, joined_at)
 SELECT t.id, pl.id, NULL, NOW()
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Keirol' AND per.last_name = 'Aaron'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Matthais' AND per.last_name = 'Adamek'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Yohance' AND per.last_name = 'Alexander'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Andrea' AND per.last_name = 'Andreou'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Luis' AND per.last_name = 'Argudo'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Theodore' AND per.last_name = 'Bernhard'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Antonio' AND per.last_name = 'Biggs'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Mason' AND per.last_name = 'Chetti'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Jarvis' AND per.last_name = 'Cleal'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Joel' AND per.last_name = 'Cunningham'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Caleb' AND per.last_name = 'Danquah'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Eric' AND per.last_name = 'Danquah'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Sameer' AND per.last_name = 'Fathazada'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Leo' AND per.last_name = 'Folla'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Jakob' AND per.last_name = 'Friedman'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Sebastian' AND per.last_name = 'Goicochea'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Juan' AND per.last_name = 'Antonio Gomez'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Alessio' AND per.last_name = 'Hernandez'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Benjamin' AND per.last_name = 'Jones'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Selcuk' AND per.last_name = 'Kahveci'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Chad' AND per.last_name = 'Mark'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Eoin' AND per.last_name = 'Martin'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Leonardo' AND per.last_name = 'Martinelli'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Alexander' AND per.last_name = 'McLachlan'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Giovanny' AND per.last_name = 'Morales'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Bradley' AND per.last_name = 'Nestor'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Godwin' AND per.last_name = 'Partey'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Junior' AND per.last_name = 'Rosero'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Karim' AND per.last_name = 'Russell'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Sanoussi' AND per.last_name = 'Sangary'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Shaquille' AND per.last_name = 'Saunchez'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Kendell' AND per.last_name = 'Thomas'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'Dillon' AND per.last_name = 'Woods'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Leros SC' AND t.source_system_id = 1
-  AND per.first_name = 'George' AND per.last_name = 'Yusuff'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
 WHERE t.name = 'Terminus FC' AND t.source_system_id = 1
   AND per.first_name = 'Nour' AND per.last_name = 'Alamri'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
@@ -11012,278 +9908,6 @@ FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
 WHERE t.name = 'Lighthouse 1893 SC' AND t.source_system_id = 1
   AND per.first_name = 'Oumar' AND per.last_name = 'Sylla'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Dylan' AND per.last_name = 'Frank Aportela'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Monsif' AND per.last_name = 'Atify'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Shane' AND per.last_name = 'Baker'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Mava' AND per.last_name = 'Mboko Celestin'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Gunnar' AND per.last_name = 'William Christensen'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Bailey' AND per.last_name = 'Cifone'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Emmett' AND per.last_name = 'Dougherty'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Sean' AND per.last_name = 'Fatiga'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Gil' AND per.last_name = 'Ferreira'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Greg' AND per.last_name = 'Ferreira'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Ryan' AND per.last_name = 'Gale'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Elvis' AND per.last_name = 'Gboho'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'McCarthy' AND per.last_name = 'Tyler Gomes'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Jeshohaih' AND per.last_name = 'Hernandez'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Ahmir' AND per.last_name = 'Lamar Johnson'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Ahsan' AND per.last_name = 'Johnson'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Bugra' AND per.last_name = 'Kumas'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Jake' AND per.last_name = 'Kuzmick'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Dominic' AND per.last_name = 'Antonio lodise'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Gavin' AND per.last_name = 'O''Neill'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Krish' AND per.last_name = 'Olmedo'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Alexander' AND per.last_name = 'Charles Patton'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Noam' AND per.last_name = 'Raz'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Mason' AND per.last_name = 'James Regan'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Fred' AND per.last_name = 'Renzulli'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Joseph' AND per.last_name = 'Romano'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Joshua' AND per.last_name = 'Rossell'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Brian' AND per.last_name = 'Sharkey'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Christopher' AND per.last_name = 'John Spicer'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Kyle' AND per.last_name = 'William Stone'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Owen' AND per.last_name = 'Strohm'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Jackson' AND per.last_name = 'M Stuetz'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Melcohol' AND per.last_name = 'Velasquez'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
-  AND per.first_name = 'Christian' AND per.last_name = 'Vetter'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
 INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
@@ -12588,5 +11212,3357 @@ FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
 WHERE t.name = 'GAK' AND t.source_system_id = 1
   AND per.first_name = 'John' AND per.last_name = 'Warwick'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Felix' AND per.last_name = 'Amankwah'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Daniel' AND per.last_name = 'Baxter'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Drew' AND per.last_name = 'Belcher'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Elijah' AND per.last_name = 'Belcher'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ethan' AND per.last_name = 'Belcher'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jacob' AND per.last_name = 'Bender'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jalen' AND per.last_name = 'Boston'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Brandon' AND per.last_name = 'Burkholder'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Nero' AND per.last_name = 'Cooper'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Anthony' AND per.last_name = 'Dragisics'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Alejandro' AND per.last_name = 'Estrada'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Justin' AND per.last_name = 'Gielen'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Brian' AND per.last_name = 'Graham'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Brett' AND per.last_name = 'Joyner'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Tanner' AND per.last_name = 'Kennard'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Tyler' AND per.last_name = 'Lee'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Stiven' AND per.last_name = 'Llano'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Morgan' AND per.last_name = 'Lussi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Raffaele' AND per.last_name = 'Mazzone'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Daniel' AND per.last_name = 'McCleary'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Edixon' AND per.last_name = 'Moreira'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'David' AND per.last_name = 'Ogbonna'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Garrett' AND per.last_name = 'Peters'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Juston' AND per.last_name = 'Rainey'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Cesar' AND per.last_name = 'Ramos'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Aaron' AND per.last_name = 'Rilling'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jackson' AND per.last_name = 'Ruckman'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Kyle' AND per.last_name = 'Saunderson'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Luis' AND per.last_name = 'Soria'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Brett' AND per.last_name = 'St Martin'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Christos FC' AND t.source_system_id = 1
+  AND per.first_name = 'Alexander' AND per.last_name = 'Wardle'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Joseph' AND per.last_name = 'Daly Aigner'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Liam' AND per.last_name = 'Charles Aigner'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Jacob' AND per.last_name = 'L Amon'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Samuel' AND per.last_name = 'Amon'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Walner' AND per.last_name = 'Anescar'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Samuel' AND per.last_name = 'Burbage'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Paul' AND per.last_name = 'Xavier Chamberland'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Zechariah' AND per.last_name = 'Dapaah'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Adam' AND per.last_name = 'Stephen DeLizza'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Heberson' AND per.last_name = 'Edouard'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Ashley' AND per.last_name = 'Fevrier'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Herley' AND per.last_name = 'Fevrier'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Caleb' AND per.last_name = 'James Gragg'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Marc' AND per.last_name = 'Henrice'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Colin' AND per.last_name = 'Benjamin Hofmann'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Elijah' AND per.last_name = 'Jabagat'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Damarius' AND per.last_name = 'Kelley'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Goran' AND per.last_name = 'Mijalkovski'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Sean' AND per.last_name = 'Chidozie Morse'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Abdelazim' AND per.last_name = 'Osman'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Ahmed' AND per.last_name = 'Osman'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Caden' AND per.last_name = 'Mark Pollard'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Jhonatan' AND per.last_name = 'Javier Ramirez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Ivan' AND per.last_name = 'Sanchez-Gonzalez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Gianluca' AND per.last_name = 'Secondi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Mourad' AND per.last_name = 'Shalaby'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Kenny' AND per.last_name = 'Spock'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Guy' AND per.last_name = 'Holmeade Talbott V'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Devon' AND per.last_name = 'Warman'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Delmarva Thunder' AND t.source_system_id = 1
+  AND per.first_name = 'Skyler' AND per.last_name = 'Williams'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Sami' AND per.last_name = 'Afiouni'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Samuel' AND per.last_name = 'Amedeker'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Owen' AND per.last_name = 'Blount'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Jordan' AND per.last_name = 'Bonnett'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Evan' AND per.last_name = 'Bosak'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Gerard' AND per.last_name = 'Broussard'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Brian' AND per.last_name = 'Chidzvondo'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Matthew' AND per.last_name = 'Do'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Joseph' AND per.last_name = 'Enebeli'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Adam' AND per.last_name = 'Grace'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Demetrius' AND per.last_name = 'Howe'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Massimo' AND per.last_name = 'Johnson'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Benjamin' AND per.last_name = 'Jones'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Aidan' AND per.last_name = 'Krivanec'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Leighton' AND per.last_name = 'Langenhoven'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Salah' AND per.last_name = 'Mahmoud'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Treyvon' AND per.last_name = 'Medley-Green'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Museba' AND per.last_name = 'Mwape'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Jake' AND per.last_name = 'Nelson'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Abulfazl' AND per.last_name = 'Panahi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Dame' AND per.last_name = 'Pene'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Henry' AND per.last_name = 'Pittman'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Yoskar' AND per.last_name = 'Alejandro Quintanilla'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Emerson' AND per.last_name = 'Reyes'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Mahdi' AND per.last_name = 'Reza'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Mourtala' AND per.last_name = 'Seck'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Alakhe' AND per.last_name = 'Sibeko'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Noe' AND per.last_name = 'Soriano'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Sharief' AND per.last_name = 'Stancil'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Max' AND per.last_name = 'Taliaferro'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Asanda' AND per.last_name = 'Tom'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Caleb' AND per.last_name = 'Underwood'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Callum' AND per.last_name = 'Vellozzi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'Chrisendo' AND per.last_name = 'Wentzel'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Grove Soccer United' AND t.source_system_id = 1
+  AND per.first_name = 'John' AND per.last_name = 'Williams'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Soheyl' AND per.last_name = 'Ali Rafi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jonathan' AND per.last_name = 'Arguta'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jean' AND per.last_name = 'Ayolmbong'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Eric' AND per.last_name = 'Calvillo'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jhonny' AND per.last_name = 'De Souza'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Valdir' AND per.last_name = 'De Souza'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Isiah' AND per.last_name = 'Dorsey'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ricardo' AND per.last_name = 'Espinoza'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jerry' AND per.last_name = 'Felix'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Caleb' AND per.last_name = 'Ghannam'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jose' AND per.last_name = 'Gonzlaez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Adsam' AND per.last_name = 'Guennouni'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jackson' AND per.last_name = 'Hall'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Emmitt' AND per.last_name = 'Inestroza'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Abdul-Azim' AND per.last_name = 'Ismail'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Abdul-Rahman' AND per.last_name = 'Ismail'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ethan' AND per.last_name = 'Lee'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Huber' AND per.last_name = 'Letona'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ethan' AND per.last_name = 'Lloyd'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Bernardo' AND per.last_name = 'Majano'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Reda' AND per.last_name = 'Manafi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jack' AND per.last_name = 'Pinson'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jaime' AND per.last_name = 'Quintanilla'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Michael' AND per.last_name = 'Radomski'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ahmed' AND per.last_name = 'Sheta'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Roman' AND per.last_name = 'Topler'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Marques' AND per.last_name = 'Vagner'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Nova FC' AND t.source_system_id = 1
+  AND per.first_name = 'Alton' AND per.last_name = 'West'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Kennison' AND per.last_name = 'Akuro'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Melvin' AND per.last_name = 'Asanji'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Brandon' AND per.last_name = 'Betts'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Isaac' AND per.last_name = 'Carvajal'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Elido' AND per.last_name = 'Noel Chun Reyes'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Jenovic' AND per.last_name = 'Elumbu'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Anderson' AND per.last_name = 'Fernandez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Angello' AND per.last_name = 'Fernandez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Terry' AND per.last_name = 'Fon'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Eduardo' AND per.last_name = 'Fuentes'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Christian' AND per.last_name = 'Garavito'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Thaddeus' AND per.last_name = 'Goddard'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Alexis' AND per.last_name = 'Gonzalez Ayala'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Chayton' AND per.last_name = 'Kuidlan'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Tobias' AND per.last_name = 'Lane'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Jonathan' AND per.last_name = 'Lemus Morales'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Creasy' AND per.last_name = 'Lopez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Lutho' AND per.last_name = 'Mlunguza'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Toju' AND per.last_name = 'Okonedo'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'David' AND per.last_name = 'Pawlowski'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Danny' AND per.last_name = 'Paz'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Brayan' AND per.last_name = 'Perez Mendez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Bronson' AND per.last_name = 'Shepherd'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Nicholas' AND per.last_name = 'Tziamouranis'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'William' AND per.last_name = 'Villatoro Velasquez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PFA APSL' AND t.source_system_id = 1
+  AND per.first_name = 'Brian' AND per.last_name = 'Ware'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'David' AND per.last_name = 'Alverez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Carlos' AND per.last_name = 'Amador'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Chris' AND per.last_name = 'Avila'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Yaseen' AND per.last_name = 'Ben Chouikha'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Amir' AND per.last_name = 'Bentaleb'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Angel' AND per.last_name = 'Viera Castro'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Jesse' AND per.last_name = 'Conteh'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Gio' AND per.last_name = 'Cruz'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'German' AND per.last_name = 'Del Cid'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Mohammed' AND per.last_name = 'Ahmed Elsir'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Collins' AND per.last_name = 'Frimpong'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Roy' AND per.last_name = 'Alex Galeano'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Oscar' AND per.last_name = 'Garcia'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Sam' AND per.last_name = 'Garcia'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Anthony' AND per.last_name = 'Juarez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Kwasi' AND per.last_name = 'Kotoko'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Orlando' AND per.last_name = 'Martinez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Andrew' AND per.last_name = 'Mejia'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Chris' AND per.last_name = 'Mejia'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Milton' AND per.last_name = 'Miranda'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Nasrullah' AND per.last_name = 'Muhammed'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Alexis' AND per.last_name = 'Palma'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Luis' AND per.last_name = 'Reyes'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Romel' AND per.last_name = 'Reyes'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Jason' AND per.last_name = 'Rodriguez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Elias' AND per.last_name = 'San Juan'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Ricardo' AND per.last_name = 'Vega'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'PW Nova' AND t.source_system_id = 1
+  AND per.first_name = 'Raul' AND per.last_name = 'Villalta'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Mohamed' AND per.last_name = 'Abdelrehman'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Nyliek' AND per.last_name = 'Allen'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jared' AND per.last_name = 'Benedict'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'David' AND per.last_name = 'Bernal-Clark'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Alex' AND per.last_name = 'Bilski'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Nicholas' AND per.last_name = 'Blake'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Edwardo' AND per.last_name = 'Chavez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Charles' AND per.last_name = 'Evangelos'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jessi' AND per.last_name = 'e Garcia'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Daniel' AND per.last_name = 'Gonzalez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Sayed' AND per.last_name = 'Hashemi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Sayed' AND per.last_name = 'Hashemi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Vasilios' AND per.last_name = 'Kazakos'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Alejandro' AND per.last_name = 'Lenz'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Josaphat' AND per.last_name = 'Letona'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Braden' AND per.last_name = 'Lopez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Gabriel' AND per.last_name = 'Maguire'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Moussa' AND per.last_name = 'Mahama'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Louis' AND per.last_name = 'Manyele'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Carlos' AND per.last_name = 'Mareno'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'George' AND per.last_name = 'Mavronis'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Michael' AND per.last_name = 'Medina'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Roman' AND per.last_name = 'Milian'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Johnny' AND per.last_name = 'Paletar'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Danish' AND per.last_name = 'Saeedi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jordon' AND per.last_name = 'Salvi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Leonel' AND per.last_name = 'Sanchez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Selim' AND per.last_name = 'Senel'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ahmadi' AND per.last_name = 'Shayan'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Akimanzi' AND per.last_name = 'Siibo'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Alex' AND per.last_name = 'Sosa'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Viktor' AND per.last_name = 'Tachev'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Matthew' AND per.last_name = 'Zelaya'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Nebeyo' AND per.last_name = 'Zerihun'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'VA Marauders FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ossy' AND per.last_name = 'Zubiria'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Kelechi' AND per.last_name = 'Akujuobi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Faisal' AND per.last_name = 'Alay'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Victorine' AND per.last_name = 'Kwame Appohsam'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Hector' AND per.last_name = 'Avila Hernandez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Eduardo' AND per.last_name = 'G Barria'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Zavier' AND per.last_name = 'Bell'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Zach' AND per.last_name = 'Boyd'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Julio' AND per.last_name = 'Bravo-Guzman'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Deontae' AND per.last_name = 'Campbell'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Brandon' AND per.last_name = 'Chambers'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Aiden' AND per.last_name = 'Chen'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Marckensley' AND per.last_name = 'Constant'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Tim' AND per.last_name = 'Cooley'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Christian' AND per.last_name = 'Cruz'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Danilo' AND per.last_name = 'Duric'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Logan' AND per.last_name = 'Flanagan'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Colin' AND per.last_name = 'Foley'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Nathan' AND per.last_name = 'Gichuhi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jeremy' AND per.last_name = 'Gonzalez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Josh' AND per.last_name = 'Gutierrez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jonah' AND per.last_name = 'Harvey'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Josh' AND per.last_name = 'Haynie'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Mitchell' AND per.last_name = 'Hopkins'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Tanner' AND per.last_name = 'Johnston'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'David' AND per.last_name = 'Miller'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Abdul' AND per.last_name = 'Mokhtar'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Bijan' AND per.last_name = 'Morshedi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ander' AND per.last_name = 'Ochoa'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Victor' AND per.last_name = 'Oladeinde'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Oved' AND per.last_name = 'Ortega'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Kameron' AND per.last_name = 'Payne'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jayden' AND per.last_name = 'Rodriguez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Oumar' AND per.last_name = 'Thiandoum'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Wave FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ronju' AND per.last_name = 'Walters'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Adrian' AND per.last_name = 'Aguilera'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Julian' AND per.last_name = 'Anderson'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Balint' AND per.last_name = 'Barabas'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Vasilios' AND per.last_name = 'Brisnovalis'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Robert' AND per.last_name = 'Cabrera'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Murat' AND per.last_name = 'Edgar Calkap'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Daniel' AND per.last_name = 'Curmi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Duga' AND per.last_name = 'Dambelly'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Khaled' AND per.last_name = 'Daoud'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Mohamed' AND per.last_name = 'Diaw'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Julio' AND per.last_name = 'Espinal'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Jeison' AND per.last_name = 'Gonzalez Sanchez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'James' AND per.last_name = 'Greco'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Grady' AND per.last_name = 'Kozak'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Antonio' AND per.last_name = 'Linge'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Tyrone' AND per.last_name = 'Malango'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'William' AND per.last_name = 'Marment'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Augustus' AND per.last_name = 'Manuel Mcgiff'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Christopher' AND per.last_name = 'Morandi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Richard' AND per.last_name = 'Morel'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Peter' AND per.last_name = 'Myrianthopoulos'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Stefen' AND per.last_name = 'Nikolic'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Martin' AND per.last_name = 'Nikprelaj'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Sergio' AND per.last_name = 'Peralta'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Marco' AND per.last_name = 'Primavera'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Paolo' AND per.last_name = 'Cerruto Primavera'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Chris' AND per.last_name = 'Riordan'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'David' AND per.last_name = 'Rodriguez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Ronaldo' AND per.last_name = 'Rodriguez Jurado'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Fredy' AND per.last_name = 'Rosales'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Duvan' AND per.last_name = 'Sanchez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Giuliano' AND per.last_name = 'Santucci'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Navruz' AND per.last_name = 'Shukroev'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Milorad' AND per.last_name = 'Sobot'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Doxa FCW' AND t.source_system_id = 1
+  AND per.first_name = 'Michalis' AND per.last_name = 'Stylianou'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Dominik' AND per.last_name = 'Brulinski'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Mathew' AND per.last_name = 'Contino'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Joseph' AND per.last_name = 'Core'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Jacob' AND per.last_name = 'Denison'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Jack' AND per.last_name = 'Doran'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Javiar' AND per.last_name = 'Edwards'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Humbert' AND per.last_name = 'Ferrer'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Spencer' AND per.last_name = 'Fleurant'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Jason' AND per.last_name = 'Gaylord'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Daniel' AND per.last_name = 'Giorgi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Kevin' AND per.last_name = 'Harrington'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Stephanos' AND per.last_name = 'Hondrakis'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Cris' AND per.last_name = 'Huacon'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Samuka' AND per.last_name = 'Kenneh'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Evan' AND per.last_name = 'Kim'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Brent' AND per.last_name = 'McKeown'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Enrique' AND per.last_name = 'Montana III'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Jack' AND per.last_name = 'Mulhare'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Curtis' AND per.last_name = 'Oberg'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Farouk' AND per.last_name = 'Osman'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Cole' AND per.last_name = 'Parete'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'William' AND per.last_name = 'Pearce'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Akeem' AND per.last_name = 'Phipps'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Layton' AND per.last_name = 'Purchase'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Nabeel' AND per.last_name = 'Qawasmi'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Yannick' AND per.last_name = 'Rihs'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Antonio' AND per.last_name = 'Rocha'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Jake' AND per.last_name = 'Rozhansky'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Yahli' AND per.last_name = 'Saltsberg'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Frank' AND per.last_name = 'Shkreli'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Michael' AND per.last_name = 'Soboff'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Tom' AND per.last_name = 'Wallenstein'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Michael' AND per.last_name = 'Wampler'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Peter' AND per.last_name = 'Wentzel'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Athletic Club' AND t.source_system_id = 1
+  AND per.first_name = 'Edwin' AND per.last_name = 'Zuniga Lopez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Pablo' AND per.last_name = 'Ablanedo Llaneza'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Jordan' AND per.last_name = 'Bailon'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Filip' AND per.last_name = 'Basili'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Axel' AND per.last_name = 'Berglund'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Christopher' AND per.last_name = 'Bermudez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Victor' AND per.last_name = 'Castel'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Rikard' AND per.last_name = 'Cederberg'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Nicolas' AND per.last_name = 'Cifuentes DIaz'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Sergio' AND per.last_name = 'Diaz'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Eric' AND per.last_name = 'Frimpong'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'George' AND per.last_name = 'Gantalis'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Gonzalo' AND per.last_name = 'Gil de Pareja'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Ede' AND per.last_name = 'Mateo Gramberg'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Thomas' AND per.last_name = 'Gray'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Antreas' AND per.last_name = 'Hadjigavriel'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Harri' AND per.last_name = 'Hawkins'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Devin' AND per.last_name = 'Heanue'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Christopher' AND per.last_name = 'Heckenberg'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Kevin' AND per.last_name = 'Hernandez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Jens' AND per.last_name = 'Mannhart Hoff'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Joseph' AND per.last_name = 'Holland'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Filip' AND per.last_name = 'Jauk'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Konstantinos' AND per.last_name = 'Karousis'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Benny' AND per.last_name = 'Lafortune'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Joshua' AND per.last_name = 'Levine'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Juan' AND per.last_name = 'Martinez Moreno'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Filip' AND per.last_name = 'Mirkovic'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Christoforos' AND per.last_name = 'Moulinos'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Stephen' AND per.last_name = 'O’ Connell'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Alex' AND per.last_name = 'Palas'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Sebastian' AND per.last_name = 'Ruiz'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Athanasis' AND per.last_name = 'Shehadeh'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'James' AND per.last_name = 'Thristino'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'NY Pancyprian Freedoms' AND t.source_system_id = 1
+  AND per.first_name = 'Sean' AND per.last_name = 'Towey'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Keirol' AND per.last_name = 'Aaron'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Matthais' AND per.last_name = 'Adamek'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Yohance' AND per.last_name = 'Alexander'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Andrea' AND per.last_name = 'Andreou'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Luis' AND per.last_name = 'Argudo'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Theodore' AND per.last_name = 'Bernhard'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Antonio' AND per.last_name = 'Biggs'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Mason' AND per.last_name = 'Chetti'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Jarvis' AND per.last_name = 'Cleal'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Joel' AND per.last_name = 'Cunningham'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Caleb' AND per.last_name = 'Danquah'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Eric' AND per.last_name = 'Danquah'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Sameer' AND per.last_name = 'Fathazada'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Leo' AND per.last_name = 'Folla'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Jakob' AND per.last_name = 'Friedman'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Sebastian' AND per.last_name = 'Goicochea'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Juan' AND per.last_name = 'Antonio Gomez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Alessio' AND per.last_name = 'Hernandez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Benjamin' AND per.last_name = 'Jones'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Selcuk' AND per.last_name = 'Kahveci'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Chad' AND per.last_name = 'Mark'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Eoin' AND per.last_name = 'Martin'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Leonardo' AND per.last_name = 'Martinelli'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Alexander' AND per.last_name = 'McLachlan'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Giovanny' AND per.last_name = 'Morales'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Bradley' AND per.last_name = 'Nestor'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Godwin' AND per.last_name = 'Partey'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Junior' AND per.last_name = 'Rosero'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Karim' AND per.last_name = 'Russell'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Sanoussi' AND per.last_name = 'Sangary'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Shaquille' AND per.last_name = 'Saunchez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Kendell' AND per.last_name = 'Thomas'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'Dillon' AND per.last_name = 'Woods'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Leros SC' AND t.source_system_id = 1
+  AND per.first_name = 'George' AND per.last_name = 'Yusuff'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Dylan' AND per.last_name = 'Frank Aportela'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Monsif' AND per.last_name = 'Atify'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Shane' AND per.last_name = 'Baker'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Mava' AND per.last_name = 'Mboko Celestin'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Gunnar' AND per.last_name = 'William Christensen'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Bailey' AND per.last_name = 'Cifone'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Emmett' AND per.last_name = 'Dougherty'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Sean' AND per.last_name = 'Fatiga'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Gil' AND per.last_name = 'Ferreira'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Greg' AND per.last_name = 'Ferreira'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ryan' AND per.last_name = 'Gale'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Elvis' AND per.last_name = 'Gboho'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'McCarthy' AND per.last_name = 'Tyler Gomes'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jeshohaih' AND per.last_name = 'Hernandez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ahmir' AND per.last_name = 'Lamar Johnson'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Ahsan' AND per.last_name = 'Johnson'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Bugra' AND per.last_name = 'Kumas'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jake' AND per.last_name = 'Kuzmick'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Dominic' AND per.last_name = 'Antonio lodise'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Gavin' AND per.last_name = 'O''Neill'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Krish' AND per.last_name = 'Olmedo'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Alexander' AND per.last_name = 'Charles Patton'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Noam' AND per.last_name = 'Raz'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Mason' AND per.last_name = 'James Regan'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Fred' AND per.last_name = 'Renzulli'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Joseph' AND per.last_name = 'Romano'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Joshua' AND per.last_name = 'Rossell'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Brian' AND per.last_name = 'Sharkey'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Christopher' AND per.last_name = 'John Spicer'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Kyle' AND per.last_name = 'William Stone'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Owen' AND per.last_name = 'Strohm'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Jackson' AND per.last_name = 'M Stuetz'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Melcohol' AND per.last_name = 'Velasquez'
+ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, NOW()
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Sewell Old Boys FC' AND t.source_system_id = 1
+  AND per.first_name = 'Christian' AND per.last_name = 'Vetter'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 

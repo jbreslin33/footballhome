@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Organizations - CSL (Curated)
--- Only new organizations not in APSL. Total: 45
+-- Only new organizations not in APSL. Total: 44
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO organizations (id, name) VALUES (10003, 'FC Sandzak') ON CONFLICT (id) DO NOTHING;
@@ -23,7 +23,6 @@ INSERT INTO organizations (id, name) VALUES (10022, 'Manhattan FC') ON CONFLICT 
 INSERT INTO organizations (id, name) VALUES (10023, 'Desportiva Sociedad') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10024, 'KidSuper Samba AC') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10025, 'SC Gjoa') ON CONFLICT (id) DO NOTHING;
-INSERT INTO organizations (id, name) VALUES (10026, 'SC Eintracht') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10027, 'CD Iberia') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10030, 'NY Albanians FC') ON CONFLICT (id) DO NOTHING;
 INSERT INTO organizations (id, name) VALUES (10031, 'Laberia FC') ON CONFLICT (id) DO NOTHING;

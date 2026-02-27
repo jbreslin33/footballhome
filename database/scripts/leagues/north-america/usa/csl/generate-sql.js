@@ -410,6 +410,8 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
         this.addMatch({
           homeTeamExternalId: matchData.homeTeamId,
           awayTeamExternalId: matchData.awayTeamId,
+          homeTeamName: this.getTeamNameByExternalId(matchData.homeTeamId),
+          awayTeamName: this.getTeamNameByExternalId(matchData.awayTeamId),
           matchDate: matchData.matchDate,
           matchTime: matchData.matchTime,
           venueId: venueId,

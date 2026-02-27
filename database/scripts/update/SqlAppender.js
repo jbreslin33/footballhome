@@ -173,8 +173,9 @@ ON CONFLICT (division_id, name) DO NOTHING;`;
     // Added matches
     for (const match of matchesDiff.added) {
       const matchStatus = match.status === 'completed' ? 3 : 1;
-      const homeTeamExternalId = `${match.divisionExternalId}-${match.homeTeam.toLowerCase().replace(/\s+/g, '-')}`;
-      const awayTeamExternalId = `${match.divisionExternalId}-${match.awayTeam.toLowerCase().replace(/\s+/g, '-')}`;
+      // Use actual team external IDs if available, fall back to division+slug for leagues without numeric IDs
+      const homeTeamExternalId = match.homeTeamExternalId || `${match.divisionExternalId}-${match.homeTeam.toLowerCase().replace(/\s+/g, '-')}`;
+      const awayTeamExternalId = match.awayTeamExternalId || `${match.divisionExternalId}-${match.awayTeam.toLowerCase().replace(/\s+/g, '-')}`;
 
       const sql = `INSERT INTO matches (
   match_type_id, match_date, match_time, match_status_id,
