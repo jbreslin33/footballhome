@@ -5,8 +5,13 @@ const LeagueSnapshot = require('../update/LeagueSnapshot');
 /**
  * CASA Structure Scraper
  *
- * Scrapes standings and schedules from casasoccerleagues.com using Puppeteer.
- * CASA uses SportsEngine iframes that require browser automation and scroll-to-load.
+ * Scrapes standings and schedules from casasoccerleagues.com.
+ *
+ * Schedule data: Uses the SportsEngine public REST API directly
+ *   API: https://se-api.sportsengine.com/v3/microsites/events
+ *   Each division has a SportsEngine program_id discovered from the iframe embed URL.
+ *
+ * Standings data: Still uses Puppeteer to scrape the rendered iframe (no API available).
  *
  * Outputs: LeagueSnapshot JSON saved to database/scraped-html/casa/snapshot.json
  *
@@ -22,11 +27,12 @@ class CasaStructureScraper {
     this._browser = null;
 
     // Division mapping from 034-divisions.sql
+    // programId: SportsEngine program ID for the REST API (found in iframe embed URL)
     this.divisions = [
-      { id: 54, name: 'Philadelphia Liga 1', externalId: '9090889' },
-      { id: 55, name: 'Philadelphia Liga 2', externalId: '9096430' },
-      { id: 56, name: 'Boston Liga 1', externalId: '9090891' },
-      { id: 57, name: 'Lancaster Liga 1', externalId: '9090893' }
+      { id: 54, name: 'Philadelphia Liga 1', externalId: '9090889', programId: '6827a0840b95c8019f7e2b38' },
+      { id: 55, name: 'Philadelphia Liga 2', externalId: '9096430', programId: '682f9676528c0e00bfc9d2f2' },
+      { id: 56, name: 'Boston Liga 1', externalId: '9090891', programId: '6827a0c1d3cc737f4c6770b9' },
+      { id: 57, name: 'Lancaster Liga 1', externalId: '9090893', programId: '6827a11eaca2fea950917a73' }
     ];
   }
 
@@ -245,115 +251,143 @@ class CasaStructureScraper {
   }
 
   /**
-   * Scroll a frame both UP (past matches) and DOWN (future matches).
-   * SportsEngine schedule defaults to "today" and lazy-loads in both directions.
-   */
-  async _scrollFrameBothDirections(frame, scrollCount = 20, delayMs = 800) {
-    // Scroll UP first to load past matches
-    for (let i = 0; i < scrollCount; i++) {
-      await frame.evaluate(() => {
-        window.scrollTo(0, 0);
-      });
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-    }
-
-    // Scroll DOWN to load future matches (scroll to bottom in increments)
-    for (let i = 0; i < scrollCount; i++) {
-      await frame.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight);
-      });
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-    }
-  }
-
-  /**
-   * Scrape schedule for a single division
-   * @returns {Array<{home, away, time, status, score}>}
+   * Scrape schedule for a single division using the SportsEngine REST API.
+   * Returns all matches for the season (past + future) with dates, scores, and status.
+   *
+   * API: https://se-api.sportsengine.com/v3/microsites/events
+   * - Requires a program_id (SportsEngine's internal season/division ID)
+   * - Returns up to 100 events per page (paginated)
+   * - Includes home/away teams, scores, dates, locations, status
+   *
+   * @returns {Array<{home, away, time, status, score, date, homeScore, awayScore, externalId}>}
    */
   async scrapeSchedule(browser, division) {
-    const page = await browser.newPage();
+    console.log(`   🌐 Schedule: ${division.name} (${division.externalId})`);
 
-    try {
-      const url = `https://www.casasoccerleagues.com/season_management_season_page/tab_schedule?page_node_id=${division.externalId}`;
-      console.log(`   🌐 Schedule: ${division.name} (${division.externalId})`);
-      console.log(`      ${url}`);
+    if (!division.programId) {
+      console.log(`      ⚠️  No programId for ${division.name}, skipping schedule`);
+      return [];
+    }
 
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-      await new Promise(resolve => setTimeout(resolve, 5000));
+    const allEvents = [];
+    let page = 1;
+    let totalPages = 1;
 
-      // Scroll main page to trigger iframe loading
-      await this._scrollToLoad(page, 5, 1000);
-      await new Promise(resolve => setTimeout(resolve, 3000));
+    // Paginate through all events
+    while (page <= totalPages) {
+      const apiUrl = `https://se-api.sportsengine.com/v3/microsites/events?page=${page}&per_page=100&program_id=${division.programId}&order_by=starts_at&direction=asc`;
 
-      // Save frame HTML for debugging
-      const frames = page.frames();
-      let matches = [];
+      if (page === 1) {
+        console.log(`      API: ${apiUrl.substring(0, 120)}...`);
+      }
 
-      for (const frame of frames) {
-        const frameUrl = frame.url();
-        if (!frameUrl.includes('schedule') && !frameUrl.includes('season')) continue;
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        console.log(`      ✗ API error: ${response.status}`);
+        return [];
+      }
 
-        // Scroll iframe both up and down to load ALL matches (past + future)
-        console.log(`      ⏳ Scrolling iframe to load all matches...`);
-        await this._scrollFrameBothDirections(frame, 25, 800);
+      const data = await response.json();
+      const events = data.result || [];
+      allEvents.push(...events);
 
-        const frameHtml = await frame.content();
-        fs.writeFileSync(path.join(this.cacheDir, `schedule-${division.externalId}-frame.html`), frameHtml);
+      totalPages = data.metadata?.pagination?.totalPages || 1;
+      if (page === 1) {
+        const total = data.metadata?.pagination?.total || events.length;
+        console.log(`      📊 API reports ${total} total events (${totalPages} pages)`);
+      }
+      page++;
+    }
 
-        // Extract from Angular sm-schedule-event components
-        const frameMatches = await frame.evaluate(() => {
-          const events = document.querySelectorAll('sm-schedule-event');
-          return Array.from(events).map(event => {
-            const awayTeamEl = event.querySelector('[tag="away-team-name"]');
-            const awayTeam = awayTeamEl ? awayTeamEl.textContent.trim() : null;
+    // Transform API events into our match format
+    const matches = [];
+    for (const event of allEvents) {
+      if (event.event_type !== 'game') continue;
 
-            const homeTeamEl = event.querySelector('[tag="home-team-name"]');
-            const outsideHomeEl = event.querySelector('[data-cy="outside-home-team"]');
-            const homeTeam = homeTeamEl ? homeTeamEl.textContent.trim() :
-                            outsideHomeEl ? outsideHomeEl.textContent.trim() : null;
+      const gameDetails = event.game_details;
+      if (!gameDetails) continue;
 
-            const timeEl = event.querySelector('[data-cy="event-time"]');
-            const time = timeEl ? timeEl.textContent.trim() : null;
+      // Determine home and away teams
+      let homeTeam = null, awayTeam = null;
+      let homeScore = null, awayScore = null;
 
-            const statusEl = event.querySelector('[data-cy="event-status"]');
-            const status = statusEl ? statusEl.textContent.trim() : null;
-
-            const scoreEl = event.querySelector('[data-cy="game-score"]');
-            const score = scoreEl ? scoreEl.textContent.trim() : null;
-
-            return { home: homeTeam, away: awayTeam, time, status, score };
-          }).filter(m => m.away && m.home);
-        }).catch(() => []);
-
-        if (frameMatches.length > 0) {
-          matches = matches.concat(frameMatches);
-          console.log(`      ✓ Found ${frameMatches.length} matches in iframe`);
+      if (gameDetails.team_1 && gameDetails.team_2) {
+        if (gameDetails.team_1.is_home_team) {
+          homeTeam = gameDetails.team_1.name;
+          awayTeam = gameDetails.team_2.name;
+          homeScore = gameDetails.team_1.score ? parseInt(gameDetails.team_1.score) : null;
+          awayScore = gameDetails.team_2.score ? parseInt(gameDetails.team_2.score) : null;
+        } else {
+          homeTeam = gameDetails.team_2.name;
+          awayTeam = gameDetails.team_1.name;
+          homeScore = gameDetails.team_2.score ? parseInt(gameDetails.team_2.score) : null;
+          awayScore = gameDetails.team_1.score ? parseInt(gameDetails.team_1.score) : null;
         }
       }
 
-      return matches;
-    } finally {
-      await page.close();
+      if (!homeTeam || !awayTeam) continue;
+
+      // Parse date/time
+      const startDate = event.start_date_time ? new Date(event.start_date_time) : null;
+      const endDate = event.end_date_time ? new Date(event.end_date_time) : null;
+
+      // Format date as "Sun Mar 1" style
+      let dateStr = null;
+      let timeStr = null;
+      if (startDate) {
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        dateStr = `${days[startDate.getUTCDay()]} ${months[startDate.getUTCMonth()]} ${startDate.getUTCDate()}`;
+
+        // Format time range (convert UTC to display, times are already in local from API)
+        const startTime = startDate.toLocaleTimeString('en-US', {
+          hour: 'numeric', minute: '2-digit', timeZone: event.local_timezone || 'America/New_York'
+        });
+        if (endDate) {
+          const endTime = endDate.toLocaleTimeString('en-US', {
+            hour: 'numeric', minute: '2-digit', timeZone: event.local_timezone || 'America/New_York'
+          });
+          timeStr = `${startTime} - ${endTime}`;
+        } else {
+          timeStr = startTime;
+        }
+      }
+
+      const status = event.status === 'completed' ? 'Final' : 'Scheduled';
+      const score = (homeScore !== null && awayScore !== null) ? `${homeScore} - ${awayScore}` : null;
+
+      matches.push({
+        home: homeTeam,
+        away: awayTeam,
+        time: timeStr,
+        status,
+        score,
+        date: dateStr,
+        homeScore,
+        awayScore,
+        externalId: event.id,
+        startDateTime: event.start_date_time,
+        location: event.location_name || null
+      });
     }
-  }
 
-  /**
-   * Parse a score string like "3 - 1" into [homeScore, awayScore]
-   */
-  parseScore(scoreStr) {
-    if (!scoreStr) return [null, null];
-    const match = scoreStr.match(/(\d+)\s*-\s*(\d+)/);
-    if (!match) return [null, null];
-    return [parseInt(match[1]), parseInt(match[2])];
-  }
+    // Count completed vs scheduled
+    const completed = matches.filter(m => m.status === 'Final').length;
+    const scheduled = matches.filter(m => m.status === 'Scheduled').length;
+    console.log(`      ✓ ${matches.length} matches (${completed} completed, ${scheduled} scheduled)`);
 
-  /**
-   * Generate a stable external ID for a match
-   */
-  matchExternalId(division, home, away, index) {
-    const homeSlug = home.toLowerCase().replace(/\s+/g, '-');
-    const awaySlug = away.toLowerCase().replace(/\s+/g, '-');
-    return `${division.externalId}_${homeSlug}_vs_${awaySlug}_${index}`;
+    if (matches.length > 0) {
+      console.log(`      📅 ${matches[0].date} to ${matches[matches.length - 1].date}`);
+    }
+
+    // Save API response for debugging
+    fs.mkdirSync(this.cacheDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(this.cacheDir, `schedule-api-${division.externalId}.json`),
+      JSON.stringify(allEvents, null, 2)
+    );
+
+    return matches;
   }
 
   /**
@@ -371,13 +405,9 @@ class CasaStructureScraper {
       sourceSystemId: this.config.sourceSystemId
     });
 
-    // Track match counts per division for stable external IDs
-    const matchCounters = {};
-
     try {
       for (const division of this.divisions) {
         console.log(`\n📂 ${division.name}`);
-        matchCounters[division.externalId] = {};
 
         // Scrape standings
         try {
@@ -411,34 +441,23 @@ class CasaStructureScraper {
           console.error(`   ✗ Standings error: ${error.message}`);
         }
 
-        // Rate limit between page types
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Scrape schedule
+        // Scrape schedule (via SportsEngine API — no browser needed)
         try {
           const matches = await this.scrapeSchedule(browser, division);
           console.log(`   ✓ Schedule: ${matches.length} matches`);
 
           for (const match of matches) {
-            // Generate stable external ID using home_vs_away + occurrence counter
-            const pairKey = `${match.home}::${match.away}`;
-            matchCounters[division.externalId][pairKey] = (matchCounters[division.externalId][pairKey] || 0) + 1;
-            const occurrence = matchCounters[division.externalId][pairKey];
-
-            const [homeScore, awayScore] = this.parseScore(match.score);
-            const status = (match.status || '').toLowerCase().includes('final') ? 'completed' : 'scheduled';
-
             snapshot.addMatch({
               homeTeam: match.home,
               awayTeam: match.away,
               divisionName: division.name,
               divisionExternalId: division.externalId,
-              date: null, // CASA schedule pages don't show dates in the event components
+              date: match.startDateTime || null,
               time: match.time || null,
-              status,
-              homeScore,
-              awayScore,
-              externalId: this.matchExternalId(division, match.home, match.away, occurrence)
+              status: match.status === 'Final' ? 'completed' : 'scheduled',
+              homeScore: match.homeScore,
+              awayScore: match.awayScore,
+              externalId: match.externalId  // SportsEngine UUID
             });
           }
         } catch (error) {
@@ -535,9 +554,11 @@ class CasaStructureScraper {
             home: m.homeTeam,
             away: m.awayTeam,
             time: m.time,
+            date: m.date,
             status: m.status === 'completed' ? 'Final' : m.status,
             score: (m.homeScore !== null && m.awayScore !== null)
-              ? `${m.homeScore} - ${m.awayScore}` : null
+              ? `${m.homeScore} - ${m.awayScore}` : null,
+            externalId: m.externalId
           }))
         };
       })

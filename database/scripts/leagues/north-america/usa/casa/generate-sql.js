@@ -391,10 +391,19 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     const content = fs.readFileSync(jsonPath, 'utf-8');
     const data = JSON.parse(content);
     
-    // Team name aliases (inconsistent naming in scraped data)
+    // Team name aliases (inconsistent naming between API schedule and standings)
     const aliases = {
       'illyrians': 'illyrians fc',
-      'phoenix reserves': 'phoenix scr'
+      'phoenix reserves': 'phoenix scr',
+      'phoenix majors': 'phoenix scm',
+      "oaklyn united nor'easters ii": 'oaklyn united fc ii',
+      "oaklyn united nor\u2019easters ii": 'oaklyn united fc ii',  // curly apostrophe variant
+      'ade united fc': 'adé united fc',
+      'philly black stars': 'philly blackstars',
+      'persepolis ii': 'persepolis united fc ii',
+      'persepolis fc ii': 'persepolis united fc ii',
+      'persepolis united fc': 'persepolis united fc ii',
+      'sewells old boys ii': "sewell's old boys"
     };
     
     // Create a map of team name -> external_id for matching
@@ -412,9 +421,6 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
     
     // Parse each division's matches
     for (const division of data.divisions) {
-      // Occurrence counter for duplicate matchups (same teams playing twice)
-      const matchCounters = {};
-
       for (const match of division.matches) {
         let homeTeamKey = match.home.toLowerCase().trim();
         let awayTeamKey = match.away.toLowerCase().trim();
@@ -445,14 +451,8 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
           }
         }
         
-        // Generate stable external ID matching scraper format:
-        // {divExtId}_{homeSlug}_vs_{awaySlug}_{occurrence}
-        const homeSlug = match.home.toLowerCase().replace(/\s+/g, '-');
-        const awaySlug = match.away.toLowerCase().replace(/\s+/g, '-');
-        const pairKey = `${homeSlug}::${awaySlug}`;
-        matchCounters[pairKey] = (matchCounters[pairKey] || 0) + 1;
-        const occurrence = matchCounters[pairKey];
-        const externalId = `${division.external_id}_${homeSlug}_vs_${awaySlug}_${occurrence}`;
+        // Use SportsEngine API UUID as external ID (stable, unique)
+        const externalId = match.externalId || `${division.external_id}_${match.home.toLowerCase().replace(/\s+/g, '-')}_vs_${match.away.toLowerCase().replace(/\s+/g, '-')}`;
         
         // Add match (will be deduplicated by BaseGenerator)
         this.addMatch({
@@ -462,7 +462,7 @@ ON CONFLICT (division_id, name) DO NOTHING;\n`;
           awayTeamName: match.away,
           divisionName: division.name,
           divisionExternalId: division.external_id,
-          matchDate: '2026-01-01', // CASA doesn't have dates in JSON - use placeholder
+          matchDate: match.date ? match.date.substring(0, 10) : '2026-01-01', // ISO date from API
           matchTime: null,
           venueId: null,
           homeScore: homeScore,

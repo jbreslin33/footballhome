@@ -1,75 +1,840 @@
 {
-  "generated": "2026-02-27T15:09:24.713Z",
-  "total_matches": 32,
+  "generated": "2026-02-27T20:21:46.093Z",
+  "total_matches": 208,
   "divisions": [
     {
       "id": 54,
       "name": "Philadelphia Liga 1",
       "external_id": "9090889",
-      "match_count": 9,
+      "match_count": 92,
       "matches": [
         {
-          "home": "Philadelphia Sierra Stars",
-          "away": "Oaklyn United FC II",
-          "time": "12:00 PM EST - 2:00 PM EST",
-          "status": "scheduled",
-          "score": null
+          "home": "Philly BlackStars",
+          "away": "Illyrians FC",
+          "time": "12:45 PM - 2:30 PM",
+          "date": "2025-09-07T16:45:00.000Z",
+          "status": "Final",
+          "score": "3 - 8",
+          "externalId": "dc6ccb40-e5c8-4f77-a1f7-e4289e685617"
         },
         {
-          "home": "Illyrians FC",
-          "away": "Phoenix SCM",
-          "time": "12:45 PM EST - 2:30 PM EST",
-          "status": "scheduled",
-          "score": null
+          "home": "Lighthouse Boys Club",
+          "away": "Oaklyn United FC II",
+          "time": "1:30 PM - 3:15 PM",
+          "date": "2025-09-07T17:30:00.000Z",
+          "status": "Final",
+          "score": "0 - 2",
+          "externalId": "b3300d0f-cb63-4c00-b298-b224c2610317"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Adé United FC",
+          "time": "2:30 PM - 4:15 PM",
+          "date": "2025-09-07T18:30:00.000Z",
+          "status": "Final",
+          "score": "1 - 4",
+          "externalId": "e74fc9dc-256c-4e3d-9a32-7af13d2e4e7d"
+        },
+        {
+          "home": "Philadelphia Sierra Stars",
+          "away": "Persepolis FC",
+          "time": "2:30 PM - 4:00 PM",
+          "date": "2025-09-07T18:30:00.000Z",
+          "status": "Final",
+          "score": "0 - 0",
+          "externalId": "29856560-a8dc-4787-b7bc-274390ab3b57"
         },
         {
           "home": "Persepolis FC",
+          "away": "Philly BlackStars",
+          "time": "12:30 PM - 2:00 PM",
+          "date": "2025-09-14T16:30:00.000Z",
+          "status": "Final",
+          "score": "6 - 0",
+          "externalId": "c26933ba-949e-446e-9809-01c9ddc7c9eb"
+        },
+        {
+          "home": "Oaklyn United FC II",
+          "away": "Adé United FC",
+          "time": "1:00 PM - 2:45 PM",
+          "date": "2025-09-14T17:00:00.000Z",
+          "status": "Final",
+          "score": "2 - 0",
+          "externalId": "947e1255-be86-4268-a644-08321f309449"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Philadelphia SC II",
+          "time": "2:30 PM - 4:15 PM",
+          "date": "2025-09-14T18:30:00.000Z",
+          "status": "Final",
+          "score": "2 - 2",
+          "externalId": "9da3c018-7448-468a-8555-63d42c2f1380"
+        },
+        {
+          "home": "Illyrians FC",
           "away": "Lighthouse Boys Club",
-          "time": "12:45 PM EST - 2:30 PM EST",
-          "status": "scheduled",
-          "score": null
+          "time": "2:45 PM - 4:30 PM",
+          "date": "2025-09-14T18:45:00.000Z",
+          "status": "Final",
+          "score": "4 - 0",
+          "externalId": "3e7af5a0-057e-4db5-b787-15f8b5054b01"
+        },
+        {
+          "home": "Adé United FC",
+          "away": "Illyrians FC",
+          "time": "11:45 AM - 1:15 PM",
+          "date": "2025-09-21T15:45:00.000Z",
+          "status": "Final",
+          "score": "6 - 1",
+          "externalId": "ed3f1a1c-1d83-4133-ab37-69f9ed8673a7"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Phoenix Reserves",
+          "time": "11:45 AM - 1:15 PM",
+          "date": "2025-09-21T15:45:00.000Z",
+          "status": "Final",
+          "score": "5 - 2",
+          "externalId": "efc3a3b9-745e-46ad-9182-2cf5c1f1f008"
+        },
+        {
+          "home": "Oaklyn United FC II",
+          "away": "Phoenix SCM",
+          "time": "1:00 PM - 2:30 PM",
+          "date": "2025-09-21T17:00:00.000Z",
+          "status": "Final",
+          "score": "2 - 3",
+          "externalId": "c9a534d4-4c0b-4c1d-9e38-dec2941044c2"
         },
         {
           "home": "Philly BlackStars",
-          "away": "Adé United FC",
-          "time": "2:30 PM EST - 4:15 PM EST",
-          "status": "scheduled",
-          "score": null
+          "away": "Philadelphia Sierra Stars",
+          "time": "1:30 PM - 3:00 PM",
+          "date": "2025-09-21T17:30:00.000Z",
+          "status": "Final",
+          "score": "0 - 1",
+          "externalId": "8ec82fc3-873b-40c3-8326-9d160e602023"
+        },
+        {
+          "home": "Adé United FC",
+          "away": "Lighthouse Old Timers Club",
+          "time": "12:30 PM - 2:00 PM",
+          "date": "2025-09-28T16:30:00.000Z",
+          "status": "Final",
+          "score": "5 - 0",
+          "externalId": "0a2bf975-e9e1-4169-956d-df9f170938d4"
+        },
+        {
+          "home": "Philadelphia Sierra Stars",
+          "away": "Lighthouse Boys Club",
+          "time": "1:30 PM - 3:00 PM",
+          "date": "2025-09-28T17:30:00.000Z",
+          "status": "Final",
+          "score": "4 - 2",
+          "externalId": "9394fcb2-8352-461b-b5cd-4fbc21bac687"
+        },
+        {
+          "home": "Oaklyn United FC II",
+          "away": "Illyrians FC",
+          "time": "2:15 PM - 3:45 PM",
+          "date": "2025-09-28T18:15:00.000Z",
+          "status": "Final",
+          "score": "5 - 3",
+          "externalId": "64d3c363-a4ed-41ff-925a-7e15ac9b24f4"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Philly BlackStars",
+          "time": "2:30 PM - 4:00 PM",
+          "date": "2025-09-28T18:30:00.000Z",
+          "status": "Final",
+          "score": "2 - 0",
+          "externalId": "cc0e979d-f7f9-46e4-a32c-332ad94fc867"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Lighthouse Boys Club",
+          "time": "11:00 AM - 12:45 PM",
+          "date": "2025-10-05T15:00:00.000Z",
+          "status": "Final",
+          "score": "2 - 0",
+          "externalId": "e5e823fc-3a6b-41ee-b965-70efeb1e03b7"
+        },
+        {
+          "home": "Adé United FC",
+          "away": "Oaklyn United FC II",
+          "time": "12:45 PM - 2:30 PM",
+          "date": "2025-10-05T16:45:00.000Z",
+          "status": "Final",
+          "score": "3 - 1",
+          "externalId": "7bc336c5-b4f6-42c4-8283-4cf0462cbb9d"
+        },
+        {
+          "home": "Illyrians FC",
+          "away": "Philly BlackStars",
+          "time": "12:45 PM - 2:30 PM",
+          "date": "2025-10-05T16:45:00.000Z",
+          "status": "Final",
+          "score": "2 - 3",
+          "externalId": "9f087b0c-7e6b-482e-9c6e-6acf5cb9847a"
         },
         {
           "home": "Philadelphia Sierra Stars",
           "away": "Phoenix SCM",
-          "time": "12:30 PM EDT - 2:30 PM EDT",
-          "status": "scheduled",
-          "score": null
+          "time": "2:30 PM - 4:15 PM",
+          "date": "2025-10-05T18:30:00.000Z",
+          "status": "Final",
+          "score": "2 - 1",
+          "externalId": "b119eaf1-b38e-4baa-b924-782da953601c"
         },
         {
           "home": "Illyrians FC",
-          "away": "Oaklyn United FC II",
-          "time": "12:45 PM EDT - 2:45 PM EDT",
-          "status": "scheduled",
-          "score": null
+          "away": "Phoenix SCM",
+          "time": "11:00 AM - 12:45 PM",
+          "date": "2025-10-12T15:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 4",
+          "externalId": "ed9b0cba-5853-4ed0-ade7-359831cf483e"
         },
         {
-          "home": "Philly BlackStars",
+          "home": "Oaklyn United FC II",
           "away": "Lighthouse Boys Club",
-          "time": "2:30 PM EDT - 4:30 PM EDT",
-          "status": "scheduled",
-          "score": null
+          "time": "11:15 AM - 1:00 PM",
+          "date": "2025-10-12T15:15:00.000Z",
+          "status": "Final",
+          "score": "3 - 0",
+          "externalId": "4d0aec19-d08e-48e8-82a6-69719da11fc7"
         },
         {
           "home": "Adé United FC",
-          "away": "Persepolis FC",
-          "time": "4:30 PM EDT - 6:30 PM EDT",
-          "status": "scheduled",
-          "score": null
+          "away": "Philadelphia Sierra Stars",
+          "time": "12:45 PM - 2:30 PM",
+          "date": "2025-10-12T16:45:00.000Z",
+          "status": "Final",
+          "score": "3 - 3",
+          "externalId": "1a466ec4-664e-430b-8e47-a42b5b7b510d"
+        },
+        {
+          "home": "Philadelphia SC II",
+          "away": "Philly BlackStars",
+          "time": "2:45 PM - 4:30 PM",
+          "date": "2025-10-12T18:45:00.000Z",
+          "status": "Final",
+          "score": "2 - 2",
+          "externalId": "39068930-b37c-4b74-9342-365975083bd1"
         },
         {
           "home": "Oaklyn United FC II",
           "away": "Philly BlackStars",
-          "time": "12:00 PM EDT - 1:45 PM EDT",
+          "time": "12:30 PM - 2:15 PM",
+          "date": "2025-10-19T16:30:00.000Z",
+          "status": "Final",
+          "score": "3 - 2",
+          "externalId": "c566d9d3-1f1b-4919-a9b4-4e2c3a61b951"
+        },
+        {
+          "home": "Illyrians FC",
+          "away": "Phoenix Reserves",
+          "time": "7:30 PM - 9:15 PM",
+          "date": "2025-10-29T23:30:00.000Z",
+          "status": "Final",
+          "score": "3 - 2",
+          "externalId": "457b3df2-1cbf-4668-9fa1-d939b6145168"
+        },
+        {
+          "home": "Adé United FC",
+          "away": "Phoenix SCM",
+          "time": "7:00 PM - 8:45 PM",
+          "date": "2025-10-30T23:00:00.000Z",
+          "status": "Final",
+          "score": "4 - 1",
+          "externalId": "86f991e2-3a19-4774-9556-2c37e22dbe58"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Philadelphia Sierra Stars",
+          "time": "7:00 PM - 8:45 PM",
+          "date": "2025-10-30T23:00:00.000Z",
+          "status": "Final",
+          "score": "2 - 3",
+          "externalId": "9e2bbb5e-7d4f-4be9-b00f-5c568d9eb6f1"
+        },
+        {
+          "home": "Persepolis FC",
+          "away": "Philadelphia SC II",
+          "time": "8:45 PM - 9:45 PM",
+          "date": "2025-10-31T00:45:00.000Z",
+          "status": "Final",
+          "score": "5 - 1",
+          "externalId": "24730300-c55f-4811-8444-5ee7c3bcdcaa"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Adé United FC",
+          "time": "11:45 AM - 1:30 PM",
+          "date": "2025-11-02T16:45:00.000Z",
+          "status": "Final",
+          "score": "2 - 4",
+          "externalId": "08b7c432-0fa1-407f-8968-221dc2ee07f6"
+        },
+        {
+          "home": "Philly BlackStars",
+          "away": "Phoenix SCM",
+          "time": "12:45 PM - 2:30 PM",
+          "date": "2025-11-02T17:45:00.000Z",
+          "status": "Final",
+          "score": "2 - 1",
+          "externalId": "610ab78c-e2ba-418c-9286-563bdc52bdf8"
+        },
+        {
+          "home": "Illyrians FC",
+          "away": "Philadelphia Sierra Stars",
+          "time": "1:45 PM - 3:30 PM",
+          "date": "2025-11-02T18:45:00.000Z",
+          "status": "Final",
+          "score": "1 - 3",
+          "externalId": "5d04c17c-b3ca-44b8-8dfb-db93fece8871"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Persepolis FC",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2025-11-02T20:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 9",
+          "externalId": "f1ee6819-519b-40a9-9c60-6e2f0f8eed9b"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Persepolis FC",
+          "time": "8:00 PM - 9:30 PM",
+          "date": "2025-11-06T01:00:00.000Z",
+          "status": "Final",
+          "score": "0 - 1",
+          "externalId": "349116fd-0244-49a9-b863-22e4a612abe0"
+        },
+        {
+          "home": "Philadelphia Sierra Stars",
+          "away": "Philly BlackStars",
+          "time": "8:45 PM - 10:30 PM",
+          "date": "2025-11-06T01:45:00.000Z",
+          "status": "Final",
+          "score": "3 - 0",
+          "externalId": "547f5b1b-0eda-4659-b1c8-9925dde33a44"
+        },
+        {
+          "home": "Illyrians FC",
+          "away": "Adé United FC",
+          "time": "7:00 PM - 8:45 PM",
+          "date": "2025-11-07T00:00:00.000Z",
+          "status": "Final",
+          "score": "0 - 3",
+          "externalId": "fc780790-8e02-44fc-855a-cde65a0f24d4"
+        },
+        {
+          "home": "Philadelphia SC II",
+          "away": "Oaklyn United FC II",
+          "time": "8:45 PM - 10:30 PM",
+          "date": "2025-11-07T01:45:00.000Z",
+          "status": "Final",
+          "score": "0 - 1",
+          "externalId": "08ac4dd8-3fdd-40bd-b1bf-95302006a543"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Philly BlackStars",
+          "time": "9:00 AM - 10:45 AM",
+          "date": "2025-11-09T14:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 2",
+          "externalId": "804316a8-f57a-4351-878e-a582b8647d46"
+        },
+        {
+          "home": "Phoenix Reserves",
+          "away": "Persepolis FC",
+          "time": "11:45 AM - 1:15 PM",
+          "date": "2025-11-09T16:45:00.000Z",
+          "status": "Final",
+          "score": "0 - 3",
+          "externalId": "7d71e9e0-2d66-44a8-a6c8-ba94a77e8d6a"
+        },
+        {
+          "home": "Philadelphia Sierra Stars",
+          "away": "Adé United FC",
+          "time": "1:30 PM - 3:15 PM",
+          "date": "2025-11-09T18:30:00.000Z",
+          "status": "Final",
+          "score": "1 - 2",
+          "externalId": "f205f1e1-339e-4552-a5b9-14b6e661811a"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Oaklyn United FC II",
+          "time": "2:30 PM - 4:15 PM",
+          "date": "2025-11-09T19:30:00.000Z",
+          "status": "Final",
+          "score": "1 - 3",
+          "externalId": "a626ab3c-f16e-47d0-8f62-97e988d205ed"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Illyrians FC",
+          "time": "3:00 PM - 4:45 PM",
+          "date": "2025-11-09T20:00:00.000Z",
+          "status": "Final",
+          "score": "6 - 3",
+          "externalId": "94b4c1b4-8f70-4373-8cdb-f2217950a044"
+        },
+        {
+          "home": "Philadelphia Sierra Stars",
+          "away": "Oaklyn United FC II",
+          "time": "12:00 PM - 2:00 PM",
+          "date": "2026-03-01T17:00:00.000Z",
           "status": "scheduled",
-          "score": null
+          "score": null,
+          "externalId": "97f6cb8b-e96c-40c8-908c-7811c25bdefd"
+        },
+        {
+          "home": "Illyrians FC",
+          "away": "Phoenix SCM",
+          "time": "12:45 PM - 2:30 PM",
+          "date": "2026-03-01T17:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "150ab0ff-9a95-42fc-92ab-dea7d680ec59"
+        },
+        {
+          "home": "Persepolis FC",
+          "away": "Lighthouse Boys Club",
+          "time": "12:45 PM - 2:30 PM",
+          "date": "2026-03-01T17:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "f394c026-6768-41bc-8c1c-4935589024e3"
+        },
+        {
+          "home": "Philly BlackStars",
+          "away": "Adé United FC",
+          "time": "2:30 PM - 4:15 PM",
+          "date": "2026-03-01T19:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0b81a198-cc66-439e-99b0-d2cbfe130cab"
+        },
+        {
+          "home": "Philadelphia Sierra Stars",
+          "away": "Phoenix SCM",
+          "time": "12:30 PM - 2:30 PM",
+          "date": "2026-03-08T16:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "be9a0154-1a39-4637-adae-fe53324c9c50"
+        },
+        {
+          "home": "Illyrians FC",
+          "away": "Oaklyn United FC II",
+          "time": "12:45 PM - 2:45 PM",
+          "date": "2026-03-08T16:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "9d780e42-fb7e-4aae-b828-ea635ea28f62"
+        },
+        {
+          "home": "Philly BlackStars",
+          "away": "Lighthouse Boys Club",
+          "time": "2:30 PM - 4:30 PM",
+          "date": "2026-03-08T18:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "d0f75702-a4c5-4c74-af9c-53a7cdb26140"
+        },
+        {
+          "home": "Adé United FC",
+          "away": "Persepolis FC",
+          "time": "4:30 PM - 6:30 PM",
+          "date": "2026-03-08T20:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "8184478a-5e8c-4fa5-9624-623616fd23ce"
+        },
+        {
+          "home": "Oaklyn United FC II",
+          "away": "Persepolis II",
+          "time": "7:00 PM - 8:45 PM",
+          "date": "2026-03-12T23:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "3dd63458-c9d3-4483-ba57-d36987284bc1"
+        },
+        {
+          "home": "Oaklyn United FC II",
+          "away": "Philly BlackStars",
+          "time": "12:00 PM - 1:45 PM",
+          "date": "2026-03-15T16:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "2851e153-f467-426f-96a0-72791af7f5eb"
+        },
+        {
+          "home": "Illyrians FC",
+          "away": "Philadelphia Sierra Stars",
+          "time": "12:45 PM - 2:45 PM",
+          "date": "2026-03-15T16:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "6296e19b-b4fd-4983-b3b3-a4086567e543"
+        },
+        {
+          "home": "Philadelphia SC II",
+          "away": "Lighthouse Boys Club",
+          "time": "2:45 PM - 4:45 PM",
+          "date": "2026-03-15T18:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "a7ba1a7e-1c16-489c-b9f2-f69eca4cf7d6"
+        },
+        {
+          "home": "Adé United FC",
+          "away": "Phoenix Reserves",
+          "time": "3:00 PM - 5:00 PM",
+          "date": "2026-03-15T19:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "45913079-5a2d-4c00-b44d-d406614a7192"
+        },
+        {
+          "home": "Persepolis FC",
+          "away": "Phoenix SCM",
+          "time": "5:00 PM - 7:00 PM",
+          "date": "2026-03-15T21:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "658779a1-a514-4289-abe4-03f8a275dae8"
+        },
+        {
+          "home": "Philly BlackStars",
+          "away": "Persepolis FC",
+          "time": "7:00 PM - 8:45 PM",
+          "date": "2026-03-19T23:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "01eb55cf-9f65-4853-81e8-8f74b9a4d055"
+        },
+        {
+          "home": "Persepolis FC",
+          "away": "Lighthouse Boys Club",
+          "time": "11:00 AM - 1:00 PM",
+          "date": "2026-03-22T15:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "47649325-1732-42e9-92d5-2d9e3b7227d2"
+        },
+        {
+          "home": "Oaklyn United FC II",
+          "away": "Lighthouse Boys Club",
+          "time": "12:00 PM - 2:00 PM",
+          "date": "2026-03-22T16:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "62294e19-4b8a-481b-bcf5-6e4f80baa542"
+        },
+        {
+          "home": "Illyrians FC",
+          "away": "Phoenix SCM",
+          "time": "1:00 PM - 3:00 PM",
+          "date": "2026-03-22T17:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0eb0f7bc-d966-461c-9db2-6df19e5cb91c"
+        },
+        {
+          "home": "Persepolis FC",
+          "away": "Philadelphia Sierra Stars",
+          "time": "1:00 PM - 3:00 PM",
+          "date": "2026-03-22T17:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "7c505606-7538-4254-b75f-1f8335bb68f4"
+        },
+        {
+          "home": "Philly BlackStars",
+          "away": "Adé United FC",
+          "time": "3:00 PM - 5:00 PM",
+          "date": "2026-03-22T19:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "5e1c1adb-1606-4a8c-a28e-f67a167eaacb"
+        },
+        {
+          "home": "Philadelphia Sierra Stars",
+          "away": "Persepolis FC",
+          "time": "7:00 PM - 8:45 PM",
+          "date": "2026-03-26T23:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "3265ccb1-af30-4fa5-97d0-1e1ef4e2ae56"
+        },
+        {
+          "home": "Oaklyn United FC II",
+          "away": "Persepolis FC",
+          "time": "12:45 PM - 2:45 PM",
+          "date": "2026-03-29T16:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "975e6446-a502-4263-8d12-74083d123347"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Lighthouse Boys Club",
+          "time": "2:30 PM - 4:30 PM",
+          "date": "2026-03-29T18:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "264d201b-7f35-42f3-b19b-61e7effdb658"
+        },
+        {
+          "home": "Philadelphia SC II",
+          "away": "Adé United FC",
+          "time": "2:45 PM - 4:45 PM",
+          "date": "2026-03-29T18:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "209ee67c-ee21-4200-b3bc-45f0f7964612"
+        },
+        {
+          "home": "Philadelphia Sierra Stars",
+          "away": "Philly BlackStars",
+          "time": "3:00 PM - 5:00 PM",
+          "date": "2026-03-29T19:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "ffc59cbe-a8c5-4592-bc6b-41a05a108854"
+        },
+        {
+          "home": "Illyrians FC",
+          "away": "Sewells Old Boys II",
+          "time": "5:00 PM - 7:00 PM",
+          "date": "2026-03-29T21:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0990d763-287f-4d88-840f-bf777c37f6be"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Philly BlackStars",
+          "time": "12:00 AM - 1:45 AM",
+          "date": "2026-04-12T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "f9723869-a966-4a8e-9ee4-d36eab6620ea"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Philadelphia Sierra Stars",
+          "time": "12:00 AM - 2:00 AM",
+          "date": "2026-04-12T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "bb5b99db-cc7f-412a-a89b-448969a627d5"
+        },
+        {
+          "home": "Adé United FC",
+          "away": "Oaklyn United FC II",
+          "time": "1:00 PM - 3:00 PM",
+          "date": "2026-04-12T17:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "cc54baea-5c9b-4b38-9e5e-4f0a89c49ab0"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Sewells Old Boys II",
+          "time": "2:30 PM - 4:30 PM",
+          "date": "2026-04-12T18:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "caf414b4-7f9a-4507-8132-d20d9dddba55"
+        },
+        {
+          "home": "Persepolis FC",
+          "away": "Illyrians FC",
+          "time": "3:00 PM - 5:00 PM",
+          "date": "2026-04-12T19:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "a435f090-bb85-470a-8e7b-7b1e3e91258e"
+        },
+        {
+          "home": "Persepolis FC",
+          "away": "Adé United FC",
+          "time": "7:00 PM - 8:45 PM",
+          "date": "2026-04-16T23:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "30bbc7cd-6e90-4678-af6a-e532be5cadd1"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Illyrians FC",
+          "time": "12:00 AM - 1:45 AM",
+          "date": "2026-04-19T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "171f7db4-1f3b-429d-9320-9d156fc1bd5f"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Adé United FC",
+          "time": "12:00 AM - 1:45 AM",
+          "date": "2026-04-19T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "21d2bea7-e180-440e-ae34-2adedb51a239"
+        },
+        {
+          "home": "Persepolis FC",
+          "away": "Philly BlackStars",
+          "time": "12:00 AM - 1:45 AM",
+          "date": "2026-04-19T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "567017b2-88e9-45c7-b6ed-33e49398fb7c"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Oaklyn United FC II",
+          "time": "2:30 PM - 4:30 PM",
+          "date": "2026-04-19T18:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "ef8894b1-a525-4ce0-bd80-a28b3e8c7163"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Illyrians FC",
+          "time": "12:00 AM - 1:45 AM",
+          "date": "2026-04-26T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "75853064-d047-4398-b292-8124f6382b11"
+        },
+        {
+          "home": "Oaklyn United FC II",
+          "away": "Philadelphia Sierra Stars",
+          "time": "1:00 PM - 3:00 PM",
+          "date": "2026-04-26T17:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "d8ff1358-b741-4f1c-a1bf-f95831aa7a58"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Persepolis FC",
+          "time": "2:30 PM - 4:30 PM",
+          "date": "2026-04-26T18:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "f435b363-e72d-49b5-baed-cc8d09514092"
+        },
+        {
+          "home": "Phoenix Reserves",
+          "away": "Philadelphia Sierra Stars",
+          "time": "8:00 PM - 10:00 PM",
+          "date": "2026-04-27T00:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "85f9381f-3278-4ca9-88e9-0b7b653718a5"
+        },
+        {
+          "home": "Persepolis FC",
+          "away": "Lighthouse Boys Club",
+          "time": "7:00 PM - 8:45 PM",
+          "date": "2026-04-30T23:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0a9f8712-a8b9-4058-bc6f-df425fe74b19"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Oaklyn United FC II",
+          "time": "12:00 AM - 1:45 AM",
+          "date": "2026-05-03T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "98abeb8e-572a-4195-8a58-75fecb6cc379"
+        },
+        {
+          "home": "Sewells Old Boys II",
+          "away": "Philly BlackStars",
+          "time": "11:00 AM - 1:00 PM",
+          "date": "2026-05-03T15:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "a14e2f82-b510-4ca9-a203-4fe744448d69"
+        },
+        {
+          "home": "Illyrians FC",
+          "away": "Persepolis FC",
+          "time": "1:00 PM - 3:00 PM",
+          "date": "2026-05-03T17:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0458da0c-e574-40d8-a9e0-bec88c6b1615"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Persepolis FC II",
+          "time": "2:30 PM - 4:30 PM",
+          "date": "2026-05-03T18:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "02e8b919-f787-4e2b-a5f8-693cc6f9156d"
+        },
+        {
+          "home": "Adé United FC",
+          "away": "Philadelphia Sierra Stars",
+          "time": "3:00 PM - 5:00 PM",
+          "date": "2026-05-03T19:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "af153708-2f4f-4dd9-8971-2b960ee84093"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Phoenix SCM",
+          "time": "12:00 AM - 1:45 AM",
+          "date": "2026-05-10T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "102e7b4f-ae55-4f81-85f6-ed74a18c62b5"
+        },
+        {
+          "home": "Philadelphia Sierra Stars",
+          "away": "Illyrians FC",
+          "time": "1:00 PM - 3:00 PM",
+          "date": "2026-05-10T17:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "a7386a54-6abe-45bb-9dc3-39fb5d0cad46"
+        },
+        {
+          "home": "Persepolis FC",
+          "away": "Oaklyn United FC II",
+          "time": "2:15 PM - 4:15 PM",
+          "date": "2026-05-10T18:15:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "e8aa0e9b-8216-4c09-b643-4806af64dc39"
+        },
+        {
+          "home": "Adé United FC",
+          "away": "Philly BlackStars",
+          "time": "3:00 PM - 5:00 PM",
+          "date": "2026-05-10T19:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "703293fc-8366-4dd5-93c8-3afc5e6b415e"
         }
       ]
     },
@@ -77,63 +842,439 @@
       "id": 55,
       "name": "Philadelphia Liga 2",
       "external_id": "9096430",
-      "match_count": 8,
+      "match_count": 48,
       "matches": [
         {
-          "home": "Sewell's Old Boys",
+          "home": "Phoenix SCR",
           "away": "Philadelphia SC Select",
-          "time": "2:00 PM EST - 3:30 PM EST",
+          "time": "12:00 PM - 1:45 PM",
+          "date": "2025-09-07T16:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 3",
+          "externalId": "ef489f44-88bf-4caa-a0ea-979dd2d20f8f"
+        },
+        {
+          "home": "Phoenix SCR",
+          "away": "Lighthouse Old Timers Club",
+          "time": "12:00 PM - 1:45 PM",
+          "date": "2025-09-14T16:00:00.000Z",
+          "status": "Final",
+          "score": "2 - 0",
+          "externalId": "f3ec8843-5439-41e1-90fc-411a4055eff7"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Phoenix Majors",
+          "time": "2:45 PM - 4:30 PM",
+          "date": "2025-09-14T18:45:00.000Z",
+          "status": "Final",
+          "score": "2 - 2",
+          "externalId": "65e764a6-ef1c-40c6-903c-7866c89c2867"
+        },
+        {
+          "home": "Lighthouse Boys Club",
+          "away": "Phoenix SCR",
+          "time": "11:45 AM - 1:30 PM",
+          "date": "2025-09-21T15:45:00.000Z",
+          "status": "Final",
+          "score": "5 - 2",
+          "externalId": "cd722083-b2a0-459d-8b3b-91d00769de2d"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Lighthouse Old Timers Club",
+          "time": "2:45 PM - 4:15 PM",
+          "date": "2025-09-21T18:45:00.000Z",
+          "status": "Final",
+          "score": "4 - 0",
+          "externalId": "b6706459-e1ba-4f3b-ba87-dfe8f94cc0a9"
+        },
+        {
+          "home": "Phoenix SCR",
+          "away": "Persepolis United FC",
+          "time": "12:00 PM - 1:30 PM",
+          "date": "2025-09-28T16:00:00.000Z",
+          "status": "Final",
+          "score": "0 - 8",
+          "externalId": "4ae7d921-eb35-4bd5-973d-4542c5c9caf0"
+        },
+        {
+          "home": "Ade United FC",
+          "away": "Lighthouse Old Timers Club",
+          "time": "12:30 PM - 2:00 PM",
+          "date": "2025-09-28T16:30:00.000Z",
+          "status": "Final",
+          "score": "5 - 0",
+          "externalId": "f0de1594-558a-459f-96e9-bd85082c30c7"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Lighthouse Boys Club",
+          "time": "11:00 AM - 12:45 PM",
+          "date": "2025-10-05T15:00:00.000Z",
+          "status": "Final",
+          "score": "2 - 0",
+          "externalId": "19d9976a-3d19-43d6-a7ce-8f1b95593a1d"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Persepolis United FC",
+          "time": "2:45 PM - 4:30 PM",
+          "date": "2025-10-05T18:45:00.000Z",
+          "status": "Final",
+          "score": "0 - 3",
+          "externalId": "03728c1d-369d-4ed4-af53-f54f0993d190"
+        },
+        {
+          "home": "Persepolis United FC",
+          "away": "Lighthouse Old Timers Club",
+          "time": "2:45 PM - 4:30 PM",
+          "date": "2025-10-12T18:45:00.000Z",
+          "status": "Final",
+          "score": "8 - 0",
+          "externalId": "d4060108-b706-4f5f-a165-8a93b1d36f75"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Philly Black Stars",
+          "time": "2:45 PM - 4:30 PM",
+          "date": "2025-10-12T18:45:00.000Z",
+          "status": "Final",
+          "score": "2 - 2",
+          "externalId": "50c7a4a7-b9dd-45fa-8573-c5b746b466ed"
+        },
+        {
+          "home": "Illyrians",
+          "away": "Phoenix SCR",
+          "time": "7:30 PM - 9:15 PM",
+          "date": "2025-10-29T23:30:00.000Z",
+          "status": "Final",
+          "score": "3 - 2",
+          "externalId": "142af24c-dc95-4f62-bf2b-8ec8a3c4e62d"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Persepolis FC",
+          "time": "8:45 PM - 10:30 PM",
+          "date": "2025-10-31T00:45:00.000Z",
+          "status": "Final",
+          "score": null,
+          "externalId": "a365caf9-9070-445c-9c83-3d7bcdba5a96"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Phoenix SCR",
+          "time": "2:45 PM - 4:30 PM",
+          "date": "2025-11-02T19:45:00.000Z",
+          "status": "Final",
+          "score": "1 - 2",
+          "externalId": "5e17f40f-dcc5-4cf4-973d-287136f16897"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Persepolis FC",
+          "time": "3:00 PM - 4:45 PM",
+          "date": "2025-11-02T20:00:00.000Z",
+          "status": "Final",
+          "score": null,
+          "externalId": "181b0c79-9df5-40d7-8914-059918a54bba"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Oaklyn United Nor’Easters II",
+          "time": "8:45 PM - 10:30 PM",
+          "date": "2025-11-07T01:45:00.000Z",
+          "status": "Final",
+          "score": "0 - 1",
+          "externalId": "c669eaa9-ad23-4238-b970-2d7d8ed38677"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Philly Black Stars",
+          "time": "9:00 AM - 10:45 AM",
+          "date": "2025-11-09T14:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 2",
+          "externalId": "2691872e-1ba7-46c8-8734-2882ce88cd80"
+        },
+        {
+          "home": "Phoenix SCR",
+          "away": "Persepolis FC",
+          "time": "11:45 AM - 1:15 PM",
+          "date": "2025-11-09T16:45:00.000Z",
+          "status": "Final",
+          "score": null,
+          "externalId": "3ae79b43-8fdd-4104-be9d-a86a62661b34"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Phoenix SCR",
+          "time": "1:30 PM - 3:15 PM",
+          "date": "2025-11-16T18:30:00.000Z",
+          "status": "Final",
+          "score": "0 - 2",
+          "externalId": "77bbf9e9-7d6c-490c-9aa7-530fe5136be1"
+        },
+        {
+          "home": "Sewell's Old Boys ",
+          "away": "Philadelphia SC Select",
+          "time": "2:00 PM - 3:30 PM",
+          "date": "2026-03-01T19:00:00.000Z",
           "status": "scheduled",
-          "score": null
+          "score": null,
+          "externalId": "d39f4e00-03cc-49e8-87c1-d1821fbb098e"
         },
         {
           "home": "Persepolis United FC II",
           "away": "Lighthouse Old Timers Club",
-          "time": "2:45 PM EST - 4:15 PM EST",
+          "time": "2:45 PM - 4:15 PM",
+          "date": "2026-03-01T19:45:00.000Z",
           "status": "scheduled",
-          "score": null
+          "score": null,
+          "externalId": "350f8806-0194-40a3-b301-98c2c835e3ea"
         },
         {
-          "home": "Sewell's Old Boys",
+          "home": "Sewell's Old Boys ",
           "away": "Phoenix SCR",
-          "time": "10:30 AM EDT - 12:00 PM EDT",
+          "time": "10:30 AM - 12:00 PM",
+          "date": "2026-03-08T14:30:00.000Z",
           "status": "scheduled",
-          "score": null
+          "score": null,
+          "externalId": "da1a7639-30b9-4b55-82aa-2684619ea5fd"
         },
         {
           "home": "Philadelphia SC Select",
           "away": "Persepolis United FC II",
-          "time": "2:45 PM EDT - 4:15 PM EDT",
+          "time": "2:45 PM - 4:15 PM",
+          "date": "2026-03-08T18:45:00.000Z",
           "status": "scheduled",
-          "score": null
+          "score": null,
+          "externalId": "aa2f28dc-4754-4fa7-a063-5c66652a0789"
         },
         {
           "home": "Oaklyn United Nor'Easters II",
           "away": "Persepolis United FC II",
-          "time": "7:00 PM EDT - 8:30 PM EDT",
+          "time": "7:00 PM - 8:30 PM",
+          "date": "2026-03-12T23:00:00.000Z",
           "status": "scheduled",
-          "score": null
+          "score": null,
+          "externalId": "8d2f11fd-0d4e-4d1c-96e9-1832bac72f20"
         },
         {
-          "home": "Sewell's Old Boys",
+          "home": "Sewell's Old Boys ",
           "away": "Lighthouse Old Timers Club",
-          "time": "2:00 PM EDT - 3:30 PM EDT",
+          "time": "2:00 PM - 3:30 PM",
+          "date": "2026-03-15T18:00:00.000Z",
           "status": "scheduled",
-          "score": null
+          "score": null,
+          "externalId": "90e6d273-4df2-4d40-99fe-b60f597f9e71"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Lighthouse Boys Club",
+          "time": "2:45 PM - 4:15 PM",
+          "date": "2026-03-15T18:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "06b972a1-c5ad-4dda-b1f5-e2ef609f3fab"
         },
         {
           "home": "Ade United FC",
           "away": "Phoenix SCR",
-          "time": "3:00 PM EDT - 4:30 PM EDT",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2026-03-15T19:00:00.000Z",
           "status": "scheduled",
-          "score": null
+          "score": null,
+          "externalId": "e172e81c-4185-440f-8449-f02c1b64f536"
         },
         {
           "home": "Oaklyn United Nor'Easters II",
           "away": "Lighthouse Old Timers Club",
-          "time": "12:00 PM EDT - 1:30 PM EDT",
+          "time": "12:00 PM - 1:30 PM",
+          "date": "2026-03-22T16:00:00.000Z",
           "status": "scheduled",
-          "score": null
+          "score": null,
+          "externalId": "21b167eb-781e-489f-8eda-41ec926a4ba3"
+        },
+        {
+          "home": "Persepolis United FC II",
+          "away": "Philadelphia Sierra Stars",
+          "time": "1:00 PM - 2:30 PM",
+          "date": "2026-03-22T17:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "83bcb6e5-d194-41c0-b086-eb7bbd3b312c"
+        },
+        {
+          "home": "Sewell's Old Boys ",
+          "away": "Philadelphia SC Select",
+          "time": "2:00 PM - 3:30 PM",
+          "date": "2026-03-22T18:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "6221cd0d-a385-4478-a2d0-7dec7543076b"
+        },
+        {
+          "home": "Phoenix SCR",
+          "away": "Lighthouse Old Timers Club",
+          "time": "12:30 PM - 2:00 PM",
+          "date": "2026-03-29T16:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "4a88faec-37e9-46dc-a5c4-819bedae41eb"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Ade United FC",
+          "time": "2:45 PM - 4:15 PM",
+          "date": "2026-03-29T18:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "13e4df9f-34bc-40f4-9bce-745b23d44792"
+        },
+        {
+          "home": "Illyrians",
+          "away": "Sewell's Old Boys ",
+          "time": "5:00 PM - 6:30 PM",
+          "date": "2026-03-29T21:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0c7bb7d1-a279-4f09-96ef-8bf2af7440b7"
+        },
+        {
+          "home": "Persepolis United FC II",
+          "away": "Sewell's Old Boys ",
+          "time": "8:15 PM - 9:45 PM",
+          "date": "2026-04-03T00:15:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "9cad47d5-989d-46e9-8f0b-4756ad2453db"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Philadelphia Sierra Stars",
+          "time": "12:00 AM - 1:30 AM",
+          "date": "2026-04-12T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "fc3a66ec-1d87-491a-85a4-8ba9322bea3e"
+        },
+        {
+          "home": "Phoenix SCR",
+          "away": "Persepolis United FC II",
+          "time": "12:00 PM - 1:30 PM",
+          "date": "2026-04-12T16:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "b5fd9494-8191-44d5-8489-b0c85bdc7acb"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Sewell's Old Boys ",
+          "time": "2:30 PM - 4:00 PM",
+          "date": "2026-04-12T18:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "d3b3887f-104a-40b2-b3e8-77ebffb7ea03"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Illyrians",
+          "time": "12:00 AM - 1:30 AM",
+          "date": "2026-04-19T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "ff714569-61d8-4b38-a652-28243676b709"
+        },
+        {
+          "home": "Persepolis United FC II",
+          "away": "Philadelphia SC Select",
+          "time": "12:00 AM - 1:30 AM",
+          "date": "2026-04-19T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "631ed140-a881-4ed6-8fb1-87e6b9dd6f66"
+        },
+        {
+          "home": "Phoenix SCR",
+          "away": "Sewell's Old Boys ",
+          "time": "12:00 PM - 1:30 PM",
+          "date": "2026-04-19T16:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "5e8e4dde-a165-42bf-b967-9b559e75c162"
+        },
+        {
+          "home": "Phoenix SCR",
+          "away": "Philadelphia Sierra Stars",
+          "time": "8:00 PM - 9:30 PM",
+          "date": "2026-04-23T00:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "60679fcd-c0c7-4423-83bc-9bd64a756ce2"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Persepolis United FC II",
+          "time": "12:00 AM - 1:30 AM",
+          "date": "2026-04-26T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "ecb165b3-a21f-47df-ad53-4762827218aa"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Phoenix SCR",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2026-04-26T19:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0812a16e-cf25-4ba2-877d-acb125162844"
+        },
+        {
+          "home": "Lighthouse Old Timers Club",
+          "away": "Philadelphia SC Select",
+          "time": "12:00 AM - 1:30 AM",
+          "date": "2026-05-03T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "e2350470-d8a1-4cfe-8d33-210ece9f3904"
+        },
+        {
+          "home": "Sewell's Old Boys ",
+          "away": "Philly Black Stars",
+          "time": "11:00 AM - 12:30 PM",
+          "date": "2026-05-03T15:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "a678a54c-84d0-4b64-97d9-1c7e7634f8bf"
+        },
+        {
+          "home": "Phoenix SCM",
+          "away": "Persepolis United FC II",
+          "time": "2:30 PM - 4:00 PM",
+          "date": "2026-05-03T18:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "a6cda417-321e-4d51-ad2e-c052242a7ab7"
+        },
+        {
+          "home": "Persepolis United FC II",
+          "away": "Phoenix SCR",
+          "time": "8:45 PM - 10:15 PM",
+          "date": "2026-05-07T00:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "517440d7-7ccd-41b5-9a0a-36770b26fde6"
+        },
+        {
+          "home": "Sewell's Old Boys ",
+          "away": "Persepolis United FC II",
+          "time": "4:15 PM - 5:45 PM",
+          "date": "2026-05-10T20:15:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "72f6c967-4006-49ff-85d6-56810c81877a"
         }
       ]
     },
@@ -141,77 +1282,223 @@
       "id": 56,
       "name": "Boston Liga 1",
       "external_id": "9090891",
-      "match_count": 10,
+      "match_count": 24,
       "matches": [
         {
-          "home": "South Shore FC",
-          "away": "Strictly Nos Fc",
-          "time": "TBD",
-          "status": "scheduled",
-          "score": null
+          "home": "BCFC All Stars",
+          "away": "Flatley FC",
+          "time": "11:30 AM - 1:00 PM",
+          "date": "2025-09-07T15:30:00.000Z",
+          "status": "Final",
+          "score": "7 - 2",
+          "externalId": "43748bdb-ff51-42cf-ad3e-db2513cc4be3"
         },
         {
-          "home": "South Shore FC",
-          "away": "Flatley FC",
-          "time": "6:00 PM EDT - 7:30 PM EDT",
+          "home": "Strictly Nos Fc",
+          "away": "Jaguars United FC",
+          "time": "1:30 PM - 3:00 PM",
+          "date": "2025-09-07T17:30:00.000Z",
           "status": "Final",
-          "score": "1 - 5"
+          "score": "2 - 2",
+          "externalId": "f3799381-f531-49d1-b667-391351ee9a3b"
+        },
+        {
+          "home": "Gambeta FC",
+          "away": "South Shore FC",
+          "time": "5:30 PM - 7:00 PM",
+          "date": "2025-09-07T21:30:00.000Z",
+          "status": "Final",
+          "score": "3 - 7",
+          "externalId": "a9222fd7-f9a8-486b-96b4-e91091052424"
         },
         {
           "home": "BCFC All Stars",
-          "away": "Strictly Nos Fc",
-          "time": "2:30 PM EDT - 4:00 PM EDT",
-          "status": "Final",
-          "score": "0 - 2"
-        },
-        {
-          "home": "Gambeta FC",
           "away": "Jaguars United FC",
-          "time": "12:30 PM EDT - 2:00 PM EDT",
+          "time": "1:00 PM - 2:30 PM",
+          "date": "2025-09-13T17:00:00.000Z",
           "status": "Final",
-          "score": "10 - 0"
-        },
-        {
-          "home": "Gambeta FC",
-          "away": "Flatley FC",
-          "time": "8:15 PM EDT - 9:45 PM EDT",
-          "status": "Final",
-          "score": "6 - 0"
-        },
-        {
-          "home": "Jaguars United FC",
-          "away": "BCFC All Stars",
-          "time": "6:00 PM EDT - 7:30 PM EDT",
-          "status": "Final",
-          "score": "2 - 4"
+          "score": "0 - 4",
+          "externalId": "090aeb07-5fbb-44e5-a5e2-aff9afa19baa"
         },
         {
           "home": "Flatley FC",
-          "away": "Gambeta FC",
-          "time": "12:15 PM EDT - 1:45 PM EDT",
+          "away": "Strictly Nos Fc",
+          "time": "12:15 PM - 1:45 PM",
+          "date": "2025-09-21T16:15:00.000Z",
           "status": "Final",
-          "score": "4 - 7"
+          "score": "0 - 4",
+          "externalId": "9cbec86b-8e9e-4ca4-979a-a8afb49f8f6b"
+        },
+        {
+          "home": "Gambeta FC",
+          "away": "BCFC All Stars",
+          "time": "2:30 PM - 4:00 PM",
+          "date": "2025-09-21T18:30:00.000Z",
+          "status": "Final",
+          "score": "4 - 8",
+          "externalId": "c62c602e-dc61-4f1b-b510-0f9ebe2a2b64"
+        },
+        {
+          "home": "Jaguars United FC",
+          "away": "South Shore FC",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2025-09-21T22:00:00.000Z",
+          "status": "Final",
+          "score": "0 - 2",
+          "externalId": "b9a2ca7b-2fe0-48c2-b42c-dd68875a60f1"
+        },
+        {
+          "home": "Strictly Nos Fc",
+          "away": "Gambeta FC",
+          "time": "4:45 PM - 6:15 PM",
+          "date": "2025-09-27T20:45:00.000Z",
+          "status": "Final",
+          "score": "5 - 1",
+          "externalId": "dfd3124c-20b9-4a72-a90c-c8251c2af20f"
+        },
+        {
+          "home": "South Shore FC",
+          "away": "BCFC All Stars",
+          "time": "2:00 PM - 3:30 PM",
+          "date": "2025-09-28T18:00:00.000Z",
+          "status": "Final",
+          "score": "4 - 3",
+          "externalId": "b1852d3a-b459-4e6e-8650-cacb813603d7"
+        },
+        {
+          "home": "Flatley FC",
+          "away": "Jaguars United FC",
+          "time": "7:30 PM - 9:00 PM",
+          "date": "2025-09-28T23:30:00.000Z",
+          "status": "Final",
+          "score": "1 - 6",
+          "externalId": "bf586a93-0774-4eb4-9633-30336670dc83"
+        },
+        {
+          "home": "Strictly Nos Fc",
+          "away": "BCFC All Stars",
+          "time": "7:00 PM - 8:45 PM",
+          "date": "2025-10-04T23:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 1",
+          "externalId": "aa7f2b43-dd26-4f3e-b6bb-d6dec6467b95"
+        },
+        {
+          "home": "Flatley FC",
+          "away": "South Shore FC",
+          "time": "12:15 PM - 1:45 PM",
+          "date": "2025-10-05T16:15:00.000Z",
+          "status": "Final",
+          "score": "1 - 9",
+          "externalId": "3cb64f14-1cbd-4b01-85e2-8a6362a16c5a"
+        },
+        {
+          "home": "Jaguars United FC",
+          "away": "Gambeta FC",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2025-10-05T22:00:00.000Z",
+          "status": "Final",
+          "score": "6 - 2",
+          "externalId": "86bfc7ca-05ac-4bfd-a2c9-95865253e5f1"
+        },
+        {
+          "home": "BCFC All Stars",
+          "away": "South Shore FC",
+          "time": "2:00 PM - 3:30 PM",
+          "date": "2025-10-12T18:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 3",
+          "externalId": "89bb6477-08fa-4d54-aeba-721e5d9dc60b"
+        },
+        {
+          "home": "Gambeta FC",
+          "away": "Strictly Nos Fc",
+          "time": "3:45 PM - 5:15 PM",
+          "date": "2025-10-12T19:45:00.000Z",
+          "status": "Final",
+          "score": "1 - 8",
+          "externalId": "98e212a2-c093-4885-9795-07e1198a1ef8"
+        },
+        {
+          "home": "Jaguars United FC",
+          "away": "Flatley FC",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2025-10-12T22:00:00.000Z",
+          "status": "Final",
+          "score": "8 - 1",
+          "externalId": "e59b1526-7335-4a4e-b7e6-a6f2cd0b1fb5"
         },
         {
           "home": "Strictly Nos Fc",
           "away": "South Shore FC",
-          "time": "3:00 PM EDT - 4:30 PM EDT",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2025-10-18T19:00:00.000Z",
           "status": "Final",
-          "score": "2 - 1"
+          "score": "1 - 2",
+          "externalId": "d60c4fdc-f4b6-41eb-9ab9-c8696add77de"
+        },
+        {
+          "home": "Flatley FC",
+          "away": "Gambeta FC",
+          "time": "12:15 PM - 1:45 PM",
+          "date": "2025-10-19T16:15:00.000Z",
+          "status": "Final",
+          "score": "7 - 4",
+          "externalId": "e1e7d51c-023d-4177-8ced-0b5f1234e83a"
         },
         {
           "home": "Jaguars United FC",
-          "away": "Flatley FC",
-          "time": "6:00 PM EDT - 7:30 PM EDT",
+          "away": "BCFC All Stars",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2025-10-19T22:00:00.000Z",
           "status": "Final",
-          "score": "1 - 8"
+          "score": "4 - 2",
+          "externalId": "9a64b2d8-630e-454a-b1f0-b0b007188298"
         },
         {
           "home": "Gambeta FC",
-          "away": "Strictly Nos Fc",
-          "time": "3:45 PM EDT - 5:15 PM EDT",
+          "away": "Flatley FC",
+          "time": "8:15 PM - 9:45 PM",
+          "date": "2025-10-24T00:15:00.000Z",
           "status": "Final",
-          "score": "8 - 1"
+          "score": "0 - 6",
+          "externalId": "12ffb6a6-ca54-452d-846e-c70c2c85fdc7"
+        },
+        {
+          "home": "Gambeta FC",
+          "away": "Jaguars United FC",
+          "time": "12:30 PM - 2:00 PM",
+          "date": "2025-10-26T16:30:00.000Z",
+          "status": "Final",
+          "score": "0 - 10",
+          "externalId": "af05cce5-3715-4673-a4b7-8d9b939fce4a"
+        },
+        {
+          "home": "BCFC All Stars",
+          "away": "Strictly Nos Fc",
+          "time": "2:30 PM - 4:00 PM",
+          "date": "2025-10-26T18:30:00.000Z",
+          "status": "Final",
+          "score": "2 - 0",
+          "externalId": "dad8e18e-c795-4395-970e-09f9726e083b"
+        },
+        {
+          "home": "South Shore FC",
+          "away": "Flatley FC",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2025-10-26T22:00:00.000Z",
+          "status": "Final",
+          "score": "5 - 1",
+          "externalId": "a00c1b15-6ebc-46b6-bfd4-18c876b82f58"
+        },
+        {
+          "home": "South Shore FC",
+          "away": "Strictly Nos Fc",
+          "time": "12:00 AM - 1:30 AM",
+          "date": "2025-12-31T05:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "b7f1beb8-d18f-4c05-be3a-ee9ec3b5550f"
         }
       ]
     },
@@ -219,42 +1506,403 @@
       "id": 57,
       "name": "Lancaster Liga 1",
       "external_id": "9090893",
-      "match_count": 5,
+      "match_count": 44,
       "matches": [
         {
-          "home": "Lancaster City FC",
-          "away": "Kutztown Men's Soccer",
-          "time": "11:00 AM EST - 12:30 PM EST",
-          "status": "scheduled",
-          "score": null
+          "home": "Lancaster City FC\t",
+          "away": "F&M FC\t",
+          "time": "11:00 AM - 12:30 PM",
+          "date": "2025-09-07T15:00:00.000Z",
+          "status": "Final",
+          "score": "3 - 0",
+          "externalId": "7a9784a3-81ca-44fc-a6f6-ca5872cf5c87"
         },
         {
-          "home": "F&M FC",
-          "away": "Alloy Soccer Club Reserves",
-          "time": "2:30 PM EST - 4:00 PM EST",
-          "status": "scheduled",
-          "score": null
+          "home": "Keystone Elite\t",
+          "away": "Kutztown Men's Soccer\t",
+          "time": "1:00 PM - 2:30 PM",
+          "date": "2025-09-07T17:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 2",
+          "externalId": "0f2e56e5-12f5-4284-bb4e-438071cfb670"
         },
         {
-          "home": "Alloy Soccer Club Reserves",
-          "away": "Lancaster City FC",
-          "time": "6:00 PM EST - 7:30 PM EST",
-          "status": "scheduled",
-          "score": null
+          "home": "F&M FC\t",
+          "away": "Keystone Elite\t",
+          "time": "1:00 PM - 2:30 PM",
+          "date": "2025-09-14T17:00:00.000Z",
+          "status": "Final",
+          "score": "2 - 3",
+          "externalId": "645c2f75-488c-4a7b-ada8-9c3d00d5c3b9"
         },
         {
-          "home": "Keystone Elite",
-          "away": "Kutztown Men's Soccer",
-          "time": "3:00 PM EDT - 4:30 PM EDT",
-          "status": "scheduled",
-          "score": null
+          "home": "Alloy Soccer Club Reserves\t",
+          "away": "Lancaster City FC\t",
+          "time": "4:00 PM - 5:30 PM",
+          "date": "2025-09-14T20:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 0",
+          "externalId": "0ac6aa74-e137-49a5-bddf-2672ad639b49"
         },
         {
-          "home": "Alloy Soccer Club Reserves",
-          "away": "Keystone Elite",
-          "time": "6:00 PM EDT - 7:30 PM EDT",
+          "home": "Lancaster City FC\t",
+          "away": "Keystone Elite\t",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2025-09-20T19:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 6",
+          "externalId": "717ee722-12c4-41ed-ac18-834678f3ee41"
+        },
+        {
+          "home": "Kutztown Men's Soccer\t",
+          "away": "Alloy Soccer Club Reserves\t",
+          "time": "1:00 PM - 2:30 PM",
+          "date": "2025-09-21T17:00:00.000Z",
+          "status": "Final",
+          "score": "2 - 0",
+          "externalId": "82f8e4f2-05d6-4d0a-9fbc-f805b23a74d7"
+        },
+        {
+          "home": "F&M FC\t",
+          "away": "Kutztown Men's Soccer\t",
+          "time": "1:15 PM - 2:45 PM",
+          "date": "2025-09-28T17:15:00.000Z",
+          "status": "Final",
+          "score": "2 - 2",
+          "externalId": "5ebd8799-9caa-4a96-8f9e-591780512d43"
+        },
+        {
+          "home": "Alloy Soccer Club Reserves\t",
+          "away": "Keystone Elite\t",
+          "time": "4:00 PM - 5:30 PM",
+          "date": "2025-09-28T20:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 2",
+          "externalId": "769cd0d9-ed17-4547-96a4-11b128a738a8"
+        },
+        {
+          "home": "Lancaster City FC\t",
+          "away": "Kutztown Men's Soccer\t",
+          "time": "11:00 AM - 12:30 PM",
+          "date": "2025-10-05T15:00:00.000Z",
+          "status": "Final",
+          "score": "2 - 3",
+          "externalId": "ce6df7ba-1535-463d-89c0-f5c305d1b45c"
+        },
+        {
+          "home": "F&M FC\t",
+          "away": "Alloy Soccer Club Reserves\t",
+          "time": "5:00 PM - 6:30 PM",
+          "date": "2025-10-05T21:00:00.000Z",
+          "status": "Final",
+          "score": "0 - 6",
+          "externalId": "ad6795be-a39e-47ab-908a-ada58dd5d6e1"
+        },
+        {
+          "home": "Keystone Elite\t",
+          "away": "Lancaster City FC\t",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2025-10-12T19:00:00.000Z",
+          "status": "Final",
+          "score": "3 - 4",
+          "externalId": "5022ebd9-0755-4173-9427-9c02fe086df4"
+        },
+        {
+          "home": "Alloy Soccer Club Reserves\t",
+          "away": "F&M FC\t",
+          "time": "7:00 PM - 8:30 PM",
+          "date": "2025-10-15T23:00:00.000Z",
+          "status": "Final",
+          "score": "3 - 0",
+          "externalId": "4089eaac-b5d8-4f6a-937e-331753f9f166"
+        },
+        {
+          "home": "Lancaster City FC\t",
+          "away": "Alloy Soccer Club Reserves\t",
+          "time": "4:00 PM - 5:30 PM",
+          "date": "2025-10-19T20:00:00.000Z",
+          "status": "Final",
+          "score": "0 - 0",
+          "externalId": "d2f9a55f-f205-41b6-9ec7-2c1a12db05ed"
+        },
+        {
+          "home": "Kutztown Men's Soccer\t",
+          "away": "F&M FC\t",
+          "time": "4:00 PM - 5:30 PM",
+          "date": "2025-10-19T20:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 1",
+          "externalId": "1386477d-2f34-4e54-9ce6-2187df1192c8"
+        },
+        {
+          "home": "Kutztown Men's Soccer\t",
+          "away": "Lancaster City FC\t",
+          "time": "1:00 PM - 2:30 PM",
+          "date": "2025-10-26T17:00:00.000Z",
+          "status": "Final",
+          "score": "3 - 2",
+          "externalId": "13d29fff-0e35-4145-a03a-515d7699671c"
+        },
+        {
+          "home": "Keystone Elite\t",
+          "away": "Alloy Soccer Club Reserves\t",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2025-10-26T19:00:00.000Z",
+          "status": "Final",
+          "score": "2 - 3",
+          "externalId": "f9d52741-ecb8-4f43-a524-f0e1d656dae7"
+        },
+        {
+          "home": "Keystone Elite\t",
+          "away": "F&M FC\t",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2025-11-02T20:00:00.000Z",
+          "status": "Final",
+          "score": "0 - 1",
+          "externalId": "a6523b61-91d7-4f66-9164-c98d378718c1"
+        },
+        {
+          "home": "Alloy Soccer Club Reserves\t",
+          "away": "Kutztown Men's Soccer\t",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2025-11-02T23:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 0",
+          "externalId": "89131c08-e034-46b4-b447-80abbb52d48a"
+        },
+        {
+          "home": "Kutztown Men's Soccer\t",
+          "away": "Keystone Elite\t",
+          "time": "12:00 PM - 1:30 PM",
+          "date": "2025-11-09T17:00:00.000Z",
+          "status": "Final",
+          "score": "3 - 0",
+          "externalId": "0a30179e-8217-447e-92db-77ab55d3de3c"
+        },
+        {
+          "home": "F&M FC\t",
+          "away": "Lancaster City FC\t",
+          "time": "1:00 PM - 2:30 PM",
+          "date": "2025-11-09T18:00:00.000Z",
+          "status": "Final",
+          "score": "3 - 2",
+          "externalId": "8fdb51aa-c13b-43fd-9657-f3b15e7b28bc"
+        },
+        {
+          "home": "Lancaster City FC\t",
+          "away": "Kutztown Men's Soccer\t",
+          "time": "11:00 AM - 12:30 PM",
+          "date": "2026-03-01T16:00:00.000Z",
           "status": "scheduled",
-          "score": null
+          "score": null,
+          "externalId": "01d4dd60-dd5f-4e4d-8f3b-908604951396"
+        },
+        {
+          "home": "F&M FC\t",
+          "away": "Alloy Soccer Club Reserves\t",
+          "time": "2:30 PM - 4:00 PM",
+          "date": "2026-03-01T19:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "b5527e91-452f-4f12-8cf4-c259251f7cfa"
+        },
+        {
+          "home": "Keystone Elite\t",
+          "away": "Lancaster Bible College",
+          "time": "7:00 PM - 8:30 PM",
+          "date": "2026-03-02T00:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "6ce2b3f4-1e72-49d1-9410-b9cd1899accf"
+        },
+        {
+          "home": "Alloy Soccer Club Reserves\t",
+          "away": "Lancaster City FC\t",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2026-03-07T23:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "f9faf11a-6938-4563-8f53-136efc294f57"
+        },
+        {
+          "home": "Keystone Elite\t",
+          "away": "Kutztown Men's Soccer\t",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2026-03-08T19:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "9ec32619-41ad-43a8-970f-b1e65ba5d370"
+        },
+        {
+          "home": "F&M FC\t",
+          "away": "YorkPA FC",
+          "time": "4:30 PM - 6:00 PM",
+          "date": "2026-03-08T20:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "a6374cb1-0895-4f3b-9d92-7eb17bb3e713"
+        },
+        {
+          "home": "Alloy Soccer Club Reserves\t",
+          "away": "Keystone Elite\t",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2026-03-14T22:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "bf0f4bc9-0e29-4ec0-987c-618891490000"
+        },
+        {
+          "home": "Lancaster City FC\t",
+          "away": "YorkPA FC",
+          "time": "11:00 AM - 12:30 PM",
+          "date": "2026-03-15T15:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "1011f11d-985a-4b1c-bbb2-84dbe119f855"
+        },
+        {
+          "home": "Alloy Soccer Club Reserves\t",
+          "away": "Lancaster Bible College",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2026-03-21T22:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "12239797-ef2c-4e55-9291-7e1040bf04a1"
+        },
+        {
+          "home": "Keystone Elite\t",
+          "away": "Millersville Men's Club Soccer",
+          "time": "3:00 PM - 4:30 PM",
+          "date": "2026-03-22T19:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "f3302399-f480-4343-abd9-10621ef3b12e"
+        },
+        {
+          "home": "F&M FC\t",
+          "away": "Kutztown Men's Soccer\t",
+          "time": "2:30 PM - 4:00 PM",
+          "date": "2026-03-29T18:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "6b238965-bc43-4c60-be51-e556b1ea0371"
+        },
+        {
+          "home": "Keystone Elite\t",
+          "away": "Lancaster City FC\t",
+          "time": "4:00 PM - 5:30 PM",
+          "date": "2026-03-29T20:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "9aa26d15-9e56-48fc-976b-576dba695454"
+        },
+        {
+          "home": "Kutztown Men's Soccer\t",
+          "away": "West Chester University Club",
+          "time": "10:30 AM - 12:00 PM",
+          "date": "2026-04-04T14:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "7018b701-2c80-419b-a850-74ff6d36faea"
+        },
+        {
+          "home": "F&M FC\t",
+          "away": "Lancaster City FC\t",
+          "time": "7:30 PM - 9:00 PM",
+          "date": "2026-04-08T23:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "9191ae8c-984a-425e-afc7-cdb348f52f5f"
+        },
+        {
+          "home": "Kutztown Men's Soccer\t",
+          "away": "F&M FC\t",
+          "time": "12:00 AM - 1:30 AM",
+          "date": "2026-04-11T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "8f281dfd-83d5-42ac-954f-52d0c2983d32"
+        },
+        {
+          "home": "Kutztown Men's Soccer\t",
+          "away": "Alloy Soccer Club Reserves\t",
+          "time": "12:00 AM - 1:30 AM",
+          "date": "2026-04-12T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0b602b05-f408-4018-a519-a2c8fc07aa75"
+        },
+        {
+          "home": "Keystone Elite\t",
+          "away": "F&M FC\t",
+          "time": "4:00 PM - 5:30 PM",
+          "date": "2026-04-12T20:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "9fdc1a0a-0e36-4ea4-980c-9e7719796785"
+        },
+        {
+          "home": "Millersville Men's Club Soccer",
+          "away": "Alloy Soccer Club Reserves\t",
+          "time": "8:00 PM - 9:30 PM",
+          "date": "2026-04-16T00:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "ff8b2f9f-7a1e-4ec8-9e49-0e3887786da1"
+        },
+        {
+          "home": "Alloy Soccer Club Reserves\t",
+          "away": "F&M FC\t",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2026-04-18T22:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "8a0867f0-4d81-489d-8401-46a93ea02978"
+        },
+        {
+          "home": "Kutztown Men's Soccer\t",
+          "away": "Keystone Elite\t",
+          "time": "12:00 AM - 1:30 AM",
+          "date": "2026-04-19T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "411d026a-403e-4567-a619-480fc6301b31"
+        },
+        {
+          "home": "Lancaster City FC\t",
+          "away": "Keystone Elite\t",
+          "time": "7:30 PM - 9:00 PM",
+          "date": "2026-04-22T23:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "19a7e38d-9d84-42d0-bca4-ad1951230fd9"
+        },
+        {
+          "home": "F&M FC\t",
+          "away": "West Chester University Club",
+          "time": "10:30 AM - 12:00 PM",
+          "date": "2026-04-26T14:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "ecc25592-d58d-4c44-9b8f-6893143aa01b"
+        },
+        {
+          "home": "Lancaster City FC\t",
+          "away": "Alloy Soccer Club Reserves\t",
+          "time": "11:00 AM - 12:30 PM",
+          "date": "2026-04-26T15:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "af416431-dada-4544-a356-4b36208d57d2"
+        },
+        {
+          "home": "Kutztown Men's Soccer\t",
+          "away": "Lancaster City FC\t",
+          "time": "12:00 AM - 1:30 AM",
+          "date": "2026-05-03T04:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "7871174c-e524-4865-80e1-fb69b62b3dc3"
         }
       ]
     }

@@ -1,0 +1,3530 @@
+[
+  {
+    "id": "43748bdb-ff51-42cf-ad3e-db2513cc4be3",
+    "title": "Flatley FC at BCFC All Stars",
+    "event_type": "game",
+    "description": "",
+    "location_name": "East Boston Memorial Stadium",
+    "location_address": "143 Porter Street, Boston, MA 02128",
+    "location_description": "Stadium",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-09-07T15:30:00.000Z",
+    "end_date_time": "2025-09-07T17:00:00.000Z",
+    "created_at": "2025-08-29T19:18:32.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "489541",
+    "subvenue_id": "536766",
+    "source": {
+      "id": "68b1fd0a40ce98000103fa19",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "home_team_score": "7",
+        "away_team_id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "away_team_score": "2",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f1c1bd03f8949729f",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Flatley FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee37a6a837e253be9",
+          "primary_color": "",
+          "seed_id": "3256301",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9b9-cb46-acca-46945ae83505/large_square_Flatley_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd0a40ce98000103fa19",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "name": "BCFC All Stars",
+        "score": "7",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "name": "Flatley FC",
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "f3799381-f531-49d1-b667-391351ee9a3b",
+    "title": "Jaguars United FC at Strictly Nos Fc",
+    "event_type": "game",
+    "description": "",
+    "location_name": "East Boston Memorial Stadium",
+    "location_address": "143 Porter Street, Boston, MA 02128",
+    "location_description": "Stadium",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-09-07T17:30:00.000Z",
+    "end_date_time": "2025-09-07T19:00:00.000Z",
+    "created_at": "2025-08-29T19:18:34.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "489541",
+    "subvenue_id": "536766",
+    "source": {
+      "id": "68b1fd0c7539750001d732fd",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "home_team_score": "2",
+        "away_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "away_team_score": "2",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd0c7539750001d732fd",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "name": "Strictly Nos Fc",
+        "score": "2",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "name": "Jaguars United FC",
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "a9222fd7-f9a8-486b-96b4-e91091052424",
+    "title": "South Shore FC at Gambeta FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Pine Banks Park",
+    "location_address": "1087 Main Street, Malden, MA 02148-1424",
+    "location_description": "RF1 - Multisport",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-09-07T21:30:00.000Z",
+    "end_date_time": "2025-09-07T23:00:00.000Z",
+    "created_at": "2025-09-02T22:08:06.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "472744",
+    "subvenue_id": "510753",
+    "source": {
+      "id": "68b76ac86cb00d00014fee3c",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "home_team_score": "3",
+        "away_team_id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "away_team_score": "7",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b76604f68b713e325680f5",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b76ac86cb00d00014fee3c",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "name": "Gambeta FC",
+        "score": "3",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "originator_id": "68b76604f68b713e325680f5",
+        "name": "South Shore FC",
+        "score": "7",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "090aeb07-5fbb-44e5-a5e2-aff9afa19baa",
+    "title": "Jaguars United FC at BCFC All Stars",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Rivergreen Park",
+    "location_address": "Rivergreen Drive, Everett, MA 02149, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-09-13T17:00:00.000Z",
+    "end_date_time": "2025-09-13T18:30:00.000Z",
+    "created_at": "2025-08-29T19:18:29.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "477944",
+    "subvenue_id": "518728",
+    "source": {
+      "id": "68b1fd07197e0e00016fc1e5",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "home_team_score": "0",
+        "away_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "away_team_score": "4",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd07197e0e00016fc1e5",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "name": "BCFC All Stars",
+        "score": "0",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "name": "Jaguars United FC",
+        "score": "4",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "9cbec86b-8e9e-4ca4-979a-a8afb49f8f6b",
+    "title": "Strictly Nos Fc at Flatley FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Ceylon Park",
+    "location_address": "105 Ceylon Street, Boston, MA 02121, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-09-21T16:15:00.000Z",
+    "end_date_time": "2025-09-21T17:45:00.000Z",
+    "created_at": "2025-08-29T19:18:34.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "477948",
+    "subvenue_id": "518733",
+    "source": {
+      "id": "68b1fd0c7539750001d732f9",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "home_team_score": "0",
+        "away_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "away_team_score": "4",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f1c1bd03f8949729f",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Flatley FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee37a6a837e253be9",
+          "primary_color": "",
+          "seed_id": "3256301",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9b9-cb46-acca-46945ae83505/large_square_Flatley_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd0c7539750001d732f9",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "name": "Flatley FC",
+        "score": "0",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "name": "Strictly Nos Fc",
+        "score": "4",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "c62c602e-dc61-4f1b-b510-0f9ebe2a2b64",
+    "title": "BCFC All Stars at Gambeta FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Erricola Park",
+    "location_address": "101 School Street, Revere, MA 02151-3001",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-09-21T18:30:00.000Z",
+    "end_date_time": "2025-09-21T20:00:00.000Z",
+    "created_at": "2025-08-29T19:18:34.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "574903",
+    "subvenue_id": "673124",
+    "source": {
+      "id": "68b1fd0b197e0e00016fc1ef",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "home_team_score": "4",
+        "away_team_id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "away_team_score": "8",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd0b197e0e00016fc1ef",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "name": "Gambeta FC",
+        "score": "4",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "name": "BCFC All Stars",
+        "score": "8",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "b9a2ca7b-2fe0-48c2-b42c-dd68875a60f1",
+    "title": "South Shore FC at Jaguars United FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Pine Banks Park",
+    "location_address": "1087 Main Street, Malden, MA 02148-1424, US",
+    "location_description": "RF1 - Multisport",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-09-21T22:00:00.000Z",
+    "end_date_time": "2025-09-21T23:30:00.000Z",
+    "created_at": "2025-09-05T12:28:31.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "472744",
+    "subvenue_id": "510753",
+    "source": {
+      "id": "68bad770c2748a000104e342",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "home_team_score": "0",
+        "away_team_id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "away_team_score": "2",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b76604f68b713e325680f5",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68bad770c2748a000104e342",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "name": "Jaguars United FC",
+        "score": "0",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "originator_id": "68b76604f68b713e325680f5",
+        "name": "South Shore FC",
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "dfd3124c-20b9-4a72-a90c-c8251c2af20f",
+    "title": "Gambeta FC at Strictly Nos Fc",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Pine Banks Park",
+    "location_address": "1087 Main Street, Malden, MA 02148-1424, US",
+    "location_description": "RF1 - Multisport",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-09-27T20:45:00.000Z",
+    "end_date_time": "2025-09-27T22:15:00.000Z",
+    "created_at": "2025-08-29T19:18:33.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "472744",
+    "subvenue_id": "510753",
+    "source": {
+      "id": "68b1fd0a40ce98000103fa1b",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "home_team_score": "5",
+        "away_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "away_team_score": "1",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd0a40ce98000103fa1b",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "name": "Strictly Nos Fc",
+        "score": "5",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "name": "Gambeta FC",
+        "score": "1",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "b1852d3a-b459-4e6e-8650-cacb813603d7",
+    "title": "BCFC All Stars at South Shore FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Legion Field",
+    "location_address": "32 Middle Street, Weymouth, MA 02189, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-09-28T18:00:00.000Z",
+    "end_date_time": "2025-09-28T19:30:00.000Z",
+    "created_at": "2025-09-05T12:29:10.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "583950",
+    "subvenue_id": "687567",
+    "source": {
+      "id": "68bad7975d3c450001dafe42",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "home_team_score": "4",
+        "away_team_id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "away_team_score": "3",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b76604f68b713e325680f5",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68bad7975d3c450001dafe42",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "originator_id": "68b76604f68b713e325680f5",
+        "name": "South Shore FC",
+        "score": "4",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "name": "BCFC All Stars",
+        "score": "3",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "bf586a93-0774-4eb4-9633-30336670dc83",
+    "title": "Jaguars United FC at Flatley FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "West Roxbury High School",
+    "location_address": "1205 VFW Parkway, Boston, MA 02132, US",
+    "location_description": "Stadium Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-09-28T23:30:00.000Z",
+    "end_date_time": "2025-09-29T01:00:00.000Z",
+    "created_at": "2025-08-29T19:18:32.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "575534",
+    "subvenue_id": "674270",
+    "source": {
+      "id": "68b1fd0a7539750001d732f7",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "home_team_score": "1",
+        "away_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "away_team_score": "6",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f1c1bd03f8949729f",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Flatley FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee37a6a837e253be9",
+          "primary_color": "",
+          "seed_id": "3256301",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9b9-cb46-acca-46945ae83505/large_square_Flatley_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd0a7539750001d732f7",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "name": "Flatley FC",
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "name": "Jaguars United FC",
+        "score": "6",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "aa7f2b43-dd26-4f3e-b6bb-d6dec6467b95",
+    "title": "BCFC All Stars at Strictly Nos Fc",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Revere High School",
+    "location_address": "101 School Street, Revere, MA 02151-3001, US",
+    "location_description": "Erricola Park",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-04T23:00:00.000Z",
+    "end_date_time": "2025-10-05T00:45:00.000Z",
+    "created_at": "2025-08-29T19:18:32.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "472325",
+    "subvenue_id": "510122",
+    "source": {
+      "id": "68b1fd0a6cb00d0001ab6eca",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "home_team_score": "1",
+        "away_team_id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "away_team_score": "1",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd0a6cb00d0001ab6eca",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "name": "Strictly Nos Fc",
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "name": "BCFC All Stars",
+        "score": "1",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "3cb64f14-1cbd-4b01-85e2-8a6362a16c5a",
+    "title": "South Shore FC at Flatley FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Ceylon Park",
+    "location_address": "105 Ceylon Street, Boston, MA 02121",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-05T16:15:00.000Z",
+    "end_date_time": "2025-10-05T17:45:00.000Z",
+    "created_at": "2025-09-05T12:32:09.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "477948",
+    "subvenue_id": "518733",
+    "source": {
+      "id": "68bad84bc2748a000104e34d",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "home_team_score": "1",
+        "away_team_id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "away_team_score": "9",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f1c1bd03f8949729f",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Flatley FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee37a6a837e253be9",
+          "primary_color": "",
+          "seed_id": "3256301",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9b9-cb46-acca-46945ae83505/large_square_Flatley_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b76604f68b713e325680f5",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68bad84bc2748a000104e34d",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "name": "Flatley FC",
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "originator_id": "68b76604f68b713e325680f5",
+        "name": "South Shore FC",
+        "score": "9",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "86bfc7ca-05ac-4bfd-a2c9-95865253e5f1",
+    "title": "Gambeta FC at Jaguars United FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Rivergreen Park",
+    "location_address": "Rivergreen Drive, Everett, MA 02149, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-05T22:00:00.000Z",
+    "end_date_time": "2025-10-05T23:30:00.000Z",
+    "created_at": "2025-09-05T12:30:29.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "477944",
+    "subvenue_id": "518728",
+    "source": {
+      "id": "68bad7e75d3c450001dafe4a",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "home_team_score": "6",
+        "away_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "away_team_score": "2",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68bad7e75d3c450001dafe4a",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "name": "Jaguars United FC",
+        "score": "6",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "name": "Gambeta FC",
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "89bb6477-08fa-4d54-aeba-721e5d9dc60b",
+    "title": "South Shore FC at BCFC All Stars",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Erricola Park",
+    "location_address": "101 School Street, Revere, MA 02151-3001, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-12T18:00:00.000Z",
+    "end_date_time": "2025-10-12T19:30:00.000Z",
+    "created_at": "2025-09-05T12:35:26.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "574903",
+    "subvenue_id": "673124",
+    "source": {
+      "id": "68bad90f7620be0001d3f552",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "home_team_score": "1",
+        "away_team_id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "away_team_score": "3",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b76604f68b713e325680f5",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68bad90f7620be0001d3f552",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "name": "BCFC All Stars",
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "originator_id": "68b76604f68b713e325680f5",
+        "name": "South Shore FC",
+        "score": "3",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "98e212a2-c093-4885-9795-07e1198a1ef8",
+    "title": "Strictly Nos Fc at Gambeta FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Revere High School",
+    "location_address": "101 School Street, Revere, MA 02151-3001, US",
+    "location_description": "Erricola Park",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-12T19:45:00.000Z",
+    "end_date_time": "2025-10-12T21:15:00.000Z",
+    "created_at": "2025-08-29T19:18:34.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "472325",
+    "subvenue_id": "510122",
+    "source": {
+      "id": "68b1fd0c7539750001d732ff",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "home_team_score": "1",
+        "away_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "away_team_score": "8",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd0c7539750001d732ff",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "name": "Gambeta FC",
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "name": "Strictly Nos Fc",
+        "score": "8",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "e59b1526-7335-4a4e-b7e6-a6f2cd0b1fb5",
+    "title": "Flatley FC at Jaguars United FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Rivergreen Park",
+    "location_address": "Rivergreen Drive, Everett, MA 02149, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-12T22:00:00.000Z",
+    "end_date_time": "2025-10-12T23:30:00.000Z",
+    "created_at": "2025-08-29T19:18:32.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "477944",
+    "subvenue_id": "518728",
+    "source": {
+      "id": "68b1fd0a6cb00d0001ab6ecc",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "home_team_score": "8",
+        "away_team_id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "away_team_score": "1",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f1c1bd03f8949729f",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Flatley FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee37a6a837e253be9",
+          "primary_color": "",
+          "seed_id": "3256301",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9b9-cb46-acca-46945ae83505/large_square_Flatley_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd0a6cb00d0001ab6ecc",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "name": "Jaguars United FC",
+        "score": "8",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "name": "Flatley FC",
+        "score": "1",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "d60c4fdc-f4b6-41eb-9ab9-c8696add77de",
+    "title": "South Shore FC at Strictly Nos Fc",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Revere High School",
+    "location_address": "101 School Street, Revere, MA 02151-3001, US",
+    "location_description": "Erricola Park",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-18T19:00:00.000Z",
+    "end_date_time": "2025-10-18T20:30:00.000Z",
+    "created_at": "2025-09-05T12:39:59.000Z",
+    "updated_at": "2025-10-28T16:24:40.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "472325",
+    "subvenue_id": "510122",
+    "source": {
+      "id": "68bada21c2748a000104e369",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "home_team_score": "1",
+        "away_team_id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "away_team_score": "2",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b76604f68b713e325680f5",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68bada21c2748a000104e369",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "name": "Strictly Nos Fc",
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "originator_id": "68b76604f68b713e325680f5",
+        "name": "South Shore FC",
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "e1e7d51c-023d-4177-8ced-0b5f1234e83a",
+    "title": "Gambeta FC at Flatley FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Ceylon Park",
+    "location_address": "105 Ceylon Street, Boston, MA 02121, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-19T16:15:00.000Z",
+    "end_date_time": "2025-10-19T17:45:00.000Z",
+    "created_at": "2025-08-29T19:18:31.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "477948",
+    "subvenue_id": "518733",
+    "source": {
+      "id": "68b1fd097539750001d732f5",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "home_team_score": "7",
+        "away_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "away_team_score": "4",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f1c1bd03f8949729f",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Flatley FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee37a6a837e253be9",
+          "primary_color": "",
+          "seed_id": "3256301",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9b9-cb46-acca-46945ae83505/large_square_Flatley_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd097539750001d732f5",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "name": "Flatley FC",
+        "score": "7",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "name": "Gambeta FC",
+        "score": "4",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "9a64b2d8-630e-454a-b1f0-b0b007188298",
+    "title": "BCFC All Stars at Jaguars United FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Madeline English School",
+    "location_address": "105 Woodville Street, Everett, MA 02149-1123, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-19T22:00:00.000Z",
+    "end_date_time": "2025-10-19T23:30:00.000Z",
+    "created_at": "2025-08-29T19:18:34.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "596000",
+    "subvenue_id": "705704",
+    "source": {
+      "id": "68b1fd0c40ce98000103fa1d",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "home_team_score": "4",
+        "away_team_id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "away_team_score": "2",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd0c40ce98000103fa1d",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "name": "Jaguars United FC",
+        "score": "4",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "name": "BCFC All Stars",
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "12ffb6a6-ca54-452d-846e-c70c2c85fdc7",
+    "title": "Flatley FC at Gambeta FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Ceylon Park",
+    "location_address": "105 Ceylon Street, Boston, MA 02121, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-24T00:15:00.000Z",
+    "end_date_time": "2025-10-24T01:45:00.000Z",
+    "created_at": "2025-08-29T19:18:32.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "477948",
+    "subvenue_id": "518733",
+    "source": {
+      "id": "68b1fd0940ce98000103fa17",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "home_team_score": "0",
+        "away_team_id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "away_team_score": "6",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f1c1bd03f8949729f",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Flatley FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee37a6a837e253be9",
+          "primary_color": "",
+          "seed_id": "3256301",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9b9-cb46-acca-46945ae83505/large_square_Flatley_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd0940ce98000103fa17",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "name": "Gambeta FC",
+        "score": "0",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "name": "Flatley FC",
+        "score": "6",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "af05cce5-3715-4673-a4b7-8d9b939fce4a",
+    "title": "Jaguars United FC at Gambeta FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Hormel Stadium",
+    "location_address": "90 Locust Street, Medford, MA 02155, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-26T16:30:00.000Z",
+    "end_date_time": "2025-10-26T18:00:00.000Z",
+    "created_at": "2025-08-29T19:18:31.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "472333",
+    "subvenue_id": "510134",
+    "source": {
+      "id": "68b1fd09197e0e00016fc1e7",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "home_team_score": "0",
+        "away_team_id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "away_team_score": "10",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd09197e0e00016fc1e7",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "name": "Gambeta FC",
+        "score": "0",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "name": "Jaguars United FC",
+        "score": "10",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "dad8e18e-c795-4395-970e-09f9726e083b",
+    "title": "Strictly Nos Fc at BCFC All Stars",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Hormel Stadium",
+    "location_address": "90 Locust Street, Medford, MA 02155, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-26T18:30:00.000Z",
+    "end_date_time": "2025-10-26T20:00:00.000Z",
+    "created_at": "2025-08-29T19:18:32.000Z",
+    "updated_at": "2025-10-28T16:24:40.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "472333",
+    "subvenue_id": "510134",
+    "source": {
+      "id": "68b1fd096cb00d0001ab6ec8",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "home_team_score": "2",
+        "away_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "away_team_score": "0",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68b1fd096cb00d0001ab6ec8",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "name": "BCFC All Stars",
+        "score": "2",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "name": "Strictly Nos Fc",
+        "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "a00c1b15-6ebc-46b6-bfd4-18c876b82f58",
+    "title": "Flatley FC at South Shore FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Champions at Lawrence W. Pingree Primary School",
+    "location_address": "1250 Commercial Street, Weymouth, MA 02189, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2025-10-26T22:00:00.000Z",
+    "end_date_time": "2025-10-26T23:30:00.000Z",
+    "created_at": "2025-09-05T12:41:05.000Z",
+    "updated_at": "2025-10-28T16:24:39.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "578970",
+    "subvenue_id": "679762",
+    "source": {
+      "id": "68bada635d3c450001dafe66",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "home_team_score": "5",
+        "away_team_id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "away_team_score": "1",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2f1c1bd03f8949729f",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Flatley FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee37a6a837e253be9",
+          "primary_color": "",
+          "seed_id": "3256301",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9b9-cb46-acca-46945ae83505/large_square_Flatley_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b76604f68b713e325680f5",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68bada635d3c450001dafe66",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "originator_id": "68b76604f68b713e325680f5",
+        "name": "South Shore FC",
+        "score": "5",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "name": "Flatley FC",
+        "score": "1",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "b7f1beb8-d18f-4c05-be3a-ee9ec3b5550f",
+    "title": "Strictly Nos Fc at South Shore FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Champions at Lawrence W. Pingree Primary School",
+    "location_address": "1250 Commercial Street, Weymouth, MA 02189, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2025-12-31T05:00:00.000Z",
+    "end_date_time": "2025-12-31T06:30:00.000Z",
+    "created_at": "2025-09-05T12:27:17.000Z",
+    "updated_at": "2025-10-28T16:23:20.000Z",
+    "tbd_time": true,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "578970",
+    "subvenue_id": "679762",
+    "source": {
+      "id": "68bad72765c9cd0001057d75",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "home_team_score": "",
+        "away_team_id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b76604f68b713e325680f5",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a0c1d3cc737f4c6770b9",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a0c22cbf1300019c8b52"
+        },
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "68bad72765c9cd0001057d75",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "originator_id": "68b76604f68b713e325680f5",
+        "name": "South Shore FC",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "name": "Strictly Nos Fc",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  }
+]
