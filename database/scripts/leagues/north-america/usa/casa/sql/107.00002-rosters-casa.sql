@@ -1,7 +1,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Rosters - CASA
 -- Player-team relationships from team roster pages
--- Total Records: 631
+-- Total Records: 630
 -- 
 -- Architecture: Players looked up by name (no hardcoded IDs)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -4196,14 +4196,6 @@ FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
 WHERE t.name = 'Alloy Soccer Club Reserves' AND t.source_system_id = 2
   AND per.first_name = 'Moussa' AND per.last_name = 'Oumarou'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
-
-INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, NULL, NOW()
-FROM teams t, players pl
-JOIN persons per ON pl.person_id = per.id
-WHERE t.name = 'Alloy Soccer Club Reserves' AND t.source_system_id = 2
-  AND per.first_name = 'Edicson' AND per.last_name = 'Sabogal'
 ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;
 
 INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 

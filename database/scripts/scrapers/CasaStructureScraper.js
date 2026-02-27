@@ -245,6 +245,28 @@ class CasaStructureScraper {
   }
 
   /**
+   * Scroll a frame both UP (past matches) and DOWN (future matches).
+   * SportsEngine schedule defaults to "today" and lazy-loads in both directions.
+   */
+  async _scrollFrameBothDirections(frame, scrollCount = 20, delayMs = 800) {
+    // Scroll UP first to load past matches
+    for (let i = 0; i < scrollCount; i++) {
+      await frame.evaluate(() => {
+        window.scrollTo(0, 0);
+      });
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+
+    // Scroll DOWN to load future matches (scroll to bottom in increments)
+    for (let i = 0; i < scrollCount; i++) {
+      await frame.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+
+  /**
    * Scrape schedule for a single division
    * @returns {Array<{home, away, time, status, score}>}
    */
@@ -259,7 +281,7 @@ class CasaStructureScraper {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
       await new Promise(resolve => setTimeout(resolve, 5000));
 
-      // Scroll to load
+      // Scroll main page to trigger iframe loading
       await this._scrollToLoad(page, 5, 1000);
       await new Promise(resolve => setTimeout(resolve, 3000));
 
@@ -270,6 +292,10 @@ class CasaStructureScraper {
       for (const frame of frames) {
         const frameUrl = frame.url();
         if (!frameUrl.includes('schedule') && !frameUrl.includes('season')) continue;
+
+        // Scroll iframe both up and down to load ALL matches (past + future)
+        console.log(`      ⏳ Scrolling iframe to load all matches...`);
+        await this._scrollFrameBothDirections(frame, 25, 800);
 
         const frameHtml = await frame.content();
         fs.writeFileSync(path.join(this.cacheDir, `schedule-${division.externalId}-frame.html`), frameHtml);

@@ -1,7 +1,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Players - CASA
 -- Player roster data from team pages
--- Total Records: 629
+-- Total Records: 628
 -- 
 -- Architecture: Auto-generated IDs, name-based deduplication
 -- Same name = same person across all sources (curation overrides via name change)
@@ -7327,20 +7327,6 @@ SELECT pl.id, 2, 'alloy-soccer-club-reserves-moussa-oumarou', NULL
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Moussa' AND per.last_name = 'Oumarou' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO persons (first_name, last_name, birth_date) 
-VALUES ('Edicson', 'Sabogal', '2004-01-26') 
-ON CONFLICT (first_name, last_name) DO NOTHING;
-INSERT INTO players (person_id, source_system_id) 
-SELECT id, 2 FROM persons 
-WHERE first_name = 'Edicson' AND last_name = 'Sabogal' 
-ON CONFLICT (person_id) DO NOTHING;
-INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 2, 'alloy-soccer-club-reserves-edicson-sabogal', NULL
-FROM players pl 
-JOIN persons per ON pl.person_id = per.id 
-WHERE per.first_name = 'Edicson' AND per.last_name = 'Sabogal' 
 ON CONFLICT (source_system_id, external_id) DO NOTHING;
 
 INSERT INTO persons (first_name, last_name, birth_date) 

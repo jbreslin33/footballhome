@@ -150,81 +150,6 @@ SELECT
   1, '2026-01-01', NULL, 1,
   ht.id, at.id, NULL,
   NULL, NULL,
-  2, '9096430_sewell''s-old-boys_vs_philadelphia-sc-select_1'
-FROM teams ht
-JOIN teams at ON at.external_id = '9096430-philadelphia-sc-select' AND at.source_system_id = 2
-WHERE ht.external_id = '9096430-sewell''s-old-boys' AND ht.source_system_id = 2
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  1, '2026-01-01', NULL, 1,
-  ht.id, at.id, NULL,
-  NULL, NULL,
-  2, '9096430_persepolis-united-fc-ii_vs_lighthouse-old-timers-club_1'
-FROM teams ht
-JOIN teams at ON at.external_id = '9096430-lighthouse-old-timers-club' AND at.source_system_id = 2
-WHERE ht.external_id = '9096430-persepolis-united-fc-ii' AND ht.source_system_id = 2
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  1, '2026-01-01', NULL, 1,
-  ht.id, at.id, NULL,
-  NULL, NULL,
-  2, '9096430_sewell''s-old-boys_vs_phoenix-scr_1'
-FROM teams ht
-JOIN teams at ON at.external_id = '9096430-phoenix-scr' AND at.source_system_id = 2
-WHERE ht.external_id = '9096430-sewell''s-old-boys' AND ht.source_system_id = 2
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  1, '2026-01-01', NULL, 1,
-  ht.id, at.id, NULL,
-  NULL, NULL,
-  2, '9096430_philadelphia-sc-select_vs_persepolis-united-fc-ii_1'
-FROM teams ht
-JOIN teams at ON at.external_id = '9096430-persepolis-united-fc-ii' AND at.source_system_id = 2
-WHERE ht.external_id = '9096430-philadelphia-sc-select' AND ht.source_system_id = 2
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  1, '2026-01-01', NULL, 1,
-  ht.id, at.id, NULL,
-  NULL, NULL,
-  2, '9096430_sewell''s-old-boys_vs_lighthouse-old-timers-club_1'
-FROM teams ht
-JOIN teams at ON at.external_id = '9096430-lighthouse-old-timers-club' AND at.source_system_id = 2
-WHERE ht.external_id = '9096430-sewell''s-old-boys' AND ht.source_system_id = 2
-ON CONFLICT (source_system_id, external_id) DO NOTHING;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  1, '2026-01-01', NULL, 1,
-  ht.id, at.id, NULL,
-  NULL, NULL,
   2, '9090891_south-shore-fc_vs_strictly-nos-fc_1'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090891-strictly-nos-fc' AND at.source_system_id = 2
@@ -237,9 +162,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-01-01', NULL, 3,
+  1, '2026-01-01', NULL, 1,
   ht.id, at.id, NULL,
-  1, 5,
+  NULL, NULL,
   2, '9090891_south-shore-fc_vs_flatley-fc_1'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090891-flatley-fc' AND at.source_system_id = 2
@@ -252,9 +177,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-01-01', NULL, 3,
+  1, '2026-01-01', NULL, 1,
   ht.id, at.id, NULL,
-  0, 2,
+  NULL, NULL,
   2, '9090891_bcfc-all-stars_vs_strictly-nos-fc_1'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090891-strictly-nos-fc' AND at.source_system_id = 2
@@ -267,9 +192,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-01-01', NULL, 3,
+  1, '2026-01-01', NULL, 1,
   ht.id, at.id, NULL,
-  10, 0,
+  NULL, NULL,
   2, '9090891_gambeta-fc_vs_jaguars-united-fc_1'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090891-jaguars-united-fc' AND at.source_system_id = 2
@@ -282,9 +207,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-01-01', NULL, 3,
+  1, '2026-01-01', NULL, 1,
   ht.id, at.id, NULL,
-  6, 0,
+  NULL, NULL,
   2, '9090891_gambeta-fc_vs_flatley-fc_1'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090891-flatley-fc' AND at.source_system_id = 2
@@ -297,9 +222,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-01-01', NULL, 3,
+  1, '2026-01-01', NULL, 1,
   ht.id, at.id, NULL,
-  2, 4,
+  NULL, NULL,
   2, '9090891_jaguars-united-fc_vs_bcfc-all-stars_1'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090891-bcfc-all-stars' AND at.source_system_id = 2
@@ -312,9 +237,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-01-01', NULL, 3,
+  1, '2026-01-01', NULL, 1,
   ht.id, at.id, NULL,
-  4, 7,
+  NULL, NULL,
   2, '9090891_flatley-fc_vs_gambeta-fc_1'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090891-gambeta-fc' AND at.source_system_id = 2
@@ -327,9 +252,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-01-01', NULL, 3,
+  1, '2026-01-01', NULL, 1,
   ht.id, at.id, NULL,
-  2, 1,
+  NULL, NULL,
   2, '9090891_strictly-nos-fc_vs_south-shore-fc_1'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090891-south-shore-fc' AND at.source_system_id = 2
@@ -342,9 +267,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-01-01', NULL, 3,
+  1, '2026-01-01', NULL, 1,
   ht.id, at.id, NULL,
-  1, 8,
+  NULL, NULL,
   2, '9090891_jaguars-united-fc_vs_flatley-fc_1'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090891-flatley-fc' AND at.source_system_id = 2
@@ -357,9 +282,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-01-01', NULL, 3,
+  1, '2026-01-01', NULL, 1,
   ht.id, at.id, NULL,
-  8, 1,
+  NULL, NULL,
   2, '9090891_gambeta-fc_vs_strictly-nos-fc_1'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090891-strictly-nos-fc' AND at.source_system_id = 2
@@ -439,5 +364,80 @@ SELECT
 FROM teams ht
 JOIN teams at ON at.external_id = '9090893-keystone-elite' AND at.source_system_id = 2
 WHERE ht.external_id = '9090893-alloy-soccer-club-reserves' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2026-01-01', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  2, '9096430_sewell''s-old-boys_vs_philadelphia-sc-select_1'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-philadelphia-sc-select' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-sewell''s-old-boys' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2026-01-01', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  2, '9096430_persepolis-united-fc-ii_vs_lighthouse-old-timers-club_1'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-lighthouse-old-timers-club' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-persepolis-united-fc-ii' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2026-01-01', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  2, '9096430_sewell''s-old-boys_vs_phoenix-scr_1'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-phoenix-scr' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-sewell''s-old-boys' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2026-01-01', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  2, '9096430_philadelphia-sc-select_vs_persepolis-united-fc-ii_1'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-persepolis-united-fc-ii' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-philadelphia-sc-select' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2026-01-01', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  2, '9096430_sewell''s-old-boys_vs_lighthouse-old-timers-club_1'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-lighthouse-old-timers-club' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-sewell''s-old-boys' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO NOTHING;
 

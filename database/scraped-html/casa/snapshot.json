@@ -2,7 +2,7 @@
   "league": "casa",
   "season": "2025/2026",
   "sourceSystemId": 2,
-  "scrapedAt": "2026-02-25T21:56:30.473Z",
+  "scrapedAt": "2026-02-27T04:00:17.912Z",
   "teams": [
     {
       "name": "Adé United FC",
@@ -299,71 +299,6 @@
       "_key": "9090889_oaklyn-united-fc-ii_vs_philly-blackstars_1"
     },
     {
-      "homeTeam": "Sewell's Old Boys",
-      "awayTeam": "Philadelphia SC Select",
-      "divisionName": "Philadelphia Liga 2",
-      "divisionExternalId": "9096430",
-      "date": "2026-01-01",
-      "time": null,
-      "status": "scheduled",
-      "homeScore": null,
-      "awayScore": null,
-      "externalId": "9096430_sewell's-old-boys_vs_philadelphia-sc-select_1",
-      "_key": "9096430_sewell's-old-boys_vs_philadelphia-sc-select_1"
-    },
-    {
-      "homeTeam": "Persepolis United FC II",
-      "awayTeam": "Lighthouse Old Timers Club",
-      "divisionName": "Philadelphia Liga 2",
-      "divisionExternalId": "9096430",
-      "date": "2026-01-01",
-      "time": null,
-      "status": "scheduled",
-      "homeScore": null,
-      "awayScore": null,
-      "externalId": "9096430_persepolis-united-fc-ii_vs_lighthouse-old-timers-club_1",
-      "_key": "9096430_persepolis-united-fc-ii_vs_lighthouse-old-timers-club_1"
-    },
-    {
-      "homeTeam": "Sewell's Old Boys",
-      "awayTeam": "Phoenix SCR",
-      "divisionName": "Philadelphia Liga 2",
-      "divisionExternalId": "9096430",
-      "date": "2026-01-01",
-      "time": null,
-      "status": "scheduled",
-      "homeScore": null,
-      "awayScore": null,
-      "externalId": "9096430_sewell's-old-boys_vs_phoenix-scr_1",
-      "_key": "9096430_sewell's-old-boys_vs_phoenix-scr_1"
-    },
-    {
-      "homeTeam": "Philadelphia SC Select",
-      "awayTeam": "Persepolis United FC II",
-      "divisionName": "Philadelphia Liga 2",
-      "divisionExternalId": "9096430",
-      "date": "2026-01-01",
-      "time": null,
-      "status": "scheduled",
-      "homeScore": null,
-      "awayScore": null,
-      "externalId": "9096430_philadelphia-sc-select_vs_persepolis-united-fc-ii_1",
-      "_key": "9096430_philadelphia-sc-select_vs_persepolis-united-fc-ii_1"
-    },
-    {
-      "homeTeam": "Sewell's Old Boys",
-      "awayTeam": "Lighthouse Old Timers Club",
-      "divisionName": "Philadelphia Liga 2",
-      "divisionExternalId": "9096430",
-      "date": "2026-01-01",
-      "time": null,
-      "status": "scheduled",
-      "homeScore": null,
-      "awayScore": null,
-      "externalId": "9096430_sewell's-old-boys_vs_lighthouse-old-timers-club_1",
-      "_key": "9096430_sewell's-old-boys_vs_lighthouse-old-timers-club_1"
-    },
-    {
       "homeTeam": "South Shore FC",
       "awayTeam": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1",
@@ -384,8 +319,8 @@
       "date": "2026-01-01",
       "time": null,
       "status": "scheduled",
-      "homeScore": 1,
-      "awayScore": 5,
+      "homeScore": null,
+      "awayScore": null,
       "externalId": "9090891_south-shore-fc_vs_flatley-fc_1",
       "_key": "9090891_south-shore-fc_vs_flatley-fc_1"
     },
@@ -397,8 +332,8 @@
       "date": "2026-01-01",
       "time": null,
       "status": "scheduled",
-      "homeScore": 0,
-      "awayScore": 2,
+      "homeScore": null,
+      "awayScore": null,
       "externalId": "9090891_bcfc-all-stars_vs_strictly-nos-fc_1",
       "_key": "9090891_bcfc-all-stars_vs_strictly-nos-fc_1"
     },
@@ -410,8 +345,8 @@
       "date": "2026-01-01",
       "time": null,
       "status": "scheduled",
-      "homeScore": 10,
-      "awayScore": 0,
+      "homeScore": null,
+      "awayScore": null,
       "externalId": "9090891_gambeta-fc_vs_jaguars-united-fc_1",
       "_key": "9090891_gambeta-fc_vs_jaguars-united-fc_1"
     },
@@ -423,8 +358,8 @@
       "date": "2026-01-01",
       "time": null,
       "status": "scheduled",
-      "homeScore": 6,
-      "awayScore": 0,
+      "homeScore": null,
+      "awayScore": null,
       "externalId": "9090891_gambeta-fc_vs_flatley-fc_1",
       "_key": "9090891_gambeta-fc_vs_flatley-fc_1"
     },
@@ -436,8 +371,8 @@
       "date": "2026-01-01",
       "time": null,
       "status": "scheduled",
-      "homeScore": 2,
-      "awayScore": 4,
+      "homeScore": null,
+      "awayScore": null,
       "externalId": "9090891_jaguars-united-fc_vs_bcfc-all-stars_1",
       "_key": "9090891_jaguars-united-fc_vs_bcfc-all-stars_1"
     },
@@ -449,8 +384,8 @@
       "date": "2026-01-01",
       "time": null,
       "status": "scheduled",
-      "homeScore": 4,
-      "awayScore": 7,
+      "homeScore": null,
+      "awayScore": null,
       "externalId": "9090891_flatley-fc_vs_gambeta-fc_1",
       "_key": "9090891_flatley-fc_vs_gambeta-fc_1"
     },
@@ -462,8 +397,8 @@
       "date": "2026-01-01",
       "time": null,
       "status": "scheduled",
-      "homeScore": 2,
-      "awayScore": 1,
+      "homeScore": null,
+      "awayScore": null,
       "externalId": "9090891_strictly-nos-fc_vs_south-shore-fc_1",
       "_key": "9090891_strictly-nos-fc_vs_south-shore-fc_1"
     },
@@ -475,8 +410,8 @@
       "date": "2026-01-01",
       "time": null,
       "status": "scheduled",
-      "homeScore": 1,
-      "awayScore": 8,
+      "homeScore": null,
+      "awayScore": null,
       "externalId": "9090891_jaguars-united-fc_vs_flatley-fc_1",
       "_key": "9090891_jaguars-united-fc_vs_flatley-fc_1"
     },
@@ -488,8 +423,8 @@
       "date": "2026-01-01",
       "time": null,
       "status": "scheduled",
-      "homeScore": 8,
-      "awayScore": 1,
+      "homeScore": null,
+      "awayScore": null,
       "externalId": "9090891_gambeta-fc_vs_strictly-nos-fc_1",
       "_key": "9090891_gambeta-fc_vs_strictly-nos-fc_1"
     },
@@ -557,6 +492,71 @@
       "awayScore": null,
       "externalId": "9090893_alloy-soccer-club-reserves_vs_keystone-elite_1",
       "_key": "9090893_alloy-soccer-club-reserves_vs_keystone-elite_1"
+    },
+    {
+      "homeTeam": "Sewell's Old Boys",
+      "awayTeam": "Philadelphia SC Select",
+      "divisionName": "Philadelphia Liga 2",
+      "divisionExternalId": "9096430",
+      "date": "2026-01-01",
+      "time": null,
+      "status": "scheduled",
+      "homeScore": null,
+      "awayScore": null,
+      "externalId": "9096430_sewell's-old-boys_vs_philadelphia-sc-select_1",
+      "_key": "9096430_sewell's-old-boys_vs_philadelphia-sc-select_1"
+    },
+    {
+      "homeTeam": "Persepolis United FC II",
+      "awayTeam": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2",
+      "divisionExternalId": "9096430",
+      "date": "2026-01-01",
+      "time": null,
+      "status": "scheduled",
+      "homeScore": null,
+      "awayScore": null,
+      "externalId": "9096430_persepolis-united-fc-ii_vs_lighthouse-old-timers-club_1",
+      "_key": "9096430_persepolis-united-fc-ii_vs_lighthouse-old-timers-club_1"
+    },
+    {
+      "homeTeam": "Sewell's Old Boys",
+      "awayTeam": "Phoenix SCR",
+      "divisionName": "Philadelphia Liga 2",
+      "divisionExternalId": "9096430",
+      "date": "2026-01-01",
+      "time": null,
+      "status": "scheduled",
+      "homeScore": null,
+      "awayScore": null,
+      "externalId": "9096430_sewell's-old-boys_vs_phoenix-scr_1",
+      "_key": "9096430_sewell's-old-boys_vs_phoenix-scr_1"
+    },
+    {
+      "homeTeam": "Philadelphia SC Select",
+      "awayTeam": "Persepolis United FC II",
+      "divisionName": "Philadelphia Liga 2",
+      "divisionExternalId": "9096430",
+      "date": "2026-01-01",
+      "time": null,
+      "status": "scheduled",
+      "homeScore": null,
+      "awayScore": null,
+      "externalId": "9096430_philadelphia-sc-select_vs_persepolis-united-fc-ii_1",
+      "_key": "9096430_philadelphia-sc-select_vs_persepolis-united-fc-ii_1"
+    },
+    {
+      "homeTeam": "Sewell's Old Boys",
+      "awayTeam": "Lighthouse Old Timers Club",
+      "divisionName": "Philadelphia Liga 2",
+      "divisionExternalId": "9096430",
+      "date": "2026-01-01",
+      "time": null,
+      "status": "scheduled",
+      "homeScore": null,
+      "awayScore": null,
+      "externalId": "9096430_sewell's-old-boys_vs_lighthouse-old-timers-club_1",
+      "_key": "9096430_sewell's-old-boys_vs_lighthouse-old-timers-club_1"
     }
   ],
   "standings": [
@@ -5554,15 +5554,6 @@
       "jerseyNumber": null,
       "position": null,
       "_key": "::Alloy Soccer Club Reserves::Oumarou::Moussa"
-    },
-    {
-      "firstName": "Edicson",
-      "lastName": "Sabogal",
-      "teamName": "Alloy Soccer Club Reserves",
-      "divisionName": "",
-      "jerseyNumber": null,
-      "position": null,
-      "_key": "::Alloy Soccer Club Reserves::Sabogal::Edicson"
     },
     {
       "firstName": "Fernando",

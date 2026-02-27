@@ -300,7 +300,7 @@ CREATE INDEX idx_states_code ON states(code);
 
 CREATE TABLE organizations (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
     short_name VARCHAR(50),
     website_url TEXT,
     logo_url TEXT,
