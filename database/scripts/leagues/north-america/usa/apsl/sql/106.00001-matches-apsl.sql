@@ -4502,3 +4502,606 @@ LEFT JOIN venues v ON v.name = 'jm tull gwinnett family ymca'
 WHERE ht.external_id = '119159' AND ht.source_system_id = 1
 ON CONFLICT (source_system_id, external_id) DO NOTHING;
 
+
+-- === CHANGES 2026-02-27 ===
+-- Added: 38, Updated: 15
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-01', '13:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258651'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-21', '19:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258660'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-25', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258661'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-12', '16:30:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258668'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-18', '14:30:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258672'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-22', '20:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258674'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-08', '14:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258653'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-15', '14:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258655'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-22', '14:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258658'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-29', '14:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258662'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-04', '17:30:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258664'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-08', '20:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258665'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-11', '16:30:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258666'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-19', '18:30:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258673'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-26', '15:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258675'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-05-03', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258678'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-05-06', '20:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258681'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-05-09', '14:30:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '258682'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-08', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271736'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-15', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271746'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-22', '18:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271749'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-25', '20:30:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271750'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-12', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271754'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-19', '16:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271940'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-26', '14:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271941'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-05-03', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271944'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-15', '18:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271747'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-22', '14:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271748'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-29', '14:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271752'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-17', '20:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271755'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-05-03', '16:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271943'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-05-10', '16:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271946'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-08', '16:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271737'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-03-29', '16:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271751'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-19', '18:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271939'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-05-10', '18:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271945'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-12', '16:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271753'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Added:  vs 
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT
+  1, '2026-04-26', '16:00:00', 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  1, '271942'
+FROM teams ht
+JOIN teams at ON at.external_id = '-' AND at.source_system_id = 1
+WHERE ht.external_id = '-' AND ht.source_system_id = 1
+ON CONFLICT (source_system_id, external_id) DO NOTHING;
+-- Updated:  vs  (homeScore: 5 → 2, awayScore: 2 → 5)
+UPDATE matches SET home_score = 2, away_score = 5 WHERE source_system_id = 1 AND external_id = '234447';
+-- Updated:  vs  (homeScore: 1 → 2, awayScore: 2 → 1)
+UPDATE matches SET home_score = 2, away_score = 1 WHERE source_system_id = 1 AND external_id = '227286';
+-- Updated:  vs  (homeScore: 4 → 1, awayScore: 1 → 4)
+UPDATE matches SET home_score = 1, away_score = 4 WHERE source_system_id = 1 AND external_id = '231088';
+-- Updated:  vs  (homeScore: 6 → 1, awayScore: 1 → 6)
+UPDATE matches SET home_score = 1, away_score = 6 WHERE source_system_id = 1 AND external_id = '234452';
+-- Updated:  vs  (homeScore: 2 → 1, awayScore: 1 → 2)
+UPDATE matches SET home_score = 1, away_score = 2 WHERE source_system_id = 1 AND external_id = '231089';
+-- Updated:  vs  (homeScore: 3 → 2, awayScore: 2 → 3)
+UPDATE matches SET home_score = 2, away_score = 3 WHERE source_system_id = 1 AND external_id = '231095';
+-- Updated:  vs  (homeScore: 0 → 1, awayScore: 1 → 0)
+UPDATE matches SET home_score = 1, away_score = 0 WHERE source_system_id = 1 AND external_id = '238667';
+-- Updated:  vs  (homeScore: 3 → 2, awayScore: 2 → 3)
+UPDATE matches SET home_score = 2, away_score = 3 WHERE source_system_id = 1 AND external_id = '234437';
+-- Updated:  vs  (homeScore: 2 → 1, awayScore: 1 → 2)
+UPDATE matches SET home_score = 1, away_score = 2 WHERE source_system_id = 1 AND external_id = '234433';
+-- Updated:  vs  (homeScore: 2 → 4, awayScore: 4 → 2)
+UPDATE matches SET home_score = 4, away_score = 2 WHERE source_system_id = 1 AND external_id = '228216';
+-- Updated:  vs  (homeScore: 1 → 3, awayScore: 3 → 1)
+UPDATE matches SET home_score = 3, away_score = 1 WHERE source_system_id = 1 AND external_id = '228221';
+-- Updated:  vs  (homeScore: 1 → 4, awayScore: 4 → 1)
+UPDATE matches SET home_score = 4, away_score = 1 WHERE source_system_id = 1 AND external_id = '228235';
+-- Updated:  vs  (homeScore: 5 → 3, awayScore: 3 → 5)
+UPDATE matches SET home_score = 3, away_score = 5 WHERE source_system_id = 1 AND external_id = '228213';
+-- Updated:  vs  (homeScore: null → 1, awayScore: null → 4)
+UPDATE matches SET home_score = 1, away_score = 4 WHERE source_system_id = 1 AND external_id = '258046';
+-- Updated:  vs  (time: null → 15:00:00)
+UPDATE matches SET match_time = '15:00:00' WHERE source_system_id = 1 AND external_id = '258146';

@@ -100,7 +100,7 @@ class ApslSqlGenerator extends BaseGenerator {
   readStandingsHtml() {
     const htmlDir = path.join(__dirname, '../../../../../scraped-html/apsl');
     const files = fs.readdirSync(htmlDir)
-      .filter(f => f.startsWith('tables-'))
+      .filter(f => f.startsWith('tables-') || f.startsWith('standings-'))
       .map(f => ({
         name: f,
         path: path.join(htmlDir, f),
@@ -339,8 +339,9 @@ class ApslSqlGenerator extends BaseGenerator {
       const filePath = path.join(htmlDir, file);
       const html = fs.readFileSync(filePath, 'utf-8');
       
-      // Extract team external ID from filename (e.g., apsl-team-12345-hash.html or team-12345.html)
-      const match = file.match(/(?:apsl-)?team-(\d+)(?:-[a-f0-9]+)?\.html/);
+      // Extract team external ID from filename 
+      // Matches: apsl-team-12345-hash.html, team-12345.html, or 12345-hash.html
+      const match = file.match(/(?:apsl-team-|team-)(\d+)(?:-[a-f0-9]+)?\.html/) || file.match(/^(\d+)-[a-f0-9]+\.html$/);
       if (!match) continue;
       
       const teamExternalId = match[1];

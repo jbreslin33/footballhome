@@ -1,9 +1,9 @@
 {
-  "generated": "2026-02-27T01:14:37.826Z",
+  "generated": "2026-02-27T15:09:24.713Z",
   "total_matches": 32,
   "divisions": [
     {
-      "id": 61,
+      "id": 54,
       "name": "Philadelphia Liga 1",
       "external_id": "9090889",
       "match_count": 9,
@@ -12,190 +12,69 @@
           "home": "Philadelphia Sierra Stars",
           "away": "Oaklyn United FC II",
           "time": "12:00 PM EST - 2:00 PM EST",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Illyrians FC",
           "away": "Phoenix SCM",
           "time": "12:45 PM EST - 2:30 PM EST",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Persepolis FC",
           "away": "Lighthouse Boys Club",
           "time": "12:45 PM EST - 2:30 PM EST",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Philly BlackStars",
           "away": "Adé United FC",
           "time": "2:30 PM EST - 4:15 PM EST",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Philadelphia Sierra Stars",
           "away": "Phoenix SCM",
           "time": "12:30 PM EDT - 2:30 PM EDT",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Illyrians FC",
           "away": "Oaklyn United FC II",
           "time": "12:45 PM EDT - 2:45 PM EDT",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Philly BlackStars",
           "away": "Lighthouse Boys Club",
           "time": "2:30 PM EDT - 4:30 PM EDT",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Adé United FC",
           "away": "Persepolis FC",
           "time": "4:30 PM EDT - 6:30 PM EDT",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Oaklyn United FC II",
           "away": "Philly BlackStars",
           "time": "12:00 PM EDT - 1:45 PM EDT",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         }
       ]
     },
     {
-      "id": 63,
-      "name": "Boston Liga 1",
-      "external_id": "9090891",
-      "match_count": 10,
-      "matches": [
-        {
-          "home": "South Shore FC",
-          "away": "Strictly Nos Fc",
-          "time": "TBD",
-          "status": "Scheduled",
-          "score": null
-        },
-        {
-          "home": "South Shore FC",
-          "away": "Flatley FC",
-          "time": "6:00 PM EDT - 7:30 PM EDT",
-          "status": "Final",
-          "score": null
-        },
-        {
-          "home": "BCFC All Stars",
-          "away": "Strictly Nos Fc",
-          "time": "2:30 PM EDT - 4:00 PM EDT",
-          "status": "Final",
-          "score": null
-        },
-        {
-          "home": "Gambeta FC",
-          "away": "Jaguars United FC",
-          "time": "12:30 PM EDT - 2:00 PM EDT",
-          "status": "Final",
-          "score": null
-        },
-        {
-          "home": "Gambeta FC",
-          "away": "Flatley FC",
-          "time": "8:15 PM EDT - 9:45 PM EDT",
-          "status": "Final",
-          "score": null
-        },
-        {
-          "home": "Jaguars United FC",
-          "away": "BCFC All Stars",
-          "time": "6:00 PM EDT - 7:30 PM EDT",
-          "status": "Final",
-          "score": null
-        },
-        {
-          "home": "Flatley FC",
-          "away": "Gambeta FC",
-          "time": "12:15 PM EDT - 1:45 PM EDT",
-          "status": "Final",
-          "score": null
-        },
-        {
-          "home": "Strictly Nos Fc",
-          "away": "South Shore FC",
-          "time": "3:00 PM EDT - 4:30 PM EDT",
-          "status": "Final",
-          "score": null
-        },
-        {
-          "home": "Jaguars United FC",
-          "away": "Flatley FC",
-          "time": "6:00 PM EDT - 7:30 PM EDT",
-          "status": "Final",
-          "score": null
-        },
-        {
-          "home": "Gambeta FC",
-          "away": "Strictly Nos Fc",
-          "time": "3:45 PM EDT - 5:15 PM EDT",
-          "status": "Final",
-          "score": null
-        }
-      ]
-    },
-    {
-      "id": 64,
-      "name": "Lancaster Liga 1",
-      "external_id": "9090893",
-      "match_count": 5,
-      "matches": [
-        {
-          "home": "Lancaster City FC",
-          "away": "Kutztown Men's Soccer",
-          "time": "11:00 AM EST - 12:30 PM EST",
-          "status": "Scheduled",
-          "score": null
-        },
-        {
-          "home": "F&M FC",
-          "away": "Alloy Soccer Club Reserves",
-          "time": "2:30 PM EST - 4:00 PM EST",
-          "status": "Scheduled",
-          "score": null
-        },
-        {
-          "home": "Alloy Soccer Club Reserves",
-          "away": "Lancaster City FC",
-          "time": "6:00 PM EST - 7:30 PM EST",
-          "status": "Scheduled",
-          "score": null
-        },
-        {
-          "home": "Keystone Elite",
-          "away": "Kutztown Men's Soccer",
-          "time": "3:00 PM EDT - 4:30 PM EDT",
-          "status": "Scheduled",
-          "score": null
-        },
-        {
-          "home": "Alloy Soccer Club Reserves",
-          "away": "Keystone Elite",
-          "time": "6:00 PM EDT - 7:30 PM EDT",
-          "status": "Scheduled",
-          "score": null
-        }
-      ]
-    },
-    {
-      "id": 62,
+      "id": 55,
       "name": "Philadelphia Liga 2",
       "external_id": "9096430",
       "match_count": 8,
@@ -204,56 +83,177 @@
           "home": "Sewell's Old Boys",
           "away": "Philadelphia SC Select",
           "time": "2:00 PM EST - 3:30 PM EST",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Persepolis United FC II",
           "away": "Lighthouse Old Timers Club",
           "time": "2:45 PM EST - 4:15 PM EST",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Sewell's Old Boys",
           "away": "Phoenix SCR",
           "time": "10:30 AM EDT - 12:00 PM EDT",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Philadelphia SC Select",
           "away": "Persepolis United FC II",
           "time": "2:45 PM EDT - 4:15 PM EDT",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Oaklyn United Nor'Easters II",
           "away": "Persepolis United FC II",
           "time": "7:00 PM EDT - 8:30 PM EDT",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Sewell's Old Boys",
           "away": "Lighthouse Old Timers Club",
           "time": "2:00 PM EDT - 3:30 PM EDT",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Ade United FC",
           "away": "Phoenix SCR",
           "time": "3:00 PM EDT - 4:30 PM EDT",
-          "status": "Scheduled",
+          "status": "scheduled",
           "score": null
         },
         {
           "home": "Oaklyn United Nor'Easters II",
           "away": "Lighthouse Old Timers Club",
           "time": "12:00 PM EDT - 1:30 PM EDT",
-          "status": "Scheduled",
+          "status": "scheduled",
+          "score": null
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "name": "Boston Liga 1",
+      "external_id": "9090891",
+      "match_count": 10,
+      "matches": [
+        {
+          "home": "South Shore FC",
+          "away": "Strictly Nos Fc",
+          "time": "TBD",
+          "status": "scheduled",
+          "score": null
+        },
+        {
+          "home": "South Shore FC",
+          "away": "Flatley FC",
+          "time": "6:00 PM EDT - 7:30 PM EDT",
+          "status": "Final",
+          "score": "1 - 5"
+        },
+        {
+          "home": "BCFC All Stars",
+          "away": "Strictly Nos Fc",
+          "time": "2:30 PM EDT - 4:00 PM EDT",
+          "status": "Final",
+          "score": "0 - 2"
+        },
+        {
+          "home": "Gambeta FC",
+          "away": "Jaguars United FC",
+          "time": "12:30 PM EDT - 2:00 PM EDT",
+          "status": "Final",
+          "score": "10 - 0"
+        },
+        {
+          "home": "Gambeta FC",
+          "away": "Flatley FC",
+          "time": "8:15 PM EDT - 9:45 PM EDT",
+          "status": "Final",
+          "score": "6 - 0"
+        },
+        {
+          "home": "Jaguars United FC",
+          "away": "BCFC All Stars",
+          "time": "6:00 PM EDT - 7:30 PM EDT",
+          "status": "Final",
+          "score": "2 - 4"
+        },
+        {
+          "home": "Flatley FC",
+          "away": "Gambeta FC",
+          "time": "12:15 PM EDT - 1:45 PM EDT",
+          "status": "Final",
+          "score": "4 - 7"
+        },
+        {
+          "home": "Strictly Nos Fc",
+          "away": "South Shore FC",
+          "time": "3:00 PM EDT - 4:30 PM EDT",
+          "status": "Final",
+          "score": "2 - 1"
+        },
+        {
+          "home": "Jaguars United FC",
+          "away": "Flatley FC",
+          "time": "6:00 PM EDT - 7:30 PM EDT",
+          "status": "Final",
+          "score": "1 - 8"
+        },
+        {
+          "home": "Gambeta FC",
+          "away": "Strictly Nos Fc",
+          "time": "3:45 PM EDT - 5:15 PM EDT",
+          "status": "Final",
+          "score": "8 - 1"
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "name": "Lancaster Liga 1",
+      "external_id": "9090893",
+      "match_count": 5,
+      "matches": [
+        {
+          "home": "Lancaster City FC",
+          "away": "Kutztown Men's Soccer",
+          "time": "11:00 AM EST - 12:30 PM EST",
+          "status": "scheduled",
+          "score": null
+        },
+        {
+          "home": "F&M FC",
+          "away": "Alloy Soccer Club Reserves",
+          "time": "2:30 PM EST - 4:00 PM EST",
+          "status": "scheduled",
+          "score": null
+        },
+        {
+          "home": "Alloy Soccer Club Reserves",
+          "away": "Lancaster City FC",
+          "time": "6:00 PM EST - 7:30 PM EST",
+          "status": "scheduled",
+          "score": null
+        },
+        {
+          "home": "Keystone Elite",
+          "away": "Kutztown Men's Soccer",
+          "time": "3:00 PM EDT - 4:30 PM EDT",
+          "status": "scheduled",
+          "score": null
+        },
+        {
+          "home": "Alloy Soccer Club Reserves",
+          "away": "Keystone Elite",
+          "time": "6:00 PM EDT - 7:30 PM EDT",
+          "status": "scheduled",
           "score": null
         }
       ]

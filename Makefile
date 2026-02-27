@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init init-apsl init-csl init-casa init-all scrape scrape-apsl scrape-csl scrape-casa update-casa update-casa-dry baseline-casa backup restore safe-rebuild
+.PHONY: all help clean build up down rebuild logs test ps shell-db load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init init-apsl init-csl init-casa init-all scrape scrape-apsl scrape-csl scrape-casa update update-apsl update-apsl-dry update-csl update-csl-dry update-casa update-casa-dry baseline-apsl baseline-csl baseline-casa backup restore safe-rebuild
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -70,9 +70,13 @@ help:
 	@echo "  make refresh               - parse + rebuild + load (fast refresh)"
 	@echo ""
 	@echo "Update (diff-based, safe for live DB):"
-	@echo "  make update-casa     - Scrape CASA + diff + update SQL files + run against DB"
-	@echo "  make update-casa-dry - Scrape CASA + diff only (preview changes, no writes)"
-	@echo "  make baseline-casa   - Create initial snapshot from existing JSON"
+	@echo "  make update          - Update all leagues (APSL → CSL → CASA)"
+	@echo "  make update-apsl     - Scrape APSL + diff + update SQL + run against DB"
+	@echo "  make update-apsl-dry - APSL dry run (preview changes, no writes)"
+	@echo "  make update-csl      - Scrape CSL + diff + update SQL + run against DB"
+	@echo "  make update-csl-dry  - CSL dry run (preview changes, no writes)"
+	@echo "  make update-casa     - Scrape CASA + diff + update SQL + run against DB"
+	@echo "  make update-casa-dry - CASA dry run (preview changes, no writes)"
 	@echo ""
 	@echo "Backup & restore:"
 	@echo "  make backup      - Snapshot DB to backups/ (pg_dump)"
@@ -243,6 +247,25 @@ refresh: parse rebuild load
 # Update (diff-based, safe for live DB)
 # ============================================================
 
+update: update-apsl update-csl update-casa
+	@echo "✓ All leagues updated"
+
+update-apsl:
+	@echo "🔄 Updating APSL (scrape → diff → SQL → DB)..."
+	@node database/scripts/leagues/north-america/usa/apsl/update-apsl.js --db
+
+update-apsl-dry:
+	@echo "🔍 APSL update dry run (scrape → diff → preview)..."
+	@node database/scripts/leagues/north-america/usa/apsl/update-apsl.js --dry-run
+
+update-csl:
+	@echo "🔄 Updating CSL (scrape → diff → SQL → DB)..."
+	@node database/scripts/leagues/north-america/usa/csl/update-csl.js --db
+
+update-csl-dry:
+	@echo "🔍 CSL update dry run (scrape → diff → preview)..."
+	@node database/scripts/leagues/north-america/usa/csl/update-csl.js --dry-run
+
 update-casa:
 	@echo "🔄 Updating CASA (scrape → diff → SQL → DB)..."
 	@node database/scripts/leagues/north-america/usa/casa/update-casa.js --db
@@ -250,6 +273,14 @@ update-casa:
 update-casa-dry:
 	@echo "🔍 CASA update dry run (scrape → diff → preview)..."
 	@node database/scripts/leagues/north-america/usa/casa/update-casa.js --dry-run
+
+baseline-apsl:
+	@echo "📦 Creating APSL baseline snapshot from cached HTML..."
+	@node database/scripts/leagues/north-america/usa/apsl/update-apsl.js --baseline
+
+baseline-csl:
+	@echo "📦 Creating CSL baseline snapshot from cached HTML..."
+	@node database/scripts/leagues/north-america/usa/csl/update-csl.js --baseline
 
 baseline-casa:
 	@echo "📦 Creating CASA baseline snapshot from existing JSON..."

@@ -476,3 +476,277 @@ WHERE d.name = 'Trinity Conference'
   AND s.name = '2025/2026'
   AND s.league_id = 1
 ON CONFLICT (division_id, name) DO NOTHING;
+
+-- === REMOVALS 2026-02-27 ===
+-- Removed: Nova FC (Mid-Atlantic Conference)
+DELETE FROM teams WHERE source_system_id = 1 AND external_id = '114829';
+-- Removed: VA Marauders FC (Mid-Atlantic Conference)
+DELETE FROM teams WHERE source_system_id = 1 AND external_id = '114846';
+-- Removed: Wave FC (Mid-Atlantic Conference)
+DELETE FROM teams WHERE source_system_id = 1 AND external_id = '114849';
+-- Removed: PFA EPSL (Mid-Atlantic Conference)
+DELETE FROM teams WHERE source_system_id = 1 AND external_id = '114834';
+-- Removed: Grove Soccer United (Mid-Atlantic Conference)
+DELETE FROM teams WHERE source_system_id = 1 AND external_id = '114817';
+-- Removed: Christos FC (Mid-Atlantic Conference)
+DELETE FROM teams WHERE source_system_id = 1 AND external_id = '114812';
+-- Removed: Delmarva Thunder (Mid-Atlantic Conference)
+DELETE FROM teams WHERE source_system_id = 1 AND external_id = '118680';
+-- Removed: PW Nova (Mid-Atlantic Conference)
+DELETE FROM teams WHERE source_system_id = 1 AND external_id = '114839';
+-- Removed: Germantown City FC (Mid-Atlantic Conference)
+DELETE FROM teams WHERE source_system_id = 1 AND external_id = '136127';
+
+-- === ADDITIONS 2026-02-27 ===
+-- Added: Nova FC (Mid-Atlantic Conference Fall)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Nova FC', '114829', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Fall'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: VA Marauders FC (Mid-Atlantic Conference Fall)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'VA Marauders FC', '114846', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Fall'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Wave FC (Mid-Atlantic Conference Fall)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Wave FC', '114849', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Fall'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: PFA APSL (Mid-Atlantic Conference Fall)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'PFA APSL', '114834', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Fall'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Grove Soccer United (Mid-Atlantic Conference Fall)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Grove Soccer United', '114817', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Fall'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Christos FC (Mid-Atlantic Conference Fall)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Christos FC', '114812', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Fall'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Delmarva Thunder (Mid-Atlantic Conference Fall)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Delmarva Thunder', '118680', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Fall'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: PW Nova (Mid-Atlantic Conference Fall)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'PW Nova', '114839', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Fall'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Balitimore City FC (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Balitimore City FC', '140784', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: CF Armada (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'CF Armada', '141305', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Chiefs United (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Chiefs United', '140359', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Christos FC (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Christos FC', '140728', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Club Petrolero (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Club Petrolero', '140256', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Delmarva Thunder (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Delmarva Thunder', '140730', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Germantown City FC (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Germantown City FC', '136127', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Grove Soccer United (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Grove Soccer United', '140739', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Nova FC (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Nova FC', '140753', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: PFA APSL (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'PFA APSL', '140760', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: PW Nova (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'PW Nova', '140766', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: VA Marauders FC (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'VA Marauders FC', '140777', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Wave FC (Mid-Atlantic Conference Spring)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Wave FC', '140779', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Alianza FC (Mitten Conference)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Alianza FC', '137726', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Hoverla FC (Mitten Conference)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Hoverla FC', '140960', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Imlay City FC (Mitten Conference)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Imlay City FC', '137728', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Intra United SC (Mitten Conference)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Intra United SC', '141264', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Livonia City FC (Mitten Conference)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Livonia City FC', '137729', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: World Class FC (Mitten Conference)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'World Class FC', '137727', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;
+-- Added: Carrollton Old Boyz (Trinity Conference)
+INSERT INTO teams (name, external_id, division_id, source_system_id)
+SELECT 'Carrollton Old Boyz', '137416', d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Trinity Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO NOTHING;

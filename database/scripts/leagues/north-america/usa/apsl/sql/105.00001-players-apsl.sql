@@ -21987,3 +21987,115 @@ JOIN persons per ON pl.person_id = per.id
 WHERE per.first_name = 'John' AND per.last_name = 'Warwick' 
 ON CONFLICT (source_system_id, external_id) DO NOTHING;
 
+
+-- === UPDATE 2026-02-27 ===
+-- Added: Kennison Akuro → PFA APSL
+-- TODO: INSERT person + player for Kennison Akuro
+-- Added: Melvin Asanji → PFA APSL
+-- TODO: INSERT person + player for Melvin Asanji
+-- Added: Brandon Betts → PFA APSL
+-- TODO: INSERT person + player for Brandon Betts
+-- Added: Isaac Carvajal → PFA APSL
+-- TODO: INSERT person + player for Isaac Carvajal
+-- Added: Elido Noel Chun Reyes → PFA APSL
+-- TODO: INSERT person + player for Elido Noel Chun Reyes
+-- Added: Jenovic Elumbu → PFA APSL
+-- TODO: INSERT person + player for Jenovic Elumbu
+-- Added: Anderson Fernandez → PFA APSL
+-- TODO: INSERT person + player for Anderson Fernandez
+-- Added: Angello Fernandez → PFA APSL
+-- TODO: INSERT person + player for Angello Fernandez
+-- Added: Terry Fon → PFA APSL
+-- TODO: INSERT person + player for Terry Fon
+-- Added: Eduardo Fuentes → PFA APSL
+-- TODO: INSERT person + player for Eduardo Fuentes
+-- Added: Christian Garavito → PFA APSL
+-- TODO: INSERT person + player for Christian Garavito
+-- Added: Thaddeus Goddard → PFA APSL
+-- TODO: INSERT person + player for Thaddeus Goddard
+-- Added: Alexis Gonzalez Ayala → PFA APSL
+-- TODO: INSERT person + player for Alexis Gonzalez Ayala
+-- Added: Chayton Kuidlan → PFA APSL
+-- TODO: INSERT person + player for Chayton Kuidlan
+-- Added: Tobias Lane → PFA APSL
+-- TODO: INSERT person + player for Tobias Lane
+-- Added: Jonathan Lemus Morales → PFA APSL
+-- TODO: INSERT person + player for Jonathan Lemus Morales
+-- Added: Creasy Lopez → PFA APSL
+-- TODO: INSERT person + player for Creasy Lopez
+-- Added: Lutho Mlunguza → PFA APSL
+-- TODO: INSERT person + player for Lutho Mlunguza
+-- Added: Toju Okonedo → PFA APSL
+-- TODO: INSERT person + player for Toju Okonedo
+-- Added: David Pawlowski → PFA APSL
+-- TODO: INSERT person + player for David Pawlowski
+-- Added: Danny Paz → PFA APSL
+-- TODO: INSERT person + player for Danny Paz
+-- Added: Brayan Perez Mendez → PFA APSL
+-- TODO: INSERT person + player for Brayan Perez Mendez
+-- Added: Bronson Shepherd → PFA APSL
+-- TODO: INSERT person + player for Bronson Shepherd
+-- Added: Nicholas Tziamouranis → PFA APSL
+-- TODO: INSERT person + player for Nicholas Tziamouranis
+-- Added: William Villatoro Velasquez → PFA APSL
+-- TODO: INSERT person + player for William Villatoro Velasquez
+-- Added: Brian Ware → PFA APSL
+-- TODO: INSERT person + player for Brian Ware
+-- Added: Paul Xavier Chamberland → Delmarva Thunder
+-- TODO: INSERT person + player for Paul Xavier Chamberland
+-- Added: Herley Fevrier → Delmarva Thunder
+-- TODO: INSERT person + player for Herley Fevrier
+-- Added: Jhonatan Javier Ramirez → Delmarva Thunder
+-- TODO: INSERT person + player for Jhonatan Javier Ramirez
+-- Removed: Kennison Akuro from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Melvin Asanji from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Brandon Betts from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Isaac Carvajal from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Elido Noel Chun Reyes from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Jenovic Elumbu from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Anderson Fernandez from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Angello Fernandez from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Terry Fon from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Eduardo Fuentes from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Christian Garavito from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Thaddeus Goddard from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Alexis Gonzalez Ayala from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Chayton Kuidlan from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Tobias Lane from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Jonathan Lemus Morales from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Creasy Lopez from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Lutho Mlunguza from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Toju Okonedo from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: David Pawlowski from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Danny Paz from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Brayan Perez Mendez from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Bronson Shepherd from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Nicholas Tziamouranis from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: William Villatoro Velasquez from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
+-- Removed: Brian Ware from PFA EPSL
+-- TODO: Mark player inactive on PFA EPSL
