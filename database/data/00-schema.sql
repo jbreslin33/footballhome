@@ -1277,6 +1277,17 @@ CREATE INDEX idx_chats_team ON chats(team_id);
 CREATE INDEX idx_chats_type ON chats(chat_type_id);
 CREATE INDEX idx_chats_created_by ON chats(created_by_user_id);
 
+-- Chat-to-club assignments (for cross-team chats like training/pickup)
+CREATE TABLE chat_clubs (
+    id SERIAL PRIMARY KEY,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    club_id INTEGER NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+    UNIQUE(chat_id, club_id)
+);
+
+CREATE INDEX idx_chat_clubs_chat ON chat_clubs(chat_id);
+CREATE INDEX idx_chat_clubs_club ON chat_clubs(club_id);
+
 -- Chat integrations with external platforms
 CREATE TABLE chat_integrations (
     id SERIAL PRIMARY KEY,

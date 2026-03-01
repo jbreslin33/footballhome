@@ -58,12 +58,14 @@ const GROUPS = [
     groupmeId: '108640377',
     chatTypeId: 5,  // training
     teamLookup: null, // Cross-team training (no single team)
+    clubIds: [134, 20006, 20008], // All Lighthouse clubs
   },
   {
     name: 'Philadelphia Pickup',
     groupmeId: '65284700',
     chatTypeId: 3,  // pickup
     teamLookup: null, // Community pickup
+    clubIds: [134, 20006, 20008], // All Lighthouse clubs
   },
 ];
 
@@ -276,6 +278,18 @@ class GroupMeSync {
        VALUES ($1, $2, $3, $4, true, true)`,
       [chatId, GROUPME_PROVIDER_ID, groupConfig.groupmeId, groupConfig.name]
     );
+
+    // Link cross-team chats to their clubs
+    if (groupConfig.clubIds && groupConfig.clubIds.length > 0) {
+      for (const clubId of groupConfig.clubIds) {
+        await this.client.query(
+          `INSERT INTO chat_clubs (chat_id, club_id) VALUES ($1, $2)
+           ON CONFLICT (chat_id, club_id) DO NOTHING`,
+          [chatId, clubId]
+        );
+      }
+      console.log(`  🔗 Linked chat #${chatId} to ${groupConfig.clubIds.length} clubs`);
+    }
 
     this.stats.chatsCreated++;
     console.log(`  ✅ Created chat #${chatId}: ${groupConfig.name}`);

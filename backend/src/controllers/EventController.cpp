@@ -2024,7 +2024,7 @@ Response EventController::handleGetClubChatEvents(const Request& request) {
             LEFT JOIN teams ht ON ht.id = m.home_team_id
             LEFT JOIN teams at2 ON at2.id = m.away_team_id
             WHERE c.team_id IN (SELECT t.id FROM teams t WHERE t.club_id = )" + clubId + R"()
-               OR c.team_id IS NULL
+               OR c.id IN (SELECT cc.chat_id FROM chat_clubs cc WHERE cc.club_id = )" + clubId + R"()
             ORDER BY ce.start_at DESC NULLS LAST, ce.event_date DESC NULLS LAST
         )";
 
@@ -2081,7 +2081,7 @@ Response EventController::handleGetClubChatEvents(const Request& request) {
                 SELECT ce.id FROM chat_events ce
                 JOIN chats c ON c.id = ce.chat_id
                 WHERE c.team_id IN (SELECT t.id FROM teams t WHERE t.club_id = )" + clubId + R"()
-                   OR c.team_id IS NULL
+                   OR c.id IN (SELECT cc.chat_id FROM chat_clubs cc WHERE cc.club_id = )" + clubId + R"()
             )
             ORDER BY r.chat_event_id, COALESCE(r.override_rsvp_status_id, r.rsvp_status_id), 
                      p.last_name NULLS LAST, r.external_username
