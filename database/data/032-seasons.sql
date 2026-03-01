@@ -25,5 +25,9 @@ INSERT INTO seasons (id, league_id, name, is_active) VALUES
 (8, 4, '2023/2024', false),
 (9, 4, '2024/2025', false);
 
+-- EPSA Open State Cup Seasons
+INSERT INTO seasons (id, league_id, name, is_active) VALUES
+(10, 5, '2025/2026', true);
+
 -- Update sequence
 SELECT setval('seasons_id_seq', (SELECT MAX(id) FROM seasons));

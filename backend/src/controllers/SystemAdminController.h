@@ -86,6 +86,7 @@ private:
     Response handleGetGroupMeLiveMessages(const Request& request);
     Response handleGetGroupMeLiveMembers(const Request& request);
     Response handleGetGroupMeLiveEvents(const Request& request);
+    Response handleGetGroupMeCalendarEvents(const Request& request);
     
     // Audit Logs
     Response handleGetAuditLogs(const Request& request);

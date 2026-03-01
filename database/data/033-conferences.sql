@@ -53,5 +53,9 @@ INSERT INTO conferences (id, season_id, name) VALUES
 (29, 8, 'Main'),  -- 2023/2024
 (30, 9, 'Main');  -- 2024/2025
 
+-- EPSA Open State Cup Conferences
+INSERT INTO conferences (id, season_id, name) VALUES
+(31, 10, 'Open');  -- 2025/2026
+
 -- Update sequence
 SELECT setval('conferences_id_seq', (SELECT MAX(id) FROM conferences));

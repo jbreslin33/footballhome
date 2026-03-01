@@ -40,7 +40,9 @@ INSERT INTO match_types (id, name, description, sort_order) VALUES
     (2, 'custom', 'Custom match created by users', 2),
     (3, 'practice', 'Team practice session', 3),
     (4, 'scrimmage', 'Friendly scrimmage match', 4),
-    (5, 'tournament', 'Tournament match', 5)
+    (5, 'tournament', 'Tournament match', 5),
+    (6, 'cup', 'Cup/knockout competition match', 6),
+    (7, 'pickup', 'Informal pickup game', 7)
 ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE match_statuses (
@@ -173,7 +175,8 @@ CREATE TABLE source_systems (
 INSERT INTO source_systems (id, name, description, is_active) VALUES
     (1, 'apsl', 'American Premier Soccer League', true),
     (2, 'casa', 'CASA Soccer Leagues', true),
-    (3, 'csl', 'Cosmopolitan Soccer League', true)
+    (3, 'csl', 'Cosmopolitan Soccer League', true),
+    (4, 'groupme', 'GroupMe calendar events', true)
 ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE chat_providers (
@@ -315,7 +318,8 @@ COMMENT ON TABLE organizations IS 'Universal top-level entities (governing bodie
 INSERT INTO organizations (id, name, short_name, website_url, is_active) VALUES
     (1, 'American Premier Soccer League', 'APSL', 'https://www.apslsoccer.com', true),
     (2, 'CASA Soccer Leagues', 'CASA', 'https://www.casasoccerleagues.com', true),
-    (3, 'Cosmopolitan Soccer League', 'CSL', 'https://www.cosmosoccerleague.com', true)
+    (3, 'Cosmopolitan Soccer League', 'CSL', 'https://www.cosmosoccerleague.com', true),
+    (4, 'Eastern Pennsylvania Soccer Association', 'EPSA', 'https://www.epsasoccer.org', true)
 ON CONFLICT (id) DO NOTHING;
 
 SELECT setval('organizations_id_seq', (SELECT MAX(id) FROM organizations));
@@ -380,7 +384,8 @@ INSERT INTO leagues (id, organization_id, name, website_url, sex_restriction, so
     (1, 1, 'American Premier Soccer League', 'https://www.apslsoccer.com', 'open', 1, true),
     (2, 2, 'CASA Select', 'https://www.casasoccerleagues.com', 'open', 2, true),
     (3, 2, 'CASA Traditional', 'https://www.casasoccerleagues.com', 'open', 2, true),
-    (4, 3, 'Cosmopolitan Soccer League', 'https://www.cosmosoccerleague.com', 'open', 3, true)
+    (4, 3, 'Cosmopolitan Soccer League', 'https://www.cosmosoccerleague.com', 'open', 3, true),
+    (5, 4, 'EPSA Open State Cup', 'https://www.epsasoccer.org', 'men', NULL, true)
 ON CONFLICT (organization_id, name) DO NOTHING;
 
 SELECT setval('leagues_id_seq', (SELECT MAX(id) FROM leagues));
@@ -998,10 +1003,10 @@ CREATE TABLE matches (
     created_by_user_id INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    -- Validation: league/cup matches require both teams, practice/tournament can be NULL (for TBD)
+    -- Validation: league/cup matches require both teams, practice/tournament/pickup can be NULL (for TBD)
     CONSTRAINT check_match_teams CHECK (
-        (match_type_id IN (3, 5)) OR  -- Practice (3) or Tournament (5) can have NULL teams
-        (home_team_id IS NOT NULL AND away_team_id IS NOT NULL)  -- League/Cup require both teams
+        (match_type_id IN (3, 5, 7)) OR  -- Practice (3), Tournament (5), or Pickup (7) can have NULL teams
+        (home_team_id IS NOT NULL AND away_team_id IS NOT NULL)  -- League/Cup/Custom require both teams
     ),
     
     -- External ID is unique per source system (APSL match 123 != CASA match 123)
@@ -1331,8 +1336,13 @@ CREATE TABLE chat_events (
     title VARCHAR(255) NOT NULL,
     description TEXT,
     location VARCHAR(255),
+    location_address TEXT,
     event_date DATE,
     event_time TIME,
+    start_at TIMESTAMPTZ,  -- Full datetime (preferred over event_date + event_time)
+    end_at TIMESTAMPTZ,    -- End datetime
+    external_id VARCHAR(255) UNIQUE,  -- GroupMe event_id for dedup
+    rsvp_snapshot JSONB,   -- Raw RSVP data from external source (GroupMe going/not_going/maybe)
     created_by_user_id INTEGER REFERENCES users(id),
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1348,11 +1358,21 @@ CREATE INDEX idx_chat_events_created_by ON chat_events(created_by_user_id);
 CREATE TABLE chat_event_rsvps (
     id SERIAL PRIMARY KEY,
     chat_event_id INTEGER NOT NULL REFERENCES chat_events(id) ON DELETE CASCADE,
-    user_id INTEGER NOT NULL REFERENCES users(id),
+    person_id INTEGER REFERENCES persons(id),  -- Preferred: links to person (may or may not have user account)
+    user_id INTEGER REFERENCES users(id),      -- Legacy: direct user link
+    external_user_id VARCHAR(255),             -- Fallback: GroupMe user ID for unmapped members
+    external_username VARCHAR(255),            -- Display name from external source
     rsvp_status_id INTEGER NOT NULL REFERENCES rsvp_statuses(id),
     response_note TEXT,
     responded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(chat_event_id, user_id)
+    -- At least one identifier required
+    CONSTRAINT check_rsvp_identity CHECK (
+        person_id IS NOT NULL OR user_id IS NOT NULL OR external_user_id IS NOT NULL
+    ),
+    -- One RSVP per person/user/external per event
+    UNIQUE(chat_event_id, person_id),
+    UNIQUE(chat_event_id, user_id),
+    UNIQUE(chat_event_id, external_user_id)
 );
 
 CREATE INDEX idx_chat_event_rsvps_event ON chat_event_rsvps(chat_event_id);

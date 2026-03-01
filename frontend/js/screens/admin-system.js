@@ -27,6 +27,7 @@ class AdminSystemScreen extends Screen {
           <button class="admin-tab" data-view="coverage">📈 Match Event Coverage</button>
           <button class="admin-tab" data-view="data-quality">🔍 Data Quality</button>
           <button class="admin-tab" data-view="league-stats">🏆 League Statistics</button>
+          <button class="admin-tab" data-view="groupme">📱 GroupMe</button>
           <button class="admin-tab" data-view="schema">🗂️ Schema</button>
         </div>
         
@@ -108,6 +109,9 @@ class AdminSystemScreen extends Screen {
           break;
         case 'league-stats':
           await this.loadLeagueStats();
+          break;
+        case 'groupme':
+          await this.loadGroupMeEvents();
           break;
         case 'schema':
           await this.loadDatabaseSchema();
@@ -1435,6 +1439,114 @@ class AdminSystemScreen extends Screen {
       `;
     } catch (error) {
       content.innerHTML = `<div class="error-message">Error loading league stats: ${error.message}</div>`;
+    }
+  }
+
+  async loadGroupMeEvents() {
+    const content = this.element.querySelector('.admin-content');
+    try {
+      const response = await this.auth.fetch('/api/system-admin/groupme/calendar-events');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      
+      const s = data.summary || {};
+      const events = data.events || [];
+      const rsvps = data.rsvps || [];
+      
+      // Index RSVPs by event_id
+      const rsvpsByEvent = {};
+      rsvps.forEach(r => {
+        if (!rsvpsByEvent[r.event_id]) rsvpsByEvent[r.event_id] = [];
+        rsvpsByEvent[r.event_id].push(r);
+      });
+      
+      content.innerHTML = `
+        <div style="padding: var(--space-4);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+            <h2>📱 GroupMe Calendar Events</h2>
+            <button class="btn btn-secondary refresh-btn">🔄 Refresh</button>
+          </div>
+          
+          <!-- Summary Cards -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4);">
+            <div class="card" style="text-align: center; padding: var(--space-3);">
+              <div style="font-size: 2em; font-weight: bold; color: var(--primary);">${s.total_chats || 0}</div>
+              <div style="color: var(--text-secondary);">Chats</div>
+            </div>
+            <div class="card" style="text-align: center; padding: var(--space-3);">
+              <div style="font-size: 2em; font-weight: bold; color: var(--primary);">${s.total_events || 0}</div>
+              <div style="color: var(--text-secondary);">Events</div>
+            </div>
+            <div class="card" style="text-align: center; padding: var(--space-3);">
+              <div style="font-size: 2em; font-weight: bold; color: var(--primary);">${s.total_rsvps || 0}</div>
+              <div style="color: var(--text-secondary);">RSVPs</div>
+            </div>
+            <div class="card" style="text-align: center; padding: var(--space-3);">
+              <div style="font-size: 2em; font-weight: bold; color: var(--success);">${s.linked_rsvps || 0}</div>
+              <div style="color: var(--text-secondary);">Linked RSVPs</div>
+            </div>
+            <div class="card" style="text-align: center; padding: var(--space-3);">
+              <div style="font-size: 2em; font-weight: bold; color: var(--info);">${s.total_linked_persons || 0}</div>
+              <div style="color: var(--text-secondary);">Linked Persons</div>
+            </div>
+          </div>
+          
+          <!-- Events List -->
+          ${events.length === 0 ? '<div class="card" style="padding: var(--space-4); text-align: center;"><p>No events synced yet. Run <code>node scripts/sync-groupme-events.js</code> to sync.</p></div>' : events.map(evt => {
+            const eventRsvps = rsvpsByEvent[evt.id] || [];
+            const going = eventRsvps.filter(r => r.status_id === 1);
+            const notGoing = eventRsvps.filter(r => r.status_id === 2);
+            const maybe = eventRsvps.filter(r => r.status_id === 3);
+            
+            const startDate = evt.start_at ? new Date(evt.start_at) : null;
+            const dateStr = startDate ? startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : (evt.event_date || 'No date');
+            const timeStr = startDate ? startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+            
+            // Determine event type badge
+            let typeBadge = '';
+            if (evt.match_id && evt.match_type) {
+              typeBadge = `<span style="background: var(--primary); color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; margin-left: 8px;">${evt.match_type}</span>`;
+            }
+            
+            const renderRsvpList = (list, color) => list.map(r => 
+              `<span style="display: inline-block; padding: 2px 8px; margin: 2px; border-radius: 12px; font-size: 0.8em; background: ${r.linked ? color : '#e9ecef'}; color: ${r.linked ? 'white' : '#666'};" title="${r.linked ? 'Linked to person' : 'Not linked'}">${r.name}</span>`
+            ).join('');
+            
+            return `
+              <div class="card" style="padding: var(--space-3); margin-bottom: var(--space-3);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-2);">
+                  <div>
+                    <h3 style="margin: 0;">${evt.title}${typeBadge}</h3>
+                    <div style="color: var(--text-secondary); font-size: 0.9em; margin-top: 4px;">
+                      📅 ${dateStr} ${timeStr ? '&bull; 🕐 ' + timeStr : ''}
+                      ${evt.location ? '&bull; 📍 ' + evt.location : ''}
+                    </div>
+                    <div style="color: var(--text-secondary); font-size: 0.85em; margin-top: 2px;">💬 ${evt.chat_name}</div>
+                    ${evt.match_id && evt.home_team ? `<div style="font-size: 0.85em; margin-top: 4px;">⚽ ${evt.home_team} ${evt.home_score !== null ? evt.home_score : ''} vs ${evt.away_score !== null ? evt.away_score : ''} ${evt.away_team}</div>` : ''}
+                  </div>
+                  <div style="text-align: right; white-space: nowrap;">
+                    <span style="color: var(--success); font-weight: bold;">✓${evt.going}</span>
+                    <span style="color: var(--danger); margin-left: 8px;">✗${evt.not_going}</span>
+                    <span style="color: var(--warning); margin-left: 8px;">?${evt.maybe}</span>
+                  </div>
+                </div>
+                
+                <details style="margin-top: var(--space-2);">
+                  <summary style="cursor: pointer; color: var(--primary); font-size: 0.9em;">Show RSVPs (${eventRsvps.length})</summary>
+                  <div style="margin-top: var(--space-2);">
+                    ${going.length > 0 ? `<div style="margin-bottom: var(--space-2);"><strong style="color: var(--success);">Going (${going.length}):</strong><div>${renderRsvpList(going, '#28a745')}</div></div>` : ''}
+                    ${notGoing.length > 0 ? `<div style="margin-bottom: var(--space-2);"><strong style="color: var(--danger);">Not Going (${notGoing.length}):</strong><div>${renderRsvpList(notGoing, '#dc3545')}</div></div>` : ''}
+                    ${maybe.length > 0 ? `<div style="margin-bottom: var(--space-2);"><strong style="color: var(--warning);">Maybe (${maybe.length}):</strong><div>${renderRsvpList(maybe, '#ffc107')}</div></div>` : ''}
+                    ${eventRsvps.length === 0 ? '<p style="color: var(--text-secondary);">No RSVPs recorded</p>' : ''}
+                  </div>
+                </details>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    } catch (error) {
+      content.innerHTML = `<div class="error-message">Error loading GroupMe events: ${error.message}</div>`;
     }
   }
 }

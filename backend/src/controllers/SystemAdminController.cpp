@@ -146,6 +146,10 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
         return this->handleGetGroupMeLiveEvents(request);
     });
 
+    router.get(prefix + "/groupme/calendar-events", [this](const Request& request) {
+        return this->handleGetGroupMeCalendarEvents(request);
+    });
+
     // Dashboard & Overview
     router.get(prefix + "/dashboard", [this](const Request& request) {
         return this->handleGetDashboard(request);
@@ -3572,3 +3576,129 @@ Response SystemAdminController::handleGetPlayers(const Request& request) {
     }
 }
 
+Response SystemAdminController::handleGetGroupMeCalendarEvents(const Request& request) {
+    try {
+        auto escapeJson = [](const std::string& input) -> std::string {
+            std::string output;
+            output.reserve(input.size());
+            for (char c : input) {
+                switch (c) {
+                    case '"': output += "\\\""; break;
+                    case '\\': output += "\\\\"; break;
+                    case '\n': output += "\\n"; break;
+                    case '\r': output += "\\r"; break;
+                    case '\t': output += "\\t"; break;
+                    default: output += c;
+                }
+            }
+            return output;
+        };
+
+        // Get all synced calendar events with chat name and RSVP counts
+        std::string sql = R"(
+            SELECT ce.id, ce.title, ce.description, ce.location, ce.location_address,
+                   ce.event_date, ce.event_time, ce.start_at, ce.end_at,
+                   ce.external_id, ce.match_id, ce.is_active,
+                   c.name as chat_name, c.id as chat_id,
+                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id AND r.rsvp_status_id = 1) as going_count,
+                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id AND r.rsvp_status_id = 2) as not_going_count,
+                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id AND r.rsvp_status_id = 3) as maybe_count,
+                   m.match_date, mt.name as match_type_name,
+                   ht.name as home_team, at2.name as away_team,
+                   m.home_score, m.away_score
+            FROM chat_events ce
+            JOIN chats c ON c.id = ce.chat_id
+            LEFT JOIN matches m ON m.id = ce.match_id
+            LEFT JOIN match_types mt ON mt.id = m.match_type_id
+            LEFT JOIN teams ht ON ht.id = m.home_team_id
+            LEFT JOIN teams at2 ON at2.id = m.away_team_id
+            ORDER BY ce.start_at DESC NULLS LAST, ce.event_date DESC NULLS LAST
+        )";
+        
+        pqxx::result events = db_->query(sql);
+        
+        std::ostringstream json;
+        json << "{\"events\":[";
+        
+        for (size_t i = 0; i < events.size(); ++i) {
+            if (i > 0) json << ",";
+            json << "{"
+                 << "\"id\":" << events[i]["id"].c_str() << ","
+                 << "\"title\":\"" << escapeJson(events[i]["title"].is_null() ? "" : events[i]["title"].c_str()) << "\","
+                 << "\"description\":\"" << escapeJson(events[i]["description"].is_null() ? "" : events[i]["description"].c_str()) << "\","
+                 << "\"location\":\"" << escapeJson(events[i]["location"].is_null() ? "" : events[i]["location"].c_str()) << "\","
+                 << "\"location_address\":\"" << escapeJson(events[i]["location_address"].is_null() ? "" : events[i]["location_address"].c_str()) << "\","
+                 << "\"start_at\":" << (events[i]["start_at"].is_null() ? "null" : ("\"" + std::string(events[i]["start_at"].c_str()) + "\"")) << ","
+                 << "\"end_at\":" << (events[i]["end_at"].is_null() ? "null" : ("\"" + std::string(events[i]["end_at"].c_str()) + "\"")) << ","
+                 << "\"event_date\":" << (events[i]["event_date"].is_null() ? "null" : ("\"" + std::string(events[i]["event_date"].c_str()) + "\"")) << ","
+                 << "\"external_id\":\"" << escapeJson(events[i]["external_id"].is_null() ? "" : events[i]["external_id"].c_str()) << "\","
+                 << "\"chat_name\":\"" << escapeJson(events[i]["chat_name"].is_null() ? "" : events[i]["chat_name"].c_str()) << "\","
+                 << "\"chat_id\":" << events[i]["chat_id"].c_str() << ","
+                 << "\"match_id\":" << (events[i]["match_id"].is_null() ? "null" : events[i]["match_id"].c_str()) << ","
+                 << "\"match_type\":\"" << escapeJson(events[i]["match_type_name"].is_null() ? "" : events[i]["match_type_name"].c_str()) << "\","
+                 << "\"home_team\":\"" << escapeJson(events[i]["home_team"].is_null() ? "" : events[i]["home_team"].c_str()) << "\","
+                 << "\"away_team\":\"" << escapeJson(events[i]["away_team"].is_null() ? "" : events[i]["away_team"].c_str()) << "\","
+                 << "\"home_score\":" << (events[i]["home_score"].is_null() ? "null" : events[i]["home_score"].c_str()) << ","
+                 << "\"away_score\":" << (events[i]["away_score"].is_null() ? "null" : events[i]["away_score"].c_str()) << ","
+                 << "\"going\":" << events[i]["going_count"].c_str() << ","
+                 << "\"not_going\":" << events[i]["not_going_count"].c_str() << ","
+                 << "\"maybe\":" << events[i]["maybe_count"].c_str()
+                 << "}";
+        }
+        json << "],";
+        
+        // Get RSVPs grouped by event with person names
+        std::string rsvpSql = R"(
+            SELECT r.chat_event_id, r.rsvp_status_id, r.external_username,
+                   p.first_name, p.last_name, r.person_id, r.external_user_id,
+                   rs.name as rsvp_status
+            FROM chat_event_rsvps r
+            LEFT JOIN persons p ON p.id = r.person_id
+            JOIN rsvp_statuses rs ON rs.id = r.rsvp_status_id
+            ORDER BY r.chat_event_id, r.rsvp_status_id, p.last_name NULLS LAST, r.external_username
+        )";
+        
+        pqxx::result rsvps = db_->query(rsvpSql);
+        
+        json << "\"rsvps\":[";
+        for (size_t i = 0; i < rsvps.size(); ++i) {
+            if (i > 0) json << ",";
+            std::string displayName;
+            if (!rsvps[i]["first_name"].is_null()) {
+                displayName = std::string(rsvps[i]["first_name"].c_str()) + " " + std::string(rsvps[i]["last_name"].c_str());
+            } else if (!rsvps[i]["external_username"].is_null()) {
+                displayName = rsvps[i]["external_username"].c_str();
+            } else {
+                displayName = "Unknown (" + std::string(rsvps[i]["external_user_id"].is_null() ? "?" : rsvps[i]["external_user_id"].c_str()) + ")";
+            }
+            json << "{"
+                 << "\"event_id\":" << rsvps[i]["chat_event_id"].c_str() << ","
+                 << "\"status\":\"" << escapeJson(rsvps[i]["rsvp_status"].c_str()) << "\","
+                 << "\"status_id\":" << rsvps[i]["rsvp_status_id"].c_str() << ","
+                 << "\"name\":\"" << escapeJson(displayName) << "\","
+                 << "\"linked\":" << (rsvps[i]["person_id"].is_null() ? "false" : "true")
+                 << "}";
+        }
+        json << "],";
+        
+        // Summary stats
+        auto totalEvents = db_->query("SELECT COUNT(*) FROM chat_events");
+        auto totalRsvps = db_->query("SELECT COUNT(*) FROM chat_event_rsvps");
+        auto linkedRsvps = db_->query("SELECT COUNT(*) FROM chat_event_rsvps WHERE person_id IS NOT NULL");
+        auto totalLinked = db_->query("SELECT COUNT(*) FROM external_identities WHERE provider_id = 1");
+        auto totalChats = db_->query("SELECT COUNT(*) FROM chats");
+        
+        json << "\"summary\":{";
+        json << "\"total_events\":" << totalEvents[0][0].c_str() << ",";
+        json << "\"total_rsvps\":" << totalRsvps[0][0].c_str() << ",";
+        json << "\"linked_rsvps\":" << linkedRsvps[0][0].c_str() << ",";
+        json << "\"total_linked_persons\":" << totalLinked[0][0].c_str() << ",";
+        json << "\"total_chats\":" << totalChats[0][0].c_str();
+        json << "}}";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, "{\"error\":\"" + std::string(e.what()) + "\"}");
+    }
+}

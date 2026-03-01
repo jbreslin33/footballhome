@@ -120,5 +120,11 @@ INSERT INTO divisions (id, season_id, conference_id, name, external_id, source_s
 (63, 5, 25, 'Boston Liga 1', '9090891', 2, 3),
 (64, 5, 26, 'Lancaster Liga 1', '9090893', 2, 4);
 
+-- ==================================================
+-- EPSA Open State Cup 2025/2026 (season_id=10, conference_id=31)
+-- ==================================================
+INSERT INTO divisions (id, season_id, conference_id, name, division_type_id, sort_order) VALUES
+(66, 10, 31, 'Open Cup', 3, 1);  -- division_type_id=3 = knockout_round
+
 -- Update sequence
 SELECT setval('divisions_id_seq', (SELECT MAX(id) FROM divisions));
