@@ -1365,6 +1365,12 @@ CREATE TABLE chat_event_rsvps (
     rsvp_status_id INTEGER NOT NULL REFERENCES rsvp_statuses(id),
     response_note TEXT,
     responded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Override: admin/player can set a local status that trumps the synced value
+    -- Effective status = COALESCE(override_rsvp_status_id, rsvp_status_id)
+    override_rsvp_status_id INTEGER REFERENCES rsvp_statuses(id),  -- NULL = use synced value
+    overridden_by_user_id INTEGER REFERENCES users(id),
+    overridden_at TIMESTAMP,
+    override_note TEXT,  -- e.g., "Injured", "Confirmed via text"
     -- At least one identifier required
     CONSTRAINT check_rsvp_identity CHECK (
         person_id IS NOT NULL OR user_id IS NOT NULL OR external_user_id IS NOT NULL
@@ -1378,5 +1384,7 @@ CREATE TABLE chat_event_rsvps (
 CREATE INDEX idx_chat_event_rsvps_event ON chat_event_rsvps(chat_event_id);
 CREATE INDEX idx_chat_event_rsvps_user ON chat_event_rsvps(user_id);
 CREATE INDEX idx_chat_event_rsvps_status ON chat_event_rsvps(rsvp_status_id);
+CREATE INDEX idx_chat_event_rsvps_person ON chat_event_rsvps(person_id) WHERE person_id IS NOT NULL;
+CREATE INDEX idx_chat_event_rsvps_overridden ON chat_event_rsvps(chat_event_id) WHERE override_rsvp_status_id IS NOT NULL;
 
 -- created_by_chat_id column removed - use chat_events junction table instead

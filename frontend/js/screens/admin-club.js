@@ -57,6 +57,7 @@ class AdminClubScreen extends Screen {
     const subNav = this.find('#sub-navigation');
     
     const sections = [
+      { id: 'events', icon: '📅', label: 'Events', description: 'GroupMe events & RSVPs' },
       { id: 'users', icon: '👤', label: 'Users', description: 'Manage user accounts' },
       { id: 'players', icon: '⚽', label: 'Players', description: 'Manage player records' },
       { id: 'teams', icon: '👥', label: 'Teams', description: 'Manage teams' },
@@ -77,6 +78,14 @@ class AdminClubScreen extends Screen {
   }
   
   handleSubNavigation(section) {
+    if (section === 'events') {
+      this.navigation.goTo('club-events', {
+        clubId: this.clubId,
+        clubName: this.clubName
+      });
+      return;
+    }
+    
     if (section === 'tactics') {
       this.navigation.goTo('tactical-board', {
         clubId: this.clubId,

@@ -121,6 +121,16 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
     router.post(prefix + "/:eventId/send-reminder", [this](const Request& request) {
         return this->handleSendReminder(request);
     });
+
+    // GET /api/events/club/:clubId/chat-events - Get chat events for a club
+    router.get(prefix + "/club/:clubId/chat-events", [this](const Request& request) {
+        return this->handleGetClubChatEvents(request);
+    });
+
+    // PUT /api/events/chat-rsvps/:rsvpId/override - Override RSVP status
+    router.put(prefix + "/chat-rsvps/:rsvpId/override", [this](const Request& request) {
+        return this->handleOverrideRSVP(request);
+    });
 }
 
 Response EventController::handleCreateEvent(const Request& request) {
@@ -1971,4 +1981,227 @@ std::string EventController::extractUserIdFromToken(const Request& request) {
     }
     
     return "";
+}
+
+// ============================================================================
+// Club Chat Events & RSVP Override
+// ============================================================================
+
+Response EventController::handleGetClubChatEvents(const Request& request) {
+    try {
+        // Extract clubId from path: /api/events/club/:clubId/chat-events
+        std::string path = request.getPath();
+        std::regex clubIdRegex("/api/events/club/(\\d+)/chat-events");
+        std::smatch match;
+        std::string clubId;
+        if (std::regex_search(path, match, clubIdRegex)) {
+            clubId = match[1].str();
+        }
+        if (clubId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing clubId"));
+        }
+
+        // Get all chat events for chats linked to teams belonging to this club,
+        // plus cross-team chats (training/pickup where team_id is NULL)
+        std::string sql = R"(
+            SELECT ce.id, ce.title, ce.description, ce.location, ce.location_address,
+                   ce.event_date, ce.event_time, ce.start_at, ce.end_at,
+                   ce.external_id, ce.match_id, ce.is_active,
+                   c.name as chat_name, c.id as chat_id, c.chat_type_id,
+                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id 
+                    AND COALESCE(r.override_rsvp_status_id, r.rsvp_status_id) = 1) as going_count,
+                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id 
+                    AND COALESCE(r.override_rsvp_status_id, r.rsvp_status_id) = 2) as not_going_count,
+                   (SELECT COUNT(*) FROM chat_event_rsvps r WHERE r.chat_event_id = ce.id 
+                    AND COALESCE(r.override_rsvp_status_id, r.rsvp_status_id) = 3) as maybe_count,
+                   m.match_date, mt.name as match_type_name,
+                   ht.name as home_team, at2.name as away_team,
+                   m.home_score, m.away_score
+            FROM chat_events ce
+            JOIN chats c ON c.id = ce.chat_id
+            LEFT JOIN matches m ON m.id = ce.match_id
+            LEFT JOIN match_types mt ON mt.id = m.match_type_id
+            LEFT JOIN teams ht ON ht.id = m.home_team_id
+            LEFT JOIN teams at2 ON at2.id = m.away_team_id
+            WHERE c.team_id IN (SELECT t.id FROM teams t WHERE t.club_id = )" + clubId + R"()
+               OR c.team_id IS NULL
+            ORDER BY ce.start_at DESC NULLS LAST, ce.event_date DESC NULLS LAST
+        )";
+
+        pqxx::result events = db_->query(sql);
+
+        std::ostringstream json;
+        json << "{\"success\":true,\"data\":{\"events\":[";
+
+        for (size_t i = 0; i < events.size(); ++i) {
+            if (i > 0) json << ",";
+            json << "{"
+                 << "\"id\":" << events[i]["id"].c_str() << ","
+                 << "\"title\":\"" << escapeJSON(events[i]["title"].is_null() ? "" : events[i]["title"].c_str()) << "\","
+                 << "\"description\":\"" << escapeJSON(events[i]["description"].is_null() ? "" : events[i]["description"].c_str()) << "\","
+                 << "\"location\":\"" << escapeJSON(events[i]["location"].is_null() ? "" : events[i]["location"].c_str()) << "\","
+                 << "\"location_address\":\"" << escapeJSON(events[i]["location_address"].is_null() ? "" : events[i]["location_address"].c_str()) << "\","
+                 << "\"start_at\":" << (events[i]["start_at"].is_null() ? "null" : ("\"" + std::string(events[i]["start_at"].c_str()) + "\"")) << ","
+                 << "\"end_at\":" << (events[i]["end_at"].is_null() ? "null" : ("\"" + std::string(events[i]["end_at"].c_str()) + "\"")) << ","
+                 << "\"event_date\":" << (events[i]["event_date"].is_null() ? "null" : ("\"" + std::string(events[i]["event_date"].c_str()) + "\"")) << ","
+                 << "\"external_id\":\"" << escapeJSON(events[i]["external_id"].is_null() ? "" : events[i]["external_id"].c_str()) << "\","
+                 << "\"chat_name\":\"" << escapeJSON(events[i]["chat_name"].is_null() ? "" : events[i]["chat_name"].c_str()) << "\","
+                 << "\"chat_id\":" << events[i]["chat_id"].c_str() << ","
+                 << "\"match_id\":" << (events[i]["match_id"].is_null() ? "null" : events[i]["match_id"].c_str()) << ","
+                 << "\"match_type\":\"" << escapeJSON(events[i]["match_type_name"].is_null() ? "" : events[i]["match_type_name"].c_str()) << "\","
+                 << "\"home_team\":\"" << escapeJSON(events[i]["home_team"].is_null() ? "" : events[i]["home_team"].c_str()) << "\","
+                 << "\"away_team\":\"" << escapeJSON(events[i]["away_team"].is_null() ? "" : events[i]["away_team"].c_str()) << "\","
+                 << "\"home_score\":" << (events[i]["home_score"].is_null() ? "null" : events[i]["home_score"].c_str()) << ","
+                 << "\"away_score\":" << (events[i]["away_score"].is_null() ? "null" : events[i]["away_score"].c_str()) << ","
+                 << "\"going\":" << events[i]["going_count"].c_str() << ","
+                 << "\"not_going\":" << events[i]["not_going_count"].c_str() << ","
+                 << "\"maybe\":" << events[i]["maybe_count"].c_str()
+                 << "}";
+        }
+        json << "],";
+
+        // Get RSVPs with effective status (override wins over synced)
+        std::string rsvpSql = R"(
+            SELECT r.id as rsvp_id, r.chat_event_id, 
+                   r.rsvp_status_id as synced_status_id,
+                   r.override_rsvp_status_id,
+                   COALESCE(r.override_rsvp_status_id, r.rsvp_status_id) as effective_status_id,
+                   r.external_username,
+                   r.override_note,
+                   r.overridden_at,
+                   p.first_name, p.last_name, r.person_id, r.external_user_id,
+                   rs.name as synced_status,
+                   ors.name as override_status,
+                   COALESCE(ors.name, rs.name) as effective_status
+            FROM chat_event_rsvps r
+            LEFT JOIN persons p ON p.id = r.person_id
+            JOIN rsvp_statuses rs ON rs.id = r.rsvp_status_id
+            LEFT JOIN rsvp_statuses ors ON ors.id = r.override_rsvp_status_id
+            WHERE r.chat_event_id IN (
+                SELECT ce.id FROM chat_events ce
+                JOIN chats c ON c.id = ce.chat_id
+                WHERE c.team_id IN (SELECT t.id FROM teams t WHERE t.club_id = )" + clubId + R"()
+                   OR c.team_id IS NULL
+            )
+            ORDER BY r.chat_event_id, COALESCE(r.override_rsvp_status_id, r.rsvp_status_id), 
+                     p.last_name NULLS LAST, r.external_username
+        )";
+
+        pqxx::result rsvps = db_->query(rsvpSql);
+
+        json << "\"rsvps\":[";
+        for (size_t i = 0; i < rsvps.size(); ++i) {
+            if (i > 0) json << ",";
+            std::string displayName;
+            if (!rsvps[i]["first_name"].is_null()) {
+                displayName = std::string(rsvps[i]["first_name"].c_str()) + " " + std::string(rsvps[i]["last_name"].c_str());
+            } else if (!rsvps[i]["external_username"].is_null()) {
+                displayName = rsvps[i]["external_username"].c_str();
+            } else {
+                displayName = "Unknown";
+            }
+            json << "{"
+                 << "\"rsvp_id\":" << rsvps[i]["rsvp_id"].c_str() << ","
+                 << "\"event_id\":" << rsvps[i]["chat_event_id"].c_str() << ","
+                 << "\"effective_status\":\"" << escapeJSON(rsvps[i]["effective_status"].c_str()) << "\","
+                 << "\"effective_status_id\":" << rsvps[i]["effective_status_id"].c_str() << ","
+                 << "\"synced_status\":\"" << escapeJSON(rsvps[i]["synced_status"].c_str()) << "\","
+                 << "\"synced_status_id\":" << rsvps[i]["synced_status_id"].c_str() << ","
+                 << "\"is_overridden\":" << (rsvps[i]["override_rsvp_status_id"].is_null() ? "false" : "true") << ","
+                 << "\"override_note\":\"" << escapeJSON(rsvps[i]["override_note"].is_null() ? "" : rsvps[i]["override_note"].c_str()) << "\","
+                 << "\"name\":\"" << escapeJSON(displayName) << "\","
+                 << "\"linked\":" << (rsvps[i]["person_id"].is_null() ? "false" : "true") << ","
+                 << "\"person_id\":" << (rsvps[i]["person_id"].is_null() ? "null" : rsvps[i]["person_id"].c_str())
+                 << "}";
+        }
+        json << "]}}";
+
+        return Response(HttpStatus::OK, json.str());
+
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+Response EventController::handleOverrideRSVP(const Request& request) {
+    try {
+        // Extract rsvpId from path: /api/events/chat-rsvps/:rsvpId/override
+        std::string path = request.getPath();
+        std::regex rsvpIdRegex("/api/events/chat-rsvps/(\\d+)/override");
+        std::smatch match;
+        std::string rsvpId;
+        if (std::regex_search(path, match, rsvpIdRegex)) {
+            rsvpId = match[1].str();
+        }
+        if (rsvpId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing rsvpId"));
+        }
+
+        // Get authenticated user
+        std::string userId = extractUserIdFromToken(request);
+        if (userId.empty()) {
+            return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Authentication required"));
+        }
+
+        // Parse body
+        std::string body = request.getBody();
+        std::string statusIdStr = parseJSON(body, "status_id");
+        std::string note = parseJSON(body, "note");
+        std::string clearStr = parseJSON(body, "clear");
+
+        if (clearStr == "true") {
+            // Clear override — revert to GroupMe synced value
+            std::string clearSql = 
+                "UPDATE chat_event_rsvps SET "
+                "override_rsvp_status_id = NULL, "
+                "overridden_by_user_id = NULL, "
+                "overridden_at = NULL, "
+                "override_note = NULL "
+                "WHERE id = " + rsvpId;
+            db_->query(clearSql);
+
+            return Response(HttpStatus::OK, createJSONResponse(true, "Override cleared"));
+        }
+
+        if (statusIdStr.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing status_id"));
+        }
+
+        // Validate status_id exists
+        std::string validateSql = "SELECT id FROM rsvp_statuses WHERE id = " + statusIdStr;
+        pqxx::result validateResult = db_->query(validateSql);
+        if (validateResult.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid status_id"));
+        }
+
+        // Apply override — note: escape single quotes for SQL safety
+        std::string escapedNote;
+        for (char c : note) {
+            if (c == '\'') escapedNote += "''";
+            else escapedNote += c;
+        }
+        
+        std::string updateSql = 
+            "UPDATE chat_event_rsvps SET "
+            "override_rsvp_status_id = " + statusIdStr + ", "
+            "overridden_by_user_id = " + userId + ", "
+            "overridden_at = NOW(), "
+            "override_note = " + (note.empty() ? "NULL" : "'" + escapedNote + "'") + " "
+            "WHERE id = " + rsvpId + " "
+            "RETURNING id, COALESCE(override_rsvp_status_id, rsvp_status_id) as effective_status_id";
+        pqxx::result result = db_->query(updateSql);
+
+        if (result.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "RSVP not found"));
+        }
+
+        std::string responseData = "{\"rsvp_id\":" + rsvpId + 
+            ",\"effective_status_id\":" + std::string(result[0]["effective_status_id"].c_str()) + "}";
+        return Response(HttpStatus::OK, createJSONResponse(true, "Override applied", responseData));
+
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
 }

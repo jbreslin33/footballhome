@@ -44,6 +44,10 @@ private:
     // SMS Reminder endpoint
     Response handleSendReminder(const Request& request);
     
+    // Club Chat Events & RSVP Override
+    Response handleGetClubChatEvents(const Request& request);
+    Response handleOverrideRSVP(const Request& request);
+    
     // Helper methods
     std::string extractUserIdFromToken(const Request& request);
     std::string extractTeamIdFromPath(const std::string& path);
