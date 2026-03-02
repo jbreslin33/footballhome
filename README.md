@@ -88,10 +88,8 @@ make restore             # restore latest (or BACKUP=file.sql)
 ### Dev Reset (destructive — wipes ALL data)
 
 ```bash
-make dev-reset           # nuclear: destroys DB volume, rebuilds from scratch
-make sync-apsl           # re-sync leagues
-make sync-csl
-make sync-casa
+make rebuild             # destroys DB volume, rebuilds from scratch
+make sync                # re-sync all leagues
 ```
 
 ⚠️ This destroys all user-generated data. Use `make backup` first if needed.
@@ -264,13 +262,13 @@ Run `make help` for the full list. Key targets:
 | `make sync-csl` | Full sync for CSL |
 | `make sync-casa` | Full sync for CASA |
 | `make build` | Build images + start containers |
+| `make rebuild` | Destroy everything + fresh build (wipes DB) |
 | `make up` / `make down` | Start / stop containers |
 | `make backup` / `make restore` | pg_dump snapshot / restore |
 | `make scrape-apsl` | Fetch HTML only |
 | `make parse-apsl` | Regenerate SQL from cached HTML only |
 | `make shell-db` | Database shell |
 | `make audit` | Data quality checks |
-| `make dev-reset` | Nuclear: destroy + rebuild (wipes all data) |
 
 ## 🤝 Contributing
 

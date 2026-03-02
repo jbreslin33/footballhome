@@ -49,9 +49,9 @@
 |----------|---------|-------------|
 | **Sync** | `make sync` | Sync all leagues: scrape → parse → UPSERT (idempotent) |
 | | `make sync-apsl/csl/casa` | Sync individual league |
-| **Dev** | `make dev-reset` | Fresh DB from scratch: rebuild + load all |
-| | `make up` / `make build` | Start / build+start containers |
-| | `make down` / `make clean` | Stop / destroy containers |
+| **Containers** | `make build` | Build images + start containers |
+| | `make up` / `make down` | Start / stop containers |
+| | `make rebuild` | Destroy everything + fresh build (wipes DB) |
 | | `make shell-db` | Connect to database shell |
 | | `make ps` / `make logs` | Show containers / view logs |
 | | `make audit` | Run data quality audit |
@@ -59,8 +59,6 @@
 | | `make scrape-apsl/csl/casa` | Scrape individual league |
 | | `make parse` | Regenerate SQL from cached HTML (all leagues, no DB needed) |
 | | `make parse-apsl/csl/casa` | Parse individual league |
-| | `make load` | Load/UPSERT all league SQL into database |
-| | `make load-apsl/csl/casa` | Load individual league |
 | | `make events` | Scrape match events for APSL + CSL |
 | | `make events-apsl/csl` | Scrape events for individual league |
 | **Backup** | `make backup` | pg_dump → backups/backup-YYYYMMDD-HHMMSS.sql |
@@ -75,19 +73,15 @@ make sync-apsl    # scrape → parse → UPSERT for APSL
 make sync         # all leagues in dependency order
 ```
 
-**Fresh development database (wipes everything, starts clean):**
+**Fresh database (wipes everything, starts clean):**
 ```bash
-make dev-reset    # clean + build + load all leagues
+make rebuild      # destroy containers + volumes, fresh build
+make sync         # re-sync all leagues from web
 ```
 
 **Regenerate SQL without touching DB:**
 ```bash
 make parse   # regenerates sql/ files from cached HTML
-```
-
-**Fetch fresh HTML from web, then load into existing DB:**
-```bash
-make sync-apsl   # scrape + parse + UPSERT (idempotent)
 ```
 
 ### Data Management Philosophy
@@ -108,7 +102,7 @@ make sync-apsl    # scrape → parse → UPSERT (works on empty or populated DB)
 
 | Category | Source | Update Method | Recoverable? |
 |----------|--------|---------------|-------------|
-| Bootstrap (schema, lookups) | `database/data/` SQL files | `make dev-reset` | Always — from git |
+| Bootstrap (schema, lookups) | `database/data/` SQL files | `make rebuild` | Always — from git |
 | League data (standings, matches, rosters) | League websites | `make sync-*` (UPSERT) | Always — re-scrape from website |
 | User data (RSVPs, practices, attendance) | User input in app | Written by backend to DB | Only from pg_dump backup |
 
@@ -121,7 +115,7 @@ make sync-apsl    # scrape → parse → UPSERT (works on empty or populated DB)
    - Loaded once during container initialization
    - These are permanent — needed for every rebuild
 
-2. **League Data** (`database/scripts/leagues/<continent>/<country>/<league>/sql/` — loaded by `make load`):
+2. **League Data** (`database/scripts/leagues/<continent>/<country>/<league>/sql/` — loaded by `make sync-*`):
    - Generated from scraped HTML by `make parse`
    - Per-league SQL files numbered 100-109
    - All use `ON CONFLICT ... DO UPDATE` (UPSERT) — safe to re-run anytime
@@ -143,9 +137,9 @@ make sync-apsl    # scrape → parse → UPSERT (works on empty or populated DB)
 | `900-*-curation.sql` | Cross-league deduplication (UPDATE statements) |
 
 **Data Restoration:**
-- Development reset: `make dev-reset` (fresh DB from git + all league SQL)
+- Development reset: `make rebuild` then `make sync` (fresh DB + re-sync all leagues)
 - Live restore: `make restore` (latest pg_dump) or `make restore BACKUP=file.sql`
-- Safe rebuild: `make safe-rebuild && make load` (pg_dump before wipe)
+- Safe rebuild: `make safe-rebuild` then `make sync` (pg_dump before wipe)
 
 **Backup Strategy:**
 - `make backup` runs pg_dump → `backups/backup-YYYYMMDD-HHMMSS.sql`
@@ -153,10 +147,9 @@ make sync-apsl    # scrape → parse → UPSERT (works on empty or populated DB)
 - `backups/` is gitignored — snapshots are local insurance
 - **Always run `make backup` before any destructive operation**
 - pg_dump is the source of truth for live databases
-- `make dev-reset` is for dev resets only (destroys user data)
 
 ### Database Changes
-- **Schema Changes**: Update `00-schema.sql`, then `make dev-reset` to apply
+- **Schema Changes**: Update `00-schema.sql`, then `make rebuild` + `make sync` to apply
 - **Manual Static Data**: Add/update numbered SQL files in `database/data/` (e.g., `024-admins.sql`)
 - **Alphabetical Execution**: SQL files load alphabetically during initialization
 - **File Numbering**: Use prefixes (a/b/c) when order matters (e.g., `020-persons.sql`, `020a-players.sql`)
@@ -290,7 +283,7 @@ When a new season starts:
 2. Add new conferences to `033-conferences.sql` (if structure changed)
 3. Add new divisions to `034-divisions.sql`
 4. Update `activeSeason` in each league's `config.json`
-5. Run `make dev-reset` to apply bootstrap changes
+5. Run `make rebuild` to apply bootstrap changes
 6. Run `make sync` to scrape + parse + load new season data
 
 ### Adding a New League

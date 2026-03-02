@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl init init-apsl init-csl init-casa scrape scrape-apsl scrape-csl scrape-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa dev-reset
+.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -24,38 +24,30 @@ all: up
 help:
 	@echo "Football Home - Makefile Targets"
 	@echo ""
-	@echo "Primary workflow (idempotent sync per league):"
-	@echo "  make sync        - Sync all leagues: scrape → parse → UPSERT (APSL → CSL → CASA)"
-	@echo "  make sync-apsl   - Sync APSL only"
-	@echo "  make sync-csl    - Sync CSL only"
-	@echo "  make sync-casa   - Sync CASA only"
+	@echo "Sync (primary workflow — idempotent, safe to run anytime):"
+	@echo "  make sync          Sync all leagues: scrape → parse → UPSERT"
+	@echo "  make sync-apsl     Sync APSL only"
+	@echo "  make sync-csl      Sync CSL only"
+	@echo "  make sync-casa     Sync CASA only"
 	@echo ""
-	@echo "Development:"
-	@echo "  make dev-reset   - Fresh DB from scratch: rebuild + load all leagues"
-	@echo "  make up          - Start containers (safe, non-destructive)"
-	@echo "  make build       - Build images and start containers"
-	@echo "  make down        - Stop containers"
-	@echo "  make ps          - Show running containers"
-	@echo "  make shell-db    - Connect to database shell"
-	@echo "  make logs        - View all container logs"
-	@echo "  make logs-db     - View database logs"
-	@echo "  make logs-backend - View backend logs"
-	@echo "  make audit       - Run data quality audit"
+	@echo "Containers:"
+	@echo "  make build         Build images and start containers"
+	@echo "  make up            Start containers"
+	@echo "  make down          Stop containers"
+	@echo "  make rebuild       Destroy everything + fresh build (wipes DB)"
 	@echo ""
-	@echo "Individual pipeline steps:"
-	@echo "  make scrape      - Fetch fresh HTML from web (all leagues)"
-	@echo "  make scrape-apsl/csl/casa  - Scrape individual league"
-	@echo "  make parse       - Regenerate SQL from cached HTML (all leagues, no DB needed)"
-	@echo "  make parse-apsl/csl/casa   - Parse individual league"
-	@echo "  make load        - Load/UPSERT all league SQL into database"
-	@echo "  make load-apsl/csl/casa    - Load individual league"
-	@echo "  make events      - Scrape match events for APSL + CSL"
-	@echo "  make events-apsl/csl       - Scrape events for individual league"
+	@echo "Debugging:"
+	@echo "  make scrape-apsl   Fetch HTML only (also: scrape-csl, scrape-casa)"
+	@echo "  make parse-apsl    Regenerate SQL from cached HTML (also: parse-csl, parse-casa)"
+	@echo "  make shell-db      Connect to database shell"
+	@echo "  make ps            Show running containers"
+	@echo "  make logs          View all container logs"
+	@echo "  make audit         Run data quality audit"
 	@echo ""
 	@echo "Backup & restore:"
-	@echo "  make backup      - Snapshot DB to backups/ (pg_dump)"
-	@echo "  make restore     - Restore latest backup (or BACKUP=file.sql)"
-	@echo "  make safe-rebuild - Backup + rebuild (safety net for live data)"
+	@echo "  make backup        Snapshot DB (pg_dump → backups/)"
+	@echo "  make restore       Restore latest backup (or BACKUP=file.sql)"
+	@echo "  make safe-rebuild  Backup + rebuild (safety net)"
 	@echo ""
 
 # ============================================================
@@ -130,13 +122,12 @@ init: init-apsl init-csl init-casa
 	@echo "  SQL files ready to commit in database/scripts/leagues/*/sql/"
 
 # ============================================================
-# Load (load committed SQL files into database)
+# Load (internal — used by sync-* targets)
 # ============================================================
 
-# Load all leagues (calls individual targets in dependency order)
 load: load-apsl load-csl load-casa
 	@echo ""
-	@echo "✓ All leagues loaded (events included in SQL files)"
+	@echo "✓ All leagues loaded"
 
 # Individual league load targets
 load-apsl:
@@ -222,14 +213,6 @@ sync-casa: scrape-casa parse-casa load-casa
 	@echo "✓ CASA synced"
 
 # ============================================================
-# Dev Reset (fresh database from scratch)
-# ============================================================
-
-dev-reset: rebuild load
-	@echo ""
-	@echo "✓ Development reset complete (fresh DB with all league data)"
-
-# ============================================================
 # Backup & Restore (pg_dump snapshots)
 # ============================================================
 
@@ -248,7 +231,7 @@ restore:
 
 safe-rebuild: backup rebuild
 	@echo "✓ Safe rebuild complete (backup in backups/)"
-	@echo "  Run: make load    (to load SQL files)"
+	@echo "  Run: make sync    (to re-sync league data)"
 	@echo "  Or:  make restore (to restore from backup)"
 
 # ============================================================
