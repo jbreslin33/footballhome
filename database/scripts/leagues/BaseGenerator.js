@@ -414,6 +414,7 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
 -- Total Records: ${this.rosters.length}
 -- 
 -- Architecture: Players looked up by name (no hardcoded IDs)
+-- joined_at uses sentinel date '1970-01-01' for scraped rosters (deterministic for UPSERT)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
@@ -423,8 +424,9 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
       const jerseyNumSql = jerseyNumber ? `'${jerseyNumber}'` : 'NULL';
       
       // Look up team by name and player by person name
+      // Use fixed sentinel date so (team_id, player_id, joined_at) conflict key is deterministic
       sql += `INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
-SELECT t.id, pl.id, ${jerseyNumSql}, NOW()
+SELECT t.id, pl.id, ${jerseyNumSql}, '1970-01-01'
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
 WHERE t.name = '${this.escapeSql(teamName)}' AND t.source_system_id = ${this.sourceSystemId}
