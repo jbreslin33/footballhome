@@ -107,6 +107,19 @@ class ApslStructureScraper {
       throw new Error(`❌ No divisions found for season ${seasonResult.id}! Divisions must exist in 034-divisions.sql before running scrapers.`);
     }
     
+    // 5b. Map each team to its division_id (APSL: 1 division per conference, division name = conference name)
+    const divisionsByName = new Map(savedDivisions.map(d => [d.name, d.id]));
+    for (const divisionData of divisionTeams) {
+      const divisionId = divisionsByName.get(divisionData.conferenceName);
+      if (!divisionId) {
+        console.warn(`   ⚠️  No division found for conference: ${divisionData.conferenceName}`);
+        continue;
+      }
+      for (const team of divisionData.teams) {
+        team.divisionId = divisionId;
+      }
+    }
+    
     // 6. Upsert teams (create club/organization for each team)
     if (teams && teams.length > 0) {
       let clubsCreated = 0;
@@ -179,24 +192,23 @@ class ApslStructureScraper {
       console.log(`   ✓ Teams: ${teamResult.inserted} inserted, ${teamResult.updated} updated`);
       console.log(`   ✓ Clubs/Organizations: ${clubsCreated} created, ${teamsLinked} teams linked to clubs`);
       
-      // 7. Populate division_teams (link teams to divisions) and save standings
+      // 7. Save standings (division linking already done via teams.division_id in step 5b/6)
       const savedTeams = await this.teamRepo.findBySourceSystem(1); // APSL source_system_id = 1
       if (divisionTeams && divisionTeams.length > 0) {
-        console.log('🔗 Linking teams to divisions and saving standings...');
+        console.log('📊 Saving standings...');
         
         // Build maps for quick lookup
         const divisionsByName = new Map(savedDivisions.map(d => [d.name, d.id]));
         const teamsByName = new Map(savedTeams.map(t => [t.name, t.id]));
         
-        let linksCreated = 0;
         let standingsSaved = 0;
         
         for (const divisionData of divisionTeams) {
-          const divisionName = divisionData.conferenceName.replace(/\s+Conference$/i, '').trim();
-          const divisionId = divisionsByName.get(divisionName);
+          // APSL: division name = conference name (1 division per conference)
+          const divisionId = divisionsByName.get(divisionData.conferenceName);
           
           if (!divisionId) {
-            console.warn(`   ⚠️  Division not found: ${divisionName}`);
+            console.warn(`   ⚠️  Division not found for conference: ${divisionData.conferenceName}`);
             continue;
           }
           
@@ -210,18 +222,11 @@ class ApslStructureScraper {
               continue;
             }
             
-            // Link team to division
-            await this.divisionTeamRepo.register(divisionId, teamId);
-            linksCreated++;
-            
             // Save standings data if available
             if (divisionData.standings && divisionData.standings[i]) {
               const stats = divisionData.standings[i];
               
-              // For APSL, competition_id = division_id (each division is its own competition)
               await this.standingsRepo.upsert({
-                competitionId: divisionId,  // APSL: division = competition
-                seasonId: seasonResult.id,
                 teamId: teamId,
                 position: stats.position,
                 played: stats.played,
@@ -241,7 +246,6 @@ class ApslStructureScraper {
           }
         }
         
-        console.log(`   ✓ Division-Team Links: ${linksCreated} created`);
         console.log(`   ✓ Standings: ${standingsSaved} records saved`);
       }
     }

@@ -308,6 +308,7 @@ class CslStructureScraper {
     // 1. Create scraped_teams entry using upsert (handles duplicates)
     const scrapedTeamModel = new ScrapedTeam({
       name: teamData.name,
+      divisionId: divisionId,
       sourceSystemId: 3, // CSL
       externalId: teamData.externalId // Store team ID for roster scraping
     });
@@ -328,18 +329,9 @@ class CslStructureScraper {
       }
     }
     
-    // 3. Create division_teams junction (CSL teams are independent, no club link)
-    const existing = await this.divisionTeamRepo.findByDivisionAndTeam(divisionId, scrapedTeamResult.id);
-    
-    if (!existing) {
-      await this.divisionTeamRepo.register(divisionId, scrapedTeamResult.id);
-    }
-    
-    // 4. Save standings data (CSL parser extracts standings from tables)
+    // 3. Save standings data (CSL parser extracts standings from tables)
     if (teamData.rank !== undefined && teamData.played !== undefined) {
       await this.standingsRepo.upsert({
-        competitionId: divisionId,  // CSL: division = competition (like APSL)
-        seasonId: seasonId,
         teamId: scrapedTeamResult.id,
         position: teamData.rank,
         played: teamData.played,

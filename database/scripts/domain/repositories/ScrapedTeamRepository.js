@@ -47,12 +47,13 @@ class ScrapedTeamRepository {
         const result = await this.db.query(`
           UPDATE teams SET
             name = $1,
-            club_id = $2,
-            city = $3,
-            logo_url = $4
-          WHERE id = $5
+            division_id = COALESCE($2, division_id),
+            club_id = $3,
+            city = $4,
+            logo_url = $5
+          WHERE id = $6
           RETURNING id
-        `, [row.name, row.club_id, row.city, row.logo_url, existing.id]);
+        `, [row.name, row.division_id, row.club_id, row.city, row.logo_url, existing.id]);
         
         return { id: result.rows[0].id, inserted: false };
       }
@@ -63,15 +64,16 @@ class ScrapedTeamRepository {
     if (existingByName) {
       const result = await this.db.query(`
         UPDATE teams SET
-          club_id = $1,
-          city = $2,
-          logo_url = $3,
-          source_system_id = $4,
-          external_id = $5
-        WHERE id = $6
+          division_id = COALESCE($1, division_id),
+          club_id = $2,
+          city = $3,
+          logo_url = $4,
+          source_system_id = $5,
+          external_id = $6
+        WHERE id = $7
         RETURNING id
       `, [
-        row.club_id, row.city, row.logo_url, 
+        row.division_id, row.club_id, row.city, row.logo_url, 
         row.source_system_id, row.external_id,
         existingByName.id
       ]);
@@ -81,10 +83,10 @@ class ScrapedTeamRepository {
     
     // Insert new
     const result = await this.db.query(`
-      INSERT INTO teams (name, club_id, city, logo_url, source_system_id, external_id)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO teams (name, division_id, club_id, city, logo_url, source_system_id, external_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING id
-    `, [row.name, row.club_id, row.city, row.logo_url, row.source_system_id, row.external_id]);
+    `, [row.name, row.division_id, row.club_id, row.city, row.logo_url, row.source_system_id, row.external_id]);
     
     return { id: result.rows[0].id, inserted: true };
   }

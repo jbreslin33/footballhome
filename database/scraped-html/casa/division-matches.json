@@ -1,5 +1,5 @@
 {
-  "generated": "2026-02-27T20:21:46.093Z",
+  "generated": "2026-03-02T21:23:49.937Z",
   "total_matches": 208,
   "divisions": [
     {
@@ -391,8 +391,8 @@
           "away": "Oaklyn United FC II",
           "time": "12:00 PM - 2:00 PM",
           "date": "2026-03-01T17:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "0 - 1",
           "externalId": "97f6cb8b-e96c-40c8-908c-7811c25bdefd"
         },
         {
@@ -400,8 +400,8 @@
           "away": "Phoenix SCM",
           "time": "12:45 PM - 2:30 PM",
           "date": "2026-03-01T17:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "4 - 3",
           "externalId": "150ab0ff-9a95-42fc-92ab-dea7d680ec59"
         },
         {
@@ -416,10 +416,10 @@
         {
           "home": "Philly BlackStars",
           "away": "Adé United FC",
-          "time": "2:30 PM - 4:15 PM",
-          "date": "2026-03-01T19:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "time": "1:00 PM - 2:45 PM",
+          "date": "2026-03-01T18:00:00.000Z",
+          "status": "Final",
+          "score": "1 - 3",
           "externalId": "0b81a198-cc66-439e-99b0-d2cbfe130cab"
         },
         {
@@ -1020,8 +1020,8 @@
           "away": "Philadelphia SC Select",
           "time": "2:00 PM - 3:30 PM",
           "date": "2026-03-01T19:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 6",
           "externalId": "d39f4e00-03cc-49e8-87c1-d1821fbb098e"
         },
         {
@@ -1029,8 +1029,8 @@
           "away": "Lighthouse Old Timers Club",
           "time": "2:45 PM - 4:15 PM",
           "date": "2026-03-01T19:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 0",
           "externalId": "350f8806-0194-40a3-b301-98c2c835e3ea"
         },
         {
@@ -1693,8 +1693,8 @@
           "away": "Kutztown Men's Soccer\t",
           "time": "11:00 AM - 12:30 PM",
           "date": "2026-03-01T16:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "3 - 0",
           "externalId": "01d4dd60-dd5f-4e4d-8f3b-908604951396"
         },
         {
@@ -1702,8 +1702,8 @@
           "away": "Alloy Soccer Club Reserves\t",
           "time": "2:30 PM - 4:00 PM",
           "date": "2026-03-01T19:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "0 - 3",
           "externalId": "b5527e91-452f-4f12-8cf4-c259251f7cfa"
         },
         {
@@ -1711,8 +1711,8 @@
           "away": "Lancaster Bible College",
           "time": "7:00 PM - 8:30 PM",
           "date": "2026-03-02T00:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "0 - 3",
           "externalId": "6ce2b3f4-1e72-49d1-9410-b9cd1899accf"
         },
         {

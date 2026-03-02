@@ -293,8 +293,16 @@ class CasaRosterScraper {
       }
 
       console.log(`   📖 Reading: ${path.basename(cachePath)}`);
-      const buffer = fs.readFileSync(cachePath);
-      const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+      
+      let workbook;
+      try {
+        const buffer = fs.readFileSync(cachePath);
+        workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+      } catch (err) {
+        console.warn(`   ⚠️  Corrupt/invalid file (${err.message}) — skipping ${divisionName}`);
+        console.warn(`      Re-run scrape to re-download this file`);
+        continue;
+      }
 
       const { players, teamSummaries } = this._parseWorkbook(workbook, sheetConfig, divisionName);
       allPlayers.push(...players);

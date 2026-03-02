@@ -7,6 +7,7 @@
 class ScrapedTeam {
   constructor({ 
     name,
+    divisionId = null,
     clubId = null,
     city = null,
     logoUrl = null,
@@ -14,6 +15,7 @@ class ScrapedTeam {
     externalId = null
   }) {
     this.name = name;
+    this.divisionId = divisionId;
     this.clubId = clubId;
     this.city = city;
     this.logoUrl = logoUrl;
@@ -32,6 +34,7 @@ class ScrapedTeam {
   toDbRow() {
     return {
       name: this.name,
+      division_id: this.divisionId,
       club_id: this.clubId,
       city: this.city,
       logo_url: this.logoUrl,

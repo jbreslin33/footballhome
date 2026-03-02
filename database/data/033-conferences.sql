@@ -12,7 +12,10 @@ INSERT INTO conferences (id, season_id, name) VALUES
 (4, 1, 'Delaware River Conference'),
 (5, 1, 'Mid-Atlantic Conference'),
 (6, 1, 'Terminus Conference'),
-(7, 1, 'Trinity Conference');
+(7, 1, 'Trinity Conference'),
+(36, 1, 'Mid-Atlantic Conference Fall'),
+(37, 1, 'Mid-Atlantic Conference Spring'),
+(39, 1, 'Mitten Conference');
 
 -- APSL 2024/2025 Conferences
 INSERT INTO conferences (id, season_id, name) VALUES

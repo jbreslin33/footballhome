@@ -2810,11 +2810,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-01T19:00:00.000Z",
     "end_date_time": "2026-03-01T20:30:00.000Z",
     "created_at": "2026-02-23T21:57:27.000Z",
-    "updated_at": "2026-02-23T21:57:30.000Z",
+    "updated_at": "2026-03-02T15:04:12.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -2826,11 +2826,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c16-b122-1f5c-adba-aa423833d9df",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
-        "away_team_score": "",
+        "away_team_score": "6",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -2838,8 +2838,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -2924,24 +2928,26 @@
     "game_details": {
       "originator_id": "699ccd49a59f580001eed93e",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c16-b122-1f5c-adba-aa423833d9df",
         "originator_id": "69948b6e6c4d0bddc5325cdb",
         "name": "Sewell's Old Boys ",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f089c7-d6be-f6b2-a2a6-cabfdee30661",
         "originator_id": "68b9ec8f99aa1400fcdcee33",
         "name": "Philadelphia SC Select",
-        "score": "",
-        "is_home_team": false
+        "score": "6",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -2951,15 +2957,15 @@
     "event_type": "game",
     "description": "",
     "location_name": "Northeast High School",
-    "location_address": "1601 Cottman Avenue, Philadelphia, PA 19111-3430",
+    "location_address": "1601 Cottman Avenue, Philadelphia, PA 19111-3430, US",
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-01T19:45:00.000Z",
     "end_date_time": "2026-03-01T21:15:00.000Z",
     "created_at": "2026-02-23T21:57:27.000Z",
-    "updated_at": "2026-02-23T21:57:29.000Z",
+    "updated_at": "2026-03-02T19:22:00.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -2971,11 +2977,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
-        "home_team_score": "",
+        "home_team_score": "1",
         "away_team_id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -2983,8 +2989,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -3069,24 +3079,26 @@
     "game_details": {
       "originator_id": "699ccd48a5687f00013c61e0",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f089c7-d6b5-a12a-a76f-e61f3017bc57",
         "originator_id": "68b9ec8f9716a100fc8d454e",
         "name": "Persepolis United FC II",
-        "score": "",
-        "is_home_team": true
+        "score": "1",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f089c7-d68f-e4bc-a2a3-cabfdee30661",
         "originator_id": "68b9ec8f1f736300fa2e7142",
         "name": "Lighthouse Old Timers Club",
-        "score": "",
-        "is_home_team": false
+        "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },

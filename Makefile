@@ -198,9 +198,32 @@ events-csl:
 
 # ============================================================
 # Sync (primary workflow: scrape → parse → UPSERT, idempotent)
+#
+# Full sync runs in 3 phases:
+#   Phase 1: Scrape all leagues in parallel (network I/O)
+#   Phase 2: Parse in dependency order (curation chain: APSL → CSL → CASA)
+#   Phase 3: Load in dependency order
+#
+# Individual sync-* targets still run sequentially per league.
 # ============================================================
 
-sync: sync-apsl sync-csl sync-casa
+sync:
+	@echo "⏬ Phase 1: Scraping all leagues in parallel..."
+	@$(MAKE) scrape-apsl & $(MAKE) scrape-csl & $(MAKE) scrape-casa & wait
+	@echo ""
+	@echo "✓ All leagues scraped"
+	@echo ""
+	@echo "📝 Phase 2: Parsing in dependency order..."
+	@$(MAKE) parse-apsl
+	@$(MAKE) parse-csl
+	@$(MAKE) parse-casa
+	@echo ""
+	@echo "✓ All leagues parsed"
+	@echo ""
+	@echo "📥 Phase 3: Loading in dependency order..."
+	@$(MAKE) load-apsl
+	@$(MAKE) load-csl
+	@$(MAKE) load-casa
 	@echo ""
 	@echo "✓ All leagues synced"
 
