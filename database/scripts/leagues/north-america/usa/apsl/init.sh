@@ -9,7 +9,7 @@
 # Prerequisites:
 #   - Cached HTML in database/scraped-html/apsl/ (run scrape.sh first)
 #   - Database running with bootstrap data + APSL SQL loaded
-#     (make rebuild && make load-apsl)
+#     (make dev-reset)
 #
 # Steps:
 #   1. Parse HTML → generate SQL files (100-107, offline)

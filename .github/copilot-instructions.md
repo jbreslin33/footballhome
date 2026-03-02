@@ -47,44 +47,37 @@
 ### Makefile Targets (run `make help` for full list)
 | Category | Command | Description |
 |----------|---------|-------------|
-| **Standard** | `make` / `make up` | Start containers (safe, non-destructive) |
-| | `make build` | Build images and start containers |
-| | `make rebuild` | Nuclear: clean + build fresh (wipes all data) |
+| **Sync** | `make sync` | Sync all leagues: scrape → parse → UPSERT (idempotent) |
+| | `make sync-apsl/csl/casa` | Sync individual league |
+| **Dev** | `make dev-reset` | Fresh DB from scratch: rebuild + load all |
+| | `make up` / `make build` | Start / build+start containers |
 | | `make down` / `make clean` | Stop / destroy containers |
-| **Daily use** | `make load` | Load all committed SQL into DB |
-| | `make load-apsl` | Load APSL only |
-| | `make load-csl` | Load CSL only (needs APSL loaded) |
-| | `make load-casa` | Load CASA only (needs APSL+CSL loaded) |
-| **League init** | `make init` | Init all leagues (requires `make rebuild` first) |
-| | `make init-apsl` | Full APSL: parse → curate → load → events → export |
-| | `make init-csl` | Full CSL: parse → curate → load → events → export |
-| | `make init-casa` | Full CASA: parse → curate → load (no events yet) |
-| **Parse only** | `make parse` | Regenerate SQL from cached HTML (all leagues, no DB needed) |
-| | `make parse-apsl/csl/casa` | Parse individual league |
-| **Events** | `make events` | Scrape match events for APSL + CSL |
-| | `make events-apsl/csl` | Scrape events for individual league |
-| **Scrape** | `make scrape` | Fetch fresh HTML from web (all leagues) |
+| | `make shell-db` | Connect to database shell |
+| | `make ps` / `make logs` | Show containers / view logs |
+| | `make audit` | Run data quality audit |
+| **Pipeline steps** | `make scrape` | Fetch fresh HTML from web (all leagues) |
 | | `make scrape-apsl/csl/casa` | Scrape individual league |
-| **Workflows** | `make rebuild && make load` | Fresh DB from committed SQL |
-| | `make rebuild && make init` | Full init from cached HTML |
-| | `make refresh` | parse + rebuild + load (fast refresh) |
+| | `make parse` | Regenerate SQL from cached HTML (all leagues, no DB needed) |
+| | `make parse-apsl/csl/casa` | Parse individual league |
+| | `make load` | Load/UPSERT all league SQL into database |
+| | `make load-apsl/csl/casa` | Load individual league |
+| | `make events` | Scrape match events for APSL + CSL |
+| | `make events-apsl/csl` | Scrape events for individual league |
 | **Backup** | `make backup` | pg_dump → backups/backup-YYYYMMDD-HHMMSS.sql |
 | | `make restore` | Restore latest backup (or `BACKUP=file.sql`) |
 | | `make safe-rebuild` | Backup + rebuild (safety net for live data) |
-| **Dev** | `make shell-db` | Connect to database shell |
-| | `make ps` / `make logs` | Show containers / view logs |
-| | `make audit` | Run data quality audit |
 
 ### Common Workflows
 
-**Fresh database from committed SQL (most common):**
+**Sync a league (primary workflow — idempotent, safe to run anytime):**
 ```bash
-make rebuild && make load
+make sync-apsl    # scrape → parse → UPSERT for APSL
+make sync         # all leagues in dependency order
 ```
 
-**Full init from cached HTML (one-time onboarding or re-scrape):**
+**Fresh development database (wipes everything, starts clean):**
 ```bash
-make rebuild && make init
+make dev-reset    # clean + build + load all leagues
 ```
 
 **Regenerate SQL without touching DB:**
@@ -92,47 +85,34 @@ make rebuild && make init
 make parse   # regenerates sql/ files from cached HTML
 ```
 
-**Fetch fresh HTML from web, then rebuild everything:**
+**Fetch fresh HTML from web, then load into existing DB:**
 ```bash
-make scrape
-make rebuild && make init
+make sync-apsl   # scrape + parse + UPSERT (idempotent)
 ```
 
 ### Data Management Philosophy
 
-**Two phases of data management:**
+**Single idempotent pipeline per league:**
 
-#### Phase 1: League Onboarding (SQL files)
-Used only when adding a new league. SQL files enable iterative development:
-```
-scrape → parse → generate SQL → review diff → fix parser → repeat until correct
-make rebuild && make load  (iterate from scratch each time)
-```
-- SQL files are committed to git so you can review diffs between iterations
-- Once the league data is verified and loaded, SQL files become a historical snapshot
-- SQL files are NEVER re-run on a live database after initial load
+All SQL uses `ON CONFLICT ... DO UPDATE` (UPSERT), so the same command works for both initial load and updates. There is no separate "onboarding" vs "update" path.
 
-#### Phase 2: Live Operation (pg_dump + direct DB updates)
-Once leagues are loaded and users are creating data (RSVPs, practices, attendance):
+```bash
+make sync-apsl    # scrape → parse → UPSERT (works on empty or populated DB)
 ```
-make backup                    # snapshot before any update
-make update-apsl               # scrape → UPSERT directly into live DB
-```
-- **pg_dump is the source of truth** — captures everything (schema + league data + user data)
-- League updates (standings, scores, rosters) go directly into the live DB via scraper → UPSERT
-- User-generated data (RSVPs, practices, chat) lives only in the DB — never in SQL files
-- If an update goes wrong: `make restore`, fix parser, retry
-- League websites are always available to re-scrape — scraper errors are recoverable
+
+- SQL files are committed to git — you can review diffs between scrapes
+- Curation rules (`clubFamilies` in config.json) are the living asset that grows over time
+- League websites are always available to re-scrape — errors are recoverable
 
 **Three categories of data:**
 
 | Category | Source | Update Method | Recoverable? |
 |----------|--------|---------------|-------------|
-| Bootstrap (schema, lookups) | `database/data/` SQL files | `make rebuild` | Always — from git |
-| League data (standings, matches, rosters) | League websites | Scrape → UPSERT into live DB | Always — re-scrape from website |
+| Bootstrap (schema, lookups) | `database/data/` SQL files | `make dev-reset` | Always — from git |
+| League data (standings, matches, rosters) | League websites | `make sync-*` (UPSERT) | Always — re-scrape from website |
 | User data (RSVPs, practices, attendance) | User input in app | Written by backend to DB | Only from pg_dump backup |
 
-**Two tiers of SQL files (Phase 1 only):**
+**Two tiers of SQL files:**
 
 1. **Bootstrap Data** (`database/data/` — loaded by `./build.sh`):
    - Schema definitions (`00-schema.sql`)
@@ -142,11 +122,10 @@ make update-apsl               # scrape → UPSERT directly into live DB
    - These are permanent — needed for every rebuild
 
 2. **League Data** (`database/scripts/leagues/<continent>/<country>/<league>/sql/` — loaded by `make load`):
-   - Generated from scraped HTML during league onboarding
+   - Generated from scraped HTML by `make parse`
    - Per-league SQL files numbered 100-109
-   - Committed to git as a snapshot of the initial load
-   - Only used during onboarding iteration and fresh dev rebuilds
-   - NOT re-run on a live database — updates go directly to DB
+   - All use `ON CONFLICT ... DO UPDATE` (UPSERT) — safe to re-run anytime
+   - Committed to git so you can review diffs between scrapes
 
 **SQL File Numbering per League:**
 | File | Content |
@@ -164,8 +143,7 @@ make update-apsl               # scrape → UPSERT directly into live DB
 | `900-*-curation.sql` | Cross-league deduplication (UPDATE statements) |
 
 **Data Restoration:**
-- Development reset: `make rebuild && make load` (fresh DB from git — wipes user data)
-- Full re-init: `make rebuild && make init` (re-parse from cached HTML — wipes user data)
+- Development reset: `make dev-reset` (fresh DB from git + all league SQL)
 - Live restore: `make restore` (latest pg_dump) or `make restore BACKUP=file.sql`
 - Safe rebuild: `make safe-rebuild && make load` (pg_dump before wipe)
 
@@ -173,12 +151,12 @@ make update-apsl               # scrape → UPSERT directly into live DB
 - `make backup` runs pg_dump → `backups/backup-YYYYMMDD-HHMMSS.sql`
 - Captures everything: schema + league data + user data
 - `backups/` is gitignored — snapshots are local insurance
-- **Always run `make backup` before any update or rebuild**
+- **Always run `make backup` before any destructive operation**
 - pg_dump is the source of truth for live databases
-- `make rebuild && make load` is for dev resets only (destroys user data)
+- `make dev-reset` is for dev resets only (destroys user data)
 
 ### Database Changes
-- **Schema Changes**: Update `00-schema.sql`, then `make rebuild` to apply
+- **Schema Changes**: Update `00-schema.sql`, then `make dev-reset` to apply
 - **Manual Static Data**: Add/update numbered SQL files in `database/data/` (e.g., `024-admins.sql`)
 - **Alphabetical Execution**: SQL files load alphabetically during initialization
 - **File Numbering**: Use prefixes (a/b/c) when order matters (e.g., `020-persons.sql`, `020a-players.sql`)
@@ -312,8 +290,8 @@ When a new season starts:
 2. Add new conferences to `033-conferences.sql` (if structure changed)
 3. Add new divisions to `034-divisions.sql`
 4. Update `activeSeason` in each league's `config.json`
-5. Run `make rebuild` to apply bootstrap changes
-6. Run `make scrape` → `make init` to generate new season data
+5. Run `make dev-reset` to apply bootstrap changes
+6. Run `make sync` to scrape + parse + load new season data
 
 ### Adding a New League
 1. Create directory: `database/scripts/leagues/<continent>/<country>/<league>/`
@@ -321,8 +299,8 @@ When a new season starts:
 3. Add season/conference/division rows to bootstrap SQL (`032-034`)
 4. Implement `generate-sql.js`, `curate-sql.js`, `scrape.sh`, `parse.sh`, `load.sh`, `init.sh`
 5. Add `curateAgainst` entries in `config.json` for upstream league slugs
-6. Add Makefile targets: `init-<league>`, `load-<league>`, `parse-<league>`
-7. Update `init`, `load`, `parse`, `scrape` to include new league in dependency order
+6. Add Makefile targets: `sync-<league>`, `load-<league>`, `parse-<league>`, `scrape-<league>`
+7. Update `sync`, `load`, `parse`, `scrape` to include new league in dependency order
 
 ## 📝 Coding Conventions
 

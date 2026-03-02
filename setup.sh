@@ -5,7 +5,7 @@
 # Run this ONCE when first cloning the repository.
 #
 # After this script completes, use:
-#   make rebuild && make load   # Build containers and load data
+#   make dev-reset              # Build containers and load data
 #
 
 set -e
@@ -440,7 +440,7 @@ echo ""
 echo "Next steps:"
 echo ""
 echo "  1. Build containers and load data:"
-echo -e "     ${YELLOW}make rebuild && make load${NC}"
+echo -e "     ${YELLOW}make dev-reset${NC}"
 echo ""
 echo "  2. Once running, open in your browser:"
 echo -e "     ${YELLOW}http://localhost:3000${NC}"

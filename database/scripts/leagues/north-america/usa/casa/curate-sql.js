@@ -225,7 +225,7 @@ class CasaSqlCurator extends BaseSqlCurator {
     );
 
     for (const org of newOrgs) {
-      sql.organizations += `INSERT INTO organizations (id, name) VALUES (${org.id}, '${this.escapeSql(org.name)}') ON CONFLICT (id) DO NOTHING;\n`;
+      sql.organizations += `INSERT INTO organizations (id, name) VALUES (${org.id}, '${this.escapeSql(org.name)}') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;\n`;
     }
 
     // Clubs: Only new CASA-only clubs
@@ -235,7 +235,7 @@ class CasaSqlCurator extends BaseSqlCurator {
     );
 
     for (const club of newClubs) {
-      sql.clubs += `INSERT INTO clubs (id, name, organization_id) VALUES (${club.id}, '${this.escapeSql(club.name)}', ${club.organizationId}) ON CONFLICT (id) DO NOTHING;\n`;
+      sql.clubs += `INSERT INTO clubs (id, name, organization_id) VALUES (${club.id}, '${this.escapeSql(club.name)}', ${club.organizationId}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;\n`;
     }
 
     // Teams: NEW SCHEMA - copy INSERT...SELECT statements and update club_id

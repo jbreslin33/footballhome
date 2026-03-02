@@ -2,65 +2,99 @@
 
 A comprehensive team management system for football/soccer leagues, built with C++, Vanilla JavaScript, and PostgreSQL.
 
-## 🚀 Quick Start
+## 🚀 Quick Start (New Machine)
 
 ### Prerequisites
 
-- Podman (Docker alternative, no rate limits)
-- Node.js (for data scraping)
+- macOS or Linux
 - Git
 
-### Initial Setup
+### First-Time Setup (4 steps, then syncs forever)
 
 ```bash
-# 1. Clone repository
+# Step 1: Clone
 git clone https://github.com/jbreslin33/footballhome.git
 cd footballhome
 
-# 2. Run first-time setup (installs Podman, Node, etc.)
-./setup.sh
-
-# 3. Copy env template and fill in credentials
+# Step 2: Credentials
 cp .env.example env
 # Edit env with your Twilio / Google OAuth / Docker Hub credentials (optional)
 
-# 4. Build and start (fresh DB from committed SQL)
-make rebuild && make load
+# Step 3: Install system dependencies (Podman, Node.js, npm packages)
+./setup.sh
 
-# Access at http://localhost:3000
+# Step 4: Build images + start containers (DB auto-loads schema + bootstrap data)
+make build
 ```
 
-**Note**: The `env` file (gitignored) holds optional credentials (Twilio, Google OAuth, Docker Hub). Copy `.env.example` to `env` and fill in values as needed.
-
-**Podman/Docker**: This project defaults to Podman but supports Docker as a fallback.
-
-## 🔧 Development Workflows
+You now have a running system at **http://localhost:3000** with an empty database (schema + lookup tables only).
 
 ```bash
-# Fresh DB from committed SQL (most common)
-make rebuild && make load
-
-# Full init from cached HTML (one-time or re-scrape)
-make rebuild && make init
-
-# Regenerate SQL from cached HTML (no DB needed)
-make parse
-
-# Fetch fresh HTML from web, then rebuild
-make scrape && make rebuild && make init
-
-# Quick refresh (parse + rebuild + load)
-make refresh
-
-# Safe rebuild with backup first
-make safe-rebuild && make load
-
-# Start/stop without rebuilding
-make up          # Start containers
-make down        # Stop containers
+# From here on, it's just syncs (run these now AND every week):
+make sync-apsl
+make sync-csl
+make sync-casa
 ```
 
-See `make help` for all available targets.
+**What each step does:**
+
+| Step | Command | What it does | Run again? |
+|------|---------|-------------|------------|
+| 1 | `git clone` | Gets the code | Never |
+| 2 | `cp .env.example env` | Creates credentials file | Never |
+| 3 | `./setup.sh` | Installs Podman, Node.js, npm packages, vis-network | Never (unless new machine) |
+| 4 | `make build` | Builds Docker images, starts containers, DB loads schema | Only if images change |
+| 5+ | `make sync-*` | Scrape → parse → curate → UPSERT league data | Weekly (or whenever you want fresh data) |
+
+## 🔄 Ongoing Workflow
+
+### Weekly League Update (non-destructive, idempotent)
+
+```bash
+make backup              # safety net (pg_dump → backups/)
+make sync-apsl           # scrape → parse → curate → UPSERT
+make sync-csl            # scrape → parse → curate → UPSERT
+make sync-casa           # scrape → parse → curate → UPSERT
+```
+
+Each `sync` command is **fully isolated** to one league. Running it on an empty DB does a full load. Running it on a live DB updates changed data. User-generated data (RSVPs, tactical boards, practices) is never touched.
+
+### Fix a Curation Issue
+
+```bash
+# Edit the league's config.json to add a clubFamilies entry
+# e.g., "falco fc": "falcons" in csl/config.json
+
+make parse-csl           # re-generate SQL with new curation rule
+make sync-csl            # UPSERT corrected data (or just: make sync-csl does both)
+```
+
+### Debugging Sub-Steps
+
+```bash
+make scrape-apsl         # fetch HTML only (no parse or load)
+make parse-apsl          # regenerate SQL from cached HTML only
+make audit               # run data quality checks
+make shell-db            # connect to database shell
+```
+
+### Backup & Restore
+
+```bash
+make backup              # pg_dump → backups/backup-YYYYMMDD-HHMMSS.sql
+make restore             # restore latest (or BACKUP=file.sql)
+```
+
+### Dev Reset (destructive — wipes ALL data)
+
+```bash
+make dev-reset           # nuclear: destroys DB volume, rebuilds from scratch
+make sync-apsl           # re-sync leagues
+make sync-csl
+make sync-casa
+```
+
+⚠️ This destroys all user-generated data. Use `make backup` first if needed.
 
 ## 🏗️ Architecture
 
@@ -69,9 +103,16 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 ```
 
 **Stack:**
-- **Frontend**: Vanilla JavaScript FSM-based UI (port 3000)
+- **Frontend**: Vanilla JavaScript FSM-based SPA (port 3000)
 - **Backend**: Custom C++ HTTP server (port 3001)
-- **Database**: PostgreSQL with league data (port 5432)
+- **Database**: PostgreSQL 15 with pg_cron (port 5432)
+
+### Design Principles
+
+1. **Leagues are isolated** — each league has its own sync command, its own SQL files, its own scraper. Syncing one league never touches another.
+2. **Everything is idempotent** — `make sync-*` uses UPSERT (`ON CONFLICT DO UPDATE`). Run it once or a hundred times, same result.
+3. **Curation rules are the real asset** — scrapers and parsers are plumbing. The `clubFamilies` mappings in each league's `config.json` are what make cross-league deduplication work correctly. These grow over time as new edge cases are found.
+4. **User data is sacred** — league syncs never delete user-generated data (RSVPs, practices, tactical boards, chat).
 
 ## 🔐 Demo Login
 
@@ -83,29 +124,32 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 ```
 ├── frontend/                  # Vanilla JS frontend with FSM
 │   ├── js/
-│   │   ├── screens/          # Screen state machines
+│   │   ├── screens/          # Screen components (extend Screen base class)
 │   │   ├── screen-manager.js # FSM controller
 │   │   └── app.js            # Application entry
 │   └── css/
 ├── backend/                   # C++ HTTP server
 │   ├── src/
-│   │   ├── core/             # HTTP framework
+│   │   ├── core/             # HTTP framework (Router, Request, Response)
 │   │   ├── controllers/      # Route handlers
 │   │   ├── services/         # Business logic
 │   │   ├── models/           # Database models
 │   │   └── database/         # PostgreSQL client
 │   └── CMakeLists.txt
 ├── database/
-│   ├── data/                 # Bootstrap SQL (schema + lookups)
+│   ├── data/                 # Bootstrap SQL (schema + lookups + seasons + admin users)
 │   ├── scraped-html/         # Cached HTML from league websites
 │   └── scripts/
-│       ├── leagues/          # Per-league pipeline (generate-sql, curate-sql, etc.)
-│       │   └── north-america/usa/{apsl,csl,casa}/
-│       ├── scrapers/         # Web scrapers (structure + event scrapers)
+│       ├── leagues/          # Per-league pipelines
+│       │   └── north-america/usa/
+│       │       ├── apsl/     # config.json, scrape.sh, parse.sh, generate-sql.js, curate-sql.js, load.sh, sql/
+│       │       ├── csl/
+│       │       └── casa/
+│       ├── scrapers/         # Match event scrapers
 │       ├── domain/           # Domain models + repositories
 │       └── infrastructure/   # Parsers + fetchers
 ├── backups/                  # pg_dump snapshots (gitignored)
-├── Makefile                  # All build/load/parse/init targets
+├── Makefile                  # All targets (make help for full list)
 └── docker-compose.yml        # Container orchestration
 ```
 
@@ -114,7 +158,7 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 ### League Management
 - **Multi-League Support**: APSL, CSL, CASA with automated scraping and SQL generation
 - **Division Tracking**: Conferences, divisions, standings per league
-- **Cross-League Curation**: Automatic deduplication of shared clubs across leagues
+- **Cross-League Curation**: Automatic deduplication of shared clubs via `clubFamilies` rules
 
 ### Team Management
 - **Roster Management**: Track players, jersey numbers, positions
@@ -124,57 +168,109 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 ### Event Management
 - **Practice Scheduling**: Create and manage team practices
 - **Match Tracking**: View upcoming and past matches from league schedule
-- **RSVP System**: Players can respond to events
+- **RSVP System**: Players can respond to events (SMS + in-app)
 
 ## 🗄️ Data Pipeline
 
-### Two Phases
+### How Sync Works
 
-**Phase 1: League Onboarding** (SQL files for iterative development)
-```
-Web → make scrape → cached HTML → make parse → SQL files → review → iterate
-make rebuild && make load   (fresh DB from SQL each iteration)
-```
-SQL files are committed to git for diff review during onboarding. Once a league is loaded and verified, its SQL files become a historical snapshot.
+Every league follows the same pipeline:
 
-**Phase 2: Live Operation** (pg_dump + direct DB updates)
 ```
-make backup                 # always backup first
-make update-apsl            # scrape → UPSERT directly into live DB (future)
-make restore                # roll back if something went wrong
+Website → Scrape HTML → Parse → Generate SQL → Curate (cross-league dedup) → UPSERT into DB
 ```
-pg_dump is the source of truth for live databases. User data (RSVPs, practices) lives only in the DB.
 
-### Backup Strategy
-```bash
-make backup         # pg_dump → backups/backup-YYYYMMDD-HHMMSS.sql
-make restore        # Restore latest (or BACKUP=file.sql)
-make safe-rebuild   # Backup + rebuild (safety net)
+This is triggered by a single command per league: `make sync-apsl`
+
+### Three Categories of Data
+
+| Category | Source | Sync method | Recoverable? |
+|----------|--------|-------------|-------------|
+| Bootstrap (schema, lookups, seasons) | `database/data/*.sql` | Auto-loaded on first DB start | Always — from git |
+| League data (teams, matches, standings, rosters) | League websites | `make sync-*` (scrape → UPSERT) | Always — re-scrape from website |
+| User data (RSVPs, practices, tactical boards) | User input in app | Written by backend to DB | Only from `make backup` |
+
+### Curation Rules (the real asset)
+
+Each league's `config.json` contains `clubFamilies` — explicit mappings that tell the system which team names across leagues are the same club:
+
+```json
+{
+  "clubFamilies": {
+    "lighthouse boys club": "lighthouse-1893-sc",
+    "lighthouse old timers club": "lighthouse-1893-sc",
+    "falco fc": "falcons"
+  }
+}
 ```
+
+The curation chain runs in dependency order:
+- **APSL** — baseline (no dedup needed)
+- **CSL** — curates against APSL clubs
+- **CASA** — curates against APSL + CSL clubs
+
+When you find a duplicate or mismatch, add a `clubFamilies` entry and re-sync. The rule is permanent — it fixes that edge case forever.
+
+### External Source Systems
+
+| Source | What it provides | Sync command |
+|--------|-----------------|--------------|
+| APSL website | clubs, teams, matches, standings, rosters | `make sync-apsl` |
+| CSL website | clubs, teams, matches, standings, rosters | `make sync-csl` |
+| CASA website | clubs, teams, matches, standings, rosters | `make sync-casa` |
+| GroupMe API | group members, calendar events, RSVPs | `node scripts/import-all-groupme-users.js` |
+
+All sources follow the same pattern: fetch → parse → curate → UPSERT.
 
 ## 🐳 Container Services
 
 ```bash
 make ps             # Show running containers
-make logs           # View logs
+make logs           # View all logs
+make logs-db        # View database logs
+make logs-backend   # View backend logs
 make shell-db       # Connect to database shell
-
-# Access database directly
-podman exec -it footballhome_db psql -U footballhome footballhome
+make up             # Start containers (no rebuild)
+make down           # Stop containers
 ```
 
-##  Troubleshooting
+## 🔧 Troubleshooting
 
 ```bash
-# Check database logs
-make logs
+# Check what's running
+make ps
 
-# Force full rebuild
-make rebuild && make load
+# View logs for errors
+make logs-backend
 
-# Run data audit
+# Run data quality audit
 make audit
+
+# Check for duplicate clubs
+make shell-db
+# Then: SELECT name, count(*) FROM clubs GROUP BY name HAVING count(*) > 1;
+
+# If a sync broke something
+make restore        # roll back to last backup
 ```
+
+## 📋 Make Targets Reference
+
+Run `make help` for the full list. Key targets:
+
+| Target | Description |
+|--------|-------------|
+| `make sync-apsl` | Full sync: scrape → parse → curate → UPSERT |
+| `make sync-csl` | Full sync for CSL |
+| `make sync-casa` | Full sync for CASA |
+| `make build` | Build images + start containers |
+| `make up` / `make down` | Start / stop containers |
+| `make backup` / `make restore` | pg_dump snapshot / restore |
+| `make scrape-apsl` | Fetch HTML only |
+| `make parse-apsl` | Regenerate SQL from cached HTML only |
+| `make shell-db` | Database shell |
+| `make audit` | Data quality checks |
+| `make dev-reset` | Nuclear: destroy + rebuild (wipes all data) |
 
 ## 🤝 Contributing
 

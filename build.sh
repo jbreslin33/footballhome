@@ -4,10 +4,10 @@
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
 # Builds container images, starts services, and waits for health checks.
-# Called by: make rebuild (which runs make clean first)
+# Called by: make rebuild / make dev-reset (which runs make clean first)
 #
 # Usage:
-#   make rebuild            # Recommended: clean + build (via Makefile)
+#   make dev-reset          # Recommended: clean + build + load (via Makefile)
 #   ./build.sh              # Build only (assumes already cleaned)
 #   ./build.sh --backend    # Rebuild backend only (fast iteration)
 #
@@ -138,13 +138,7 @@ echo -e "${BLUE}Note: To load league data, run: make load${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 1: Install dependencies
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-echo -e "${YELLOW}📦 Installing npm dependencies...${NC}"
-npm install --silent
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 2: BUILD
+# STEP 1: BUILD
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo -e "${YELLOW}🔨 Building images...${NC}"
 $DOCKER_COMPOSE build
@@ -152,7 +146,7 @@ echo -e "${GREEN}✓ Build complete${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 3: START
+# STEP 2: START
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo -e "${YELLOW}🚀 Starting containers...${NC}"
 
@@ -184,7 +178,7 @@ echo -e "${GREEN}✓ Containers started${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# STEP 4: WAIT FOR SERVICES
+# STEP 3: WAIT FOR SERVICES
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 echo -e "${YELLOW}⏳ Waiting for services...${NC}"
 

@@ -10,7 +10,7 @@
 #   - Cached HTML in database/scraped-html/csl/ (run scrape.sh first)
 #   - APSL must be parsed first (curate reads APSL sql/ files)
 #   - Database running with bootstrap data + APSL + CSL SQL loaded
-#     (make rebuild && make load-apsl && make load-csl)
+#     (make dev-reset)
 #
 # Steps:
 #   1. Parse HTML → generate SQL files (100-107, offline)

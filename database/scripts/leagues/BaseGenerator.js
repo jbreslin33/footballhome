@@ -326,9 +326,9 @@ ON CONFLICT (team_id) DO UPDATE SET
    * Generates SQL file 105-players-{league}.sql
    * 
    * NEW: Uses auto-generated IDs with name-based conflict resolution.
-   * - persons: ON CONFLICT (first_name, last_name) DO NOTHING
+   * - persons: ON CONFLICT (first_name, last_name) DO UPDATE (fill birth_date)
    * - players: ON CONFLICT (person_id) DO NOTHING (one player per person)
-   * - player_sources: tracks which source system each player came from
+   * - player_sources: ON CONFLICT DO UPDATE (track team changes)
    */
   writePlayersSql() {
     const fs = require('fs');
@@ -355,10 +355,11 @@ ON CONFLICT (team_id) DO UPDATE SET
       const lastName = player.lastName || '';
       const birthDate = player.dateOfBirth ? `'${player.dateOfBirth}'` : 'NULL';
       
-      // 1. Insert person (auto-gen ID, skip if name already exists)
+      // 1. Insert person (auto-gen ID, fill birth_date if missing)
       sql += `INSERT INTO persons (first_name, last_name, birth_date) 
 VALUES ('${this.escapeSql(firstName)}', '${this.escapeSql(lastName)}', ${birthDate}) 
-ON CONFLICT (first_name, last_name) DO NOTHING;\n`;
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);\n`;
       
       // 2. Insert player (auto-gen ID, one per person, skip if person already has a player record)
       sql += `INSERT INTO players (person_id, source_system_id) 
@@ -376,7 +377,8 @@ SELECT pl.id, ${this.sourceSystemId}, '${this.escapeSql(externalId)}', ${teamExt
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = '${this.escapeSql(firstName)}' AND per.last_name = '${this.escapeSql(lastName)}' 
-ON CONFLICT (source_system_id, external_id) DO NOTHING;\n\n`;
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;\n\n`;
     }
 
     const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `105.${this.leagueId}-players-${this.getLeagueSlug()}.sql`);
@@ -427,7 +429,8 @@ FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
 WHERE t.name = '${this.escapeSql(teamName)}' AND t.source_system_id = ${this.sourceSystemId}
   AND per.first_name = '${this.escapeSql(firstName)}' AND per.last_name = '${this.escapeSql(lastName)}'
-ON CONFLICT (team_id, player_id, joined_at) DO NOTHING;\n\n`;
+ON CONFLICT (team_id, player_id, joined_at) DO UPDATE SET
+  jersey_number = EXCLUDED.jersey_number;\n\n`;
     }
 
     const outputPath = path.join(__dirname, this.getLeagueFolder(), 'sql', `107.${this.leagueId}-rosters-${this.getLeagueSlug()}.sql`);

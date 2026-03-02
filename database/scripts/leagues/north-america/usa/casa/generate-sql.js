@@ -155,7 +155,7 @@ class CasaSqlGenerator extends BaseGenerator {
 
     let id = this.orgIdBase;
     for (const [name, org] of this.organizations) {
-      sql += `INSERT INTO organizations (id, name) VALUES (${id}, '${this.escapeSql(name)}') ON CONFLICT (id) DO NOTHING;\n`;
+      sql += `INSERT INTO organizations (id, name) VALUES (${id}, '${this.escapeSql(name)}') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;\n`;
       org.id = id;
       id++;
     }
@@ -179,7 +179,7 @@ class CasaSqlGenerator extends BaseGenerator {
     let id = this.clubIdBase;
     for (const [name, club] of this.clubs) {
       const org = this.organizations.get(club.organizationName);
-      sql += `INSERT INTO clubs (id, name, organization_id) VALUES (${id}, '${this.escapeSql(name)}', ${org.id}) ON CONFLICT (id) DO NOTHING;\n`;
+      sql += `INSERT INTO clubs (id, name, organization_id) VALUES (${id}, '${this.escapeSql(name)}', ${org.id}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;\n`;
       club.id = id;
       id++;
     }
@@ -218,7 +218,10 @@ JOIN seasons s ON d.season_id = s.id
 WHERE d.name = '${this.escapeSql(team.divisionName)}'
   AND s.name = '${this.getSeasonName()}'
   AND s.league_id = ${this.getLeagueId()}
-ON CONFLICT (division_id, name) DO NOTHING;\n`;
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;\n`;
     }
 
     const outputPath = path.join(__dirname, 'sql', `102.${this.leagueId}-teams-casa.sql`);
@@ -508,7 +511,12 @@ SELECT
 FROM teams ht
 JOIN teams at ON at.external_id = '${this.escapeSql(match.awayTeamExternalId)}' AND at.source_system_id = ${match.sourceSystemId}
 WHERE ht.external_id = '${this.escapeSql(match.homeTeamExternalId)}' AND ht.source_system_id = ${match.sourceSystemId}
-ON CONFLICT (source_system_id, external_id) DO NOTHING;\n\n`;
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;\n\n`;
     }
 
     const outputPath = path.join(__dirname, 'sql', `106.${this.leagueId}-matches-casa.sql`);

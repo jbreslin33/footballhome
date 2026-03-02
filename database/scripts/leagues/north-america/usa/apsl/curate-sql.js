@@ -149,7 +149,7 @@ class ApslSqlCurator extends BaseSqlCurator {
     
     let sql = '-- APSL Organizations (Curated)\n\n';
     for (const org of newOrgs) {
-      sql += `INSERT INTO organizations (id, name) VALUES (${org.id}, '${org.name}') ON CONFLICT (id) DO NOTHING;\n`;
+      sql += `INSERT INTO organizations (id, name) VALUES (${org.id}, '${org.name}') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;\n`;
     }
     return sql;
   }
@@ -164,7 +164,7 @@ class ApslSqlCurator extends BaseSqlCurator {
     
     let sql = '-- APSL Clubs (Curated)\n\n';
     for (const club of newClubs) {
-      sql += `INSERT INTO clubs (id, name, organization_id) VALUES (${club.id}, '${club.name}', ${club.organizationId}) ON CONFLICT (id) DO NOTHING;\n`;
+      sql += `INSERT INTO clubs (id, name, organization_id) VALUES (${club.id}, '${club.name}', ${club.organizationId}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;\n`;
     }
     return sql;
   }
@@ -179,7 +179,7 @@ class ApslSqlCurator extends BaseSqlCurator {
     let sql = '-- APSL Teams (Curated)\n\n';
     for (const team of teams) {
       const curatedClubId = clubIdMap.get(team.clubId) || team.clubId;
-      sql += `INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (${team.id}, '${team.name}', '${team.externalId}', ${curatedClubId}, ${team.sourceSystemId}) ON CONFLICT (external_id, source_system_id) DO NOTHING;\n`;
+      sql += `INSERT INTO teams (id, name, external_id, club_id, source_system_id) VALUES (${team.id}, '${team.name}', '${team.externalId}', ${curatedClubId}, ${team.sourceSystemId}) ON CONFLICT (external_id, source_system_id) DO UPDATE SET name = EXCLUDED.name, club_id = EXCLUDED.club_id;\n`;
     }
     return sql;
   }

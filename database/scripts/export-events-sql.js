@@ -6,7 +6,7 @@
  * Exports all match_events data (plus auto-created persons/players/rosters)
  * from the live database into SQL files that can be loaded via load.sh.
  * 
- * This ensures `make rebuild` + `make load` gives a complete database
+ * This ensures `make dev-reset` gives a complete database
  * without needing to run live scrapers.
  * 
  * NEW ARCHITECTURE: Uses name-based lookups instead of hardcoded IDs.

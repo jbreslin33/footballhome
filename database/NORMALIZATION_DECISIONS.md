@@ -225,7 +225,7 @@ LEFT JOIN users u ON c.user_id = u.id;
 
 ### **Before Running Migration:**
 1. Review changes in `00-schema.sql`
-2. Test with `make rebuild && make load`
+2. Test with `make dev-reset`
 3. Backup first: `make backup`
 
 ### **Application Changes Required:**

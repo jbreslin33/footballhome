@@ -10,7 +10,7 @@
 #   - Cached data in database/scraped-html/casa/ (run scrape.sh first)
 #   - APSL and CSL must be parsed first (curate reads their sql/ files)
 #   - Database running with bootstrap data + APSL + CSL loaded
-#     (make rebuild && make load-apsl && make load-csl)
+#     (make dev-reset)
 #
 # Steps:
 #   1. Parse JSON → generate SQL files (100-106, offline)
