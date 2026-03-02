@@ -1,6 +1,5 @@
 const path = require('path');
 const fs = require('fs');
-const LeagueSnapshot = require('../update/LeagueSnapshot');
 
 /**
  * CASA Structure Scraper
@@ -13,7 +12,7 @@ const LeagueSnapshot = require('../update/LeagueSnapshot');
  *
  * Standings data: Still uses Puppeteer to scrape the rendered iframe (no API available).
  *
- * Outputs: LeagueSnapshot JSON saved to database/scraped-html/casa/snapshot.json
+ * Outputs: JSON files saved to database/scraped-html/casa/
  *
  * Division pages:
  *   Standings: /season_management_season_page/tab_standings?page_node_id={ext_id}
@@ -391,7 +390,7 @@ class CasaStructureScraper {
   }
 
   /**
-   * Main scrape: fetch all divisions, produce LeagueSnapshot
+   * Main scrape: fetch all divisions, save JSON for generate-sql.js
    */
   async scrape() {
     console.log('\n⚽ CASA Structure Scraper');
@@ -399,11 +398,11 @@ class CasaStructureScraper {
 
     const browser = await this._getBrowser();
 
-    const snapshot = new LeagueSnapshot({
-      league: this.config.leagueSlug,
-      season: this.config.activeSeason,
-      sourceSystemId: this.config.sourceSystemId
-    });
+    const snapshot = {
+      teams: [],
+      standings: [],
+      matches: []
+    };
 
     try {
       for (const division of this.divisions) {
@@ -416,7 +415,7 @@ class CasaStructureScraper {
 
           for (const team of standingsTeams) {
             // Add team
-            snapshot.addTeam({
+            snapshot.teams.push({
               name: team.teamName,
               divisionName: division.name,
               divisionExternalId: division.externalId,
@@ -424,7 +423,7 @@ class CasaStructureScraper {
             });
 
             // Add standing
-            snapshot.addStanding({
+            snapshot.standings.push({
               teamName: team.teamName,
               divisionName: division.name,
               played: team.played,
@@ -447,7 +446,7 @@ class CasaStructureScraper {
           console.log(`   ✓ Schedule: ${matches.length} matches`);
 
           for (const match of matches) {
-            snapshot.addMatch({
+            snapshot.matches.push({
               homeTeam: match.home,
               awayTeam: match.away,
               divisionName: division.name,
@@ -471,24 +470,20 @@ class CasaStructureScraper {
       await this.closeBrowser();
     }
 
-    // Save snapshot
-    const snapshotPath = path.join(this.cacheDir, 'snapshot.json');
-    snapshot.save(snapshotPath);
-    console.log(`\n💾 Snapshot saved: ${snapshotPath}`);
-    console.log(`   Teams: ${snapshot.teams.length}`);
+    // Save JSON formats that generate-sql.js reads
+    this._saveBackwardsCompatible(snapshot);
+
+    console.log(`\n   Teams: ${snapshot.teams.length}`);
     console.log(`   Matches: ${snapshot.matches.length}`);
     console.log(`   Standings: ${snapshot.standings.length}`);
-
-    // Also save in the old JSON formats for backwards compatibility with generate-sql.js
-    this._saveBackwardsCompatible(snapshot);
 
     console.log('\n✅ CASA scrape complete\n');
     return snapshot;
   }
 
   /**
-   * Save data in old JSON format for backwards compatibility with generate-sql.js
-   * This can be removed once generate-sql.js is updated to read LeagueSnapshot
+   * Save scraped data as JSON files that generate-sql.js reads
+   * Produces: division-teams.json, standings-data.json, division-matches.json
    */
   _saveBackwardsCompatible(snapshot) {
     // standings-data.json

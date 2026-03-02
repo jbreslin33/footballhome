@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl refresh init init-apsl init-csl init-casa init-all scrape scrape-apsl scrape-csl scrape-casa update update-apsl update-apsl-dry update-csl update-csl-dry update-casa update-casa-dry baseline-apsl baseline-csl baseline-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa dev-reset
+.PHONY: all help clean build up down rebuild logs test ps shell-db load parse parse-apsl parse-csl parse-casa load-apsl load-csl load-casa events events-apsl events-csl init init-apsl init-csl init-casa scrape scrape-apsl scrape-csl scrape-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa dev-reset
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -123,14 +123,11 @@ init-csl:
 init-casa:
 	@cd database/scripts/leagues/north-america/usa/casa && ./init.sh
 
-# Init all leagues in dependency order (legacy — prefer make sync)
+# Init all leagues in dependency order (includes event scraping — needs DB)
 init: init-apsl init-csl init-casa
 	@echo ""
 	@echo "✓ All leagues initialized"
 	@echo "  SQL files ready to commit in database/scripts/leagues/*/sql/"
-
-# Backwards-compatible alias
-init-all: init
 
 # ============================================================
 # Load (load committed SQL files into database)
@@ -207,10 +204,6 @@ events-csl:
 	@echo "⚽ Scraping CSL match events..."
 	@cd database/scripts/scrapers && node CslMatchEventScraper.js || echo "   ℹ️  CSL event scraper not yet ready"
 
-# Full refresh: parse all, then rebuild DB, then load all
-refresh: parse rebuild load
-	@echo "✓ Full refresh complete (parsed all leagues, fresh DB, loaded all data including events)"
-
 # ============================================================
 # Sync (primary workflow: scrape → parse → UPSERT, idempotent)
 # ============================================================
@@ -235,49 +228,6 @@ sync-casa: scrape-casa parse-casa load-casa
 dev-reset: rebuild load
 	@echo ""
 	@echo "✓ Development reset complete (fresh DB with all league data)"
-
-# ============================================================
-# Update (legacy diff-based targets — prefer make sync-*)
-# ============================================================
-
-update: update-apsl update-csl update-casa
-	@echo "✓ All leagues updated"
-
-update-apsl:
-	@echo "🔄 Updating APSL (scrape → diff → SQL → DB)..."
-	@node database/scripts/leagues/north-america/usa/apsl/update-apsl.js --db
-
-update-apsl-dry:
-	@echo "🔍 APSL update dry run (scrape → diff → preview)..."
-	@node database/scripts/leagues/north-america/usa/apsl/update-apsl.js --dry-run
-
-update-csl:
-	@echo "🔄 Updating CSL (scrape → diff → SQL → DB)..."
-	@node database/scripts/leagues/north-america/usa/csl/update-csl.js --db
-
-update-csl-dry:
-	@echo "🔍 CSL update dry run (scrape → diff → preview)..."
-	@node database/scripts/leagues/north-america/usa/csl/update-csl.js --dry-run
-
-update-casa:
-	@echo "🔄 Updating CASA (scrape → diff → SQL → DB)..."
-	@node database/scripts/leagues/north-america/usa/casa/update-casa.js --db
-
-update-casa-dry:
-	@echo "🔍 CASA update dry run (scrape → diff → preview)..."
-	@node database/scripts/leagues/north-america/usa/casa/update-casa.js --dry-run
-
-baseline-apsl:
-	@echo "📦 Creating APSL baseline snapshot from cached HTML..."
-	@node database/scripts/leagues/north-america/usa/apsl/update-apsl.js --baseline
-
-baseline-csl:
-	@echo "📦 Creating CSL baseline snapshot from cached HTML..."
-	@node database/scripts/leagues/north-america/usa/csl/update-csl.js --baseline
-
-baseline-casa:
-	@echo "📦 Creating CASA baseline snapshot from existing JSON..."
-	@node database/scripts/leagues/north-america/usa/casa/update-casa.js --baseline
 
 # ============================================================
 # Backup & Restore (pg_dump snapshots)

@@ -85,11 +85,8 @@ class ApslSqlGenerator extends BaseGenerator {
     this.writeTeamsSql();
     this.writeStandingsSql();
     this.writePlayersSql();
-    this.writeRostersSql();  // NEW: Write roster relationships
-    this.writeMatchesSql();  // NEW
-    
-    // Save universal JSON snapshot for diff-based updates
-    this.saveSnapshot();
+    this.writeRostersSql();
+    this.writeMatchesSql();
     
     console.log('✓ SQL generation complete\n');
   }
