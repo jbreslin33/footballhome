@@ -1399,3 +1399,13 @@ CREATE INDEX idx_chat_event_rsvps_person ON chat_event_rsvps(person_id) WHERE pe
 CREATE INDEX idx_chat_event_rsvps_overridden ON chat_event_rsvps(chat_event_id) WHERE override_rsvp_status_id IS NOT NULL;
 
 -- created_by_chat_id column removed - use chat_events junction table instead
+
+-- ============================================================================
+-- SCHEMA MIGRATIONS (tracks applied forward-only migrations)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS schema_migrations (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255) NOT NULL UNIQUE,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

@@ -52,6 +52,7 @@
 | **Containers** | `make build` | Build images + start containers |
 | | `make up` / `make down` | Start / stop containers |
 | | `make rebuild` | Destroy everything + fresh build (wipes DB) |
+| | `make migrate` | Apply pending schema migrations (preserves data) |
 | | `make shell-db` | Connect to database shell |
 | | `make ps` / `make logs` | Show containers / view logs |
 | | `make audit` | Run data quality audit |
@@ -149,7 +150,8 @@ make sync-apsl    # scrape → parse → UPSERT (works on empty or populated DB)
 - pg_dump is the source of truth for live databases
 
 ### Database Changes
-- **Schema Changes**: Update `00-schema.sql`, then `make rebuild` + `make sync` to apply
+- **Schema Changes (dev, no user data)**: Update `00-schema.sql`, then `make rebuild` + `make sync` to apply
+- **Schema Changes (live, preserve data)**: Write a migration in `database/migrations/`, update `00-schema.sql` to match, then `make migrate`
 - **Manual Static Data**: Add/update numbered SQL files in `database/data/` (e.g., `024-admins.sql`)
 - **Alphabetical Execution**: SQL files load alphabetically during initialization
 - **File Numbering**: Use prefixes (a/b/c) when order matters (e.g., `020-persons.sql`, `020a-players.sql`)

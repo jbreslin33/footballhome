@@ -4,15 +4,15 @@
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
 # Builds container images, starts services, and waits for health checks.
-# Called by: make rebuild / make dev-reset (which runs make clean first)
+# Called by: make rebuild (which runs make clean first)
 #
 # Usage:
-#   make dev-reset          # Recommended: clean + build + load (via Makefile)
+#   make rebuild            # Recommended: clean + build (via Makefile)
 #   ./build.sh              # Build only (assumes already cleaned)
 #   ./build.sh --backend    # Rebuild backend only (fast iteration)
 #
-# After building, load leagues:
-#   make load              # Load all leagues
+# After building, sync leagues:
+#   make sync              # Sync all leagues
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -88,8 +88,8 @@ for arg in "$@"; do
             echo "  ./build.sh           Full rebuild (destroys volumes)"
             echo "  ./build.sh --backend Rebuild backend only (fast iteration)"
             echo ""
-            echo "After building, load league data:"
-            echo "  make load            Load all leagues"
+            echo "After building, sync league data:"
+            echo "  make sync            Sync all leagues"
             echo ""
             exit 0
             ;;
@@ -134,7 +134,7 @@ echo "  ✓ Rebuild all images"
 echo "  ✓ Load database schema"
 echo "  ✓ Start all services"
 echo ""
-echo -e "${BLUE}Note: To load league data, run: make load${NC}"
+echo -e "${BLUE}Note: To load league data, run: make sync${NC}"
 echo ""
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -239,7 +239,7 @@ echo ""
 echo -e "${YELLOW}📊 Check what loaded from SQL files:${NC}"
 echo "  node database/scripts/audit-database.js"
 echo ""
-echo -e "${YELLOW}🔄 Next step: Load league data${NC}"
-echo "  make load                                      # Load all leagues"
-echo "  cd database/scripts/leagues/north-america/usa/apsl && ./load.sh   # Load one league"
+echo -e "${YELLOW}🔄 Next step: Sync league data${NC}"
+echo "  make sync                                      # Sync all leagues"
+echo "  make sync-apsl                                 # Sync one league"
 echo ""

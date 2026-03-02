@@ -94,6 +94,20 @@ make sync                # re-sync all leagues
 
 ⚠️ This destroys all user-generated data. Use `make backup` first if needed.
 
+### Schema Migration (preserves data)
+
+```bash
+make migrate             # applies pending migrations in database/migrations/
+```
+
+Use migrations when you need to change the schema on a database with user data you want to keep. Write a numbered SQL file in `database/migrations/`, then also update `00-schema.sql` so future `make rebuild` gets the new schema.
+
+Example: adding a column
+```sql
+-- database/migrations/002-add-phone-to-users.sql
+ALTER TABLE users ADD COLUMN phone VARCHAR(20);
+```
+
 ## 🏗️ Architecture
 
 ```
@@ -136,6 +150,7 @@ Internet → nginx → Frontend (Vanilla JS) → C++ Backend → PostgreSQL
 │   └── CMakeLists.txt
 ├── database/
 │   ├── data/                 # Bootstrap SQL (schema + lookups + seasons + admin users)
+│   ├── migrations/           # Forward-only schema migrations (make migrate)
 │   ├── scraped-html/         # Cached HTML from league websites
 │   └── scripts/
 │       ├── leagues/          # Per-league pipelines
@@ -263,6 +278,7 @@ Run `make help` for the full list. Key targets:
 | `make sync-casa` | Full sync for CASA |
 | `make build` | Build images + start containers |
 | `make rebuild` | Destroy everything + fresh build (wipes DB) |
+| `make migrate` | Apply pending schema migrations (preserves data) |
 | `make up` / `make down` | Start / stop containers |
 | `make backup` / `make restore` | pg_dump snapshot / restore |
 | `make scrape-apsl` | Fetch HTML only |

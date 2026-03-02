@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa
+.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa migrate
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -35,6 +35,7 @@ help:
 	@echo "  make up            Start containers"
 	@echo "  make down          Stop containers"
 	@echo "  make rebuild       Destroy everything + fresh build (wipes DB)"
+	@echo "  make migrate       Apply pending schema migrations (preserves data)"
 	@echo ""
 	@echo "Debugging:"
 	@echo "  make scrape-apsl   Fetch HTML only (also: scrape-csl, scrape-casa)"
@@ -237,6 +238,9 @@ safe-rebuild: backup rebuild
 # ============================================================
 # Development Helpers
 # ============================================================
+
+migrate:
+	@./database/migrations/run-migrations.sh
 
 ps:
 	@$(COMPOSE) --env-file env ps
