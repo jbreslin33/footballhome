@@ -130,8 +130,8 @@ class CslSqlGenerator extends BaseGenerator {
       const season = divisionMatch[1]; // e.g., "2022/2023"
       const divisionName = divisionMatch[2]; // Just the division name without season
       
-      // Only process current season (2022/2023 for CSL - they use older season names)
-      if (season !== '2022/2023') continue;
+      // Only process the active season from config
+      if (season !== this.config.activeSeason) continue;
       
       // Track division
       if (!this.divisions.has(divisionName)) {

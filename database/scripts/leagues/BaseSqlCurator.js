@@ -152,11 +152,11 @@ class BaseSqlCurator {
     // One normalized name contains the other
     if (norm1.includes(norm2) || norm2.includes(norm1)) return true;
     
-    // Check family mappings (override in subclass)
-    const slug1 = this.toSlug(norm1);
-    const slug2 = this.toSlug(norm2);
-    const family1 = this.getClubFamily(slug1);
-    const family2 = this.getClubFamily(slug2);
+    // Check family mappings using original lowercase names (override in subclass)
+    const lower1 = name1.toLowerCase().trim();
+    const lower2 = name2.toLowerCase().trim();
+    const family1 = this.getClubFamily(lower1);
+    const family2 = this.getClubFamily(lower2);
     if (family1 && family2 && family1 === family2) return true;
     
     return false;

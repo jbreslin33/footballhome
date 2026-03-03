@@ -34,7 +34,7 @@ class CasaSqlCurator extends BaseSqlCurator {
    * Club family mappings from config
    */
   getClubFamily(baseName) {
-    return this.config.clubFamilies[baseName] || baseName;
+    return this.config.clubFamilies[baseName] || null;
   }
 
   /**
@@ -121,9 +121,8 @@ class CasaSqlCurator extends BaseSqlCurator {
     console.log(`\n🔍 Matching CASA teams to existing clubs...`);
 
     for (const casaTeam of casaTeams) {
-      // Infer club name from team name (strip suffixes like II, Reserve, etc.)
-      const inferredClubName = this.getClubBaseName(casaTeam.name);
-      const existingMatch = this.findMatchingClub(inferredClubName, existingClubs);
+      // Use original team name — fuzzyMatch normalizes internally and checks clubFamilies
+      const existingMatch = this.findMatchingClub(casaTeam.name, existingClubs);
 
       if (existingMatch) {
         matches.push({ casaTeam, existingClub: existingMatch });

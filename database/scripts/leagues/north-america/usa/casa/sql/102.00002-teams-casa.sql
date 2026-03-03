@@ -81,7 +81,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Lighthouse Boys Club', '9090889-lighthouse-boys-club', 20006, d.id, 2
+SELECT 'Lighthouse Boys Club', '9090889-lighthouse-boys-club', 134, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Philadelphia Liga 1'
@@ -103,7 +103,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Philadelphia SC Select', '9096430-philadelphia-sc-select', 20007, d.id, 2
+SELECT 'Philadelphia SC Select', '9096430-philadelphia-sc-select', 131, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Philadelphia Liga 2'
@@ -125,7 +125,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Lighthouse Old Timers Club', '9096430-lighthouse-old-timers-club', 20008, d.id, 2
+SELECT 'Lighthouse Old Timers Club', '9096430-lighthouse-old-timers-club', 134, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Philadelphia Liga 2'
@@ -136,7 +136,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Club de Futbol Armada', '9096430-club-de-futbol-armada', 146, d.id, 2
+SELECT 'Club de Futbol Armada', '9096430-club-de-futbol-armada', 20006, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Philadelphia Liga 2'
@@ -147,7 +147,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Sewell''s Old Boys', '9096430-sewell''s-old-boys', 20009, d.id, 2
+SELECT 'Sewell''s Old Boys', '9096430-sewell''s-old-boys', 135, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Philadelphia Liga 2'
@@ -158,7 +158,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'South Shore FC', '9090891-south-shore-fc', 20010, d.id, 2
+SELECT 'South Shore FC', '9090891-south-shore-fc', 20007, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -169,7 +169,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Jaguars United FC', '9090891-jaguars-united-fc', 20011, d.id, 2
+SELECT 'Jaguars United FC', '9090891-jaguars-united-fc', 20008, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -180,7 +180,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Strictly Nos Fc', '9090891-strictly-nos-fc', 20012, d.id, 2
+SELECT 'Strictly Nos Fc', '9090891-strictly-nos-fc', 20009, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -191,7 +191,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'BCFC All Stars', '9090891-bcfc-all-stars', 20013, d.id, 2
+SELECT 'BCFC All Stars', '9090891-bcfc-all-stars', 20010, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -202,7 +202,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Flatley FC', '9090891-flatley-fc', 20014, d.id, 2
+SELECT 'Flatley FC', '9090891-flatley-fc', 20011, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -213,7 +213,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Gambeta FC', '9090891-gambeta-fc', 20015, d.id, 2
+SELECT 'Gambeta FC', '9090891-gambeta-fc', 20012, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'
@@ -235,7 +235,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Kutztown Men''s Soccer', '9090893-kutztown-men''s-soccer', 20016, d.id, 2
+SELECT 'Kutztown Men''s Soccer', '9090893-kutztown-men''s-soccer', 20013, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
@@ -246,7 +246,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Lancaster City FC', '9090893-lancaster-city-fc', 20017, d.id, 2
+SELECT 'Lancaster City FC', '9090893-lancaster-city-fc', 20014, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
@@ -257,7 +257,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Keystone Elite', '9090893-keystone-elite', 20018, d.id, 2
+SELECT 'Keystone Elite', '9090893-keystone-elite', 20015, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
@@ -268,7 +268,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'F&M FC', '9090893-f&m-fc', 20019, d.id, 2
+SELECT 'F&M FC', '9090893-f&m-fc', 20016, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
@@ -279,7 +279,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Millersville Men''s Club Soccer', '9270318-millersville-men''s-club-soccer', 20020, d.id, 2
+SELECT 'Millersville Men''s Club Soccer', '9270318-millersville-men''s-club-soccer', 20017, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 2'
@@ -290,7 +290,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Lancaster Bible College', '9270318-lancaster-bible-college', 20021, d.id, 2
+SELECT 'Lancaster Bible College', '9270318-lancaster-bible-college', 20018, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 2'
@@ -301,7 +301,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'West Chester University Club', '9270318-west-chester-university-club', 20022, d.id, 2
+SELECT 'West Chester University Club', '9270318-west-chester-university-club', 20019, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 2'
@@ -312,7 +312,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'YorkPA FC', '9270318-yorkpa-fc', 20023, d.id, 2
+SELECT 'YorkPA FC', '9270318-yorkpa-fc', 20020, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 2'
