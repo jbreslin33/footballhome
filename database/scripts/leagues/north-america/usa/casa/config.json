@@ -59,6 +59,15 @@
         "Kutztown (Liga 1)": "Kutztown Men's Soccer",
         "LCFC (Liga 1)": "Lancaster City FC"
       }
+    },
+    "Lancaster Liga 2": {
+      "sheetId": "1alzJMAccMT5IIBQ_YOAp6FMbADnfC77dxRMZtceMau4",
+      "tabMap": {
+        "LBC (Liga 2)": "Lancaster Bible College",
+        "Millersville Club (Liga 2)": "Millersville Men's Club Soccer",
+        "YorkPA FC (Liga 2)": "YorkPA FC",
+        "WCU Club (Liga 2)": "West Chester University Club"
+      }
     }
   },
   "clubFamilies": {

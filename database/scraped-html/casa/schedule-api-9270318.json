@@ -1,0 +1,2938 @@
+[
+  {
+    "id": "face7315-9548-4d3f-91c4-8f8bdf930d8b",
+    "title": "West Chester University Club at Millersville Men's Club Soccer",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Pucillo Field",
+    "location_address": "Pucillo Field, Millersville, PA 17551, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2026-03-01T16:00:00.000Z",
+    "end_date_time": "2026-03-01T17:30:00.000Z",
+    "created_at": "2026-02-17T20:26:32.000Z",
+    "updated_at": "2026-03-02T14:55:29.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "659083",
+    "subvenue_id": "796822",
+    "source": {
+      "id": "6994cef9d7aaa4000103f330",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "home_team_score": "3",
+        "away_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "away_team_score": "0",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf40d4c144e5db64656",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Millersville Men's Club Soccer",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf42e7fd926b839a663",
+          "primary_color": "",
+          "seed_id": "3672199",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8/large_square_Millersville__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf47ffccf5025fcc635",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "West Chester University Club",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf40d4c146428b6442f",
+          "primary_color": "",
+          "seed_id": "3672196",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f9-3870-bf9f-f6a9ee1493d8/large_square_West_Chester_University.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef9d7aaa4000103f330",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "name": "Millersville Men's Club Soccer",
+        "score": "3",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "name": "West Chester University Club",
+        "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "6ac32a81-68b3-49cf-9094-98dfb9c3b385",
+    "title": "Keystone Elite at Lancaster Bible College",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Willis & Martha Herr Stadium",
+    "location_address": "901 Eden Road, Lancaster, PA 17601-5036",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "completed",
+    "start_date_time": "2026-03-02T00:00:00.000Z",
+    "end_date_time": "2026-03-02T01:30:00.000Z",
+    "created_at": "2026-02-17T20:26:32.000Z",
+    "updated_at": "2026-03-02T14:59:40.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "462562",
+    "subvenue_id": "495106",
+    "source": {
+      "id": "6994cefad7aaa4000103f332",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "home_team_score": "3",
+        "away_team_id": "11f10c3e-ef7b-d306-aaf7-0a49e2db63c9",
+        "away_team_score": "0",
+        "score_allowed": true,
+        "status": "completed",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf48021c50f87e6da72",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Lancaster Bible College",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf46c4d0b61853257ab",
+          "primary_color": "",
+          "seed_id": "3672198",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8/large_square_Lancaster_Bible_College__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cef353967e00013892e0",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 2",
+          "name": "Keystone Elite",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": null,
+          "team_id": "6994cef353967e00013892df",
+          "primary_color": null,
+          "seed_id": "3672207",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cef353967e00013892e0",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-ef7b-d306-aaf7-0a49e2db63c9",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cefad7aaa4000103f332",
+      "originator_type": "game_slot",
+      "status": "completed",
+      "team_1": {
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "name": "Lancaster Bible College",
+        "score": "3",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c3e-ef7b-d306-aaf7-0a49e2db63c9",
+        "originator_id": "6994cef353967e00013892e0",
+        "name": "Keystone Elite",
+        "score": "0",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "quick",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "de47f2a0-e141-469b-8768-24da5135ae36",
+    "title": "F&M FC at YorkPA FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Tylus Field",
+    "location_address": "1039 Harrisburg Avenue, Lancaster, PA 17603, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-03-08T20:30:00.000Z",
+    "end_date_time": "2026-03-08T22:00:00.000Z",
+    "created_at": "2026-02-17T20:26:27.000Z",
+    "updated_at": "2026-02-23T21:01:31.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "462561",
+    "subvenue_id": "495105",
+    "source": {
+      "id": "6994cef595167e0001b16237",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-ef7b-c974-abdf-1236051caebc",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf46c4d0b61853257ac",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "YorkPA FC",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf47ffccf5025fcc633",
+          "primary_color": "",
+          "seed_id": "3672197",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f8-4d16-9d32-ca7f9587793f/large_square_YorkPA_FC__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cef3dc42b30001420042",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 2",
+          "name": "F&M FC",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": null,
+          "team_id": "6994cef3dc42b30001420041",
+          "primary_color": null,
+          "seed_id": "3672206",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cef3dc42b30001420042",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-ef7b-c974-abdf-1236051caebc",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef595167e0001b16237",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "name": "YorkPA FC",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c3e-ef7b-c974-abdf-1236051caebc",
+        "originator_id": "6994cef3dc42b30001420042",
+        "name": "F&M FC",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "3d97e3b6-ab54-4596-b947-3bc02c3b2b5a",
+    "title": "Lancaster City FC at YorkPA FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Lancaster Catholic High School Stadium",
+    "location_address": "655 Stadium Road, Lancaster, PA 17601",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-03-15T15:00:00.000Z",
+    "end_date_time": "2026-03-15T16:30:00.000Z",
+    "created_at": "2026-02-17T20:26:29.000Z",
+    "updated_at": "2026-02-17T20:26:31.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "462567",
+    "subvenue_id": "495112",
+    "source": {
+      "id": "6994cef695167e0001b16239",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-ef7c-41c4-9ead-360f8e488f48",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf46c4d0b61853257ac",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "YorkPA FC",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf47ffccf5025fcc633",
+          "primary_color": "",
+          "seed_id": "3672197",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f8-4d16-9d32-ca7f9587793f/large_square_YorkPA_FC__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cef366c55200019baffd",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 2",
+          "name": "Lancaster City FC",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": null,
+          "team_id": "6994cef366c55200019baffb",
+          "primary_color": null,
+          "seed_id": "3672209",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cef366c55200019baffd",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-ef7c-41c4-9ead-360f8e488f48",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef695167e0001b16239",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "name": "YorkPA FC",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-ef7c-41c4-9ead-360f8e488f48",
+        "originator_id": "6994cef366c55200019baffd",
+        "name": "Lancaster City FC",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "cae1c03d-bbb7-406f-9176-d0c8b691fc30",
+    "title": "YorkPA FC at Lancaster Bible College",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Willis & Martha Herr Stadium",
+    "location_address": "901 Eden Road, Lancaster, PA 17601-5036, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-03-18T00:00:00.000Z",
+    "end_date_time": "2026-03-18T01:30:00.000Z",
+    "created_at": "2026-02-17T20:26:31.000Z",
+    "updated_at": "2026-02-23T21:03:20.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "462562",
+    "subvenue_id": "495106",
+    "source": {
+      "id": "6994cef895167e0001b1623d",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf46c4d0b61853257ac",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "YorkPA FC",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf47ffccf5025fcc633",
+          "primary_color": "",
+          "seed_id": "3672197",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f8-4d16-9d32-ca7f9587793f/large_square_YorkPA_FC__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf48021c50f87e6da72",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Lancaster Bible College",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf46c4d0b61853257ab",
+          "primary_color": "",
+          "seed_id": "3672198",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8/large_square_Lancaster_Bible_College__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef895167e0001b1623d",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "name": "Lancaster Bible College",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "name": "YorkPA FC",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "3d76341a-9b65-41c7-a09e-7fee4deefa41",
+    "title": "Alloy Soccer Club Reserves at Lancaster Bible College",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Willis & Martha Herr Stadium",
+    "location_address": "901 Eden Road, Lancaster, PA 17601-5036",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-03-21T22:00:00.000Z",
+    "end_date_time": "2026-03-21T23:30:00.000Z",
+    "created_at": "2026-02-17T20:26:31.000Z",
+    "updated_at": "2026-02-17T20:26:33.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "462562",
+    "subvenue_id": "495106",
+    "source": {
+      "id": "6994cef8aab4520001394c1b",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf48021c50f87e6da72",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Lancaster Bible College",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf46c4d0b61853257ab",
+          "primary_color": "",
+          "seed_id": "3672198",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8/large_square_Lancaster_Bible_College__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cef366c55200019bafff",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 2",
+          "name": "Alloy Soccer Club Reserves",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": null,
+          "team_id": "6994cef366c55200019baffc",
+          "primary_color": null,
+          "seed_id": "3672210",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cef366c55200019bafff",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef8aab4520001394c1b",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "name": "Lancaster Bible College",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
+        "originator_id": "6994cef366c55200019bafff",
+        "name": "Alloy Soccer Club Reserves",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "677181c1-7791-4eaf-8fc4-1ff08b38f5fb",
+    "title": "YorkPA FC at West Chester University Club",
+    "event_type": "game",
+    "description": "",
+    "location_name": "855 S New St",
+    "location_address": "855 South New Street, West Chester, PA 19383",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-03-22T14:30:00.000Z",
+    "end_date_time": "2026-03-22T16:00:00.000Z",
+    "created_at": "2026-02-17T20:26:32.000Z",
+    "updated_at": "2026-02-17T20:26:35.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "659082",
+    "subvenue_id": "796821",
+    "source": {
+      "id": "6994cefaaab4520001394c1d",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf46c4d0b61853257ac",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "YorkPA FC",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf47ffccf5025fcc633",
+          "primary_color": "",
+          "seed_id": "3672197",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f8-4d16-9d32-ca7f9587793f/large_square_YorkPA_FC__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf47ffccf5025fcc635",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "West Chester University Club",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf40d4c146428b6442f",
+          "primary_color": "",
+          "seed_id": "3672196",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f9-3870-bf9f-f6a9ee1493d8/large_square_West_Chester_University.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cefaaab4520001394c1d",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "name": "West Chester University Club",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "name": "YorkPA FC",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "55a3f991-6963-4aab-817f-d8a58a221d8e",
+    "title": "Millersville Men's Club Soccer at Keystone Elite",
+    "event_type": "game",
+    "description": "",
+    "location_name": "McCaskey High School",
+    "location_address": "445 North Reservoir Street, Lancaster, PA 17602, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-03-22T19:00:00.000Z",
+    "end_date_time": "2026-03-22T20:30:00.000Z",
+    "created_at": "2026-02-17T20:26:31.000Z",
+    "updated_at": "2026-02-25T18:45:02.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "462565",
+    "subvenue_id": "495109",
+    "source": {
+      "id": "6994cef995167e0001b16241",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-ef7b-d306-aaf7-0a49e2db63c9",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf40d4c144e5db64656",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Millersville Men's Club Soccer",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf42e7fd926b839a663",
+          "primary_color": "",
+          "seed_id": "3672199",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8/large_square_Millersville__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cef353967e00013892e0",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 2",
+          "name": "Keystone Elite",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": null,
+          "team_id": "6994cef353967e00013892df",
+          "primary_color": null,
+          "seed_id": "3672207",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cef353967e00013892e0",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-ef7b-d306-aaf7-0a49e2db63c9",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef995167e0001b16241",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "name": "Millersville Men's Club Soccer",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c3e-ef7b-d306-aaf7-0a49e2db63c9",
+        "originator_id": "6994cef353967e00013892e0",
+        "name": "Keystone Elite",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "bc0b95d4-daa8-4790-a1bd-a8a7cfb7607d",
+    "title": "Millersville Men's Club Soccer at YorkPA FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "",
+    "location_address": "",
+    "location_description": "",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-03-29T04:00:00.000Z",
+    "end_date_time": "2026-03-29T05:30:00.000Z",
+    "created_at": "2026-02-17T20:26:27.000Z",
+    "updated_at": "2026-02-17T20:26:29.000Z",
+    "tbd_time": true,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "",
+    "subvenue_id": "",
+    "source": {
+      "id": "6994cef5aab4520001394c17",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf40d4c144e5db64656",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Millersville Men's Club Soccer",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf42e7fd926b839a663",
+          "primary_color": "",
+          "seed_id": "3672199",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8/large_square_Millersville__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf46c4d0b61853257ac",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "YorkPA FC",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf47ffccf5025fcc633",
+          "primary_color": "",
+          "seed_id": "3672197",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f8-4d16-9d32-ca7f9587793f/large_square_YorkPA_FC__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef5aab4520001394c17",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "name": "YorkPA FC",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "name": "Millersville Men's Club Soccer",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "0330a870-cf4b-4129-b2ea-3273ca18dfb0",
+    "title": "West Chester University Club at Lancaster Bible College",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Willis & Martha Herr Stadium",
+    "location_address": "901 Eden Road, Lancaster, PA 17601-5036",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-03-29T23:00:00.000Z",
+    "end_date_time": "2026-03-30T00:30:00.000Z",
+    "created_at": "2026-02-17T20:26:32.000Z",
+    "updated_at": "2026-02-17T20:26:34.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "462562",
+    "subvenue_id": "495106",
+    "source": {
+      "id": "6994cefa95167e0001b16245",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf47ffccf5025fcc635",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "West Chester University Club",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf40d4c146428b6442f",
+          "primary_color": "",
+          "seed_id": "3672196",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f9-3870-bf9f-f6a9ee1493d8/large_square_West_Chester_University.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf48021c50f87e6da72",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Lancaster Bible College",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf46c4d0b61853257ab",
+          "primary_color": "",
+          "seed_id": "3672198",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8/large_square_Lancaster_Bible_College__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cefa95167e0001b16245",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "name": "Lancaster Bible College",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "name": "West Chester University Club",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "63741a6f-2813-49fe-95f8-4ba726e59307",
+    "title": "Kutztown Men's Soccer at West Chester University Club",
+    "event_type": "game",
+    "description": "",
+    "location_name": "855 S New St",
+    "location_address": "855 South New Street, West Chester, PA 19383",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-04T14:30:00.000Z",
+    "end_date_time": "2026-04-04T16:00:00.000Z",
+    "created_at": "2026-02-17T20:26:27.000Z",
+    "updated_at": "2026-02-17T20:26:30.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "659082",
+    "subvenue_id": "796821",
+    "source": {
+      "id": "6994cef5aab4520001394c15",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-ef7b-6d62-80c4-02e6ae2dfff4",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf47ffccf5025fcc635",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "West Chester University Club",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf40d4c146428b6442f",
+          "primary_color": "",
+          "seed_id": "3672196",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f9-3870-bf9f-f6a9ee1493d8/large_square_West_Chester_University.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cef366c55200019baff9",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 2",
+          "name": "Kutztown Men's Soccer",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": null,
+          "team_id": "6994cef366c55200019baff8",
+          "primary_color": null,
+          "seed_id": "3672208",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cef366c55200019baff9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-ef7b-6d62-80c4-02e6ae2dfff4",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef5aab4520001394c15",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "name": "West Chester University Club",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-ef7b-6d62-80c4-02e6ae2dfff4",
+        "originator_id": "6994cef366c55200019baff9",
+        "name": "Kutztown Men's Soccer",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "936ce5ab-abbb-4fbf-b268-0ef05fd0cc69",
+    "title": "Millersville Men's Club Soccer at Lancaster Bible College",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Willis & Martha Herr Stadium",
+    "location_address": "901 Eden Road, Lancaster, PA 17601-5036",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-08T00:00:00.000Z",
+    "end_date_time": "2026-04-08T01:30:00.000Z",
+    "created_at": "2026-02-17T20:26:32.000Z",
+    "updated_at": "2026-02-17T20:26:35.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "462562",
+    "subvenue_id": "495106",
+    "source": {
+      "id": "6994cefa2a1178000164b6a3",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf40d4c144e5db64656",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Millersville Men's Club Soccer",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf42e7fd926b839a663",
+          "primary_color": "",
+          "seed_id": "3672199",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8/large_square_Millersville__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf48021c50f87e6da72",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Lancaster Bible College",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf46c4d0b61853257ab",
+          "primary_color": "",
+          "seed_id": "3672198",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8/large_square_Lancaster_Bible_College__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cefa2a1178000164b6a3",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "name": "Lancaster Bible College",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "name": "Millersville Men's Club Soccer",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "ad697c65-8457-4487-9c67-2a0287c06ed8",
+    "title": "Lancaster Bible College at YorkPA FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "",
+    "location_address": "",
+    "location_description": "",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-12T04:00:00.000Z",
+    "end_date_time": "2026-04-12T05:30:00.000Z",
+    "created_at": "2026-02-17T20:26:31.000Z",
+    "updated_at": "2026-02-17T20:26:33.000Z",
+    "tbd_time": true,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "",
+    "subvenue_id": "",
+    "source": {
+      "id": "6994cef895167e0001b1623f",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf46c4d0b61853257ac",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "YorkPA FC",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf47ffccf5025fcc633",
+          "primary_color": "",
+          "seed_id": "3672197",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f8-4d16-9d32-ca7f9587793f/large_square_YorkPA_FC__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf48021c50f87e6da72",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Lancaster Bible College",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf46c4d0b61853257ab",
+          "primary_color": "",
+          "seed_id": "3672198",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8/large_square_Lancaster_Bible_College__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef895167e0001b1623f",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "name": "YorkPA FC",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "name": "Lancaster Bible College",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "db180893-fbd0-4e68-a79f-2e4ded2d3f8d",
+    "title": "Millersville Men's Club Soccer at West Chester University Club",
+    "event_type": "game",
+    "description": "",
+    "location_name": "855 S New St",
+    "location_address": "855 South New Street, West Chester, PA 19383",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-12T14:30:00.000Z",
+    "end_date_time": "2026-04-12T16:00:00.000Z",
+    "created_at": "2026-02-17T20:26:29.000Z",
+    "updated_at": "2026-02-17T20:26:31.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "659082",
+    "subvenue_id": "796821",
+    "source": {
+      "id": "6994cef72a1178000164b6a1",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf40d4c144e5db64656",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Millersville Men's Club Soccer",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf42e7fd926b839a663",
+          "primary_color": "",
+          "seed_id": "3672199",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8/large_square_Millersville__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf47ffccf5025fcc635",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "West Chester University Club",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf40d4c146428b6442f",
+          "primary_color": "",
+          "seed_id": "3672196",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f9-3870-bf9f-f6a9ee1493d8/large_square_West_Chester_University.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef72a1178000164b6a1",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "name": "West Chester University Club",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "name": "Millersville Men's Club Soccer",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "0fd03b02-6603-406c-ab9a-3f4e8a9620be",
+    "title": "Alloy Soccer Club Reserves at Millersville Men's Club Soccer",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Pucillo Field",
+    "location_address": "Pucillo Field, Millersville, PA 17551, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-16T00:00:00.000Z",
+    "end_date_time": "2026-04-16T01:30:00.000Z",
+    "created_at": "2026-02-17T20:26:29.000Z",
+    "updated_at": "2026-02-18T16:58:46.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "659083",
+    "subvenue_id": "796822",
+    "source": {
+      "id": "6994cef695167e0001b1623b",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf40d4c144e5db64656",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Millersville Men's Club Soccer",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf42e7fd926b839a663",
+          "primary_color": "",
+          "seed_id": "3672199",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8/large_square_Millersville__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cef366c55200019bafff",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 2",
+          "name": "Alloy Soccer Club Reserves",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": null,
+          "team_id": "6994cef366c55200019baffc",
+          "primary_color": null,
+          "seed_id": "3672210",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cef366c55200019bafff",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef695167e0001b1623b",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "name": "Millersville Men's Club Soccer",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
+        "originator_id": "6994cef366c55200019bafff",
+        "name": "Alloy Soccer Club Reserves",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "b67dd2d0-4bc2-4ba7-aa08-e0b2501af2ec",
+    "title": "West Chester University Club at YorkPA FC",
+    "event_type": "game",
+    "description": "",
+    "location_name": "",
+    "location_address": "",
+    "location_description": "",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-19T04:00:00.000Z",
+    "end_date_time": "2026-04-19T05:30:00.000Z",
+    "created_at": "2026-02-17T20:26:29.000Z",
+    "updated_at": "2026-02-17T20:26:32.000Z",
+    "tbd_time": true,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "",
+    "subvenue_id": "",
+    "source": {
+      "id": "6994cef7aab4520001394c19",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf46c4d0b61853257ac",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "YorkPA FC",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf47ffccf5025fcc633",
+          "primary_color": "",
+          "seed_id": "3672197",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f8-4d16-9d32-ca7f9587793f/large_square_YorkPA_FC__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf47ffccf5025fcc635",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "West Chester University Club",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf40d4c146428b6442f",
+          "primary_color": "",
+          "seed_id": "3672196",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f9-3870-bf9f-f6a9ee1493d8/large_square_West_Chester_University.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef7aab4520001394c19",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "name": "YorkPA FC",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "name": "West Chester University Club",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "847d3602-b591-4dd5-bd1b-c5bea28fcf09",
+    "title": "Lancaster Bible College at Millersville Men's Club Soccer",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Pucillo Field",
+    "location_address": "Pucillo Field, Millersville, PA 17551, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-23T00:00:00.000Z",
+    "end_date_time": "2026-04-23T01:30:00.000Z",
+    "created_at": "2026-02-17T20:26:29.000Z",
+    "updated_at": "2026-02-18T16:59:05.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "659083",
+    "subvenue_id": "796822",
+    "source": {
+      "id": "6994cef62a1178000164b69f",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf40d4c144e5db64656",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Millersville Men's Club Soccer",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf42e7fd926b839a663",
+          "primary_color": "",
+          "seed_id": "3672199",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8/large_square_Millersville__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf48021c50f87e6da72",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Lancaster Bible College",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf46c4d0b61853257ab",
+          "primary_color": "",
+          "seed_id": "3672198",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8/large_square_Lancaster_Bible_College__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef62a1178000164b69f",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "name": "Millersville Men's Club Soccer",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "name": "Lancaster Bible College",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "53a76191-20ae-42d4-b92a-2cc654dfbba8",
+    "title": "F&M FC at West Chester University Club",
+    "event_type": "game",
+    "description": "",
+    "location_name": "855 S New St",
+    "location_address": "855 South New Street, West Chester, PA 19383",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-26T14:30:00.000Z",
+    "end_date_time": "2026-04-26T16:00:00.000Z",
+    "created_at": "2026-02-17T20:26:33.000Z",
+    "updated_at": "2026-02-17T20:26:35.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "659082",
+    "subvenue_id": "796821",
+    "source": {
+      "id": "6994cefa2a1178000164b6a5",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-ef7b-c974-abdf-1236051caebc",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf47ffccf5025fcc635",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "West Chester University Club",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf40d4c146428b6442f",
+          "primary_color": "",
+          "seed_id": "3672196",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f9-3870-bf9f-f6a9ee1493d8/large_square_West_Chester_University.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cef3dc42b30001420042",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 2",
+          "name": "F&M FC",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": null,
+          "team_id": "6994cef3dc42b30001420041",
+          "primary_color": null,
+          "seed_id": "3672206",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cef3dc42b30001420042",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-ef7b-c974-abdf-1236051caebc",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cefa2a1178000164b6a5",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "name": "West Chester University Club",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-ef7b-c974-abdf-1236051caebc",
+        "originator_id": "6994cef3dc42b30001420042",
+        "name": "F&M FC",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "ad8390c4-4a56-45ea-891c-eb4b61a8ceb0",
+    "title": "YorkPA FC at Millersville Men's Club Soccer",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Pucillo Field",
+    "location_address": "Pucillo Field, Millersville, PA 17551, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-04-26T18:00:00.000Z",
+    "end_date_time": "2026-04-26T19:30:00.000Z",
+    "created_at": "2026-02-17T20:26:27.000Z",
+    "updated_at": "2026-02-18T16:59:31.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "659083",
+    "subvenue_id": "796822",
+    "source": {
+      "id": "6994cef52a1178000164b69d",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf40d4c144e5db64656",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Millersville Men's Club Soccer",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf42e7fd926b839a663",
+          "primary_color": "",
+          "seed_id": "3672199",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8/large_square_Millersville__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf46c4d0b61853257ac",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "YorkPA FC",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf47ffccf5025fcc633",
+          "primary_color": "",
+          "seed_id": "3672197",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f8-4d16-9d32-ca7f9587793f/large_square_YorkPA_FC__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef52a1178000164b69d",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "name": "Millersville Men's Club Soccer",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
+        "originator_id": "6994cdf46c4d0b61853257ac",
+        "name": "YorkPA FC",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "5d83d3af-9274-43c5-b6be-8fb61e2f1b07",
+    "title": "Lancaster Bible College at West Chester University Club",
+    "event_type": "game",
+    "description": "",
+    "location_name": "855 S New St",
+    "location_address": "855 South New Street, West Chester, PA 19383",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-05-03T14:30:00.000Z",
+    "end_date_time": "2026-05-03T16:00:00.000Z",
+    "created_at": "2026-02-17T20:26:31.000Z",
+    "updated_at": "2026-02-17T20:26:33.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "659082",
+    "subvenue_id": "796821",
+    "source": {
+      "id": "6994cef995167e0001b16243",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": null,
+        "read_only": null,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf47ffccf5025fcc635",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "West Chester University Club",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf40d4c146428b6442f",
+          "primary_color": "",
+          "seed_id": "3672196",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57f9-3870-bf9f-f6a9ee1493d8/large_square_West_Chester_University.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf48021c50f87e6da72",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Lancaster Bible College",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf46c4d0b61853257ab",
+          "primary_color": "",
+          "seed_id": "3672198",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8/large_square_Lancaster_Bible_College__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef995167e0001b16243",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57f9-3870-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf47ffccf5025fcc635",
+        "name": "West Chester University Club",
+        "score": "",
+        "is_home_team": true
+      },
+      "team_2": {
+        "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf48021c50f87e6da72",
+        "name": "Lancaster Bible College",
+        "score": "",
+        "is_home_team": false
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  }
+]

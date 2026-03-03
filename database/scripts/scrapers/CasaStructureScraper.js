@@ -31,7 +31,8 @@ class CasaStructureScraper {
       { id: 54, name: 'Philadelphia Liga 1', externalId: '9090889', programId: '6827a0840b95c8019f7e2b38' },
       { id: 55, name: 'Philadelphia Liga 2', externalId: '9096430', programId: '682f9676528c0e00bfc9d2f2' },
       { id: 56, name: 'Boston Liga 1', externalId: '9090891', programId: '6827a0c1d3cc737f4c6770b9' },
-      { id: 57, name: 'Lancaster Liga 1', externalId: '9090893', programId: '6827a11eaca2fea950917a73' }
+      { id: 57, name: 'Lancaster Liga 1', externalId: '9090893', programId: '6827a11eaca2fea950917a73' },
+      { id: 70, name: 'Lancaster Liga 2', externalId: '9270318', programId: '68f132e008e07ca525a9989b' }
     ];
   }
 

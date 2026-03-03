@@ -121,7 +121,8 @@ INSERT INTO divisions (id, season_id, conference_id, name, external_id, source_s
 (61, 5, 24, 'Philadelphia Liga 1', '9090889', 2, 1),
 (62, 5, 24, 'Philadelphia Liga 2', '9096430', 2, 2),
 (63, 5, 25, 'Boston Liga 1', '9090891', 2, 3),
-(64, 5, 26, 'Lancaster Liga 1', '9090893', 2, 4);
+(64, 5, 26, 'Lancaster Liga 1', '9090893', 2, 4),
+(70, 5, 26, 'Lancaster Liga 2', '9270318', 2, 5);
 
 -- ==================================================
 -- EPSA Open State Cup 2025/2026 (season_id=10, conference_id=31)

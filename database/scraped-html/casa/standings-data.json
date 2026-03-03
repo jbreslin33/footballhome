@@ -1,5 +1,5 @@
 {
-  "generated": "2026-03-03T01:40:56.596Z",
+  "generated": "2026-03-03T03:19:27.611Z",
   "divisions": [
     {
       "id": 54,
@@ -301,6 +301,57 @@
           "goalsAgainst": 9,
           "goalDiff": 23,
           "points": -13
+        }
+      ]
+    },
+    {
+      "id": 70,
+      "name": "Lancaster Liga 2",
+      "external_id": "9270318",
+      "teams": [
+        {
+          "teamName": "Millersville Men's Club Soccer",
+          "played": 1,
+          "wins": 0,
+          "draws": 0,
+          "losses": 1,
+          "goalsFor": 0,
+          "goalsAgainst": 0,
+          "goalDiff": 0,
+          "points": 0
+        },
+        {
+          "teamName": "Lancaster Bible College",
+          "played": 1,
+          "wins": 0,
+          "draws": 0,
+          "losses": 1,
+          "goalsFor": 0,
+          "goalsAgainst": 0,
+          "goalDiff": 0,
+          "points": 0
+        },
+        {
+          "teamName": "West Chester University Club",
+          "played": 0,
+          "wins": 1,
+          "draws": 0,
+          "losses": 1,
+          "goalsFor": 0,
+          "goalsAgainst": 0,
+          "goalDiff": 0,
+          "points": 0
+        },
+        {
+          "teamName": "YorkPA FC",
+          "played": 0,
+          "wins": 0,
+          "draws": 0,
+          "losses": 0,
+          "goalsFor": 0,
+          "goalsAgainst": 0,
+          "goalDiff": 0,
+          "points": 0
         }
       ]
     }

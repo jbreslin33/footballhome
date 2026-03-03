@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Teams - CASA (Curated)
--- Teams with curated club_id references. Total: 25
+-- Teams with curated club_id references. Total: 29
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
@@ -272,6 +272,50 @@ SELECT 'F&M FC', '9090893-f&m-fc', 20020, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Lancaster Liga 1'
+  AND s.name = '2025/2026'
+  AND s.league_id = 2
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Millersville Men''s Club Soccer', '9270318-millersville-men''s-club-soccer', 20021, d.id, 2
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Lancaster Liga 2'
+  AND s.name = '2025/2026'
+  AND s.league_id = 2
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Lancaster Bible College', '9270318-lancaster-bible-college', 20022, d.id, 2
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Lancaster Liga 2'
+  AND s.name = '2025/2026'
+  AND s.league_id = 2
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'West Chester University Club', '9270318-west-chester-university-club', 20023, d.id, 2
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Lancaster Liga 2'
+  AND s.name = '2025/2026'
+  AND s.league_id = 2
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'YorkPA FC', '9270318-yorkpa-fc', 20024, d.id, 2
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Lancaster Liga 2'
   AND s.name = '2025/2026'
   AND s.league_id = 2
 ON CONFLICT (division_id, name) DO UPDATE SET

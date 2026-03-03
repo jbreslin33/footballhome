@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Clubs - CASA (Curated)
--- Only new clubs not in APSL or CSL. Matched teams use existing club IDs. Total new: 21
+-- Only new clubs not in APSL or CSL. Matched teams use existing club IDs. Total new: 25
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO clubs (id, name, organization_id) VALUES (20000, 'Adé United FC', 20000) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
@@ -24,3 +24,7 @@ INSERT INTO clubs (id, name, organization_id) VALUES (20017, 'Kutztown Men''s So
 INSERT INTO clubs (id, name, organization_id) VALUES (20018, 'Lancaster City FC', 20018) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (20019, 'Keystone Elite', 20019) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (20020, 'F&M FC', 20020) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (20021, 'Millersville Men''s Club Soccer', 20021) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (20022, 'Lancaster Bible College', 20022) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (20023, 'West Chester University Club', 20023) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (20024, 'YorkPA FC', 20024) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
