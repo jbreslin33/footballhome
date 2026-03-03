@@ -403,6 +403,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
       'persepolis ii': 'persepolis united fc ii',
       'persepolis fc ii': 'persepolis united fc ii',
       'persepolis united fc': 'persepolis united fc ii',
+      'philadelphia sc ii': 'philadelphia sc select',
       'sewells old boys ii': "sewell's old boys"
     };
     
