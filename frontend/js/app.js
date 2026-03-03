@@ -42,7 +42,9 @@ class App {
       clubEvents: new ClubEventsScreen(this.navigation, this.auth),
       adminSportDivision: new AdminSportDivisionScreen(this.navigation, this.auth),
       adminTeam: new AdminTeamScreen(this.navigation, this.auth),
-      tacticalBoard: new TacticalBoardScreen(this.navigation, this.auth)
+      tacticalBoard: new TacticalBoardScreen(this.navigation, this.auth),
+      clubDirectory: new ClubDirectoryScreen(this.navigation, this.auth),
+      clubDetail: new ClubDetailScreen(this.navigation, this.auth)
     };
     // Expose certain screens globally for legacy inline onclick handlers
     // (e.g., admin-system uses `adminSystemScreen.loadGroupMeMessages(...)`)
@@ -84,6 +86,8 @@ class App {
     this.screenManager.register('admin-sport-division', this.screens.adminSportDivision);
     this.screenManager.register('admin-team', this.screens.adminTeam);
     this.screenManager.register('tactical-board', this.screens.tacticalBoard);
+    this.screenManager.register('club-directory', this.screens.clubDirectory);
+    this.screenManager.register('club-detail', this.screens.clubDetail);
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }

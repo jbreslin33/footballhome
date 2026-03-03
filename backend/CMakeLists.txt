@@ -37,7 +37,8 @@ set(SOURCES
     src/controllers/AvailabilityController.cpp
     src/controllers/SystemAdminController.cpp
     src/controllers/TacticalBoardController.cpp
-    src/controllers/StatsController.cpp)
+    src/controllers/StatsController.cpp
+    src/controllers/ClubController.cpp)
 
 # Create executable
 add_executable(server ${SOURCES})

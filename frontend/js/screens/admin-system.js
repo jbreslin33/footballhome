@@ -29,6 +29,7 @@ class AdminSystemScreen extends Screen {
           <button class="admin-tab" data-view="league-stats">🏆 League Statistics</button>
           <button class="admin-tab" data-view="groupme">📱 GroupMe</button>
           <button class="admin-tab" data-view="schema">🗂️ Schema</button>
+          <button class="admin-tab" data-view="clubs">🏢 Clubs</button>
         </div>
         
         <!-- Content Area -->
@@ -116,6 +117,9 @@ class AdminSystemScreen extends Screen {
         case 'schema':
           await this.loadDatabaseSchema();
           break;
+        case 'clubs':
+          this.navigation.goTo('club-directory');
+          return;
         default:
           content.innerHTML = '<div class="error-message">View not found</div>';
       }
