@@ -159,7 +159,7 @@ class AdminSystemScreen extends Screen {
               <tbody>
                 ${matches.map(m => `
                   <tr class="clickable-match" data-match-id="${m.id}" style="cursor: pointer;">
-                    <td>${m.match_date ? new Date(m.match_date).toLocaleDateString() : '-'}</td>
+                    <td>${m.match_date || '-'}</td>
                     <td>${m.home_team_name || 'TBD'}</td>
                     <td><strong>${m.home_score !== null ? m.home_score : '-'} - ${m.away_score !== null ? m.away_score : '-'}</strong></td>
                     <td>${m.away_team_name || 'TBD'}</td>
