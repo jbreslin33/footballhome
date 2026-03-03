@@ -5,7 +5,8 @@
 # Run this ONCE when first cloning the repository.
 #
 # After this script completes, use:
-#   make dev-reset              # Build containers and load data
+#   make rebuild                # Build containers and load bootstrap data
+#   make sync                   # Scrape, parse, and load all league data
 #
 
 set -e
@@ -439,10 +440,13 @@ echo "Your development environment is ready!"
 echo ""
 echo "Next steps:"
 echo ""
-echo "  1. Build containers and load data:"
-echo -e "     ${YELLOW}make dev-reset${NC}"
+echo "  1. Build containers and load bootstrap data:"
+echo -e "     ${YELLOW}make rebuild${NC}"
 echo ""
-echo "  2. Once running, open in your browser:"
+echo "  2. Scrape, parse, and load all league data:"
+echo -e "     ${YELLOW}make sync${NC}"
+echo ""
+echo "  3. Once running, open in your browser:"
 echo -e "     ${YELLOW}http://localhost:3000${NC}"
 echo ""
 echo "  3. Log in with credentials:"
