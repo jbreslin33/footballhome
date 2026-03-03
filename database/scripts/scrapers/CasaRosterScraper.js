@@ -234,7 +234,129 @@ class CasaRosterScraper {
   }
 
   /**
-   * Parse a single workbook using the tabMap config
+   * Parse a flat roster sheet where all players are in one sheet.
+   * Uses the "Team" column to assign players to teams via the tabMap.
+   * Falls back to this when the workbook has no matching team tabs (e.g. CSV fallback).
+   * @param {XLSX.WorkBook} workbook
+   * @param {Object} sheetConfig - { sheetId, tabMap }
+   * @param {string} divisionName
+   * @returns {{ players: Object[], teamSummaries: Object }}
+   */
+  _parseFlatRoster(workbook, sheetConfig, divisionName) {
+    const players = [];
+    const teamSummaries = {};
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    // Convert to array of arrays
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+
+    // Find header row
+    let headerRowIdx = -1;
+    for (let i = 0; i < Math.min(rows.length, 15); i++) {
+      const row = rows[i];
+      if (row && row.some(cell => cell && String(cell).toLowerCase().includes('first name'))) {
+        headerRowIdx = i;
+        break;
+      }
+    }
+    if (headerRowIdx === -1) {
+      console.log(`   ⚠️  No header row found in flat roster`);
+      return { players, teamSummaries };
+    }
+
+    const headers = rows[headerRowIdx].map(h => h ? String(h).toLowerCase().trim() : '');
+    const colMap = {
+      firstName: headers.indexOf('first name'),
+      lastName: headers.indexOf('last name'),
+      dob: headers.indexOf('date of birth'),
+      team: headers.indexOf('team'),
+    };
+
+    // Build reverse lookup: normalize team column values → DB team names
+    // tabMap keys are tab names but may also match team column values
+    const teamLookup = new Map();
+    for (const [tabName, teamName] of Object.entries(sheetConfig.tabMap)) {
+      teamLookup.set(tabName.toLowerCase().trim(), teamName);
+      teamLookup.set(teamName.toLowerCase().trim(), teamName);
+    }
+
+    let assigned = 0;
+    let unassigned = 0;
+
+    for (let i = headerRowIdx + 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row) continue;
+
+      const firstName = colMap.firstName >= 0 ? row[colMap.firstName] : null;
+      const lastName = colMap.lastName >= 0 ? row[colMap.lastName] : null;
+      if (!firstName || !lastName) continue;
+      if (String(firstName).trim() === '' || String(lastName).trim() === '') continue;
+
+      // Try to resolve team from "Team" column
+      let teamName = null;
+      if (colMap.team >= 0 && row[colMap.team]) {
+        const rawTeam = String(row[colMap.team]).trim();
+        if (rawTeam !== '') {
+          teamName = teamLookup.get(rawTeam.toLowerCase()) || rawTeam;
+        }
+      }
+
+      // Parse DOB
+      let dateOfBirth = null;
+      if (colMap.dob >= 0 && row[colMap.dob]) {
+        const dob = row[colMap.dob];
+        const parsed = dob instanceof Date ? dob : new Date(dob);
+        if (parsed && !isNaN(parsed.getTime())) {
+          const year = parsed.getFullYear();
+          if (year >= 1950 && year <= 2010) {
+            dateOfBirth = parsed.toISOString().split('T')[0];
+          }
+        }
+      }
+
+      if (teamName) {
+        assigned++;
+      } else {
+        unassigned++;
+      }
+
+      players.push({
+        firstName: String(firstName).trim(),
+        lastName: String(lastName).trim(),
+        dateOfBirth,
+        jerseyNumber: null,
+        teamName: teamName || '__unassigned__',
+        divisionName
+      });
+    }
+
+    // Build summaries for assigned players
+    for (const p of players) {
+      if (p.teamName === '__unassigned__') continue;
+      if (!teamSummaries[p.teamName]) {
+        teamSummaries[p.teamName] = { division: divisionName, tab: 'flat', playerCount: 0 };
+      }
+      teamSummaries[p.teamName].playerCount++;
+    }
+
+    if (assigned > 0) {
+      for (const [team, summary] of Object.entries(teamSummaries)) {
+        console.log(`   ✓ ${team}: ${summary.playerCount} players (from Team column)`);
+      }
+    }
+    if (unassigned > 0) {
+      console.log(`   ⚠️  ${unassigned} players have no team assignment — skipping them`);
+      // Remove unassigned players (can't generate SQL without a team)
+      const assignedPlayers = players.filter(p => p.teamName !== '__unassigned__');
+      return { players: assignedPlayers, teamSummaries };
+    }
+
+    return { players, teamSummaries };
+  }
+
+  /**
+   * Parse a single workbook using the tabMap config.
+   * Falls back to flat roster parsing if no matching tabs found (CSV fallback sheets).
    * @param {XLSX.WorkBook} workbook
    * @param {Object} sheetConfig - { sheetId, tabMap }
    * @param {string} divisionName
@@ -246,6 +368,17 @@ class CasaRosterScraper {
 
     const availableTabs = workbook.SheetNames;
     console.log(`   📋 Tabs: ${availableTabs.length} total`);
+
+    // Check if any configured tabs exist in this workbook
+    const configuredTabs = Object.keys(sheetConfig.tabMap);
+    const matchingTabs = configuredTabs.filter(t => availableTabs.includes(t));
+
+    // If no tabs match (e.g. CSV fallback with single sheet), try flat roster parsing
+    if (matchingTabs.length === 0 && availableTabs.length > 0) {
+      console.log(`   📋 No matching team tabs found (available: ${availableTabs.join(', ')})`);
+      console.log(`   📋 Trying flat roster parse with Team column...`);
+      return this._parseFlatRoster(workbook, sheetConfig, divisionName);
+    }
 
     for (const [tabName, teamName] of Object.entries(sheetConfig.tabMap)) {
       const teamPlayers = this.parseTeamTab(workbook, tabName, teamName, divisionName);
@@ -323,11 +456,17 @@ class CasaRosterScraper {
     for (const [divisionName, sheetConfig] of Object.entries(this.rosterSheets)) {
       console.log(`\n📂 ${divisionName}`);
 
-      const cachePath = path.join(this.cacheDir, this._cacheFilename(divisionName));
+      // Check for xlsx first, then fall back to csv (from CSV fallback downloads)
+      let cachePath = path.join(this.cacheDir, this._cacheFilename(divisionName));
+      const csvPath = cachePath.replace(/\.xlsx$/, '.csv');
       if (!fs.existsSync(cachePath)) {
-        console.log(`   ⚠️  Cached file not found: ${path.basename(cachePath)}`);
-        console.log(`      Run CasaRosterScraper in download mode first`);
-        continue;
+        if (fs.existsSync(csvPath)) {
+          cachePath = csvPath;
+        } else {
+          console.log(`   ⚠️  Cached file not found: ${path.basename(cachePath)}`);
+          console.log(`      Run CasaRosterScraper in download mode first`);
+          continue;
+        }
       }
 
       console.log(`   📖 Reading: ${path.basename(cachePath)}`);
