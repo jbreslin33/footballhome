@@ -14,7 +14,7 @@ const BaseSqlCurator = require('../../../BaseSqlCurator');
  */
 class CslSqlCurator extends BaseSqlCurator {
   constructor() {
-    super();
+    super('CSL', 'csl');
     this.config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
     this.apslConfig = JSON.parse(fs.readFileSync(path.join(__dirname, '../apsl/config.json'), 'utf8'));
     this.apslPath = path.join(__dirname, '../apsl/sql');

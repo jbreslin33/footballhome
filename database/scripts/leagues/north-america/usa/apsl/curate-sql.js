@@ -23,7 +23,7 @@ const BaseSqlCurator = require('../../../BaseSqlCurator');
 
 class ApslSqlCurator extends BaseSqlCurator {
   constructor() {
-    super();
+    super('APSL', 'apsl');
     this.config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
     this.sourceSystemId = this.config.sourceSystemId;
     this.sqlDir = path.join(__dirname, 'sql');

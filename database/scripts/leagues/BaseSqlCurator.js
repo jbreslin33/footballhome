@@ -5,7 +5,9 @@
  * Extended by league-specific curators.
  */
 class BaseSqlCurator {
-  constructor() {
+  constructor(leagueName, leagueSlug) {
+    this.leagueName = leagueName;
+    this.leagueSlug = leagueSlug;
     this.organizations = new Map(); // name -> org data
     this.clubs = new Map(); // name -> club data
     this.teams = []; // array of team data
