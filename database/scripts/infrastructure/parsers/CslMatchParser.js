@@ -7,7 +7,20 @@ const { JSDOM } = require('jsdom');
  * HTML Structure: <h2>Match Schedule</h2> followed by <table>
  */
 class CslMatchParser {
-  constructor() {}
+  /**
+   * @param {string} season - Season string like "2025/2026" for deterministic year inference
+   */
+  constructor(season) {
+    this.season = season;
+    if (season) {
+      const parts = season.split('/');
+      this.fallYear = parseInt(parts[0]);   // Sep-Dec
+      this.springYear = parseInt(parts[1]); // Jan-Aug
+    } else {
+      this.fallYear = null;
+      this.springYear = null;
+    }
+  }
   
   /**
    * Parse matches from team page HTML
@@ -179,23 +192,23 @@ class CslMatchParser {
       
       const month = monthMap[monthStr];
       
-      // Infer year: assume current season (typically Sep-May)
-      // If month is Jan-May, use current year
-      // If month is Jun-Dec, check if we're past June; if so use current year, else use next year
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth() + 1; // 1-12
-      
-      let year = currentYear;
       const matchMonth = parseInt(month);
+      let year;
       
-      // CSL season typically runs Sep-May
-      // If match is Sep-Dec and we're currently in Jan-Aug, match was previous year
-      // If match is Jan-May and we're currently in Sep-Dec, match is next year
-      if (matchMonth >= 9 && currentMonth < 9) {
-        year = currentYear - 1; // Match was last fall
-      } else if (matchMonth <= 5 && currentMonth >= 9) {
-        year = currentYear + 1; // Match is next spring
+      if (this.fallYear && this.springYear) {
+        // Deterministic: use season years (e.g., "2025/2026" → Sep-Dec=2025, Jan-Aug=2026)
+        year = matchMonth >= 9 ? this.fallYear : this.springYear;
+      } else {
+        // Fallback: infer from current date
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        year = currentYear;
+        if (matchMonth >= 9 && currentMonth < 9) {
+          year = currentYear - 1;
+        } else if (matchMonth <= 5 && currentMonth >= 9) {
+          year = currentYear + 1;
+        }
       }
       
       date = `${year}-${month}-${day.padStart(2, '0')}`;

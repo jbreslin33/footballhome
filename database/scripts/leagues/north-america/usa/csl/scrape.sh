@@ -13,6 +13,10 @@ done
 cd "$PROJECT_ROOT"
 
 echo "🌐 Scraping CSL HTML from web..."
+
+# Clear old cached HTML to avoid mixing seasons
+rm -f database/scraped-html/csl/*.html
+
 export SCRAPE_MODE=download
 export SCRAPE_USE_CACHE=false
 node database/scripts/scrapers/CslStructureScraper.js

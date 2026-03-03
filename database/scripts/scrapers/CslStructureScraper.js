@@ -43,11 +43,14 @@ class CslStructureScraper {
     this.divisionTeamRepo = new DivisionTeamRepository(client);
     this.standingsRepo = new StandingsRepository(client);
     
-    // CSL configuration - hardcoded
+    // CSL configuration - read from config.json, overridable via constructor
+    const leagueConfigPath = path.join(__dirname, '../leagues/north-america/usa/csl/config.json');
+    const leagueConfig = JSON.parse(require('fs').readFileSync(leagueConfigPath, 'utf8'));
     this.leagueName = 'Cosmopolitan Soccer League';
     this.leagueSlug = 'cosmopolitan-soccer-league';
-    this.standingsUrl = 'https://www.cosmosoccerleague.com/CSL/Tables/';
-    this.season = config.season || '2025-2026';
+    this.standingsUrl = leagueConfig.standingsUrl || 'https://www.cosmosoccerleague.com/CSL/Tables/';
+    this.seasonExternalId = leagueConfig.seasonExternalId || null;
+    this.season = config.season || leagueConfig.activeSeason || '2025-2026';
     
     // Track failed fetches for retry
     this.failedFetches = [];
@@ -62,8 +65,11 @@ class CslStructureScraper {
     console.log('⚠️  Assumes divisions/seasons already exist in database');
     
     try {
-      // Use hardcoded URL
-      const url = this.standingsUrl;
+      // Build URL with season parameter if available
+      let url = this.standingsUrl;
+      if (this.seasonExternalId) {
+        url += `?Table_Season=${this.seasonExternalId}`;
+      }
       
       // Step 1: Fetch standings page
       console.log(`\n📥 Fetching standings from: ${url}`);
@@ -317,7 +323,10 @@ class CslStructureScraper {
     
     // 2. Download team page if we have an external_id (use cache to avoid re-downloading)
     if (teamData.externalId) {
-      const teamUrl = `https://www.cosmosoccerleague.com/CSL/Team/${teamData.externalId}`;
+      let teamUrl = `https://www.cosmosoccerleague.com/CSL/Team/${teamData.externalId}`;
+      if (this.seasonExternalId) {
+        teamUrl += `?Table_Season=${this.seasonExternalId}`;
+      }
       try {
         await this.fetcher.fetch(teamUrl, true); // Use cache to avoid overwriting good files
       } catch (error) {

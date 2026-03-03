@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Teams - APSL
--- Total Records: 59
+-- Total Records: 79
 -- NOTE: division_id is now part of team identity (NOT NULL)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -192,7 +192,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Leros SC', '115315', 117, d.id, 1
+SELECT 'Doxa FCW', '114813', 117, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Metropolitan Conference'
@@ -203,7 +203,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Doxa FCW', '114813', 118, d.id, 1
+SELECT 'Leros SC', '115315', 118, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Metropolitan Conference'
@@ -324,7 +324,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Philadelphia Heritage SC', '114835', 129, d.id, 1
+SELECT 'Philadelphia Soccer Club', '114836', 129, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Delaware River Conference'
@@ -335,7 +335,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Vidas United FC', '114847', 130, d.id, 1
+SELECT 'Philadelphia Heritage SC', '114835', 130, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Delaware River Conference'
@@ -346,7 +346,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Philadelphia Soccer Club', '114836', 131, d.id, 1
+SELECT 'Vidas United FC', '114847', 131, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Delaware River Conference'
@@ -390,7 +390,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Sewell Old Boys FC', '116136', 135, d.id, 1
+SELECT 'Medford Strikers', '115227', 135, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Delaware River Conference'
@@ -401,7 +401,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Medford Strikers', '115227', 136, d.id, 1
+SELECT 'Sewell Old Boys FC', '116136', 136, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Delaware River Conference'
@@ -415,7 +415,7 @@ INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
 SELECT 'Nova FC', '114829', 137, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Mid-Atlantic Conference'
+WHERE d.name = 'Mid-Atlantic Conference Fall'
   AND s.name = '2025/2026'
   AND s.league_id = 1
 ON CONFLICT (division_id, name) DO UPDATE SET
@@ -426,7 +426,7 @@ INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
 SELECT 'VA Marauders FC', '114846', 138, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Mid-Atlantic Conference'
+WHERE d.name = 'Mid-Atlantic Conference Fall'
   AND s.name = '2025/2026'
   AND s.league_id = 1
 ON CONFLICT (division_id, name) DO UPDATE SET
@@ -437,7 +437,7 @@ INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
 SELECT 'Wave FC', '114849', 139, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Mid-Atlantic Conference'
+WHERE d.name = 'Mid-Atlantic Conference Fall'
   AND s.name = '2025/2026'
   AND s.league_id = 1
 ON CONFLICT (division_id, name) DO UPDATE SET
@@ -445,10 +445,10 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'PFA EPSL', '114834', 140, d.id, 1
+SELECT 'PFA APSL', '114834', 140, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Mid-Atlantic Conference'
+WHERE d.name = 'Mid-Atlantic Conference Fall'
   AND s.name = '2025/2026'
   AND s.league_id = 1
 ON CONFLICT (division_id, name) DO UPDATE SET
@@ -459,7 +459,7 @@ INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
 SELECT 'Grove Soccer United', '114817', 141, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Mid-Atlantic Conference'
+WHERE d.name = 'Mid-Atlantic Conference Fall'
   AND s.name = '2025/2026'
   AND s.league_id = 1
 ON CONFLICT (division_id, name) DO UPDATE SET
@@ -470,7 +470,7 @@ INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
 SELECT 'Christos FC', '114812', 142, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Mid-Atlantic Conference'
+WHERE d.name = 'Mid-Atlantic Conference Fall'
   AND s.name = '2025/2026'
   AND s.league_id = 1
 ON CONFLICT (division_id, name) DO UPDATE SET
@@ -481,7 +481,7 @@ INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
 SELECT 'Delmarva Thunder', '118680', 143, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Mid-Atlantic Conference'
+WHERE d.name = 'Mid-Atlantic Conference Fall'
   AND s.name = '2025/2026'
   AND s.league_id = 1
 ON CONFLICT (division_id, name) DO UPDATE SET
@@ -492,7 +492,7 @@ INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
 SELECT 'PW Nova', '114839', 144, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Mid-Atlantic Conference'
+WHERE d.name = 'Mid-Atlantic Conference Fall'
   AND s.name = '2025/2026'
   AND s.league_id = 1
 ON CONFLICT (division_id, name) DO UPDATE SET
@@ -500,10 +500,10 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Germantown City FC', '136127', 145, d.id, 1
+SELECT 'Baltimore City FC', '140784', 145, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
-WHERE d.name = 'Mid-Atlantic Conference'
+WHERE d.name = 'Mid-Atlantic Conference Spring'
   AND s.name = '2025/2026'
   AND s.league_id = 1
 ON CONFLICT (division_id, name) DO UPDATE SET
@@ -511,7 +511,139 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Terminus FC', '115815', 146, d.id, 1
+SELECT 'CF Armada', '141305', 146, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Chiefs United', '140359', 147, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Christos FC', '140728', 142, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Club Petrolero', '140256', 148, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Delmarva Thunder', '140730', 143, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Germantown City FC', '136127', 149, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Grove Soccer United', '140739', 141, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Nova FC', '140753', 137, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'PFA APSL', '140760', 140, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'PW Nova', '140766', 144, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'VA Marauders FC', '140777', 138, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Wave FC', '140779', 139, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mid-Atlantic Conference Spring'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Terminus FC', '115815', 150, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Terminus Conference'
@@ -522,7 +654,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Prima FC', '115105', 147, d.id, 1
+SELECT 'Prima FC', '115105', 151, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Terminus Conference'
@@ -533,7 +665,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Majestic SC', '115108', 148, d.id, 1
+SELECT 'Majestic SC', '115108', 152, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Terminus Conference'
@@ -544,7 +676,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Peachtree FC', '115101', 149, d.id, 1
+SELECT 'Peachtree FC', '115101', 153, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Terminus Conference'
@@ -555,7 +687,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Bel Calcio FC', '115106', 150, d.id, 1
+SELECT 'Bel Calcio FC', '115106', 154, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Terminus Conference'
@@ -566,7 +698,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Buckhead SC', '115104', 151, d.id, 1
+SELECT 'Buckhead SC', '115104', 155, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Terminus Conference'
@@ -577,7 +709,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Alliance SC', '115107', 152, d.id, 1
+SELECT 'Georgia United FC', '133651', 156, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Terminus Conference'
@@ -588,7 +720,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Georgia United FC', '133651', 153, d.id, 1
+SELECT 'Alliance SC', '115107', 157, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Terminus Conference'
@@ -599,7 +731,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'SC Gwinnett', '119159', 154, d.id, 1
+SELECT 'SC Gwinnett', '119159', 158, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Terminus Conference'
@@ -610,7 +742,84 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'AC Arlington FC', '136243', 155, d.id, 1
+SELECT 'Alianza FC', '137726', 159, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Hoverla FC', '140960', 160, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Imlay City FC', '137728', 161, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Intra United SC', '141264', 162, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Livonia City FC', '137729', 163, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Monroe United', '141493', 164, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'World Class FC', '137727', 165, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Mitten Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'AC Arlington FC', '136243', 166, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Trinity Conference'
@@ -621,7 +830,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Foro SC', '136241', 156, d.id, 1
+SELECT 'Carrollton Old Boyz', '137416', 167, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Trinity Conference'
@@ -632,7 +841,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'North Texas Prowl FC', '136240', 157, d.id, 1
+SELECT 'Foro SC', '136241', 168, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Trinity Conference'
@@ -643,7 +852,18 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Texas Rage FC', '136242', 158, d.id, 1
+SELECT 'North Texas Prowl FC', '136240', 169, d.id, 1
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Trinity Conference'
+  AND s.name = '2025/2026'
+  AND s.league_id = 1
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Texas Rage FC', '136242', 170, d.id, 1
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Trinity Conference'

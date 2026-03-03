@@ -21,7 +21,7 @@ class ApslSqlGenerator extends BaseGenerator {
     super(config.leagueName, config.sourceSystemId, config.fileCode, config.orgIdBase, config.clubIdBase, config.teamIdBase);
     this.config = config;
     
-    this.matchParser = new ApslMatchParser();
+    this.matchParser = new ApslMatchParser(config.activeSeason);
   }
 
   getLeagueFolder() {

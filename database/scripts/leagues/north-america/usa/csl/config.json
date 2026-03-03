@@ -12,6 +12,7 @@
   "teamIdBase": 10000,
   "playerIdBase": 20000,
   "standingsUrl": "https://www.cosmosoccerleague.com/CSL/Tables/",
+  "seasonExternalId": "8022",
   "matchEventBaseUrl": "https://www.cosmosoccerleague.com/CSL/Event/",
   "cacheDir": "csl",
   "curateAgainst": ["apsl"],

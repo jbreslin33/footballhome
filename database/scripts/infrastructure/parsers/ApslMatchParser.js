@@ -7,7 +7,20 @@ const { JSDOM } = require('jsdom');
  * HTML Structure: <h2>Match Schedule</h2> followed by <table>
  */
 class ApslMatchParser {
-  constructor() {}
+  /**
+   * @param {string} season - Season string like "2025/2026" for deterministic year inference
+   */
+  constructor(season) {
+    this.season = season;
+    if (season) {
+      const parts = season.split('/');
+      this.fallYear = parseInt(parts[0]);   // Sep-Dec
+      this.springYear = parseInt(parts[1]); // Jan-Aug
+    } else {
+      this.fallYear = null;
+      this.springYear = null;
+    }
+  }
   
   /**
    * Parse matches from team page HTML
@@ -180,16 +193,20 @@ class ApslMatchParser {
       return { date: null, time: null };
     }
     
-    // Determine year (current or next year based on month)
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    let year = now.getFullYear();
-    
-    // If the month is before current month, assume next year
-    if (month < currentMonth - 6) {
-      year++;
-    } else if (month > currentMonth + 6) {
-      year--;
+    // Determine year from season (e.g., "2025/2026" → Sep-Dec=2025, Jan-Aug=2026)
+    let year;
+    if (this.fallYear && this.springYear) {
+      year = month >= 9 ? this.fallYear : this.springYear;
+    } else {
+      // Fallback: infer from current date
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      year = now.getFullYear();
+      if (month < currentMonth - 6) {
+        year++;
+      } else if (month > currentMonth + 6) {
+        year--;
+      }
     }
     
     const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;

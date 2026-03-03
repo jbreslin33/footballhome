@@ -20,7 +20,7 @@ class CslSqlGenerator extends BaseGenerator {
     const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
     super(config.leagueName, config.sourceSystemId, config.fileCode, config.orgIdBase, config.clubIdBase, config.teamIdBase);
     this.config = config;
-    this.matchParser = new CslMatchParser();
+    this.matchParser = new CslMatchParser(config.activeSeason);
   }
 
   /**
