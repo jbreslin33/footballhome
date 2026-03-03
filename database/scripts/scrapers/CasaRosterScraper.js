@@ -81,12 +81,13 @@ class CasaRosterScraper {
   }
 
   /**
-   * Download a Google Sheet as XLSX (with CSV fallback for old-format Drive files)
+   * Download a Google Sheet as XLSX (with per-tab CSV fallback for old-format Drive files)
    * @param {string} sheetId - Google Sheet document ID
    * @param {string} divisionName - Division name for logging
+   * @param {Object} tabMap - Tab name → DB team name mapping (needed for CSV fallback)
    * @returns {XLSX.WorkBook} Parsed workbook
    */
-  downloadSheet(sheetId, divisionName) {
+  downloadSheet(sheetId, divisionName, tabMap) {
     const cachePath = path.join(this.cacheDir, this._cacheFilename(divisionName));
 
     // Try xlsx export first (works for native Google Sheets)
@@ -97,17 +98,10 @@ class CasaRosterScraper {
     try {
       this._download(xlsxUrl, cachePath);
     } catch (xlsxErr) {
-      // Fallback: CSV export via gviz API (works for old uploaded .xls files)
-      console.log(`      ⚠️  XLSX export failed (${xlsxErr.message}), trying CSV fallback...`);
-      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
-      const csvPath = cachePath.replace(/\.xlsx$/, '.csv');
-      this._download(csvUrl, csvPath);
-
-      // Convert CSV to workbook so downstream code works the same way
-      const csvBuffer = fs.readFileSync(csvPath);
-      const stats = fs.statSync(csvPath);
-      console.log(`      ✓ Saved: ${path.basename(csvPath)} (${(stats.size / 1024).toFixed(0)} KB) [CSV fallback]`);
-      return XLSX.read(csvBuffer, { type: 'buffer', cellDates: true });
+      // Fallback: download each tab individually as CSV via gviz API
+      // (old uploaded .xls files can't export as xlsx but per-tab CSV works)
+      console.log(`      ⚠️  XLSX export failed (${xlsxErr.message}), trying per-tab CSV fallback...`);
+      return this._downloadTabsAsCsv(sheetId, divisionName, tabMap);
     }
 
     const stats = fs.statSync(cachePath);
@@ -115,6 +109,81 @@ class CasaRosterScraper {
 
     const buffer = fs.readFileSync(cachePath);
     return XLSX.read(buffer, { type: 'buffer', cellDates: true });
+  }
+
+  /**
+   * Download individual tabs as CSV and assemble into a multi-sheet workbook.
+   * Used when xlsx export fails (old uploaded .xls files on Google Drive).
+   * Each tab is fetched via gviz API with &sheet= parameter and cached individually.
+   * @param {string} sheetId - Google Sheet document ID
+   * @param {string} divisionName - Division name for logging
+   * @param {Object} tabMap - Tab name → DB team name mapping
+   * @returns {XLSX.WorkBook} Assembled workbook with one sheet per tab
+   */
+  _downloadTabsAsCsv(sheetId, divisionName, tabMap) {
+    const workbook = XLSX.utils.book_new();
+    const tabNames = Object.keys(tabMap);
+    const divSlug = divisionName.toLowerCase().replace(/\s+/g, '-');
+    let totalSize = 0;
+
+    for (const tabName of tabNames) {
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
+      const tabSlug = tabName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const csvPath = path.join(this.cacheDir, `roster-${divSlug}-${tabSlug}.csv`);
+
+      console.log(`      📋 Tab: ${tabName}`);
+      try {
+        this._download(csvUrl, csvPath);
+        const csvBuffer = fs.readFileSync(csvPath);
+        const stats = fs.statSync(csvPath);
+        totalSize += stats.size;
+        console.log(`         ✓ ${(stats.size / 1024).toFixed(0)} KB`);
+
+        // Parse CSV into a worksheet and add to workbook with the tab name
+        const tabWorkbook = XLSX.read(csvBuffer, { type: 'buffer', cellDates: true });
+        const firstSheet = tabWorkbook.Sheets[tabWorkbook.SheetNames[0]];
+        XLSX.utils.book_append_sheet(workbook, firstSheet, tabName);
+      } catch (err) {
+        console.log(`         ❌ Failed: ${err.message}`);
+      }
+    }
+
+    console.log(`      ✓ Assembled ${workbook.SheetNames.length}/${tabNames.length} tabs (${(totalSize / 1024).toFixed(0)} KB total) [per-tab CSV fallback]`);
+    return workbook;
+  }
+
+  /**
+   * Assemble a workbook from cached per-tab CSV files (for parseFromCache).
+   * These are created by _downloadTabsAsCsv during scrape phase.
+   * @param {string} divisionName
+   * @param {Object} tabMap - Tab name → DB team name mapping
+   * @returns {XLSX.WorkBook|null} Assembled workbook, or null if no tab CSVs found
+   */
+  _assembleFromTabCsvs(divisionName, tabMap) {
+    const divSlug = divisionName.toLowerCase().replace(/\s+/g, '-');
+    const tabNames = Object.keys(tabMap);
+    const workbook = XLSX.utils.book_new();
+    let found = 0;
+
+    for (const tabName of tabNames) {
+      const tabSlug = tabName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const csvPath = path.join(this.cacheDir, `roster-${divSlug}-${tabSlug}.csv`);
+      if (!fs.existsSync(csvPath)) continue;
+
+      try {
+        const csvBuffer = fs.readFileSync(csvPath);
+        const tabWorkbook = XLSX.read(csvBuffer, { type: 'buffer', cellDates: true });
+        const firstSheet = tabWorkbook.Sheets[tabWorkbook.SheetNames[0]];
+        XLSX.utils.book_append_sheet(workbook, firstSheet, tabName);
+        found++;
+      } catch (err) {
+        console.log(`   ⚠️  Error reading ${path.basename(csvPath)}: ${err.message}`);
+      }
+    }
+
+    if (found === 0) return null;
+    console.log(`   📖 Assembled ${found}/${tabNames.length} tabs from cached CSVs`);
+    return workbook;
   }
 
   /**
@@ -423,7 +492,7 @@ class CasaRosterScraper {
 
       let workbook;
       try {
-        workbook = this.downloadSheet(sheetConfig.sheetId, divisionName);
+        workbook = this.downloadSheet(sheetConfig.sheetId, divisionName, sheetConfig.tabMap);
       } catch (err) {
         console.log(`   ❌ Failed to download: ${err.message}`);
         continue;
@@ -456,17 +525,20 @@ class CasaRosterScraper {
     for (const [divisionName, sheetConfig] of Object.entries(this.rosterSheets)) {
       console.log(`\n📂 ${divisionName}`);
 
-      // Check for xlsx first, then fall back to csv (from CSV fallback downloads)
+      // Check for xlsx first, then fall back to per-tab CSVs (from CSV fallback downloads)
       let cachePath = path.join(this.cacheDir, this._cacheFilename(divisionName));
-      const csvPath = cachePath.replace(/\.xlsx$/, '.csv');
       if (!fs.existsSync(cachePath)) {
-        if (fs.existsSync(csvPath)) {
-          cachePath = csvPath;
-        } else {
-          console.log(`   ⚠️  Cached file not found: ${path.basename(cachePath)}`);
-          console.log(`      Run CasaRosterScraper in download mode first`);
+        // Try to assemble workbook from per-tab CSV files
+        const workbook = this._assembleFromTabCsvs(divisionName, sheetConfig.tabMap);
+        if (workbook) {
+          const { players, teamSummaries } = this._parseWorkbook(workbook, sheetConfig, divisionName);
+          allPlayers.push(...players);
+          Object.assign(allSummaries, teamSummaries);
           continue;
         }
+        console.log(`   ⚠️  Cached file not found: ${path.basename(cachePath)}`);
+        console.log(`      Run CasaRosterScraper in download mode first`);
+        continue;
       }
 
       console.log(`   📖 Reading: ${path.basename(cachePath)}`);
