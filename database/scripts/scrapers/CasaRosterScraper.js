@@ -37,6 +37,7 @@ class CasaRosterScraper {
   /**
    * Download a file from a URL using curl (HTTP/1.1 for Google Sheets compatibility)
    * Downloads to a temp file first, then moves on success to avoid corrupting cache.
+   * Validates the response is actually a spreadsheet (not an HTML error page).
    * @param {string} url - URL to download
    * @param {string} outputPath - Path to save the file
    */
@@ -44,34 +45,71 @@ class CasaRosterScraper {
     const tmpPath = outputPath + '.tmp';
     try {
       // Use curl with HTTP/1.1 — Google Sheets HTTP/2 export aborts on large files
-      execSync(`curl --http1.1 -L -sS --retry 2 --retry-delay 5 -o "${tmpPath}" "${url}"`, {
-        timeout: 180000,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+      // Write HTTP code to stderr so we can check it
+      const result = execSync(
+        `curl --http1.1 -L -sS --retry 2 --retry-delay 5 -w "%{http_code}" -o "${tmpPath}" "${url}"`,
+        { timeout: 180000, stdio: ['pipe', 'pipe', 'pipe'] }
+      );
+      const httpCode = result.toString().trim();
+
+      // Check HTTP status
+      if (httpCode !== '200') {
+        try { fs.unlinkSync(tmpPath); } catch (_) {}
+        throw new Error(`HTTP ${httpCode} from Google Sheets`);
+      }
+
+      // Validate it's not an HTML error page
+      const head = Buffer.alloc(100);
+      const fd = fs.openSync(tmpPath, 'r');
+      fs.readSync(fd, head, 0, 100, 0);
+      fs.closeSync(fd);
+      const headerStr = head.toString('utf8').trim();
+      if (headerStr.startsWith('<!DOCTYPE') || headerStr.startsWith('<html')) {
+        try { fs.unlinkSync(tmpPath); } catch (_) {}
+        throw new Error('Google returned HTML error page instead of spreadsheet');
+      }
+
       // Only move to final path on success
       fs.renameSync(tmpPath, outputPath);
     } catch (err) {
       // Clean up temp file on failure
       try { fs.unlinkSync(tmpPath); } catch (_) {}
+      if (err.message.startsWith('HTTP ') || err.message.startsWith('Google returned')) throw err;
       const stderr = err.stderr ? err.stderr.toString() : '';
       throw new Error(`curl failed: ${stderr || err.message}`);
     }
   }
 
   /**
-   * Download a Google Sheet as XLSX
+   * Download a Google Sheet as XLSX (with CSV fallback for old-format Drive files)
    * @param {string} sheetId - Google Sheet document ID
    * @param {string} divisionName - Division name for logging
    * @returns {XLSX.WorkBook} Parsed workbook
    */
   downloadSheet(sheetId, divisionName) {
-    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
     const cachePath = path.join(this.cacheDir, this._cacheFilename(divisionName));
 
+    // Try xlsx export first (works for native Google Sheets)
+    const xlsxUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
     console.log(`   🌐 Downloading: ${divisionName}`);
-    console.log(`      ${url}`);
+    console.log(`      ${xlsxUrl}`);
 
-    this._download(url, cachePath);
+    try {
+      this._download(xlsxUrl, cachePath);
+    } catch (xlsxErr) {
+      // Fallback: CSV export via gviz API (works for old uploaded .xls files)
+      console.log(`      ⚠️  XLSX export failed (${xlsxErr.message}), trying CSV fallback...`);
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+      const csvPath = cachePath.replace(/\.xlsx$/, '.csv');
+      this._download(csvUrl, csvPath);
+
+      // Convert CSV to workbook so downstream code works the same way
+      const csvBuffer = fs.readFileSync(csvPath);
+      const stats = fs.statSync(csvPath);
+      console.log(`      ✓ Saved: ${path.basename(csvPath)} (${(stats.size / 1024).toFixed(0)} KB) [CSV fallback]`);
+      return XLSX.read(csvBuffer, { type: 'buffer', cellDates: true });
+    }
+
     const stats = fs.statSync(cachePath);
     console.log(`      ✓ Saved: ${path.basename(cachePath)} (${(stats.size / 1024).toFixed(0)} KB)`);
 
