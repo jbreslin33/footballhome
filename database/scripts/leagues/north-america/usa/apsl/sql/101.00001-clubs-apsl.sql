@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Clubs - APSL
--- Total Records: 59
+-- Total Records: 72
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO clubs (id, name, organization_id) VALUES (100, 'Falcons FC', 100) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
@@ -20,8 +20,8 @@ INSERT INTO clubs (id, name, organization_id) VALUES (113, 'NY Greek Americans',
 INSERT INTO clubs (id, name, organization_id) VALUES (114, 'Lansdowne Yonkers FC', 114) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (115, 'Hoboken FC 1912', 115) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (116, 'NY Pancyprian Freedoms', 116) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (117, 'Leros SC', 117) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (118, 'Doxa FCW', 118) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (117, 'Doxa FCW', 117) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (118, 'Leros SC', 118) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (119, 'NY International FC', 119) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (120, 'Richmond County FC', 120) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (121, 'Central Park Rangers FC', 121) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
@@ -32,33 +32,46 @@ INSERT INTO clubs (id, name, organization_id) VALUES (125, 'WC Predators', 125) 
 INSERT INTO clubs (id, name, organization_id) VALUES (126, 'Alloy Soccer Club', 126) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (127, 'Oaklyn United FC', 127) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (128, 'Real Central NJ Soccer', 128) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (129, 'Philadelphia Heritage SC', 129) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (130, 'Vidas United FC', 130) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (131, 'Philadelphia Soccer Club', 131) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (129, 'Philadelphia Soccer Club', 129) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (130, 'Philadelphia Heritage SC', 130) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (131, 'Vidas United FC', 131) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (132, 'Jersey Shore Boca', 132) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (133, 'GAK', 133) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (134, 'Lighthouse 1893 SC', 134) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (135, 'Sewell Old Boys FC', 135) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (136, 'Medford Strikers', 136) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (135, 'Medford Strikers', 135) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (136, 'Sewell Old Boys FC', 136) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (137, 'Nova FC', 137) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (138, 'VA Marauders FC', 138) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (139, 'Wave FC', 139) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (140, 'PFA EPSL', 140) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (140, 'PFA APSL', 140) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (141, 'Grove Soccer', 141) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (142, 'Christos FC', 142) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (143, 'Delmarva Thunder', 143) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (144, 'PW Nova', 144) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (145, 'Germantown City FC', 145) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (146, 'Terminus FC', 146) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (147, 'Prima FC', 147) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (148, 'Majestic SC', 148) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (149, 'Peachtree FC', 149) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (150, 'Bel Calcio FC', 150) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (151, 'Buckhead SC', 151) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (152, 'Alliance SC', 152) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (153, 'Georgia United FC', 153) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (154, 'SC Gwinnett', 154) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (155, 'AC Arlington FC', 155) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (156, 'Foro SC', 156) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (157, 'North Texas Prowl FC', 157) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (158, 'Texas Rage FC', 158) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (145, 'Baltimore City FC', 145) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (146, 'CF Armada', 146) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (147, 'Chiefs', 147) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (148, 'Club Petrolero', 148) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (149, 'Germantown City FC', 149) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (150, 'Terminus FC', 150) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (151, 'Prima FC', 151) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (152, 'Majestic SC', 152) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (153, 'Peachtree FC', 153) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (154, 'Bel Calcio FC', 154) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (155, 'Buckhead SC', 155) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (156, 'Georgia United FC', 156) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (157, 'Alliance SC', 157) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (158, 'SC Gwinnett', 158) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (159, 'Alianza FC', 159) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (160, 'Hoverla FC', 160) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (161, 'Imlay City FC', 161) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (162, 'Intra United SC', 162) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (163, 'Livonia City FC', 163) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (164, 'Monroe', 164) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (165, 'World Class FC', 165) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (166, 'AC Arlington FC', 166) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (167, 'Carrollton Old Boyz', 167) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (168, 'Foro SC', 168) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (169, 'North Texas Prowl FC', 169) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (170, 'Texas Rage FC', 170) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
+INSERT INTO clubs (id, name, organization_id) VALUES (171, 'Philadelphia SC', 171) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;

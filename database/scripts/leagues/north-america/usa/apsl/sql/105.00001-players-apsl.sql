@@ -1,7 +1,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Players - APSL
 -- Player roster data from team pages
--- Total Records: 1570
+-- Total Records: 1573
 -- 
 -- Architecture: Auto-generated IDs, name-based deduplication
 -- Same name = same person across all sources (curation overrides via name change)
@@ -9264,7 +9264,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Kennison' AND last_name = 'Akuro' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-kennison-akuro', '114834'
+SELECT pl.id, 1, 'pfa-apsl-kennison-akuro', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Kennison' AND per.last_name = 'Akuro' 
@@ -9280,7 +9280,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Melvin' AND last_name = 'Asanji' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-melvin-asanji', '114834'
+SELECT pl.id, 1, 'pfa-apsl-melvin-asanji', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Melvin' AND per.last_name = 'Asanji' 
@@ -9296,7 +9296,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Brandon' AND last_name = 'Betts' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-brandon-betts', '114834'
+SELECT pl.id, 1, 'pfa-apsl-brandon-betts', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Brandon' AND per.last_name = 'Betts' 
@@ -9312,7 +9312,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Isaac' AND last_name = 'Carvajal' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-isaac-carvajal', '114834'
+SELECT pl.id, 1, 'pfa-apsl-isaac-carvajal', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Isaac' AND per.last_name = 'Carvajal' 
@@ -9328,7 +9328,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Elido' AND last_name = 'Noel Chun Reyes' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-elido-noel-chun-reyes', '114834'
+SELECT pl.id, 1, 'pfa-apsl-elido-noel-chun-reyes', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Elido' AND per.last_name = 'Noel Chun Reyes' 
@@ -9344,7 +9344,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Jenovic' AND last_name = 'Elumbu' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-jenovic-elumbu', '114834'
+SELECT pl.id, 1, 'pfa-apsl-jenovic-elumbu', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Jenovic' AND per.last_name = 'Elumbu' 
@@ -9360,7 +9360,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Anderson' AND last_name = 'Fernandez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-anderson-fernandez', '114834'
+SELECT pl.id, 1, 'pfa-apsl-anderson-fernandez', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Anderson' AND per.last_name = 'Fernandez' 
@@ -9376,7 +9376,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Angello' AND last_name = 'Fernandez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-angello-fernandez', '114834'
+SELECT pl.id, 1, 'pfa-apsl-angello-fernandez', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Angello' AND per.last_name = 'Fernandez' 
@@ -9392,7 +9392,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Terry' AND last_name = 'Fon' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-terry-fon', '114834'
+SELECT pl.id, 1, 'pfa-apsl-terry-fon', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Terry' AND per.last_name = 'Fon' 
@@ -9408,7 +9408,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Eduardo' AND last_name = 'Fuentes' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-eduardo-fuentes', '114834'
+SELECT pl.id, 1, 'pfa-apsl-eduardo-fuentes', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Eduardo' AND per.last_name = 'Fuentes' 
@@ -9424,7 +9424,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Christian' AND last_name = 'Garavito' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-christian-garavito', '114834'
+SELECT pl.id, 1, 'pfa-apsl-christian-garavito', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Christian' AND per.last_name = 'Garavito' 
@@ -9440,7 +9440,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Thaddeus' AND last_name = 'Goddard' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-thaddeus-goddard', '114834'
+SELECT pl.id, 1, 'pfa-apsl-thaddeus-goddard', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Thaddeus' AND per.last_name = 'Goddard' 
@@ -9456,7 +9456,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Alexis' AND last_name = 'Gonzalez Ayala' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-alexis-gonzalez-ayala', '114834'
+SELECT pl.id, 1, 'pfa-apsl-alexis-gonzalez-ayala', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Alexis' AND per.last_name = 'Gonzalez Ayala' 
@@ -9472,7 +9472,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Chayton' AND last_name = 'Kuidlan' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-chayton-kuidlan', '114834'
+SELECT pl.id, 1, 'pfa-apsl-chayton-kuidlan', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Chayton' AND per.last_name = 'Kuidlan' 
@@ -9488,7 +9488,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Tobias' AND last_name = 'Lane' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-tobias-lane', '114834'
+SELECT pl.id, 1, 'pfa-apsl-tobias-lane', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Tobias' AND per.last_name = 'Lane' 
@@ -9504,7 +9504,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Jonathan' AND last_name = 'Lemus Morales' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-jonathan-lemus-morales', '114834'
+SELECT pl.id, 1, 'pfa-apsl-jonathan-lemus-morales', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Jonathan' AND per.last_name = 'Lemus Morales' 
@@ -9520,7 +9520,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Creasy' AND last_name = 'Lopez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-creasy-lopez', '114834'
+SELECT pl.id, 1, 'pfa-apsl-creasy-lopez', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Creasy' AND per.last_name = 'Lopez' 
@@ -9536,7 +9536,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Lutho' AND last_name = 'Mlunguza' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-lutho-mlunguza', '114834'
+SELECT pl.id, 1, 'pfa-apsl-lutho-mlunguza', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Lutho' AND per.last_name = 'Mlunguza' 
@@ -9552,7 +9552,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Toju' AND last_name = 'Okonedo' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-toju-okonedo', '114834'
+SELECT pl.id, 1, 'pfa-apsl-toju-okonedo', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Toju' AND per.last_name = 'Okonedo' 
@@ -9568,7 +9568,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'David' AND last_name = 'Pawlowski' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-david-pawlowski', '114834'
+SELECT pl.id, 1, 'pfa-apsl-david-pawlowski', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'David' AND per.last_name = 'Pawlowski' 
@@ -9584,7 +9584,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Danny' AND last_name = 'Paz' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-danny-paz', '114834'
+SELECT pl.id, 1, 'pfa-apsl-danny-paz', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Danny' AND per.last_name = 'Paz' 
@@ -9600,7 +9600,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Brayan' AND last_name = 'Perez Mendez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-brayan-perez-mendez', '114834'
+SELECT pl.id, 1, 'pfa-apsl-brayan-perez-mendez', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Brayan' AND per.last_name = 'Perez Mendez' 
@@ -9616,7 +9616,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Bronson' AND last_name = 'Shepherd' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-bronson-shepherd', '114834'
+SELECT pl.id, 1, 'pfa-apsl-bronson-shepherd', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Bronson' AND per.last_name = 'Shepherd' 
@@ -9632,7 +9632,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Nicholas' AND last_name = 'Tziamouranis' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-nicholas-tziamouranis', '114834'
+SELECT pl.id, 1, 'pfa-apsl-nicholas-tziamouranis', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Nicholas' AND per.last_name = 'Tziamouranis' 
@@ -9648,7 +9648,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'William' AND last_name = 'Villatoro Velasquez' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-william-villatoro-velasquez', '114834'
+SELECT pl.id, 1, 'pfa-apsl-william-villatoro-velasquez', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'William' AND per.last_name = 'Villatoro Velasquez' 
@@ -9664,7 +9664,7 @@ SELECT id, 1 FROM persons
 WHERE first_name = 'Brian' AND last_name = 'Ware' 
 ON CONFLICT (person_id) DO NOTHING;
 INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
-SELECT pl.id, 1, 'pfa-epsl-brian-ware', '114834'
+SELECT pl.id, 1, 'pfa-apsl-brian-ware', '114834'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Brian' AND per.last_name = 'Ware' 
@@ -25124,6 +25124,54 @@ SELECT pl.id, 1, 'gak-john-warwick', '124946'
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'John' AND per.last_name = 'Warwick' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Paul', 'Xavier Chamberland', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Paul' AND last_name = 'Xavier Chamberland' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'delmarva-thunder-paul-xavier-chamberland', '140730'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Paul' AND per.last_name = 'Xavier Chamberland' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Herley', 'Fevrier', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Herley' AND last_name = 'Fevrier' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'delmarva-thunder-herley-fevrier', '140730'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Herley' AND per.last_name = 'Fevrier' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jhonatan', 'Javier Ramirez', NULL) 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 1 FROM persons 
+WHERE first_name = 'Jhonatan' AND last_name = 'Javier Ramirez' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 1, 'delmarva-thunder-jhonatan-javier-ramirez', '140730'
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jhonatan' AND per.last_name = 'Javier Ramirez' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 

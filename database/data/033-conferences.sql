@@ -15,7 +15,8 @@ INSERT INTO conferences (id, season_id, name) VALUES
 (7, 1, 'Trinity Conference'),
 (36, 1, 'Mid-Atlantic Conference Fall'),
 (37, 1, 'Mid-Atlantic Conference Spring'),
-(39, 1, 'Mitten Conference');
+(39, 1, 'Mitten Conference'),
+(49, 1, 'State Cups');
 
 -- APSL 2024/2025 Conferences
 INSERT INTO conferences (id, season_id, name) VALUES

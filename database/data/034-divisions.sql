@@ -52,7 +52,8 @@ INSERT INTO divisions (id, season_id, conference_id, name, source_system_id) VAL
 (24, 1, 7, 'Trinity Conference', 1),
 (67, 1, 36, 'Mid-Atlantic Conference Fall', 1),
 (68, 1, 37, 'Mid-Atlantic Conference Spring', 1),
-(69, 1, 39, 'Mitten Conference', 1)
+(69, 1, 39, 'Mitten Conference', 1),
+(71, 1, 49, 'State Cups', 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- ==================================================

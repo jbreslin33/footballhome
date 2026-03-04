@@ -2,6 +2,18 @@
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # CSL - Scrape HTML from Web
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Fetches the CSL standings page using real Chrome (--dump-dom).
+# Only fetches 1 page — the standings page that generate-sql.js needs.
+# Team pages are NOT fetched here (fetch individually when needed for rosters).
+#
+# Uses your installed Chrome binary to avoid bot detection (identical TLS
+# fingerprint to normal browsing). Puppeteer's bundled Chromium gets 403'd.
+#
+# Usage:
+#   ./scrape.sh
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set -e
 
@@ -12,39 +24,59 @@ while [ ! -f "$PROJECT_ROOT/Makefile" ]; do
 done
 cd "$PROJECT_ROOT"
 
-echo "🌐 Scraping CSL HTML from web..."
+CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+if [ ! -x "$CHROME" ]; then
+  echo "❌ Chrome not found. Install Google Chrome or update path in scrape.sh"
+  exit 1
+fi
 
-# Back up key HTML files before clearing cache
-# This protects against 403 errors that would overwrite valid data
+# Read season external ID from config.json
+CONFIG="$SCRIPT_DIR/config.json"
+SEASON_EXT_ID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$CONFIG','utf8')).seasonExternalId || '')")
+
 CACHE_DIR="database/scraped-html/csl"
-BACKUP_DIR="$CACHE_DIR/.backup"
-mkdir -p "$BACKUP_DIR"
-if ls "$CACHE_DIR"/tables-*.html 1>/dev/null 2>&1; then
-  cp "$CACHE_DIR"/tables-*.html "$BACKUP_DIR/"
-  echo "   📦 Backed up standings HTML"
+URL="https://www.cosmosoccerleague.com/CSL/Tables/"
+if [ -n "$SEASON_EXT_ID" ]; then
+  URL="${URL}?Table_Season=${SEASON_EXT_ID}"
+fi
+# Hash must match HtmlFetcher.getCacheFilename(URL)
+FILENAME=$(node -e "const c=require('crypto');const u='$URL';const h=c.createHash('md5').update(u).digest('hex').substring(0,8);const p=new URL(u).pathname.split('/').filter(x=>x);const b=p.length?p[p.length-1].toLowerCase().replace(/[^a-z0-9]/g,'-'):'page';console.log(b+'-'+h+'.html')")
+OUTPUT="$CACHE_DIR/$FILENAME"
+
+# Back up existing file
+mkdir -p "$CACHE_DIR/.backup"
+if [ -f "$OUTPUT" ]; then
+  cp "$OUTPUT" "$CACHE_DIR/.backup/"
 fi
 
-# Clear old cached HTML to avoid mixing seasons
-rm -f "$CACHE_DIR"/*.html
+echo "🌐 Fetching CSL standings..."
+echo "   URL: $URL"
 
-export SCRAPE_MODE=download
-export SCRAPE_USE_CACHE=false
-if node database/scripts/scrapers/CslStructureScraper.js; then
-  # Verify the standings file has real data (not a 403 error page)
-  TABLES_FILE=$(ls "$CACHE_DIR"/tables-*.html 2>/dev/null | head -1)
-  if [ -n "$TABLES_FILE" ] && [ "$(wc -l < "$TABLES_FILE")" -gt 100 ]; then
-    echo "✓ CSL HTML saved to $CACHE_DIR/"
-    rm -rf "$BACKUP_DIR"
-  else
-    echo "⚠️  Scraped standings file looks invalid (too small or missing)"
-    echo "   Restoring backup..."
-    cp "$BACKUP_DIR"/*.html "$CACHE_DIR/" 2>/dev/null || true
-    rm -rf "$BACKUP_DIR"
-    echo "   ✓ Restored previous standings HTML"
-  fi
-else
-  echo "⚠️  Scraper failed — restoring backup..."
-  cp "$BACKUP_DIR"/*.html "$CACHE_DIR/" 2>/dev/null || true
-  rm -rf "$BACKUP_DIR"
-  echo "   ✓ Restored previous standings HTML"
+HTML=$("$CHROME" --headless=new --dump-dom --disable-gpu --no-sandbox "$URL" 2>/dev/null) || true
+
+# Validate: reject 403 error pages
+if echo "$HTML" | grep -q '403 - Forbidden'; then
+  echo "   ⚠️  Got 403 — restoring backup"
+  cp "$CACHE_DIR/.backup/"*.html "$CACHE_DIR/" 2>/dev/null || true
+  rm -rf "$CACHE_DIR/.backup"
+  echo "   ✓ Using previous cached HTML"
+  exit 0
 fi
+
+# Validate: check for real content
+LEN=${#HTML}
+if [ "$LEN" -lt 5000 ]; then
+  echo "   ⚠️  Response too small ($LEN bytes) — restoring backup"
+  cp "$CACHE_DIR/.backup/"*.html "$CACHE_DIR/" 2>/dev/null || true
+  rm -rf "$CACHE_DIR/.backup"
+  echo "   ✓ Using previous cached HTML"
+  exit 0
+fi
+
+# Save
+mkdir -p "$CACHE_DIR"
+echo "$HTML" > "$OUTPUT"
+rm -rf "$CACHE_DIR/.backup"
+SIZE_KB=$((LEN / 1024))
+echo "   ✅ Saved: $OUTPUT (${SIZE_KB} KB)"
+echo "✓ CSL HTML saved to $CACHE_DIR/"

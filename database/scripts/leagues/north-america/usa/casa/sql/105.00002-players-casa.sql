@@ -1,7 +1,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Players - CASA
 -- Player roster data from team pages
--- Total Records: 743
+-- Total Records: 745
 -- 
 -- Architecture: Auto-generated IDs, name-based deduplication
 -- Same name = same person across all sources (curation overrides via name change)
@@ -8696,6 +8696,22 @@ ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 
 INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Jacob', 'Melleby', '2007-11-12') 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 2 FROM persons 
+WHERE first_name = 'Jacob' AND last_name = 'Melleby' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 2, 'alloy-soccer-club-reserves-jacob-melleby', NULL
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Jacob' AND per.last_name = 'Melleby' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
 VALUES ('Robby', 'Waller', NULL) 
 ON CONFLICT (first_name, last_name) DO UPDATE SET
   birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
@@ -11572,6 +11588,22 @@ SELECT pl.id, 2, 'yorkpa-fc-dordley-ymonnice', NULL
 FROM players pl 
 JOIN persons per ON pl.person_id = per.id 
 WHERE per.first_name = 'Dordley' AND per.last_name = 'Ymonnice' 
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  team_external_id = EXCLUDED.team_external_id;
+
+INSERT INTO persons (first_name, last_name, birth_date) 
+VALUES ('Youvens', 'Alixe', '2007-11-22') 
+ON CONFLICT (first_name, last_name) DO UPDATE SET
+  birth_date = COALESCE(EXCLUDED.birth_date, persons.birth_date);
+INSERT INTO players (person_id, source_system_id) 
+SELECT id, 2 FROM persons 
+WHERE first_name = 'Youvens' AND last_name = 'Alixe' 
+ON CONFLICT (person_id) DO NOTHING;
+INSERT INTO player_sources (player_id, source_system_id, external_id, team_external_id) 
+SELECT pl.id, 2, 'yorkpa-fc-youvens-alixe', NULL
+FROM players pl 
+JOIN persons per ON pl.person_id = per.id 
+WHERE per.first_name = 'Youvens' AND per.last_name = 'Alixe' 
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   team_external_id = EXCLUDED.team_external_id;
 

@@ -11,7 +11,7 @@ const ClubRepository = require('../domain/repositories/ClubRepository');
 const DivisionTeamRepository = require('../domain/repositories/DivisionTeamRepository');
 const StandingsRepository = require('../domain/repositories/StandingsRepository');
 const Organization = require('../domain/models/Organization');
-const Club = require('../domain/models/Club');
+const Division = require('../domain/models/Division');
 
 /**
  * APSL Structure Scraper
@@ -98,64 +98,57 @@ class ApslStructureScraper {
     const confResult = await this.conferenceRepo.upsertMany(conferences);
     console.log(`   ✓ Conferences: ${confResult.totalInserted} inserted, ${confResult.totalUpdated} updated`);
     
-    // 5. LOOKUP divisions (they must exist in 034-divisions.sql - scrapers should NEVER create divisions)
-    console.log(`   🔍 Looking up ${divisions.length} divisions from database...`);
-    const savedDivisions = await this.divisionRepo.findBySeason(seasonResult.id);
+    // 5. LOOKUP divisions, auto-creating any that are missing
+    // APSL pattern: 1 division per conference, division name = conference name
+    // Cup competitions (State Cups, Over-30, Amateur) are discovered dynamically
+    console.log(`   🔍 Looking up divisions from database...`);
+    let savedDivisions = await this.divisionRepo.findBySeason(seasonResult.id);
     console.log(`   ✓ Found ${savedDivisions.length} divisions in database for season ${seasonResult.id}`);
     
-    if (savedDivisions.length === 0) {
-      throw new Error(`❌ No divisions found for season ${seasonResult.id}! Divisions must exist in 034-divisions.sql before running scrapers.`);
-    }
-    
-    // 5b. Map each team to its division_id (APSL: 1 division per conference, division name = conference name)
+    // 5b. Map each team to its division_id, auto-creating missing divisions
     const divisionsByName = new Map(savedDivisions.map(d => [d.name, d.id]));
+    const savedConferences = await this.conferenceRepo.findBySeason(seasonResult.id);
+    const conferencesByName = new Map(savedConferences.map(c => [c.name, c.id]));
+    
     for (const divisionData of divisionTeams) {
-      const divisionId = divisionsByName.get(divisionData.conferenceName);
+      let divisionId = divisionsByName.get(divisionData.conferenceName);
       if (!divisionId) {
-        console.warn(`   ⚠️  No division found for conference: ${divisionData.conferenceName}`);
-        continue;
+        // Auto-create division for this conference (cups, new conferences, etc.)
+        const conferenceId = conferencesByName.get(divisionData.conferenceName);
+        if (!conferenceId) {
+          console.warn(`   ⚠️  No conference found for: ${divisionData.conferenceName} — skipping`);
+          continue;
+        }
+        console.log(`   🆕 Auto-creating division: ${divisionData.conferenceName}`);
+        const newDiv = new Division({
+          name: divisionData.conferenceName,
+          seasonId: seasonResult.id,
+          conferenceId: conferenceId,
+          sourceSystemId: 1,
+          divisionTypeId: 1
+        });
+        const divResult = await this.divisionRepo.upsert(newDiv);
+        divisionId = divResult.id;
+        divisionsByName.set(divisionData.conferenceName, divisionId);
       }
       for (const team of divisionData.teams) {
         team.divisionId = divisionId;
       }
     }
     
-    // 6. Upsert teams (create club/organization for each team)
+    // 6. Download team pages (orgs/clubs/teams/standings handled by SQL pipeline)
+    // The scraper only fetches HTML — generate-sql.js + load.sh handle all team-level DB writes.
+    // This avoids ID conflicts between scraper auto-increment IDs and SQL explicit IDs.
     if (teams && teams.length > 0) {
-      let clubsCreated = 0;
-      let teamsLinked = 0;
       const failedFetches = [];
+      let downloaded = 0;
       
       for (const team of teams) {
-        // For APSL, each team IS a club (e.g., "Lighthouse 1893 SC")
-        // Create organization + club with same name as team
-        const teamOrg = new Organization({
-          name: team.name,
-          isActive: true
-        });
-        
-        const orgResult = await this.orgRepo.upsert(teamOrg);
-        if (orgResult.inserted) clubsCreated++;
-        
-        // Create club under that organization
-        const club = new Club({
-          name: team.name,
-          organizationId: orgResult.id,
-          sportId: 1, // Soccer
-          isActive: true
-        });
-        
-        const clubResult = await this.clubRepo.upsert(club);
-        
-        // Link team to club
-        team.clubId = clubResult.id;
-        teamsLinked++;
-        
-        // Download team page if we have an external_id (use cache to avoid re-downloading)
         if (team.externalId) {
           const teamUrl = `https://www.apslsoccer.com/APSL/Team/${team.externalId}`;
           try {
             await this.fetcher.fetch(teamUrl, true); // Use cache to preserve existing good files
+            downloaded++;
           } catch (error) {
             if (error.message === 'EMPTY_CACHE' || error.message.includes('timeout')) {
               failedFetches.push({ url: teamUrl, team: team.name });
@@ -166,14 +159,15 @@ class ApslStructureScraper {
         }
       }
       
-      // Retry failed fetches at the end
+      // Retry failed fetches
       if (failedFetches.length > 0) {
         console.log(`\n   🔄 Retrying ${failedFetches.length} failed team page fetches...`);
         for (let attempt = 1; attempt <= 2; attempt++) {
           const stillFailing = [];
           for (const { url, team } of failedFetches) {
             try {
-              await this.fetcher.fetch(url, false, attempt); // Don't use cache, pass attempt number
+              await this.fetcher.fetch(url, false, attempt);
+              downloaded++;
             } catch (error) {
               if (attempt === 2) {
                 console.warn(`      ⚠️  Final attempt failed for ${team}: ${error.message}`);
@@ -188,66 +182,7 @@ class ApslStructureScraper {
         }
       }
       
-      const teamResult = await this.teamRepo.upsertMany(teams);
-      console.log(`   ✓ Teams: ${teamResult.inserted} inserted, ${teamResult.updated} updated`);
-      console.log(`   ✓ Clubs/Organizations: ${clubsCreated} created, ${teamsLinked} teams linked to clubs`);
-      
-      // 7. Save standings (division linking already done via teams.division_id in step 5b/6)
-      const savedTeams = await this.teamRepo.findBySourceSystem(1); // APSL source_system_id = 1
-      if (divisionTeams && divisionTeams.length > 0) {
-        console.log('📊 Saving standings...');
-        
-        // Build maps for quick lookup
-        const divisionsByName = new Map(savedDivisions.map(d => [d.name, d.id]));
-        const teamsByName = new Map(savedTeams.map(t => [t.name, t.id]));
-        
-        let standingsSaved = 0;
-        
-        for (const divisionData of divisionTeams) {
-          // APSL: division name = conference name (1 division per conference)
-          const divisionId = divisionsByName.get(divisionData.conferenceName);
-          
-          if (!divisionId) {
-            console.warn(`   ⚠️  Division not found for conference: ${divisionData.conferenceName}`);
-            continue;
-          }
-          
-          // Process each team in this division
-          for (let i = 0; i < divisionData.teams.length; i++) {
-            const team = divisionData.teams[i];
-            const teamId = teamsByName.get(team.name);
-            
-            if (!teamId) {
-              console.warn(`   ⚠️  Team not found: ${team.name}`);
-              continue;
-            }
-            
-            // Save standings data if available
-            if (divisionData.standings && divisionData.standings[i]) {
-              const stats = divisionData.standings[i];
-              
-              await this.standingsRepo.upsert({
-                teamId: teamId,
-                position: stats.position,
-                played: stats.played,
-                wins: stats.wins,
-                draws: stats.draws,
-                losses: stats.losses,
-                goalsFor: stats.goalsFor,
-                goalsAgainst: stats.goalsAgainst,
-                goalDiff: stats.goalDiff,
-                points: stats.points,
-                fetchedAt: new Date(),
-                source: 'APSL Standings Page'
-              });
-              
-              standingsSaved++;
-            }
-          }
-        }
-        
-        console.log(`   ✓ Standings: ${standingsSaved} records saved`);
-      }
+      console.log(`   ✓ Team pages: ${downloaded} downloaded, ${failedFetches.length} failed`);
     }
     
     // Print conference + division details

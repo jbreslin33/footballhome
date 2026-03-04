@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Clubs - CSL (Curated)
--- Only new clubs not in APSL. Matched clubs use APSL IDs. Total new: 49
+-- Only new clubs not in APSL. Matched clubs use APSL IDs. Total new: 48
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO clubs (id, name, organization_id) VALUES (10000, 'FC Sandzak', 10000) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
@@ -21,7 +21,6 @@ INSERT INTO clubs (id, name, organization_id) VALUES (10018, 'Sporting Astoria S
 INSERT INTO clubs (id, name, organization_id) VALUES (10019, 'ERFC', 10019) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (10020, 'Williamsburg International FC', 10020) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (10021, 'FC Japan', 10021) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
-INSERT INTO clubs (id, name, organization_id) VALUES (10022, 'SC Eintracht', 10022) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (10023, 'Kickoff FC', 10023) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (10024, 'Yemen United SC', 10024) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;
 INSERT INTO clubs (id, name, organization_id) VALUES (10025, 'Vllaznia NYC', 10025) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;

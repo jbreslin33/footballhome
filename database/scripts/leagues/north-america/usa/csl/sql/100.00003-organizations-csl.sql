@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Organizations - CSL (Curated)
--- Only new organizations not in APSL. Total: 49
+-- Only new organizations not in APSL. Total: 48
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO organizations (id, name) VALUES (10000, 'FC Sandzak') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
@@ -21,7 +21,6 @@ INSERT INTO organizations (id, name) VALUES (10018, 'Sporting Astoria South Bron
 INSERT INTO organizations (id, name) VALUES (10019, 'ERFC') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 INSERT INTO organizations (id, name) VALUES (10020, 'Williamsburg International FC') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 INSERT INTO organizations (id, name) VALUES (10021, 'FC Japan') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
-INSERT INTO organizations (id, name) VALUES (10022, 'SC Eintracht') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 INSERT INTO organizations (id, name) VALUES (10023, 'Kickoff FC') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 INSERT INTO organizations (id, name) VALUES (10024, 'Yemen United SC') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 INSERT INTO organizations (id, name) VALUES (10025, 'Vllaznia NYC') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;

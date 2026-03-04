@@ -1,7 +1,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Rosters - CASA
 -- Player-team relationships from team roster pages
--- Total Records: 744
+-- Total Records: 746
 -- 
 -- Architecture: Players looked up by name (no hardcoded IDs)
 -- joined_at uses sentinel date '1970-01-01' for scraped rosters (deterministic for UPSERT)
@@ -4908,6 +4908,15 @@ SELECT t.id, pl.id, NULL, '1970-01-01'
 FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
 WHERE t.name = 'Alloy Soccer Club Reserves' AND t.source_system_id = 2
+  AND per.first_name = 'Jacob' AND per.last_name = 'Melleby'
+ON CONFLICT (team_id, player_id, joined_at) DO UPDATE SET
+  jersey_number = EXCLUDED.jersey_number;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, '1970-01-01'
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'Alloy Soccer Club Reserves' AND t.source_system_id = 2
   AND per.first_name = 'Robby' AND per.last_name = 'Waller'
 ON CONFLICT (team_id, player_id, joined_at) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number;
@@ -6520,6 +6529,15 @@ FROM teams t, players pl
 JOIN persons per ON pl.person_id = per.id
 WHERE t.name = 'YorkPA FC' AND t.source_system_id = 2
   AND per.first_name = 'Dordley' AND per.last_name = 'Ymonnice'
+ON CONFLICT (team_id, player_id, joined_at) DO UPDATE SET
+  jersey_number = EXCLUDED.jersey_number;
+
+INSERT INTO rosters (team_id, player_id, jersey_number, joined_at) 
+SELECT t.id, pl.id, NULL, '1970-01-01'
+FROM teams t, players pl
+JOIN persons per ON pl.person_id = per.id
+WHERE t.name = 'YorkPA FC' AND t.source_system_id = 2
+  AND per.first_name = 'Youvens' AND per.last_name = 'Alixe'
 ON CONFLICT (team_id, player_id, joined_at) DO UPDATE SET
   jersey_number = EXCLUDED.jersey_number;
 

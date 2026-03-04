@@ -368,7 +368,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'SC Eintracht', '116476', 10022, d.id, 3
+SELECT 'SC Eintracht', '116476', 162, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 2'
@@ -555,7 +555,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'SC Eintracht II', '116477', 10022, d.id, 3
+SELECT 'SC Eintracht II', '116477', 162, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 2 Reserve'
@@ -1050,7 +1050,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'SC Eintracht Legends', '116478', 10022, d.id, 3
+SELECT 'SC Eintracht Legends', '116478', 162, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Over-40 Division'
