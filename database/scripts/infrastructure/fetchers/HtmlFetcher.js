@@ -196,6 +196,15 @@ class HtmlFetcher {
       }
       throw new Error('Empty response from server');
     }
+
+    // Reject error pages (403 Forbidden, 404 Not Found, etc.)
+    // These can be returned as valid HTML by Puppeteer even after stealth bypass
+    const lowerHtml = html.toLowerCase();
+    if (lowerHtml.includes('403 - forbidden') || lowerHtml.includes('access is denied') ||
+        (lowerHtml.includes('server error') && html.length < 2000)) {
+      console.log(`   ⚠️  Error page detected (403/access denied) — not caching`);
+      throw new Error('Server returned error page (403 Forbidden)');
+    }
     
     // Save to cache
     try {
