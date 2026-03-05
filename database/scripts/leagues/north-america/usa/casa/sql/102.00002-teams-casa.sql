@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Teams - CASA (Curated)
--- Teams with curated club_id references. Total: 29
+-- Teams with curated club_id references. Total: 30
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
@@ -214,6 +214,17 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
 SELECT 'Gambeta FC', '9090891-gambeta-fc', 20010, d.id, 2
+FROM divisions d
+JOIN seasons s ON d.season_id = s.id
+WHERE d.name = 'Boston Liga 1'
+  AND s.name = '2025/2026'
+  AND s.league_id = 2
+ON CONFLICT (division_id, name) DO UPDATE SET
+  external_id = EXCLUDED.external_id,
+  club_id = EXCLUDED.club_id,
+  source_system_id = EXCLUDED.source_system_id;
+INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
+SELECT 'Somerville United FC II', '9090891-somerville-united-fc-ii', 107, d.id, 2
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Boston Liga 1'

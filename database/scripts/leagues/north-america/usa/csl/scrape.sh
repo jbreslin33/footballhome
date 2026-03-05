@@ -24,9 +24,15 @@ while [ ! -f "$PROJECT_ROOT/Makefile" ]; do
 done
 cd "$PROJECT_ROOT"
 
-CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-if [ ! -x "$CHROME" ]; then
-  echo "❌ Chrome not found. Install Google Chrome or update path in scrape.sh"
+# Detect Chrome binary (cross-platform)
+if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
+  CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+elif command -v google-chrome-stable &> /dev/null; then
+  CHROME="google-chrome-stable"
+elif command -v google-chrome &> /dev/null; then
+  CHROME="google-chrome"
+else
+  echo "❌ Chrome not found. Run ./setup.sh to install, or install Google Chrome manually."
   exit 1
 fi
 
