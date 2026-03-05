@@ -10,7 +10,9 @@
 -- 6. Rosters - team_id -> player_id with temporal tracking
 -- 7. Identity System - Persons, Users, Players, Coaches (normalized roles)
 -- 8. Chat System - Generic messaging with external platform integrations
--- 9. Supporting Tables - Venues, matches, audit log
+-- 9. Training Attendance & Eligibility - Cascading policies, session tracking
+-- 10. Tactical Board System - Lineup → Diagram → Simulation engine
+-- 11. Supporting Tables - Venues, matches, audit log
 --
 -- Key Principles:
 -- - Competition-centric: Teams ARE division entries (not persistent across competitions)
@@ -830,6 +832,7 @@ CREATE TABLE players (
     height_cm INTEGER,                      -- Height in centimeters
     nationality VARCHAR(3),                 -- ISO 3166-1 alpha-3 (USA, BRA, MEX)
     photo_url TEXT,
+    has_family_discount BOOLEAN DEFAULT false,  -- Player with family: reduced training requirement
     source_system_id INTEGER REFERENCES source_systems(id),  -- Legacy: primary source
     external_id VARCHAR(100),               -- Legacy: primary external ID
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1399,6 +1402,320 @@ CREATE INDEX idx_chat_event_rsvps_person ON chat_event_rsvps(person_id) WHERE pe
 CREATE INDEX idx_chat_event_rsvps_overridden ON chat_event_rsvps(chat_event_id) WHERE override_rsvp_status_id IS NOT NULL;
 
 -- created_by_chat_id column removed - use chat_events junction table instead
+
+-- ============================================================================
+-- 7. TRAINING ATTENDANCE & ELIGIBILITY
+-- ============================================================================
+
+-- Formations (template positions for a formation)
+CREATE TABLE formations (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(20) NOT NULL UNIQUE,         -- '4-3-3', '4-4-2', '3-5-2'
+    name VARCHAR(100) NOT NULL,               -- 'Classic 4-3-3'
+    num_outfield INTEGER NOT NULL DEFAULT 10, -- Outfield players (excludes GK)
+    positions_json JSONB NOT NULL,            -- [{slot: 1, position_id: 1, x: 50, y: 5, label: "GK"}, ...]
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO formations (id, code, name, num_outfield, positions_json, sort_order) VALUES
+    (1, '4-3-3', 'Classic 4-3-3', 10, '[
+        {"slot":1,"position_id":1,"x":50,"y":5,"label":"GK"},
+        {"slot":2,"position_id":2,"x":85,"y":22,"label":"RB"},
+        {"slot":3,"position_id":3,"x":60,"y":18,"label":"CB"},
+        {"slot":4,"position_id":3,"x":40,"y":18,"label":"CB"},
+        {"slot":5,"position_id":4,"x":15,"y":22,"label":"LB"},
+        {"slot":6,"position_id":6,"x":65,"y":42,"label":"CM"},
+        {"slot":7,"position_id":6,"x":50,"y":38,"label":"CM"},
+        {"slot":8,"position_id":6,"x":35,"y":42,"label":"CM"},
+        {"slot":9,"position_id":8,"x":80,"y":65,"label":"RW"},
+        {"slot":10,"position_id":9,"x":50,"y":70,"label":"ST"},
+        {"slot":11,"position_id":10,"x":20,"y":65,"label":"LW"}
+    ]', 1),
+    (2, '4-4-2', 'Classic 4-4-2', 10, '[
+        {"slot":1,"position_id":1,"x":50,"y":5,"label":"GK"},
+        {"slot":2,"position_id":2,"x":85,"y":22,"label":"RB"},
+        {"slot":3,"position_id":3,"x":60,"y":18,"label":"CB"},
+        {"slot":4,"position_id":3,"x":40,"y":18,"label":"CB"},
+        {"slot":5,"position_id":4,"x":15,"y":22,"label":"LB"},
+        {"slot":6,"position_id":11,"x":85,"y":45,"label":"RM"},
+        {"slot":7,"position_id":6,"x":60,"y":40,"label":"CM"},
+        {"slot":8,"position_id":6,"x":40,"y":40,"label":"CM"},
+        {"slot":9,"position_id":12,"x":15,"y":45,"label":"LM"},
+        {"slot":10,"position_id":9,"x":60,"y":68,"label":"ST"},
+        {"slot":11,"position_id":9,"x":40,"y":68,"label":"ST"}
+    ]', 2),
+    (3, '3-5-2', 'Classic 3-5-2', 10, '[
+        {"slot":1,"position_id":1,"x":50,"y":5,"label":"GK"},
+        {"slot":2,"position_id":3,"x":70,"y":18,"label":"CB"},
+        {"slot":3,"position_id":3,"x":50,"y":15,"label":"CB"},
+        {"slot":4,"position_id":3,"x":30,"y":18,"label":"CB"},
+        {"slot":5,"position_id":13,"x":90,"y":40,"label":"RWB"},
+        {"slot":6,"position_id":6,"x":65,"y":38,"label":"CM"},
+        {"slot":7,"position_id":5,"x":50,"y":32,"label":"CDM"},
+        {"slot":8,"position_id":6,"x":35,"y":38,"label":"CM"},
+        {"slot":9,"position_id":13,"x":10,"y":40,"label":"LWB"},
+        {"slot":10,"position_id":9,"x":60,"y":65,"label":"ST"},
+        {"slot":11,"position_id":9,"x":40,"y":65,"label":"ST"}
+    ]', 3),
+    (4, '4-2-3-1', 'Modern 4-2-3-1', 10, '[
+        {"slot":1,"position_id":1,"x":50,"y":5,"label":"GK"},
+        {"slot":2,"position_id":2,"x":85,"y":22,"label":"RB"},
+        {"slot":3,"position_id":3,"x":60,"y":18,"label":"CB"},
+        {"slot":4,"position_id":3,"x":40,"y":18,"label":"CB"},
+        {"slot":5,"position_id":4,"x":15,"y":22,"label":"LB"},
+        {"slot":6,"position_id":5,"x":60,"y":35,"label":"CDM"},
+        {"slot":7,"position_id":5,"x":40,"y":35,"label":"CDM"},
+        {"slot":8,"position_id":8,"x":80,"y":55,"label":"RW"},
+        {"slot":9,"position_id":7,"x":50,"y":55,"label":"CAM"},
+        {"slot":10,"position_id":10,"x":20,"y":55,"label":"LW"},
+        {"slot":11,"position_id":9,"x":50,"y":72,"label":"ST"}
+    ]', 4)
+ON CONFLICT (id) DO NOTHING;
+
+-- Eligibility policies (cascading: system → club → team → match)
+-- Most specific non-NULL scope wins
+CREATE TABLE eligibility_policies (
+    id SERIAL PRIMARY KEY,
+    -- Scope (all NULL = system default; most specific non-NULL wins)
+    club_id INTEGER REFERENCES clubs(id) ON DELETE CASCADE,
+    team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+    match_id INTEGER REFERENCES matches(id) ON DELETE CASCADE,
+    -- Policy values
+    lookback_count INTEGER NOT NULL DEFAULT 5,              -- How many sessions to look back
+    min_sessions_to_start INTEGER NOT NULL DEFAULT 2,       -- Minimum sessions attended to be eligible starter
+    priority_starter_sessions INTEGER NOT NULL DEFAULT 3,   -- Sessions for priority starter status
+    priority_starter_slots INTEGER NOT NULL DEFAULT 3,      -- How many priority starter slots
+    game_counts_as_session BOOLEAN NOT NULL DEFAULT true,   -- Weekday game counts as training session
+    pickup_counts_as_session BOOLEAN NOT NULL DEFAULT true,  -- Pickup games count as training session
+    family_discount INTEGER NOT NULL DEFAULT 1,             -- Reduce requirement by N for family players
+    notes TEXT,
+    created_by_user_id INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Ensure only one policy per scope level
+    UNIQUE(club_id, team_id, match_id)
+);
+
+CREATE INDEX idx_eligibility_policies_club ON eligibility_policies(club_id);
+CREATE INDEX idx_eligibility_policies_team ON eligibility_policies(team_id);
+CREATE INDEX idx_eligibility_policies_match ON eligibility_policies(match_id);
+
+COMMENT ON TABLE eligibility_policies IS 'Cascading eligibility rules: system default → club → team → match override. Most specific scope wins.';
+
+-- System default policy (all scope fields NULL)
+INSERT INTO eligibility_policies (id, lookback_count, min_sessions_to_start, priority_starter_sessions, priority_starter_slots, game_counts_as_session, pickup_counts_as_session, family_discount, notes)
+VALUES (1, 5, 2, 3, 3, true, true, 1, 'System default: last 5 sessions, 2 to start, 3 for priority, games and pickups count')
+ON CONFLICT (id) DO NOTHING;
+
+-- Training attendance (actual attendance records — NOT RSVP intent)
+CREATE TABLE training_attendance (
+    id SERIAL PRIMARY KEY,
+    player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    chat_event_id INTEGER REFERENCES chat_events(id) ON DELETE CASCADE,  -- Training/pickup session
+    match_id INTEGER REFERENCES matches(id) ON DELETE CASCADE,           -- Weekday game counts as session
+    attended BOOLEAN NOT NULL,
+    source VARCHAR(20) NOT NULL DEFAULT 'groupme',  -- 'groupme' | 'manual' | 'auto'
+    override_by_user_id INTEGER REFERENCES users(id),
+    override_note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_attendance_event CHECK (
+        (chat_event_id IS NOT NULL AND match_id IS NULL) OR
+        (chat_event_id IS NULL AND match_id IS NOT NULL)
+    ),
+    UNIQUE(player_id, chat_event_id),
+    UNIQUE(player_id, match_id)
+);
+
+CREATE INDEX idx_training_attendance_player ON training_attendance(player_id);
+CREATE INDEX idx_training_attendance_event ON training_attendance(chat_event_id);
+CREATE INDEX idx_training_attendance_match ON training_attendance(match_id);
+CREATE INDEX idx_training_attendance_attended ON training_attendance(player_id, attended) WHERE attended = true;
+
+COMMENT ON TABLE training_attendance IS 'Actual training/session attendance. Source of truth for eligibility calculations. GroupMe RSVPs auto-populate; coaches can override.';
+
+-- ============================================================================
+-- 8. TACTICAL BOARD SYSTEM (Lineup → Diagram → Simulation)
+-- ============================================================================
+
+-- Tactical board types
+CREATE TABLE tactical_board_types (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(30) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    sort_order INTEGER DEFAULT 0
+);
+
+INSERT INTO tactical_board_types (id, code, name, description, sort_order) VALUES
+    (1, 'lineup', 'Match Lineup', 'Starting XI and substitutes for a specific match', 1),
+    (2, 'diagram', 'Tactical Diagram', 'Frame-by-frame tactical instruction', 2),
+    (3, 'simulation', 'Simulation', 'Animated playback with AI behaviors and physics', 3),
+    (4, 'template', 'Template', 'Reusable template for creating new boards', 4)
+ON CONFLICT (id) DO NOTHING;
+
+-- Tactical behaviors (AI building blocks for simulation mode)
+CREATE TABLE tactical_behaviors (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    category VARCHAR(50),                     -- 'attacking', 'defending', 'transition', 'set_piece'
+    behavior_json JSONB,                      -- Parameters: {"trigger": "ball_in_zone", "action": "press", "speed": 0.8}
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO tactical_behaviors (id, code, name, description, category, sort_order) VALUES
+    (1, 'static', 'Hold Position', 'Stay at assigned position', 'defending', 1),
+    (2, 'press', 'Press Ball Carrier', 'Close down the player with the ball', 'defending', 2),
+    (3, 'cover', 'Cover Space', 'Drop back to cover dangerous space', 'defending', 3),
+    (4, 'run_forward', 'Overlapping Run', 'Make a forward run past the ball carrier', 'attacking', 4),
+    (5, 'drift_wide', 'Drift Wide', 'Move toward the touchline to stretch play', 'attacking', 5),
+    (6, 'cut_inside', 'Cut Inside', 'Move infield from wide position', 'attacking', 6),
+    (7, 'drop_deep', 'Drop Deep', 'Drop toward own goal to receive ball', 'transition', 7),
+    (8, 'follow_ball', 'Follow Ball', 'Track the ball movement', 'transition', 8)
+ON CONFLICT (id) DO NOTHING;
+
+-- Tactical board (container — linked to match, practice, team, or club)
+CREATE TABLE tactical_boards (
+    id SERIAL PRIMARY KEY,
+    board_type_id INTEGER NOT NULL REFERENCES tactical_board_types(id),
+    match_id INTEGER REFERENCES matches(id) ON DELETE CASCADE,
+    chat_event_id INTEGER REFERENCES chat_events(id) ON DELETE CASCADE,  -- Practice/training session
+    team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+    club_id INTEGER REFERENCES clubs(id) ON DELETE CASCADE,
+    formation_id INTEGER REFERENCES formations(id),
+    scenario_id INTEGER,  -- FK added after tactical_scenarios is created (circular ref)
+    title VARCHAR(255),
+    description TEXT,
+    is_template BOOLEAN DEFAULT false,
+    created_by_user_id INTEGER REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_tactical_boards_type ON tactical_boards(board_type_id);
+CREATE INDEX idx_tactical_boards_match ON tactical_boards(match_id);
+CREATE INDEX idx_tactical_boards_event ON tactical_boards(chat_event_id);
+CREATE INDEX idx_tactical_boards_team ON tactical_boards(team_id);
+CREATE INDEX idx_tactical_boards_club ON tactical_boards(club_id);
+
+COMMENT ON TABLE tactical_boards IS 'Container for tactical boards. Lineup = 1 frame tied to match. Diagram = N frames. Simulation = N keyframes with AI behaviors.';
+
+-- Tactical frames (ordered sequence within a board)
+CREATE TABLE tactical_frames (
+    id SERIAL PRIMARY KEY,
+    board_id INTEGER NOT NULL REFERENCES tactical_boards(id) ON DELETE CASCADE,
+    frame_number INTEGER NOT NULL DEFAULT 0,  -- 0 = initial state (lineup), 1+ = subsequent
+    duration_ms INTEGER DEFAULT 0,            -- 0 = static/manual advance, >0 = auto-advance after N ms
+    label VARCHAR(100),                       -- Optional: "Kickoff", "Build-up", "Final Third"
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(board_id, frame_number)
+);
+
+CREATE INDEX idx_tactical_frames_board ON tactical_frames(board_id);
+
+-- Player placements within a frame
+CREATE TABLE tactical_frame_players (
+    id SERIAL PRIMARY KEY,
+    frame_id INTEGER NOT NULL REFERENCES tactical_frames(id) ON DELETE CASCADE,
+    player_id INTEGER REFERENCES players(id) ON DELETE CASCADE,  -- NULL = generic/placeholder player
+    generic_label VARCHAR(50),                -- e.g., "CF", "Opponent #9" when no real player assigned
+    slot_number INTEGER,                      -- Formation slot (1-11 starters, 12+ subs)
+    is_starter BOOLEAN NOT NULL DEFAULT true,
+    is_opponent BOOLEAN NOT NULL DEFAULT false,  -- true = opponent team piece
+    -- Position and physics
+    x DECIMAL(6,2) NOT NULL,                  -- Normalized pitch position 0-100 (left to right)
+    y DECIMAL(6,2) NOT NULL,                  -- Normalized pitch position 0-100 (own goal to opponent goal)
+    heading DECIMAL(5,2) DEFAULT 0,           -- Facing direction in degrees (0 = up/toward opponent goal)
+    velocity_x DECIMAL(6,2) DEFAULT 0,        -- For simulation: horizontal velocity
+    velocity_y DECIMAL(6,2) DEFAULT 0,        -- For simulation: vertical velocity
+    speed DECIMAL(4,2) DEFAULT 1.0,           -- Player speed multiplier (0.0-2.0)
+    -- Behavior (simulation mode)
+    behavior_id INTEGER REFERENCES tactical_behaviors(id),  -- NULL = human-controlled or static
+    behavior_params JSONB,                    -- Override behavior defaults: {"radius": 10, "intensity": 0.9}
+    -- Visual
+    highlight_color VARCHAR(7),               -- Hex color for emphasis (NULL = team default)
+    position_id INTEGER REFERENCES positions(id),  -- Position played in this frame
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(frame_id, player_id),              -- One placement per real player per frame
+    UNIQUE(frame_id, slot_number)             -- One player per slot per frame
+);
+
+CREATE INDEX idx_tactical_frame_players_frame ON tactical_frame_players(frame_id);
+CREATE INDEX idx_tactical_frame_players_player ON tactical_frame_players(player_id);
+CREATE INDEX idx_tactical_frame_players_starter ON tactical_frame_players(is_starter);
+
+-- Objects within a frame (ball, cones, arrows, zones)
+CREATE TABLE tactical_frame_objects (
+    id SERIAL PRIMARY KEY,
+    frame_id INTEGER NOT NULL REFERENCES tactical_frames(id) ON DELETE CASCADE,
+    object_type VARCHAR(30) NOT NULL,         -- 'ball', 'cone', 'arrow', 'zone', 'line', 'text'
+    x DECIMAL(6,2) NOT NULL,
+    y DECIMAL(6,2) NOT NULL,
+    x2 DECIMAL(6,2),                          -- End point for arrows/lines
+    y2 DECIMAL(6,2),
+    width DECIMAL(6,2),                       -- For zones
+    height DECIMAL(6,2),                      -- For zones
+    rotation DECIMAL(5,2) DEFAULT 0,          -- Degrees
+    color VARCHAR(7) DEFAULT '#FFFFFF',       -- Hex color
+    label VARCHAR(100),                       -- Optional text label
+    line_style VARCHAR(20) DEFAULT 'solid',   -- 'solid', 'dashed', 'dotted'
+    velocity_x DECIMAL(6,2) DEFAULT 0,        -- For simulation: ball movement
+    velocity_y DECIMAL(6,2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_tactical_frame_objects_frame ON tactical_frame_objects(frame_id);
+CREATE INDEX idx_tactical_frame_objects_type ON tactical_frame_objects(object_type);
+
+-- Tactical scenarios (simulation "levels" with win conditions and grading)
+CREATE TABLE tactical_scenarios (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(50),                     -- 'attacking', 'defending', 'transition', 'set_piece'
+    difficulty INTEGER DEFAULT 1 CHECK (difficulty BETWEEN 1 AND 5),  -- 1=beginner, 5=advanced
+    initial_board_id INTEGER REFERENCES tactical_boards(id) ON DELETE SET NULL,  -- Starting state
+    success_criteria JSONB,                   -- {"ball_reaches_zone": "box", "within_seconds": 5}
+    grading_rubric JSONB,                     -- {"positioning": 0.4, "timing": 0.3, "decision": 0.3}
+    max_duration_ms INTEGER DEFAULT 30000,    -- Scenario timeout
+    created_by_user_id INTEGER REFERENCES users(id),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_tactical_scenarios_category ON tactical_scenarios(category);
+CREATE INDEX idx_tactical_scenarios_difficulty ON tactical_scenarios(difficulty);
+
+COMMENT ON TABLE tactical_scenarios IS 'Simulation levels with win conditions and grading rubrics. Players practice scenarios and receive scores/feedback.';
+
+-- Resolve circular reference: tactical_boards.scenario_id → tactical_scenarios
+ALTER TABLE tactical_boards ADD CONSTRAINT fk_tactical_boards_scenario
+    FOREIGN KEY (scenario_id) REFERENCES tactical_scenarios(id) ON DELETE SET NULL;
+
+-- Scenario results (player performance records)
+CREATE TABLE tactical_scenario_results (
+    id SERIAL PRIMARY KEY,
+    scenario_id INTEGER NOT NULL REFERENCES tactical_scenarios(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    score DECIMAL(5,2),                       -- 0-100
+    grade VARCHAR(2),                         -- A+, A, A-, B+, B, B-, C+, C, D, F
+    feedback JSONB,                           -- {"positioning": "Good depth", "timing": "Late run"}
+    duration_ms INTEGER,                      -- How long the attempt took
+    replay_data JSONB,                        -- Full input recording for playback
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(scenario_id, user_id, completed_at)  -- Multiple attempts allowed
+);
+
+CREATE INDEX idx_tactical_scenario_results_scenario ON tactical_scenario_results(scenario_id);
+CREATE INDEX idx_tactical_scenario_results_user ON tactical_scenario_results(user_id);
+CREATE INDEX idx_tactical_scenario_results_score ON tactical_scenario_results(score DESC);
+
+COMMENT ON TABLE tactical_scenario_results IS 'Player performance on tactical scenarios. Tracks scores, grades, and replay data for review.';
 
 -- ============================================================================
 -- SCHEMA MIGRATIONS (tracks applied forward-only migrations)

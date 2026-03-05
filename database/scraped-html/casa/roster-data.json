@@ -3,7 +3,7 @@
     {
       "firstName": "Sammy",
       "lastName": "Amin",
-      "dateOfBirth": "2003-10-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -11,7 +11,7 @@
     {
       "firstName": "Theo",
       "lastName": "Biddle",
-      "dateOfBirth": "2000-07-19",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -19,7 +19,7 @@
     {
       "firstName": "Tyler",
       "lastName": "Caton",
-      "dateOfBirth": "1995-04-04",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -27,7 +27,7 @@
     {
       "firstName": "Jorge",
       "lastName": "Cervantes",
-      "dateOfBirth": "2002-05-17",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -35,7 +35,7 @@
     {
       "firstName": "Manuel",
       "lastName": "Chacon Fallas",
-      "dateOfBirth": "1998-12-05",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -43,7 +43,7 @@
     {
       "firstName": "Miguel",
       "lastName": "Cortes",
-      "dateOfBirth": "1991-10-28",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -51,7 +51,7 @@
     {
       "firstName": "Tyler",
       "lastName": "Dautrich",
-      "dateOfBirth": "1992-08-07",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -59,7 +59,7 @@
     {
       "firstName": "Cameron",
       "lastName": "Dennis",
-      "dateOfBirth": "1995-11-03",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -67,7 +67,7 @@
     {
       "firstName": "Aaron",
       "lastName": "Endres",
-      "dateOfBirth": "1999-03-28",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -75,7 +75,7 @@
     {
       "firstName": "Evan",
       "lastName": "Kent",
-      "dateOfBirth": "2003-07-08",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -83,7 +83,7 @@
     {
       "firstName": "Lekan",
       "lastName": "King",
-      "dateOfBirth": "1992-09-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -91,7 +91,7 @@
     {
       "firstName": "Christopher",
       "lastName": "Manful",
-      "dateOfBirth": "2001-07-07",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -99,7 +99,7 @@
     {
       "firstName": "Sammy",
       "lastName": "Monistere",
-      "dateOfBirth": "1993-09-22",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -107,7 +107,7 @@
     {
       "firstName": "Rocco",
       "lastName": "Monteiro",
-      "dateOfBirth": "2004-02-29",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -115,7 +115,7 @@
     {
       "firstName": "Eli",
       "lastName": "Moraru",
-      "dateOfBirth": "2000-06-27",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -123,7 +123,7 @@
     {
       "firstName": "Zachery",
       "lastName": "Moyer",
-      "dateOfBirth": "2002-06-26",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -131,7 +131,7 @@
     {
       "firstName": "Michael",
       "lastName": "Oh",
-      "dateOfBirth": "1992-10-17",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -139,7 +139,7 @@
     {
       "firstName": "David",
       "lastName": "Olukoya",
-      "dateOfBirth": "2005-05-28",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -147,7 +147,7 @@
     {
       "firstName": "Tamer",
       "lastName": "Ozturk",
-      "dateOfBirth": "2000-02-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -155,7 +155,7 @@
     {
       "firstName": "Joao",
       "lastName": "Patelli Ramos dos Santos",
-      "dateOfBirth": "2000-10-16",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -163,7 +163,7 @@
     {
       "firstName": "Ethan",
       "lastName": "Reta",
-      "dateOfBirth": "2005-01-13",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -171,7 +171,7 @@
     {
       "firstName": "Gonzalo",
       "lastName": "Reyes",
-      "dateOfBirth": "2002-02-18",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -179,7 +179,7 @@
     {
       "firstName": "justin",
       "lastName": "reynoso",
-      "dateOfBirth": "2006-09-08",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -187,7 +187,7 @@
     {
       "firstName": "Cole",
       "lastName": "Roddy",
-      "dateOfBirth": "2002-04-12",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -195,7 +195,7 @@
     {
       "firstName": "Adam",
       "lastName": "Silberg",
-      "dateOfBirth": "2000-09-07",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -203,7 +203,7 @@
     {
       "firstName": "Ethan",
       "lastName": "Spence",
-      "dateOfBirth": "2001-05-29",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -211,7 +211,7 @@
     {
       "firstName": "Kevin",
       "lastName": "Taipe",
-      "dateOfBirth": "2004-10-02",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -219,7 +219,7 @@
     {
       "firstName": "Willyam",
       "lastName": "Veiga",
-      "dateOfBirth": "2006-05-09",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -227,7 +227,7 @@
     {
       "firstName": "Elijah",
       "lastName": "DeBooth",
-      "dateOfBirth": "2003-07-15",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Adé United FC",
       "divisionName": "Philadelphia Liga 1"
@@ -235,7 +235,7 @@
     {
       "firstName": "Djalilou",
       "lastName": "Adam-Djobo",
-      "dateOfBirth": "1990-12-15",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -243,7 +243,7 @@
     {
       "firstName": "Mitchel",
       "lastName": "Alfaro",
-      "dateOfBirth": "1998-02-19",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -251,7 +251,7 @@
     {
       "firstName": "Luke",
       "lastName": "Archibald",
-      "dateOfBirth": "2000-05-12",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -259,7 +259,7 @@
     {
       "firstName": "Noah",
       "lastName": "Blodget",
-      "dateOfBirth": "1996-02-13",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -267,7 +267,7 @@
     {
       "firstName": "Gonazalo",
       "lastName": "Chiang",
-      "dateOfBirth": "1999-12-20",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -275,7 +275,7 @@
     {
       "firstName": "Hayden",
       "lastName": "Cote",
-      "dateOfBirth": "2006-12-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -283,7 +283,7 @@
     {
       "firstName": "Brandon",
       "lastName": "Da Silva",
-      "dateOfBirth": "2007-03-08",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -291,7 +291,7 @@
     {
       "firstName": "Brandon",
       "lastName": "DeAngelo",
-      "dateOfBirth": "2003-07-06",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -299,7 +299,7 @@
     {
       "firstName": "Khadim",
       "lastName": "Drame",
-      "dateOfBirth": "1994-03-04",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -307,7 +307,7 @@
     {
       "firstName": "Emin",
       "lastName": "Gunaydin",
-      "dateOfBirth": "2000-11-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -315,7 +315,7 @@
     {
       "firstName": "Vincent",
       "lastName": "Guzzo",
-      "dateOfBirth": "1995-02-16",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -323,7 +323,7 @@
     {
       "firstName": "Rabah",
       "lastName": "Hameg",
-      "dateOfBirth": "1997-06-27",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -331,7 +331,7 @@
     {
       "firstName": "Anthony",
       "lastName": "Jenkins",
-      "dateOfBirth": "2000-09-15",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -339,7 +339,7 @@
     {
       "firstName": "Sincere",
       "lastName": "Kato",
-      "dateOfBirth": "2003-07-09",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -347,7 +347,7 @@
     {
       "firstName": "Cooper",
       "lastName": "Lang",
-      "dateOfBirth": "1999-06-24",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -355,7 +355,7 @@
     {
       "firstName": "Alex",
       "lastName": "Lewis",
-      "dateOfBirth": "1990-05-01",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -363,7 +363,7 @@
     {
       "firstName": "Lucien",
       "lastName": "Maslin",
-      "dateOfBirth": "2005-05-27",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -371,7 +371,7 @@
     {
       "firstName": "Dayvon",
       "lastName": "Mbu",
-      "dateOfBirth": "2002-11-04",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -379,7 +379,7 @@
     {
       "firstName": "Kevin",
       "lastName": "Munive",
-      "dateOfBirth": "2003-05-29",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -387,7 +387,7 @@
     {
       "firstName": "Matthew",
       "lastName": "Pastore",
-      "dateOfBirth": "1995-08-22",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -395,7 +395,7 @@
     {
       "firstName": "Ethan",
       "lastName": "Spinatto",
-      "dateOfBirth": "2005-05-26",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -403,15 +403,15 @@
     {
       "firstName": "Travis",
       "lastName": "Spotts",
-      "dateOfBirth": "1997-02-26",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
     },
     {
       "firstName": "Marc",
-      "lastName": "M’bia M’bida-Essind Pastor",
-      "dateOfBirth": "2002-06-28",
+      "lastName": "Mâbia Mâbida-Essind Pastor",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -419,7 +419,7 @@
     {
       "firstName": "Logan",
       "lastName": "Shaw",
-      "dateOfBirth": "2007-02-27",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -427,7 +427,7 @@
     {
       "firstName": "Adrian",
       "lastName": "Rodriquez",
-      "dateOfBirth": "2008-10-22",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -435,7 +435,7 @@
     {
       "firstName": "Veysel",
       "lastName": "Tut",
-      "dateOfBirth": "2005-09-27",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -443,7 +443,7 @@
     {
       "firstName": "John",
       "lastName": "Waddell",
-      "dateOfBirth": "2005-11-08",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -451,7 +451,7 @@
     {
       "firstName": "Trinava",
       "lastName": "Roy",
-      "dateOfBirth": "1993-01-15",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Oaklyn United FC II",
       "divisionName": "Philadelphia Liga 1"
@@ -459,7 +459,7 @@
     {
       "firstName": "Issac",
       "lastName": "Agyapong",
-      "dateOfBirth": "1994-09-18",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -467,7 +467,7 @@
     {
       "firstName": "Abdul Razak",
       "lastName": "Alhassan",
-      "dateOfBirth": "2005-05-13",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -475,7 +475,7 @@
     {
       "firstName": "Hassan",
       "lastName": "Bah",
-      "dateOfBirth": "1995-11-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -483,7 +483,7 @@
     {
       "firstName": "Abu",
       "lastName": "Bangura",
-      "dateOfBirth": "1998-08-24",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -491,7 +491,7 @@
     {
       "firstName": "Mustapha",
       "lastName": "Bangura",
-      "dateOfBirth": "1989-10-06",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -499,7 +499,7 @@
     {
       "firstName": "Abubakarr",
       "lastName": "Bangura",
-      "dateOfBirth": "2001-12-01",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -507,7 +507,7 @@
     {
       "firstName": "Demba",
       "lastName": "Camara",
-      "dateOfBirth": "1996-08-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -515,7 +515,7 @@
     {
       "firstName": "Cephas",
       "lastName": "Forson",
-      "dateOfBirth": "1993-05-09",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -523,7 +523,7 @@
     {
       "firstName": "Richardo",
       "lastName": "Gaye",
-      "dateOfBirth": "1996-10-15",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -531,7 +531,7 @@
     {
       "firstName": "John",
       "lastName": "Gwah",
-      "dateOfBirth": "1996-01-07",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -539,7 +539,7 @@
     {
       "firstName": "Abraham",
       "lastName": "Kamara",
-      "dateOfBirth": "2007-05-22",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -547,7 +547,7 @@
     {
       "firstName": "Francis",
       "lastName": "Kamara",
-      "dateOfBirth": "1996-12-23",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -555,7 +555,7 @@
     {
       "firstName": "Mohamed",
       "lastName": "Kamara",
-      "dateOfBirth": "2004-01-07",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -563,7 +563,7 @@
     {
       "firstName": "Alpha",
       "lastName": "Kanu",
-      "dateOfBirth": "1994-08-03",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -571,7 +571,7 @@
     {
       "firstName": "Nyakeh",
       "lastName": "Kiawoh",
-      "dateOfBirth": "1997-10-26",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -579,7 +579,7 @@
     {
       "firstName": "Sory",
       "lastName": "Konneh",
-      "dateOfBirth": "1979-07-17",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -587,7 +587,7 @@
     {
       "firstName": "Idrissa",
       "lastName": "Konobundor",
-      "dateOfBirth": "2007-05-27",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -595,7 +595,7 @@
     {
       "firstName": "Yayah",
       "lastName": "Koroma",
-      "dateOfBirth": "2000-05-17",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -603,7 +603,7 @@
     {
       "firstName": "Alpha",
       "lastName": "Koroma",
-      "dateOfBirth": "2004-06-06",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -611,7 +611,7 @@
     {
       "firstName": "Moses",
       "lastName": "Kpalu",
-      "dateOfBirth": "1980-04-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -619,7 +619,7 @@
     {
       "firstName": "Foday",
       "lastName": "Kuyateh",
-      "dateOfBirth": "1997-01-10",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -627,7 +627,7 @@
     {
       "firstName": "Badamasie",
       "lastName": "Mujtabah",
-      "dateOfBirth": "1994-11-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -635,7 +635,7 @@
     {
       "firstName": "Benedict",
       "lastName": "Olaloye",
-      "dateOfBirth": "2003-04-29",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -643,7 +643,7 @@
     {
       "firstName": "Emmanuel",
       "lastName": "Onwubiko",
-      "dateOfBirth": "1996-10-29",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -651,7 +651,7 @@
     {
       "firstName": "Samuel",
       "lastName": "Sandi",
-      "dateOfBirth": "2003-06-18",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -659,7 +659,7 @@
     {
       "firstName": "Alim",
       "lastName": "Sesay",
-      "dateOfBirth": "2006-12-01",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -667,7 +667,7 @@
     {
       "firstName": "Abdul",
       "lastName": "Sesay",
-      "dateOfBirth": "1988-08-10",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -675,7 +675,7 @@
     {
       "firstName": "Favor",
       "lastName": "WeahJr",
-      "dateOfBirth": "1997-02-16",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philadelphia Sierra Stars",
       "divisionName": "Philadelphia Liga 1"
@@ -683,7 +683,7 @@
     {
       "firstName": "Sulaiman",
       "lastName": "Adegoke",
-      "dateOfBirth": "2002-02-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -691,7 +691,7 @@
     {
       "firstName": "Promise",
       "lastName": "Adeyi",
-      "dateOfBirth": "2003-04-26",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -699,7 +699,7 @@
     {
       "firstName": "Ashkon",
       "lastName": "Ashrafiuon",
-      "dateOfBirth": "1998-10-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -707,7 +707,7 @@
     {
       "firstName": "Thomas",
       "lastName": "Attamante",
-      "dateOfBirth": "1993-09-29",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -715,7 +715,7 @@
     {
       "firstName": "Cee",
       "lastName": "Brown",
-      "dateOfBirth": "1992-07-15",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -723,7 +723,7 @@
     {
       "firstName": "John",
       "lastName": "Costello",
-      "dateOfBirth": "1994-08-08",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -731,7 +731,7 @@
     {
       "firstName": "patrick",
       "lastName": "cronin",
-      "dateOfBirth": "1998-02-27",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -739,7 +739,7 @@
     {
       "firstName": "Jorge",
       "lastName": "Diaz",
-      "dateOfBirth": "1994-04-07",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -747,7 +747,7 @@
     {
       "firstName": "T-Ben",
       "lastName": "Donnie",
-      "dateOfBirth": "1994-07-12",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -755,7 +755,7 @@
     {
       "firstName": "Oluwaseun",
       "lastName": "Falayi",
-      "dateOfBirth": "2002-10-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -763,7 +763,7 @@
     {
       "firstName": "Alfred Wakai",
       "lastName": "Gibson jr",
-      "dateOfBirth": "1992-11-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -771,7 +771,7 @@
     {
       "firstName": "Peter",
       "lastName": "Jakubik",
-      "dateOfBirth": "2002-11-30",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -779,7 +779,7 @@
     {
       "firstName": "Kevin",
       "lastName": "Sadeghipour",
-      "dateOfBirth": "1990-02-01",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -787,7 +787,7 @@
     {
       "firstName": "Zouma",
       "lastName": "Sanya",
-      "dateOfBirth": "1999-06-17",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -795,7 +795,7 @@
     {
       "firstName": "Christopher",
       "lastName": "Selekpoh",
-      "dateOfBirth": "2004-09-05",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -803,7 +803,7 @@
     {
       "firstName": "Thomas",
       "lastName": "Skrocki",
-      "dateOfBirth": "2002-08-16",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -811,7 +811,7 @@
     {
       "firstName": "CJ",
       "lastName": "Smolyn",
-      "dateOfBirth": "1997-11-12",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -819,7 +819,7 @@
     {
       "firstName": "Fawaz",
       "lastName": "Somoye",
-      "dateOfBirth": "2005-03-04",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -827,7 +827,7 @@
     {
       "firstName": "Sebastain",
       "lastName": "Stelmach",
-      "dateOfBirth": "1996-03-17",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -835,7 +835,7 @@
     {
       "firstName": "Tonny",
       "lastName": "Temple",
-      "dateOfBirth": "2000-09-02",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -843,7 +843,7 @@
     {
       "firstName": "Christian",
       "lastName": "Toussaint",
-      "dateOfBirth": "1999-10-12",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -851,7 +851,7 @@
     {
       "firstName": "Henry",
       "lastName": "Tye",
-      "dateOfBirth": "1993-04-06",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -859,7 +859,7 @@
     {
       "firstName": "Bill",
       "lastName": "Wilson",
-      "dateOfBirth": "2002-10-01",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Persepolis FC",
       "divisionName": "Philadelphia Liga 1"
@@ -867,7 +867,7 @@
     {
       "firstName": "Kevin",
       "lastName": "Bowers",
-      "dateOfBirth": "1999-02-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -875,7 +875,7 @@
     {
       "firstName": "Emile",
       "lastName": "Diderot",
-      "dateOfBirth": "1998-08-09",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -883,7 +883,7 @@
     {
       "firstName": "Joseph",
       "lastName": "Duddy",
-      "dateOfBirth": "1999-02-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -891,7 +891,7 @@
     {
       "firstName": "Ayoub",
       "lastName": "Fask",
-      "dateOfBirth": "2004-03-05",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -899,7 +899,7 @@
     {
       "firstName": "Alexander",
       "lastName": "Graul",
-      "dateOfBirth": "1998-01-28",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -907,7 +907,7 @@
     {
       "firstName": "Brendan",
       "lastName": "Hanratty",
-      "dateOfBirth": "1998-10-22",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -915,7 +915,7 @@
     {
       "firstName": "Kevin",
       "lastName": "Hanuscin",
-      "dateOfBirth": "1999-09-07",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -923,7 +923,7 @@
     {
       "firstName": "Malcolm",
       "lastName": "Kane",
-      "dateOfBirth": "1995-08-26",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -931,15 +931,15 @@
     {
       "firstName": "Nicholas",
       "lastName": "LeFevre",
-      "dateOfBirth": "1998-09-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
     },
     {
       "firstName": "Juan",
-      "lastName": "López",
-      "dateOfBirth": "2001-01-11",
+      "lastName": "LÃ³pez",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -947,7 +947,7 @@
     {
       "firstName": "Jimmy",
       "lastName": "Manning",
-      "dateOfBirth": "2004-07-05",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -955,7 +955,7 @@
     {
       "firstName": "Alejandro",
       "lastName": "Medina",
-      "dateOfBirth": "1997-02-12",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -963,7 +963,7 @@
     {
       "firstName": "Diego",
       "lastName": "Moreira Pereira",
-      "dateOfBirth": "1992-09-03",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -971,7 +971,7 @@
     {
       "firstName": "Jose",
       "lastName": "Moura Filho",
-      "dateOfBirth": "2006-01-24",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -979,7 +979,7 @@
     {
       "firstName": "Khalidi",
       "lastName": "Ponela",
-      "dateOfBirth": "2004-12-17",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -987,7 +987,7 @@
     {
       "firstName": "Alec",
       "lastName": "Power",
-      "dateOfBirth": "1999-04-23",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -995,7 +995,7 @@
     {
       "firstName": "Jim",
       "lastName": "Power",
-      "dateOfBirth": "1967-05-27",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Phoenix SCM",
       "divisionName": "Philadelphia Liga 1"
@@ -1003,7 +1003,7 @@
     {
       "firstName": "Myles",
       "lastName": "Addy",
-      "dateOfBirth": "1988-10-26",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1011,7 +1011,7 @@
     {
       "firstName": "Charles",
       "lastName": "Afful",
-      "dateOfBirth": "1997-02-04",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1019,7 +1019,7 @@
     {
       "firstName": "Ahmed",
       "lastName": "Ali",
-      "dateOfBirth": "1997-09-09",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1027,7 +1027,7 @@
     {
       "firstName": "Fred",
       "lastName": "Amadi",
-      "dateOfBirth": "1977-10-22",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1035,7 +1035,7 @@
     {
       "firstName": "Edmond",
       "lastName": "Ansah",
-      "dateOfBirth": "2001-05-06",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1043,7 +1043,7 @@
     {
       "firstName": "Joe",
       "lastName": "Attakora",
-      "dateOfBirth": "1991-06-12",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1051,7 +1051,7 @@
     {
       "firstName": "Christian",
       "lastName": "Bamba",
-      "dateOfBirth": "1995-11-12",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1059,7 +1059,7 @@
     {
       "firstName": "Al hassane",
       "lastName": "Belemou",
-      "dateOfBirth": "1993-03-03",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1067,7 +1067,7 @@
     {
       "firstName": "Prince",
       "lastName": "Boafo",
-      "dateOfBirth": "1995-06-23",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1075,7 +1075,7 @@
     {
       "firstName": "Dilan",
       "lastName": "Carrasco-Palma",
-      "dateOfBirth": "2006-10-30",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1083,7 +1083,7 @@
     {
       "firstName": "Michael",
       "lastName": "Danquah",
-      "dateOfBirth": "1995-06-17",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1091,7 +1091,7 @@
     {
       "firstName": "Bartels",
       "lastName": "Danquah",
-      "dateOfBirth": "2004-05-20",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1099,7 +1099,7 @@
     {
       "firstName": "Joshua",
       "lastName": "Deets",
-      "dateOfBirth": "2002-01-30",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1107,7 +1107,7 @@
     {
       "firstName": "Landon",
       "lastName": "Goodison",
-      "dateOfBirth": "2007-03-16",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1115,7 +1115,7 @@
     {
       "firstName": "Bernard",
       "lastName": "Kyei-Mensah",
-      "dateOfBirth": "1993-04-15",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1123,7 +1123,7 @@
     {
       "firstName": "Imoro",
       "lastName": "latif",
-      "dateOfBirth": "1998-03-25",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1131,7 +1131,7 @@
     {
       "firstName": "Trinidad",
       "lastName": "Maldonado",
-      "dateOfBirth": "2006-11-20",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1139,7 +1139,7 @@
     {
       "firstName": "Landon",
       "lastName": "Neison",
-      "dateOfBirth": "2007-01-19",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1147,7 +1147,7 @@
     {
       "firstName": "Richard",
       "lastName": "Sarpong",
-      "dateOfBirth": "1993-04-24",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1155,7 +1155,7 @@
     {
       "firstName": "Kwamina",
       "lastName": "Thompson",
-      "dateOfBirth": "1990-03-19",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1163,7 +1163,7 @@
     {
       "firstName": "Patrick",
       "lastName": "Tierney",
-      "dateOfBirth": "2003-12-18",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1171,7 +1171,7 @@
     {
       "firstName": "Logan",
       "lastName": "Brock",
-      "dateOfBirth": "2006-10-24",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1179,7 +1179,7 @@
     {
       "firstName": "Saye",
       "lastName": "Gondeh",
-      "dateOfBirth": "1988-10-15",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1187,7 +1187,7 @@
     {
       "firstName": "Kabine",
       "lastName": "Conde",
-      "dateOfBirth": "1994-05-02",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Philly BlackStars",
       "divisionName": "Philadelphia Liga 1"
@@ -1195,7 +1195,7 @@
     {
       "firstName": "Eljo",
       "lastName": "Agolli",
-      "dateOfBirth": "2003-01-12",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1203,7 +1203,7 @@
     {
       "firstName": "Carlos",
       "lastName": "Aroche",
-      "dateOfBirth": "2002-12-25",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1211,7 +1211,7 @@
     {
       "firstName": "Liame",
       "lastName": "Attias",
-      "dateOfBirth": "2006-09-26",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1219,7 +1219,7 @@
     {
       "firstName": "Jayden",
       "lastName": "Barragan",
-      "dateOfBirth": "2004-10-20",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1227,7 +1227,7 @@
     {
       "firstName": "Arber",
       "lastName": "Canole",
-      "dateOfBirth": "2004-03-10",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1235,7 +1235,7 @@
     {
       "firstName": "Christian",
       "lastName": "Cardenas",
-      "dateOfBirth": "2002-11-05",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1243,7 +1243,7 @@
     {
       "firstName": "Ermal",
       "lastName": "Caushi",
-      "dateOfBirth": "1986-02-03",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1251,7 +1251,7 @@
     {
       "firstName": "Ilir",
       "lastName": "Cepani",
-      "dateOfBirth": "1984-11-05",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1259,7 +1259,7 @@
     {
       "firstName": "Klevisi",
       "lastName": "Dervishi",
-      "dateOfBirth": "2005-05-29",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1267,7 +1267,7 @@
     {
       "firstName": "Sidiki",
       "lastName": "Fofana",
-      "dateOfBirth": "2002-01-07",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1275,7 +1275,7 @@
     {
       "firstName": "Evlad",
       "lastName": "Fonda",
-      "dateOfBirth": "2002-02-02",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1283,7 +1283,7 @@
     {
       "firstName": "Zakaria",
       "lastName": "Gueddar",
-      "dateOfBirth": "2007-04-26",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1291,7 +1291,7 @@
     {
       "firstName": "Gavin",
       "lastName": "Hagen",
-      "dateOfBirth": "2004-02-13",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1299,7 +1299,7 @@
     {
       "firstName": "Mario",
       "lastName": "Kureta",
-      "dateOfBirth": "1997-04-17",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1307,7 +1307,7 @@
     {
       "firstName": "Olen",
       "lastName": "Laze",
-      "dateOfBirth": "1984-05-28",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1315,7 +1315,7 @@
     {
       "firstName": "Mario",
       "lastName": "Morina",
-      "dateOfBirth": "1995-05-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1323,7 +1323,7 @@
     {
       "firstName": "Ramadan",
       "lastName": "Nazeraj",
-      "dateOfBirth": "1983-01-25",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1331,7 +1331,7 @@
     {
       "firstName": "Youssef",
       "lastName": "Omer",
-      "dateOfBirth": "2004-08-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1339,7 +1339,7 @@
     {
       "firstName": "Eldion",
       "lastName": "Pajollari",
-      "dateOfBirth": "1984-05-19",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1347,7 +1347,7 @@
     {
       "firstName": "Albion",
       "lastName": "Pajollari",
-      "dateOfBirth": "2006-10-31",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1355,7 +1355,7 @@
     {
       "firstName": "Elsion",
       "lastName": "Pajollari",
-      "dateOfBirth": "1987-02-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1363,7 +1363,7 @@
     {
       "firstName": "Brahim",
       "lastName": "Saouid",
-      "dateOfBirth": "2002-08-10",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1371,7 +1371,7 @@
     {
       "firstName": "Temur",
       "lastName": "Temirov",
-      "dateOfBirth": "2006-07-08",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1379,7 +1379,7 @@
     {
       "firstName": "Achilles",
       "lastName": "Triantafyllos",
-      "dateOfBirth": "2004-10-12",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1387,7 +1387,7 @@
     {
       "firstName": "Brendan",
       "lastName": "Werner",
-      "dateOfBirth": "2002-02-04",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1395,7 +1395,7 @@
     {
       "firstName": "Mikel",
       "lastName": "Bashalli",
-      "dateOfBirth": "1994-10-20",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1403,7 +1403,7 @@
     {
       "firstName": "Tedi",
       "lastName": "Shaho",
-      "dateOfBirth": "2005-05-02",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1411,7 +1411,7 @@
     {
       "firstName": "Juan",
       "lastName": "Rios",
-      "dateOfBirth": "2002-10-04",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Illyrians FC",
       "divisionName": "Philadelphia Liga 1"
@@ -1419,7 +1419,7 @@
     {
       "firstName": "Victor",
       "lastName": "Baidel",
-      "dateOfBirth": "2004-09-09",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1427,7 +1427,7 @@
     {
       "firstName": "Weder",
       "lastName": "Barretos",
-      "dateOfBirth": "2000-11-01",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1435,7 +1435,7 @@
     {
       "firstName": "Aboubacar",
       "lastName": "Bayo",
-      "dateOfBirth": "2006-05-29",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1443,7 +1443,7 @@
     {
       "firstName": "Igor",
       "lastName": "Bonfim",
-      "dateOfBirth": "1991-10-16",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1451,7 +1451,7 @@
     {
       "firstName": "Samuel",
       "lastName": "Botelho",
-      "dateOfBirth": "1997-01-06",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1459,7 +1459,7 @@
     {
       "firstName": "Inaldo",
       "lastName": "Botelho",
-      "dateOfBirth": "1991-05-24",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1467,7 +1467,7 @@
     {
       "firstName": "Luke",
       "lastName": "Breslin",
-      "dateOfBirth": "2005-08-17",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1475,7 +1475,7 @@
     {
       "firstName": "Walter",
       "lastName": "Candido",
-      "dateOfBirth": "1992-08-04",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1483,7 +1483,7 @@
     {
       "firstName": "Christopher",
       "lastName": "Da Silva",
-      "dateOfBirth": "2004-05-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1491,7 +1491,7 @@
     {
       "firstName": "Nycolas",
       "lastName": "De Jesus",
-      "dateOfBirth": "1998-03-03",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1499,7 +1499,7 @@
     {
       "firstName": "Lucas",
       "lastName": "De Morais",
-      "dateOfBirth": "1995-01-01",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1507,7 +1507,7 @@
     {
       "firstName": "Abdoul",
       "lastName": "Diallo",
-      "dateOfBirth": "2006-06-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1515,7 +1515,7 @@
     {
       "firstName": "Cloves",
       "lastName": "Filho",
-      "dateOfBirth": "1997-12-19",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1523,7 +1523,7 @@
     {
       "firstName": "Abouya",
       "lastName": "Gangue",
-      "dateOfBirth": "2003-10-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1531,7 +1531,7 @@
     {
       "firstName": "Andy",
       "lastName": "Hizdri",
-      "dateOfBirth": "2005-02-09",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1539,7 +1539,7 @@
     {
       "firstName": "Alexander",
       "lastName": "Lara",
-      "dateOfBirth": "1997-08-14",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1547,7 +1547,7 @@
     {
       "firstName": "Pedro",
       "lastName": "Lara",
-      "dateOfBirth": "1999-02-25",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1555,7 +1555,7 @@
     {
       "firstName": "Reginaldo",
       "lastName": "Leite",
-      "dateOfBirth": "1981-10-11",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1563,7 +1563,7 @@
     {
       "firstName": "Valentino",
       "lastName": "Martinez",
-      "dateOfBirth": "2002-10-18",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1571,7 +1571,7 @@
     {
       "firstName": "David",
       "lastName": "Masi",
-      "dateOfBirth": "2002-07-07",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1579,7 +1579,7 @@
     {
       "firstName": "John",
       "lastName": "Oladele",
-      "dateOfBirth": "2000-06-30",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1587,7 +1587,7 @@
     {
       "firstName": "Junior",
       "lastName": "Oliveira",
-      "dateOfBirth": "1993-09-12",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1595,7 +1595,7 @@
     {
       "firstName": "Christian",
       "lastName": "Oliveira",
-      "dateOfBirth": "1998-10-21",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1603,7 +1603,7 @@
     {
       "firstName": "Jemirkel",
       "lastName": "Ornaque",
-      "dateOfBirth": "1995-08-05",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1611,7 +1611,7 @@
     {
       "firstName": "Marcos",
       "lastName": "Ribeiro",
-      "dateOfBirth": "2000-09-18",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1619,7 +1619,7 @@
     {
       "firstName": "Denis",
       "lastName": "Sousa",
-      "dateOfBirth": "1999-12-27",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1627,7 +1627,7 @@
     {
       "firstName": "Esnayder",
       "lastName": "Josue",
-      "dateOfBirth": "1998-04-05",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -1635,7 +1635,7 @@
     {
       "firstName": "Majid",
       "lastName": "Kawa",
-      "dateOfBirth": "2001-12-08",
+      "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Lighthouse Boys Club",
       "divisionName": "Philadelphia Liga 1"
@@ -2923,7 +2923,7 @@
     {
       "firstName": "Hector Ivan",
       "lastName": "Acosta",
-      "dateOfBirth": null,
+      "dateOfBirth": "1994-07-29",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -2931,7 +2931,7 @@
     {
       "firstName": "Yousef",
       "lastName": "Atrous",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-04-20",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -2939,7 +2939,7 @@
     {
       "firstName": "James",
       "lastName": "Barden",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-04-06",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -2947,7 +2947,7 @@
     {
       "firstName": "Oseche",
       "lastName": "Buliro",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-10-09",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -2955,7 +2955,7 @@
     {
       "firstName": "John",
       "lastName": "Burke",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-09-24",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -2963,7 +2963,7 @@
     {
       "firstName": "Kevin",
       "lastName": "Callanan",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-11-15",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -2971,7 +2971,7 @@
     {
       "firstName": "Michael",
       "lastName": "Chang",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-12-30",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -2979,7 +2979,7 @@
     {
       "firstName": "Andrew",
       "lastName": "Cooke",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-09-17",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -2987,7 +2987,7 @@
     {
       "firstName": "Alex",
       "lastName": "Cooper-Hohn",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-06-22",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -2995,7 +2995,7 @@
     {
       "firstName": "Leon",
       "lastName": "Djusberg",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-03-01",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3003,7 +3003,7 @@
     {
       "firstName": "Trey",
       "lastName": "Donovan",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-11-08",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3011,7 +3011,7 @@
     {
       "firstName": "Irobosa",
       "lastName": "Enabulele",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-07-20",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3019,7 +3019,7 @@
     {
       "firstName": "Jack",
       "lastName": "Garrity",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-04-01",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3027,7 +3027,7 @@
     {
       "firstName": "Kevin",
       "lastName": "Gilligan",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-11-01",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3035,7 +3035,7 @@
     {
       "firstName": "Ian",
       "lastName": "Goodine",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-06-03",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3043,7 +3043,7 @@
     {
       "firstName": "Trevor",
       "lastName": "Grafton",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-01-17",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3051,7 +3051,7 @@
     {
       "firstName": "Nicholas",
       "lastName": "Harper",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-03-23",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3059,7 +3059,7 @@
     {
       "firstName": "Josh",
       "lastName": "Harper",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-03-23",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3067,7 +3067,7 @@
     {
       "firstName": "James",
       "lastName": "Helf",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-02-16",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3075,7 +3075,7 @@
     {
       "firstName": "Lewis",
       "lastName": "Mustoe",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-03-01",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3083,7 +3083,7 @@
     {
       "firstName": "Osasenaga",
       "lastName": "Owens",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-02-08",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3091,7 +3091,7 @@
     {
       "firstName": "Nathan",
       "lastName": "Plano",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-03-06",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3099,7 +3099,7 @@
     {
       "firstName": "Jack",
       "lastName": "Sarkisian",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-04-05",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3107,7 +3107,7 @@
     {
       "firstName": "Joaquin",
       "lastName": "Silvani",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-11-02",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3115,7 +3115,7 @@
     {
       "firstName": "Stanislaus",
       "lastName": "Sokolov",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-05-24",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3123,7 +3123,7 @@
     {
       "firstName": "Kohei",
       "lastName": "Tomita",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-06-28",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3131,7 +3131,7 @@
     {
       "firstName": "Tomas",
       "lastName": "Trejo",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-09-13",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3139,7 +3139,7 @@
     {
       "firstName": "Caleb",
       "lastName": "Weinstock",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-12-02",
       "jerseyNumber": null,
       "teamName": "BCFC All Stars",
       "divisionName": "Boston Liga 1"
@@ -3147,7 +3147,7 @@
     {
       "firstName": "Moycir",
       "lastName": "Amarante",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-10-05",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3155,7 +3155,7 @@
     {
       "firstName": "Ryan",
       "lastName": "Beardsley",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-10-26",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3163,7 +3163,7 @@
     {
       "firstName": "Thomas",
       "lastName": "Bell",
-      "dateOfBirth": null,
+      "dateOfBirth": "1994-11-30",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3171,7 +3171,7 @@
     {
       "firstName": "Jaime",
       "lastName": "Cortez",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-09-27",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3179,7 +3179,7 @@
     {
       "firstName": "Jah",
       "lastName": "Cyrus",
-      "dateOfBirth": null,
+      "dateOfBirth": "1993-04-18",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3187,7 +3187,7 @@
     {
       "firstName": "Raney",
       "lastName": "Figueiredo",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-09-09",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3195,7 +3195,7 @@
     {
       "firstName": "Paolo",
       "lastName": "Filippi",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-12-13",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3203,7 +3203,7 @@
     {
       "firstName": "Alpha",
       "lastName": "Fofanah",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-09-08",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3211,7 +3211,7 @@
     {
       "firstName": "Patrick",
       "lastName": "Freire",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-10-18",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3219,7 +3219,7 @@
     {
       "firstName": "Matheus",
       "lastName": "Gomes",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-02-14",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3227,7 +3227,7 @@
     {
       "firstName": "Ronnie",
       "lastName": "Gomez",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-02-27",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3235,7 +3235,7 @@
     {
       "firstName": "Matthew",
       "lastName": "Kearney",
-      "dateOfBirth": null,
+      "dateOfBirth": "1992-04-07",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3243,7 +3243,7 @@
     {
       "firstName": "Ousmane",
       "lastName": "Keita",
-      "dateOfBirth": null,
+      "dateOfBirth": "1995-10-18",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3251,7 +3251,7 @@
     {
       "firstName": "William",
       "lastName": "Martinez",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-07-06",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3259,7 +3259,7 @@
     {
       "firstName": "Ryan",
       "lastName": "McGourty",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-04-24",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3267,7 +3267,7 @@
     {
       "firstName": "Zion",
       "lastName": "Monteiro",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-03-20",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3275,7 +3275,7 @@
     {
       "firstName": "Alejandro",
       "lastName": "Monterroso",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-12-10",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3283,7 +3283,7 @@
     {
       "firstName": "Gracian",
       "lastName": "Moreira",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-06-01",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3291,7 +3291,7 @@
     {
       "firstName": "Carlos",
       "lastName": "Neves",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-02-13",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3299,7 +3299,7 @@
     {
       "firstName": "Lucas",
       "lastName": "Oliveira",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-10-17",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3307,7 +3307,7 @@
     {
       "firstName": "Felipe",
       "lastName": "Palacio",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-11-06",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3315,7 +3315,7 @@
     {
       "firstName": "Markelos",
       "lastName": "Papa",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-03-09",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3323,7 +3323,7 @@
     {
       "firstName": "Angelos",
       "lastName": "Papa",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-06-28",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3331,7 +3331,7 @@
     {
       "firstName": "Michael",
       "lastName": "Rendon",
-      "dateOfBirth": null,
+      "dateOfBirth": "1995-01-18",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3339,7 +3339,7 @@
     {
       "firstName": "Edson",
       "lastName": "Robledano",
-      "dateOfBirth": null,
+      "dateOfBirth": "1992-03-29",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3347,7 +3347,7 @@
     {
       "firstName": "gustavo",
       "lastName": "sampaio",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-07-03",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3355,7 +3355,7 @@
     {
       "firstName": "Tjamael",
       "lastName": "Sillah",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-01-28",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3363,7 +3363,7 @@
     {
       "firstName": "William",
       "lastName": "Sousa",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-06-09",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3371,7 +3371,7 @@
     {
       "firstName": "Vlad",
       "lastName": "Ventura",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-06-17",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3379,7 +3379,7 @@
     {
       "firstName": "Albert",
       "lastName": "Williams",
-      "dateOfBirth": null,
+      "dateOfBirth": "1994-02-19",
       "jerseyNumber": null,
       "teamName": "Flatley FC",
       "divisionName": "Boston Liga 1"
@@ -3387,7 +3387,7 @@
     {
       "firstName": "Marouen",
       "lastName": "Ben Guebila",
-      "dateOfBirth": null,
+      "dateOfBirth": "1986-09-03",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3395,7 +3395,7 @@
     {
       "firstName": "Muhammad Uzair",
       "lastName": "Butt",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-05-12",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3403,7 +3403,7 @@
     {
       "firstName": "Fredy",
       "lastName": "Castillo Hernandez",
-      "dateOfBirth": null,
+      "dateOfBirth": "1989-07-26",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3411,7 +3411,7 @@
     {
       "firstName": "Ethan",
       "lastName": "Champlin",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-04-25",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3419,7 +3419,7 @@
     {
       "firstName": "Kevin",
       "lastName": "De Leon",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-06-21",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3427,7 +3427,7 @@
     {
       "firstName": "Ian",
       "lastName": "Dhar",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-02-10",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3435,7 +3435,7 @@
     {
       "firstName": "William",
       "lastName": "Garcia",
-      "dateOfBirth": null,
+      "dateOfBirth": "1984-11-12",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3443,7 +3443,7 @@
     {
       "firstName": "Joshua",
       "lastName": "Hardester",
-      "dateOfBirth": null,
+      "dateOfBirth": "1981-09-26",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3451,7 +3451,7 @@
     {
       "firstName": "Norman",
       "lastName": "Jimenez Laverde",
-      "dateOfBirth": null,
+      "dateOfBirth": "1989-10-22",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3459,7 +3459,7 @@
     {
       "firstName": "Andrew",
       "lastName": "Lee",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-07-17",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3467,7 +3467,7 @@
     {
       "firstName": "Mateus",
       "lastName": "Loesch",
-      "dateOfBirth": null,
+      "dateOfBirth": "1992-10-24",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3475,7 +3475,7 @@
     {
       "firstName": "Austin",
       "lastName": "MBaye",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-05-15",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3483,7 +3483,7 @@
     {
       "firstName": "Sam",
       "lastName": "McGrath",
-      "dateOfBirth": null,
+      "dateOfBirth": "1995-06-05",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3491,7 +3491,7 @@
     {
       "firstName": "Mike",
       "lastName": "Mizhirumbay",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-03-25",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3499,7 +3499,7 @@
     {
       "firstName": "Leo",
       "lastName": "Mosquera",
-      "dateOfBirth": null,
+      "dateOfBirth": "1990-10-22",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3507,7 +3507,7 @@
     {
       "firstName": "Matt",
       "lastName": "Mourges",
-      "dateOfBirth": null,
+      "dateOfBirth": "1993-08-09",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3515,7 +3515,7 @@
     {
       "firstName": "Kevin",
       "lastName": "Ortiz",
-      "dateOfBirth": null,
+      "dateOfBirth": "1992-03-05",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3523,7 +3523,7 @@
     {
       "firstName": "Jose",
       "lastName": "Osorto",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-12-15",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3531,7 +3531,7 @@
     {
       "firstName": "Haorui",
       "lastName": "Qin",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-06-26",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3539,7 +3539,7 @@
     {
       "firstName": "Daniel",
       "lastName": "Ra",
-      "dateOfBirth": null,
+      "dateOfBirth": "1992-10-09",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3547,7 +3547,7 @@
     {
       "firstName": "Ethan",
       "lastName": "Rowe",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-09-02",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3555,7 +3555,7 @@
     {
       "firstName": "Rafael",
       "lastName": "Santos",
-      "dateOfBirth": null,
+      "dateOfBirth": "1989-04-29",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3563,7 +3563,7 @@
     {
       "firstName": "Harrison",
       "lastName": "Snodgrass",
-      "dateOfBirth": null,
+      "dateOfBirth": "1993-06-08",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3571,7 +3571,7 @@
     {
       "firstName": "Marshall",
       "lastName": "Tekell",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-01-30",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3579,7 +3579,7 @@
     {
       "firstName": "Jose",
       "lastName": "Velazquez",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-12-18",
       "jerseyNumber": null,
       "teamName": "Gambeta FC",
       "divisionName": "Boston Liga 1"
@@ -3587,7 +3587,7 @@
     {
       "firstName": "Gabriel",
       "lastName": "Barbosa",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-01-31",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3595,15 +3595,15 @@
     {
       "firstName": "Juliano",
       "lastName": "Bento",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-09-12",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
     },
     {
-      "firstName": "AndrÃ©s",
+      "firstName": "Andrés",
       "lastName": "Bustamante",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-02-12",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3611,7 +3611,7 @@
     {
       "firstName": "Itamar",
       "lastName": "Caldeira",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-05-30",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3619,7 +3619,7 @@
     {
       "firstName": "Vinicius",
       "lastName": "De Oliveira",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-04-29",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3627,7 +3627,7 @@
     {
       "firstName": "William",
       "lastName": "Dos Santos",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-07-04",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3635,7 +3635,7 @@
     {
       "firstName": "Leonardo",
       "lastName": "Fortunato",
-      "dateOfBirth": null,
+      "dateOfBirth": "1994-12-28",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3643,7 +3643,7 @@
     {
       "firstName": "Lucas",
       "lastName": "Franco",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-08-07",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3651,7 +3651,7 @@
     {
       "firstName": "Javier",
       "lastName": "Garcia",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-09-13",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3659,7 +3659,7 @@
     {
       "firstName": "edson",
       "lastName": "junior",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-01-17",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3667,7 +3667,7 @@
     {
       "firstName": "Diego",
       "lastName": "Lorett",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-03-14",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3675,7 +3675,7 @@
     {
       "firstName": "Vitor",
       "lastName": "Magalhaes",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-03-25",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3683,7 +3683,7 @@
     {
       "firstName": "Juann",
       "lastName": "Melo",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-10-22",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3691,7 +3691,7 @@
     {
       "firstName": "Frank",
       "lastName": "Messina",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-04-17",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3699,7 +3699,7 @@
     {
       "firstName": "Sidnei",
       "lastName": "Monteiro",
-      "dateOfBirth": null,
+      "dateOfBirth": "1982-02-04",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3707,7 +3707,7 @@
     {
       "firstName": "Jefferson",
       "lastName": "Oliveira",
-      "dateOfBirth": null,
+      "dateOfBirth": "1995-07-28",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3715,7 +3715,7 @@
     {
       "firstName": "Lenine",
       "lastName": "Pereira",
-      "dateOfBirth": null,
+      "dateOfBirth": "1995-12-31",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3723,7 +3723,7 @@
     {
       "firstName": "Wenderson Kenedy",
       "lastName": "Pereira",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-10-17",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3731,7 +3731,7 @@
     {
       "firstName": "Gustavo",
       "lastName": "Ribeiro",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-11-25",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3739,7 +3739,7 @@
     {
       "firstName": "Marek",
       "lastName": "Rutkowki",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-08-09",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3747,7 +3747,7 @@
     {
       "firstName": "Malek",
       "lastName": "Sakhri",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-01-18",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3755,7 +3755,7 @@
     {
       "firstName": "Souare",
       "lastName": "Saliou",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-02-10",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3763,7 +3763,7 @@
     {
       "firstName": "Silvio",
       "lastName": "Silva",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-08-18",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3771,7 +3771,7 @@
     {
       "firstName": "Marcos",
       "lastName": "Souto",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-10-23",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3779,7 +3779,7 @@
     {
       "firstName": "Jhordan",
       "lastName": "Souza",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-05-18",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3787,7 +3787,7 @@
     {
       "firstName": "Carlos",
       "lastName": "Teixeira",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-02-19",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3795,7 +3795,7 @@
     {
       "firstName": "Elton j",
       "lastName": "Teixeira",
-      "dateOfBirth": null,
+      "dateOfBirth": "1991-01-11",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3803,7 +3803,7 @@
     {
       "firstName": "Willian",
       "lastName": "Zanetti",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-04-28",
       "jerseyNumber": null,
       "teamName": "Jaguars United FC",
       "divisionName": "Boston Liga 1"
@@ -3811,7 +3811,7 @@
     {
       "firstName": "Luis",
       "lastName": "Araujo",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-12-15",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3819,7 +3819,7 @@
     {
       "firstName": "Wesley",
       "lastName": "Borges",
-      "dateOfBirth": null,
+      "dateOfBirth": "1985-05-29",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3827,7 +3827,7 @@
     {
       "firstName": "Adriel",
       "lastName": "Cordeiro",
-      "dateOfBirth": null,
+      "dateOfBirth": "1989-09-13",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3835,7 +3835,7 @@
     {
       "firstName": "Wagner",
       "lastName": "Da Silva",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-11-09",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3843,7 +3843,7 @@
     {
       "firstName": "Luan",
       "lastName": "De Souza",
-      "dateOfBirth": null,
+      "dateOfBirth": "1992-01-18",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3851,7 +3851,7 @@
     {
       "firstName": "Israel",
       "lastName": "Duarte",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-04-23",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3859,7 +3859,7 @@
     {
       "firstName": "Felipe",
       "lastName": "Lopes",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-05-24",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3867,7 +3867,7 @@
     {
       "firstName": "Gustavo",
       "lastName": "Lopes",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-06-18",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3875,7 +3875,7 @@
     {
       "firstName": "Raimon",
       "lastName": "marques",
-      "dateOfBirth": null,
+      "dateOfBirth": "1990-04-24",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3883,7 +3883,7 @@
     {
       "firstName": "Rafael",
       "lastName": "Medeiros",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-02-22",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3891,7 +3891,7 @@
     {
       "firstName": "Leandro",
       "lastName": "Pereira Ramos.",
-      "dateOfBirth": null,
+      "dateOfBirth": "1992-10-27",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3899,7 +3899,7 @@
     {
       "firstName": "Douglas",
       "lastName": "Pires",
-      "dateOfBirth": null,
+      "dateOfBirth": "1989-09-03",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3907,7 +3907,7 @@
     {
       "firstName": "Leandro",
       "lastName": "Ramos",
-      "dateOfBirth": null,
+      "dateOfBirth": "1988-04-01",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3915,7 +3915,7 @@
     {
       "firstName": "Caique",
       "lastName": "Reginaldo",
-      "dateOfBirth": null,
+      "dateOfBirth": "1995-02-23",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3923,7 +3923,7 @@
     {
       "firstName": "Maxsuel",
       "lastName": "Ribeiro",
-      "dateOfBirth": null,
+      "dateOfBirth": "1995-10-06",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3931,7 +3931,7 @@
     {
       "firstName": "Luis",
       "lastName": "Santos",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-08-29",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3939,7 +3939,7 @@
     {
       "firstName": "Vanilson",
       "lastName": "Santos",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-09-20",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3947,7 +3947,7 @@
     {
       "firstName": "Deyvit",
       "lastName": "Silva",
-      "dateOfBirth": null,
+      "dateOfBirth": "1994-11-30",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3955,7 +3955,7 @@
     {
       "firstName": "Wenderson",
       "lastName": "Silva",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-05-09",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3963,7 +3963,7 @@
     {
       "firstName": "Pedro",
       "lastName": "Silva",
-      "dateOfBirth": null,
+      "dateOfBirth": "1993-06-28",
       "jerseyNumber": null,
       "teamName": "South Shore FC",
       "divisionName": "Boston Liga 1"
@@ -3971,7 +3971,7 @@
     {
       "firstName": "Eder",
       "lastName": "Amado",
-      "dateOfBirth": null,
+      "dateOfBirth": "1989-11-26",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -3979,7 +3979,7 @@
     {
       "firstName": "Helton",
       "lastName": "Brandao",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-02-11",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -3987,7 +3987,7 @@
     {
       "firstName": "Yuri",
       "lastName": "Brandao",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-06-17",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -3995,7 +3995,7 @@
     {
       "firstName": "Derik",
       "lastName": "Brito",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-01-11",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4003,7 +4003,7 @@
     {
       "firstName": "Erick",
       "lastName": "Brito",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-01-11",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4011,7 +4011,7 @@
     {
       "firstName": "Belvick",
       "lastName": "da Silva",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-09-09",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4019,7 +4019,7 @@
     {
       "firstName": "Brandon",
       "lastName": "Daluz",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-10-06",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4027,7 +4027,7 @@
     {
       "firstName": "Jaylon",
       "lastName": "Darosa",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-09-13",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4035,7 +4035,7 @@
     {
       "firstName": "Janilson",
       "lastName": "Debrito",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-11-10",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4043,7 +4043,7 @@
     {
       "firstName": "Jayden",
       "lastName": "Depina",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-11-21",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4051,7 +4051,7 @@
     {
       "firstName": "Lucas",
       "lastName": "Fernandes",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-04-22",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4059,7 +4059,7 @@
     {
       "firstName": "Luis",
       "lastName": "Fortes",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-04-27",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4067,7 +4067,7 @@
     {
       "firstName": "Ty",
       "lastName": "Gomes",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-12-25",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4075,7 +4075,7 @@
     {
       "firstName": "Jorge",
       "lastName": "Goncalves",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-12-16",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4083,7 +4083,7 @@
     {
       "firstName": "Ricardo",
       "lastName": "Monteiro",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-10-30",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4091,7 +4091,7 @@
     {
       "firstName": "Carlos",
       "lastName": "Morais",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-06-26",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4099,7 +4099,7 @@
     {
       "firstName": "Gracian",
       "lastName": "Moreira",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-06-01",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4107,7 +4107,7 @@
     {
       "firstName": "Dany",
       "lastName": "Pina",
-      "dateOfBirth": null,
+      "dateOfBirth": "1994-11-21",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4115,7 +4115,7 @@
     {
       "firstName": "Johnathan",
       "lastName": "Pires",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-06-18",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4123,7 +4123,7 @@
     {
       "firstName": "Danny",
       "lastName": "Resende",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-03-03",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4131,7 +4131,7 @@
     {
       "firstName": "Anthony",
       "lastName": "Rodrigues",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-04-03",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4139,7 +4139,7 @@
     {
       "firstName": "Jonathan",
       "lastName": "Rodrigues",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-12-12",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4147,7 +4147,7 @@
     {
       "firstName": "Jeremias",
       "lastName": "Rosa",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-05-23",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4155,7 +4155,7 @@
     {
       "firstName": "Kevin",
       "lastName": "Soares",
-      "dateOfBirth": null,
+      "dateOfBirth": "1995-08-11",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4163,7 +4163,7 @@
     {
       "firstName": "Junior",
       "lastName": "Tavares",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-07-28",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4171,7 +4171,7 @@
     {
       "firstName": "Edmilson",
       "lastName": "Vaz Tavares",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-07-17",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4179,7 +4179,7 @@
     {
       "firstName": "Vanilton",
       "lastName": "Xavier",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-08-05",
       "jerseyNumber": null,
       "teamName": "Strictly Nos Fc",
       "divisionName": "Boston Liga 1"
@@ -4187,7 +4187,7 @@
     {
       "firstName": "Mohammed",
       "lastName": "Abdulrahman",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-01-04",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4195,7 +4195,7 @@
     {
       "firstName": "Omar",
       "lastName": "Ahmed",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-08-21",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4203,7 +4203,7 @@
     {
       "firstName": "Elhadj",
       "lastName": "Bah",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-03-26",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4211,7 +4211,7 @@
     {
       "firstName": "Troy",
       "lastName": "Billingslea",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-05-06",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4219,7 +4219,7 @@
     {
       "firstName": "Ethan",
       "lastName": "Buss",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-08-06",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4227,7 +4227,7 @@
     {
       "firstName": "Aidan",
       "lastName": "Chendak",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-03-31",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4235,7 +4235,7 @@
     {
       "firstName": "Filip",
       "lastName": "Dordevic",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-02-18",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4243,7 +4243,7 @@
     {
       "firstName": "Habib",
       "lastName": "Emami",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-06-11",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4251,7 +4251,7 @@
     {
       "firstName": "Josiah",
       "lastName": "Groff",
-      "dateOfBirth": null,
+      "dateOfBirth": "1991-07-10",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4259,7 +4259,7 @@
     {
       "firstName": "Mohammed",
       "lastName": "Hassan",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-09-02",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4267,7 +4267,7 @@
     {
       "firstName": "Micah",
       "lastName": "Hostetter",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-06-05",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4275,7 +4275,7 @@
     {
       "firstName": "Stylianos",
       "lastName": "Ioannou",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-03-29",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4283,7 +4283,7 @@
     {
       "firstName": "Dylan",
       "lastName": "Luong",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-06-10",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4291,7 +4291,7 @@
     {
       "firstName": "John",
       "lastName": "Moore",
-      "dateOfBirth": null,
+      "dateOfBirth": "1989-10-04",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4299,7 +4299,7 @@
     {
       "firstName": "Moussa",
       "lastName": "Oumarou",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-01-12",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4307,7 +4307,7 @@
     {
       "firstName": "Ethan",
       "lastName": "Ramirez",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-12-27",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4315,7 +4315,7 @@
     {
       "firstName": "Daniel",
       "lastName": "Tema",
-      "dateOfBirth": null,
+      "dateOfBirth": "2002-08-20",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4323,7 +4323,7 @@
     {
       "firstName": "Babo",
       "lastName": "Tereffe",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-04-30",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4331,7 +4331,7 @@
     {
       "firstName": "Makan",
       "lastName": "Traore",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-11-07",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4339,7 +4339,7 @@
     {
       "firstName": "Jereme",
       "lastName": "Wells",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-10-24",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4347,7 +4347,7 @@
     {
       "firstName": "Shenoda",
       "lastName": "Youssef",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-08-20",
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
       "divisionName": "Lancaster Liga 1"
@@ -4355,6 +4355,14 @@
     {
       "firstName": "Jacob",
       "lastName": "Melleby",
+      "dateOfBirth": "2007-11-12",
+      "jerseyNumber": null,
+      "teamName": "Alloy Soccer Club Reserves",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Robby",
+      "lastName": "Waller",
       "dateOfBirth": null,
       "jerseyNumber": null,
       "teamName": "Alloy Soccer Club Reserves",
@@ -4363,7 +4371,7 @@
     {
       "firstName": "Harein",
       "lastName": "Abeysekera",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-05-13",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4371,7 +4379,7 @@
     {
       "firstName": "Liam",
       "lastName": "Carno",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-12-12",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4379,7 +4387,7 @@
     {
       "firstName": "Sebastian",
       "lastName": "Carrilo",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-09-10",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4387,7 +4395,7 @@
     {
       "firstName": "Drake",
       "lastName": "DeJute",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-04-19",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4395,7 +4403,7 @@
     {
       "firstName": "Kabeer",
       "lastName": "Ferhan",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-03-11",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4403,7 +4411,7 @@
     {
       "firstName": "Jackson",
       "lastName": "Hellmann",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-06-04",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4411,7 +4419,7 @@
     {
       "firstName": "Marc",
       "lastName": "Iglesias",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-07-27",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4419,7 +4427,7 @@
     {
       "firstName": "Yussif Attabio",
       "lastName": "Ismail",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-05-23",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4427,7 +4435,7 @@
     {
       "firstName": "An",
       "lastName": "Jaeyun",
-      "dateOfBirth": null,
+      "dateOfBirth": "2001-09-07",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4435,7 +4443,7 @@
     {
       "firstName": "Parth",
       "lastName": "Karki",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-06-11",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4443,7 +4451,7 @@
     {
       "firstName": "Sergio",
       "lastName": "Marin Miralles",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-05-27",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4451,7 +4459,7 @@
     {
       "firstName": "Calix",
       "lastName": "Milligan",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-07-18",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4459,7 +4467,7 @@
     {
       "firstName": "Adeon",
       "lastName": "Muyskens",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-02-20",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4467,7 +4475,7 @@
     {
       "firstName": "Faisal",
       "lastName": "Niazi",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-02-26",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4475,7 +4483,7 @@
     {
       "firstName": "Vincent",
       "lastName": "Okyere",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-02-13",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4483,7 +4491,7 @@
     {
       "firstName": "Devin",
       "lastName": "Putnam",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-03-22",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4491,7 +4499,7 @@
     {
       "firstName": "Bernard",
       "lastName": "Sakyi",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-12-14",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4499,7 +4507,7 @@
     {
       "firstName": "Jordan",
       "lastName": "Samuels",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-04-01",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4507,7 +4515,7 @@
     {
       "firstName": "Sanzhar",
       "lastName": "Sarynzhiev",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-03-10",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4515,7 +4523,7 @@
     {
       "firstName": "Sam",
       "lastName": "Scherzer",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-02-02",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4523,7 +4531,7 @@
     {
       "firstName": "Gabriel Antonio",
       "lastName": "Silva Gomes",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-04-19",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4531,7 +4539,7 @@
     {
       "firstName": "Adam",
       "lastName": "VanWyk",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-10-17",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4539,7 +4547,7 @@
     {
       "firstName": "Benjamin",
       "lastName": "Winograd",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-09-02",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4547,7 +4555,23 @@
     {
       "firstName": "Muhyadin",
       "lastName": "Yusuf",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-05-02",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Alex",
+      "lastName": "Jacobs",
+      "dateOfBirth": "2004-01-11",
+      "jerseyNumber": null,
+      "teamName": "F&M FC",
+      "divisionName": "Lancaster Liga 1"
+    },
+    {
+      "firstName": "Christopher",
+      "lastName": "Wann",
+      "dateOfBirth": "2006-02-13",
       "jerseyNumber": null,
       "teamName": "F&M FC",
       "divisionName": "Lancaster Liga 1"
@@ -4555,7 +4579,7 @@
     {
       "firstName": "Mohammed",
       "lastName": "Al Qudsi",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-08-09",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4563,7 +4587,7 @@
     {
       "firstName": "Gurnoor",
       "lastName": "Bagri",
-      "dateOfBirth": null,
+      "dateOfBirth": "2008-01-20",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4571,7 +4595,7 @@
     {
       "firstName": "Quinn",
       "lastName": "Bertoncini-Troutman",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-08-24",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4579,7 +4603,7 @@
     {
       "firstName": "Braedon",
       "lastName": "Bickford",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-11-17",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4587,7 +4611,7 @@
     {
       "firstName": "Albert",
       "lastName": "Corea",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-07-04",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4595,7 +4619,7 @@
     {
       "firstName": "Dylan",
       "lastName": "Crills",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-09-24",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4603,7 +4627,7 @@
     {
       "firstName": "Amini",
       "lastName": "Diye",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-02-05",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4611,7 +4635,7 @@
     {
       "firstName": "Shamanuel",
       "lastName": "Dominique",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-10-19",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4619,7 +4643,7 @@
     {
       "firstName": "Vincent",
       "lastName": "Edmond",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-12-21",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4627,7 +4651,7 @@
     {
       "firstName": "Chri",
       "lastName": "Ehgay",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-10-13",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4635,7 +4659,7 @@
     {
       "firstName": "Ian",
       "lastName": "Frisbie",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-04-14",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4643,7 +4667,7 @@
     {
       "firstName": "Jesse",
       "lastName": "Gutierrez",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-10-13",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4651,7 +4675,7 @@
     {
       "firstName": "Mason",
       "lastName": "Harris",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-12-07",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4659,7 +4683,7 @@
     {
       "firstName": "Bita",
       "lastName": "Imani",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-06-10",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4667,7 +4691,7 @@
     {
       "firstName": "Michael",
       "lastName": "Kasampilo",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-06-28",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4675,7 +4699,7 @@
     {
       "firstName": "Asende",
       "lastName": "Lubende",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-12-05",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4683,7 +4707,7 @@
     {
       "firstName": "Steven",
       "lastName": "Moldoveanu",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-08-22",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4691,7 +4715,7 @@
     {
       "firstName": "Faustin",
       "lastName": "Mucunguzi",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-01-01",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4699,7 +4723,7 @@
     {
       "firstName": "Jack",
       "lastName": "Ngoy",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-12-19",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4707,7 +4731,7 @@
     {
       "firstName": "Ibrahim",
       "lastName": "Ntege",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-06-11",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4715,7 +4739,7 @@
     {
       "firstName": "Brandon",
       "lastName": "Perez",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-09-22",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4723,7 +4747,7 @@
     {
       "firstName": "Lata",
       "lastName": "Petros",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-09-01",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4731,7 +4755,7 @@
     {
       "firstName": "Gavin",
       "lastName": "Roberts",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-09-02",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4739,7 +4763,7 @@
     {
       "firstName": "Ben",
       "lastName": "Singizwa",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-07-01",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4747,7 +4771,7 @@
     {
       "firstName": "Gavin",
       "lastName": "Wiley",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-06-25",
       "jerseyNumber": null,
       "teamName": "Keystone Elite",
       "divisionName": "Lancaster Liga 1"
@@ -4755,7 +4779,7 @@
     {
       "firstName": "Antonio",
       "lastName": "Alonso-Hernandez",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-09-30",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4763,7 +4787,7 @@
     {
       "firstName": "Daniel",
       "lastName": "Arraiz",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-11-25",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4771,7 +4795,7 @@
     {
       "firstName": "Daviont",
       "lastName": "Baker-Alston",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-02-07",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4779,7 +4803,7 @@
     {
       "firstName": "Lucas",
       "lastName": "Cherniak",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-03-01",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4787,7 +4811,7 @@
     {
       "firstName": "Andrew",
       "lastName": "Cui",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-01-16",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4795,7 +4819,7 @@
     {
       "firstName": "Blake",
       "lastName": "Deluca",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-09-13",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4803,7 +4827,7 @@
     {
       "firstName": "Matthew",
       "lastName": "DiCarlo",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-08-17",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4811,7 +4835,7 @@
     {
       "firstName": "Sleem",
       "lastName": "Emam",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-05-02",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4819,7 +4843,7 @@
     {
       "firstName": "Rhenan",
       "lastName": "Ferreira",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-03-31",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4827,7 +4851,7 @@
     {
       "firstName": "Aiden",
       "lastName": "Fogarty",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-03-28",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4835,7 +4859,7 @@
     {
       "firstName": "Leonardo",
       "lastName": "Guzman",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-08-09",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4843,7 +4867,7 @@
     {
       "firstName": "Luke",
       "lastName": "Jones",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-03-09",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4851,7 +4875,7 @@
     {
       "firstName": "Samuel",
       "lastName": "Kaganzev",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-05-09",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4859,7 +4883,7 @@
     {
       "firstName": "William",
       "lastName": "Maurek",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-11-16",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4867,7 +4891,7 @@
     {
       "firstName": "Jared",
       "lastName": "Mikloski",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-07-18",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4875,7 +4899,7 @@
     {
       "firstName": "Logan",
       "lastName": "Rogers",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-04-12",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4883,7 +4907,7 @@
     {
       "firstName": "Ethan",
       "lastName": "Schrampf",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-09-24",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4891,7 +4915,7 @@
     {
       "firstName": "Alex",
       "lastName": "Schrampf",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-12-26",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4899,7 +4923,7 @@
     {
       "firstName": "Caden",
       "lastName": "Thompson",
-      "dateOfBirth": null,
+      "dateOfBirth": "2007-03-19",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4907,7 +4931,7 @@
     {
       "firstName": "David",
       "lastName": "Turchi",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-04-20",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4915,7 +4939,7 @@
     {
       "firstName": "Johnny",
       "lastName": "Turchi",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-04-20",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4923,7 +4947,7 @@
     {
       "firstName": "Jacob",
       "lastName": "Warner",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-08-30",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4931,7 +4955,7 @@
     {
       "firstName": "Koye",
       "lastName": "Whitman",
-      "dateOfBirth": null,
+      "dateOfBirth": "2003-09-08",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4939,7 +4963,7 @@
     {
       "firstName": "Tim",
       "lastName": "Zellner",
-      "dateOfBirth": null,
+      "dateOfBirth": "2006-08-18",
       "jerseyNumber": null,
       "teamName": "Kutztown Men's Soccer",
       "divisionName": "Lancaster Liga 1"
@@ -4947,7 +4971,7 @@
     {
       "firstName": "Erick",
       "lastName": "Bernal",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-01-25",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -4955,7 +4979,7 @@
     {
       "firstName": "Jordan",
       "lastName": "Brubaker",
-      "dateOfBirth": null,
+      "dateOfBirth": "1993-01-03",
       "jerseyNumber": 25,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -4963,7 +4987,7 @@
     {
       "firstName": "Ian",
       "lastName": "Byrnes",
-      "dateOfBirth": null,
+      "dateOfBirth": "1995-12-15",
       "jerseyNumber": 26,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -4971,7 +4995,7 @@
     {
       "firstName": "Julian",
       "lastName": "Carvajal",
-      "dateOfBirth": null,
+      "dateOfBirth": "1990-12-15",
       "jerseyNumber": 12,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -4987,7 +5011,7 @@
     {
       "firstName": "Tyler",
       "lastName": "Hambright",
-      "dateOfBirth": null,
+      "dateOfBirth": "2004-11-14",
       "jerseyNumber": 22,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -4995,7 +5019,7 @@
     {
       "firstName": "Jessie",
       "lastName": "Herb",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-05-14",
       "jerseyNumber": 10,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5003,7 +5027,7 @@
     {
       "firstName": "Shaquille",
       "lastName": "Hudson",
-      "dateOfBirth": null,
+      "dateOfBirth": "1991-03-12",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5011,7 +5035,7 @@
     {
       "firstName": "Asher",
       "lastName": "Klahold",
-      "dateOfBirth": null,
+      "dateOfBirth": "1993-09-22",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5019,7 +5043,7 @@
     {
       "firstName": "Jordan",
       "lastName": "McMullen",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-08-30",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5027,7 +5051,7 @@
     {
       "firstName": "Alex",
       "lastName": "Morales",
-      "dateOfBirth": null,
+      "dateOfBirth": "2000-01-11",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5035,7 +5059,7 @@
     {
       "firstName": "Garmonger",
       "lastName": "Morris",
-      "dateOfBirth": null,
+      "dateOfBirth": "1990-10-09",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5043,7 +5067,7 @@
     {
       "firstName": "Caden",
       "lastName": "Mullen",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-06-02",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5051,7 +5075,7 @@
     {
       "firstName": "Zach",
       "lastName": "Oster",
-      "dateOfBirth": null,
+      "dateOfBirth": "1993-12-06",
       "jerseyNumber": 4,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5059,7 +5083,7 @@
     {
       "firstName": "Nikita",
       "lastName": "Patrushev",
-      "dateOfBirth": null,
+      "dateOfBirth": "1998-07-01",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5075,7 +5099,7 @@
     {
       "firstName": "Andrey",
       "lastName": "Patrushey",
-      "dateOfBirth": null,
+      "dateOfBirth": "1999-11-09",
       "jerseyNumber": 7,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5083,7 +5107,7 @@
     {
       "firstName": "Aaron",
       "lastName": "Pearson",
-      "dateOfBirth": null,
+      "dateOfBirth": "1986-09-24",
       "jerseyNumber": 18,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5091,7 +5115,7 @@
     {
       "firstName": "Josiah",
       "lastName": "Schendel",
-      "dateOfBirth": null,
+      "dateOfBirth": "1994-11-06",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5099,7 +5123,7 @@
     {
       "firstName": "Chris",
       "lastName": "Sosa",
-      "dateOfBirth": null,
+      "dateOfBirth": "1994-11-30",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5107,7 +5131,7 @@
     {
       "firstName": "Daniel",
       "lastName": "Sosa",
-      "dateOfBirth": null,
+      "dateOfBirth": "1991-08-21",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5115,7 +5139,7 @@
     {
       "firstName": "Ashton",
       "lastName": "Taughinbaugh",
-      "dateOfBirth": null,
+      "dateOfBirth": "1987-09-05",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5123,7 +5147,7 @@
     {
       "firstName": "Michael",
       "lastName": "Tolley",
-      "dateOfBirth": null,
+      "dateOfBirth": "1997-09-04",
       "jerseyNumber": 8,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5131,7 +5155,7 @@
     {
       "firstName": "Andrew",
       "lastName": "Weaver",
-      "dateOfBirth": null,
+      "dateOfBirth": "1996-03-27",
       "jerseyNumber": null,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -5139,7 +5163,7 @@
     {
       "firstName": "Tye",
       "lastName": "White",
-      "dateOfBirth": null,
+      "dateOfBirth": "2005-06-25",
       "jerseyNumber": 3,
       "teamName": "Lancaster City FC",
       "divisionName": "Lancaster Liga 1"
@@ -6049,12 +6073,12 @@
     "Alloy Soccer Club Reserves": {
       "division": "Lancaster Liga 1",
       "tab": "Alloy SC II (Liga 1)",
-      "playerCount": 22
+      "playerCount": 23
     },
     "F&M FC": {
       "division": "Lancaster Liga 1",
       "tab": "F&M FC (Liga 1)",
-      "playerCount": 24
+      "playerCount": 26
     },
     "Keystone Elite": {
       "division": "Lancaster Liga 1",
