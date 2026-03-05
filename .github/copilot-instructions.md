@@ -47,8 +47,9 @@
 ### Makefile Targets (run `make help` for full list)
 | Category | Command | Description |
 |----------|---------|-------------|
-| **Sync** | `make sync` | Sync all leagues: scrape → parse → UPSERT (idempotent) |
+| **Sync** | `make sync` | Sync all leagues + GroupMe: scrape → parse → UPSERT → GroupMe |
 | | `make sync-apsl/csl/casa` | Sync individual league |
+| | `make sync-groupme` | Sync GroupMe events + RSVPs |
 | **Containers** | `make build` | Build images + start containers |
 | | `make up` / `make down` | Start / stop containers |
 | | `make rebuild` | Destroy everything + fresh build (wipes DB) |

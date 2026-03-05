@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa migrate
+.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme migrate
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -25,10 +25,11 @@ help:
 	@echo "Football Home - Makefile Targets"
 	@echo ""
 	@echo "Sync (primary workflow — idempotent, safe to run anytime):"
-	@echo "  make sync          Sync all leagues: scrape → parse → UPSERT"
+	@echo "  make sync          Sync all leagues + GroupMe"
 	@echo "  make sync-apsl     Sync APSL only"
 	@echo "  make sync-csl      Sync CSL only"
 	@echo "  make sync-casa     Sync CASA only"
+	@echo "  make sync-groupme  Sync GroupMe events + RSVPs"
 	@echo ""
 	@echo "Containers:"
 	@echo "  make build         Build images and start containers"
@@ -199,10 +200,11 @@ events-csl:
 # ============================================================
 # Sync (primary workflow: scrape → parse → UPSERT, idempotent)
 #
-# Full sync runs in 3 phases:
+# Full sync runs in 4 phases:
 #   Phase 1: Scrape all leagues in parallel (network I/O)
 #   Phase 2: Parse in dependency order (curation chain: APSL → CSL → CASA)
 #   Phase 3: Load in dependency order
+#   Phase 4: Sync GroupMe events + RSVPs (needs teams loaded first)
 #
 # Individual sync-* targets still run sequentially per league.
 # ============================================================
@@ -226,6 +228,11 @@ sync:
 	@$(MAKE) load-casa
 	@echo ""
 	@echo "✓ All leagues synced"
+	@echo ""
+	@echo "💬 Phase 4: Syncing GroupMe events + RSVPs..."
+	@$(MAKE) sync-groupme
+	@echo ""
+	@echo "✓ Full sync complete (leagues + GroupMe)"
 
 sync-apsl: scrape-apsl parse-apsl load-apsl
 	@echo "✓ APSL synced"
@@ -235,6 +242,11 @@ sync-csl: scrape-csl parse-csl load-csl
 
 sync-casa: scrape-casa parse-casa load-casa
 	@echo "✓ CASA synced"
+
+sync-groupme:
+	@echo "💬 Syncing GroupMe events + RSVPs..."
+	@node scripts/sync-groupme-events.js
+	@echo "✓ GroupMe synced"
 
 # ============================================================
 # Backup & Restore (pg_dump snapshots)
