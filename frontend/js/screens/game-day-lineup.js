@@ -304,6 +304,44 @@ class GameDayLineupScreen extends Screen {
         this.zones.notInvited.push(player.playerId);
       }
     }
+
+    // Sort bench by criteria met (best candidates at top)
+    this.sortBenchByCriteria();
+  }
+
+  // Sort bench player IDs by eligibility ranking:
+  //   1. Eligibility tier: priority_starter > eligible_starter > bench_only > ineligible
+  //   2. Sessions attended (descending)
+  //   3. RSVP status: yes > maybe > none/other
+  //   4. On official roster first
+  sortBenchByCriteria() {
+    const statusRank = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3 };
+    const rsvpRank = { 'yes': 0, 'maybe': 1 };
+
+    this.zones.bench.sort((idA, idB) => {
+      const a = this.getPlayerById(idA);
+      const b = this.getPlayerById(idB);
+      if (!a || !b) return 0;
+
+      // 1. Eligibility tier
+      const tierA = statusRank[a.eligibilityStatus] ?? 4;
+      const tierB = statusRank[b.eligibilityStatus] ?? 4;
+      if (tierA !== tierB) return tierA - tierB;
+
+      // 2. Sessions attended (more = better)
+      if (a.sessionsAttended !== b.sessionsAttended) return b.sessionsAttended - a.sessionsAttended;
+
+      // 3. RSVP — yes before maybe before none
+      const rsvpA = rsvpRank[a.matchRsvp] ?? 2;
+      const rsvpB = rsvpRank[b.matchRsvp] ?? 2;
+      if (rsvpA !== rsvpB) return rsvpA - rsvpB;
+
+      // 4. On official roster first
+      if (a.onOfficialRoster !== b.onOfficialRoster) return a.onOfficialRoster ? -1 : 1;
+
+      // 5. Alphabetical tiebreak
+      return (a.lastName + a.firstName).localeCompare(b.lastName + b.firstName);
+    });
   }
 
   autoFillFromEligibility() {
@@ -339,6 +377,8 @@ class GameDayLineupScreen extends Screen {
       .filter(p => p.matchRsvp === 'no')
       .forEach(p => this.zones.unavailable.push(p.playerId));
 
+    // Sort bench by criteria met
+    this.sortBenchByCriteria();
     this.renderAllZones();
   }
 
@@ -351,6 +391,7 @@ class GameDayLineupScreen extends Screen {
 
   renderAllZones() {
     this.renderPitchPlayers();
+    this.sortBenchByCriteria();
     this.renderZonePlayers('bench-players', this.zones.bench);
     this.renderZonePlayers('ineligible-players', this.zones.ineligible);
     this.renderZonePlayers('unavailable-players', this.zones.unavailable);
@@ -681,6 +722,11 @@ class GameDayLineupScreen extends Screen {
     // Add to target
     if (this.zones[toZone]) {
       this.zones[toZone].push(playerId);
+    }
+
+    // Re-sort bench whenever players move into it
+    if (toZone === 'bench' || fromZone === 'starting') {
+      this.sortBenchByCriteria();
     }
 
     this.renderAllZones();
