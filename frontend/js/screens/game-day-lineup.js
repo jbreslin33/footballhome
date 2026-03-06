@@ -405,7 +405,8 @@ class GameDayLineupScreen extends Screen {
     const ic = this.find('#ineligible-count');
     const uc = this.find('#unavailable-count');
     const nc = this.find('#not-invited-count');
-    if (sc) sc.textContent = `${this.zones.starting.length}/11`;
+    const starterCount = this.zones.starting.filter(id => id !== null).length;
+    if (sc) sc.textContent = `${starterCount}/11`;
     if (bc) bc.textContent = this.zones.bench.length;
     if (ic) ic.textContent = this.zones.ineligible.length;
     if (uc) uc.textContent = this.zones.unavailable.length;
@@ -420,13 +421,29 @@ class GameDayLineupScreen extends Screen {
     // Formation positions (default 4-3-3 positions if no formation data)
     const positions = this.getFormationPositions();
 
-    this.zones.starting.forEach((playerId, index) => {
-      const player = this.getPlayerById(playerId);
-      if (!player) return;
+    // Render all 11 slots — empty ones are drop targets, filled ones show player chip
+    positions.forEach((pos, slotIndex) => {
+      const slot = document.createElement('div');
+      slot.className = 'pitch-slot';
+      slot.setAttribute('data-slot', slotIndex);
+      slot.style.left = `${pos.x}%`;
+      slot.style.top = `${pos.y}%`;
 
-      const pos = positions[index] || { x: 50, y: 50 };
-      const chip = this.createPitchPlayerChip(player, pos, index);
-      container.appendChild(chip);
+      const playerId = this.zones.starting[slotIndex];
+      const player = playerId ? this.getPlayerById(playerId) : null;
+
+      if (player) {
+        const chip = this.createPitchPlayerChip(player, pos, slotIndex);
+        slot.appendChild(chip);
+      } else {
+        // Empty slot — show position label as a drop target
+        slot.innerHTML = `
+          <div class="chip-circle chip-empty">${pos.label || ''}</div>
+          <div class="chip-name">${pos.label || 'Empty'}</div>
+        `;
+      }
+
+      container.appendChild(slot);
     });
   }
 
@@ -467,8 +484,6 @@ class GameDayLineupScreen extends Screen {
     chip.setAttribute('data-player-id', player.playerId);
     chip.setAttribute('data-zone', 'starting');
     chip.setAttribute('data-slot', slotIndex);
-    chip.style.left = `${pos.x}%`;
-    chip.style.top = `${pos.y}%`;
 
     const initial = player.firstName ? player.firstName[0] : '?';
     const jerseyDisplay = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
@@ -589,9 +604,11 @@ class GameDayLineupScreen extends Screen {
     const card = e.target.closest('[data-player-id]');
     if (!card) return;
 
+    const slot = card.closest('[data-slot]');
     this.dragState = {
       playerId: parseInt(card.getAttribute('data-player-id')),
-      sourceZone: card.getAttribute('data-zone') || this.findPlayerZone(parseInt(card.getAttribute('data-player-id')))
+      sourceZone: card.getAttribute('data-zone') || this.findPlayerZone(parseInt(card.getAttribute('data-player-id'))),
+      sourceSlot: slot ? parseInt(slot.getAttribute('data-slot')) : null
     };
 
     card.classList.add('dragging');
@@ -600,28 +617,51 @@ class GameDayLineupScreen extends Screen {
   }
 
   onDragOver(e) {
+    const slot = e.target.closest('.pitch-slot');
     const zone = e.target.closest('.lineup-zone');
-    if (!zone) return;
+    if (!zone && !slot) return;
 
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
 
     // Visual feedback
     document.querySelectorAll('.lineup-zone').forEach(z => z.classList.remove('drag-over'));
-    zone.classList.add('drag-over');
+    document.querySelectorAll('.pitch-slot').forEach(s => s.classList.remove('slot-drag-over'));
+    if (slot) {
+      slot.classList.add('slot-drag-over');
+    } else if (zone) {
+      zone.classList.add('drag-over');
+    }
   }
 
   onDrop(e) {
     e.preventDefault();
     document.querySelectorAll('.lineup-zone').forEach(z => z.classList.remove('drag-over'));
+    document.querySelectorAll('.pitch-slot').forEach(s => s.classList.remove('slot-drag-over'));
 
     if (!this.dragState) return;
 
+    // Check if dropped on a specific pitch slot
+    const slot = e.target.closest('.pitch-slot');
+    if (slot) {
+      const targetSlot = parseInt(slot.getAttribute('data-slot'));
+      this.movePlayerToSlot(this.dragState.playerId, this.dragState.sourceZone, this.dragState.sourceSlot, targetSlot);
+      this.dragState = null;
+      return;
+    }
+
     const zone = e.target.closest('.lineup-zone');
-    if (!zone) return;
+    if (!zone) { this.dragState = null; return; }
 
     const targetZone = this.getZoneKey(zone.id);
-    if (!targetZone) return;
+    if (!targetZone) { this.dragState = null; return; }
+
+    // If dropping on the starting zone (but not a specific slot), append to first empty slot
+    if (targetZone === 'starting') {
+      this.movePlayerToNextEmptySlot(this.dragState.playerId, this.dragState.sourceZone, this.dragState.sourceSlot);
+      this.dragState = null;
+      return;
+    }
 
     this.movePlayer(this.dragState.playerId, this.dragState.sourceZone, targetZone);
     this.dragState = null;
@@ -640,9 +680,11 @@ class GameDayLineupScreen extends Screen {
     const card = e.target.closest('[data-player-id]');
     if (!card) return;
 
+    const slot = card.closest('[data-slot]');
     this.dragState = {
       playerId: parseInt(card.getAttribute('data-player-id')),
       sourceZone: card.getAttribute('data-zone') || this.findPlayerZone(parseInt(card.getAttribute('data-player-id'))),
+      sourceSlot: slot ? parseInt(slot.getAttribute('data-slot')) : null,
       touchElement: card,
       startX: e.touches[0].clientX,
       startY: e.touches[0].clientY
@@ -655,13 +697,19 @@ class GameDayLineupScreen extends Screen {
     if (!this.dragState || !this.dragState.touchElement) return;
     e.preventDefault();
 
-    // Highlight drop zone under finger
+    // Highlight drop zone or slot under finger
     const touch = e.touches[0];
     const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    const slot = elementBelow?.closest('.pitch-slot');
     const zone = elementBelow?.closest('.lineup-zone');
 
     document.querySelectorAll('.lineup-zone').forEach(z => z.classList.remove('drag-over'));
-    if (zone) zone.classList.add('drag-over');
+    document.querySelectorAll('.pitch-slot').forEach(s => s.classList.remove('slot-drag-over'));
+    if (slot) {
+      slot.classList.add('slot-drag-over');
+    } else if (zone) {
+      zone.classList.add('drag-over');
+    }
   }
 
   onTouchEnd(e) {
@@ -669,17 +717,24 @@ class GameDayLineupScreen extends Screen {
 
     const touch = e.changedTouches[0];
     const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    const slot = elementBelow?.closest('.pitch-slot');
     const zone = elementBelow?.closest('.lineup-zone');
 
-    if (zone) {
+    if (slot) {
+      const targetSlot = parseInt(slot.getAttribute('data-slot'));
+      this.movePlayerToSlot(this.dragState.playerId, this.dragState.sourceZone, this.dragState.sourceSlot, targetSlot);
+    } else if (zone) {
       const targetZone = this.getZoneKey(zone.id);
-      if (targetZone) {
+      if (targetZone === 'starting') {
+        this.movePlayerToNextEmptySlot(this.dragState.playerId, this.dragState.sourceZone, this.dragState.sourceSlot);
+      } else if (targetZone) {
         this.movePlayer(this.dragState.playerId, this.dragState.sourceZone, targetZone);
       }
     }
 
     document.querySelectorAll('.touch-dragging').forEach(el => el.classList.remove('touch-dragging'));
     document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    document.querySelectorAll('.slot-drag-over').forEach(el => el.classList.remove('slot-drag-over'));
     this.dragState = null;
   }
 
@@ -704,23 +759,90 @@ class GameDayLineupScreen extends Screen {
     return null;
   }
 
+  // Move a player to a specific pitch slot (with swap if occupied)
+  movePlayerToSlot(playerId, fromZone, fromSlot, targetSlot) {
+    const positions = this.getFormationPositions();
+    if (targetSlot < 0 || targetSlot >= positions.length) return;
+
+    // Pad starting array to 11 slots with null
+    while (this.zones.starting.length < positions.length) {
+      this.zones.starting.push(null);
+    }
+
+    const occupant = this.zones.starting[targetSlot];
+
+    // Remove player from current location
+    if (fromZone === 'starting' && fromSlot !== null && fromSlot !== undefined) {
+      this.zones.starting[fromSlot] = null;
+    } else if (fromZone && this.zones[fromZone]) {
+      this.zones[fromZone] = this.zones[fromZone].filter(id => id !== playerId);
+    }
+
+    // If target slot had a player, move them to source slot or bench
+    if (occupant && occupant !== playerId) {
+      if (fromZone === 'starting' && fromSlot !== null && fromSlot !== undefined) {
+        // Pitch-to-pitch swap
+        this.zones.starting[fromSlot] = occupant;
+      } else {
+        // Displaced player goes to bench
+        this.zones.bench.unshift(occupant);
+      }
+    }
+
+    // Place player in target slot
+    this.zones.starting[targetSlot] = playerId;
+
+    this.compactStarting();
+    this.sortBenchByCriteria();
+    this.renderAllZones();
+  }
+
+  // Move a player to the next empty pitch slot
+  movePlayerToNextEmptySlot(playerId, fromZone, fromSlot) {
+    const positions = this.getFormationPositions();
+    while (this.zones.starting.length < positions.length) {
+      this.zones.starting.push(null);
+    }
+
+    // Find first empty slot
+    let targetSlot = this.zones.starting.indexOf(null);
+    if (targetSlot === -1) {
+      // All full — bump last slot to bench
+      const bumped = this.zones.starting[positions.length - 1];
+      this.zones.starting[positions.length - 1] = null;
+      if (bumped) this.zones.bench.unshift(bumped);
+      targetSlot = positions.length - 1;
+    }
+
+    this.movePlayerToSlot(playerId, fromZone, fromSlot, targetSlot);
+  }
+
+  // Remove null gaps but preserve slot-based ordering
+  compactStarting() {
+    // Remove trailing nulls only, keep sparse slots intact
+    while (this.zones.starting.length > 0 && this.zones.starting[this.zones.starting.length - 1] === null) {
+      this.zones.starting.pop();
+    }
+  }
+
   movePlayer(playerId, fromZone, toZone) {
     if (fromZone === toZone) return;
 
-    // Enforce starting XI limit
-    if (toZone === 'starting' && this.zones.starting.length >= 11) {
-      // Swap: move the last starter to bench
-      const bumped = this.zones.starting.pop();
-      this.zones.bench.unshift(bumped);
-    }
-
     // Remove from source
-    if (fromZone && this.zones[fromZone]) {
+    if (fromZone === 'starting') {
+      // Clear the slot (set to null, don't filter)
+      const idx = this.zones.starting.indexOf(playerId);
+      if (idx !== -1) this.zones.starting[idx] = null;
+      this.compactStarting();
+    } else if (fromZone && this.zones[fromZone]) {
       this.zones[fromZone] = this.zones[fromZone].filter(id => id !== playerId);
     }
 
     // Add to target
-    if (this.zones[toZone]) {
+    if (toZone === 'starting') {
+      this.movePlayerToNextEmptySlot(playerId, null, null);
+      return; // renderAllZones called inside
+    } else if (this.zones[toZone]) {
       this.zones[toZone].push(playerId);
     }
 
@@ -742,7 +864,7 @@ class GameDayLineupScreen extends Screen {
       return;
     }
 
-    const starters = this.zones.starting.map(playerId => ({ playerId }));
+    const starters = this.zones.starting.filter(id => id !== null).map(playerId => ({ playerId }));
     const bench = this.zones.bench.map(playerId => ({ playerId }));
 
     try {
