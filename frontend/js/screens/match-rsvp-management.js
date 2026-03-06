@@ -76,6 +76,18 @@ class MatchRSVPManagementScreen extends Screen {
         }
         return;
       }
+
+      // Game Day Lineup button clicked
+      const gameLineupBtn = e.target.closest('.game-lineup-btn');
+      if (gameLineupBtn) {
+        const matchId = gameLineupBtn.getAttribute('data-match-id');
+        const match = this.matches.find(m => m.id === matchId);
+        if (match) {
+          this.navigation.context.match = match;
+          this.navigation.goTo('game-day-lineup');
+        }
+        return;
+      }
       
       // Match header clicked - toggle expansion
       const matchHeader = e.target.closest('.match-header');
@@ -349,9 +361,12 @@ class MatchRSVPManagementScreen extends Screen {
     
     return `
       <div style="padding: var(--space-3); background: var(--color-background);">
-        <div style="margin-bottom: var(--space-3);">
-          <button class="btn btn-primary game-roster-btn" data-match-id="${matchId}" style="width: 100%;">
+        <div style="margin-bottom: var(--space-3); display: flex; gap: var(--space-2);">
+          <button class="btn btn-primary game-roster-btn" data-match-id="${matchId}" style="flex: 1;">
             📋 Set Game Day Roster
+          </button>
+          <button class="btn btn-secondary game-lineup-btn" data-match-id="${matchId}" style="flex: 1;">
+            ⚽ Game Day Lineup
           </button>
         </div>
         <div style="display: flex; gap: var(--space-3); flex-wrap: wrap;">
