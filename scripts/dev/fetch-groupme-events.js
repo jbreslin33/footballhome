@@ -24,7 +24,7 @@ function apiGet(path) {
 const GROUPS = [
   { name: 'APSL Lighthouse', id: '109785985' },
   { name: 'Liga 1 & 2', id: '109786182' },
-  { name: 'Old Timers', id: '109786278' },
+  { name: 'Boys Club U23', id: '109786278' },
   { name: 'Training', id: '108640377' },
   { name: 'Philly Pickup', id: '65284700' }
 ];

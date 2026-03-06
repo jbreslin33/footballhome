@@ -112,6 +112,7 @@ class TeamDashboardScreen extends Screen {
       const lineupBtn = e.target.closest('[data-action="lineup"]');
       if (lineupBtn) {
         this.navigation.context.match = { id: lineupBtn.getAttribute('data-id') };
+        this.navigation.context.lineupTeamId = this.navigation.context.team?.id;
         this.navigation.goTo('game-day-lineup');
         return;
       }

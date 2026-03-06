@@ -48,10 +48,10 @@ const GROUPS = [
     teamLookup: { sourceSystemId: 2, externalId: '9090889-lighthouse-boys-club' }, // CASA Boys Club
   },
   {
-    name: 'Lighthouse Old Timers Club',
+    name: 'Lighthouse Boys Club U23',
     groupmeId: '109786278',
     chatTypeId: 1,  // team
-    teamLookup: { sourceSystemId: 2, externalId: '9096430-lighthouse-old-timers-club' }, // CASA Old Timers
+    teamLookup: { sourceSystemId: 2, externalId: '9096430-lighthouse-boys-club-u23' }, // CASA Boys Club U23 (was Old Timers)
   },
   {
     name: 'Training Lighthouse',

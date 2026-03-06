@@ -78,19 +78,21 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Match ID is required"));
     }
 
-    std::cout << "📊 Computing eligibility for match: " << matchId << std::endl;
+    // Optional query param: ?teamId=186 to specify which team's roster to use
+    std::string requestedTeamId = request.getQueryParam("teamId");
+
+    std::cout << "📊 Computing eligibility for match: " << matchId;
+    if (!requestedTeamId.empty()) std::cout << " (team: " << requestedTeamId << ")";
+    std::cout << std::endl;
 
     try {
-        // Step 1: Get match info (team, club, date)
+        // Step 1: Get match info (teams, club, date)
         std::string matchQuery = R"(
-            SELECT m.id, m.home_team_id as team_id, 
+            SELECT m.id, m.home_team_id, m.away_team_id,
                    m.match_date::date as match_date,
-                   t.club_id,
-                   t.name as team_name,
                    COALESCE(ht.name, '') as home_team_name,
                    COALESCE(at.name, '') as away_team_name
             FROM matches m
-            JOIN teams t ON t.id = m.home_team_id
             LEFT JOIN teams ht ON ht.id = m.home_team_id
             LEFT JOIN teams at ON at.id = m.away_team_id
             WHERE m.id = $1
@@ -101,12 +103,30 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             return Response(HttpStatus::NOT_FOUND, createJsonResponse(false, "Match not found"));
         }
         
-        std::string teamId = matchResult[0]["team_id"].c_str();
-        std::string clubId = matchResult[0]["club_id"].is_null() ? "" : matchResult[0]["club_id"].c_str();
+        std::string homeTeamId = matchResult[0]["home_team_id"].c_str();
+        std::string awayTeamId = matchResult[0]["away_team_id"].is_null() ? "" : matchResult[0]["away_team_id"].c_str();
         std::string matchDate = matchResult[0]["match_date"].c_str();
-        std::string teamName = matchResult[0]["team_name"].c_str();
         std::string homeTeamName = matchResult[0]["home_team_name"].c_str();
         std::string awayTeamName = matchResult[0]["away_team_name"].c_str();
+        
+        // Determine which team to show roster for:
+        // If teamId query param provided and matches home or away, use it.
+        // Otherwise default to home_team_id.
+        std::string teamId = homeTeamId;
+        if (!requestedTeamId.empty()) {
+            if (requestedTeamId == homeTeamId || requestedTeamId == awayTeamId) {
+                teamId = requestedTeamId;
+            } else {
+                std::cout << "⚠️ Requested teamId " << requestedTeamId 
+                          << " not in match, defaulting to home team" << std::endl;
+            }
+        }
+        
+        // Get club_id for the selected team
+        pqxx::result teamResult = db_->query("SELECT club_id, name FROM teams WHERE id = $1", {teamId});
+        std::string clubId = (!teamResult.empty() && !teamResult[0]["club_id"].is_null()) 
+                             ? std::string(teamResult[0]["club_id"].c_str()) : "";
+        std::string teamName = !teamResult.empty() ? std::string(teamResult[0]["name"].c_str()) : "";
         
         // Step 2: Resolve effective policy
         EligibilityPolicy policy = resolvePolicy(matchId, teamId, clubId);

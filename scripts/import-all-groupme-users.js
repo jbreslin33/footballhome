@@ -40,7 +40,7 @@ const GROUP_MAPPINGS = [
     dbTeamId: '57d88568-993d-4411-8aa3-6244ca7ff704' // Lighthouse Boys Club (CASA)
   },
   {
-    name: 'Lighthouse Old Timers Club (Liga 2)',
+    name: 'Lighthouse Boys Club U23 (Liga 2)',
     groupMeId: '109786278',
     dbTeamId: 'da5e129e-1d82-4c59-85f9-1f5efd3d6c11' // Lighthouse Old Timers Club (CASA)
   },

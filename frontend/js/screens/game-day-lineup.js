@@ -183,7 +183,9 @@ class GameDayLineupScreen extends Screen {
     }
 
     try {
-      const response = await this.auth.fetch(`/api/eligibility/match/${matchId}`);
+      const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id || '';
+      const teamParam = teamId ? `?teamId=${teamId}` : '';
+      const response = await this.auth.fetch(`/api/eligibility/match/${matchId}${teamParam}`);
       const data = await response.json();
 
       if (!data.success) throw new Error(data.message || 'Failed to load eligibility');
