@@ -147,14 +147,39 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         sessionArray += "}";
         
         std::string playerQuery = R"(
-            WITH roster_players AS (
-                SELECT r.player_id, r.jersey_number, 
-                       pl.has_family_discount, pl.photo_url,
-                       pe.id as person_id, pe.first_name, pe.last_name
-                FROM rosters r
-                JOIN players pl ON pl.id = r.player_id
-                JOIN persons pe ON pe.id = pl.person_id
-                WHERE r.team_id = $1 AND r.left_at IS NULL
+            WITH chat_pool AS (
+                -- Player pool = distinct persons from team's GroupMe chat RSVPs
+                SELECT DISTINCT cer.person_id
+                FROM chat_event_rsvps cer
+                JOIN chat_events ce ON ce.id = cer.chat_event_id
+                JOIN chats c ON c.id = ce.chat_id
+                WHERE c.team_id = $1::int
+                  AND cer.person_id IS NOT NULL
+            ),
+            roster_players AS (
+                -- Resolve each chat person to their player record
+                SELECT DISTINCT ON (cp.person_id)
+                       p.id as player_id, r.jersey_number,
+                       p.has_family_discount, p.photo_url,
+                       pe.id as person_id, pe.first_name, pe.last_name,
+                       -- On official roster = any sibling team in same league
+                       EXISTS(
+                           SELECT 1 FROM rosters r2
+                           JOIN teams t2 ON t2.id = r2.team_id
+                           JOIN teams req ON req.id = $1::int
+                           WHERE r2.player_id = p.id
+                             AND t2.club_id = req.club_id
+                             AND t2.source_system_id = req.source_system_id
+                             AND r2.left_at IS NULL
+                       ) as on_official_roster
+                FROM chat_pool cp
+                JOIN persons pe ON pe.id = cp.person_id
+                JOIN players p ON p.person_id = pe.id
+                LEFT JOIN rosters r ON r.player_id = p.id
+                    AND r.team_id = $1 AND r.left_at IS NULL
+                ORDER BY cp.person_id,
+                         CASE WHEN r.player_id IS NOT NULL THEN 0 ELSE 1 END,
+                         p.id DESC
             ),
             -- Count actual attendance from training_attendance table
             actual_attendance AS (
@@ -199,6 +224,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             )
             SELECT rp.player_id, rp.first_name, rp.last_name, rp.jersey_number,
                    rp.has_family_discount, rp.photo_url, rp.person_id,
+                   rp.on_official_roster,
                    COALESCE(aa.sessions_attended, ra.rsvp_yes_count, 0) as sessions_attended,
                    pp.position, pp.position_name,
                    mr.rsvp_status as match_rsvp_status,
@@ -275,6 +301,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.match_rsvp = row["match_rsvp_status"].is_null() ? "" : row["match_rsvp_status"].c_str();
             pe.on_lineup = !row["on_lineup"].is_null() && row["on_lineup"].as<bool>();
             pe.is_starter = !row["lineup_is_starter"].is_null() && row["lineup_is_starter"].as<bool>();
+            pe.on_official_roster = !row["on_official_roster"].is_null() && row["on_official_roster"].as<bool>();
             
             if (pe.status == EligibilityStatus::PRIORITY_STARTER) {
                 priorityStarterCount++;
@@ -302,6 +329,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"effectiveMinSessions\":" << pe.effective_min_sessions << ",";
             json << "\"eligibilityStatus\":\"" << statusToString(pe.status) << "\",";
             json << "\"matchRsvp\":" << (pe.match_rsvp.empty() ? "null" : "\"" + pe.match_rsvp + "\"") << ",";
+            json << "\"onOfficialRoster\":" << (pe.on_official_roster ? "true" : "false") << ",";
             json << "\"onLineup\":" << (pe.on_lineup ? "true" : "false") << ",";
             json << "\"isStarter\":" << (pe.is_starter ? "true" : "false");
             json << "}";
@@ -734,27 +762,31 @@ std::vector<int> EligibilityController::getRecentSessionIds(
     
     std::vector<int> sessionIds;
     
-    // Get training/practice sessions from chats associated with this team or club
+    // Get training/practice sessions from chats associated with this team's club
+    // Club-wide: matches any chat linked to the club (via chat_clubs) or any
+    // sibling team in the same club. This ensures Training, Pickup, and game
+    // chats for all club teams are included.
     std::string query = R"(
-        SELECT DISTINCT ce.id as session_id,
-               COALESCE(ce.start_at, 
-                        (ce.event_date || 'T' || COALESCE(ce.event_time::text, '00:00:00'))::timestamptz
-               ) as session_date
+        SELECT ce.id as session_id
         FROM chat_events ce
         JOIN chats c ON ce.chat_id = c.id
         LEFT JOIN chat_clubs cc ON cc.chat_id = c.id
-        WHERE (c.team_id = $1::int OR cc.club_id = $2::int)
-          AND COALESCE(ce.start_at, ce.event_date::timestamptz) < $3::date
+        LEFT JOIN teams t ON t.id = c.team_id
+        WHERE (
+            cc.club_id = $1::int
+            OR t.club_id = $1::int
+        )
+          AND COALESCE(ce.start_at, ce.event_date::timestamptz) < $2::date
           AND ce.is_active = true
-        ORDER BY session_date DESC
-        LIMIT $4
+        ORDER BY COALESCE(ce.start_at, ce.event_date::timestamptz) DESC
+        LIMIT $3
     )";
     
     std::string safeClubId = clubId.empty() ? "0" : clubId;
     
     try {
         pqxx::result result = db_->query(query, {
-            teamId, safeClubId, matchDate, std::to_string(lookbackCount)
+            safeClubId, matchDate, std::to_string(lookbackCount)
         });
         
         for (const auto& row : result) {
@@ -769,20 +801,24 @@ std::vector<int> EligibilityController::getRecentSessionIds(
         try {
             int remaining = lookbackCount - sessionIds.size();
             std::string matchQuery = R"(
-                SELECT DISTINCT ce.id as session_id
+                SELECT ce.id as session_id
                 FROM chat_events ce
                 JOIN chats c ON ce.chat_id = c.id
                 LEFT JOIN chat_clubs cc ON cc.chat_id = c.id
-                WHERE (c.team_id = $1::int OR cc.club_id = $2::int)
+                LEFT JOIN teams t ON t.id = c.team_id
+                WHERE (
+                    cc.club_id = $1::int
+                    OR t.club_id = $1::int
+                )
                   AND ce.match_id IS NOT NULL
-                  AND COALESCE(ce.start_at, ce.event_date::timestamptz) < $3::date
+                  AND COALESCE(ce.start_at, ce.event_date::timestamptz) < $2::date
                   AND ce.is_active = true
                 ORDER BY COALESCE(ce.start_at, ce.event_date::timestamptz) DESC
-                LIMIT $4
+                LIMIT $3
             )";
             
             pqxx::result result = db_->query(matchQuery, {
-                teamId, safeClubId, matchDate, std::to_string(remaining)
+                safeClubId, matchDate, std::to_string(remaining)
             });
             
             for (const auto& row : result) {
