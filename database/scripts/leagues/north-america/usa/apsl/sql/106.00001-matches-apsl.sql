@@ -9788,7 +9788,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-07', '19:00:00', 1,
+  4, '2026-03-07', '19:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '262645'

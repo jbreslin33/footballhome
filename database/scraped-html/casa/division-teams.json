@@ -1,5 +1,5 @@
 {
-  "generated": "2026-03-05T18:11:19.395Z",
+  "generated": "2026-03-07T00:39:06.169Z",
   "divisions": [
     {
       "id": 54,
@@ -102,7 +102,7 @@
       "external_id": "9096430",
       "teams": [
         {
-          "teamName": "Persepolis United FC II",
+          "teamName": "Persepolis FC II",
           "played": 12,
           "wins": 4,
           "draws": 0,
@@ -135,7 +135,7 @@
           "points": -12
         },
         {
-          "teamName": "Lighthouse Old Timers Club",
+          "teamName": "Lighthouse Boys Club U23",
           "played": 3,
           "wins": 1,
           "draws": 8,

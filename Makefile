@@ -47,9 +47,11 @@ help:
 	@echo "  make audit         Run data quality audit"
 	@echo ""
 	@echo "Backup & restore:"
-	@echo "  make backup        Snapshot DB (pg_dump → backups/)"
-	@echo "  make restore       Restore latest backup (or BACKUP=file.sql)"
-	@echo "  make safe-rebuild  Backup + rebuild (safety net)"
+	@echo "  make backup              Snapshot DB (pg_dump → backups/)"
+	@echo "  make restore             Restore latest backup (or BACKUP=file.sql)"
+	@echo "  make safe-rebuild        Backup + rebuild (safety net)"
+	@echo "  make export-user-data    Export manual attendance + lineups to SQL"
+	@echo "  make load-user-data      Load exported user data (after sync)"
 	@echo ""
 
 # ============================================================
@@ -269,6 +271,14 @@ safe-rebuild: backup rebuild
 	@echo "✓ Safe rebuild complete (backup in backups/)"
 	@echo "  Run: make sync    (to re-sync league data)"
 	@echo "  Or:  make restore (to restore from backup)"
+
+export-user-data:
+	@echo "📦 Exporting user data..."
+	@node database/scripts/export-user-data.js
+
+load-user-data:
+	@echo "📥 Loading user data..."
+	@./database/scripts/load-user-data.sh
 
 # ============================================================
 # Development Helpers
