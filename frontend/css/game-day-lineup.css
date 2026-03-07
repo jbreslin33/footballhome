@@ -292,12 +292,12 @@
 }
 
 .chip-name {
-  font-size: 0.6em;
+  font-size: 0.55em;
   color: white;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
   margin-top: 2px;
   white-space: nowrap;
-  max-width: 70px;
+  max-width: 90px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -446,4 +446,127 @@
 .loading-state {
   text-align: center;
   padding: var(--space-6);
+}
+
+/* ============================================================================
+   Attendance Popup (double-click a player)
+   ============================================================================ */
+.attendance-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.attendance-popup {
+  background: white;
+  border-radius: var(--radius-md);
+  width: 90%;
+  max-width: 420px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.attendance-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.attendance-popup-header h3 {
+  margin: 0;
+  font-size: 1.1em;
+}
+
+.attendance-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+  color: var(--gray-500);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.attendance-close-btn:hover {
+  background: var(--gray-100);
+  color: var(--gray-800);
+}
+
+.attendance-popup-body {
+  padding: var(--space-3);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.attendance-summary {
+  font-weight: 600;
+  font-size: 0.95em;
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.attendance-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.attendance-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.attendance-row:hover {
+  background: var(--gray-50);
+}
+
+.attendance-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.attendance-toggle input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #16a34a;
+}
+
+.attendance-session-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.attendance-session-title {
+  font-size: 0.85em;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendance-session-date {
+  font-size: 0.75em;
+  color: var(--gray-500);
+}
+
+.attendance-loading {
+  text-align: center;
+  color: var(--gray-500);
+  padding: var(--space-3);
 }

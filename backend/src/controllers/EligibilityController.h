@@ -65,6 +65,10 @@ private:
     Response handleGetMatchLineup(const Request& request);
     Response handleSaveMatchLineup(const Request& request);
     
+    // Player attendance
+    Response handleGetPlayerAttendance(const Request& request);
+    Response handleUpdatePlayerAttendance(const Request& request);
+    
     // Helper: resolve cascading policy
     EligibilityPolicy resolvePolicy(const std::string& matchId, 
                                      const std::string& teamId, 

@@ -170,6 +170,16 @@ class GameDayLineupScreen extends Screen {
     this.element.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
     this.element.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
     this.element.addEventListener('touchend', (e) => this.onTouchEnd(e));
+
+    // Double-click to open attendance editor
+    this.element.addEventListener('dblclick', (e) => {
+      const card = e.target.closest('[data-player-id]');
+      if (card) {
+        e.preventDefault();
+        const playerId = parseInt(card.getAttribute('data-player-id'));
+        this.openAttendancePopup(playerId);
+      }
+    });
   }
 
   // ============================================================================
@@ -490,7 +500,7 @@ class GameDayLineupScreen extends Screen {
 
     chip.innerHTML = `
       <div class="chip-circle">${jerseyDisplay || initial}</div>
-      <div class="chip-name">${player.lastName}</div>
+      <div class="chip-name">${player.firstName} ${player.lastName}</div>
       <div class="chip-badge">${player.sessionsAttended}/${this.policy.lookbackCount}</div>
     `;
 
@@ -852,6 +862,146 @@ class GameDayLineupScreen extends Screen {
     }
 
     this.renderAllZones();
+  }
+
+  // ============================================================================
+  // Attendance Popup (double-click a player)
+  // ============================================================================
+  async openAttendancePopup(playerId) {
+    const player = this.getPlayerById(playerId);
+    if (!player) return;
+
+    const matchId = this.navigation.context.match?.id;
+    const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id || '';
+    if (!matchId) return;
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'attendance-overlay';
+    overlay.innerHTML = `
+      <div class="attendance-popup">
+        <div class="attendance-popup-header">
+          <h3>${player.firstName} ${player.lastName}</h3>
+          <button class="attendance-close-btn">✕</button>
+        </div>
+        <div class="attendance-popup-body">
+          <p class="attendance-loading">Loading attendance...</p>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Close handlers
+    overlay.querySelector('.attendance-close-btn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    // Fetch attendance data
+    try {
+      const response = await this.auth.fetch(
+        `/api/eligibility/player/${playerId}/attendance?teamId=${teamId}&matchId=${matchId}`
+      );
+      const data = await response.json();
+      if (!data.success) throw new Error(data.message || 'Failed to load');
+
+      this.renderAttendanceList(overlay, player, data.data.sessions);
+    } catch (err) {
+      console.error('Error loading attendance:', err);
+      overlay.querySelector('.attendance-popup-body').innerHTML =
+        `<p style="color:red;">Failed to load attendance: ${err.message}</p>`;
+    }
+  }
+
+  renderAttendanceList(overlay, player, sessions) {
+    const body = overlay.querySelector('.attendance-popup-body');
+    if (!sessions || sessions.length === 0) {
+      body.innerHTML = '<p>No sessions found in lookback window.</p>';
+      return;
+    }
+
+    const statusIcon = this.getStatusIcon(player.eligibilityStatus);
+    const attended = sessions.filter(s => s.attended).length;
+
+    body.innerHTML = `
+      <div class="attendance-summary">
+        ${statusIcon} ${attended}/${sessions.length} sessions attended
+      </div>
+      <div class="attendance-list">
+        ${sessions.map(s => `
+          <div class="attendance-row" data-session-id="${s.sessionId}">
+            <label class="attendance-toggle">
+              <input type="checkbox" ${s.attended ? 'checked' : ''}
+                     data-session-id="${s.sessionId}" data-player-id="${player.playerId}">
+              <span class="attendance-check"></span>
+            </label>
+            <div class="attendance-session-info">
+              <div class="attendance-session-title">${s.title}</div>
+              <div class="attendance-session-date">${s.date}${s.rsvp ? ' · RSVP: ' + s.rsvp : ''}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    // Toggle attendance on checkbox change
+    body.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        this.toggleAttendance(
+          parseInt(e.target.dataset.playerId),
+          parseInt(e.target.dataset.sessionId),
+          e.target.checked,
+          overlay,
+          player,
+          sessions
+        );
+      });
+    });
+  }
+
+  async toggleAttendance(playerId, sessionId, attended, overlay, player, sessions) {
+    try {
+      const response = await this.auth.fetch(`/api/eligibility/player/${playerId}/attendance`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, attended })
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.message || 'Failed to update');
+
+      // Update local session data
+      const session = sessions.find(s => s.sessionId === sessionId);
+      if (session) session.attended = attended;
+
+      // Update player's sessions count in memory
+      const newCount = sessions.filter(s => s.attended).length;
+      player.sessionsAttended = newCount;
+
+      // Re-classify this player's eligibility status
+      const effectiveMin = player.hasFamilyDiscount
+        ? Math.max(0, this.policy.minSessionsToStart - this.policy.familyDiscount)
+        : this.policy.minSessionsToStart;
+      player.effectiveMinSessions = effectiveMin;
+
+      if (newCount >= this.policy.priorityStarterSessions) {
+        player.eligibilityStatus = 'priority_starter';
+      } else if (newCount >= effectiveMin) {
+        player.eligibilityStatus = 'eligible_starter';
+      } else if (newCount > 0) {
+        player.eligibilityStatus = 'bench_only';
+      } else {
+        player.eligibilityStatus = 'ineligible';
+      }
+
+      // Refresh the summary line in popup
+      this.renderAttendanceList(overlay, player, sessions);
+
+      // Refresh the lineup display
+      this.renderAllZones();
+
+    } catch (err) {
+      console.error('Error toggling attendance:', err);
+      alert('Failed to update attendance: ' + err.message);
+    }
   }
 
   // ============================================================================

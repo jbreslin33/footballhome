@@ -66,6 +66,16 @@ void EligibilityController::registerRoutes(Router& router, const std::string& pr
     router.put(prefix + "/lineup/:matchId", [this](const Request& request) {
         return this->handleSaveMatchLineup(request);
     });
+    
+    // GET /api/eligibility/player/:playerId/attendance - Get player attendance for sessions
+    router.get(prefix + "/player/:playerId/attendance", [this](const Request& request) {
+        return this->handleGetPlayerAttendance(request);
+    });
+    
+    // PUT /api/eligibility/player/:playerId/attendance - Toggle attendance for a session
+    router.put(prefix + "/player/:playerId/attendance", [this](const Request& request) {
+        return this->handleUpdatePlayerAttendance(request);
+    });
 }
 
 // ============================================================================
@@ -617,6 +627,156 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
         std::cerr << "❌ Error saving lineup: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJsonResponse(false, std::string("Failed to save lineup: ") + e.what()));
+    }
+}
+
+// ============================================================================
+// GET /api/eligibility/player/:playerId/attendance?teamId=X&matchId=Y
+// Returns all sessions in lookback window with attendance status for a player
+// ============================================================================
+Response EligibilityController::handleGetPlayerAttendance(const Request& request) {
+    std::string playerId = extractIdFromPath(request.getPath(), "/api/eligibility/player/(\\d+)/attendance");
+    if (playerId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Player ID required"));
+    }
+
+    std::string teamId = request.getQueryParam("teamId");
+    std::string matchId = request.getQueryParam("matchId");
+    if (teamId.empty() || matchId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "teamId and matchId query params required"));
+    }
+
+    try {
+        // Get match date
+        pqxx::result matchResult = db_->query(
+            "SELECT match_date::date as match_date FROM matches WHERE id = $1", {matchId});
+        if (matchResult.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJsonResponse(false, "Match not found"));
+        }
+        std::string matchDate = matchResult[0]["match_date"].c_str();
+
+        // Get club_id for session lookup
+        pqxx::result teamResult = db_->query("SELECT club_id FROM teams WHERE id = $1", {teamId});
+        std::string clubId = (!teamResult.empty() && !teamResult[0]["club_id"].is_null())
+                             ? std::string(teamResult[0]["club_id"].c_str()) : "0";
+
+        // Resolve policy to get lookback count
+        EligibilityPolicy policy = resolvePolicy(matchId, teamId, clubId);
+
+        // Get session IDs (same logic as eligibility)
+        std::vector<int> sessionIds = getRecentSessionIds(
+            teamId, clubId, matchDate, policy.lookback_count,
+            policy.game_counts_as_session, policy.pickup_counts_as_session);
+
+        if (sessionIds.empty()) {
+            return Response(HttpStatus::OK,
+                createJsonResponse(true, "OK", "{\"sessions\":[]}"));
+        }
+
+        // Build session ID array
+        std::string sessionArray = "{";
+        for (size_t i = 0; i < sessionIds.size(); i++) {
+            if (i > 0) sessionArray += ",";
+            sessionArray += std::to_string(sessionIds[i]);
+        }
+        sessionArray += "}";
+
+        // Get person_id for this player
+        pqxx::result personResult = db_->query(
+            "SELECT person_id FROM players WHERE id = $1", {playerId});
+        if (personResult.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJsonResponse(false, "Player not found"));
+        }
+        std::string personId = personResult[0]["person_id"].c_str();
+
+        // Query sessions with attendance + RSVP status for this player
+        std::string query = R"(
+            SELECT ce.id as session_id,
+                   ce.title,
+                   COALESCE(ce.event_date::text, to_char(ce.start_at, 'YYYY-MM-DD')) as session_date,
+                   CASE WHEN ta.id IS NOT NULL THEN ta.attended
+                        ELSE (COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) = 1)
+                   END as attended,
+                   CASE WHEN ta.id IS NOT NULL THEN 'manual'
+                        WHEN cer.id IS NOT NULL THEN 'rsvp'
+                        ELSE 'none'
+                   END as source,
+                   rs.name as rsvp_status
+            FROM unnest($1::int[]) WITH ORDINALITY AS s(id, ord)
+            JOIN chat_events ce ON ce.id = s.id
+            LEFT JOIN training_attendance ta ON ta.chat_event_id = ce.id AND ta.player_id = $2::int
+            LEFT JOIN chat_event_rsvps cer ON cer.chat_event_id = ce.id AND cer.person_id = $3::int
+            LEFT JOIN rsvp_statuses rs ON rs.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)
+            ORDER BY COALESCE(ce.start_at, ce.event_date::timestamptz) DESC
+        )";
+
+        pqxx::result result = db_->query(query, {sessionArray, playerId, personId});
+
+        std::ostringstream json;
+        json << "{\"sessions\":[";
+        bool first = true;
+        for (const auto& row : result) {
+            if (!first) json << ",";
+            first = false;
+            json << "{";
+            json << "\"sessionId\":" << row["session_id"].as<int>() << ",";
+            json << "\"title\":\"" << escapeJson(row["title"].c_str()) << "\",";
+            json << "\"date\":\"" << escapeJson(row["session_date"].c_str()) << "\",";
+            json << "\"attended\":" << (row["attended"].as<bool>(false) ? "true" : "false") << ",";
+            json << "\"source\":\"" << escapeJson(row["source"].c_str()) << "\",";
+            json << "\"rsvp\":\"" << (row["rsvp_status"].is_null() ? "" : escapeJson(row["rsvp_status"].c_str())) << "\"";
+            json << "}";
+        }
+        json << "]}";
+
+        return Response(HttpStatus::OK, createJsonResponse(true, "OK", json.str()));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error getting player attendance: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, std::string("Failed: ") + e.what()));
+    }
+}
+
+// ============================================================================
+// PUT /api/eligibility/player/:playerId/attendance
+// Toggle attendance for a player at a specific session
+// Body: { "sessionId": 5, "attended": true }
+// ============================================================================
+Response EligibilityController::handleUpdatePlayerAttendance(const Request& request) {
+    std::string playerId = extractIdFromPath(request.getPath(), "/api/eligibility/player/(\\d+)/attendance");
+    if (playerId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Player ID required"));
+    }
+
+    int sessionId = parseJsonInt(request.getBody(), "sessionId");
+    bool attended = parseJsonBool(request.getBody(), "attended");
+
+    if (sessionId <= 0) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "sessionId required"));
+    }
+
+    try {
+        // UPSERT into training_attendance
+        std::string query = R"(
+            INSERT INTO training_attendance (player_id, chat_event_id, attended, source, updated_at)
+            VALUES ($1::int, $2::int, $3::bool, 'manual', CURRENT_TIMESTAMP)
+            ON CONFLICT (player_id, chat_event_id)
+            DO UPDATE SET attended = $3::bool, source = 'manual', updated_at = CURRENT_TIMESTAMP
+            RETURNING id
+        )";
+
+        pqxx::result result = db_->query(query, {
+            playerId, std::to_string(sessionId), attended ? "true" : "false"
+        });
+
+        std::string dataJson = "{\"id\":" + std::to_string(result[0]["id"].as<int>()) + "}";
+        return Response(HttpStatus::OK, createJsonResponse(true, "Attendance updated", dataJson));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error updating attendance: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, std::string("Failed: ") + e.what()));
     }
 }
 
