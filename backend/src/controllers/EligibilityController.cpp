@@ -157,17 +157,41 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         sessionArray += "}";
         
         std::string playerQuery = R"(
-            WITH chat_pool AS (
-                -- Player pool = distinct persons from team's GroupMe chat RSVPs
+            WITH has_chat AS (
+                -- Check if this team has any GroupMe chat data
+                SELECT EXISTS(
+                    SELECT 1 FROM chats c
+                    JOIN chat_events ce ON ce.chat_id = c.id
+                    JOIN chat_event_rsvps cer ON cer.chat_event_id = ce.id
+                    WHERE c.team_id = $1::int AND cer.person_id IS NOT NULL
+                ) as has_data
+            ),
+            chat_pool AS (
+                -- Player pool from GroupMe chat RSVPs (when chat data exists)
                 SELECT DISTINCT cer.person_id
                 FROM chat_event_rsvps cer
                 JOIN chat_events ce ON ce.id = cer.chat_event_id
                 JOIN chats c ON c.id = ce.chat_id
                 WHERE c.team_id = $1::int
                   AND cer.person_id IS NOT NULL
+                  AND (SELECT has_data FROM has_chat)
+            ),
+            roster_pool AS (
+                -- Fallback: player pool from team roster (when no chat data)
+                SELECT DISTINCT p.person_id
+                FROM rosters r
+                JOIN players p ON p.id = r.player_id
+                WHERE r.team_id = $1::int
+                  AND r.left_at IS NULL
+                  AND NOT (SELECT has_data FROM has_chat)
+            ),
+            combined_pool AS (
+                SELECT person_id FROM chat_pool
+                UNION
+                SELECT person_id FROM roster_pool
             ),
             roster_players AS (
-                -- Resolve each chat person to their player record
+                -- Resolve each person to their player record
                 SELECT DISTINCT ON (cp.person_id)
                        p.id as player_id, r.jersey_number,
                        p.has_family_discount, p.photo_url,
@@ -182,7 +206,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                              AND t2.source_system_id = req.source_system_id
                              AND r2.left_at IS NULL
                        ) as on_official_roster
-                FROM chat_pool cp
+                FROM combined_pool cp
                 JOIN persons pe ON pe.id = cp.person_id
                 JOIN players p ON p.person_id = pe.id
                 LEFT JOIN rosters r ON r.player_id = p.id
@@ -251,7 +275,43 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         
         pqxx::result playerResult = db_->query(playerQuery, {teamId, sessionArray, matchId});
         
-        // Step 5: Build response JSON
+        // Step 5: Check GroupMe sync freshness
+        std::string groupmeStatus = "no_data";
+        std::string groupmeLastSync = "";
+        int groupmeMinutesAgo = -1;
+        
+        try {
+            pqxx::result syncResult = db_->query(
+                "SELECT MAX(cer.responded_at) as last_sync "
+                "FROM chat_event_rsvps cer "
+                "JOIN chat_events ce ON ce.id = cer.chat_event_id "
+                "JOIN chats c ON c.id = ce.chat_id "
+                "WHERE c.team_id = $1::int",
+                {teamId}
+            );
+            if (!syncResult.empty() && !syncResult[0]["last_sync"].is_null()) {
+                groupmeLastSync = syncResult[0]["last_sync"].c_str();
+                // Calculate minutes ago
+                pqxx::result ageResult = db_->query(
+                    "SELECT EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - $1::timestamp)) / 60 as minutes_ago",
+                    {groupmeLastSync}
+                );
+                if (!ageResult.empty()) {
+                    groupmeMinutesAgo = static_cast<int>(ageResult[0]["minutes_ago"].as<double>());
+                    if (groupmeMinutesAgo <= 60) {
+                        groupmeStatus = "fresh";
+                    } else if (groupmeMinutesAgo <= 1440) {
+                        groupmeStatus = "stale";
+                    } else {
+                        groupmeStatus = "very_stale";
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "⚠️ GroupMe freshness check failed: " << e.what() << std::endl;
+        }
+        
+        // Step 6: Build response JSON
         std::ostringstream json;
         json << "{\"success\":true,\"data\":{";
         
@@ -261,6 +321,15 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         json << "\"date\":\"" << matchDate << "\",";
         json << "\"homeTeam\":\"" << escapeJson(homeTeamName) << "\",";
         json << "\"awayTeam\":\"" << escapeJson(awayTeamName) << "\"";
+        json << "},";
+        
+        // GroupMe sync status
+        json << "\"groupmeSync\":{";
+        json << "\"status\":\"" << groupmeStatus << "\"";
+        if (!groupmeLastSync.empty()) {
+            json << ",\"lastSync\":\"" << groupmeLastSync << "\"";
+            json << ",\"minutesAgo\":" << groupmeMinutesAgo;
+        }
         json << "},";
         
         // Policy info

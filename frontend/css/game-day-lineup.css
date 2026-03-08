@@ -7,6 +7,42 @@
   margin: 0 auto;
 }
 
+/* GroupMe Sync Warning Banner */
+.groupme-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+.groupme-warning code {
+  background: rgba(0,0,0,0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.groupme-warning-icon {
+  font-size: 1.2em;
+  flex-shrink: 0;
+}
+
+.groupme-warning-warning {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+}
+
+.groupme-warning-error {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
 /* Policy Bar */
 .policy-bar {
   display: flex;

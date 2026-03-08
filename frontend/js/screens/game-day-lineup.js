@@ -41,6 +41,9 @@ class GameDayLineupScreen extends Screen {
         <!-- Main content (hidden until loaded) -->
         <div id="lineup-content" style="display: none;">
           
+          <!-- GroupMe sync warning (hidden by default) -->
+          <div id="groupme-warning" class="groupme-warning" style="display: none;"></div>
+
           <!-- Policy summary bar -->
           <div id="policy-bar" class="policy-bar"></div>
 
@@ -203,10 +206,14 @@ class GameDayLineupScreen extends Screen {
       this.matchInfo = data.data.match;
       this.policy = data.data.policy;
       this.players = data.data.players || [];
+      this.groupmeSync = data.data.groupmeSync || {};
 
       // Update subtitle
       const subtitle = this.find('#lineup-subtitle');
       subtitle.textContent = `${this.matchInfo.homeTeam} vs ${this.matchInfo.awayTeam} — ${this.matchInfo.date}`;
+
+      // Show GroupMe sync warning if needed
+      this.renderGroupmeWarning();
 
       // Render policy bar
       this.renderPolicyBar();
@@ -255,6 +262,45 @@ class GameDayLineupScreen extends Screen {
     } catch (e) {
       console.warn('Could not load formations:', e);
     }
+  }
+
+  // ============================================================================
+  // GroupMe Sync Warning
+  // ============================================================================
+  renderGroupmeWarning() {
+    const banner = this.find('#groupme-warning');
+    if (!banner) return;
+    
+    const sync = this.groupmeSync || {};
+    const status = sync.status;
+    const minutes = sync.minutesAgo;
+    
+    if (status === 'fresh') {
+      banner.style.display = 'none';
+      return;
+    }
+    
+    let icon, message, level;
+    
+    if (status === 'no_data') {
+      icon = '🚫';
+      message = 'No GroupMe data found — RSVPs and attendance may be missing. Run <code>make sync-groupme</code> to sync.';
+      level = 'error';
+    } else if (status === 'very_stale') {
+      const days = Math.floor(minutes / 1440);
+      icon = '⚠️';
+      message = `GroupMe data is ${days} day${days !== 1 ? 's' : ''} old — RSVPs may be outdated. Run <code>make sync-groupme</code> to refresh.`;
+      level = 'error';
+    } else if (status === 'stale') {
+      const hours = Math.floor(minutes / 60);
+      icon = '⏳';
+      message = `GroupMe data is ${hours}h old. Run <code>make sync-groupme</code> for latest RSVPs.`;
+      level = 'warning';
+    }
+    
+    banner.className = `groupme-warning groupme-warning-${level}`;
+    banner.innerHTML = `<span class="groupme-warning-icon">${icon}</span> <span class="groupme-warning-text">${message}</span>`;
+    banner.style.display = 'flex';
   }
 
   // ============================================================================

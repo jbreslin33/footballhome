@@ -424,6 +424,55 @@ class GroupMeSync {
   }
 
   /**
+   * Link a league_game chat_event to an existing match record.
+   * Matches by team_id + date from the chat's team schedule.
+   */
+  async linkLeagueMatch(chatEventId, gmEvent, groupConfig) {
+    if (DRY_RUN) return null;
+
+    // Already linked?
+    const existing = await this.client.query(
+      `SELECT match_id FROM chat_events WHERE id = $1 AND match_id IS NOT NULL`,
+      [chatEventId]
+    );
+    if (existing.rows.length > 0 && existing.rows[0].match_id) return existing.rows[0].match_id;
+
+    // Find team_id from chat
+    const chatRes = await this.client.query(
+      `SELECT c.team_id FROM chats c
+       JOIN chat_events ce ON ce.chat_id = c.id
+       WHERE ce.id = $1`, [chatEventId]
+    );
+    const teamId = chatRes.rows[0]?.team_id;
+    if (!teamId) return null;
+
+    const eventDate = new Date(gmEvent.start_at).toISOString().split('T')[0];
+
+    // Find match where this team plays on this date
+    const matchRes = await this.client.query(
+      `SELECT m.id, ht.name as home_name, at.name as away_name
+       FROM matches m
+       JOIN teams ht ON ht.id = m.home_team_id
+       JOIN teams at ON at.id = m.away_team_id
+       WHERE (m.home_team_id = $1 OR m.away_team_id = $1)
+         AND m.match_date = $2
+       LIMIT 1`,
+      [teamId, eventDate]
+    );
+
+    if (matchRes.rows.length === 0) return null;
+
+    const matchId = matchRes.rows[0].id;
+    await this.client.query(
+      `UPDATE chat_events SET match_id = $1 WHERE id = $2`,
+      [matchId, chatEventId]
+    );
+    console.log(`    🔗 Linked to match #${matchId}: ${matchRes.rows[0].home_name} vs ${matchRes.rows[0].away_name}`);
+    this.stats.matchesLinked = (this.stats.matchesLinked || 0) + 1;
+    return matchId;
+  }
+
+  /**
    * Create a match record for a cup game.
    * Returns match_id or null on failure.
    */
@@ -707,6 +756,11 @@ async function main() {
         if (classification === 'cup' && chatEventId > 0) {
           await sync.createCupMatch(gmEvent, chatEventId);
         }
+
+        // 8. For league games, link to existing match records
+        if (classification === 'league_game' && chatEventId > 0) {
+          await sync.linkLeagueMatch(chatEventId, gmEvent, groupConfig);
+        }
       }
       console.log('');
     }
@@ -721,6 +775,7 @@ async function main() {
     console.log(`  Events skipped:     ${sync.stats.eventsSkipped} (duplicates)`);
     console.log(`  RSVPs synced:       ${sync.stats.rsvpsCreated}`);
     console.log(`  Cup matches:        ${sync.stats.matchesCreated}`);
+    console.log(`  Matches linked:     ${sync.stats.matchesLinked || 0}`);
     console.log(`  Persons resolved:   ${sync.stats.personsResolved}`);
     console.log(`  Persons unresolved: ${sync.stats.personsUnresolved}`);
 
