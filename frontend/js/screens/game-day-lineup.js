@@ -133,8 +133,35 @@ class GameDayLineupScreen extends Screen {
     this._listenersAttached = true;
 
     this.attachEventListeners();
-    this.loadEligibilityData();
+    this.syncThenLoad();
     this.loadFormations();
+  }
+
+  /**
+   * Sync GroupMe RSVPs from the live API, then load eligibility data.
+   * If sync fails or no event is linked, we still load eligibility (with stale/no data).
+   */
+  async syncThenLoad() {
+    const matchId = this.navigation.context.match?.id;
+    const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id || '';
+    
+    if (matchId && teamId) {
+      try {
+        const syncResponse = await this.auth.fetch(`/api/groupme/sync-match/${matchId}?teamId=${teamId}`, {
+          method: 'POST'
+        });
+        const syncData = await syncResponse.json();
+        if (syncData.success && syncData.data?.synced) {
+          console.log(`✅ GroupMe sync: ${syncData.data.totalRsvps} RSVPs (${syncData.data.going} going)`);
+        } else {
+          console.log('ℹ️ GroupMe sync skipped:', syncData.data?.reason || syncData.message);
+        }
+      } catch (err) {
+        console.warn('⚠️ GroupMe sync failed:', err.message);
+      }
+    }
+
+    this.loadEligibilityData();
   }
 
   // ============================================================================
@@ -152,6 +179,10 @@ class GameDayLineupScreen extends Screen {
       }
       if (e.target.id === 'auto-fill-btn' || e.target.closest('#auto-fill-btn')) {
         this.autoFillFromEligibility();
+        return;
+      }
+      if (e.target.id === 'groupme-refresh-btn' || e.target.closest('#groupme-refresh-btn')) {
+        this.refreshGroupMe();
         return;
       }
     });
@@ -281,26 +312,65 @@ class GameDayLineupScreen extends Screen {
     }
     
     let icon, message, level;
+    const refreshBtn = '<button id="groupme-refresh-btn" class="btn-groupme-refresh">🔄 Refresh</button>';
     
     if (status === 'no_data') {
       icon = '🚫';
-      message = 'No GroupMe data found — RSVPs and attendance may be missing. Run <code>make sync-groupme</code> to sync.';
+      message = `No GroupMe event linked for this match — RSVPs unavailable. ${refreshBtn}`;
       level = 'error';
     } else if (status === 'very_stale') {
       const days = Math.floor(minutes / 1440);
       icon = '⚠️';
-      message = `GroupMe data is ${days} day${days !== 1 ? 's' : ''} old — RSVPs may be outdated. Run <code>make sync-groupme</code> to refresh.`;
+      message = `RSVP data is ${days} day${days !== 1 ? 's' : ''} old. ${refreshBtn}`;
       level = 'error';
     } else if (status === 'stale') {
       const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
       icon = '⏳';
-      message = `GroupMe data is ${hours}h old. Run <code>make sync-groupme</code> for latest RSVPs.`;
+      message = `RSVPs synced ${hours}h ${mins}m ago. ${refreshBtn}`;
       level = 'warning';
     }
     
+    if (!message) {
+      banner.style.display = 'none';
+      return;
+    }
+
     banner.className = `groupme-warning groupme-warning-${level}`;
     banner.innerHTML = `<span class="groupme-warning-icon">${icon}</span> <span class="groupme-warning-text">${message}</span>`;
     banner.style.display = 'flex';
+  }
+
+  /**
+   * Refresh GroupMe RSVPs and reload eligibility data.
+   */
+  async refreshGroupMe() {
+    const btn = this.find('#groupme-refresh-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Syncing...';
+    }
+
+    const matchId = this.navigation.context.match?.id;
+    const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id || '';
+
+    try {
+      const syncResponse = await this.auth.fetch(`/api/groupme/sync-match/${matchId}?teamId=${teamId}`, {
+        method: 'POST'
+      });
+      const syncData = await syncResponse.json();
+      
+      if (syncData.success && syncData.data?.synced) {
+        console.log(`✅ Refresh: ${syncData.data.totalRsvps} RSVPs synced`);
+      } else {
+        console.log('ℹ️ Refresh:', syncData.data?.reason || syncData.message);
+      }
+    } catch (err) {
+      console.warn('⚠️ Refresh failed:', err.message);
+    }
+
+    // Reload eligibility with fresh data
+    await this.loadEligibilityData();
   }
 
   // ============================================================================
