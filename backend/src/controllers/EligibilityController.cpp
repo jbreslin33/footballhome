@@ -415,6 +415,36 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         }
         
         json << "],";
+        
+        // Step 6b: Get unmatched GroupMe RSVP users (person_id IS NULL)
+        json << "\"unmatchedRsvps\":[";
+        try {
+            pqxx::result unmatchedResult = db_->query(R"(
+                SELECT cer.external_user_id, cer.external_username, rs.name as rsvp_status
+                FROM chat_event_rsvps cer
+                JOIN chat_events ce ON ce.id = cer.chat_event_id
+                JOIN chats c ON c.id = ce.chat_id
+                JOIN rsvp_statuses rs ON rs.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)
+                WHERE ce.match_id = $1::int AND c.team_id = $2::int
+                  AND cer.person_id IS NULL
+                ORDER BY cer.external_username
+            )", {matchId, teamId});
+            
+            bool firstUnmatched = true;
+            for (const auto& row : unmatchedResult) {
+                if (!firstUnmatched) json << ",";
+                firstUnmatched = false;
+                json << "{";
+                json << "\"externalUserId\":\"" << escapeJson(row["external_user_id"].c_str()) << "\",";
+                json << "\"externalUsername\":\"" << escapeJson(row["external_username"].c_str()) << "\",";
+                json << "\"matchRsvp\":\"" << row["rsvp_status"].c_str() << "\"";
+                json << "}";
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "⚠️ Unmatched RSVPs query failed: " << e.what() << std::endl;
+        }
+        json << "],";
+        
         json << "\"priorityStarterCount\":" << priorityStarterCount << ",";
         json << "\"priorityStarterSlots\":" << policy.priority_starter_slots << ",";
         json << "\"totalPlayers\":" << players.size();

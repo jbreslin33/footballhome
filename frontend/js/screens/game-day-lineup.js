@@ -1,21 +1,22 @@
 // GameDayLineupScreen - Drag-and-drop lineup management with eligibility tracking
-// Zones: Starting XI (pitch), Bench, Not Invited, Unavailable, Ineligible
+// Zones: Starting XI (pitch), Roster list (single sortable list)
 class GameDayLineupScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
     this.players = [];
+    this.unmatchedRsvps = [];
     this.policy = {};
     this.matchInfo = {};
     this.formations = [];
     this.selectedFormation = null;
     this.zones = {
-      starting: [],    // Player IDs in starting XI
-      bench: [],       // Player IDs on bench
-      notInvited: [],  // Explicitly not invited
-      unavailable: [], // RSVP'd no
-      ineligible: []   // Didn't meet training req
+      starting: [],    // Player IDs in starting XI (sparse array with nulls for empty slots)
+      roster: []       // All other player IDs in one list
     };
+    this.sortField = 'rsvp';  // Default sort
+    this.sortAsc = true;
     this.dragState = null;
+    this.selectingSlot = null; // When non-null, clicking a player card assigns to this slot
     this._listenersAttached = false;
   }
 
@@ -55,7 +56,13 @@ class GameDayLineupScreen extends Screen {
             </select>
           </div>
 
-          <!-- Pitch + Zones layout -->
+          <!-- Selection mode banner (hidden by default) -->
+          <div id="select-mode-banner" class="select-mode-banner" style="display: none;">
+            <span>👆 Click a player to assign to <strong id="select-slot-label"></strong></span>
+            <button id="cancel-select-btn" class="btn btn-sm btn-secondary">Cancel</button>
+          </div>
+
+          <!-- Pitch + Roster layout -->
           <div class="lineup-layout">
             
             <!-- Starting XI - Pitch visualization -->
@@ -75,44 +82,23 @@ class GameDayLineupScreen extends Screen {
               </div>
             </div>
 
-            <!-- Side zones -->
-            <div class="lineup-side-zones">
-              
-              <!-- Bench -->
-              <div class="lineup-zone zone-bench" id="zone-bench">
-                <div class="zone-header">
-                  <h3>🪑 Bench</h3>
-                  <span id="bench-count" class="zone-count">0</span>
-                </div>
-                <div class="zone-players" id="bench-players"></div>
+            <!-- Single roster list -->
+            <div class="roster-panel lineup-zone" id="roster-panel">
+              <div class="roster-header">
+                <h3>📋 Roster</h3>
+                <span id="roster-count" class="zone-count">0</span>
               </div>
-
-              <!-- Ineligible -->
-              <div class="lineup-zone zone-ineligible" id="zone-ineligible">
-                <div class="zone-header">
-                  <h3>🚫 Didn't Meet Criteria</h3>
-                  <span id="ineligible-count" class="zone-count">0</span>
-                </div>
-                <div class="zone-players" id="ineligible-players"></div>
+              <div class="roster-sort-controls">
+                <label>Sort:</label>
+                <select id="roster-sort">
+                  <option value="rsvp">RSVP Status</option>
+                  <option value="practices">Practices</option>
+                  <option value="lastName">Last Name</option>
+                  <option value="eligibility">Eligibility</option>
+                </select>
+                <button id="sort-direction-btn" class="btn-sort-dir" title="Toggle sort direction">↓</button>
               </div>
-
-              <!-- Unavailable -->
-              <div class="lineup-zone zone-unavailable" id="zone-unavailable">
-                <div class="zone-header">
-                  <h3>❌ Unavailable</h3>
-                  <span id="unavailable-count" class="zone-count">0</span>
-                </div>
-                <div class="zone-players" id="unavailable-players"></div>
-              </div>
-
-              <!-- Not Invited -->
-              <div class="lineup-zone zone-not-invited" id="zone-notInvited">
-                <div class="zone-header">
-                  <h3>📋 Not Invited</h3>
-                  <span id="not-invited-count" class="zone-count">0</span>
-                </div>
-                <div class="zone-players" id="not-invited-players"></div>
-              </div>
+              <div class="roster-players" id="roster-players"></div>
             </div>
           </div>
 
@@ -185,12 +171,50 @@ class GameDayLineupScreen extends Screen {
         this.refreshGroupMe();
         return;
       }
+      if (e.target.id === 'cancel-select-btn' || e.target.closest('#cancel-select-btn')) {
+        this.cancelSlotSelection();
+        return;
+      }
+      if (e.target.id === 'sort-direction-btn' || e.target.closest('#sort-direction-btn')) {
+        this.sortAsc = !this.sortAsc;
+        const btn = this.find('#sort-direction-btn');
+        if (btn) btn.textContent = this.sortAsc ? '↓' : '↑';
+        this.renderRoster();
+        return;
+      }
+
+      // Click-to-assign: if we're in slot selection mode and user clicks a player card
+      if (this.selectingSlot !== null) {
+        const card = e.target.closest('[data-player-id]');
+        if (card && card.closest('#roster-players')) {
+          const playerId = parseInt(card.getAttribute('data-player-id'));
+          this.assignPlayerToSlot(playerId, this.selectingSlot);
+          this.cancelSlotSelection();
+          return;
+        }
+      }
+
+      // Click on empty pitch slot to enter selection mode
+      const slot = e.target.closest('.pitch-slot');
+      if (slot) {
+        const slotIndex = parseInt(slot.getAttribute('data-slot'));
+        const occupant = this.zones.starting[slotIndex];
+        if (!occupant) {
+          // Empty slot — enter selection mode
+          this.enterSlotSelection(slotIndex);
+        }
+        return;
+      }
     });
 
-    // Formation selector
+    // Sort selector
     this.element.addEventListener('change', (e) => {
       if (e.target.id === 'formation-select') {
         this.onFormationChange(e.target.value);
+      }
+      if (e.target.id === 'roster-sort') {
+        this.sortField = e.target.value;
+        this.renderRoster();
       }
     });
 
@@ -237,6 +261,7 @@ class GameDayLineupScreen extends Screen {
       this.matchInfo = data.data.match;
       this.policy = data.data.policy;
       this.players = data.data.players || [];
+      this.unmatchedRsvps = data.data.unmatchedRsvps || [];
       this.groupmeSync = data.data.groupmeSync || {};
 
       // Update subtitle
@@ -403,108 +428,76 @@ class GameDayLineupScreen extends Screen {
   // Player Classification
   // ============================================================================
   classifyPlayersIntoZones() {
-    this.zones = { starting: [], bench: [], notInvited: [], unavailable: [], ineligible: [] };
+    this.zones = { starting: [], roster: [] };
 
     for (const player of this.players) {
       // If player already has lineup assignment, respect it
-      if (player.onLineup) {
-        if (player.isStarter) {
-          this.zones.starting.push(player.playerId);
-        } else {
-          this.zones.bench.push(player.playerId);
-        }
+      if (player.onLineup && player.isStarter) {
+        this.zones.starting.push(player.playerId);
         continue;
       }
-
-      // Otherwise, classify by eligibility + RSVP
-      if (player.matchRsvp === 'no') {
-        this.zones.unavailable.push(player.playerId);
-      } else if (player.eligibilityStatus === 'ineligible') {
-        this.zones.ineligible.push(player.playerId);
-      } else if (player.eligibilityStatus === 'priority_starter' || player.eligibilityStatus === 'eligible_starter') {
-        // Available and eligible — put on bench by default (coach drags to starting)
-        this.zones.bench.push(player.playerId);
-      } else if (player.eligibilityStatus === 'bench_only') {
-        this.zones.bench.push(player.playerId);
-      } else {
-        this.zones.notInvited.push(player.playerId);
-      }
+      // Everyone else goes to roster (single list)
+      this.zones.roster.push(player.playerId);
     }
-
-    // Sort bench by criteria met (best candidates at top)
-    this.sortBenchByCriteria();
   }
 
-  // Sort bench player IDs by eligibility ranking:
-  //   1. Eligibility tier: priority_starter > eligible_starter > bench_only > ineligible
-  //   2. Sessions attended (descending)
-  //   3. RSVP status: yes > maybe > none/other
-  //   4. On official roster first
-  sortBenchByCriteria() {
+  // Sort roster by the active sort field
+  sortRoster() {
     const statusRank = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3 };
-    const rsvpRank = { 'yes': 0, 'maybe': 1 };
+    const rsvpRank = { 'yes': 0, 'maybe': 1, 'no': 2 };
+    const dir = this.sortAsc ? 1 : -1;
 
-    this.zones.bench.sort((idA, idB) => {
+    this.zones.roster.sort((idA, idB) => {
       const a = this.getPlayerById(idA);
       const b = this.getPlayerById(idB);
       if (!a || !b) return 0;
 
-      // 1. Eligibility tier
-      const tierA = statusRank[a.eligibilityStatus] ?? 4;
-      const tierB = statusRank[b.eligibilityStatus] ?? 4;
-      if (tierA !== tierB) return tierA - tierB;
-
-      // 2. Sessions attended (more = better)
-      if (a.sessionsAttended !== b.sessionsAttended) return b.sessionsAttended - a.sessionsAttended;
-
-      // 3. RSVP — yes before maybe before none
-      const rsvpA = rsvpRank[a.matchRsvp] ?? 2;
-      const rsvpB = rsvpRank[b.matchRsvp] ?? 2;
-      if (rsvpA !== rsvpB) return rsvpA - rsvpB;
-
-      // 4. On official roster first
-      if (a.onOfficialRoster !== b.onOfficialRoster) return a.onOfficialRoster ? -1 : 1;
-
-      // 5. Alphabetical tiebreak
-      return (a.lastName + a.firstName).localeCompare(b.lastName + b.firstName);
+      let cmp = 0;
+      switch (this.sortField) {
+        case 'rsvp':
+          cmp = (rsvpRank[a.matchRsvp] ?? 3) - (rsvpRank[b.matchRsvp] ?? 3);
+          if (cmp === 0) cmp = b.sessionsAttended - a.sessionsAttended;
+          break;
+        case 'practices':
+          cmp = b.sessionsAttended - a.sessionsAttended;
+          break;
+        case 'lastName':
+          cmp = (a.lastName + a.firstName).localeCompare(b.lastName + b.firstName);
+          break;
+        case 'eligibility':
+          cmp = (statusRank[a.eligibilityStatus] ?? 4) - (statusRank[b.eligibilityStatus] ?? 4);
+          if (cmp === 0) cmp = b.sessionsAttended - a.sessionsAttended;
+          break;
+      }
+      return cmp * dir;
     });
   }
 
   autoFillFromEligibility() {
     // Reset all zones
-    this.zones = { starting: [], bench: [], notInvited: [], unavailable: [], ineligible: [] };
+    this.zones = { starting: [], roster: [] };
 
     // Sort eligible players by attendance (highest first)
-    const eligible = this.players
-      .filter(p => p.matchRsvp !== 'no')
-      .sort((a, b) => {
-        // Priority starters first, then by sessions attended
-        const statusOrder = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3 };
-        const orderA = statusOrder[a.eligibilityStatus] ?? 4;
-        const orderB = statusOrder[b.eligibilityStatus] ?? 4;
-        if (orderA !== orderB) return orderA - orderB;
-        return b.sessionsAttended - a.sessionsAttended;
-      });
+    const sorted = [...this.players].sort((a, b) => {
+      const statusOrder = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3 };
+      const orderA = statusOrder[a.eligibilityStatus] ?? 4;
+      const orderB = statusOrder[b.eligibilityStatus] ?? 4;
+      if (orderA !== orderB) return orderA - orderB;
+      return b.sessionsAttended - a.sessionsAttended;
+    });
 
     let starterCount = 0;
-    for (const player of eligible) {
-      if (player.eligibilityStatus === 'ineligible') {
-        this.zones.ineligible.push(player.playerId);
-      } else if (starterCount < 11 && (player.eligibilityStatus === 'priority_starter' || player.eligibilityStatus === 'eligible_starter')) {
+    for (const player of sorted) {
+      if (player.matchRsvp === 'no') {
+        this.zones.roster.push(player.playerId);
+      } else if (starterCount < 11 && player.eligibilityStatus !== 'ineligible') {
         this.zones.starting.push(player.playerId);
         starterCount++;
       } else {
-        this.zones.bench.push(player.playerId);
+        this.zones.roster.push(player.playerId);
       }
     }
 
-    // Unavailable (RSVP'd no)
-    this.players
-      .filter(p => p.matchRsvp === 'no')
-      .forEach(p => this.zones.unavailable.push(p.playerId));
-
-    // Sort bench by criteria met
-    this.sortBenchByCriteria();
     this.renderAllZones();
   }
 
@@ -517,26 +510,42 @@ class GameDayLineupScreen extends Screen {
 
   renderAllZones() {
     this.renderPitchPlayers();
-    this.sortBenchByCriteria();
-    this.renderZonePlayers('bench-players', this.zones.bench);
-    this.renderZonePlayers('ineligible-players', this.zones.ineligible);
-    this.renderZonePlayers('unavailable-players', this.zones.unavailable);
-    this.renderZonePlayers('not-invited-players', this.zones.notInvited);
+    this.renderRoster();
     this.updateCounts();
+  }
+
+  renderRoster() {
+    this.sortRoster();
+    const container = this.find('#roster-players');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Render matched players
+    for (const playerId of this.zones.roster) {
+      const player = this.getPlayerById(playerId);
+      if (!player) continue;
+      const card = this.createPlayerCard(player);
+      card.setAttribute('data-zone', 'roster');
+      container.appendChild(card);
+    }
+
+    // Render unmatched RSVP users at the bottom
+    for (const u of this.unmatchedRsvps) {
+      const card = this.createUnmatchedCard(u);
+      container.appendChild(card);
+    }
+
+    if (this.zones.roster.length === 0 && this.unmatchedRsvps.length === 0) {
+      container.innerHTML = '<div class="zone-empty">No players found</div>';
+    }
   }
 
   updateCounts() {
     const sc = this.find('#starting-count');
-    const bc = this.find('#bench-count');
-    const ic = this.find('#ineligible-count');
-    const uc = this.find('#unavailable-count');
-    const nc = this.find('#not-invited-count');
+    const rc = this.find('#roster-count');
     const starterCount = this.zones.starting.filter(id => id !== null).length;
     if (sc) sc.textContent = `${starterCount}/11`;
-    if (bc) bc.textContent = this.zones.bench.length;
-    if (ic) ic.textContent = this.zones.ineligible.length;
-    if (uc) uc.textContent = this.zones.unavailable.length;
-    if (nc) nc.textContent = this.zones.notInvited.length;
+    if (rc) rc.textContent = this.zones.roster.length + this.unmatchedRsvps.length;
   }
 
   renderPitchPlayers() {
@@ -630,55 +639,131 @@ class GameDayLineupScreen extends Screen {
     card.setAttribute('data-player-id', player.playerId);
 
     const jerseyDisplay = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
-    const posDisplay = player.position || '';
+    const posDisplay = player.position || '—';
     const initial = player.firstName ? player.firstName[0] : '?';
+
+    // RSVP pill
+    const rsvpClass = this.getRsvpClass(player.matchRsvp);
+    const rsvpLabel = this.getRsvpLabel(player.matchRsvp);
+
+    // Practices badge
+    const practicesBadge = `${player.sessionsAttended}/${this.policy.lookbackCount}`;
 
     // Eligibility indicator
     const statusIcon = this.getStatusIcon(player.eligibilityStatus);
-    const rsvpIcon = this.getRsvpIcon(player.matchRsvp);
-    const familyIcon = player.hasFamilyDiscount ? '👨‍👩‍👧' : '';
+    const rosterBadge = player.onOfficialRoster ? '' : '<span class="badge-guest" title="Not on official roster">guest</span>';
 
     card.innerHTML = `
       <div class="player-card-left">
         <div class="player-avatar">${initial}</div>
         <div class="player-info">
-          <div class="player-name">${player.firstName} ${player.lastName}</div>
-          <div class="player-meta">
-            ${[jerseyDisplay, posDisplay].filter(Boolean).join(' · ')}
-          </div>
+          <div class="player-name">${player.firstName} ${player.lastName} ${rosterBadge}</div>
+          <div class="player-meta">${[jerseyDisplay, posDisplay].filter(Boolean).join(' · ')}</div>
         </div>
       </div>
       <div class="player-card-right">
-        <div class="eligibility-badge" title="Training: ${player.sessionsAttended}/${this.policy.lookbackCount} (need ${player.effectiveMinSessions})">
-          ${statusIcon} ${player.sessionsAttended}/${this.policy.lookbackCount}
-        </div>
-        <div class="player-icons">
-          ${rsvpIcon} ${familyIcon}
-        </div>
+        <span class="rsvp-pill ${rsvpClass}">${rsvpLabel}</span>
+        <span class="practices-badge" title="Practices attended">${statusIcon} ${practicesBadge}</span>
       </div>
     `;
 
     return card;
   }
 
-  renderZonePlayers(containerId, playerIds) {
-    const container = this.find(`#${containerId}`);
-    if (!container) return;
-    container.innerHTML = '';
+  createUnmatchedCard(user) {
+    const card = document.createElement('div');
+    card.className = 'player-card player-card-unmatched';
+    card.setAttribute('data-external-id', user.externalUserId);
 
-    if (playerIds.length === 0) {
-      container.innerHTML = '<div class="zone-empty">Drag players here</div>';
-      return;
+    const initial = user.externalUsername ? user.externalUsername[0].toUpperCase() : '?';
+    const rsvpClass = this.getRsvpClass(user.matchRsvp);
+    const rsvpLabel = this.getRsvpLabel(user.matchRsvp);
+
+    card.innerHTML = `
+      <div class="player-card-left">
+        <div class="player-avatar avatar-unknown">?</div>
+        <div class="player-info">
+          <div class="player-name">${user.externalUsername} <span class="badge-unmatched">unlinked</span></div>
+          <div class="player-meta">GroupMe user · not in database</div>
+        </div>
+      </div>
+      <div class="player-card-right">
+        <span class="rsvp-pill ${rsvpClass}">${rsvpLabel}</span>
+      </div>
+    `;
+
+    return card;
+  }
+
+  getRsvpClass(rsvp) {
+    switch (rsvp) {
+      case 'yes': return 'rsvp-yes';
+      case 'no': return 'rsvp-no';
+      case 'maybe': return 'rsvp-maybe';
+      default: return 'rsvp-pending';
     }
+  }
 
-    playerIds.forEach(playerId => {
-      const player = this.getPlayerById(playerId);
-      if (!player) return;
-      const card = this.createPlayerCard(player);
-      const zone = containerId.replace('-players', '').replace('not-invited', 'notInvited');
-      card.setAttribute('data-zone', zone);
-      container.appendChild(card);
-    });
+  getRsvpLabel(rsvp) {
+    switch (rsvp) {
+      case 'yes': return '✓ Going';
+      case 'no': return '✗ Not Going';
+      case 'maybe': return '? Maybe';
+      default: return '… Pending';
+    }
+  }
+
+  // ============================================================================
+  // Click-to-Assign (slot selection mode)
+  // ============================================================================
+  enterSlotSelection(slotIndex) {
+    this.selectingSlot = slotIndex;
+    const positions = this.getFormationPositions();
+    const label = positions[slotIndex]?.label || `Slot ${slotIndex + 1}`;
+    
+    const banner = this.find('#select-mode-banner');
+    const labelEl = this.find('#select-slot-label');
+    if (banner) banner.style.display = 'flex';
+    if (labelEl) labelEl.textContent = label;
+    
+    // Highlight the selected slot
+    this.element.querySelectorAll('.pitch-slot').forEach(s => s.classList.remove('slot-selecting'));
+    const slot = this.element.querySelector(`.pitch-slot[data-slot="${slotIndex}"]`);
+    if (slot) slot.classList.add('slot-selecting');
+    
+    // Add selection mode class to roster for visual feedback
+    const panel = this.find('#roster-panel');
+    if (panel) panel.classList.add('roster-selecting');
+  }
+
+  cancelSlotSelection() {
+    this.selectingSlot = null;
+    const banner = this.find('#select-mode-banner');
+    if (banner) banner.style.display = 'none';
+    
+    this.element.querySelectorAll('.pitch-slot').forEach(s => s.classList.remove('slot-selecting'));
+    const panel = this.find('#roster-panel');
+    if (panel) panel.classList.remove('roster-selecting');
+  }
+
+  assignPlayerToSlot(playerId, slotIndex) {
+    // Remove from roster
+    this.zones.roster = this.zones.roster.filter(id => id !== playerId);
+    
+    // Pad starting array
+    const positions = this.getFormationPositions();
+    while (this.zones.starting.length < positions.length) {
+      this.zones.starting.push(null);
+    }
+    
+    // If slot is occupied, move occupant to roster
+    const occupant = this.zones.starting[slotIndex];
+    if (occupant && occupant !== playerId) {
+      this.zones.roster.unshift(occupant);
+    }
+    
+    this.zones.starting[slotIndex] = playerId;
+    this.renderAllZones();
   }
 
   getEligibilityClass(player) {
@@ -698,15 +783,6 @@ class GameDayLineupScreen extends Screen {
       case 'bench_only': return '🔶';
       case 'ineligible': return '🚫';
       default: return '❓';
-    }
-  }
-
-  getRsvpIcon(rsvp) {
-    switch (rsvp) {
-      case 'yes': return '✓';
-      case 'no': return '✗';
-      case 'maybe': return '?';
-      default: return '';
     }
   }
 
@@ -870,10 +946,7 @@ class GameDayLineupScreen extends Screen {
   getZoneKey(zoneElementId) {
     const map = {
       'zone-starting': 'starting',
-      'zone-bench': 'bench',
-      'zone-ineligible': 'ineligible',
-      'zone-unavailable': 'unavailable',
-      'zone-notInvited': 'notInvited'
+      'roster-panel': 'roster'
     };
     return map[zoneElementId] || null;
   }
@@ -904,14 +977,14 @@ class GameDayLineupScreen extends Screen {
       this.zones[fromZone] = this.zones[fromZone].filter(id => id !== playerId);
     }
 
-    // If target slot had a player, move them to source slot or bench
+    // If target slot had a player, move them to source slot or roster
     if (occupant && occupant !== playerId) {
       if (fromZone === 'starting' && fromSlot !== null && fromSlot !== undefined) {
         // Pitch-to-pitch swap
         this.zones.starting[fromSlot] = occupant;
       } else {
-        // Displaced player goes to bench
-        this.zones.bench.unshift(occupant);
+        // Displaced player goes to roster
+        this.zones.roster.unshift(occupant);
       }
     }
 
@@ -919,7 +992,6 @@ class GameDayLineupScreen extends Screen {
     this.zones.starting[targetSlot] = playerId;
 
     this.compactStarting();
-    this.sortBenchByCriteria();
     this.renderAllZones();
   }
 
@@ -933,10 +1005,10 @@ class GameDayLineupScreen extends Screen {
     // Find first empty slot
     let targetSlot = this.zones.starting.indexOf(null);
     if (targetSlot === -1) {
-      // All full — bump last slot to bench
+      // All full — bump last slot to roster
       const bumped = this.zones.starting[positions.length - 1];
       this.zones.starting[positions.length - 1] = null;
-      if (bumped) this.zones.bench.unshift(bumped);
+      if (bumped) this.zones.roster.unshift(bumped);
       targetSlot = positions.length - 1;
     }
 
@@ -956,7 +1028,6 @@ class GameDayLineupScreen extends Screen {
 
     // Remove from source
     if (fromZone === 'starting') {
-      // Clear the slot (set to null, don't filter)
       const idx = this.zones.starting.indexOf(playerId);
       if (idx !== -1) this.zones.starting[idx] = null;
       this.compactStarting();
@@ -970,11 +1041,6 @@ class GameDayLineupScreen extends Screen {
       return; // renderAllZones called inside
     } else if (this.zones[toZone]) {
       this.zones[toZone].push(playerId);
-    }
-
-    // Re-sort bench whenever players move into it
-    if (toZone === 'bench' || fromZone === 'starting') {
-      this.sortBenchByCriteria();
     }
 
     this.renderAllZones();
@@ -1131,7 +1197,7 @@ class GameDayLineupScreen extends Screen {
     }
 
     const starters = this.zones.starting.filter(id => id !== null).map(playerId => ({ playerId }));
-    const bench = this.zones.bench.map(playerId => ({ playerId }));
+    const bench = this.zones.roster.map(playerId => ({ playerId }));
 
     try {
       const response = await this.auth.fetch(`/api/eligibility/lineup/${matchId}`, {

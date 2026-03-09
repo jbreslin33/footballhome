@@ -126,7 +126,7 @@
 /* Layout */
 .lineup-layout {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: 1fr 320px;
   gap: var(--space-3);
   padding: 0 var(--space-3);
 }
@@ -135,12 +135,6 @@
   .lineup-layout {
     grid-template-columns: 1fr;
   }
-}
-
-.lineup-side-zones {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
 }
 
 /* Zones */
@@ -193,24 +187,147 @@
   background: rgba(22, 163, 74, 0.03);
 }
 
-.zone-bench {
-  border-color: #2563eb;
-  background: rgba(37, 99, 235, 0.03);
+/* Roster Panel */
+.roster-panel {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 200px);
 }
 
-.zone-ineligible {
-  border-color: #dc2626;
-  background: rgba(220, 38, 38, 0.03);
+.roster-panel.drag-over {
+  border-color: var(--primary-color);
+  background: rgba(34, 102, 204, 0.05);
 }
 
-.zone-unavailable {
-  border-color: #9333ea;
-  background: rgba(147, 51, 234, 0.03);
+.roster-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--gray-200);
+  background: white;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
-.zone-not-invited {
-  border-color: var(--gray-400);
-  background: rgba(156, 163, 175, 0.03);
+.roster-header h3 {
+  margin: 0;
+  font-size: 0.95em;
+  color: var(--gray-700);
+}
+
+.roster-sort-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--gray-200);
+  background: white;
+  font-size: 0.8em;
+}
+
+.roster-sort-controls label {
+  color: var(--gray-500);
+  font-weight: 500;
+}
+
+.roster-sort-controls select {
+  padding: 2px 6px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  background: white;
+  font-size: 0.95em;
+  flex: 1;
+}
+
+.btn-sort-dir {
+  background: none;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 1em;
+  line-height: 1;
+}
+
+.btn-sort-dir:hover {
+  background: var(--gray-100);
+}
+
+.roster-players {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.roster-divider {
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-400);
+  padding: var(--space-2) 0 var(--space-1);
+  border-top: 1px solid var(--gray-200);
+  margin-top: var(--space-1);
+}
+
+/* Select Mode Banner */
+.select-mode-banner {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: #fef3c7;
+  border-bottom: 1px solid #fbbf24;
+  font-size: 0.85em;
+  color: #92400e;
+  font-weight: 500;
+}
+
+.select-mode-banner.active {
+  display: flex;
+}
+
+.select-mode-banner .btn-cancel {
+  padding: 2px 10px;
+  border: 1px solid #d97706;
+  border-radius: var(--radius-sm);
+  background: white;
+  color: #92400e;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.select-mode-banner .btn-cancel:hover {
+  background: #fde68a;
+}
+
+/* Slot selecting state */
+.pitch-slot.slot-selecting {
+  border-color: #fbbf24;
+  background: rgba(251, 191, 36, 0.25);
+  animation: pulse-select 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse-select {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(251, 191, 36, 0); }
+}
+
+.roster-selecting .player-card {
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.roster-selecting .player-card:hover {
+  border-color: #fbbf24;
+  transform: scale(1.02);
 }
 
 .zone-players {
@@ -395,17 +512,17 @@
   color: #991b1b;
 }
 
-/* Player Card (side zones) */
+/* Player Card (roster list) */
 .player-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: var(--space-2);
+  gap: var(--space-2);
+  padding: 8px 10px;
   background: white;
   border-radius: var(--radius-sm);
   cursor: grab;
   border-left: 3px solid var(--gray-300);
-  transition: box-shadow 0.2s, opacity 0.2s;
+  transition: box-shadow 0.2s, opacity 0.2s, border-color 0.15s;
   user-select: none;
   font-size: 0.85em;
 }
@@ -434,8 +551,8 @@
 }
 
 .player-avatar {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--primary-color);
   color: white;
@@ -449,25 +566,150 @@
 
 .player-info {
   min-width: 0;
+  flex: 1;
 }
 
 .player-name {
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 0.9em;
 }
 
 .player-meta {
-  font-size: 0.8em;
+  font-size: 0.75em;
   color: var(--gray-500);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .player-card-right {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* RSVP Pill */
+.rsvp-pill {
+  font-size: 0.7em;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.rsvp-yes {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.rsvp-no {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.rsvp-maybe {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.rsvp-pending {
+  background: var(--gray-100);
+  color: var(--gray-500);
+}
+
+/* Practices Badge */
+.practices-badge {
+  font-size: 0.7em;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--gray-100);
+  color: var(--gray-600);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
   gap: 2px;
+}
+
+.practices-badge.practices-high {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.practices-badge.practices-mid {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.practices-badge.practices-low {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Status / guest badges */
+.badge-guest {
+  font-size: 0.65em;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: #dbeafe;
+  color: #1e40af;
+  white-space: nowrap;
+}
+
+.badge-unmatched {
+  font-size: 0.65em;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: #fce7f3;
+  color: #9d174d;
+  white-space: nowrap;
+}
+
+/* Unmatched player card */
+.player-card-unmatched {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 10px;
+  background: #fefce8;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid #d97706;
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+
+.player-card-unmatched .player-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.player-card-unmatched .player-name {
+  font-weight: 500;
+  font-size: 0.9em;
+  color: var(--gray-700);
+}
+
+.player-card-unmatched .player-meta {
+  font-size: 0.7em;
+  color: var(--gray-500);
+}
+
+.avatar-unknown {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--gray-300);
+  color: var(--gray-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9em;
   flex-shrink: 0;
 }
 
