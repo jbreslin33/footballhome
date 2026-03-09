@@ -4,6 +4,13 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
+
+struct GroupMeMember {
+    std::string userId;
+    std::string nickname;
+    std::string imageUrl;
+};
 
 class GroupMeController : public Controller {
 private:
@@ -18,6 +25,9 @@ private:
     // Main handler: sync RSVPs for a specific match from GroupMe API
     Response handleSyncMatchRsvps(const Request& request);
 
+    // Handler: return all GroupMe group members with linkage info
+    Response handleGetGroupMembers(const Request& request);
+
     // HTTP helpers
     std::string httpGet(const std::string& url);
 
@@ -27,6 +37,7 @@ private:
                                                  size_t searchTo,
                                                  const std::string& key);
     std::map<std::string, std::string> extractMemberNicknames(const std::string& json);
+    std::vector<GroupMeMember> extractFullMemberData(const std::string& json);
 
     // Path/response helpers
     std::string extractIdFromPath(const std::string& path, const std::string& pattern);

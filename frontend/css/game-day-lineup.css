@@ -564,6 +564,20 @@
   flex-shrink: 0;
 }
 
+.player-avatar-img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--gray-200);
+}
+
+.player-gm-nick {
+  font-size: 0.85em;
+  color: var(--gray-400);
+}
+
 .player-info {
   min-width: 0;
   flex: 1;

@@ -253,9 +253,14 @@ class GameDayLineupScreen extends Screen {
     try {
       const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id || '';
       const teamParam = teamId ? `?teamId=${teamId}` : '';
-      const response = await this.auth.fetch(`/api/eligibility/match/${matchId}${teamParam}`);
-      const data = await response.json();
 
+      // Fetch eligibility AND GroupMe members in parallel
+      const [eligResponse, membersResponse] = await Promise.all([
+        this.auth.fetch(`/api/eligibility/match/${matchId}${teamParam}`),
+        teamId ? this.auth.fetch(`/api/groupme/members/${teamId}?matchId=${matchId}`) : Promise.resolve(null)
+      ]);
+
+      const data = await eligResponse.json();
       if (!data.success) throw new Error(data.message || 'Failed to load eligibility');
 
       this.matchInfo = data.data.match;
@@ -263,6 +268,16 @@ class GameDayLineupScreen extends Screen {
       this.players = data.data.players || [];
       this.unmatchedRsvps = data.data.unmatchedRsvps || [];
       this.groupmeSync = data.data.groupmeSync || {};
+
+      // Load GroupMe members and merge
+      this.groupmeMembers = [];
+      if (membersResponse) {
+        const membersData = await membersResponse.json();
+        if (membersData.success && membersData.data?.members) {
+          this.groupmeMembers = membersData.data.members;
+          this.mergeGroupMeMembers();
+        }
+      }
 
       // Update subtitle
       const subtitle = this.find('#lineup-subtitle');
@@ -288,6 +303,77 @@ class GameDayLineupScreen extends Screen {
       this.find('#lineup-loading').innerHTML = `
         <p style="color:var(--color-danger);">❌ ${error.message}</p>
       `;
+    }
+  }
+
+  /**
+   * Merge GroupMe members into the players array.
+   * - Members linked to persons already in this.players → enrich with GroupMe data
+   * - Members linked to persons NOT in this.players → add as new entries
+   * - Members NOT linked → add to unmatchedRsvps (or a new groupmeOnly array)
+   */
+  mergeGroupMeMembers() {
+    if (!this.groupmeMembers?.length) return;
+
+    // Index existing players by personId for fast lookup
+    const playerByPersonId = new Map();
+    for (const p of this.players) {
+      if (p.personId) playerByPersonId.set(p.personId, p);
+    }
+
+    // Index unmatched RSVPs by external user ID
+    const unmatchedByExtId = new Map();
+    for (const u of this.unmatchedRsvps) {
+      if (u.externalUserId) unmatchedByExtId.set(u.externalUserId, u);
+    }
+
+    for (const gm of this.groupmeMembers) {
+      if (gm.linked && gm.personId) {
+        // Linked member — enrich or add
+        const existing = playerByPersonId.get(gm.personId);
+        if (existing) {
+          // Already in players array — add GroupMe metadata
+          existing.gmNickname = gm.nickname;
+          existing.gmImageUrl = gm.imageUrl;
+          existing.gmUserId = gm.externalUserId;
+          if (!existing.matchRsvp && gm.matchRsvp) {
+            existing.matchRsvp = gm.matchRsvp;
+          }
+        } else {
+          // Linked person not in players (not on roster but in GroupMe)
+          this.players.push({
+            personId: gm.personId,
+            playerId: null,
+            firstName: gm.firstName,
+            lastName: gm.lastName,
+            jerseyNumber: null,
+            matchRsvp: gm.matchRsvp,
+            practiceCount: gm.practiceCount || 0,
+            eligibilityStatus: 'not_on_roster',
+            isGuest: true,
+            gmNickname: gm.nickname,
+            gmImageUrl: gm.imageUrl,
+            gmUserId: gm.externalUserId,
+            onRoster: gm.onRoster,
+            gmLinked: true
+          });
+        }
+      } else {
+        // Unlinked GroupMe member
+        if (!unmatchedByExtId.has(gm.externalUserId)) {
+          this.unmatchedRsvps.push({
+            externalUserId: gm.externalUserId,
+            externalUsername: gm.nickname,
+            matchRsvp: gm.matchRsvp,
+            gmImageUrl: gm.imageUrl,
+            gmLinked: false
+          });
+        } else {
+          // Already in unmatched — enrich with image
+          const existing = unmatchedByExtId.get(gm.externalUserId);
+          existing.gmImageUrl = gm.imageUrl;
+        }
+      }
     }
   }
 
@@ -639,26 +725,51 @@ class GameDayLineupScreen extends Screen {
     card.setAttribute('data-player-id', player.playerId);
 
     const jerseyDisplay = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
-    const posDisplay = player.position || '—';
+    const posDisplay = player.position || '';
+
+    // Avatar: use GroupMe image if available, otherwise initial
+    const hasGmImage = player.gmImageUrl && player.gmImageUrl.length > 0;
     const initial = player.firstName ? player.firstName[0] : '?';
+    const avatarHtml = hasGmImage
+      ? `<img class="player-avatar player-avatar-img" src="${player.gmImageUrl}.avatar" alt="${initial}" onerror="this.outerHTML='<div class=\\'player-avatar\\'>${initial}</div>'">`
+      : `<div class="player-avatar">${initial}</div>`;
 
     // RSVP pill
     const rsvpClass = this.getRsvpClass(player.matchRsvp);
     const rsvpLabel = this.getRsvpLabel(player.matchRsvp);
 
     // Practices badge
-    const practicesBadge = `${player.sessionsAttended}/${this.policy.lookbackCount}`;
+    const sessions = player.sessionsAttended ?? player.practiceCount ?? 0;
+    const lookback = this.policy?.lookbackCount || 0;
+    const practicesBadge = `${sessions}/${lookback}`;
 
     // Eligibility indicator
     const statusIcon = this.getStatusIcon(player.eligibilityStatus);
-    const rosterBadge = player.onOfficialRoster ? '' : '<span class="badge-guest" title="Not on official roster">guest</span>';
+    
+    // Badges
+    const badges = [];
+    if (!player.onOfficialRoster && player.eligibilityStatus !== 'not_on_roster') {
+      badges.push('<span class="badge-guest" title="Not on official roster">guest</span>');
+    }
+    if (player.eligibilityStatus === 'not_on_roster') {
+      badges.push('<span class="badge-guest" title="In GroupMe but not on team roster">GM only</span>');
+    }
+
+    // GroupMe nickname (show if different from person name)
+    const gmNickLine = player.gmNickname && player.gmNickname !== `${player.firstName} ${player.lastName}`
+      ? `<span class="player-gm-nick" title="GroupMe nickname">📱 ${player.gmNickname}</span>`
+      : '';
+
+    // Meta line
+    const metaParts = [jerseyDisplay, posDisplay].filter(Boolean);
+    const metaText = metaParts.length ? metaParts.join(' · ') : '';
 
     card.innerHTML = `
       <div class="player-card-left">
-        <div class="player-avatar">${initial}</div>
+        ${avatarHtml}
         <div class="player-info">
-          <div class="player-name">${player.firstName} ${player.lastName} ${rosterBadge}</div>
-          <div class="player-meta">${[jerseyDisplay, posDisplay].filter(Boolean).join(' · ')}</div>
+          <div class="player-name">${player.firstName} ${player.lastName} ${badges.join(' ')}</div>
+          <div class="player-meta">${metaText}${gmNickLine ? (metaText ? ' · ' : '') + gmNickLine : ''}</div>
         </div>
       </div>
       <div class="player-card-right">
@@ -675,16 +786,25 @@ class GameDayLineupScreen extends Screen {
     card.className = 'player-card player-card-unmatched';
     card.setAttribute('data-external-id', user.externalUserId);
 
+    // Avatar: use GroupMe image if available
+    const hasGmImage = user.gmImageUrl && user.gmImageUrl.length > 0;
     const initial = user.externalUsername ? user.externalUsername[0].toUpperCase() : '?';
+    const avatarHtml = hasGmImage
+      ? `<img class="player-avatar player-avatar-img" src="${user.gmImageUrl}.avatar" alt="${initial}" onerror="this.outerHTML='<div class=\\'player-avatar avatar-unknown\\'>?</div>'">`
+      : `<div class="player-avatar avatar-unknown">?</div>`;
+
     const rsvpClass = this.getRsvpClass(user.matchRsvp);
     const rsvpLabel = this.getRsvpLabel(user.matchRsvp);
 
+    // Status text
+    const statusText = user.matchRsvp ? 'GroupMe member · not linked to player' : 'GroupMe member · no RSVP';
+
     card.innerHTML = `
       <div class="player-card-left">
-        <div class="player-avatar avatar-unknown">?</div>
+        ${avatarHtml}
         <div class="player-info">
           <div class="player-name">${user.externalUsername} <span class="badge-unmatched">unlinked</span></div>
-          <div class="player-meta">GroupMe user · not in database</div>
+          <div class="player-meta">${statusText}</div>
         </div>
       </div>
       <div class="player-card-right">

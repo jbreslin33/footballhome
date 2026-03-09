@@ -36,6 +36,11 @@ void GroupMeController::registerRoutes(Router& router, const std::string& prefix
     router.post(prefix + "/sync-match/:matchId", [this](const Request& request) {
         return this->handleSyncMatchRsvps(request);
     });
+
+    // GET /api/groupme/members/:teamId?matchId=X
+    router.get(prefix + "/members/:teamId", [this](const Request& request) {
+        return this->handleGetGroupMembers(request);
+    });
 }
 
 // ============================================================================
@@ -197,6 +202,199 @@ Response GroupMeController::handleSyncMatchRsvps(const Request& request) {
 }
 
 // ============================================================================
+// Handler: Get ALL GroupMe group members for a team, with linkage info
+// GET /api/groupme/members/:teamId?matchId=X
+// ============================================================================
+Response GroupMeController::handleGetGroupMembers(const Request& request) {
+    if (accessToken_.empty()) {
+        return Response(HttpStatus::OK, createJsonResponse(false, "GroupMe token not configured"));
+    }
+
+    std::string teamId = extractIdFromPath(request.getPath(), "/api/groupme/members/(\\d+)");
+    if (teamId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Team ID required"));
+    }
+
+    std::string matchId = request.getQueryParam("matchId");
+
+    try {
+        // Step 1: Find the chat + GroupMe group for this team
+        pqxx::result chatResult = db_->query(
+            "SELECT c.id as chat_id, ci.external_id as groupme_group_id "
+            "FROM chats c "
+            "JOIN chat_integrations ci ON ci.chat_id = c.id AND ci.provider_id = 1 "
+            "WHERE c.team_id = $1::int "
+            "LIMIT 1",
+            {teamId}
+        );
+
+        if (chatResult.empty()) {
+            return Response(HttpStatus::OK, createJsonResponse(false, "No GroupMe chat linked to this team"));
+        }
+
+        std::string chatId = chatResult[0]["chat_id"].c_str();
+        std::string groupmeGroupId = chatResult[0]["groupme_group_id"].c_str();
+
+        // Step 2: Fetch all group members from GroupMe API
+        std::string groupUrl = "https://api.groupme.com/v3/groups/" + groupmeGroupId + "?token=" + accessToken_;
+        std::string groupJson = httpGet(groupUrl);
+
+        if (groupJson.empty()) {
+            return Response(HttpStatus::OK, createJsonResponse(false, "Failed to fetch GroupMe group"));
+        }
+
+        // Extract full member data: user_id, nickname, image_url
+        auto members = extractFullMemberData(groupJson);
+        std::cout << "👥 GroupMe group " << groupmeGroupId << ": " << members.size() << " members" << std::endl;
+
+        // Step 3: Load person linkages from external_identities
+        pqxx::result eiResult = db_->query(
+            "SELECT ei.external_user_id, ei.person_id, "
+            "       p.first_name, p.last_name "
+            "FROM external_identities ei "
+            "JOIN persons p ON p.id = ei.person_id "
+            "WHERE ei.provider_id = 1"
+        );
+        // Map: groupme_user_id → {person_id, firstName, lastName}
+        struct PersonLink {
+            std::string personId;
+            std::string firstName;
+            std::string lastName;
+        };
+        std::map<std::string, PersonLink> personLinks;
+        for (const auto& row : eiResult) {
+            PersonLink pl;
+            pl.personId = row["person_id"].c_str();
+            pl.firstName = row["first_name"].c_str();
+            pl.lastName = row["last_name"].c_str();
+            personLinks[row["external_user_id"].c_str()] = pl;
+        }
+
+        // Step 4: Load roster membership for this team
+        pqxx::result rosterResult = db_->query(
+            "SELECT p.person_id FROM players p "
+            "JOIN rosters r ON r.player_id = p.id "
+            "WHERE r.team_id = $1::int AND r.left_at IS NULL",
+            {teamId}
+        );
+        std::set<std::string> rosterPersonIds;
+        for (const auto& row : rosterResult) {
+            rosterPersonIds.insert(row["person_id"].c_str());
+        }
+
+        // Step 5: Load RSVP data for the match (if matchId provided)
+        std::map<std::string, std::string> rsvpByExternalId;  // gm_user_id → status
+        std::map<std::string, std::string> rsvpByPersonId;    // person_id → status
+        if (!matchId.empty()) {
+            pqxx::result rsvpResult = db_->query(
+                "SELECT cer.external_user_id, cer.person_id, rs.name as rsvp_status "
+                "FROM chat_event_rsvps cer "
+                "JOIN chat_events ce ON ce.id = cer.chat_event_id "
+                "JOIN rsvp_statuses rs ON rs.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) "
+                "WHERE ce.match_id = $1::int AND ce.chat_id = $2::int",
+                {matchId, chatId}
+            );
+            for (const auto& row : rsvpResult) {
+                if (!row["external_user_id"].is_null()) {
+                    rsvpByExternalId[row["external_user_id"].c_str()] = row["rsvp_status"].c_str();
+                }
+                if (!row["person_id"].is_null()) {
+                    rsvpByPersonId[row["person_id"].c_str()] = row["rsvp_status"].c_str();
+                }
+            }
+        }
+
+        // Step 6: Load practice attendance counts for linked persons
+        std::map<std::string, int> practiceCounts;
+        if (!matchId.empty()) {
+            pqxx::result practiceResult = db_->query(
+                "SELECT pl.person_id::text, COUNT(*) as cnt "
+                "FROM training_attendance ta "
+                "JOIN players pl ON pl.id = ta.player_id "
+                "JOIN chat_events ce ON ce.id = ta.chat_event_id "
+                "WHERE ce.chat_id IN (SELECT c2.id FROM chats c2 WHERE c2.team_id = $1::int OR c2.id = 4) "
+                "  AND ta.attended = true "
+                "GROUP BY pl.person_id",
+                {teamId}
+            );
+            for (const auto& row : practiceResult) {
+                practiceCounts[row["person_id"].c_str()] = std::stoi(row["cnt"].c_str());
+            }
+        }
+
+        // Step 7: Build JSON response
+        std::ostringstream json;
+        json << "{\"members\":[";
+
+        bool first = true;
+        for (const auto& member : members) {
+            if (!first) json << ",";
+            first = false;
+
+            json << "{";
+            json << "\"externalUserId\":\"" << escapeJson(member.userId) << "\",";
+            json << "\"nickname\":\"" << escapeJson(member.nickname) << "\",";
+            json << "\"imageUrl\":\"" << escapeJson(member.imageUrl) << "\",";
+
+            // Person linkage
+            auto plIt = personLinks.find(member.userId);
+            if (plIt != personLinks.end()) {
+                json << "\"personId\":" << plIt->second.personId << ",";
+                json << "\"firstName\":\"" << escapeJson(plIt->second.firstName) << "\",";
+                json << "\"lastName\":\"" << escapeJson(plIt->second.lastName) << "\",";
+                json << "\"linked\":true,";
+
+                // On roster?
+                bool onRoster = rosterPersonIds.count(plIt->second.personId) > 0;
+                json << "\"onRoster\":" << (onRoster ? "true" : "false") << ",";
+
+                // Practice count
+                auto pcIt = practiceCounts.find(plIt->second.personId);
+                json << "\"practiceCount\":" << (pcIt != practiceCounts.end() ? pcIt->second : 0) << ",";
+
+                // RSVP — check by person_id first, then external_user_id
+                auto rsvpIt = rsvpByPersonId.find(plIt->second.personId);
+                if (rsvpIt != rsvpByPersonId.end()) {
+                    json << "\"matchRsvp\":\"" << escapeJson(rsvpIt->second) << "\"";
+                } else {
+                    auto rsvpExtIt = rsvpByExternalId.find(member.userId);
+                    if (rsvpExtIt != rsvpByExternalId.end()) {
+                        json << "\"matchRsvp\":\"" << escapeJson(rsvpExtIt->second) << "\"";
+                    } else {
+                        json << "\"matchRsvp\":null";
+                    }
+                }
+            } else {
+                json << "\"personId\":null,";
+                json << "\"firstName\":null,";
+                json << "\"lastName\":null,";
+                json << "\"linked\":false,";
+                json << "\"onRoster\":false,";
+                json << "\"practiceCount\":0,";
+
+                auto rsvpExtIt = rsvpByExternalId.find(member.userId);
+                if (rsvpExtIt != rsvpByExternalId.end()) {
+                    json << "\"matchRsvp\":\"" << escapeJson(rsvpExtIt->second) << "\"";
+                } else {
+                    json << "\"matchRsvp\":null";
+                }
+            }
+
+            json << "}";
+        }
+
+        json << "],\"totalMembers\":" << members.size() << "}";
+
+        return Response(HttpStatus::OK, createJsonResponse(true, "Group members loaded", json.str()));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ GroupMe members error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, std::string("Failed to load members: ") + e.what()));
+    }
+}
+
+// ============================================================================
 // HTTP GET helper using libcurl
 // ============================================================================
 std::string GroupMeController::httpGet(const std::string& url) {
@@ -319,6 +517,90 @@ std::map<std::string, std::string> GroupMeController::extractMemberNicknames(con
             }
         }
         
+        cursor = uidEnd + 1;
+    }
+    
+    return result;
+}
+
+// ============================================================================
+// JSON Parser: Extract full member data from /groups response
+// Returns: vector of {userId, nickname, imageUrl}
+// ============================================================================
+std::vector<GroupMeMember> GroupMeController::extractFullMemberData(const std::string& json) {
+    std::vector<GroupMeMember> result;
+    
+    size_t pos = json.find("\"members\":[");
+    if (pos == std::string::npos) return result;
+    
+    // Find end of members array (handle nested brackets)
+    int bracketDepth = 0;
+    size_t membersStart = json.find("[", pos);
+    size_t membersEnd = membersStart;
+    if (membersStart == std::string::npos) return result;
+    
+    for (size_t i = membersStart; i < json.length(); i++) {
+        if (json[i] == '[') bracketDepth++;
+        else if (json[i] == ']') {
+            bracketDepth--;
+            if (bracketDepth == 0) {
+                membersEnd = i;
+                break;
+            }
+        }
+    }
+    
+    std::string membersStr = json.substr(membersStart, membersEnd - membersStart + 1);
+    
+    // Find each member object by scanning for user_id
+    size_t cursor = 0;
+    while (cursor < membersStr.length()) {
+        GroupMeMember m;
+        
+        // Find user_id
+        std::string uidNeedle = "\"user_id\":\"";
+        size_t uidPos = membersStr.find(uidNeedle, cursor);
+        if (uidPos == std::string::npos) break;
+        uidPos += uidNeedle.length();
+        size_t uidEnd = membersStr.find("\"", uidPos);
+        if (uidEnd == std::string::npos) break;
+        m.userId = membersStr.substr(uidPos, uidEnd - uidPos);
+        
+        // Search window for other fields (within ~1000 chars)
+        size_t searchLimit = std::min(uidEnd + 1000, membersStr.length());
+        
+        // Find nickname
+        std::string nickNeedle = "\"nickname\":\"";
+        size_t nickPos = membersStr.find(nickNeedle, uidEnd);
+        if (nickPos != std::string::npos && nickPos < searchLimit) {
+            nickPos += nickNeedle.length();
+            size_t nickEnd = membersStr.find("\"", nickPos);
+            if (nickEnd != std::string::npos) {
+                m.nickname = membersStr.substr(nickPos, nickEnd - nickPos);
+            }
+        }
+        
+        // Find image_url
+        std::string imgNeedle = "\"image_url\":\"";
+        size_t imgPos = membersStr.find(imgNeedle, uidEnd);
+        if (imgPos != std::string::npos && imgPos < searchLimit) {
+            imgPos += imgNeedle.length();
+            size_t imgEnd = membersStr.find("\"", imgPos);
+            if (imgEnd != std::string::npos) {
+                m.imageUrl = membersStr.substr(imgPos, imgEnd - imgPos);
+            }
+        }
+
+        // Also check for null image_url
+        if (m.imageUrl.empty()) {
+            std::string imgNullNeedle = "\"image_url\":null";
+            size_t imgNullPos = membersStr.find(imgNullNeedle, uidEnd);
+            if (imgNullPos != std::string::npos && imgNullPos < searchLimit) {
+                m.imageUrl = "";
+            }
+        }
+        
+        result.push_back(m);
         cursor = uidEnd + 1;
     }
     
