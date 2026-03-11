@@ -205,8 +205,13 @@ class ApslStructureScraper {
     
     const client = await pool.connect();
     
-    // Create all dependencies
-    const fetcher = new HtmlFetcher();
+    // Create all dependencies — APSL-safe rate limiting
+    const fetcher = new HtmlFetcher(null, {
+      delayMs: 3000,           // 3s min between requests
+      delayJitterMs: 4000,     // + 0-4s random (3-7s total)
+      cacheFreshnessDays: 7,   // Skip re-fetch if cache < 7 days old
+      maxFetchesPerSession: 10 // Max 10 live fetches per run (safety cap)
+    });
     const parser = new ApslStandingsParser();
     const orgRepo = new OrganizationRepository(client);
     const leagueRepo = new LeagueRepository(client);

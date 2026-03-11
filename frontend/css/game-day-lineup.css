@@ -666,6 +666,12 @@
   color: #991b1b;
 }
 
+.practices-badge.has-projection {
+  background: #ede9fe;
+  color: #5b21b6;
+  border: 1px dashed #8b5cf6;
+}
+
 /* Status / guest badges */
 .badge-guest {
   font-size: 0.65em;
@@ -883,4 +889,181 @@
   text-align: center;
   color: var(--gray-500);
   padding: var(--space-3);
+}
+
+/* ============================================================================
+   Team badges, missing indicators, source badges, link popup
+   ============================================================================ */
+
+/* Team roster badge */
+.badge-team {
+  font-size: 0.65em;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: #e0f2fe;
+  color: #0c4a6e;
+  white-space: nowrap;
+}
+
+/* Source badges */
+.badge-source {
+  font-size: 0.65em;
+  padding: 1px 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.badge-roster-only {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-gm-only {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* Missing data indicators */
+.player-missing {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.badge-missing {
+  font-size: 0.6em;
+  padding: 1px 4px;
+  border-radius: 6px;
+  background: #fee2e2;
+  color: #991b1b;
+  white-space: nowrap;
+}
+
+/* Roster-only player card */
+.player-card-roster-only {
+  border-left: 3px solid #f59e0b !important;
+  background: #fffbeb;
+}
+
+/* Link button on unmatched cards */
+.btn-link-player {
+  font-size: 0.7em;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 1px solid #6366f1;
+  background: #eef2ff;
+  color: #4338ca;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn-link-player:hover {
+  background: #c7d2fe;
+}
+
+/* Link Popup */
+.link-popup {
+  background: white;
+  border-radius: var(--radius-lg, 12px);
+  width: min(420px, 92vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.link-popup-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--gray-200, #e5e7eb);
+}
+
+.link-popup-header h3 {
+  margin: 0;
+  font-size: 1em;
+}
+
+.link-popup-header .attendance-close-btn {
+  margin-left: auto;
+}
+
+.link-popup-subtitle {
+  font-size: 0.8em;
+  color: var(--gray-500, #6b7280);
+  margin: 2px 0 0;
+}
+
+.link-popup-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.link-popup-search {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--gray-200, #e5e7eb);
+}
+
+.link-search-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--gray-300, #d1d5db);
+  border-radius: 6px;
+  font-size: 0.9em;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.link-search-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.2);
+}
+
+.link-popup-list {
+  overflow-y: auto;
+  max-height: 50vh;
+  padding: 8px 0;
+}
+
+.link-candidate {
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.1s;
+}
+
+.link-candidate:hover {
+  background: #f0f4ff;
+}
+
+.link-candidate-loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.link-candidate-name {
+  font-weight: 500;
+  font-size: 0.9em;
+  flex: 1;
+}
+
+.link-candidate-teams {
+  font-size: 0.75em;
+  color: var(--gray-500, #6b7280);
+}
+
+.link-empty {
+  text-align: center;
+  color: var(--gray-400, #9ca3af);
+  padding: 20px;
+  font-size: 0.85em;
 }

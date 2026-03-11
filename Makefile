@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme migrate
+.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme migrate vpn-up vpn-down vpn-status vpn-scrape vpn-sync
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -52,6 +52,13 @@ help:
 	@echo "  make safe-rebuild        Backup + rebuild (safety net)"
 	@echo "  make export-user-data    Export manual attendance + lineups to SQL"
 	@echo "  make load-user-data      Load exported user data (after sync)"
+	@echo ""
+	@echo "VPN (for IP-blocked scraping):"
+	@echo "  make vpn-up              Connect WireGuard VPN"
+	@echo "  make vpn-down            Disconnect WireGuard VPN"
+	@echo "  make vpn-status          Show VPN status + external IP"
+	@echo "  make vpn-scrape          Scrape all leagues through VPN"
+	@echo "  make vpn-sync            Full sync through VPN"
 	@echo ""
 
 # ============================================================
@@ -302,3 +309,22 @@ logs-backend:
 audit:
 	@echo "📊 Auditing database..."
 	@node database/scripts/audit-database.js
+
+# ============================================================
+# VPN (WireGuard — for IP-blocked scraping)
+# ============================================================
+
+vpn-up:
+	@sudo scripts/setup/setup-wireguard.sh up
+
+vpn-down:
+	@sudo scripts/setup/setup-wireguard.sh down
+
+vpn-status:
+	@sudo scripts/setup/setup-wireguard.sh status
+
+vpn-scrape:
+	@sudo scripts/setup/setup-wireguard.sh scrape scrape
+
+vpn-sync:
+	@sudo scripts/setup/setup-wireguard.sh scrape sync

@@ -28,6 +28,12 @@ private:
     // Handler: return all GroupMe group members with linkage info
     Response handleGetGroupMembers(const Request& request);
 
+    // Handler: link a GroupMe user to a person
+    Response handleLinkMember(const Request& request);
+
+    // Handler: unlink a GroupMe user from a person
+    Response handleUnlinkMember(const Request& request);
+
     // HTTP helpers
     std::string httpGet(const std::string& url);
 

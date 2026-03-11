@@ -147,14 +147,51 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             policy.game_counts_as_session, policy.pickup_counts_as_session
         );
         
+        // Step 3b: Get future session IDs (between today and match date)
+        // These are sessions in the lookback window that haven't happened yet
+        std::vector<int> futureSessionIds;
+        {
+            std::string safeClubId = clubId.empty() ? "0" : clubId;
+            try {
+                pqxx::result futureResult = db_->query(R"(
+                    SELECT ce.id as session_id
+                    FROM chat_events ce
+                    JOIN chats c ON ce.chat_id = c.id
+                    LEFT JOIN chat_clubs cc ON cc.chat_id = c.id
+                    LEFT JOIN teams t ON t.id = c.team_id
+                    WHERE (
+                        cc.club_id = $1::int
+                        OR t.club_id = $1::int
+                    )
+                      AND COALESCE(ce.start_at, ce.event_date::timestamptz) >= CURRENT_DATE
+                      AND COALESCE(ce.start_at, ce.event_date::timestamptz) < $2::date
+                      AND ce.is_active = true
+                    ORDER BY COALESCE(ce.start_at, ce.event_date::timestamptz) ASC
+                )", {safeClubId, matchDate});
+                
+                for (const auto& row : futureResult) {
+                    futureSessionIds.push_back(row["session_id"].as<int>());
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "⚠️ Error getting future sessions: " << e.what() << std::endl;
+            }
+        }
+        
         // Step 4: Get all roster players with attendance and RSVP data
-        // Build session ID array for SQL
+        // Build session ID arrays for SQL
         std::string sessionArray = "{";
         for (size_t i = 0; i < sessionIds.size(); i++) {
             if (i > 0) sessionArray += ",";
             sessionArray += std::to_string(sessionIds[i]);
         }
         sessionArray += "}";
+        
+        std::string futureSessionArray = "{";
+        for (size_t i = 0; i < futureSessionIds.size(); i++) {
+            if (i > 0) futureSessionArray += ",";
+            futureSessionArray += std::to_string(futureSessionIds[i]);
+        }
+        futureSessionArray += "}";
         
         std::string playerQuery = R"(
             WITH has_chat AS (
@@ -255,11 +292,21 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 FROM player_positions pp
                 JOIN positions pos ON pos.id = pp.position_id
                 WHERE pp.is_primary = true
+            ),
+            -- Count future RSVP 'yes' for sessions between today and match date
+            future_rsvp AS (
+                SELECT rp.player_id,
+                       COUNT(*) FILTER (WHERE COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) = 1) as future_yes_count
+                FROM roster_players rp
+                JOIN chat_event_rsvps cer ON cer.person_id = rp.person_id
+                WHERE cer.chat_event_id = ANY($4::int[])
+                GROUP BY rp.player_id
             )
             SELECT rp.player_id, rp.first_name, rp.last_name, rp.jersey_number,
                    rp.has_family_discount, rp.photo_url, rp.person_id,
                    rp.on_official_roster,
                    COALESCE(aa.sessions_attended, ra.rsvp_yes_count, 0) as sessions_attended,
+                   COALESCE(fr.future_yes_count, 0) as future_rsvp_yes,
                    pp.position, pp.position_name,
                    mr.rsvp_status as match_rsvp_status,
                    lu.is_starter as lineup_is_starter,
@@ -270,10 +317,11 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             LEFT JOIN match_rsvps mr ON mr.player_id = rp.player_id
             LEFT JOIN lineup lu ON lu.player_id = rp.player_id
             LEFT JOIN player_pos pp ON pp.player_id = rp.player_id
+            LEFT JOIN future_rsvp fr ON fr.player_id = rp.player_id
             ORDER BY rp.last_name, rp.first_name
         )";
         
-        pqxx::result playerResult = db_->query(playerQuery, {teamId, sessionArray, matchId});
+        pqxx::result playerResult = db_->query(playerQuery, {teamId, sessionArray, matchId, futureSessionArray});
         
         // Step 5: Check GroupMe sync freshness
         std::string groupmeStatus = "no_data";
@@ -345,6 +393,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         
         // Sessions info
         json << "\"sessionsInWindow\":" << sessionIds.size() << ",";
+        json << "\"futureSessionCount\":" << futureSessionIds.size() << ",";
         
         // Players
         json << "\"players\":[";
@@ -366,15 +415,24 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.sessions_in_window = sessionIds.size();
             pe.person_id = row["person_id"].as<int>();
             
+            // Projected: current attendance + future RSVP yes count
+            int futureRsvpYes = row["future_rsvp_yes"].as<int>();
+            pe.projected_sessions = pe.sessions_attended + futureRsvpYes;
+            
             // Compute effective minimum sessions (apply family discount)
             pe.effective_min_sessions = policy.min_sessions_to_start;
             if (pe.has_family_discount) {
                 pe.effective_min_sessions = std::max(0, pe.effective_min_sessions - policy.family_discount);
             }
             
-            // Classify eligibility
+            // Classify current eligibility
             pe.status = classifyEligibility(
                 pe.sessions_attended, pe.effective_min_sessions, policy.priority_starter_sessions
+            );
+            
+            // Classify projected eligibility (if they attend future RSVP'd sessions)
+            pe.projected_status = classifyEligibility(
+                pe.projected_sessions, pe.effective_min_sessions, policy.priority_starter_sessions
             );
             
             pe.match_rsvp = row["match_rsvp_status"].is_null() ? "" : row["match_rsvp_status"].c_str();
@@ -405,8 +463,10 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"hasFamilyDiscount\":" << (pe.has_family_discount ? "true" : "false") << ",";
             json << "\"sessionsInWindow\":" << pe.sessions_in_window << ",";
             json << "\"sessionsAttended\":" << pe.sessions_attended << ",";
+            json << "\"projectedSessions\":" << pe.projected_sessions << ",";
             json << "\"effectiveMinSessions\":" << pe.effective_min_sessions << ",";
             json << "\"eligibilityStatus\":\"" << statusToString(pe.status) << "\",";
+            json << "\"projectedStatus\":\"" << statusToString(pe.projected_status) << "\",";
             json << "\"matchRsvp\":" << (pe.match_rsvp.empty() ? "null" : "\"" + pe.match_rsvp + "\"") << ",";
             json << "\"onOfficialRoster\":" << (pe.on_official_roster ? "true" : "false") << ",";
             json << "\"onLineup\":" << (pe.on_lineup ? "true" : "false") << ",";

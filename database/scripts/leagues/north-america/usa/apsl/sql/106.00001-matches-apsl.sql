@@ -658,7 +658,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '18:00:00', 1,
+  4, '2026-03-08', '18:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '262647'
@@ -1142,7 +1142,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '16:00:00', 1,
+  4, '2026-03-08', '16:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '260808'
@@ -1758,7 +1758,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '20:00:00', 1,
+  4, '2026-03-08', '20:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '260806'
@@ -3540,7 +3540,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '20:00:00', 1,
+  4, '2026-03-08', '20:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '262648'
@@ -3980,7 +3980,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '12:15:00', 1,
+  4, '2026-03-08', '12:15:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '260807'
@@ -4948,7 +4948,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '14:00:00', 1,
+  4, '2026-03-08', '14:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '260809'
@@ -5278,7 +5278,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '18:00:00', 1,
+  4, '2026-03-08', '18:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '262646'
@@ -7148,7 +7148,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '20:00:00', 1,
+  4, '2026-03-08', '20:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '260804'
@@ -7280,7 +7280,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '18:00:00', 1,
+  4, '2026-03-08', '18:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '260805'
@@ -7412,7 +7412,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '13:30:00', 1,
+  4, '2026-03-08', '13:30:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '258652'
@@ -8336,7 +8336,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '14:00:00', 1,
+  4, '2026-03-08', '14:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '259286'
@@ -9018,7 +9018,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '14:30:00', 1,
+  4, '2026-03-08', '14:30:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '259287'
@@ -10140,7 +10140,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '14:00:00', 1,
+  4, '2026-03-08', '14:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '258653'
@@ -10294,7 +10294,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '12:00:00', 1,
+  4, '2026-03-08', '12:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '259288'
@@ -10338,7 +10338,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', NULL, 1,
+  4, '2026-03-08', NULL, 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '271736'
@@ -10646,7 +10646,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  4, '2026-03-08', '16:00:00', 1,
+  4, '2026-03-08', '16:00:00', 3,
   ht.id, at.id, v.id,
   NULL, NULL,
   1, '271737'

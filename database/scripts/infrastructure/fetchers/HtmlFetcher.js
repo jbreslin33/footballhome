@@ -15,10 +15,26 @@ const crypto = require('crypto');
  * 3. Rebuilding database from cached HTML without re-fetching
  */
 class HtmlFetcher {
-  constructor(cacheDir = null) {
+  /**
+   * @param {string|null} cacheDir - Cache directory path
+   * @param {object} opts - Options
+   * @param {number} opts.delayMs - Min delay between fetches in ms (default: 3000)
+   * @param {number} opts.delayJitterMs - Random jitter added to delay (default: 4000)
+   * @param {number} opts.cacheFreshnessDays - Skip re-fetch if cache is newer than N days (default: 7)
+   * @param {number} opts.maxFetchesPerSession - Max live fetches per session, 0=unlimited (default: 0)
+   */
+  constructor(cacheDir = null, opts = {}) {
     // Default cache directory
     this.cacheDir = cacheDir || path.join(__dirname, '../../../scraped-html/apsl');
     this._browser = null;
+
+    // Rate limiting: polite scraping defaults
+    this.delayMs = opts.delayMs ?? 3000;           // 3s minimum between requests
+    this.delayJitterMs = opts.delayJitterMs ?? 4000; // + 0-4s random jitter (3-7s total)
+    this.cacheFreshnessDays = opts.cacheFreshnessDays ?? 7; // Skip if cached < 7 days ago
+    this.maxFetchesPerSession = opts.maxFetchesPerSession ?? 0; // 0 = unlimited
+    this._fetchCount = 0;
+    this._lastFetchTime = 0;
   }
 
   /**
@@ -88,6 +104,37 @@ class HtmlFetcher {
   }
   
   /**
+   * Check if a cached file is fresh enough to skip re-fetching
+   * @param {string} cacheFile - Path to cached file
+   * @returns {Promise<boolean>} True if cache is fresh
+   */
+  async _isCacheFresh(cacheFile) {
+    if (this.cacheFreshnessDays <= 0) return false;
+    try {
+      const stat = await fs.stat(cacheFile);
+      const ageMs = Date.now() - stat.mtimeMs;
+      const ageDays = ageMs / (1000 * 60 * 60 * 24);
+      return ageDays < this.cacheFreshnessDays;
+    } catch {
+      return false; // File doesn't exist
+    }
+  }
+
+  /**
+   * Enforce rate limiting: sleep between fetches
+   */
+  async _enforceRateLimit() {
+    const elapsed = Date.now() - this._lastFetchTime;
+    const requiredDelay = this.delayMs + Math.random() * this.delayJitterMs;
+    if (this._lastFetchTime > 0 && elapsed < requiredDelay) {
+      const sleepMs = Math.round(requiredDelay - elapsed);
+      console.log(`   💤 Rate limit: waiting ${(sleepMs / 1000).toFixed(1)}s...`);
+      await new Promise(resolve => setTimeout(resolve, sleepMs));
+    }
+    this._lastFetchTime = Date.now();
+  }
+
+  /**
    * Fetch HTML from URL and cache to disk
    * @param {string} url - URL to fetch
    * @param {boolean} useCache - If true, use cached version if available
@@ -124,6 +171,13 @@ class HtmlFetcher {
             console.log(`   🔄 Retry #${retryAttempt}: ${path.basename(cacheFile)}`);
           }
         } else {
+          // Cache exists and has content — check freshness
+          if (retryAttempt === 0 && await this._isCacheFresh(cacheFile)) {
+            const stat = await fs.stat(cacheFile);
+            const ageDays = ((Date.now() - stat.mtimeMs) / (1000 * 60 * 60 * 24)).toFixed(1);
+            console.log(`   📂 Cache fresh (${ageDays}d old, limit ${this.cacheFreshnessDays}d): ${path.basename(cacheFile)}`);
+            return cached;
+          }
           if (retryAttempt === 0) {
             console.log(`   📂 Using cached HTML: ${path.basename(cacheFile)}`);
           }
@@ -136,6 +190,20 @@ class HtmlFetcher {
         // Cache miss - continue to fetch
       }
     }
+
+    // Check session fetch limit
+    if (this.maxFetchesPerSession > 0 && this._fetchCount >= this.maxFetchesPerSession) {
+      console.log(`   🛑 Session limit reached (${this.maxFetchesPerSession} fetches). Using stale cache if available.`);
+      try {
+        const stale = await fs.readFile(cacheFile, 'utf-8');
+        if (stale && stale.trim().length > 0) return stale;
+      } catch { /* no cache */ }
+      throw new Error(`Session fetch limit (${this.maxFetchesPerSession}) reached and no cache available`);
+    }
+
+    // Rate limit before live fetch
+    await this._enforceRateLimit();
+    this._fetchCount++;
     
     // Fetch from URL with timeout
     const timeoutMs = retryAttempt > 0 ? 15000 : 30000;
@@ -281,39 +349,41 @@ class HtmlFetcher {
   }
   
   /**
-   * Batch fetch multiple URLs with concurrency limit
+   * Batch fetch multiple URLs — sequential with rate limiting (no parallelism)
+   * Concurrency is forced to 1 to respect rate limits and avoid IP bans.
    * @param {Array<{url: string, filename: string}>} requests - Array of requests
-   * @param {number} concurrency - Max concurrent requests (default: 5)
+   * @param {number} _concurrency - Ignored (always 1 for safety)
    * @param {boolean} useCache - Whether to use cached versions
    * @returns {Promise<Array<{url: string, html: string, error: Error}>>}
    */
-  async batchFetch(requests, concurrency = 5, useCache = true) {
+  async batchFetch(requests, _concurrency = 1, useCache = true) {
     const results = [];
-    const queue = [...requests];
     let completed = 0;
+    let skipped = 0;
+    let fetched = 0;
     
-    console.log(`   📥 Batch downloading ${requests.length} files (concurrency: ${concurrency})`);
+    console.log(`   📥 Batch processing ${requests.length} URLs (sequential, ${this.delayMs}-${this.delayMs + this.delayJitterMs}ms delay)`);
     
-    const workers = Array(concurrency).fill(null).map(async () => {
-      while (queue.length > 0) {
-        const request = queue.shift();
-        if (!request) break;
-        
-        try {
-          const html = await this.fetch(request.url, useCache);
-          results.push({ url: request.url, html, error: null });
-          completed++;
-          process.stdout.write(`\r   Progress: ${completed}/${requests.length} (${Math.round(completed/requests.length*100)}%)`);
-        } catch (error) {
-          results.push({ url: request.url, html: null, error });
-          completed++;
-          process.stdout.write(`\r   Progress: ${completed}/${requests.length} (${Math.round(completed/requests.length*100)}%) - ${error.message}`);
+    for (const request of requests) {
+      try {
+        const html = await this.fetch(request.url, useCache);
+        results.push({ url: request.url, html, error: null });
+        // Detect if it was a cache hit (no rate limit sleep = from cache)
+        completed++;
+      } catch (error) {
+        results.push({ url: request.url, html: null, error });
+        completed++;
+        if (error.message && error.message.includes('Session fetch limit')) {
+          console.log(`\n   🛑 Stopping batch — session limit reached after ${fetched} live fetches`);
+          // Fill remaining with cache-only attempts
+          break;
         }
       }
-    });
-    
-    await Promise.all(workers);
-    console.log(''); // New line after progress
+      if (completed % 10 === 0) {
+        process.stdout.write(`\r   Progress: ${completed}/${requests.length}`);
+      }
+    }
+    console.log(`\n   ✓ Batch done: ${completed} processed`);
     
     return results;
   }

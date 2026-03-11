@@ -1,17 +1,21 @@
 #!/bin/bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# APSL - Scrape HTML from Web
+# APSL - Scrape HTML from Web (Safe Mode)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
 # Fetches the APSL standings page using real Chrome (--dump-dom).
 # Only fetches 1 page — the standings page that generate-sql.js needs.
 # Team pages are NOT fetched here (fetch individually when needed for rosters).
 #
-# Uses your installed Chrome binary to avoid bot detection (identical TLS
-# fingerprint to normal browsing). Puppeteer's bundled Chromium gets 403'd.
+# SAFETY FEATURES (to avoid IP bans):
+#   - Skips fetch if cache is < 7 days old (override: FORCE_SCRAPE=1)
+#   - Uses real Chrome to match normal browsing fingerprint
+#   - Never fetches more than 1 page per run
+#   - HtmlFetcher.js adds 3-7s random delays between requests
 #
 # Usage:
-#   ./scrape.sh
+#   ./scrape.sh                  # Normal: skip if cache is fresh
+#   FORCE_SCRAPE=1 ./scrape.sh   # Force re-fetch even if cache is fresh
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -24,7 +28,25 @@ while [ ! -f "$PROJECT_ROOT/Makefile" ]; do
 done
 cd "$PROJECT_ROOT"
 
-# Detect Chrome binary (cross-platform)
+CACHE_DIR="database/scraped-html/apsl"
+URL="https://www.apslsoccer.com/Standings"
+# Hash must match HtmlFetcher.getCacheFilename(URL) — standings-ffc8b689.html
+OUTPUT="$CACHE_DIR/standings-ffc8b689.html"
+CACHE_MAX_AGE_DAYS=7
+
+# ── Weekly cache freshness check ──────────────────────────────────────
+if [ -f "$OUTPUT" ] && [ "${FORCE_SCRAPE:-0}" != "1" ]; then
+  FILE_AGE_SECONDS=$(( $(date +%s) - $(stat -c %Y "$OUTPUT" 2>/dev/null || echo 0) ))
+  FILE_AGE_DAYS=$(( FILE_AGE_SECONDS / 86400 ))
+  if [ "$FILE_AGE_DAYS" -lt "$CACHE_MAX_AGE_DAYS" ]; then
+    echo "📂 APSL cache is fresh (${FILE_AGE_DAYS}d old, limit ${CACHE_MAX_AGE_DAYS}d) — skipping scrape"
+    echo "   To force: FORCE_SCRAPE=1 make scrape-apsl"
+    exit 0
+  fi
+  echo "📅 APSL cache is ${FILE_AGE_DAYS}d old (limit ${CACHE_MAX_AGE_DAYS}d) — will re-fetch"
+fi
+
+# ── Detect Chrome binary (cross-platform) ────────────────────────────
 if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
   CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 elif command -v google-chrome-stable &> /dev/null; then
@@ -36,10 +58,7 @@ else
   exit 1
 fi
 
-CACHE_DIR="database/scraped-html/apsl"
-URL="https://www.apslsoccer.com/Standings"
-# Hash must match HtmlFetcher.getCacheFilename(URL) — standings-ffc8b689.html
-OUTPUT="$CACHE_DIR/standings-ffc8b689.html"
+# ── Fetch ─────────────────────────────────────────────────────────────
 
 # Back up existing file
 mkdir -p "$CACHE_DIR/.backup"

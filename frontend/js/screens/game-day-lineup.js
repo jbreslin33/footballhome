@@ -92,6 +92,7 @@ class GameDayLineupScreen extends Screen {
                 <label>Sort:</label>
                 <select id="roster-sort">
                   <option value="rsvp">RSVP Status</option>
+                  <option value="completeness">Completeness</option>
                   <option value="practices">Practices</option>
                   <option value="lastName">Last Name</option>
                   <option value="eligibility">Eligibility</option>
@@ -183,6 +184,17 @@ class GameDayLineupScreen extends Screen {
         return;
       }
 
+      // Link button on unmatched cards
+      const linkBtn = e.target.closest('.btn-link-player');
+      if (linkBtn) {
+        e.stopPropagation();
+        const gmUserId = linkBtn.dataset.gmUserId;
+        const gmNickname = linkBtn.dataset.gmNickname;
+        const gmImage = linkBtn.dataset.gmImage;
+        this.openLinkPopup(gmUserId, gmNickname, gmImage);
+        return;
+      }
+
       // Click-to-assign: if we're in slot selection mode and user clicks a player card
       if (this.selectingSlot !== null) {
         const card = e.target.closest('[data-player-id]');
@@ -271,10 +283,12 @@ class GameDayLineupScreen extends Screen {
 
       // Load GroupMe members and merge
       this.groupmeMembers = [];
+      this.clubTeams = [];
       if (membersResponse) {
         const membersData = await membersResponse.json();
         if (membersData.success && membersData.data?.members) {
           this.groupmeMembers = membersData.data.members;
+          this.clubTeams = membersData.data.teams || [];
           this.mergeGroupMeMembers();
         }
       }
@@ -307,10 +321,12 @@ class GameDayLineupScreen extends Screen {
   }
 
   /**
-   * Merge GroupMe members into the players array.
-   * - Members linked to persons already in this.players → enrich with GroupMe data
-   * - Members linked to persons NOT in this.players → add as new entries
-   * - Members NOT linked → add to unmatchedRsvps (or a new groupmeOnly array)
+   * Merge GroupMe members + roster-only players into a unified list.
+   * The backend now returns:
+   *   - "both": linked GM member who is also on a roster
+   *   - "groupme_only": GM member (linked or not) who isn't on any roster
+   *   - "roster_only": roster player not in GroupMe
+   * Each entry has: teams[] array, source, linked flag, etc.
    */
   mergeGroupMeMembers() {
     if (!this.groupmeMembers?.length) return;
@@ -328,52 +344,93 @@ class GameDayLineupScreen extends Screen {
     }
 
     for (const gm of this.groupmeMembers) {
+      // Always merge team roster info
+      const teams = gm.teams || [];
+
       if (gm.linked && gm.personId) {
-        // Linked member — enrich or add
+        // Linked member — enrich existing or add new
         const existing = playerByPersonId.get(gm.personId);
         if (existing) {
-          // Already in players array — add GroupMe metadata
+          // Already in players array from eligibility — add GroupMe + team metadata
           existing.gmNickname = gm.nickname;
           existing.gmImageUrl = gm.imageUrl;
           existing.gmUserId = gm.externalUserId;
+          existing.gmLinked = true;
+          existing.source = gm.source || 'both';
+          existing.teams = teams;
           if (!existing.matchRsvp && gm.matchRsvp) {
             existing.matchRsvp = gm.matchRsvp;
           }
         } else {
-          // Linked person not in players (not on roster but in GroupMe)
-          this.players.push({
+          // Linked person not in eligibility list (on a sibling roster or GM only)
+          const newPlayer = {
             personId: gm.personId,
-            playerId: null,
+            playerId: teams.length > 0 ? teams[0].playerId : null,
             firstName: gm.firstName,
             lastName: gm.lastName,
             jerseyNumber: null,
             matchRsvp: gm.matchRsvp,
             practiceCount: gm.practiceCount || 0,
-            eligibilityStatus: 'not_on_roster',
+            sessionsAttended: gm.practiceCount || 0,
+            eligibilityStatus: teams.length > 0 ? 'not_computed' : 'not_on_roster',
             isGuest: true,
             gmNickname: gm.nickname,
             gmImageUrl: gm.imageUrl,
             gmUserId: gm.externalUserId,
-            onRoster: gm.onRoster,
-            gmLinked: true
+            gmLinked: true,
+            source: gm.source || 'both',
+            teams: teams
+          };
+          this.players.push(newPlayer);
+          playerByPersonId.set(gm.personId, newPlayer);
+        }
+      } else if (!gm.linked && gm.source === 'roster_only') {
+        // Roster-only player not linked to GroupMe — may already be in players
+        // (this shouldn't normally happen since roster_only means no GM, but be safe)
+        if (gm.personId && !playerByPersonId.has(gm.personId)) {
+          this.players.push({
+            personId: gm.personId,
+            playerId: teams.length > 0 ? teams[0].playerId : null,
+            firstName: gm.firstName,
+            lastName: gm.lastName,
+            jerseyNumber: null,
+            matchRsvp: gm.matchRsvp,
+            practiceCount: gm.practiceCount || 0,
+            sessionsAttended: gm.practiceCount || 0,
+            eligibilityStatus: 'not_computed',
+            isGuest: true,
+            gmLinked: false,
+            source: 'roster_only',
+            teams: teams
           });
         }
       } else {
         // Unlinked GroupMe member
-        if (!unmatchedByExtId.has(gm.externalUserId)) {
+        if (gm.externalUserId && !unmatchedByExtId.has(gm.externalUserId)) {
           this.unmatchedRsvps.push({
             externalUserId: gm.externalUserId,
             externalUsername: gm.nickname,
             matchRsvp: gm.matchRsvp,
             gmImageUrl: gm.imageUrl,
-            gmLinked: false
+            gmLinked: false,
+            source: 'groupme_only'
           });
-        } else {
+          unmatchedByExtId.set(gm.externalUserId, true);
+        } else if (gm.externalUserId && unmatchedByExtId.has(gm.externalUserId)) {
           // Already in unmatched — enrich with image
           const existing = unmatchedByExtId.get(gm.externalUserId);
-          existing.gmImageUrl = gm.imageUrl;
+          if (existing && typeof existing === 'object') {
+            existing.gmImageUrl = gm.imageUrl;
+          }
         }
       }
+    }
+
+    // Enrich existing players that came from eligibility but weren't in GM members
+    // (they may still have team data from roster)
+    for (const p of this.players) {
+      if (!p.teams) p.teams = [];
+      if (p.source === undefined) p.source = 'eligibility';
     }
   }
 
@@ -529,7 +586,7 @@ class GameDayLineupScreen extends Screen {
 
   // Sort roster by the active sort field
   sortRoster() {
-    const statusRank = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3 };
+    const statusRank = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3, 'not_computed': 4, 'not_on_roster': 5 };
     const rsvpRank = { 'yes': 0, 'maybe': 1, 'no': 2 };
     const dir = this.sortAsc ? 1 : -1;
 
@@ -542,17 +599,25 @@ class GameDayLineupScreen extends Screen {
       switch (this.sortField) {
         case 'rsvp':
           cmp = (rsvpRank[a.matchRsvp] ?? 3) - (rsvpRank[b.matchRsvp] ?? 3);
-          if (cmp === 0) cmp = b.sessionsAttended - a.sessionsAttended;
+          if (cmp === 0) cmp = (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
           break;
+        case 'completeness': {
+          // Sort by number of missing items (fewer missing = more complete = first)
+          const missingA = this.countMissing(a);
+          const missingB = this.countMissing(b);
+          cmp = missingB - missingA; // More missing items first (needs attention)
+          if (cmp === 0) cmp = ((a.lastName || '') + (a.firstName || '')).localeCompare((b.lastName || '') + (b.firstName || ''));
+          break;
+        }
         case 'practices':
-          cmp = b.sessionsAttended - a.sessionsAttended;
+          cmp = (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
           break;
         case 'lastName':
-          cmp = (a.lastName + a.firstName).localeCompare(b.lastName + b.firstName);
+          cmp = ((a.lastName || '') + (a.firstName || '')).localeCompare((b.lastName || '') + (b.firstName || ''));
           break;
         case 'eligibility':
-          cmp = (statusRank[a.eligibilityStatus] ?? 4) - (statusRank[b.eligibilityStatus] ?? 4);
-          if (cmp === 0) cmp = b.sessionsAttended - a.sessionsAttended;
+          cmp = (statusRank[a.eligibilityStatus] ?? 6) - (statusRank[b.eligibilityStatus] ?? 6);
+          if (cmp === 0) cmp = (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
           break;
       }
       return cmp * dir;
@@ -720,7 +785,8 @@ class GameDayLineupScreen extends Screen {
 
   createPlayerCard(player) {
     const card = document.createElement('div');
-    card.className = `player-card ${this.getEligibilityClass(player)}`;
+    const sourceClass = player.source === 'roster_only' ? 'player-card-roster-only' : '';
+    card.className = `player-card ${this.getEligibilityClass(player)} ${sourceClass}`.trim();
     card.setAttribute('draggable', 'true');
     card.setAttribute('data-player-id', player.playerId);
 
@@ -740,27 +806,51 @@ class GameDayLineupScreen extends Screen {
 
     // Practices badge
     const sessions = player.sessionsAttended ?? player.practiceCount ?? 0;
+    const projected = player.projectedSessions ?? sessions;
     const lookback = this.policy?.lookbackCount || 0;
-    const practicesBadge = `${sessions}/${lookback}`;
+    const hasProjection = projected > sessions;
+    const practicesBadge = hasProjection
+      ? `${sessions}→${projected}/${lookback}`
+      : `${sessions}/${lookback}`;
 
-    // Eligibility indicator
+    // Eligibility indicator (show projected if it differs)
     const statusIcon = this.getStatusIcon(player.eligibilityStatus);
-    
-    // Badges
-    const badges = [];
-    if (!player.onOfficialRoster && player.eligibilityStatus !== 'not_on_roster') {
-      badges.push('<span class="badge-guest" title="Not on official roster">guest</span>');
+    const projectedIcon = hasProjection && player.projectedStatus !== player.eligibilityStatus
+      ? `→${this.getStatusIcon(player.projectedStatus)}`
+      : '';
+
+    // Team roster badges
+    const teams = player.teams || [];
+    const teamBadgesHtml = teams.map(t => {
+      const shortName = t.divisionName || t.teamName || '';
+      return `<span class="badge-team" title="${t.teamName} - ${t.divisionName}">📋 ${shortName}</span>`;
+    }).join('');
+
+    // Missing data indicators
+    const missing = [];
+    if (!player.gmLinked && !player.gmUserId) {
+      missing.push('<span class="badge-missing" title="Not linked to GroupMe">❌ GM</span>');
     }
-    if (player.eligibilityStatus === 'not_on_roster') {
-      badges.push('<span class="badge-guest" title="In GroupMe but not on team roster">GM only</span>');
+    if (teams.length === 0 && player.source !== 'eligibility') {
+      missing.push('<span class="badge-missing" title="Not on any roster">❌ Roster</span>');
     }
+    if (!player.matchRsvp) {
+      missing.push('<span class="badge-missing" title="No RSVP for this match">❌ RSVP</span>');
+    }
+
+    // Source badge
+    const sourceBadge = player.source === 'roster_only'
+      ? '<span class="badge-source badge-roster-only" title="On roster but not in GroupMe chat">roster only</span>'
+      : player.source === 'groupme_only' || player.eligibilityStatus === 'not_on_roster'
+        ? '<span class="badge-source badge-gm-only" title="In GroupMe but not on team roster">GM only</span>'
+        : '';
 
     // GroupMe nickname (show if different from person name)
     const gmNickLine = player.gmNickname && player.gmNickname !== `${player.firstName} ${player.lastName}`
       ? `<span class="player-gm-nick" title="GroupMe nickname">📱 ${player.gmNickname}</span>`
       : '';
 
-    // Meta line
+    // Meta line: team badges + GM nick + jersey/position
     const metaParts = [jerseyDisplay, posDisplay].filter(Boolean);
     const metaText = metaParts.length ? metaParts.join(' · ') : '';
 
@@ -768,13 +858,16 @@ class GameDayLineupScreen extends Screen {
       <div class="player-card-left">
         ${avatarHtml}
         <div class="player-info">
-          <div class="player-name">${player.firstName} ${player.lastName} ${badges.join(' ')}</div>
-          <div class="player-meta">${metaText}${gmNickLine ? (metaText ? ' · ' : '') + gmNickLine : ''}</div>
+          <div class="player-name">${player.firstName} ${player.lastName} ${sourceBadge}</div>
+          <div class="player-meta">
+            ${teamBadgesHtml}${gmNickLine ? (teamBadgesHtml ? ' ' : '') + gmNickLine : ''}${metaText ? (teamBadgesHtml || gmNickLine ? ' · ' : '') + metaText : ''}
+          </div>
+          ${missing.length ? `<div class="player-missing">${missing.join(' ')}</div>` : ''}
         </div>
       </div>
       <div class="player-card-right">
         <span class="rsvp-pill ${rsvpClass}">${rsvpLabel}</span>
-        <span class="practices-badge" title="Practices attended">${statusIcon} ${practicesBadge}</span>
+        <span class="practices-badge${hasProjection ? ' has-projection' : ''}" title="${hasProjection ? 'Current → Projected / Lookback' : 'Practices attended'}">${statusIcon}${projectedIcon} ${practicesBadge}</span>
       </div>
     `;
 
@@ -796,19 +889,29 @@ class GameDayLineupScreen extends Screen {
     const rsvpClass = this.getRsvpClass(user.matchRsvp);
     const rsvpLabel = this.getRsvpLabel(user.matchRsvp);
 
-    // Status text
-    const statusText = user.matchRsvp ? 'GroupMe member · not linked to player' : 'GroupMe member · no RSVP';
+    // Missing data
+    const missing = [];
+    missing.push('<span class="badge-missing" title="Not linked to any person">❌ Person</span>');
+    missing.push('<span class="badge-missing" title="Not on any roster">❌ Roster</span>');
+    if (!user.matchRsvp) {
+      missing.push('<span class="badge-missing" title="No RSVP">❌ RSVP</span>');
+    }
 
     card.innerHTML = `
       <div class="player-card-left">
         ${avatarHtml}
         <div class="player-info">
           <div class="player-name">${user.externalUsername} <span class="badge-unmatched">unlinked</span></div>
-          <div class="player-meta">${statusText}</div>
+          <div class="player-meta">GroupMe member · not linked to person</div>
+          <div class="player-missing">${missing.join(' ')}</div>
         </div>
       </div>
       <div class="player-card-right">
         <span class="rsvp-pill ${rsvpClass}">${rsvpLabel}</span>
+        <button class="btn-link-player" data-gm-user-id="${user.externalUserId}" 
+                data-gm-nickname="${(user.externalUsername || '').replace(/"/g, '&quot;')}"
+                data-gm-image="${(user.gmImageUrl || '').replace(/"/g, '&quot;')}"
+                title="Link to existing person">🔗 Link</button>
       </div>
     `;
 
@@ -902,8 +1005,19 @@ class GameDayLineupScreen extends Screen {
       case 'eligible_starter': return '✅';
       case 'bench_only': return '🔶';
       case 'ineligible': return '🚫';
+      case 'not_computed': return '➖';
+      case 'not_on_roster': return '👤';
       default: return '❓';
     }
+  }
+
+  // Count missing data items for a player (used for completeness sort)
+  countMissing(player) {
+    let missing = 0;
+    if (!player.gmLinked && !player.gmUserId) missing++;       // No GroupMe link
+    if (!(player.teams?.length > 0) && player.source !== 'eligibility') missing++;  // Not on roster
+    if (!player.matchRsvp) missing++;                           // No RSVP
+    return missing;
   }
 
   // ============================================================================
@@ -1304,6 +1418,122 @@ class GameDayLineupScreen extends Screen {
       console.error('Error toggling attendance:', err);
       alert('Failed to update attendance: ' + err.message);
     }
+  }
+
+  // ============================================================================
+  // Link Popup: Link a GroupMe user to an existing person
+  // ============================================================================
+  openLinkPopup(gmUserId, gmNickname, gmImageUrl) {
+    // Build list of unlinked roster players (persons not yet connected to GM)
+    const linkedPersonIds = new Set();
+    for (const p of this.players) {
+      if (p.gmLinked && p.personId) linkedPersonIds.add(p.personId);
+    }
+
+    // Candidates: all players who have a personId but no GM link
+    const candidates = this.players
+      .filter(p => p.personId && !linkedPersonIds.has(p.personId))
+      .sort((a, b) => (a.lastName + a.firstName).localeCompare(b.lastName + b.firstName));
+
+    // Also include roster-only players from groupmeMembers
+    const candidatePersonIds = new Set(candidates.map(c => c.personId));
+    for (const gm of this.groupmeMembers) {
+      if (gm.personId && gm.source === 'roster_only' && !linkedPersonIds.has(gm.personId) && !candidatePersonIds.has(gm.personId)) {
+        candidates.push({
+          personId: gm.personId,
+          firstName: gm.firstName,
+          lastName: gm.lastName,
+          teams: gm.teams || []
+        });
+        candidatePersonIds.add(gm.personId);
+      }
+    }
+
+    candidates.sort((a, b) => ((a.lastName || '') + (a.firstName || '')).localeCompare((b.lastName || '') + (b.firstName || '')));
+
+    const overlay = document.createElement('div');
+    overlay.className = 'attendance-overlay';
+
+    const hasImg = gmImageUrl && gmImageUrl.length > 0;
+    const avatarHtml = hasImg
+      ? `<img class="link-popup-avatar" src="${gmImageUrl}.avatar" alt="${gmNickname}">`
+      : '';
+
+    overlay.innerHTML = `
+      <div class="link-popup">
+        <div class="link-popup-header">
+          ${avatarHtml}
+          <div>
+            <h3>Link "${gmNickname}"</h3>
+            <p class="link-popup-subtitle">Select an existing player to link this GroupMe user to:</p>
+          </div>
+          <button class="attendance-close-btn">✕</button>
+        </div>
+        <div class="link-popup-search">
+          <input type="text" id="link-search-input" placeholder="Search by name..." class="link-search-input">
+        </div>
+        <div class="link-popup-list" id="link-candidate-list">
+          ${candidates.map(c => {
+            const teamLabels = (c.teams || []).map(t => t.divisionName || t.teamName || '').join(', ');
+            return `
+              <div class="link-candidate" data-person-id="${c.personId}">
+                <div class="link-candidate-name">${c.firstName} ${c.lastName}</div>
+                ${teamLabels ? `<div class="link-candidate-teams">${teamLabels}</div>` : '<div class="link-candidate-teams" style="color:var(--color-warning);">No roster</div>'}
+              </div>`;
+          }).join('')}
+          ${candidates.length === 0 ? '<p class="link-empty">No unlinked players found</p>' : ''}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Close handlers
+    overlay.querySelector('.attendance-close-btn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    // Search filter
+    const searchInput = overlay.querySelector('#link-search-input');
+    searchInput.focus();
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.toLowerCase();
+      overlay.querySelectorAll('.link-candidate').forEach(el => {
+        const name = el.querySelector('.link-candidate-name').textContent.toLowerCase();
+        el.style.display = name.includes(query) ? '' : 'none';
+      });
+    });
+
+    // Click to link
+    overlay.querySelector('#link-candidate-list').addEventListener('click', async (e) => {
+      const candidate = e.target.closest('.link-candidate');
+      if (!candidate) return;
+
+      const personId = parseInt(candidate.dataset.personId);
+      candidate.classList.add('link-candidate-loading');
+
+      try {
+        const response = await this.auth.fetch('/api/groupme/link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            externalUserId: gmUserId,
+            personId: personId,
+            nickname: gmNickname,
+            imageUrl: gmImageUrl
+          })
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message);
+
+        overlay.remove();
+        // Reload to reflect the new link
+        await this.loadEligibilityData();
+      } catch (err) {
+        console.error('Link failed:', err);
+        candidate.classList.remove('link-candidate-loading');
+        alert('Failed to link: ' + err.message);
+      }
+    });
   }
 
   // ============================================================================

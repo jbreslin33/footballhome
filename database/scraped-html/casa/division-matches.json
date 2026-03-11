@@ -1,5 +1,5 @@
 {
-  "generated": "2026-03-07T00:39:06.170Z",
+  "generated": "2026-03-10T18:08:28.682Z",
   "total_matches": 256,
   "divisions": [
     {
@@ -427,8 +427,8 @@
           "away": "Phoenix SCM",
           "time": "12:30 PM - 2:30 PM",
           "date": "2026-03-08T16:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "0 - 1",
           "externalId": "be9a0154-1a39-4637-adae-fe53324c9c50"
         },
         {
@@ -436,8 +436,8 @@
           "away": "Oaklyn United FC II",
           "time": "12:45 PM - 2:45 PM",
           "date": "2026-03-08T16:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 6",
           "externalId": "9d780e42-fb7e-4aae-b828-ea635ea28f62"
         },
         {
@@ -445,8 +445,8 @@
           "away": "Lighthouse Boys Club",
           "time": "2:30 PM - 4:30 PM",
           "date": "2026-03-08T18:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 0",
           "externalId": "d0f75702-a4c5-4c74-af9c-53a7cdb26140"
         },
         {
@@ -454,8 +454,8 @@
           "away": "Persepolis FC",
           "time": "4:30 PM - 6:30 PM",
           "date": "2026-03-08T20:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 7",
           "externalId": "8184478a-5e8c-4fa5-9624-623616fd23ce"
         },
         {
@@ -540,15 +540,6 @@
           "externalId": "62294e19-4b8a-481b-bcf5-6e4f80baa542"
         },
         {
-          "home": "Illyrians FC",
-          "away": "Phoenix SCM",
-          "time": "1:00 PM - 3:00 PM",
-          "date": "2026-03-22T17:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "0eb0f7bc-d966-461c-9db2-6df19e5cb91c"
-        },
-        {
           "home": "Persepolis FC",
           "away": "Philadelphia Sierra Stars",
           "time": "1:00 PM - 3:00 PM",
@@ -556,6 +547,15 @@
           "status": "scheduled",
           "score": null,
           "externalId": "7c505606-7538-4254-b75f-1f8335bb68f4"
+        },
+        {
+          "home": "Illyrians FC",
+          "away": "Phoenix SCM",
+          "time": "1:00 PM - 3:00 PM",
+          "date": "2026-03-22T17:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0eb0f7bc-d966-461c-9db2-6df19e5cb91c"
         },
         {
           "home": "Philly BlackStars",
@@ -1038,8 +1038,8 @@
           "away": "Phoenix SCR",
           "time": "10:30 AM - 12:00 PM",
           "date": "2026-03-08T14:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 0",
           "externalId": "da1a7639-30b9-4b55-82aa-2684619ea5fd"
         },
         {
@@ -1047,8 +1047,8 @@
           "away": "Persepolis FC II",
           "time": "2:45 PM - 4:15 PM",
           "date": "2026-03-08T18:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 0",
           "externalId": "aa2f28dc-4754-4fa7-a063-5c66652a0789"
         },
         {
@@ -1492,15 +1492,6 @@
           "externalId": "a00c1b15-6ebc-46b6-bfd4-18c876b82f58"
         },
         {
-          "home": "Jaguars United FC",
-          "away": "Somerville United FC II",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-03-22T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "0745ee5f-277c-4501-bb33-2e6fe38fdfcc"
-        },
-        {
           "home": "Gambeta FC",
           "away": "South Shore FC",
           "time": "2:00 PM - 3:30 PM",
@@ -1519,6 +1510,15 @@
           "externalId": "4d4cb7a0-9255-4c13-896e-3aa104605c3b"
         },
         {
+          "home": "Jaguars United FC",
+          "away": "Somerville United FC II",
+          "time": "6:00 PM - 7:30 PM",
+          "date": "2026-03-22T22:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0745ee5f-277c-4501-bb33-2e6fe38fdfcc"
+        },
+        {
           "home": "Strictly Nos Fc",
           "away": "BCFC All Stars",
           "time": "12:00 AM - 1:30 AM",
@@ -1528,15 +1528,6 @@
           "externalId": "4ecc9412-b8f9-4db8-aef1-feb2c8bead33"
         },
         {
-          "home": "Flatley FC",
-          "away": "Jaguars United FC",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-03-29T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "0b6d6ac1-b516-4557-826f-0823d2576131"
-        },
-        {
           "home": "Somerville United FC II",
           "away": "Gambeta FC",
           "time": "2:00 PM - 3:30 PM",
@@ -1544,6 +1535,15 @@
           "status": "scheduled",
           "score": null,
           "externalId": "233a48e0-7ed0-467c-90c0-3315d8ae7dd4"
+        },
+        {
+          "home": "Flatley FC",
+          "away": "Jaguars United FC",
+          "time": "6:45 PM - 8:15 PM",
+          "date": "2026-03-29T22:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0b6d6ac1-b516-4557-826f-0823d2576131"
         },
         {
           "home": "South Shore FC",
@@ -1557,8 +1557,8 @@
         {
           "home": "Flatley FC",
           "away": "Gambeta FC",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-08T04:00:00.000Z",
+          "time": "8:15 PM - 9:45 PM",
+          "date": "2026-04-10T00:15:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "e8de2369-457a-4667-b88f-c856e7390f4c"
@@ -1638,20 +1638,11 @@
         {
           "home": "Gambeta FC",
           "away": "Flatley FC",
-          "time": "2:00 PM - 3:30 PM",
-          "date": "2026-04-26T18:00:00.000Z",
+          "time": "12:00 PM - 1:30 PM",
+          "date": "2026-04-26T16:00:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "2aa23d2c-1f6f-4d05-9241-c68240c4e991"
-        },
-        {
-          "home": "Flatley FC",
-          "away": "South Shore FC",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-05-03T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "53da0fc9-44e1-444c-9e7e-774b0c9abd75"
         },
         {
           "home": "Strictly Nos Fc",
@@ -1673,12 +1664,12 @@
         },
         {
           "home": "Flatley FC",
-          "away": "Somerville United FC II",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-05-10T04:00:00.000Z",
+          "away": "South Shore FC",
+          "time": "6:45 PM - 8:15 PM",
+          "date": "2026-05-03T22:45:00.000Z",
           "status": "scheduled",
           "score": null,
-          "externalId": "2c9f6c76-dc41-46d6-9cb3-5e8483b76582"
+          "externalId": "53da0fc9-44e1-444c-9e7e-774b0c9abd75"
         },
         {
           "home": "Strictly Nos Fc",
@@ -1697,6 +1688,15 @@
           "status": "scheduled",
           "score": null,
           "externalId": "f71feb2c-736e-476f-b69c-a94640095a60"
+        },
+        {
+          "home": "Flatley FC",
+          "away": "Somerville United FC II",
+          "time": "6:45 PM - 8:15 PM",
+          "date": "2026-05-10T22:45:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "2c9f6c76-dc41-46d6-9cb3-5e8483b76582"
         },
         {
           "home": "BCFC All Stars",
@@ -1746,8 +1746,8 @@
         {
           "home": "Strictly Nos Fc",
           "away": "Flatley FC",
-          "time": "2:00 PM - 3:30 PM",
-          "date": "2026-05-31T18:00:00.000Z",
+          "time": "1:00 PM - 2:30 PM",
+          "date": "2026-05-31T17:00:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "264ea405-c94d-4e5a-8ef0-b070dab81c13"
@@ -1972,8 +1972,8 @@
           "away": "Lancaster City FC\t",
           "time": "6:00 PM - 7:30 PM",
           "date": "2026-03-07T23:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "5 - 2",
           "externalId": "f9faf11a-6938-4563-8f53-136efc294f57"
         },
         {
@@ -1981,8 +1981,8 @@
           "away": "YorkPA FC",
           "time": "4:30 PM - 6:00 PM",
           "date": "2026-03-08T20:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 1",
           "externalId": "a6374cb1-0895-4f3b-9d92-7eb17bb3e713"
         },
         {
@@ -2187,8 +2187,8 @@
           "away": "F&M FC",
           "time": "4:30 PM - 6:00 PM",
           "date": "2026-03-08T20:30:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 2",
           "externalId": "de47f2a0-e141-469b-8768-24da5135ae36"
         },
         {

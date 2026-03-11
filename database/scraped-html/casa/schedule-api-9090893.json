@@ -3402,11 +3402,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-07T23:00:00.000Z",
     "end_date_time": "2026-03-08T00:30:00.000Z",
     "created_at": "2026-02-17T20:19:39.000Z",
-    "updated_at": "2026-02-17T20:19:40.000Z",
+    "updated_at": "2026-03-08T18:52:13.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -3418,11 +3418,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0843b-baee-c232-885c-ee8a9659780f",
-        "home_team_score": "",
+        "home_team_score": "5",
         "away_team_id": "11f0843b-baf6-cfea-9300-9a54c51d190f",
-        "away_team_score": "",
+        "away_team_score": "2",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -3430,8 +3430,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -3516,24 +3520,26 @@
     "game_details": {
       "originator_id": "6994cd5b2a1178000164b683",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0843b-baee-c232-885c-ee8a9659780f",
         "originator_id": "68b09e03a4ac6ddcbb7bfed9",
         "name": "Alloy Soccer Club Reserves\t",
-        "score": "",
-        "is_home_team": true
+        "score": "5",
+        "is_home_team": true,
+        "interval_scores": []
       },
       "team_2": {
         "id": "11f0843b-baf6-cfea-9300-9a54c51d190f",
         "originator_id": "68b09e03a99c9f00fc3b4ad6",
         "name": "Lancaster City FC\t",
-        "score": "",
-        "is_home_team": false
+        "score": "2",
+        "is_home_team": false,
+        "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -3547,11 +3553,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-08T20:30:00.000Z",
     "end_date_time": "2026-03-08T22:00:00.000Z",
     "created_at": "2026-02-17T20:19:39.000Z",
-    "updated_at": "2026-02-23T21:01:15.000Z",
+    "updated_at": "2026-03-09T14:52:31.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -3563,11 +3569,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f0843b-baf4-be8a-9300-9a54c51d190f",
-        "home_team_score": "",
+        "home_team_score": "2",
         "away_team_id": "11f10c3d-f992-3c1e-a6a3-aa735334bd5d",
-        "away_team_score": "",
+        "away_team_score": "1",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -3665,12 +3671,12 @@
     "game_details": {
       "originator_id": "6994cd5c95167e0001b16229",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f0843b-baf4-be8a-9300-9a54c51d190f",
         "originator_id": "68b09e0396f50330210548d3",
         "name": "F&M FC\t",
-        "score": "",
+        "score": "2",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -3678,13 +3684,13 @@
         "id": "11f10c3d-f992-3c1e-a6a3-aa735334bd5d",
         "originator_id": "6994cd57dfa9c30001336397",
         "name": "YorkPA FC",
-        "score": "",
+        "score": "1",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },

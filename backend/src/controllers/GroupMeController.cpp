@@ -41,6 +41,16 @@ void GroupMeController::registerRoutes(Router& router, const std::string& prefix
     router.get(prefix + "/members/:teamId", [this](const Request& request) {
         return this->handleGetGroupMembers(request);
     });
+
+    // POST /api/groupme/link — Link a GroupMe user to a person
+    router.post(prefix + "/link", [this](const Request& request) {
+        return this->handleLinkMember(request);
+    });
+
+    // DELETE /api/groupme/link — Unlink a GroupMe user from a person
+    router.del(prefix + "/link", [this](const Request& request) {
+        return this->handleUnlinkMember(request);
+    });
 }
 
 // ============================================================================
@@ -202,8 +212,9 @@ Response GroupMeController::handleSyncMatchRsvps(const Request& request) {
 }
 
 // ============================================================================
-// Handler: Get ALL GroupMe group members for a team, with linkage info
+// Handler: Unified roster + GroupMe members for a team's club
 // GET /api/groupme/members/:teamId?matchId=X
+// Returns ALL GroupMe chat members + ALL roster players from club sibling teams
 // ============================================================================
 Response GroupMeController::handleGetGroupMembers(const Request& request) {
     if (accessToken_.empty()) {
@@ -235,7 +246,33 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
         std::string chatId = chatResult[0]["chat_id"].c_str();
         std::string groupmeGroupId = chatResult[0]["groupme_group_id"].c_str();
 
-        // Step 2: Fetch all group members from GroupMe API
+        // Step 2: Find all sibling teams from the same club
+        struct TeamInfo {
+            std::string teamId;
+            std::string teamName;
+            std::string divisionName;
+        };
+        std::vector<TeamInfo> clubTeams;
+
+        pqxx::result siblingResult = db_->query(
+            "SELECT t2.id, t2.name as team_name, d.name as division_name "
+            "FROM teams t1 "
+            "JOIN teams t2 ON t2.club_id = t1.club_id "
+            "LEFT JOIN divisions d ON d.id = t2.division_id "
+            "WHERE t1.id = $1::int "
+            "ORDER BY t2.id",
+            {teamId}
+        );
+        for (const auto& row : siblingResult) {
+            TeamInfo ti;
+            ti.teamId = row["id"].c_str();
+            ti.teamName = row["team_name"].c_str();
+            ti.divisionName = row["division_name"].is_null() ? "" : row["division_name"].c_str();
+            clubTeams.push_back(ti);
+        }
+        std::cout << "🏟️  Club has " << clubTeams.size() << " teams" << std::endl;
+
+        // Step 3: Fetch all group members from GroupMe API
         std::string groupUrl = "https://api.groupme.com/v3/groups/" + groupmeGroupId + "?token=" + accessToken_;
         std::string groupJson = httpGet(groupUrl);
 
@@ -243,11 +280,18 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
             return Response(HttpStatus::OK, createJsonResponse(false, "Failed to fetch GroupMe group"));
         }
 
-        // Extract full member data: user_id, nickname, image_url
         auto members = extractFullMemberData(groupJson);
         std::cout << "👥 GroupMe group " << groupmeGroupId << ": " << members.size() << " members" << std::endl;
 
-        // Step 3: Load person linkages from external_identities
+        // Step 4: Load ALL person linkages from external_identities (GroupMe provider)
+        struct PersonLink {
+            std::string personId;
+            std::string firstName;
+            std::string lastName;
+        };
+        std::map<std::string, PersonLink> personLinks;         // gm_user_id → PersonLink
+        std::map<std::string, std::string> personToGmUserId;   // person_id → gm_user_id
+
         pqxx::result eiResult = db_->query(
             "SELECT ei.external_user_id, ei.person_id, "
             "       p.first_name, p.last_name "
@@ -255,36 +299,73 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
             "JOIN persons p ON p.id = ei.person_id "
             "WHERE ei.provider_id = 1"
         );
-        // Map: groupme_user_id → {person_id, firstName, lastName}
-        struct PersonLink {
-            std::string personId;
-            std::string firstName;
-            std::string lastName;
-        };
-        std::map<std::string, PersonLink> personLinks;
         for (const auto& row : eiResult) {
             PersonLink pl;
             pl.personId = row["person_id"].c_str();
             pl.firstName = row["first_name"].c_str();
             pl.lastName = row["last_name"].c_str();
-            personLinks[row["external_user_id"].c_str()] = pl;
+            std::string extId = row["external_user_id"].c_str();
+            personLinks[extId] = pl;
+            personToGmUserId[pl.personId] = extId;
         }
 
-        // Step 4: Load roster membership for this team
+        // Step 5: Load rosters for ALL club sibling teams
+        // Map: person_id → [{teamId, teamName, divisionName, playerId}]
+        struct RosterEntry {
+            std::string teamId;
+            std::string teamName;
+            std::string divisionName;
+            std::string playerId;
+        };
+        std::map<std::string, std::vector<RosterEntry>> rosterByPerson;
+        // Also build a set of person_ids we've seen on rosters
+        std::set<std::string> allRosterPersonIds;
+
+        // Build comma-separated team IDs for query
+        std::string teamIdList;
+        for (size_t i = 0; i < clubTeams.size(); i++) {
+            if (i > 0) teamIdList += ",";
+            teamIdList += clubTeams[i].teamId;
+        }
+
         pqxx::result rosterResult = db_->query(
-            "SELECT p.person_id FROM players p "
+            "SELECT p.person_id, p.id as player_id, r.team_id, "
+            "       pe.first_name, pe.last_name "
+            "FROM players p "
             "JOIN rosters r ON r.player_id = p.id "
-            "WHERE r.team_id = $1::int AND r.left_at IS NULL",
-            {teamId}
+            "JOIN persons pe ON pe.id = p.person_id "
+            "WHERE r.team_id IN (" + teamIdList + ") AND r.left_at IS NULL "
+            "ORDER BY pe.last_name, pe.first_name"
         );
-        std::set<std::string> rosterPersonIds;
         for (const auto& row : rosterResult) {
-            rosterPersonIds.insert(row["person_id"].c_str());
+            std::string personId = row["person_id"].c_str();
+            std::string rTeamId = row["team_id"].c_str();
+            allRosterPersonIds.insert(personId);
+
+            RosterEntry re;
+            re.teamId = rTeamId;
+            re.playerId = row["player_id"].c_str();
+            // Find team name/division from clubTeams
+            for (const auto& ct : clubTeams) {
+                if (ct.teamId == rTeamId) {
+                    re.teamName = ct.teamName;
+                    re.divisionName = ct.divisionName;
+                    break;
+                }
+            }
+            rosterByPerson[personId].push_back(re);
+
+            // Also store person name if not already linked via external_identities
+            // (We need it for roster-only players)
+            if (personToGmUserId.find(personId) == personToGmUserId.end()) {
+                // This person has no GM link — remember their name for later
+                // (We'll use the roster query result for this)
+            }
         }
 
-        // Step 5: Load RSVP data for the match (if matchId provided)
-        std::map<std::string, std::string> rsvpByExternalId;  // gm_user_id → status
-        std::map<std::string, std::string> rsvpByPersonId;    // person_id → status
+        // Step 6: Load RSVP data for the match
+        std::map<std::string, std::string> rsvpByExternalId;
+        std::map<std::string, std::string> rsvpByPersonId;
         if (!matchId.empty()) {
             pqxx::result rsvpResult = db_->query(
                 "SELECT cer.external_user_id, cer.person_id, rs.name as rsvp_status "
@@ -304,7 +385,7 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
             }
         }
 
-        // Step 6: Load practice attendance counts for linked persons
+        // Step 7: Load practice attendance counts
         std::map<std::string, int> practiceCounts;
         if (!matchId.empty()) {
             pqxx::result practiceResult = db_->query(
@@ -322,68 +403,127 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
             }
         }
 
-        // Step 7: Build JSON response
+        // ====================================================================
+        // Step 8: Build unified response — merge GroupMe members + roster-only players
+        // ====================================================================
         std::ostringstream json;
         json << "{\"members\":[";
 
+        // Track which person_ids we've already emitted (prevent duplicates)
+        std::set<std::string> emittedPersonIds;
+        std::set<std::string> emittedGmUserIds;
         bool first = true;
-        for (const auto& member : members) {
+
+        // Helper lambda to emit a member JSON object
+        auto emitMember = [&](const std::string& gmUserId, const std::string& gmNickname,
+                              const std::string& gmImageUrl, const std::string& personId,
+                              const std::string& firstName, const std::string& lastName,
+                              bool linked, const std::string& source) {
             if (!first) json << ",";
             first = false;
 
             json << "{";
-            json << "\"externalUserId\":\"" << escapeJson(member.userId) << "\",";
-            json << "\"nickname\":\"" << escapeJson(member.nickname) << "\",";
-            json << "\"imageUrl\":\"" << escapeJson(member.imageUrl) << "\",";
+            json << "\"externalUserId\":" << (gmUserId.empty() ? "null" : "\"" + escapeJson(gmUserId) + "\"") << ",";
+            json << "\"nickname\":" << (gmNickname.empty() ? "null" : "\"" + escapeJson(gmNickname) + "\"") << ",";
+            json << "\"imageUrl\":" << (gmImageUrl.empty() ? "null" : "\"" + escapeJson(gmImageUrl) + "\"") << ",";
+            json << "\"personId\":" << (personId.empty() ? "null" : personId) << ",";
+            json << "\"firstName\":" << (firstName.empty() ? "null" : "\"" + escapeJson(firstName) + "\"") << ",";
+            json << "\"lastName\":" << (lastName.empty() ? "null" : "\"" + escapeJson(lastName) + "\"") << ",";
+            json << "\"linked\":" << (linked ? "true" : "false") << ",";
+            json << "\"source\":\"" << source << "\",";
 
-            // Person linkage
-            auto plIt = personLinks.find(member.userId);
-            if (plIt != personLinks.end()) {
-                json << "\"personId\":" << plIt->second.personId << ",";
-                json << "\"firstName\":\"" << escapeJson(plIt->second.firstName) << "\",";
-                json << "\"lastName\":\"" << escapeJson(plIt->second.lastName) << "\",";
-                json << "\"linked\":true,";
-
-                // On roster?
-                bool onRoster = rosterPersonIds.count(plIt->second.personId) > 0;
-                json << "\"onRoster\":" << (onRoster ? "true" : "false") << ",";
-
-                // Practice count
-                auto pcIt = practiceCounts.find(plIt->second.personId);
-                json << "\"practiceCount\":" << (pcIt != practiceCounts.end() ? pcIt->second : 0) << ",";
-
-                // RSVP — check by person_id first, then external_user_id
-                auto rsvpIt = rsvpByPersonId.find(plIt->second.personId);
-                if (rsvpIt != rsvpByPersonId.end()) {
-                    json << "\"matchRsvp\":\"" << escapeJson(rsvpIt->second) << "\"";
-                } else {
-                    auto rsvpExtIt = rsvpByExternalId.find(member.userId);
-                    if (rsvpExtIt != rsvpByExternalId.end()) {
-                        json << "\"matchRsvp\":\"" << escapeJson(rsvpExtIt->second) << "\"";
-                    } else {
-                        json << "\"matchRsvp\":null";
+            // Teams array
+            json << "\"teams\":[";
+            if (!personId.empty()) {
+                auto rIt = rosterByPerson.find(personId);
+                if (rIt != rosterByPerson.end()) {
+                    bool firstTeam = true;
+                    for (const auto& re : rIt->second) {
+                        if (!firstTeam) json << ",";
+                        firstTeam = false;
+                        json << "{\"teamId\":" << re.teamId
+                             << ",\"teamName\":\"" << escapeJson(re.teamName) << "\""
+                             << ",\"divisionName\":\"" << escapeJson(re.divisionName) << "\""
+                             << ",\"playerId\":" << re.playerId << "}";
                     }
                 }
-            } else {
-                json << "\"personId\":null,";
-                json << "\"firstName\":null,";
-                json << "\"lastName\":null,";
-                json << "\"linked\":false,";
-                json << "\"onRoster\":false,";
-                json << "\"practiceCount\":0,";
-
-                auto rsvpExtIt = rsvpByExternalId.find(member.userId);
-                if (rsvpExtIt != rsvpByExternalId.end()) {
-                    json << "\"matchRsvp\":\"" << escapeJson(rsvpExtIt->second) << "\"";
-                } else {
-                    json << "\"matchRsvp\":null";
-                }
             }
+            json << "],";
+
+            // Practice count
+            int practiceCount = 0;
+            if (!personId.empty()) {
+                auto pcIt = practiceCounts.find(personId);
+                if (pcIt != practiceCounts.end()) practiceCount = pcIt->second;
+            }
+            json << "\"practiceCount\":" << practiceCount << ",";
+
+            // RSVP
+            std::string rsvp;
+            if (!personId.empty()) {
+                auto rsvpIt = rsvpByPersonId.find(personId);
+                if (rsvpIt != rsvpByPersonId.end()) rsvp = rsvpIt->second;
+            }
+            if (rsvp.empty() && !gmUserId.empty()) {
+                auto rsvpExtIt = rsvpByExternalId.find(gmUserId);
+                if (rsvpExtIt != rsvpByExternalId.end()) rsvp = rsvpExtIt->second;
+            }
+            json << "\"matchRsvp\":" << (rsvp.empty() ? "null" : "\"" + escapeJson(rsvp) + "\"");
 
             json << "}";
+        };
+
+        // --- Part A: Emit all GroupMe members ---
+        for (const auto& member : members) {
+            emittedGmUserIds.insert(member.userId);
+
+            auto plIt = personLinks.find(member.userId);
+            if (plIt != personLinks.end()) {
+                emittedPersonIds.insert(plIt->second.personId);
+                bool isOnAnyRoster = rosterByPerson.count(plIt->second.personId) > 0;
+                std::string src = isOnAnyRoster ? "both" : "groupme_only";
+                emitMember(member.userId, member.nickname, member.imageUrl,
+                           plIt->second.personId, plIt->second.firstName, plIt->second.lastName,
+                           true, src);
+            } else {
+                emitMember(member.userId, member.nickname, member.imageUrl,
+                           "", "", "", false, "groupme_only");
+            }
         }
 
-        json << "],\"totalMembers\":" << members.size() << "}";
+        // --- Part B: Emit roster-only players (not in GroupMe) ---
+        for (const auto& row : rosterResult) {
+            std::string personId = row["person_id"].c_str();
+            if (emittedPersonIds.count(personId) > 0) continue; // Already emitted via GroupMe
+            emittedPersonIds.insert(personId);
+
+            std::string firstName = row["first_name"].c_str();
+            std::string lastName = row["last_name"].c_str();
+
+            // Check if this person has a GM user id (linked but not in the chat)
+            std::string gmUserId;
+            auto gmIt = personToGmUserId.find(personId);
+            if (gmIt != personToGmUserId.end()) gmUserId = gmIt->second;
+
+            emitMember(gmUserId, "", "", personId, firstName, lastName,
+                       !gmUserId.empty(), "roster_only");
+        }
+
+        json << "],";
+
+        // Include sibling teams metadata
+        json << "\"teams\":[";
+        for (size_t i = 0; i < clubTeams.size(); i++) {
+            if (i > 0) json << ",";
+            json << "{\"teamId\":" << clubTeams[i].teamId
+                 << ",\"teamName\":\"" << escapeJson(clubTeams[i].teamName) << "\""
+                 << ",\"divisionName\":\"" << escapeJson(clubTeams[i].divisionName) << "\"}";
+        }
+        json << "],";
+
+        json << "\"totalMembers\":" << members.size()
+             << ",\"totalRosterPlayers\":" << allRosterPersonIds.size()
+             << "}";
 
         return Response(HttpStatus::OK, createJsonResponse(true, "Group members loaded", json.str()));
 
@@ -391,6 +531,138 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
         std::cerr << "❌ GroupMe members error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJsonResponse(false, std::string("Failed to load members: ") + e.what()));
+    }
+}
+
+// ============================================================================
+// Handler: Link a GroupMe user to an existing person
+// POST /api/groupme/link  body: {"externalUserId":"123", "personId":456, "nickname":"...", "imageUrl":"..."}
+// ============================================================================
+Response GroupMeController::handleLinkMember(const Request& request) {
+    try {
+        std::string body = request.getBody();
+
+        // Simple JSON parsing for the fields we need
+        auto extractJsonString = [&](const std::string& key) -> std::string {
+            std::string search = "\"" + key + "\":\"";
+            size_t pos = body.find(search);
+            if (pos == std::string::npos) return "";
+            pos += search.size();
+            size_t end = body.find("\"", pos);
+            if (end == std::string::npos) return "";
+            return body.substr(pos, end - pos);
+        };
+
+        auto extractJsonInt = [&](const std::string& key) -> std::string {
+            std::string search = "\"" + key + "\":";
+            size_t pos = body.find(search);
+            if (pos == std::string::npos) return "";
+            pos += search.size();
+            // Skip whitespace
+            while (pos < body.size() && (body[pos] == ' ' || body[pos] == '\t')) pos++;
+            size_t end = pos;
+            while (end < body.size() && (body[end] >= '0' && body[end] <= '9')) end++;
+            return body.substr(pos, end - pos);
+        };
+
+        std::string externalUserId = extractJsonString("externalUserId");
+        std::string personIdStr = extractJsonInt("personId");
+        std::string nickname = extractJsonString("nickname");
+        std::string imageUrl = extractJsonString("imageUrl");
+
+        if (externalUserId.empty() || personIdStr.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJsonResponse(false, "externalUserId and personId required"));
+        }
+
+        // Check if link already exists
+        pqxx::result existing = db_->query(
+            "SELECT id FROM external_identities "
+            "WHERE provider_id = 1 AND external_user_id = $1",
+            {externalUserId}
+        );
+
+        if (!existing.empty()) {
+            // Update existing link
+            db_->query(
+                "UPDATE external_identities SET "
+                "  person_id = $1::int, "
+                "  external_display_name = $2, "
+                "  external_avatar_url = $3, "
+                "  last_synced_at = NOW() "
+                "WHERE provider_id = 1 AND external_user_id = $4",
+                {personIdStr, nickname, imageUrl, externalUserId}
+            );
+        } else {
+            // Insert new link
+            db_->query(
+                "INSERT INTO external_identities "
+                "(person_id, provider_id, external_user_id, external_username, external_display_name, external_avatar_url, last_synced_at) "
+                "VALUES ($1::int, 1, $2, $3, $4, $5, NOW())",
+                {personIdStr, externalUserId, nickname, nickname, imageUrl}
+            );
+        }
+
+        // Also update person_id on any existing chat_event_rsvps for this external user
+        db_->query(
+            "UPDATE chat_event_rsvps SET person_id = $1::int "
+            "WHERE external_user_id = $2 AND person_id IS NULL",
+            {personIdStr, externalUserId}
+        );
+
+        std::cout << "🔗 Linked GroupMe user " << externalUserId << " → person " << personIdStr << std::endl;
+
+        return Response(HttpStatus::OK,
+            createJsonResponse(true, "Member linked successfully"));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Link error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, std::string("Failed to link: ") + e.what()));
+    }
+}
+
+// ============================================================================
+// Handler: Unlink a GroupMe user from a person
+// DELETE /api/groupme/link  body: {"externalUserId":"123"}
+// ============================================================================
+Response GroupMeController::handleUnlinkMember(const Request& request) {
+    try {
+        std::string body = request.getBody();
+
+        // Parse externalUserId
+        std::string search = "\"externalUserId\":\"";
+        size_t pos = body.find(search);
+        if (pos == std::string::npos) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJsonResponse(false, "externalUserId required"));
+        }
+        pos += search.size();
+        size_t end = body.find("\"", pos);
+        std::string externalUserId = body.substr(pos, end - pos);
+
+        // Remove the link
+        db_->query(
+            "DELETE FROM external_identities WHERE provider_id = 1 AND external_user_id = $1",
+            {externalUserId}
+        );
+
+        // Clear person_id from RSVPs
+        db_->query(
+            "UPDATE chat_event_rsvps SET person_id = NULL "
+            "WHERE external_user_id = $1",
+            {externalUserId}
+        );
+
+        std::cout << "🔓 Unlinked GroupMe user " << externalUserId << std::endl;
+
+        return Response(HttpStatus::OK,
+            createJsonResponse(true, "Member unlinked successfully"));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Unlink error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, std::string("Failed to unlink: ") + e.what()));
     }
 }
 
