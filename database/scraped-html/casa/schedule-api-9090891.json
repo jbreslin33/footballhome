@@ -3418,91 +3418,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fd1943b4736",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ef68b710813568204",
-          "seed_id": "3256303",
-          "primary_color": "0A19F5",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b76604f68b713e325680f5",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b76604f68b713e325680f5",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b76604e5b758dde970bd5d",
-          "seed_id": "3270811",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -3567,91 +3563,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2f1c1bd03f8949729f",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2f1c1bd03f8949729f",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee37a6a837e253be9",
-          "seed_id": "3256301",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Flatley FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee37a6a837e253be9",
+          "primary_color": "",
+          "seed_id": "3256301",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9b9-cb46-acca-46945ae83505/large_square_Flatley_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fe5b758de1670bc0d",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758de1670bc0c",
-          "seed_id": "3256302",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -3716,12 +3708,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -3761,12 +3749,12 @@
           "division_name": "Liga 1",
           "name": "Somerville United FC II",
           "division_id": "6827a0c22cbf1300019c8b51",
-          "secondary_color": null,
+          "secondary_color": "",
           "team_id": "69a9b20071843e26c6b9ae19",
-          "primary_color": null,
+          "primary_color": "",
           "seed_id": "3717571",
           "logos": {
-            "large_square": null
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
           }
         },
         "system": "TeamService",
@@ -3867,91 +3855,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fc3563b496b",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758e9cd70b922",
-          "seed_id": "3256304",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fe5b758de1670bc0d",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758de1670bc0c",
-          "seed_id": "3256302",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -4016,91 +4000,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fd1943b4736",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ef68b710813568204",
-          "seed_id": "3256303",
-          "primary_color": "0A19F5",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "69a9b201f42011c91984cee3",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "69a9b201f42011c91984cee3",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "69a9b20071843e26c6b9ae19",
-          "seed_id": "3717571",
-          "primary_color": null,
-          "secondary_color": null,
+          "division_name": "Liga 1",
           "name": "Somerville United FC II",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "69a9b20071843e26c6b9ae19",
+          "primary_color": "",
+          "seed_id": "3717571",
           "logos": {
-            "large_square": null
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "69a9b201f42011c91984cee3",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -4165,12 +4145,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -4316,91 +4292,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fc3563b496b",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758e9cd70b922",
-          "seed_id": "3256304",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b76604f68b713e325680f5",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b76604f68b713e325680f5",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b76604e5b758dde970bd5d",
-          "seed_id": "3270811",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -4465,12 +4437,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -4616,91 +4584,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fd1943b4736",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
-        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
-        "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
-          "outside_team": false,
-          "team_id": "68b1fb2ef68b710813568204",
-          "seed_id": "3256303",
-          "primary_color": "0A19F5",
-          "secondary_color": "",
-          "name": "Gambeta FC",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
-          }
-        },
-        "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
-      },
-      {
-        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "seed_id": "3256305",
-          "primary_color": "yellow",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -4765,91 +4729,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fc3563b496b",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758e9cd70b922",
-          "seed_id": "3256304",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "69a9b201f42011c91984cee3",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "69a9b201f42011c91984cee3",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "69a9b20071843e26c6b9ae19",
-          "seed_id": "3717571",
-          "primary_color": null,
-          "secondary_color": null,
+          "division_name": "Liga 1",
           "name": "Somerville United FC II",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "69a9b20071843e26c6b9ae19",
+          "primary_color": "",
+          "seed_id": "3717571",
           "logos": {
-            "large_square": null
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "69a9b201f42011c91984cee3",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -4914,12 +4874,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -5065,12 +5021,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -5218,91 +5170,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fe5b758de1670bc0d",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758de1670bc0c",
-          "seed_id": "3256302",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "69a9b201f42011c91984cee3",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "69a9b201f42011c91984cee3",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "69a9b20071843e26c6b9ae19",
-          "seed_id": "3717571",
-          "primary_color": null,
-          "secondary_color": null,
+          "division_name": "Liga 1",
           "name": "Somerville United FC II",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "69a9b20071843e26c6b9ae19",
+          "primary_color": "",
+          "seed_id": "3717571",
           "logos": {
-            "large_square": null
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "69a9b201f42011c91984cee3",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -5367,91 +5315,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2f1c1bd03f8949729f",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2f1c1bd03f8949729f",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee37a6a837e253be9",
-          "seed_id": "3256301",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Flatley FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee37a6a837e253be9",
+          "primary_color": "",
+          "seed_id": "3256301",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9b9-cb46-acca-46945ae83505/large_square_Flatley_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f1c1bd03f8949729f",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9b9-cb46-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fc3563b496b",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758e9cd70b922",
-          "seed_id": "3256304",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -5516,91 +5460,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fc3563b496b",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758e9cd70b922",
-          "seed_id": "3256304",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2f92f9ec2570c17ff9",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "seed_id": "3256305",
-          "primary_color": "yellow",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -5665,91 +5605,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b76604f68b713e325680f5",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b76604f68b713e325680f5",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b76604e5b758dde970bd5d",
-          "seed_id": "3270811",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "69a9b201f42011c91984cee3",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "69a9b201f42011c91984cee3",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "69a9b20071843e26c6b9ae19",
-          "seed_id": "3717571",
-          "primary_color": null,
-          "secondary_color": null,
+          "division_name": "Liga 1",
           "name": "Somerville United FC II",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "69a9b20071843e26c6b9ae19",
+          "primary_color": "",
+          "seed_id": "3717571",
           "logos": {
-            "large_square": null
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "69a9b201f42011c91984cee3",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -5814,12 +5750,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -5965,91 +5897,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fc3563b496b",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758e9cd70b922",
-          "seed_id": "3256304",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fd1943b4736",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ef68b710813568204",
-          "seed_id": "3256303",
-          "primary_color": "0A19F5",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -6114,91 +6042,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2f92f9ec2570c17ff9",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "seed_id": "3256305",
-          "primary_color": "yellow",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fe5b758de1670bc0d",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758de1670bc0c",
-          "seed_id": "3256302",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -6263,12 +6187,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -6414,91 +6334,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fc3563b496b",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fc3563b496b",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758e9cd70b922",
-          "seed_id": "3256304",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Strictly Nos Fc",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758e9cd70b922",
+          "primary_color": "",
+          "seed_id": "3256304",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9ce-904e-8d29-7e9687db76bf/large_square_Strictly_NOS.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fc3563b496b",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9ce-904e-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b76604f68b713e325680f5",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b76604f68b713e325680f5",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b76604e5b758dde970bd5d",
-          "seed_id": "3270811",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -6563,91 +6479,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fd1943b4736",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ef68b710813568204",
-          "seed_id": "3256303",
-          "primary_color": "0A19F5",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fe5b758de1670bc0d",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758de1670bc0c",
-          "seed_id": "3256302",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -6712,12 +6624,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -6757,12 +6665,12 @@
           "division_name": "Liga 1",
           "name": "Somerville United FC II",
           "division_id": "6827a0c22cbf1300019c8b51",
-          "secondary_color": null,
+          "secondary_color": "",
           "team_id": "69a9b20071843e26c6b9ae19",
-          "primary_color": null,
+          "primary_color": "",
           "seed_id": "3717571",
           "logos": {
-            "large_square": null
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
           }
         },
         "system": "TeamService",
@@ -6863,12 +6771,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
@@ -7014,91 +6918,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2f92f9ec2570c17ff9",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "seed_id": "3256305",
-          "primary_color": "yellow",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fa99c9fd1943b4736",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fa99c9fd1943b4736",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ef68b710813568204",
-          "seed_id": "3256303",
-          "primary_color": "0A19F5",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Gambeta FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ef68b710813568204",
+          "primary_color": "0A19F5",
+          "seed_id": "3256303",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cf-485e-b396-f279949b2dbd/large_square_Gambeta_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fa99c9fd1943b4736",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cf-485e-b396-f279949b2dbd",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -7163,91 +7063,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b76604f68b713e325680f5",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b76604f68b713e325680f5",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b76604e5b758dde970bd5d",
-          "seed_id": "3270811",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "69a9b201f42011c91984cee3",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "69a9b201f42011c91984cee3",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "69a9b20071843e26c6b9ae19",
-          "seed_id": "3717571",
-          "primary_color": null,
-          "secondary_color": null,
+          "division_name": "Liga 1",
           "name": "Somerville United FC II",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "69a9b20071843e26c6b9ae19",
+          "primary_color": "",
+          "seed_id": "3717571",
           "logos": {
-            "large_square": null
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "69a9b201f42011c91984cee3",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -7312,91 +7208,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2f92f9ec2570c17ff9",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2f92f9ec2570c17ff9",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2e1c1bd04fe6496e61",
-          "seed_id": "3256305",
-          "primary_color": "yellow",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "Jaguars United FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2e1c1bd04fe6496e61",
+          "primary_color": "yellow",
+          "seed_id": "3256305",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9cd-24f2-8d29-7e9687db76bf/large_square_Jaguars_United.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2f92f9ec2570c17ff9",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9cd-24f2-8d29-7e9687db76bf",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "69a9b201f42011c91984cee3",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "69a9b201f42011c91984cee3",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "69a9b20071843e26c6b9ae19",
-          "seed_id": "3717571",
-          "primary_color": null,
-          "secondary_color": null,
+          "division_name": "Liga 1",
           "name": "Somerville United FC II",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "69a9b20071843e26c6b9ae19",
+          "primary_color": "",
+          "seed_id": "3717571",
           "logos": {
-            "large_square": null
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f118b2-0771-31ca-a818-e621b21d259e/large_square_Somerville_United.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "69a9b201f42011c91984cee3",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f118b2-0771-31ca-a818-e621b21d259e",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -7461,91 +7353,87 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
       {
-        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b1fb2fe5b758de1670bc0d",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b1fb2fe5b758de1670bc0d",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b1fb2ee5b758de1670bc0c",
-          "seed_id": "3256302",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "BCFC All Stars",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b1fb2ee5b758de1670bc0c",
+          "primary_color": "",
+          "seed_id": "3256302",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0850b-d9c0-504c-acca-46945ae83505/large_square_BCFC_All-Stars.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b1fb2fe5b758de1670bc0d",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f0850b-d9c0-504c-acca-46945ae83505",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
-        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
-        "type": "team",
-        "system": "TeamService",
-        "originator_id": "68b76604f68b713e325680f5",
         "originator_type": "season_team",
-        "originator_system": "StatNgin",
         "principal_originator_id": "68b76604f68b713e325680f5",
-        "principal_originator_type": "season_team",
-        "principal_originator_system": "StatNgin",
         "extended_attributes": {
-          "division_name": "Liga 1",
-          "division_id": "6827a0c22cbf1300019c8b51",
           "outside_team": false,
-          "team_id": "68b76604e5b758dde970bd5d",
-          "seed_id": "3270811",
-          "primary_color": "",
-          "secondary_color": "",
+          "division_name": "Liga 1",
           "name": "South Shore FC",
+          "division_id": "6827a0c22cbf1300019c8b51",
+          "secondary_color": "",
+          "team_id": "68b76604e5b758dde970bd5d",
+          "primary_color": "",
+          "seed_id": "3270811",
           "logos": {
             "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f08846-782d-0ce2-b106-3a111d6482a9/large_square_South_Shore_FC.png"
           }
         },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b76604f68b713e325680f5",
+        "principal_originator_system": "StatNgin",
         "division_name": "Liga 1",
-        "division_id": "6827a0c22cbf1300019c8b51"
+        "division_id": "6827a0c22cbf1300019c8b51",
+        "id": "11f08846-782d-0ce2-b106-3a111d6482a9",
+        "type": "team",
+        "principal_originator_type": "season_team"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "8058",
-        "type": "organization",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "organization"
       },
       {
+        "extended_attributes": {},
+        "system": "StatNgin",
         "id": "6827a0c1d3cc737f4c6770b9",
-        "type": "program",
-        "system": "StatNgin",
-        "extended_attributes": {}
+        "type": "program"
       },
       {
-        "id": "6827a0c22cbf1300019c8b51",
         "originator_type": "division",
         "extended_attributes": {
-          "flight_stage_name": "Game Play",
           "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
           "flight_stage_id": "6827a0c22cbf1300019c8b52"
         },
-        "type": "division",
-        "system": "StatNgin"
+        "system": "StatNgin",
+        "id": "6827a0c22cbf1300019c8b51",
+        "type": "division"
       }
     ],
     "game_details": {
@@ -7610,12 +7498,8 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": {
-          "is_shared_event": false,
-          "management_org_name": null,
-          "read_only": false
-        },
-        "read_only": false,
+        "shared_event": null,
+        "read_only": null,
         "sport_key": "",
         "state": []
       }

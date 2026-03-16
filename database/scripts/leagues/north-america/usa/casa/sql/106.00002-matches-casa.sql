@@ -4215,10 +4215,10 @@ SELECT
   1, '2026-03-29', NULL, 1,
   ht.id, at.id, NULL,
   NULL, NULL,
-  2, 'bc0b95d4-daa8-4790-a1bd-a8a7cfb7607d'
+  2, '0330a870-cf4b-4129-b2ea-3273ca18dfb0'
 FROM teams ht
-JOIN teams at ON at.external_id = '9270318-millersville-men''s-club-soccer' AND at.source_system_id = 2
-WHERE ht.external_id = '9270318-yorkpa-fc' AND ht.source_system_id = 2
+JOIN teams at ON at.external_id = '9270318-west-chester-university-club' AND at.source_system_id = 2
+WHERE ht.external_id = '9270318-lancaster-bible-college' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -4235,10 +4235,10 @@ SELECT
   1, '2026-03-29', NULL, 1,
   ht.id, at.id, NULL,
   NULL, NULL,
-  2, '0330a870-cf4b-4129-b2ea-3273ca18dfb0'
+  2, 'bc0b95d4-daa8-4790-a1bd-a8a7cfb7607d'
 FROM teams ht
-JOIN teams at ON at.external_id = '9270318-west-chester-university-club' AND at.source_system_id = 2
-WHERE ht.external_id = '9270318-lancaster-bible-college' AND ht.source_system_id = 2
+JOIN teams at ON at.external_id = '9270318-millersville-men''s-club-soccer' AND at.source_system_id = 2
+WHERE ht.external_id = '9270318-yorkpa-fc' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -4295,10 +4295,10 @@ SELECT
   1, '2026-04-12', NULL, 1,
   ht.id, at.id, NULL,
   NULL, NULL,
-  2, 'ad697c65-8457-4487-9c67-2a0287c06ed8'
+  2, 'db180893-fbd0-4e68-a79f-2e4ded2d3f8d'
 FROM teams ht
-JOIN teams at ON at.external_id = '9270318-lancaster-bible-college' AND at.source_system_id = 2
-WHERE ht.external_id = '9270318-yorkpa-fc' AND ht.source_system_id = 2
+JOIN teams at ON at.external_id = '9270318-millersville-men''s-club-soccer' AND at.source_system_id = 2
+WHERE ht.external_id = '9270318-west-chester-university-club' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -4315,10 +4315,10 @@ SELECT
   1, '2026-04-12', NULL, 1,
   ht.id, at.id, NULL,
   NULL, NULL,
-  2, 'db180893-fbd0-4e68-a79f-2e4ded2d3f8d'
+  2, 'ad697c65-8457-4487-9c67-2a0287c06ed8'
 FROM teams ht
-JOIN teams at ON at.external_id = '9270318-millersville-men''s-club-soccer' AND at.source_system_id = 2
-WHERE ht.external_id = '9270318-west-chester-university-club' AND ht.source_system_id = 2
+JOIN teams at ON at.external_id = '9270318-lancaster-bible-college' AND at.source_system_id = 2
+WHERE ht.external_id = '9270318-yorkpa-fc' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,

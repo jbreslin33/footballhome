@@ -4575,7 +4575,7 @@
     "title": "West Chester University Club at Kutztown Men's Soccer\t",
     "event_type": "game",
     "description": "",
-    "location_name": "855 S New St",
+    "location_name": "West Chester University",
     "location_address": "855 South New Street, West Chester, PA 19383",
     "location_description": "Turf",
     "location_place_id": "",
@@ -4608,8 +4608,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -6043,7 +6047,7 @@
     "title": "West Chester University Club at F&M FC\t",
     "event_type": "game",
     "description": "",
-    "location_name": "855 S New St",
+    "location_name": "West Chester University",
     "location_address": "855 South New Street, West Chester, PA 19383",
     "location_description": "Turf",
     "location_place_id": "",
@@ -6076,8 +6080,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }

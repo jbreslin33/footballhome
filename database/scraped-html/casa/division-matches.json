@@ -1,5 +1,5 @@
 {
-  "generated": "2026-03-10T18:08:28.682Z",
+  "generated": "2026-03-12T15:31:18.738Z",
   "total_matches": 256,
   "divisions": [
     {
@@ -926,15 +926,6 @@
           "externalId": "03728c1d-369d-4ed4-af53-f54f0993d190"
         },
         {
-          "home": "Philadelphia SC Select",
-          "away": "Philly Black Stars",
-          "time": "2:45 PM - 4:30 PM",
-          "date": "2025-10-12T18:45:00.000Z",
-          "status": "Final",
-          "score": "2 - 2",
-          "externalId": "50c7a4a7-b9dd-45fa-8573-c5b746b466ed"
-        },
-        {
           "home": "Persepolis FC II",
           "away": "Lighthouse Boys Club U23",
           "time": "2:45 PM - 4:30 PM",
@@ -942,6 +933,15 @@
           "status": "Final",
           "score": "8 - 0",
           "externalId": "d4060108-b706-4f5f-a165-8a93b1d36f75"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Philly Black Stars",
+          "time": "2:45 PM - 4:30 PM",
+          "date": "2025-10-12T18:45:00.000Z",
+          "status": "Final",
+          "score": "2 - 2",
+          "externalId": "50c7a4a7-b9dd-45fa-8573-c5b746b466ed"
         },
         {
           "home": "Illyrians",
@@ -2237,15 +2237,6 @@
           "externalId": "55a3f991-6963-4aab-817f-d8a58a221d8e"
         },
         {
-          "home": "YorkPA FC",
-          "away": "Millersville Men's Club Soccer",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-03-29T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "bc0b95d4-daa8-4790-a1bd-a8a7cfb7607d"
-        },
-        {
           "home": "Lancaster Bible College",
           "away": "West Chester University Club",
           "time": "7:00 PM - 8:30 PM",
@@ -2253,6 +2244,15 @@
           "status": "scheduled",
           "score": null,
           "externalId": "0330a870-cf4b-4129-b2ea-3273ca18dfb0"
+        },
+        {
+          "home": "YorkPA FC",
+          "away": "Millersville Men's Club Soccer",
+          "time": "7:30 PM - 9:00 PM",
+          "date": "2026-03-29T23:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "bc0b95d4-daa8-4790-a1bd-a8a7cfb7607d"
         },
         {
           "home": "West Chester University Club",
@@ -2273,15 +2273,6 @@
           "externalId": "936ce5ab-abbb-4fbf-b268-0ef05fd0cc69"
         },
         {
-          "home": "YorkPA FC",
-          "away": "Lancaster Bible College",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-12T04:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "ad697c65-8457-4487-9c67-2a0287c06ed8"
-        },
-        {
           "home": "West Chester University Club",
           "away": "Millersville Men's Club Soccer",
           "time": "10:30 AM - 12:00 PM",
@@ -2289,6 +2280,15 @@
           "status": "scheduled",
           "score": null,
           "externalId": "db180893-fbd0-4e68-a79f-2e4ded2d3f8d"
+        },
+        {
+          "home": "YorkPA FC",
+          "away": "Lancaster Bible College",
+          "time": "7:30 PM - 9:00 PM",
+          "date": "2026-04-12T23:30:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "ad697c65-8457-4487-9c67-2a0287c06ed8"
         },
         {
           "home": "Millersville Men's Club Soccer",
@@ -2302,8 +2302,8 @@
         {
           "home": "YorkPA FC",
           "away": "West Chester University Club",
-          "time": "12:00 AM - 1:30 AM",
-          "date": "2026-04-19T04:00:00.000Z",
+          "time": "7:30 PM - 9:00 PM",
+          "date": "2026-04-19T23:30:00.000Z",
           "status": "scheduled",
           "score": null,
           "externalId": "b67dd2d0-4bc2-4ba7-aa08-e0b2501af2ec"
