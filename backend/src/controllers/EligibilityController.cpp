@@ -67,6 +67,16 @@ void EligibilityController::registerRoutes(Router& router, const std::string& pr
         return this->handleSaveMatchLineup(request);
     });
     
+    // GET /api/eligibility/lineup-meta/:matchId - Get lineup metadata (formation, roster size)
+    router.get(prefix + "/lineup-meta/:matchId", [this](const Request& request) {
+        return this->handleGetLineupMetadata(request);
+    });
+    
+    // PUT /api/eligibility/lineup-meta/:matchId - Save lineup metadata
+    router.put(prefix + "/lineup-meta/:matchId", [this](const Request& request) {
+        return this->handleSaveLineupMetadata(request);
+    });
+    
     // GET /api/eligibility/player/:playerId/attendance - Get player attendance for sessions
     router.get(prefix + "/player/:playerId/attendance", [this](const Request& request) {
         return this->handleGetPlayerAttendance(request);
@@ -632,7 +642,7 @@ Response EligibilityController::handleUpdateTeamPolicy(const Request& request) {
 
 // ============================================================================
 // GET /api/eligibility/lineup/:matchId
-// Get saved lineup for a match
+// Get saved lineup for a match (with slot numbers and zones)
 // ============================================================================
 Response EligibilityController::handleGetMatchLineup(const Request& request) {
     std::string matchId = extractIdFromPath(request.getPath(), "/api/eligibility/lineup/(\\d+)");
@@ -643,6 +653,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
     try {
         std::string query = R"(
             SELECT ml.player_id, ml.is_starter, ml.position_id,
+                   ml.slot_number, ml.zone,
                    pe.first_name, pe.last_name,
                    pos.abbreviation as position
             FROM match_lineups ml
@@ -650,13 +661,30 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
             JOIN persons pe ON pe.id = pl.person_id
             LEFT JOIN positions pos ON pos.id = ml.position_id
             WHERE ml.match_id = $1
-            ORDER BY ml.is_starter DESC, pe.last_name, pe.first_name
+            ORDER BY ml.is_starter DESC, ml.slot_number NULLS LAST, pe.last_name, pe.first_name
         )";
         
         pqxx::result result = db_->query(query, {matchId});
         
+        // Also get metadata
+        pqxx::result metaResult = db_->query(
+            "SELECT formation_id, roster_size, notes FROM match_lineup_metadata WHERE match_id = $1",
+            {matchId}
+        );
+        
         std::ostringstream json;
-        json << "{\"success\":true,\"data\":{\"matchId\":" << matchId << ",\"lineup\":[";
+        json << "{\"success\":true,\"data\":{\"matchId\":" << matchId << ",";
+        
+        // Metadata
+        if (!metaResult.empty()) {
+            json << "\"formationId\":" << (metaResult[0]["formation_id"].is_null() ? "null" : metaResult[0]["formation_id"].c_str()) << ",";
+            json << "\"rosterSize\":" << metaResult[0]["roster_size"].c_str() << ",";
+            json << "\"notes\":" << (metaResult[0]["notes"].is_null() ? "null" : "\"" + escapeJson(metaResult[0]["notes"].c_str()) + "\"") << ",";
+        } else {
+            json << "\"formationId\":null,\"rosterSize\":20,\"notes\":null,";
+        }
+        
+        json << "\"lineup\":[";
         
         bool first = true;
         for (const auto& row : result) {
@@ -667,6 +695,8 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
             json << "\"playerId\":" << row["player_id"].c_str() << ",";
             json << "\"isStarter\":" << (row["is_starter"].as<bool>() ? "true" : "false") << ",";
             json << "\"positionId\":" << (row["position_id"].is_null() ? "null" : row["position_id"].c_str()) << ",";
+            json << "\"slotNumber\":" << (row["slot_number"].is_null() ? "null" : row["slot_number"].c_str()) << ",";
+            json << "\"zone\":\"" << (row["zone"].is_null() ? "not_selected" : row["zone"].c_str()) << "\",";
             json << "\"position\":" << (row["position"].is_null() ? "null" : "\"" + std::string(row["position"].c_str()) + "\"") << ",";
             json << "\"firstName\":\"" << escapeJson(row["first_name"].c_str()) << "\",";
             json << "\"lastName\":\"" << escapeJson(row["last_name"].c_str()) << "\"";
@@ -686,8 +716,10 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
 
 // ============================================================================
 // PUT /api/eligibility/lineup/:matchId
-// Save match lineup (starting XI + bench)
-// Body: { "starters": [{"playerId": 1, "positionId": 3}, ...], "bench": [{"playerId": 5}, ...] }
+// Save match lineup with zones (starters with slot numbers, bench, not_selected)
+// Body: { "starters": [{"playerId": 1, "slotNumber": 0}, ...], 
+//         "bench": [{"playerId": 5}, ...],
+//         "formationId": 1, "rosterSize": 20 }
 // ============================================================================
 Response EligibilityController::handleSaveMatchLineup(const Request& request) {
     std::string matchId = extractIdFromPath(request.getPath(), "/api/eligibility/lineup/(\\d+)");
@@ -712,52 +744,87 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
         }
         std::string teamId = matchResult[0]["home_team_id"].c_str();
         
+        // Parse formation and roster size
+        int formationId = parseJsonInt(body, "formationId", 0);
+        int rosterSize = parseJsonInt(body, "rosterSize", 20);
+        
+        // Save metadata
+        if (formationId > 0 || rosterSize > 0) {
+            if (formationId > 0) {
+                db_->query(R"(
+                    INSERT INTO match_lineup_metadata (match_id, team_id, formation_id, roster_size, created_by_user_id, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+                    ON CONFLICT (match_id, team_id) DO UPDATE SET
+                        formation_id = EXCLUDED.formation_id,
+                        roster_size = EXCLUDED.roster_size,
+                        updated_at = CURRENT_TIMESTAMP
+                )", {matchId, teamId, std::to_string(formationId), std::to_string(rosterSize), userId});
+            } else {
+                db_->query(R"(
+                    INSERT INTO match_lineup_metadata (match_id, team_id, formation_id, roster_size, created_by_user_id, updated_at)
+                    VALUES ($1, $2, NULL, $3, $4, CURRENT_TIMESTAMP)
+                    ON CONFLICT (match_id, team_id) DO UPDATE SET
+                        formation_id = NULL,
+                        roster_size = EXCLUDED.roster_size,
+                        updated_at = CURRENT_TIMESTAMP
+                )", {matchId, teamId, std::to_string(rosterSize), userId});
+            }
+        }
+        
         // Delete existing lineup for this match
         db_->query("DELETE FROM match_lineups WHERE match_id = $1", {matchId});
         
-        // Parse starters array from JSON body
-        // Format: {"starters":[{"playerId":1,"positionId":3},...], "bench":[{"playerId":5},...]}
-        // We do a simple regex-based extraction
         int insertedCount = 0;
         
-        // Extract starters section
-        std::regex starterPattern(R"("playerId"\s*:\s*(\d+)(?:.*?"positionId"\s*:\s*(\d+))?)");
+        // Parse starters: extract playerId and slotNumber from each object
+        std::regex starterObjPattern(R"(\{[^}]*"playerId"\s*:\s*(\d+)[^}]*\})");
+        std::regex slotPattern(R"("slotNumber"\s*:\s*(\d+))");
         
-        // Find the starters array
         size_t startersStart = body.find("\"starters\"");
-        size_t startersArrayStart = body.find("[", startersStart);
-        size_t startersArrayEnd = body.find("]", startersArrayStart);
+        size_t startersArrayStart = (startersStart != std::string::npos) ? body.find("[", startersStart) : std::string::npos;
+        size_t startersArrayEnd = (startersArrayStart != std::string::npos) ? body.find("]", startersArrayStart) : std::string::npos;
         
         if (startersStart != std::string::npos && startersArrayStart != std::string::npos) {
             std::string startersSection = body.substr(startersArrayStart, startersArrayEnd - startersArrayStart + 1);
             
-            auto begin = std::sregex_iterator(startersSection.begin(), startersSection.end(), starterPattern);
+            auto begin = std::sregex_iterator(startersSection.begin(), startersSection.end(), starterObjPattern);
             auto end = std::sregex_iterator();
             
             for (auto it = begin; it != end; ++it) {
+                std::string objStr = (*it)[0].str();
                 std::string playerId = (*it)[1].str();
-                std::string positionId = (*it)[2].matched ? (*it)[2].str() : "";
                 
-                std::string insertQuery = R"(
-                    INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, position_id)
-                    VALUES ($1, $2, $3, true, )";
-                insertQuery += positionId.empty() ? "NULL" : ("$4");
-                insertQuery += ") ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = true, position_id = ";
-                insertQuery += positionId.empty() ? "NULL" : "EXCLUDED.position_id";
+                // Extract slot number from the object
+                std::smatch slotMatch;
+                std::string slotStr = "NULL";
+                if (std::regex_search(objStr, slotMatch, slotPattern)) {
+                    slotStr = slotMatch[1].str();
+                }
                 
-                if (positionId.empty()) {
-                    db_->query(insertQuery, {matchId, playerId, teamId});
+                std::string insertQuery;
+                if (slotStr != "NULL") {
+                    insertQuery = 
+                        "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, slot_number, zone) "
+                        "VALUES ($1, $2, $3, true, $4, 'starter') "
+                        "ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = true, "
+                        "slot_number = EXCLUDED.slot_number, zone = 'starter'";
+                    db_->query(insertQuery, {matchId, playerId, teamId, slotStr});
                 } else {
-                    db_->query(insertQuery, {matchId, playerId, teamId, positionId});
+                    insertQuery = 
+                        "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, slot_number, zone) "
+                        "VALUES ($1, $2, $3, true, NULL, 'starter') "
+                        "ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = true, "
+                        "slot_number = NULL, zone = 'starter'";
+                    db_->query(insertQuery, {matchId, playerId, teamId});
                 }
                 insertedCount++;
             }
         }
         
-        // Find the bench array
+        // Parse bench array
         size_t benchStart = body.find("\"bench\"");
-        size_t benchArrayStart = body.find("[", benchStart);
-        size_t benchArrayEnd = body.find("]", benchArrayStart);
+        size_t benchArrayStart = (benchStart != std::string::npos) ? body.find("[", benchStart) : std::string::npos;
+        size_t benchArrayEnd = (benchArrayStart != std::string::npos) ? body.find("]", benchArrayStart) : std::string::npos;
         
         if (benchStart != std::string::npos && benchArrayStart != std::string::npos) {
             std::string benchSection = body.substr(benchArrayStart, benchArrayEnd - benchArrayStart + 1);
@@ -770,9 +837,9 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
                 std::string playerId = (*it)[1].str();
                 
                 db_->query(
-                    "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter) "
-                    "VALUES ($1, $2, $3, false) "
-                    "ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = false",
+                    "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, zone) "
+                    "VALUES ($1, $2, $3, false, 'bench') "
+                    "ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = false, zone = 'bench'",
                     {matchId, playerId, teamId}
                 );
                 insertedCount++;
@@ -786,6 +853,117 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
         std::cerr << "❌ Error saving lineup: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJsonResponse(false, std::string("Failed to save lineup: ") + e.what()));
+    }
+}
+
+// ============================================================================
+// GET /api/eligibility/lineup-meta/:matchId
+// Get lineup metadata (formation, roster size) for a match
+// ============================================================================
+Response EligibilityController::handleGetLineupMetadata(const Request& request) {
+    std::string matchId = extractIdFromPath(request.getPath(), "/api/eligibility/lineup-meta/(\\d+)");
+    if (matchId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Match ID is required"));
+    }
+    
+    try {
+        pqxx::result result = db_->query(R"(
+            SELECT mlm.formation_id, mlm.roster_size, mlm.notes,
+                   f.code as formation_code, f.name as formation_name,
+                   f.positions_json as formation_positions
+            FROM match_lineup_metadata mlm
+            LEFT JOIN formations f ON f.id = mlm.formation_id
+            WHERE mlm.match_id = $1
+        )", {matchId});
+        
+        if (result.empty()) {
+            return Response(HttpStatus::OK, 
+                createJsonResponse(true, "No metadata", "{\"formationId\":null,\"rosterSize\":20,\"notes\":null}"));
+        }
+        
+        const auto& row = result[0];
+        std::ostringstream json;
+        json << "{\"success\":true,\"data\":{";
+        json << "\"formationId\":" << (row["formation_id"].is_null() ? "null" : row["formation_id"].c_str()) << ",";
+        json << "\"rosterSize\":" << row["roster_size"].c_str() << ",";
+        json << "\"notes\":" << (row["notes"].is_null() ? "null" : "\"" + escapeJson(row["notes"].c_str()) + "\"") << ",";
+        if (!row["formation_code"].is_null()) {
+            json << "\"formationCode\":\"" << escapeJson(row["formation_code"].c_str()) << "\",";
+            json << "\"formationName\":\"" << escapeJson(row["formation_name"].c_str()) << "\",";
+            json << "\"formationPositions\":" << row["formation_positions"].c_str();
+        } else {
+            json << "\"formationCode\":null,\"formationName\":null,\"formationPositions\":null";
+        }
+        json << "}}";
+        
+        return Response(HttpStatus::OK, json.str());
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error getting lineup metadata: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, std::string("Failed to get lineup metadata: ") + e.what()));
+    }
+}
+
+// ============================================================================
+// PUT /api/eligibility/lineup-meta/:matchId
+// Save lineup metadata
+// Body: { "formationId": 1, "rosterSize": 20, "notes": "..." }
+// ============================================================================
+Response EligibilityController::handleSaveLineupMetadata(const Request& request) {
+    std::string matchId = extractIdFromPath(request.getPath(), "/api/eligibility/lineup-meta/(\\d+)");
+    if (matchId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Match ID is required"));
+    }
+    
+    std::string userId = extractUserIdFromToken(request);
+    if (userId.empty()) {
+        return Response(HttpStatus::UNAUTHORIZED, createJsonResponse(false, "Authentication required"));
+    }
+    
+    try {
+        std::string body = request.getBody();
+        int formationId = parseJsonInt(body, "formationId", 0);
+        int rosterSize = parseJsonInt(body, "rosterSize", 20);
+        std::string notes = parseJsonString(body, "notes");
+        
+        // Get team_id from match
+        pqxx::result matchResult = db_->query(
+            "SELECT home_team_id FROM matches WHERE id = $1", {matchId}
+        );
+        if (matchResult.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJsonResponse(false, "Match not found"));
+        }
+        std::string teamId = matchResult[0]["home_team_id"].c_str();
+        
+        if (formationId > 0) {
+            db_->query(R"(
+                INSERT INTO match_lineup_metadata (match_id, team_id, formation_id, roster_size, notes, created_by_user_id, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+                ON CONFLICT (match_id, team_id) DO UPDATE SET
+                    formation_id = $3,
+                    roster_size = EXCLUDED.roster_size,
+                    notes = EXCLUDED.notes,
+                    updated_at = CURRENT_TIMESTAMP
+            )", {matchId, teamId, std::to_string(formationId), std::to_string(rosterSize), notes, userId});
+        } else {
+            db_->query(R"(
+                INSERT INTO match_lineup_metadata (match_id, team_id, formation_id, roster_size, notes, created_by_user_id, updated_at)
+                VALUES ($1, $2, NULL, $3, $4, $5, CURRENT_TIMESTAMP)
+                ON CONFLICT (match_id, team_id) DO UPDATE SET
+                    formation_id = NULL,
+                    roster_size = EXCLUDED.roster_size,
+                    notes = EXCLUDED.notes,
+                    updated_at = CURRENT_TIMESTAMP
+            )", {matchId, teamId, std::to_string(rosterSize), notes, userId});
+        }
+        
+        return Response(HttpStatus::OK, createJsonResponse(true, "Metadata saved"));
+        
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Error saving lineup metadata: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, std::string("Failed to save lineup metadata: ") + e.what()));
     }
 }
 

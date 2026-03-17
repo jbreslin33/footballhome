@@ -1324,9 +1324,11 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
             std::string id_column = role + "_id";
             
             std::string query = "SELECT r.event_id, r." + id_column + " as user_id, rs.name as status, r.notes, r.changed_at as response_date, "
-                               "u.first_name, u.last_name, COALESCE(u.preferred_name, '') as preferred_name, u.email, u.avatar_url "
+                               "p.first_name, p.last_name, COALESCE(p.first_name, '') as preferred_name, COALESCE(pe.email, '') as email, '' as avatar_url "
                                "FROM " + view_name + " r "
                                "JOIN users u ON r." + id_column + " = u.id "
+                               "JOIN persons p ON u.person_id = p.id "
+                               "LEFT JOIN person_emails pe ON pe.person_id = p.id AND pe.is_primary = true "
                                "JOIN rsvp_statuses rs ON r.rsvp_status_id = rs.id "
                                "WHERE r.event_id = $1 "
                                "ORDER BY r.changed_at DESC";

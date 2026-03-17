@@ -66,6 +66,8 @@ private:
     // Lineup management
     Response handleGetMatchLineup(const Request& request);
     Response handleSaveMatchLineup(const Request& request);
+    Response handleGetLineupMetadata(const Request& request);
+    Response handleSaveLineupMetadata(const Request& request);
     
     // Player attendance
     Response handleGetPlayerAttendance(const Request& request);

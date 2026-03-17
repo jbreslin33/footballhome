@@ -1,5 +1,5 @@
 // GameDayLineupScreen - Drag-and-drop lineup management with eligibility tracking
-// Zones: Starting XI (pitch), Roster list (single sortable list)
+// Zones: Starting XI (pitch), Game Day Bench, Not Selected (full roster)
 class GameDayLineupScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -9,9 +9,11 @@ class GameDayLineupScreen extends Screen {
     this.matchInfo = {};
     this.formations = [];
     this.selectedFormation = null;
+    this.rosterSize = 20;  // 18 or 20 man game day roster
     this.zones = {
       starting: [],    // Player IDs in starting XI (sparse array with nulls for empty slots)
-      roster: []       // All other player IDs in one list
+      bench: [],       // Player IDs on game day bench
+      roster: []       // Not selected (everyone else)
     };
     this.sortField = 'rsvp';  // Default sort
     this.sortAsc = true;
@@ -45,15 +47,25 @@ class GameDayLineupScreen extends Screen {
           <!-- GroupMe sync warning (hidden by default) -->
           <div id="groupme-warning" class="groupme-warning" style="display: none;"></div>
 
-          <!-- Policy summary bar -->
-          <div id="policy-bar" class="policy-bar"></div>
-
-          <!-- Formation selector -->
-          <div class="formation-selector">
-            <label>Formation:</label>
-            <select id="formation-select">
-              <option value="">Select formation...</option>
-            </select>
+          <!-- Controls row: Formation + Roster Size + Actions -->
+          <div class="lineup-controls-row">
+            <div class="formation-selector">
+              <label>Formation:</label>
+              <select id="formation-select">
+                <option value="">Select formation...</option>
+              </select>
+            </div>
+            <div class="roster-size-selector">
+              <label>Roster:</label>
+              <div class="roster-size-toggle">
+                <button id="roster-size-18" class="btn-roster-size" data-size="18">18</button>
+                <button id="roster-size-20" class="btn-roster-size active" data-size="20">20</button>
+              </div>
+            </div>
+            <div class="lineup-actions-inline">
+              <button id="auto-fill-btn" class="btn btn-secondary btn-sm">🤖 Auto-Fill</button>
+              <button id="save-lineup-btn" class="btn btn-primary btn-sm">💾 Save</button>
+            </div>
           </div>
 
           <!-- Selection mode banner (hidden by default) -->
@@ -62,51 +74,61 @@ class GameDayLineupScreen extends Screen {
             <button id="cancel-select-btn" class="btn btn-sm btn-secondary">Cancel</button>
           </div>
 
-          <!-- Pitch + Roster layout -->
-          <div class="lineup-layout">
-            
-            <!-- Starting XI - Pitch visualization -->
-            <div class="lineup-zone zone-starting" id="zone-starting">
-              <div class="zone-header">
-                <h3>⚽ Starting XI</h3>
-                <span id="starting-count" class="zone-count">0/11</span>
-              </div>
-              <div class="pitch" id="pitch-canvas">
-                <div class="pitch-markings">
-                  <div class="pitch-center-circle"></div>
-                  <div class="pitch-center-line"></div>
-                  <div class="pitch-box pitch-box-top"></div>
-                  <div class="pitch-box pitch-box-bottom"></div>
-                </div>
-                <div id="pitch-players" class="pitch-players"></div>
-              </div>
+          <!-- Compact Pitch -->
+          <div class="pitch-compact-wrapper lineup-zone zone-starting" id="zone-starting">
+            <div class="pitch-compact-header">
+              <span>⚽ Starting XI</span>
+              <span id="starting-count" class="zone-count">0/11</span>
             </div>
-
-            <!-- Single roster list -->
-            <div class="roster-panel lineup-zone" id="roster-panel">
-              <div class="roster-header">
-                <h3>📋 Roster</h3>
-                <span id="roster-count" class="zone-count">0</span>
+            <div class="pitch pitch-compact" id="pitch-canvas">
+              <div class="pitch-markings">
+                <div class="pitch-center-circle"></div>
+                <div class="pitch-center-line"></div>
+                <div class="pitch-box pitch-box-top"></div>
+                <div class="pitch-box pitch-box-bottom"></div>
               </div>
+              <div id="pitch-players" class="pitch-players"></div>
+            </div>
+          </div>
+
+          <!-- Policy summary bar (compact) -->
+          <div id="policy-bar" class="policy-bar"></div>
+
+          <!-- Full roster table — ALL players, grouped by zone -->
+          <div class="roster-table-wrapper">
+            <div class="roster-table-header">
+              <span class="rt-counts">
+                <span id="bench-count-display">Bench: 0/<span id="bench-max">9</span></span>
+                <span class="rt-sep">·</span>
+                <span id="roster-count-display">Not Selected: 0</span>
+                <span class="rt-sep">·</span>
+                <span id="total-count-display">Total: 0</span>
+              </span>
               <div class="roster-sort-controls">
                 <label>Sort:</label>
                 <select id="roster-sort">
-                  <option value="rsvp">RSVP Status</option>
-                  <option value="completeness">Completeness</option>
+                  <option value="rsvp">RSVP</option>
                   <option value="practices">Practices</option>
-                  <option value="lastName">Last Name</option>
+                  <option value="lastName">Name</option>
                   <option value="eligibility">Eligibility</option>
                 </select>
                 <button id="sort-direction-btn" class="btn-sort-dir" title="Toggle sort direction">↓</button>
               </div>
-              <div class="roster-players" id="roster-players"></div>
             </div>
-          </div>
-
-          <!-- Action buttons -->
-          <div class="lineup-actions">
-            <button id="auto-fill-btn" class="btn btn-secondary">🤖 Auto-Fill from Eligibility</button>
-            <button id="save-lineup-btn" class="btn btn-primary btn-lg">💾 Save Lineup</button>
+            <table class="roster-table" id="roster-table">
+              <thead>
+                <tr>
+                  <th class="rt-col-zone">Zone</th>
+                  <th class="rt-col-name">Player</th>
+                  <th class="rt-col-rsvp">RSVP</th>
+                  <th class="rt-col-elig">Elig</th>
+                  <th class="rt-col-prac">Prac</th>
+                  <th class="rt-col-roster">Roster</th>
+                  <th class="rt-col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="roster-table-body"></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -122,6 +144,7 @@ class GameDayLineupScreen extends Screen {
     this.attachEventListeners();
     this.syncThenLoad();
     this.loadFormations();
+    this.loadSavedMetadata();
   }
 
   /**
@@ -184,6 +207,14 @@ class GameDayLineupScreen extends Screen {
         return;
       }
 
+      // Roster size toggle
+      const rosterSizeBtn = e.target.closest('.btn-roster-size');
+      if (rosterSizeBtn) {
+        const size = parseInt(rosterSizeBtn.dataset.size);
+        this.setRosterSize(size);
+        return;
+      }
+
       // Link button on unmatched cards
       const linkBtn = e.target.closest('.btn-link-player');
       if (linkBtn) {
@@ -195,11 +226,11 @@ class GameDayLineupScreen extends Screen {
         return;
       }
 
-      // Click-to-assign: if we're in slot selection mode and user clicks a player card
+      // Click-to-assign: if we're in slot selection mode and user clicks a player row
       if (this.selectingSlot !== null) {
-        const card = e.target.closest('[data-player-id]');
-        if (card && card.closest('#roster-players')) {
-          const playerId = parseInt(card.getAttribute('data-player-id'));
+        const row = e.target.closest('[data-player-id]');
+        if (row && row.closest('#roster-table')) {
+          const playerId = parseInt(row.getAttribute('data-player-id'));
           this.assignPlayerToSlot(playerId, this.selectingSlot);
           this.cancelSlotSelection();
           return;
@@ -463,6 +494,94 @@ class GameDayLineupScreen extends Screen {
     }
   }
 
+  /**
+   * Load saved lineup metadata (formation, roster size) from database.
+   * This ensures edits survive rebuilds.
+   */
+  async loadSavedMetadata() {
+    const matchId = this.navigation.context.match?.id;
+    if (!matchId) return;
+
+    try {
+      const response = await this.auth.fetch(`/api/eligibility/lineup-meta/${matchId}`);
+      const data = await response.json();
+      if (!data.success || !data.data) return;
+
+      const meta = data.data;
+
+      // Restore formation
+      if (meta.formationId) {
+        const select = this.find('#formation-select');
+        if (select) {
+          select.value = meta.formationId;
+          this.onFormationChange(String(meta.formationId));
+        }
+        // If we have positions JSON from DB, use it
+        if (meta.formationPositions && this.selectedFormation) {
+          this.selectedFormation.positions_json = meta.formationPositions;
+        }
+      }
+
+      // Restore roster size
+      if (meta.rosterSize) {
+        this.setRosterSize(meta.rosterSize, true); // silent = don't re-save
+      }
+    } catch (e) {
+      console.warn('Could not load saved metadata:', e);
+    }
+  }
+
+  /**
+   * Set game day roster size (18 or 20) and update UI + bench limit.
+   */
+  setRosterSize(size, silent = false) {
+    this.rosterSize = size;
+
+    // Update toggle buttons
+    this.element.querySelectorAll('.btn-roster-size').forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.size) === size);
+    });
+
+    // Update bench max display
+    const benchMax = this.find('#bench-max');
+    if (benchMax) benchMax.textContent = size - 11;
+
+    // If bench has too many players, move extras to roster
+    const maxBench = size - 11;
+    while (this.zones.bench.length > maxBench) {
+      const overflow = this.zones.bench.pop();
+      this.zones.roster.unshift(overflow);
+    }
+
+    this.renderAllZones();
+
+    // Auto-save metadata (don't block UI)
+    if (!silent) {
+      this.saveMetadata();
+    }
+  }
+
+  /**
+   * Save lineup metadata (formation, roster size) to database.
+   */
+  async saveMetadata() {
+    const matchId = this.navigation.context.match?.id;
+    if (!matchId) return;
+
+    try {
+      await this.auth.fetch(`/api/eligibility/lineup-meta/${matchId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          formationId: this.selectedFormation?.id || 0,
+          rosterSize: this.rosterSize
+        })
+      });
+    } catch (e) {
+      console.warn('Failed to save metadata:', e);
+    }
+  }
+
   // ============================================================================
   // GroupMe Sync Warning
   // ============================================================================
@@ -571,16 +690,27 @@ class GameDayLineupScreen extends Screen {
   // Player Classification
   // ============================================================================
   classifyPlayersIntoZones() {
-    this.zones = { starting: [], roster: [] };
+    this.zones = { starting: [], bench: [], roster: [] };
 
     for (const player of this.players) {
-      // If player already has lineup assignment, respect it
+      // If player already has lineup assignment from DB, respect it
       if (player.onLineup && player.isStarter) {
         this.zones.starting.push(player.playerId);
         continue;
       }
-      // Everyone else goes to roster (single list)
+      if (player.onLineup && !player.isStarter) {
+        this.zones.bench.push(player.playerId);
+        continue;
+      }
+      // Everyone else goes to not-selected roster
       this.zones.roster.push(player.playerId);
+    }
+
+    // Enforce bench max based on roster size
+    const maxBench = this.rosterSize - 11;
+    while (this.zones.bench.length > maxBench) {
+      const overflow = this.zones.bench.pop();
+      this.zones.roster.unshift(overflow);
     }
   }
 
@@ -626,7 +756,7 @@ class GameDayLineupScreen extends Screen {
 
   autoFillFromEligibility() {
     // Reset all zones
-    this.zones = { starting: [], roster: [] };
+    this.zones = { starting: [], bench: [], roster: [] };
 
     // Sort eligible players by attendance (highest first)
     const sorted = [...this.players].sort((a, b) => {
@@ -637,13 +767,19 @@ class GameDayLineupScreen extends Screen {
       return b.sessionsAttended - a.sessionsAttended;
     });
 
+    const maxBench = this.rosterSize - 11;
     let starterCount = 0;
+    let benchCount = 0;
+
     for (const player of sorted) {
       if (player.matchRsvp === 'no') {
         this.zones.roster.push(player.playerId);
       } else if (starterCount < 11 && player.eligibilityStatus !== 'ineligible') {
         this.zones.starting.push(player.playerId);
         starterCount++;
+      } else if (benchCount < maxBench && player.eligibilityStatus !== 'ineligible') {
+        this.zones.bench.push(player.playerId);
+        benchCount++;
       } else {
         this.zones.roster.push(player.playerId);
       }
@@ -661,42 +797,70 @@ class GameDayLineupScreen extends Screen {
 
   renderAllZones() {
     this.renderPitchPlayers();
-    this.renderRoster();
+    this.renderPlayerTable();
     this.updateCounts();
   }
 
-  renderRoster() {
+  renderPlayerTable() {
     this.sortRoster();
-    const container = this.find('#roster-players');
-    if (!container) return;
-    container.innerHTML = '';
+    const tbody = this.find('#roster-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
 
-    // Render matched players
-    for (const playerId of this.zones.roster) {
-      const player = this.getPlayerById(playerId);
-      if (!player) continue;
-      const card = this.createPlayerCard(player);
-      card.setAttribute('data-zone', 'roster');
-      container.appendChild(card);
-    }
+    // Build ordered list: starters first, then bench, then not selected
+    const sections = [
+      { zone: 'starting', label: '⚽ Starting XI', ids: this.zones.starting.filter(id => id !== null) },
+      { zone: 'bench', label: '🪑 Bench', ids: this.zones.bench },
+      { zone: 'roster', label: '📋 Not Selected', ids: this.zones.roster }
+    ];
 
-    // Render unmatched RSVP users at the bottom
-    for (const u of this.unmatchedRsvps) {
-      const card = this.createUnmatchedCard(u);
-      container.appendChild(card);
-    }
+    for (const section of sections) {
+      // Section header row
+      const headerRow = document.createElement('tr');
+      headerRow.className = 'rt-section-header';
+      headerRow.innerHTML = `<td colspan="7" class="rt-section-label rt-section-${section.zone}">${section.label} (${section.ids.length})</td>`;
+      tbody.appendChild(headerRow);
 
-    if (this.zones.roster.length === 0 && this.unmatchedRsvps.length === 0) {
-      container.innerHTML = '<div class="zone-empty">No players found</div>';
+      if (section.ids.length === 0 && section.zone !== 'roster') {
+        const emptyRow = document.createElement('tr');
+        emptyRow.className = 'rt-empty-row';
+        emptyRow.innerHTML = `<td colspan="7" class="rt-empty">—</td>`;
+        tbody.appendChild(emptyRow);
+        continue;
+      }
+
+      for (const playerId of section.ids) {
+        const player = this.getPlayerById(playerId);
+        if (!player) continue;
+        const row = this.createPlayerRow(player, section.zone);
+        tbody.appendChild(row);
+      }
+
+      // Unmatched GroupMe users at the end of not-selected
+      if (section.zone === 'roster') {
+        for (const u of this.unmatchedRsvps) {
+          const row = this.createUnmatchedRow(u);
+          tbody.appendChild(row);
+        }
+      }
     }
   }
 
   updateCounts() {
     const sc = this.find('#starting-count');
-    const rc = this.find('#roster-count');
     const starterCount = this.zones.starting.filter(id => id !== null).length;
+    const maxBench = this.rosterSize - 11;
     if (sc) sc.textContent = `${starterCount}/11`;
-    if (rc) rc.textContent = this.zones.roster.length + this.unmatchedRsvps.length;
+
+    const bc = this.find('#bench-count-display');
+    if (bc) bc.textContent = `Bench: ${this.zones.bench.length}/${maxBench}`;
+
+    const rc = this.find('#roster-count-display');
+    const rosterTotal = this.zones.roster.length + this.unmatchedRsvps.length;
+    if (rc) rc.textContent = `Not Selected: ${rosterTotal}`;
+
+    const tc = this.find('#total-count-display');
+    if (tc) tc.textContent = `Total: ${starterCount + this.zones.bench.length + rosterTotal}`;
   }
 
   renderPitchPlayers() {
@@ -783,139 +947,125 @@ class GameDayLineupScreen extends Screen {
     return chip;
   }
 
-  createPlayerCard(player) {
-    const card = document.createElement('div');
-    const sourceClass = player.source === 'roster_only' ? 'player-card-roster-only' : '';
-    card.className = `player-card ${this.getEligibilityClass(player)} ${sourceClass}`.trim();
-    card.setAttribute('draggable', 'true');
-    card.setAttribute('data-player-id', player.playerId);
+  createPlayerRow(player, zone) {
+    const row = document.createElement('tr');
+    row.className = `rt-player-row ${this.getEligibilityClass(player)}`;
+    row.setAttribute('draggable', 'true');
+    row.setAttribute('data-player-id', player.playerId);
+    row.setAttribute('data-zone', zone);
 
-    const jerseyDisplay = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
-    const posDisplay = player.position || '';
+    // Zone badge
+    const zoneBadge = zone === 'starting' ? '⚽' : zone === 'bench' ? '🪑' : '—';
+    const zoneClass = `rt-zone-${zone}`;
 
-    // Avatar: use GroupMe image if available, otherwise initial
-    const hasGmImage = player.gmImageUrl && player.gmImageUrl.length > 0;
-    const initial = player.firstName ? player.firstName[0] : '?';
-    const avatarHtml = hasGmImage
-      ? `<img class="player-avatar player-avatar-img" src="${player.gmImageUrl}.avatar" alt="${initial}" onerror="this.outerHTML='<div class=\\'player-avatar\\'>${initial}</div>'">`
-      : `<div class="player-avatar">${initial}</div>`;
+    // Name
+    const name = `${player.firstName || ''} ${player.lastName || ''}`.trim();
+    const jersey = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
 
-    // RSVP pill
-    const rsvpClass = this.getRsvpClass(player.matchRsvp);
-    const rsvpLabel = this.getRsvpLabel(player.matchRsvp);
-
-    // Practices badge
-    const sessions = player.sessionsAttended ?? player.practiceCount ?? 0;
-    const projected = player.projectedSessions ?? sessions;
-    const lookback = this.policy?.lookbackCount || 0;
-    const hasProjection = projected > sessions;
-    const practicesBadge = hasProjection
-      ? `${sessions}→${projected}/${lookback}`
-      : `${sessions}/${lookback}`;
-
-    // Eligibility indicator (show projected if it differs)
-    const statusIcon = this.getStatusIcon(player.eligibilityStatus);
-    const projectedIcon = hasProjection && player.projectedStatus !== player.eligibilityStatus
-      ? `→${this.getStatusIcon(player.projectedStatus)}`
-      : '';
-
-    // Team roster badges
-    const teams = player.teams || [];
-    const teamBadgesHtml = teams.map(t => {
-      const shortName = t.divisionName || t.teamName || '';
-      return `<span class="badge-team" title="${t.teamName} - ${t.divisionName}">📋 ${shortName}</span>`;
-    }).join('');
-
-    // Missing data indicators
-    const missing = [];
-    if (!player.gmLinked && !player.gmUserId) {
-      missing.push('<span class="badge-missing" title="Not linked to GroupMe">❌ GM</span>');
-    }
-    if (teams.length === 0 && player.source !== 'eligibility') {
-      missing.push('<span class="badge-missing" title="Not on any roster">❌ Roster</span>');
-    }
-    if (!player.matchRsvp) {
-      missing.push('<span class="badge-missing" title="No RSVP for this match">❌ RSVP</span>');
-    }
-
-    // Source badge
-    const sourceBadge = player.source === 'roster_only'
-      ? '<span class="badge-source badge-roster-only" title="On roster but not in GroupMe chat">roster only</span>'
+    // Source indicator
+    const sourceTag = player.source === 'roster_only'
+      ? '<span class="rt-tag rt-tag-roster">roster</span>'
       : player.source === 'groupme_only' || player.eligibilityStatus === 'not_on_roster'
-        ? '<span class="badge-source badge-gm-only" title="In GroupMe but not on team roster">GM only</span>'
+        ? '<span class="rt-tag rt-tag-gm">GM</span>'
         : '';
 
-    // GroupMe nickname (show if different from person name)
-    const gmNickLine = player.gmNickname && player.gmNickname !== `${player.firstName} ${player.lastName}`
-      ? `<span class="player-gm-nick" title="GroupMe nickname">📱 ${player.gmNickname}</span>`
-      : '';
+    // RSVP
+    const rsvpClass = this.getRsvpClass(player.matchRsvp);
+    const rsvpShort = this.getRsvpShort(player.matchRsvp);
 
-    // Meta line: team badges + GM nick + jersey/position
-    const metaParts = [jerseyDisplay, posDisplay].filter(Boolean);
-    const metaText = metaParts.length ? metaParts.join(' · ') : '';
+    // Eligibility
+    const statusIcon = this.getStatusIcon(player.eligibilityStatus);
 
-    card.innerHTML = `
-      <div class="player-card-left">
-        ${avatarHtml}
-        <div class="player-info">
-          <div class="player-name">${player.firstName} ${player.lastName} ${sourceBadge}</div>
-          <div class="player-meta">
-            ${teamBadgesHtml}${gmNickLine ? (teamBadgesHtml ? ' ' : '') + gmNickLine : ''}${metaText ? (teamBadgesHtml || gmNickLine ? ' · ' : '') + metaText : ''}
-          </div>
-          ${missing.length ? `<div class="player-missing">${missing.join(' ')}</div>` : ''}
-        </div>
-      </div>
-      <div class="player-card-right">
-        <span class="rsvp-pill ${rsvpClass}">${rsvpLabel}</span>
-        <span class="practices-badge${hasProjection ? ' has-projection' : ''}" title="${hasProjection ? 'Current → Projected / Lookback' : 'Practices attended'}">${statusIcon}${projectedIcon} ${practicesBadge}</span>
-      </div>
-    `;
+    // Practices
+    const sessions = player.sessionsAttended ?? player.practiceCount ?? 0;
+    const lookback = this.policy?.lookbackCount || 0;
 
-    return card;
-  }
+    // Roster info
+    const teams = player.teams || [];
+    const rosterBadge = player.onOfficialRoster
+      ? '<span class="rt-tag rt-tag-official">official</span>'
+      : teams.length > 0
+        ? '<span class="rt-tag rt-tag-team">team</span>'
+        : '<span class="rt-tag rt-tag-none">none</span>';
 
-  createUnmatchedCard(user) {
-    const card = document.createElement('div');
-    card.className = 'player-card player-card-unmatched';
-    card.setAttribute('data-external-id', user.externalUserId);
-
-    // Avatar: use GroupMe image if available
-    const hasGmImage = user.gmImageUrl && user.gmImageUrl.length > 0;
-    const initial = user.externalUsername ? user.externalUsername[0].toUpperCase() : '?';
-    const avatarHtml = hasGmImage
-      ? `<img class="player-avatar player-avatar-img" src="${user.gmImageUrl}.avatar" alt="${initial}" onerror="this.outerHTML='<div class=\\'player-avatar avatar-unknown\\'>?</div>'">`
-      : `<div class="player-avatar avatar-unknown">?</div>`;
-
-    const rsvpClass = this.getRsvpClass(user.matchRsvp);
-    const rsvpLabel = this.getRsvpLabel(user.matchRsvp);
-
-    // Missing data
-    const missing = [];
-    missing.push('<span class="badge-missing" title="Not linked to any person">❌ Person</span>');
-    missing.push('<span class="badge-missing" title="Not on any roster">❌ Roster</span>');
-    if (!user.matchRsvp) {
-      missing.push('<span class="badge-missing" title="No RSVP">❌ RSVP</span>');
+    // Action buttons based on zone
+    let actions = '';
+    if (zone === 'roster') {
+      actions = `<button class="rt-btn rt-btn-start" data-action="to-starting" title="Add to Starting XI">⚽</button>
+                 <button class="rt-btn rt-btn-bench" data-action="to-bench" title="Add to Bench">🪑</button>`;
+    } else if (zone === 'bench') {
+      actions = `<button class="rt-btn rt-btn-start" data-action="to-starting" title="Move to Starting XI">⚽</button>
+                 <button class="rt-btn rt-btn-remove" data-action="to-roster" title="Remove from lineup">✕</button>`;
+    } else if (zone === 'starting') {
+      actions = `<button class="rt-btn rt-btn-bench" data-action="to-bench" title="Move to Bench">🪑</button>
+                 <button class="rt-btn rt-btn-remove" data-action="to-roster" title="Remove from lineup">✕</button>`;
     }
 
-    card.innerHTML = `
-      <div class="player-card-left">
-        ${avatarHtml}
-        <div class="player-info">
-          <div class="player-name">${user.externalUsername} <span class="badge-unmatched">unlinked</span></div>
-          <div class="player-meta">GroupMe member · not linked to person</div>
-          <div class="player-missing">${missing.join(' ')}</div>
-        </div>
-      </div>
-      <div class="player-card-right">
-        <span class="rsvp-pill ${rsvpClass}">${rsvpLabel}</span>
-        <button class="btn-link-player" data-gm-user-id="${user.externalUserId}" 
-                data-gm-nickname="${(user.externalUsername || '').replace(/"/g, '&quot;')}"
-                data-gm-image="${(user.gmImageUrl || '').replace(/"/g, '&quot;')}"
-                title="Link to existing person">🔗 Link</button>
-      </div>
+    row.innerHTML = `
+      <td class="rt-col-zone"><span class="rt-zone-badge ${zoneClass}">${zoneBadge}</span></td>
+      <td class="rt-col-name"><span class="rt-name">${name}</span> <span class="rt-jersey">${jersey}</span> ${sourceTag}</td>
+      <td class="rt-col-rsvp"><span class="rsvp-dot ${rsvpClass}">${rsvpShort}</span></td>
+      <td class="rt-col-elig">${statusIcon}</td>
+      <td class="rt-col-prac">${sessions}/${lookback}</td>
+      <td class="rt-col-roster">${rosterBadge}</td>
+      <td class="rt-col-actions">${actions}</td>
     `;
 
-    return card;
+    // Action button clicks
+    row.querySelectorAll('.rt-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = btn.dataset.action;
+        if (action === 'to-starting') {
+          this.movePlayer(player.playerId, zone, 'starting');
+        } else if (action === 'to-bench') {
+          this.movePlayer(player.playerId, zone, 'bench');
+        } else if (action === 'to-roster') {
+          this.movePlayer(player.playerId, zone, 'roster');
+        }
+      });
+    });
+
+    return row;
+  }
+
+  createUnmatchedRow(user) {
+    const row = document.createElement('tr');
+    row.className = 'rt-player-row rt-unmatched';
+    row.setAttribute('data-external-id', user.externalUserId);
+
+    const rsvpClass = this.getRsvpClass(user.matchRsvp);
+    const rsvpShort = this.getRsvpShort(user.matchRsvp);
+
+    row.innerHTML = `
+      <td class="rt-col-zone"><span class="rt-zone-badge rt-zone-roster">—</span></td>
+      <td class="rt-col-name">
+        <span class="rt-name">${user.externalUsername || '?'}</span>
+        <span class="rt-tag rt-tag-unlinked">unlinked</span>
+      </td>
+      <td class="rt-col-rsvp"><span class="rsvp-dot ${rsvpClass}">${rsvpShort}</span></td>
+      <td class="rt-col-elig">❓</td>
+      <td class="rt-col-prac">—</td>
+      <td class="rt-col-roster"><span class="rt-tag rt-tag-none">none</span></td>
+      <td class="rt-col-actions">
+        <button class="rt-btn rt-btn-link btn-link-player"
+                data-gm-user-id="${user.externalUserId}"
+                data-gm-nickname="${(user.externalUsername || '').replace(/"/g, '&quot;')}"
+                data-gm-image="${(user.gmImageUrl || '').replace(/"/g, '&quot;')}"
+                title="Link to person">🔗</button>
+      </td>
+    `;
+
+    return row;
+  }
+
+  getRsvpShort(rsvp) {
+    switch (rsvp) {
+      case 'yes': return '✓';
+      case 'no': return '✗';
+      case 'maybe': return '?';
+      default: return '…';
+    }
   }
 
   getRsvpClass(rsvp) {
@@ -955,7 +1105,7 @@ class GameDayLineupScreen extends Screen {
     if (slot) slot.classList.add('slot-selecting');
     
     // Add selection mode class to roster for visual feedback
-    const panel = this.find('#roster-panel');
+    const panel = this.find('.roster-table-wrapper');
     if (panel) panel.classList.add('roster-selecting');
   }
 
@@ -965,7 +1115,7 @@ class GameDayLineupScreen extends Screen {
     if (banner) banner.style.display = 'none';
     
     this.element.querySelectorAll('.pitch-slot').forEach(s => s.classList.remove('slot-selecting'));
-    const panel = this.find('#roster-panel');
+    const panel = this.find('.roster-table-wrapper');
     if (panel) panel.classList.remove('roster-selecting');
   }
 
@@ -1031,6 +1181,9 @@ class GameDayLineupScreen extends Screen {
 
     // Re-render pitch with new positions
     this.renderPitchPlayers();
+
+    // Auto-save metadata
+    this.saveMetadata();
   }
 
   // ============================================================================
@@ -1055,7 +1208,8 @@ class GameDayLineupScreen extends Screen {
   onDragOver(e) {
     const slot = e.target.closest('.pitch-slot');
     const zone = e.target.closest('.lineup-zone');
-    if (!zone && !slot) return;
+    const table = e.target.closest('.roster-table-wrapper');
+    if (!zone && !slot && !table) return;
 
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -1086,20 +1240,25 @@ class GameDayLineupScreen extends Screen {
       return;
     }
 
+    // Dropped on pitch zone (but not a specific slot)
     const zone = e.target.closest('.lineup-zone');
-    if (!zone) { this.dragState = null; return; }
+    if (zone) {
+      const targetZone = this.getZoneKey(zone.id);
+      if (targetZone === 'starting') {
+        this.movePlayerToNextEmptySlot(this.dragState.playerId, this.dragState.sourceZone, this.dragState.sourceSlot);
+        this.dragState = null;
+        return;
+      }
+    }
 
-    const targetZone = this.getZoneKey(zone.id);
-    if (!targetZone) { this.dragState = null; return; }
-
-    // If dropping on the starting zone (but not a specific slot), append to first empty slot
-    if (targetZone === 'starting') {
-      this.movePlayerToNextEmptySlot(this.dragState.playerId, this.dragState.sourceZone, this.dragState.sourceSlot);
+    // Dropped on the table — move to roster (not selected)
+    const table = e.target.closest('.roster-table-wrapper');
+    if (table) {
+      this.movePlayer(this.dragState.playerId, this.dragState.sourceZone, 'roster');
       this.dragState = null;
       return;
     }
 
-    this.movePlayer(this.dragState.playerId, this.dragState.sourceZone, targetZone);
     this.dragState = null;
   }
 
@@ -1180,6 +1339,7 @@ class GameDayLineupScreen extends Screen {
   getZoneKey(zoneElementId) {
     const map = {
       'zone-starting': 'starting',
+      'zone-bench': 'bench',
       'roster-panel': 'roster'
     };
     return map[zoneElementId] || null;
@@ -1273,6 +1433,15 @@ class GameDayLineupScreen extends Screen {
     if (toZone === 'starting') {
       this.movePlayerToNextEmptySlot(playerId, null, null);
       return; // renderAllZones called inside
+    } else if (toZone === 'bench') {
+      // Enforce bench capacity
+      const maxBench = this.rosterSize - 11;
+      if (this.zones.bench.length >= maxBench) {
+        // Bench full — move last bench player to roster
+        const bumped = this.zones.bench.pop();
+        this.zones.roster.unshift(bumped);
+      }
+      this.zones.bench.push(playerId);
     } else if (this.zones[toZone]) {
       this.zones[toZone].push(playerId);
     }
@@ -1546,19 +1715,27 @@ class GameDayLineupScreen extends Screen {
       return;
     }
 
-    const starters = this.zones.starting.filter(id => id !== null).map(playerId => ({ playerId }));
-    const bench = this.zones.roster.map(playerId => ({ playerId }));
+    const starters = this.zones.starting
+      .map((playerId, slotIndex) => playerId ? { playerId, slotNumber: slotIndex } : null)
+      .filter(Boolean);
+    const bench = this.zones.bench.map(playerId => ({ playerId }));
 
     try {
       const response = await this.auth.fetch(`/api/eligibility/lineup/${matchId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ starters, bench })
+        body: JSON.stringify({
+          starters,
+          bench,
+          formationId: this.selectedFormation?.id || 0,
+          rosterSize: this.rosterSize
+        })
       });
 
       const data = await response.json();
       if (data.success) {
-        alert(`✓ Lineup saved! ${data.data?.count || 0} players on lineup.`);
+        const total = starters.length + bench.length;
+        alert(`✓ Lineup saved! ${starters.length} starters + ${bench.length} bench = ${total} game day roster.`);
       } else {
         throw new Error(data.message || 'Failed to save');
       }
