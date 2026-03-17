@@ -932,9 +932,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-15', NULL, 1,
+  1, '2026-03-15', NULL, 3,
   ht.id, at.id, NULL,
-  NULL, NULL,
+  2, 3,
   2, '2851e153-f467-426f-96a0-72791af7f5eb'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090889-philly-blackstars' AND at.source_system_id = 2
@@ -952,9 +952,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-15', NULL, 1,
+  1, '2026-03-15', NULL, 3,
   ht.id, at.id, NULL,
-  NULL, NULL,
+  0, 2,
   2, '6296e19b-b4fd-4983-b3b3-a4086567e543'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090889-philadelphia-sierra-stars' AND at.source_system_id = 2
@@ -972,9 +972,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-15', NULL, 1,
+  1, '2026-03-15', NULL, 3,
   ht.id, at.id, NULL,
-  NULL, NULL,
+  1, 2,
   2, 'a7ba1a7e-1c16-489c-b9f2-f69eca4cf7d6'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090889-lighthouse-boys-club' AND at.source_system_id = 2
@@ -992,9 +992,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-15', NULL, 1,
+  1, '2026-03-15', NULL, 3,
   ht.id, at.id, NULL,
-  NULL, NULL,
+  8, 1,
   2, '45913079-5a2d-4c00-b44d-d406614a7192'
 FROM teams ht
 JOIN teams at ON at.external_id = '9096430-phoenix-scr' AND at.source_system_id = 2
@@ -1012,9 +1012,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-15', NULL, 1,
+  1, '2026-03-15', NULL, 3,
   ht.id, at.id, NULL,
-  NULL, NULL,
+  2, 1,
   2, '658779a1-a514-4289-abe4-03f8a275dae8'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090889-phoenix-scm' AND at.source_system_id = 2
@@ -1952,9 +1952,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-15', NULL, 1,
+  1, '2026-03-15', NULL, 3,
   ht.id, at.id, NULL,
-  NULL, NULL,
+  3, 1,
   2, '90e6d273-4df2-4d40-99fe-b60f597f9e71'
 FROM teams ht
 JOIN teams at ON at.external_id = '9096430-lighthouse-boys-club-u23' AND at.source_system_id = 2
@@ -3692,9 +3692,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-14', NULL, 1,
+  1, '2026-03-14', NULL, 3,
   ht.id, at.id, NULL,
-  NULL, NULL,
+  1, 1,
   2, 'bf0f4bc9-0e29-4ec0-987c-618891490000'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090893-keystone-elite' AND at.source_system_id = 2
@@ -3712,9 +3712,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-15', NULL, 1,
+  1, '2026-03-15', NULL, 3,
   ht.id, at.id, NULL,
-  NULL, NULL,
+  5, 2,
   2, '1011f11d-985a-4b1c-bbb2-84dbe119f855'
 FROM teams ht
 JOIN teams at ON at.external_id = '9270318-yorkpa-fc' AND at.source_system_id = 2
@@ -4132,9 +4132,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-15', NULL, 1,
+  1, '2026-03-15', NULL, 3,
   ht.id, at.id, NULL,
-  NULL, NULL,
+  2, 5,
   2, '3d97e3b6-ab54-4596-b947-3bc02c3b2b5a'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090893-lancaster-city-fc' AND at.source_system_id = 2

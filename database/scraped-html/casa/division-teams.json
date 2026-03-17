@@ -1,5 +1,5 @@
 {
-  "generated": "2026-03-12T15:31:18.737Z",
+  "generated": "2026-03-16T13:25:44.062Z",
   "divisions": [
     {
       "id": 54,
@@ -8,91 +8,91 @@
       "teams": [
         {
           "teamName": "Adé United FC",
-          "played": 28,
-          "wins": 9,
+          "played": 31,
+          "wins": 10,
           "draws": 2,
           "losses": 1,
-          "goalsFor": 12,
-          "goalsAgainst": 38,
-          "goalDiff": 20,
-          "points": 18
+          "goalsFor": 13,
+          "goalsAgainst": 46,
+          "goalDiff": 21,
+          "points": 25
         },
         {
           "teamName": "Oaklyn United FC II",
-          "played": 27,
-          "wins": 9,
-          "draws": 2,
+          "played": 30,
+          "wins": 10,
+          "draws": 3,
           "losses": 0,
-          "goalsFor": 11,
-          "goalsAgainst": 29,
-          "goalDiff": 13,
-          "points": 16
+          "goalsFor": 13,
+          "goalsAgainst": 33,
+          "goalDiff": 16,
+          "points": 17
         },
         {
           "teamName": "Philadelphia Sierra Stars",
-          "played": 20,
-          "wins": 6,
+          "played": 23,
+          "wins": 7,
           "draws": 3,
           "losses": 2,
-          "goalsFor": 11,
-          "goalsAgainst": 20,
+          "goalsFor": 12,
+          "goalsAgainst": 22,
           "goalDiff": 13,
-          "points": 7
+          "points": 9
         },
         {
           "teamName": "Persepolis FC",
-          "played": 19,
-          "wins": 6,
+          "played": 22,
+          "wins": 7,
           "draws": 0,
           "losses": 1,
-          "goalsFor": 7,
-          "goalsAgainst": 31,
-          "goalDiff": 3,
-          "points": 28
+          "goalsFor": 8,
+          "goalsAgainst": 33,
+          "goalDiff": 4,
+          "points": 29
+        },
+        {
+          "teamName": "Philly BlackStars",
+          "played": 16,
+          "wins": 5,
+          "draws": 7,
+          "losses": 1,
+          "goalsFor": 13,
+          "goalsAgainst": 19,
+          "goalDiff": 34,
+          "points": -15
         },
         {
           "teamName": "Phoenix SCM",
           "played": 13,
           "wins": 4,
-          "draws": 7,
+          "draws": 8,
           "losses": 1,
-          "goalsFor": 12,
-          "goalsAgainst": 20,
-          "goalDiff": 25,
-          "points": -5
-        },
-        {
-          "teamName": "Philly BlackStars",
-          "played": 13,
-          "wins": 4,
-          "draws": 7,
-          "losses": 1,
-          "goalsFor": 12,
-          "goalsAgainst": 16,
-          "goalDiff": 32,
-          "points": -16
+          "goalsFor": 13,
+          "goalsAgainst": 21,
+          "goalDiff": 27,
+          "points": -6
         },
         {
           "teamName": "Illyrians FC",
           "played": 12,
           "wins": 4,
-          "draws": 8,
+          "draws": 9,
           "losses": 0,
-          "goalsFor": 12,
+          "goalsFor": 13,
           "goalsAgainst": 31,
-          "goalDiff": 44,
-          "points": -13
+          "goalDiff": 46,
+          "points": -15
         },
         {
           "teamName": "Lighthouse Boys Club",
-          "played": 6,
-          "wins": 2,
+          "played": 9,
+          "wins": 3,
           "draws": 8,
           "losses": 0,
-          "goalsFor": 10,
-          "goalsAgainst": 17,
-          "goalDiff": 28,
-          "points": -11
+          "goalsFor": 11,
+          "goalsAgainst": 19,
+          "goalDiff": 29,
+          "points": -10
         }
       ]
     },
@@ -105,12 +105,12 @@
           "teamName": "Philadelphia SC Select",
           "played": 14,
           "wins": 4,
-          "draws": 4,
+          "draws": 5,
           "losses": 2,
-          "goalsFor": 10,
-          "goalsAgainst": 21,
-          "goalDiff": 17,
-          "points": 4
+          "goalsFor": 11,
+          "goalsAgainst": 22,
+          "goalDiff": 19,
+          "points": 3
         },
         {
           "teamName": "Persepolis FC II",
@@ -127,34 +127,34 @@
           "teamName": "Phoenix SCR",
           "played": 9,
           "wins": 3,
-          "draws": 6,
+          "draws": 7,
           "losses": 0,
-          "goalsFor": 9,
-          "goalsAgainst": 11,
-          "goalDiff": 25,
-          "points": -14
+          "goalsFor": 10,
+          "goalsAgainst": 12,
+          "goalDiff": 33,
+          "points": -21
         },
         {
           "teamName": "Sewell's Old Boys",
-          "played": 3,
-          "wins": 1,
+          "played": 6,
+          "wins": 2,
           "draws": 1,
           "losses": 0,
-          "goalsFor": 2,
-          "goalsAgainst": 3,
-          "goalDiff": 6,
-          "points": -3
+          "goalsFor": 3,
+          "goalsAgainst": 6,
+          "goalDiff": 7,
+          "points": -1
         },
         {
           "teamName": "Lighthouse Boys Club U23",
           "played": 3,
           "wins": 1,
-          "draws": 8,
+          "draws": 9,
           "losses": 0,
-          "goalsFor": 9,
-          "goalsAgainst": 4,
-          "goalDiff": 33,
-          "points": -29
+          "goalsFor": 10,
+          "goalsAgainst": 5,
+          "goalDiff": 36,
+          "points": -31
         },
         {
           "teamName": "Club de Futbol Armada",
@@ -260,13 +260,13 @@
       "teams": [
         {
           "teamName": "Alloy Soccer Club Reserves",
-          "played": 22,
+          "played": 23,
           "wins": 7,
           "draws": 2,
-          "losses": 1,
-          "goalsFor": 10,
-          "goalsAgainst": 23,
-          "goalDiff": 8,
+          "losses": 2,
+          "goalsFor": 11,
+          "goalsAgainst": 24,
+          "goalDiff": 9,
           "points": 14
         },
         {
@@ -281,6 +281,17 @@
           "points": 4
         },
         {
+          "teamName": "Lancaster City FC",
+          "played": 13,
+          "wins": 4,
+          "draws": 6,
+          "losses": 1,
+          "goalsFor": 11,
+          "goalsAgainst": 24,
+          "goalDiff": 26,
+          "points": -2
+        },
+        {
           "teamName": "F&M FC",
           "played": 11,
           "wins": 3,
@@ -292,25 +303,14 @@
           "points": -12
         },
         {
-          "teamName": "Lancaster City FC",
+          "teamName": "Keystone Elite",
           "played": 10,
           "wins": 3,
           "draws": 6,
           "losses": 1,
           "goalsFor": 10,
-          "goalsAgainst": 19,
-          "goalDiff": 24,
-          "points": -5
-        },
-        {
-          "teamName": "Keystone Elite",
-          "played": 9,
-          "wins": 3,
-          "draws": 6,
-          "losses": 0,
-          "goalsFor": 9,
-          "goalsAgainst": 17,
-          "goalDiff": 20,
+          "goalsAgainst": 18,
+          "goalDiff": 21,
           "points": -3
         }
       ]
@@ -343,17 +343,6 @@
           "points": 3
         },
         {
-          "teamName": "YorkPA FC",
-          "played": 0,
-          "wins": 0,
-          "draws": 1,
-          "losses": 0,
-          "goalsFor": 1,
-          "goalsAgainst": 1,
-          "goalDiff": 2,
-          "points": -1
-        },
-        {
           "teamName": "West Chester University Club",
           "played": 0,
           "wins": 0,
@@ -363,6 +352,17 @@
           "goalsAgainst": 0,
           "goalDiff": 3,
           "points": -3
+        },
+        {
+          "teamName": "YorkPA FC",
+          "played": 0,
+          "wins": 0,
+          "draws": 2,
+          "losses": 0,
+          "goalsFor": 2,
+          "goalsAgainst": 3,
+          "goalDiff": 7,
+          "points": -4
         }
       ]
     }

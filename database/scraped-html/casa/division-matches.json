@@ -1,5 +1,5 @@
 {
-  "generated": "2026-03-12T15:31:18.738Z",
+  "generated": "2026-03-16T13:25:44.062Z",
   "total_matches": 256,
   "divisions": [
     {
@@ -463,8 +463,8 @@
           "away": "Persepolis II",
           "time": "7:00 PM - 8:45 PM",
           "date": "2026-03-12T23:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 0",
           "externalId": "3dd63458-c9d3-4483-ba57-d36987284bc1"
         },
         {
@@ -472,8 +472,8 @@
           "away": "Philly BlackStars",
           "time": "12:00 PM - 1:45 PM",
           "date": "2026-03-15T16:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 3",
           "externalId": "2851e153-f467-426f-96a0-72791af7f5eb"
         },
         {
@@ -481,8 +481,8 @@
           "away": "Philadelphia Sierra Stars",
           "time": "12:45 PM - 2:45 PM",
           "date": "2026-03-15T16:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "0 - 2",
           "externalId": "6296e19b-b4fd-4983-b3b3-a4086567e543"
         },
         {
@@ -490,8 +490,8 @@
           "away": "Lighthouse Boys Club",
           "time": "2:45 PM - 4:45 PM",
           "date": "2026-03-15T18:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 2",
           "externalId": "a7ba1a7e-1c16-489c-b9f2-f69eca4cf7d6"
         },
         {
@@ -499,8 +499,8 @@
           "away": "Phoenix Reserves",
           "time": "3:00 PM - 5:00 PM",
           "date": "2026-03-15T19:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "8 - 1",
           "externalId": "45913079-5a2d-4c00-b44d-d406614a7192"
         },
         {
@@ -508,8 +508,8 @@
           "away": "Phoenix SCM",
           "time": "5:00 PM - 7:00 PM",
           "date": "2026-03-15T21:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 1",
           "externalId": "658779a1-a514-4289-abe4-03f8a275dae8"
         },
         {
@@ -926,15 +926,6 @@
           "externalId": "03728c1d-369d-4ed4-af53-f54f0993d190"
         },
         {
-          "home": "Persepolis FC II",
-          "away": "Lighthouse Boys Club U23",
-          "time": "2:45 PM - 4:30 PM",
-          "date": "2025-10-12T18:45:00.000Z",
-          "status": "Final",
-          "score": "8 - 0",
-          "externalId": "d4060108-b706-4f5f-a165-8a93b1d36f75"
-        },
-        {
           "home": "Philadelphia SC Select",
           "away": "Philly Black Stars",
           "time": "2:45 PM - 4:30 PM",
@@ -942,6 +933,15 @@
           "status": "Final",
           "score": "2 - 2",
           "externalId": "50c7a4a7-b9dd-45fa-8573-c5b746b466ed"
+        },
+        {
+          "home": "Persepolis FC II",
+          "away": "Lighthouse Boys Club U23",
+          "time": "2:45 PM - 4:30 PM",
+          "date": "2025-10-12T18:45:00.000Z",
+          "status": "Final",
+          "score": "8 - 0",
+          "externalId": "d4060108-b706-4f5f-a165-8a93b1d36f75"
         },
         {
           "home": "Illyrians",
@@ -1065,8 +1065,8 @@
           "away": "Lighthouse Boys Club U23",
           "time": "2:00 PM - 3:30 PM",
           "date": "2026-03-15T18:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "3 - 1",
           "externalId": "90e6d273-4df2-4d40-99fe-b60f597f9e71"
         },
         {
@@ -1074,8 +1074,8 @@
           "away": "Lighthouse Boys Club",
           "time": "2:45 PM - 4:15 PM",
           "date": "2026-03-15T18:45:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 2",
           "externalId": "06b972a1-c5ad-4dda-b1f5-e2ef609f3fab"
         },
         {
@@ -1083,8 +1083,8 @@
           "away": "Phoenix SCR",
           "time": "3:00 PM - 4:30 PM",
           "date": "2026-03-15T19:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "8 - 1",
           "externalId": "e172e81c-4185-440f-8449-f02c1b64f536"
         },
         {
@@ -1990,8 +1990,8 @@
           "away": "Keystone Elite\t",
           "time": "6:00 PM - 7:30 PM",
           "date": "2026-03-14T22:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "1 - 1",
           "externalId": "bf0f4bc9-0e29-4ec0-987c-618891490000"
         },
         {
@@ -1999,8 +1999,8 @@
           "away": "YorkPA FC",
           "time": "11:00 AM - 12:30 PM",
           "date": "2026-03-15T15:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "5 - 2",
           "externalId": "1011f11d-985a-4b1c-bbb2-84dbe119f855"
         },
         {
@@ -2196,8 +2196,8 @@
           "away": "Lancaster City FC",
           "time": "11:00 AM - 12:30 PM",
           "date": "2026-03-15T15:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "2 - 5",
           "externalId": "3d97e3b6-ab54-4596-b947-3bc02c3b2b5a"
         },
         {
