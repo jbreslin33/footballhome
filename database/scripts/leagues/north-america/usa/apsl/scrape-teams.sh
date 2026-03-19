@@ -26,7 +26,7 @@ cd "$PROJECT_ROOT"
 
 # ── VPN (auto-connect unless parent already handled it) ───────────────
 if [ "${VPN_ACTIVE:-0}" != "1" ] && [ "${NO_VPN:-0}" != "1" ]; then
-  exec "$PROJECT_ROOT/scripts/vpn-wrap.sh" env VPN_ACTIVE=1 "$0" "$@"
+  exec "$PROJECT_ROOT/scripts/vpn-wrap.sh" env VPN_ACTIVE=1 "$SCRIPT_DIR/$(basename "$0")" "$@"
 fi
 
 FORCE_FLAG=""

@@ -44,8 +44,8 @@ if ! command -v wg &> /dev/null; then
   exit 1
 fi
 
-# ── Check config exists ──────────────────────────────────────────────
-if [ ! -f "/etc/wireguard/${INTERFACE}.conf" ]; then
+# ── Check config exists (needs sudo — /etc/wireguard is root-only) ──
+if ! sudo test -f "/etc/wireguard/${INTERFACE}.conf"; then
   echo "❌ No VPN config found at /etc/wireguard/${INTERFACE}.conf"
   echo "   Run: sudo scripts/setup/setup-wireguard.sh import /path/to/config.conf"
   echo ""
