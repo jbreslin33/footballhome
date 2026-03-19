@@ -601,11 +601,11 @@
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
-    "status": "scheduled",
+    "status": "completed",
     "start_date_time": "2026-03-18T00:00:00.000Z",
     "end_date_time": "2026-03-18T01:30:00.000Z",
     "created_at": "2026-02-17T20:26:31.000Z",
-    "updated_at": "2026-02-23T21:03:20.000Z",
+    "updated_at": "2026-03-18T15:55:55.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -617,11 +617,11 @@
       "system": "StatNgin",
       "extended_attributes": {
         "home_team_id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
-        "home_team_score": "",
+        "home_team_score": "3",
         "away_team_id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
-        "away_team_score": "",
+        "away_team_score": "0",
         "score_allowed": true,
-        "status": "scheduled",
+        "status": "completed",
         "allow_rsvp": null,
         "is_locked": null,
         "_links": [],
@@ -629,8 +629,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -715,12 +719,12 @@
     "game_details": {
       "originator_id": "6994cef895167e0001b1623d",
       "originator_type": "game_slot",
-      "status": "scheduled",
+      "status": "completed",
       "team_1": {
         "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf48021c50f87e6da72",
         "name": "Lancaster Bible College",
-        "score": "",
+        "score": "3",
         "is_home_team": true,
         "interval_scores": []
       },
@@ -728,13 +732,13 @@
         "id": "11f10c3e-57f8-4d16-9d32-ca7f9587793f",
         "originator_id": "6994cdf46c4d0b61853257ac",
         "name": "YorkPA FC",
-        "score": "",
+        "score": "0",
         "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
       "overtime": false,
-      "scoring_type": "unscored",
+      "scoring_type": "quick",
       "number_of_overtime": 0
     }
   },
@@ -1171,6 +1175,157 @@
         "name": "Keystone Elite",
         "score": "",
         "is_home_team": true,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
+    "id": "0fd03b02-6603-406c-ab9a-3f4e8a9620be",
+    "title": "Alloy Soccer Club Reserves at Millersville Men's Club Soccer",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Pucillo Field",
+    "location_address": "Pucillo Field, Millersville, PA 17551, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-03-26T00:00:00.000Z",
+    "end_date_time": "2026-03-26T01:30:00.000Z",
+    "created_at": "2026-02-17T20:26:29.000Z",
+    "updated_at": "2026-03-17T16:40:31.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "659083",
+    "subvenue_id": "796822",
+    "source": {
+      "id": "6994cef695167e0001b1623b",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "home_team_score": "",
+        "away_team_id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cdf40d4c144e5db64656",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 2",
+          "name": "Millersville Men's Club Soccer",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": "",
+          "team_id": "6994cdf42e7fd926b839a663",
+          "primary_color": "",
+          "seed_id": "3672199",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8/large_square_Millersville__1_.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cef366c55200019bafff",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 2",
+          "name": "Alloy Soccer Club Reserves",
+          "division_id": "68f132e1e548c30001696841",
+          "secondary_color": null,
+          "team_id": "6994cef366c55200019baffc",
+          "primary_color": null,
+          "seed_id": "3672210",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cef366c55200019bafff",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 2",
+        "division_id": "68f132e1e548c30001696841",
+        "id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "68f132e008e07ca525a9989b",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 2",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "68f132e1e548c30001696842"
+        },
+        "system": "StatNgin",
+        "id": "68f132e1e548c30001696841",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cef695167e0001b1623b",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
+        "originator_id": "6994cdf40d4c144e5db64656",
+        "name": "Millersville Men's Club Soccer",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
+        "originator_id": "6994cef366c55200019bafff",
+        "name": "Alloy Soccer Club Reserves",
+        "score": "",
+        "is_home_team": false,
         "interval_scores": []
       },
       "score_allowed": true,
@@ -2059,153 +2214,6 @@
         "id": "11f10c3e-57fb-8d5a-bf9f-f6a9ee1493d8",
         "originator_id": "6994cdf48021c50f87e6da72",
         "name": "Lancaster Bible College",
-        "score": "",
-        "is_home_team": false,
-        "interval_scores": []
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "unscored",
-      "number_of_overtime": 0
-    }
-  },
-  {
-    "id": "0fd03b02-6603-406c-ab9a-3f4e8a9620be",
-    "title": "Alloy Soccer Club Reserves at Millersville Men's Club Soccer",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Pucillo Field",
-    "location_address": "Pucillo Field, Millersville, PA 17551, US",
-    "location_description": "Turf",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "scheduled",
-    "start_date_time": "2026-04-16T00:00:00.000Z",
-    "end_date_time": "2026-04-16T01:30:00.000Z",
-    "created_at": "2026-02-17T20:26:29.000Z",
-    "updated_at": "2026-02-18T16:58:46.000Z",
-    "tbd_time": false,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "659083",
-    "subvenue_id": "796822",
-    "source": {
-      "id": "6994cef695167e0001b1623b",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
-        "home_team_score": "",
-        "away_team_id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
-        "away_team_score": "",
-        "score_allowed": true,
-        "status": "scheduled",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "6994cdf40d4c144e5db64656",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 2",
-          "name": "Millersville Men's Club Soccer",
-          "division_id": "68f132e1e548c30001696841",
-          "secondary_color": "",
-          "team_id": "6994cdf42e7fd926b839a663",
-          "primary_color": "",
-          "seed_id": "3672199",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8/large_square_Millersville__1_.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "6994cdf40d4c144e5db64656",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "68f132e1e548c30001696841",
-        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "6994cef366c55200019bafff",
-        "extended_attributes": {
-          "outside_team": true,
-          "division_name": "Liga 2",
-          "name": "Alloy Soccer Club Reserves",
-          "division_id": "68f132e1e548c30001696841",
-          "secondary_color": null,
-          "team_id": "6994cef366c55200019baffc",
-          "primary_color": null,
-          "seed_id": "3672210",
-          "logos": {
-            "large_square": null
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "6994cef366c55200019bafff",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 2",
-        "division_id": "68f132e1e548c30001696841",
-        "id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "68f132e008e07ca525a9989b",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 2",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "68f132e1e548c30001696842"
-        },
-        "system": "StatNgin",
-        "id": "68f132e1e548c30001696841",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "6994cef695167e0001b1623b",
-      "originator_type": "game_slot",
-      "status": "scheduled",
-      "team_1": {
-        "id": "11f10c3e-57fb-e0f2-bf9f-f6a9ee1493d8",
-        "originator_id": "6994cdf40d4c144e5db64656",
-        "name": "Millersville Men's Club Soccer",
-        "score": "",
-        "is_home_team": true,
-        "interval_scores": []
-      },
-      "team_2": {
-        "id": "11f10c3e-ef7d-799a-bbb0-12c1e9948c63",
-        "originator_id": "6994cef366c55200019bafff",
-        "name": "Alloy Soccer Club Reserves",
         "score": "",
         "is_home_team": false,
         "interval_scores": []

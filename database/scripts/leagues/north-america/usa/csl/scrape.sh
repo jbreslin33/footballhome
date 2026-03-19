@@ -1,88 +1,34 @@
 #!/bin/bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# CSL - Scrape HTML from Web
+# CSL - Scrape All (Standings + Team Pages)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# Fetches the CSL standings page using real Chrome (--dump-dom).
-# Only fetches 1 page — the standings page that generate-sql.js needs.
-# Team pages are NOT fetched here (fetch individually when needed for rosters).
-#
-# Uses your installed Chrome binary to avoid bot detection (identical TLS
-# fingerprint to normal browsing). Puppeteer's bundled Chromium gets 403'd.
+# Fetches everything needed for CSL:
+#   1. Standings page (1 Chrome request)
+#   2. Team detail pages (rosters + schedule, ~30 requests with cache)
 #
 # Usage:
-#   ./scrape.sh
+#   ./scrape.sh                  # Skip if cache < 7 days old
+#   FORCE_SCRAPE=1 ./scrape.sh   # Force re-fetch everything
+#
+# For targeted scraping, use:
+#   ./scrape-standings.sh        # Just the standings page
+#   ./scrape-teams.sh            # Just team pages (rosters + schedule)
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$SCRIPT_DIR"
-while [ ! -f "$PROJECT_ROOT/Makefile" ]; do
-  PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
-done
-cd "$PROJECT_ROOT"
 
-# Detect Chrome binary (cross-platform)
-if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
-  CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-elif command -v google-chrome-stable &> /dev/null; then
-  CHROME="google-chrome-stable"
-elif command -v google-chrome &> /dev/null; then
-  CHROME="google-chrome"
-else
-  echo "❌ Chrome not found. Run ./setup.sh to install, or install Google Chrome manually."
-  exit 1
-fi
+echo "🌐 CSL: Scraping all data..."
+echo ""
 
-# Read season external ID from config.json
-CONFIG="$SCRIPT_DIR/config.json"
-SEASON_EXT_ID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$CONFIG','utf8')).seasonExternalId || '')")
+# 1. Standings
+"$SCRIPT_DIR/scrape-standings.sh"
+echo ""
 
-CACHE_DIR="database/scraped-html/csl"
-URL="https://www.cosmosoccerleague.com/CSL/Tables/"
-if [ -n "$SEASON_EXT_ID" ]; then
-  URL="${URL}?Table_Season=${SEASON_EXT_ID}"
-fi
-# Hash must match HtmlFetcher.getCacheFilename(URL)
-FILENAME=$(node -e "const c=require('crypto');const u='$URL';const h=c.createHash('md5').update(u).digest('hex').substring(0,8);const p=new URL(u).pathname.split('/').filter(x=>x);const b=p.length?p[p.length-1].toLowerCase().replace(/[^a-z0-9]/g,'-'):'page';console.log(b+'-'+h+'.html')")
-OUTPUT="$CACHE_DIR/$FILENAME"
+# 2. Team pages (rosters + schedule)
+"$SCRIPT_DIR/scrape-teams.sh"
 
-# Back up existing file
-mkdir -p "$CACHE_DIR/.backup"
-if [ -f "$OUTPUT" ]; then
-  cp "$OUTPUT" "$CACHE_DIR/.backup/"
-fi
-
-echo "🌐 Fetching CSL standings..."
-echo "   URL: $URL"
-
-HTML=$("$CHROME" --headless=new --dump-dom --disable-gpu --no-sandbox "$URL" 2>/dev/null) || true
-
-# Validate: reject 403 error pages
-if echo "$HTML" | grep -q '403 - Forbidden'; then
-  echo "   ⚠️  Got 403 — restoring backup"
-  cp "$CACHE_DIR/.backup/"*.html "$CACHE_DIR/" 2>/dev/null || true
-  rm -rf "$CACHE_DIR/.backup"
-  echo "   ✓ Using previous cached HTML"
-  exit 0
-fi
-
-# Validate: check for real content
-LEN=${#HTML}
-if [ "$LEN" -lt 5000 ]; then
-  echo "   ⚠️  Response too small ($LEN bytes) — restoring backup"
-  cp "$CACHE_DIR/.backup/"*.html "$CACHE_DIR/" 2>/dev/null || true
-  rm -rf "$CACHE_DIR/.backup"
-  echo "   ✓ Using previous cached HTML"
-  exit 0
-fi
-
-# Save
-mkdir -p "$CACHE_DIR"
-echo "$HTML" > "$OUTPUT"
-rm -rf "$CACHE_DIR/.backup"
-SIZE_KB=$((LEN / 1024))
-echo "   ✅ Saved: $OUTPUT (${SIZE_KB} KB)"
-echo "✓ CSL HTML saved to $CACHE_DIR/"
+echo "✓ CSL scrape complete"

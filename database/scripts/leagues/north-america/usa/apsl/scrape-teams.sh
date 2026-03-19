@@ -1,34 +1,30 @@
 #!/bin/bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# APSL - Scrape All (Standings + Team Pages)
+# APSL - Scrape Team Pages (Rosters + Schedule)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
-# Fetches everything needed for APSL:
-#   1. Standings page (1 Chrome request)
-#   2. Team detail pages (rosters + schedule, ~40 requests with cache)
+# Fetches team detail pages from apslsoccer.com.
+# Reads team IDs from cached standings HTML — no DB needed.
+# Each team page contains both the roster and schedule.
 #
 # Usage:
-#   ./scrape.sh                  # Skip if cache < 7 days old
-#   FORCE_SCRAPE=1 ./scrape.sh   # Force re-fetch everything
-#
-# For targeted scraping, use:
-#   ./scrape-standings.sh        # Just the standings page
-#   ./scrape-teams.sh            # Just team pages (rosters + schedule)
+#   ./scrape-teams.sh                  # Skip if cache < 7 days old
+#   FORCE_SCRAPE=1 ./scrape-teams.sh   # Force re-fetch all team pages
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+while [ ! -f "$PROJECT_ROOT/Makefile" ]; do
+  PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
+done
+cd "$PROJECT_ROOT"
 
-echo "🌐 APSL: Scraping all data..."
-echo ""
+FORCE_FLAG=""
+if [ "${FORCE_SCRAPE:-0}" = "1" ]; then
+  FORCE_FLAG="--force"
+fi
 
-# 1. Standings
-"$SCRIPT_DIR/scrape-standings.sh"
-echo ""
-
-# 2. Team pages (rosters + schedule)
-"$SCRIPT_DIR/scrape-teams.sh"
-
-echo "✓ APSL scrape complete"
+node database/scripts/scrapers/scrape-team-pages.js --league apsl $FORCE_FLAG

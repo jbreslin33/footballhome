@@ -7960,7 +7960,7 @@
     "start_date_time": "2026-03-15T19:00:00.000Z",
     "end_date_time": "2026-03-15T21:00:00.000Z",
     "created_at": "2026-02-20T20:31:08.000Z",
-    "updated_at": "2026-03-16T12:00:50.000Z",
+    "updated_at": "2026-03-16T14:37:26.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -7984,8 +7984,12 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
@@ -8536,11 +8540,11 @@
   },
   {
     "id": "62294e19-4b8a-481b-bcf5-6e4f80baa542",
-    "title": "Lighthouse Boys Club at Oaklyn United FC II",
+    "title": "Lighthouse Boys Club U23 at Oaklyn United FC II",
     "event_type": "game",
     "description": "",
     "location_name": "South Philadelphia Super Site",
-    "location_address": "2926-2968 South 10th Street, Philadelphia, PA 19148",
+    "location_address": "2926-2968 South 10th Street, Philadelphia, PA 19148, US",
     "location_description": "Turf",
     "location_place_id": "",
     "location_url": "",
@@ -8548,7 +8552,7 @@
     "start_date_time": "2026-03-22T16:00:00.000Z",
     "end_date_time": "2026-03-22T18:00:00.000Z",
     "created_at": "2026-02-20T20:36:45.000Z",
-    "updated_at": "2026-03-10T14:50:54.000Z",
+    "updated_at": "2026-03-16T14:19:57.000Z",
     "tbd_time": false,
     "all_day_event": false,
     "local_timezone": "America/New_York",
@@ -8561,7 +8565,7 @@
       "extended_attributes": {
         "home_team_id": "11f089c6-38c1-d7e6-a6ce-e61f3017bc57",
         "home_team_score": "",
-        "away_team_id": "11f089c6-38b9-b188-b2ff-ee90516ff737",
+        "away_team_id": "11f12143-34b5-da7a-95b3-8609fed95fb5",
         "away_team_score": "",
         "score_allowed": true,
         "status": "scheduled",
@@ -8572,39 +8576,17 @@
         "event_series_id": null,
         "video_list": [],
         "referee_list": [],
-        "shared_event": null,
-        "read_only": null,
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
         "sport_key": "",
         "state": []
       }
     },
     "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b9e9d904803c00fd5a5fa0",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 1",
-          "name": "Lighthouse Boys Club",
-          "division_id": "6827a087ce04b60001bfa274",
-          "secondary_color": "",
-          "team_id": "68b9e9d81f736301382e6ee1",
-          "primary_color": "",
-          "seed_id": "3279123",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f089c6-38b9-b188-b2ff-ee90516ff737/large_square_Lighthouse.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b9e9d904803c00fd5a5fa0",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 1",
-        "division_id": "6827a087ce04b60001bfa274",
-        "id": "11f089c6-38b9-b188-b2ff-ee90516ff737",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
       {
         "originator_type": "season_team",
         "principal_originator_id": "68b9e9d91f736300fa2e7027",
@@ -8628,6 +8610,32 @@
         "division_name": "Liga 1",
         "division_id": "6827a087ce04b60001bfa274",
         "id": "11f089c6-38c1-d7e6-a6ce-e61f3017bc57",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "69b8118b71f95a0001a1ac6b",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 1",
+          "name": "Lighthouse Boys Club U23",
+          "division_id": "6827a087ce04b60001bfa274",
+          "secondary_color": null,
+          "team_id": "69b8118b71f95a0001a1ac6a",
+          "primary_color": null,
+          "seed_id": "3755734",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "69b8118b71f95a0001a1ac6b",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a087ce04b60001bfa274",
+        "id": "11f12143-34b5-da7a-95b3-8609fed95fb5",
         "type": "team",
         "principal_originator_type": "season_team"
       },
@@ -8668,12 +8676,14 @@
         "interval_scores": []
       },
       "team_2": {
-        "id": "11f089c6-38b9-b188-b2ff-ee90516ff737",
-        "originator_id": "68b9e9d904803c00fd5a5fa0",
-        "name": "Lighthouse Boys Club",
+        "id": "11f12143-34b5-da7a-95b3-8609fed95fb5",
+        "originator_id": "69b8118b71f95a0001a1ac6b",
+        "name": "Lighthouse Boys Club U23",
         "score": "",
         "is_home_team": false,
-        "interval_scores": []
+        "interval_scores": [],
+        "originator_type": "opponent_season_team",
+        "originator_system": "StatNgin"
       },
       "score_allowed": true,
       "overtime": false,

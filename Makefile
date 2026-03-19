@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme migrate vpn-up vpn-down vpn-status vpn-scrape vpn-sync
+.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme migrate vpn-up vpn-down vpn-status vpn-scrape vpn-sync
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -38,8 +38,24 @@ help:
 	@echo "  make rebuild       Destroy everything + fresh build (wipes DB)"
 	@echo "  make migrate       Apply pending schema migrations (preserves data)"
 	@echo ""
+	@echo "Scraping (fetch fresh HTML from web):"
+	@echo "  make scrape                Scrape everything for all leagues"
+	@echo "  make scrape-apsl           Scrape all APSL data (standings + teams)"
+	@echo "  make scrape-csl            Scrape all CSL data (standings + teams)"
+	@echo "  make scrape-casa           Scrape all CASA data (standings + rosters + schedule)"
+	@echo "  make scrape-standings      Scrape standings for all leagues"
+	@echo "  make scrape-apsl-standings Scrape APSL standings only"
+	@echo "  make scrape-csl-standings  Scrape CSL standings only"
+	@echo "  make scrape-casa-standings Scrape CASA standings only"
+	@echo "  make scrape-teams          Scrape team pages (APSL + CSL)"
+	@echo "  make scrape-apsl-teams     Scrape APSL team pages (rosters + schedule)"
+	@echo "  make scrape-csl-teams      Scrape CSL team pages (rosters + schedule)"
+	@echo "  make scrape-rosters        Scrape rosters for all leagues"
+	@echo "  make scrape-casa-rosters   Scrape CASA rosters (Google Sheets)"
+	@echo "  make scrape-schedule       Scrape schedules for all leagues"
+	@echo "  make scrape-casa-schedule  Scrape CASA schedule (SportsEngine API)"
+	@echo ""
 	@echo "Debugging:"
-	@echo "  make scrape-apsl   Fetch HTML only (also: scrape-csl, scrape-casa)"
 	@echo "  make parse-apsl    Regenerate SQL from cached HTML (also: parse-csl, parse-casa)"
 	@echo "  make shell-db      Connect to database shell"
 	@echo "  make ps            Show running containers"
@@ -189,6 +205,45 @@ scrape-csl:
 
 scrape-casa:
 	@cd database/scripts/leagues/north-america/usa/casa && ./scrape.sh
+
+# --- Per-league per-datatype scrape targets ---
+
+# Standings (all leagues)
+scrape-standings: scrape-apsl-standings scrape-csl-standings scrape-casa-standings
+	@echo "✓ All standings scraped"
+
+scrape-apsl-standings:
+	@cd database/scripts/leagues/north-america/usa/apsl && ./scrape-standings.sh
+
+scrape-csl-standings:
+	@cd database/scripts/leagues/north-america/usa/csl && ./scrape-standings.sh
+
+scrape-casa-standings:
+	@cd database/scripts/leagues/north-america/usa/casa && ./scrape-standings.sh
+
+# Team pages — APSL/CSL only (each team page has rosters + schedule)
+scrape-teams: scrape-apsl-teams scrape-csl-teams
+	@echo "✓ All team pages scraped"
+
+scrape-apsl-teams:
+	@cd database/scripts/leagues/north-america/usa/apsl && ./scrape-teams.sh
+
+scrape-csl-teams:
+	@cd database/scripts/leagues/north-america/usa/csl && ./scrape-teams.sh
+
+# Rosters (APSL/CSL via team pages, CASA via Google Sheets)
+scrape-rosters: scrape-apsl-teams scrape-csl-teams scrape-casa-rosters
+	@echo "✓ All rosters scraped"
+
+scrape-casa-rosters:
+	@cd database/scripts/leagues/north-america/usa/casa && ./scrape-rosters.sh
+
+# Schedule (APSL/CSL via team pages, CASA via SportsEngine API)
+scrape-schedule: scrape-apsl-teams scrape-csl-teams scrape-casa-schedule
+	@echo "✓ All schedules scraped"
+
+scrape-casa-schedule:
+	@cd database/scripts/leagues/north-america/usa/casa && ./scrape-schedule.sh
 
 # ============================================================
 # Events (scrape match events, requires DB with matches loaded)

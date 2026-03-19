@@ -1,24 +1,38 @@
 #!/bin/bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# CASA - Scrape HTML from Web
+# CASA - Scrape All (Standings + Rosters + Schedule)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Fetches everything needed for CASA:
+#   1. Standings (SportsEngine iframes, 5 divisions)
+#   2. Schedule (SportsEngine REST API, 5 divisions)
+#   3. Rosters (Google Sheets XLSX downloads)
+#
+# Usage:
+#   ./scrape.sh
+#
+# For targeted scraping, use:
+#   ./scrape-standings.sh    # Just standings
+#   ./scrape-schedule.sh     # Just schedule/results
+#   ./scrape-rosters.sh      # Just rosters from Google Sheets
+#
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$SCRIPT_DIR"
-while [ ! -f "$PROJECT_ROOT/Makefile" ]; do
-  PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
-done
-cd "$PROJECT_ROOT"
 
-echo "🌐 Scraping CASA HTML from web..."
+echo "🌐 CASA: Scraping all data..."
+echo ""
+
+# 1+2. Standings + Schedule (same scraper, target=all)
+echo "🌐 Scraping CASA standings + schedule..."
 export SCRAPE_MODE=download
 export SCRAPE_USE_CACHE=false
 node database/scripts/scrapers/CasaStructureScraper.js
-
 echo ""
-echo "📥 Downloading CASA roster sheets from Google Sheets..."
-node database/scripts/scrapers/CasaRosterScraper.js
 
-echo "✓ CASA HTML saved to database/scraped-html/casa/"
+# 3. Rosters
+"$SCRIPT_DIR/scrape-rosters.sh"
+
+echo "✓ CASA scrape complete"

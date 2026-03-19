@@ -1,5 +1,5 @@
 {
-  "generated": "2026-03-16T13:25:44.062Z",
+  "generated": "2026-03-19T13:44:47.075Z",
   "total_matches": 256,
   "divisions": [
     {
@@ -532,7 +532,7 @@
         },
         {
           "home": "Oaklyn United FC II",
-          "away": "Lighthouse Boys Club",
+          "away": "Lighthouse Boys Club U23",
           "time": "12:00 PM - 2:00 PM",
           "date": "2026-03-22T16:00:00.000Z",
           "status": "scheduled",
@@ -926,15 +926,6 @@
           "externalId": "03728c1d-369d-4ed4-af53-f54f0993d190"
         },
         {
-          "home": "Philadelphia SC Select",
-          "away": "Philly Black Stars",
-          "time": "2:45 PM - 4:30 PM",
-          "date": "2025-10-12T18:45:00.000Z",
-          "status": "Final",
-          "score": "2 - 2",
-          "externalId": "50c7a4a7-b9dd-45fa-8573-c5b746b466ed"
-        },
-        {
           "home": "Persepolis FC II",
           "away": "Lighthouse Boys Club U23",
           "time": "2:45 PM - 4:30 PM",
@@ -942,6 +933,15 @@
           "status": "Final",
           "score": "8 - 0",
           "externalId": "d4060108-b706-4f5f-a165-8a93b1d36f75"
+        },
+        {
+          "home": "Philadelphia SC Select",
+          "away": "Philly Black Stars",
+          "time": "2:45 PM - 4:30 PM",
+          "date": "2025-10-12T18:45:00.000Z",
+          "status": "Final",
+          "score": "2 - 2",
+          "externalId": "50c7a4a7-b9dd-45fa-8573-c5b746b466ed"
         },
         {
           "home": "Illyrians",
@@ -2022,6 +2022,15 @@
           "externalId": "f3302399-f480-4343-abd9-10621ef3b12e"
         },
         {
+          "home": "Millersville Men's Club Soccer",
+          "away": "Alloy Soccer Club Reserves\t",
+          "time": "8:00 PM - 9:30 PM",
+          "date": "2026-03-26T00:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "ff8b2f9f-7a1e-4ec8-9e49-0e3887786da1"
+        },
+        {
           "home": "F&M FC\t",
           "away": "Kutztown Men's Soccer\t",
           "time": "2:30 PM - 4:00 PM",
@@ -2083,15 +2092,6 @@
           "status": "scheduled",
           "score": null,
           "externalId": "9fdc1a0a-0e36-4ea4-980c-9e7719796785"
-        },
-        {
-          "home": "Millersville Men's Club Soccer",
-          "away": "Alloy Soccer Club Reserves\t",
-          "time": "8:00 PM - 9:30 PM",
-          "date": "2026-04-16T00:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "ff8b2f9f-7a1e-4ec8-9e49-0e3887786da1"
         },
         {
           "home": "Alloy Soccer Club Reserves\t",
@@ -2205,8 +2205,8 @@
           "away": "YorkPA FC",
           "time": "8:00 PM - 9:30 PM",
           "date": "2026-03-18T00:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
+          "status": "Final",
+          "score": "3 - 0",
           "externalId": "cae1c03d-bbb7-406f-9176-d0c8b691fc30"
         },
         {
@@ -2235,6 +2235,15 @@
           "status": "scheduled",
           "score": null,
           "externalId": "55a3f991-6963-4aab-817f-d8a58a221d8e"
+        },
+        {
+          "home": "Millersville Men's Club Soccer",
+          "away": "Alloy Soccer Club Reserves",
+          "time": "8:00 PM - 9:30 PM",
+          "date": "2026-03-26T00:00:00.000Z",
+          "status": "scheduled",
+          "score": null,
+          "externalId": "0fd03b02-6603-406c-ab9a-3f4e8a9620be"
         },
         {
           "home": "Lancaster Bible College",
@@ -2289,15 +2298,6 @@
           "status": "scheduled",
           "score": null,
           "externalId": "ad697c65-8457-4487-9c67-2a0287c06ed8"
-        },
-        {
-          "home": "Millersville Men's Club Soccer",
-          "away": "Alloy Soccer Club Reserves",
-          "time": "8:00 PM - 9:30 PM",
-          "date": "2026-04-16T00:00:00.000Z",
-          "status": "scheduled",
-          "score": null,
-          "externalId": "0fd03b02-6603-406c-ab9a-3f4e8a9620be"
         },
         {
           "home": "YorkPA FC",

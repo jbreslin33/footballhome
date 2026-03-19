@@ -4287,6 +4287,157 @@
     }
   },
   {
+    "id": "ff8b2f9f-7a1e-4ec8-9e49-0e3887786da1",
+    "title": "Alloy Soccer Club Reserves\t at Millersville Men's Club Soccer",
+    "event_type": "game",
+    "description": "",
+    "location_name": "Pucillo Field",
+    "location_address": "Pucillo Field, Millersville, PA 17551, US",
+    "location_description": "Turf",
+    "location_place_id": "",
+    "location_url": "",
+    "status": "scheduled",
+    "start_date_time": "2026-03-26T00:00:00.000Z",
+    "end_date_time": "2026-03-26T01:30:00.000Z",
+    "created_at": "2026-02-17T20:19:39.000Z",
+    "updated_at": "2026-03-17T16:33:28.000Z",
+    "tbd_time": false,
+    "all_day_event": false,
+    "local_timezone": "America/New_York",
+    "venue_id": "659083",
+    "subvenue_id": "796822",
+    "source": {
+      "id": "6994cd5c2a1178000164b687",
+      "type": "event",
+      "system": "StatNgin",
+      "extended_attributes": {
+        "home_team_id": "11f10c3d-f992-0a64-8601-e24a5b48c58b",
+        "home_team_score": "",
+        "away_team_id": "11f0843b-baee-c232-885c-ee8a9659780f",
+        "away_team_score": "",
+        "score_allowed": true,
+        "status": "scheduled",
+        "allow_rsvp": null,
+        "is_locked": null,
+        "_links": [],
+        "event_attendees": [],
+        "event_series_id": null,
+        "video_list": [],
+        "referee_list": [],
+        "shared_event": {
+          "read_only": false,
+          "management_org_name": null,
+          "is_shared_event": false
+        },
+        "read_only": false,
+        "sport_key": "",
+        "state": []
+      }
+    },
+    "principals": [
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "68b09e03a4ac6ddcbb7bfed9",
+        "extended_attributes": {
+          "outside_team": false,
+          "division_name": "Liga 1",
+          "name": "Alloy Soccer Club Reserves\t",
+          "division_id": "6827a11f6da77900013c3217",
+          "secondary_color": "",
+          "team_id": "68b09e03a4ac6deacd7bfa2c",
+          "primary_color": "",
+          "seed_id": "3252001",
+          "logos": {
+            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0843b-baee-c232-885c-ee8a9659780f/large_square_Alloy.png"
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "68b09e03a4ac6ddcbb7bfed9",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a11f6da77900013c3217",
+        "id": "11f0843b-baee-c232-885c-ee8a9659780f",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "originator_type": "season_team",
+        "principal_originator_id": "6994cd5653967e00013892cc",
+        "extended_attributes": {
+          "outside_team": true,
+          "division_name": "Liga 1",
+          "name": "Millersville Men's Club Soccer",
+          "division_id": "6827a11f6da77900013c3217",
+          "secondary_color": null,
+          "team_id": "6994cd5653967e00013892cb",
+          "primary_color": null,
+          "seed_id": "3672190",
+          "logos": {
+            "large_square": null
+          }
+        },
+        "system": "TeamService",
+        "originator_system": "StatNgin",
+        "originator_id": "6994cd5653967e00013892cc",
+        "principal_originator_system": "StatNgin",
+        "division_name": "Liga 1",
+        "division_id": "6827a11f6da77900013c3217",
+        "id": "11f10c3d-f992-0a64-8601-e24a5b48c58b",
+        "type": "team",
+        "principal_originator_type": "season_team"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "8058",
+        "type": "organization"
+      },
+      {
+        "extended_attributes": {},
+        "system": "StatNgin",
+        "id": "6827a11eaca2fea950917a73",
+        "type": "program"
+      },
+      {
+        "originator_type": "division",
+        "extended_attributes": {
+          "flight_name": "Liga 1",
+          "flight_stage_name": "Game Play",
+          "flight_stage_id": "6827a1206da77900013c3218"
+        },
+        "system": "StatNgin",
+        "id": "6827a11f6da77900013c3217",
+        "type": "division"
+      }
+    ],
+    "game_details": {
+      "originator_id": "6994cd5c2a1178000164b687",
+      "originator_type": "game_slot",
+      "status": "scheduled",
+      "team_1": {
+        "id": "11f0843b-baee-c232-885c-ee8a9659780f",
+        "originator_id": "68b09e03a4ac6ddcbb7bfed9",
+        "name": "Alloy Soccer Club Reserves\t",
+        "score": "",
+        "is_home_team": false,
+        "interval_scores": []
+      },
+      "team_2": {
+        "id": "11f10c3d-f992-0a64-8601-e24a5b48c58b",
+        "originator_id": "6994cd5653967e00013892cc",
+        "name": "Millersville Men's Club Soccer",
+        "score": "",
+        "is_home_team": true,
+        "interval_scores": []
+      },
+      "score_allowed": true,
+      "overtime": false,
+      "scoring_type": "unscored",
+      "number_of_overtime": 0
+    }
+  },
+  {
     "id": "6b238965-bc43-4c60-be51-e556b1ea0371",
     "title": "Kutztown Men's Soccer\t at F&M FC\t",
     "event_type": "game",
@@ -5309,157 +5460,6 @@
         "name": "F&M FC\t",
         "score": "",
         "is_home_team": false,
-        "interval_scores": []
-      },
-      "score_allowed": true,
-      "overtime": false,
-      "scoring_type": "unscored",
-      "number_of_overtime": 0
-    }
-  },
-  {
-    "id": "ff8b2f9f-7a1e-4ec8-9e49-0e3887786da1",
-    "title": "Alloy Soccer Club Reserves\t at Millersville Men's Club Soccer",
-    "event_type": "game",
-    "description": "",
-    "location_name": "Pucillo Field",
-    "location_address": "Pucillo Field, Millersville, PA 17551, US",
-    "location_description": "Turf",
-    "location_place_id": "",
-    "location_url": "",
-    "status": "scheduled",
-    "start_date_time": "2026-04-16T00:00:00.000Z",
-    "end_date_time": "2026-04-16T01:30:00.000Z",
-    "created_at": "2026-02-17T20:19:39.000Z",
-    "updated_at": "2026-02-18T17:00:28.000Z",
-    "tbd_time": false,
-    "all_day_event": false,
-    "local_timezone": "America/New_York",
-    "venue_id": "659083",
-    "subvenue_id": "796822",
-    "source": {
-      "id": "6994cd5c2a1178000164b687",
-      "type": "event",
-      "system": "StatNgin",
-      "extended_attributes": {
-        "home_team_id": "11f10c3d-f992-0a64-8601-e24a5b48c58b",
-        "home_team_score": "",
-        "away_team_id": "11f0843b-baee-c232-885c-ee8a9659780f",
-        "away_team_score": "",
-        "score_allowed": true,
-        "status": "scheduled",
-        "allow_rsvp": null,
-        "is_locked": null,
-        "_links": [],
-        "event_attendees": [],
-        "event_series_id": null,
-        "video_list": [],
-        "referee_list": [],
-        "shared_event": {
-          "read_only": false,
-          "management_org_name": null,
-          "is_shared_event": false
-        },
-        "read_only": false,
-        "sport_key": "",
-        "state": []
-      }
-    },
-    "principals": [
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "68b09e03a4ac6ddcbb7bfed9",
-        "extended_attributes": {
-          "outside_team": false,
-          "division_name": "Liga 1",
-          "name": "Alloy Soccer Club Reserves\t",
-          "division_id": "6827a11f6da77900013c3217",
-          "secondary_color": "",
-          "team_id": "68b09e03a4ac6deacd7bfa2c",
-          "primary_color": "",
-          "seed_id": "3252001",
-          "logos": {
-            "large_square": "https://se-team-service-production.s3.amazonaws.com/uploads/team/logo/11f0843b-baee-c232-885c-ee8a9659780f/large_square_Alloy.png"
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "68b09e03a4ac6ddcbb7bfed9",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 1",
-        "division_id": "6827a11f6da77900013c3217",
-        "id": "11f0843b-baee-c232-885c-ee8a9659780f",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "originator_type": "season_team",
-        "principal_originator_id": "6994cd5653967e00013892cc",
-        "extended_attributes": {
-          "outside_team": true,
-          "division_name": "Liga 1",
-          "name": "Millersville Men's Club Soccer",
-          "division_id": "6827a11f6da77900013c3217",
-          "secondary_color": null,
-          "team_id": "6994cd5653967e00013892cb",
-          "primary_color": null,
-          "seed_id": "3672190",
-          "logos": {
-            "large_square": null
-          }
-        },
-        "system": "TeamService",
-        "originator_system": "StatNgin",
-        "originator_id": "6994cd5653967e00013892cc",
-        "principal_originator_system": "StatNgin",
-        "division_name": "Liga 1",
-        "division_id": "6827a11f6da77900013c3217",
-        "id": "11f10c3d-f992-0a64-8601-e24a5b48c58b",
-        "type": "team",
-        "principal_originator_type": "season_team"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "8058",
-        "type": "organization"
-      },
-      {
-        "extended_attributes": {},
-        "system": "StatNgin",
-        "id": "6827a11eaca2fea950917a73",
-        "type": "program"
-      },
-      {
-        "originator_type": "division",
-        "extended_attributes": {
-          "flight_name": "Liga 1",
-          "flight_stage_name": "Game Play",
-          "flight_stage_id": "6827a1206da77900013c3218"
-        },
-        "system": "StatNgin",
-        "id": "6827a11f6da77900013c3217",
-        "type": "division"
-      }
-    ],
-    "game_details": {
-      "originator_id": "6994cd5c2a1178000164b687",
-      "originator_type": "game_slot",
-      "status": "scheduled",
-      "team_1": {
-        "id": "11f0843b-baee-c232-885c-ee8a9659780f",
-        "originator_id": "68b09e03a4ac6ddcbb7bfed9",
-        "name": "Alloy Soccer Club Reserves\t",
-        "score": "",
-        "is_home_team": false,
-        "interval_scores": []
-      },
-      "team_2": {
-        "id": "11f10c3d-f992-0a64-8601-e24a5b48c58b",
-        "originator_id": "6994cd5653967e00013892cc",
-        "name": "Millersville Men's Club Soccer",
-        "score": "",
-        "is_home_team": true,
         "interval_scores": []
       },
       "score_allowed": true,

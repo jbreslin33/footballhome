@@ -392,12 +392,15 @@ class CasaStructureScraper {
 
   /**
    * Main scrape: fetch all divisions, save JSON for generate-sql.js
+   * @param {string} target - 'all' | 'standings' | 'schedule' — which data to scrape
    */
-  async scrape() {
-    console.log('\n⚽ CASA Structure Scraper');
+  async scrape(target = 'all') {
+    const label = target === 'all' ? '' : ` (${target} only)`;
+    console.log(`\n⚽ CASA Structure Scraper${label}`);
     console.log('='.repeat(60));
 
-    const browser = await this._getBrowser();
+    const needsBrowser = (target === 'all' || target === 'standings');
+    const browser = needsBrowser ? await this._getBrowser() : null;
 
     const snapshot = {
       teams: [],
@@ -410,6 +413,7 @@ class CasaStructureScraper {
         console.log(`\n📂 ${division.name}`);
 
         // Scrape standings
+        if (target === 'all' || target === 'standings') {
         try {
           const standingsTeams = await this.scrapeStandings(browser, division);
           console.log(`   ✓ Standings: ${standingsTeams.length} teams`);
@@ -440,8 +444,10 @@ class CasaStructureScraper {
         } catch (error) {
           console.error(`   ✗ Standings error: ${error.message}`);
         }
+        } // end standings target check
 
         // Scrape schedule (via SportsEngine API — no browser needed)
+        if (target === 'all' || target === 'schedule') {
         try {
           const matches = await this.scrapeSchedule(browser, division);
           console.log(`   ✓ Schedule: ${matches.length} matches`);
@@ -463,6 +469,7 @@ class CasaStructureScraper {
         } catch (error) {
           console.error(`   ✗ Schedule error: ${error.message}`);
         }
+        } // end schedule target check
 
         // Rate limit between divisions
         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -472,11 +479,15 @@ class CasaStructureScraper {
     }
 
     // Save JSON formats that generate-sql.js reads
-    this._saveBackwardsCompatible(snapshot);
+    this._saveBackwardsCompatible(snapshot, target);
 
-    console.log(`\n   Teams: ${snapshot.teams.length}`);
-    console.log(`   Matches: ${snapshot.matches.length}`);
-    console.log(`   Standings: ${snapshot.standings.length}`);
+    if (target === 'all' || target === 'standings') {
+      console.log(`\n   Teams: ${snapshot.teams.length}`);
+      console.log(`   Standings: ${snapshot.standings.length}`);
+    }
+    if (target === 'all' || target === 'schedule') {
+      console.log(`   Matches: ${snapshot.matches.length}`);
+    }
 
     console.log('\n✅ CASA scrape complete\n');
     return snapshot;
@@ -485,8 +496,10 @@ class CasaStructureScraper {
   /**
    * Save scraped data as JSON files that generate-sql.js reads
    * Produces: division-teams.json, standings-data.json, division-matches.json
+   * When target is specified, only updates the relevant JSON files.
    */
-  _saveBackwardsCompatible(snapshot) {
+  _saveBackwardsCompatible(snapshot, target = 'all') {
+    if (target === 'all' || target === 'standings') {
     // standings-data.json
     const standingsData = {
       generated: new Date().toISOString(),
@@ -534,7 +547,9 @@ class CasaStructureScraper {
       }))
     };
     fs.writeFileSync(path.join(this.cacheDir, 'division-teams.json'), JSON.stringify(divisionTeams, null, 2));
+    } // end standings save
 
+    if (target === 'all' || target === 'schedule') {
     // division-matches.json
     const divisionMatches = {
       generated: new Date().toISOString(),
@@ -560,15 +575,27 @@ class CasaStructureScraper {
       })
     };
     fs.writeFileSync(path.join(this.cacheDir, 'division-matches.json'), JSON.stringify(divisionMatches, null, 2));
+    } // end schedule save
 
-    console.log('   📄 Saved backwards-compatible JSON files');
+    console.log('   📄 Saved JSON files');
   }
 }
 
 // Run if executed directly
 if (require.main === module) {
+  // Parse --target flag: all (default), standings, schedule
+  let target = 'all';
+  const targetIdx = process.argv.indexOf('--target');
+  if (targetIdx !== -1 && process.argv[targetIdx + 1]) {
+    target = process.argv[targetIdx + 1];
+  }
+  if (!['all', 'standings', 'schedule'].includes(target)) {
+    console.error('Usage: node CasaStructureScraper.js [--target all|standings|schedule]');
+    process.exit(1);
+  }
+
   const scraper = new CasaStructureScraper();
-  scraper.scrape()
+  scraper.scrape(target)
     .then(() => process.exit(0))
     .catch((error) => {
       console.error('Fatal error:', error);

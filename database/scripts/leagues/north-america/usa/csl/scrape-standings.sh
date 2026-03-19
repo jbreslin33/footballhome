@@ -1,0 +1,98 @@
+#!/bin/bash
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CSL - Scrape Standings Page
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Fetches the CSL tables page using real Chrome (--dump-dom).
+# One page, one request. Very safe.
+#
+# Usage:
+#   ./scrape-standings.sh                  # Skip if cache < 7 days old
+#   FORCE_SCRAPE=1 ./scrape-standings.sh   # Force re-fetch
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+while [ ! -f "$PROJECT_ROOT/Makefile" ]; do
+  PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
+done
+cd "$PROJECT_ROOT"
+
+# Read season external ID from config.json
+CONFIG="$SCRIPT_DIR/config.json"
+SEASON_EXT_ID=$(node -e "console.log(JSON.parse(require('fs').readFileSync('$CONFIG','utf8')).seasonExternalId || '')")
+
+CACHE_DIR="database/scraped-html/csl"
+URL="https://www.cosmosoccerleague.com/CSL/Tables/"
+if [ -n "$SEASON_EXT_ID" ]; then
+  URL="${URL}?Table_Season=${SEASON_EXT_ID}"
+fi
+# Compute filename to match HtmlFetcher.getCacheFilename(URL)
+FILENAME=$(node -e "const c=require('crypto');const u='$URL';const h=c.createHash('md5').update(u).digest('hex').substring(0,8);const p=new URL(u).pathname.split('/').filter(x=>x);const b=p.length?p[p.length-1].toLowerCase().replace(/[^a-z0-9]/g,'-'):'page';console.log(b+'-'+h+'.html')")
+OUTPUT="$CACHE_DIR/$FILENAME"
+CACHE_MAX_AGE_DAYS=7
+
+# ── Weekly cache freshness check ──────────────────────────────────────
+if [ -f "$OUTPUT" ] && [ "${FORCE_SCRAPE:-0}" != "1" ]; then
+  FILE_AGE_SECONDS=$(( $(date +%s) - $(stat -c %Y "$OUTPUT" 2>/dev/null || echo 0) ))
+  FILE_AGE_DAYS=$(( FILE_AGE_SECONDS / 86400 ))
+  if [ "$FILE_AGE_DAYS" -lt "$CACHE_MAX_AGE_DAYS" ]; then
+    echo "📂 CSL standings cache is fresh (${FILE_AGE_DAYS}d old, limit ${CACHE_MAX_AGE_DAYS}d) — skipping"
+    echo "   To force: FORCE_SCRAPE=1 make scrape-csl-standings"
+    exit 0
+  fi
+  echo "📅 CSL standings cache is ${FILE_AGE_DAYS}d old (limit ${CACHE_MAX_AGE_DAYS}d) — will re-fetch"
+fi
+
+# ── Detect Chrome binary (cross-platform) ────────────────────────────
+if [ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]; then
+  CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+elif command -v google-chrome-stable &> /dev/null; then
+  CHROME="google-chrome-stable"
+elif command -v google-chrome &> /dev/null; then
+  CHROME="google-chrome"
+else
+  echo "❌ Chrome not found. Run ./setup.sh to install, or install Google Chrome manually."
+  exit 1
+fi
+
+# ── Fetch ─────────────────────────────────────────────────────────────
+mkdir -p "$CACHE_DIR/.backup"
+if [ -f "$OUTPUT" ]; then
+  cp "$OUTPUT" "$CACHE_DIR/.backup/"
+fi
+
+echo "🌐 Fetching CSL standings..."
+echo "   URL: $URL"
+
+HTML=$("$CHROME" --headless=new --dump-dom --disable-gpu --no-sandbox "$URL" 2>/dev/null) || true
+
+# Validate: reject 403 error pages
+if echo "$HTML" | grep -q '403 - Forbidden'; then
+  echo "   ⚠️  Got 403 — restoring backup"
+  cp "$CACHE_DIR/.backup/"*.html "$CACHE_DIR/" 2>/dev/null || true
+  rm -rf "$CACHE_DIR/.backup"
+  echo "   ✓ Using previous cached HTML"
+  exit 0
+fi
+
+# Validate: check for real content
+LEN=${#HTML}
+if [ "$LEN" -lt 5000 ]; then
+  echo "   ⚠️  Response too small ($LEN bytes) — restoring backup"
+  cp "$CACHE_DIR/.backup/"*.html "$CACHE_DIR/" 2>/dev/null || true
+  rm -rf "$CACHE_DIR/.backup"
+  echo "   ✓ Using previous cached HTML"
+  exit 0
+fi
+
+# Save
+mkdir -p "$CACHE_DIR"
+echo "$HTML" > "$OUTPUT"
+rm -rf "$CACHE_DIR/.backup"
+SIZE_KB=$((LEN / 1024))
+echo "   ✅ Saved: $OUTPUT (${SIZE_KB} KB)"
+echo "✓ CSL standings scraped"
