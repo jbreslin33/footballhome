@@ -14,3 +14,4 @@ cd "$PROJECT_ROOT"
 
 echo "🌐 CASA: Scraping schedule via API..."
 node database/scripts/scrapers/CasaStructureScraper.js --target schedule
+node "$PROJECT_ROOT/database/scripts/update-scrape-status.js" casa-schedule success

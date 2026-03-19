@@ -97,6 +97,7 @@ private:
     Response handleCreateImportJob(const Request& request);
     Response handleGetScraperLogs(const Request& request);
     Response handleTriggerScraper(const Request& request);
+    Response handleGetScrapeStatus(const Request& request);
     
     // System Notifications
     Response handleGetSystemNotifications(const Request& request);

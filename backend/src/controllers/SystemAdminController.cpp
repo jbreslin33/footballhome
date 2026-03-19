@@ -2,6 +2,7 @@
 #include <sstream>
 #include <regex>
 #include <iostream>
+#include <fstream>
 #include <curl/curl.h>
 #include <cstdlib>
 
@@ -266,6 +267,10 @@ void SystemAdminController::registerRoutes(Router& router, const std::string& pr
     
     router.post(prefix + "/scrapers/:name/trigger", [this](const Request& request) {
         return this->handleTriggerScraper(request);
+    });
+    
+    router.get(prefix + "/scrape-status", [this](const Request& request) {
+        return this->handleGetScrapeStatus(request);
     });
     
     // System Notifications
@@ -1738,6 +1743,32 @@ Response SystemAdminController::handleTriggerScraper(const Request& request) {
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
                        "{\"error\":\"Failed to trigger scraper: " + std::string(e.what()) + "\"}");
+    }
+}
+
+Response SystemAdminController::handleGetScrapeStatus(const Request& request) {
+    try {
+        // Read the scrape-status.json manifest from the mounted data directory
+        std::string manifest_path = "/app/database/data/scrape-status.json";
+        
+        std::ifstream file(manifest_path);
+        if (!file.is_open()) {
+            // No manifest yet — return empty object
+            return Response(HttpStatus::OK, "{}");
+        }
+        
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+        file.close();
+        
+        if (content.empty()) {
+            return Response(HttpStatus::OK, "{}");
+        }
+        
+        return Response(HttpStatus::OK, content);
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+                       "{\"error\":\"Failed to read scrape status: " + std::string(e.what()) + "\"}");
     }
 }
 

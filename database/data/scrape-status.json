@@ -1,0 +1,22 @@
+{
+  "apsl-standings": {
+    "updatedAt": "2026-03-19T14:10:30.086Z",
+    "status": "success",
+    "details": "154 KB"
+  },
+  "apsl-teams": {
+    "updatedAt": "2026-03-19T14:10:30.111Z",
+    "status": "success",
+    "details": "80 teams"
+  },
+  "casa-rosters": {
+    "updatedAt": "2026-03-19T14:10:30.137Z",
+    "status": "success",
+    "details": "765 players, 29 teams"
+  },
+  "casa-schedule": {
+    "updatedAt": "2026-03-19T14:10:30.161Z",
+    "status": "success",
+    "details": "256 matches"
+  }
+}

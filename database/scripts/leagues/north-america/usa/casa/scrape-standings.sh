@@ -14,3 +14,4 @@ cd "$PROJECT_ROOT"
 
 echo "🌐 CASA: Scraping standings..."
 node database/scripts/scrapers/CasaStructureScraper.js --target standings
+node "$PROJECT_ROOT/database/scripts/update-scrape-status.js" casa-standings success

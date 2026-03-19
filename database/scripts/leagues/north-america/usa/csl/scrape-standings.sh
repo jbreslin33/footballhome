@@ -1,14 +1,16 @@
 #!/bin/bash
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# CSL - Scrape Standings Page
+# CSL - Scrape Standings Page (VPN required)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
 # Fetches the CSL tables page using real Chrome (--dump-dom).
-# One page, one request. Very safe.
+# Automatically connects VPN (cosmosoccerleague.com blocks our IP).
 #
 # Usage:
-#   ./scrape-standings.sh                  # Skip if cache < 7 days old
+#   ./scrape-standings.sh                  # Uses VPN, skip if cache < 7 days
 #   FORCE_SCRAPE=1 ./scrape-standings.sh   # Force re-fetch
+#   NO_VPN=1 ./scrape-standings.sh         # Skip VPN (testing only)
+#   VPN_ACTIVE=1 ./scrape-standings.sh     # Called from parent (VPN already up)
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -20,6 +22,11 @@ while [ ! -f "$PROJECT_ROOT/Makefile" ]; do
   PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
 done
 cd "$PROJECT_ROOT"
+
+# ── VPN (auto-connect unless parent already handled it) ───────────────
+if [ "${VPN_ACTIVE:-0}" != "1" ] && [ "${NO_VPN:-0}" != "1" ]; then
+  exec "$PROJECT_ROOT/scripts/vpn-wrap.sh" env VPN_ACTIVE=1 "$0" "$@"
+fi
 
 # Read season external ID from config.json
 CONFIG="$SCRIPT_DIR/config.json"
@@ -96,3 +103,4 @@ rm -rf "$CACHE_DIR/.backup"
 SIZE_KB=$((LEN / 1024))
 echo "   ✅ Saved: $OUTPUT (${SIZE_KB} KB)"
 echo "✓ CSL standings scraped"
+node "$PROJECT_ROOT/database/scripts/update-scrape-status.js" csl-standings success "${SIZE_KB} KB"

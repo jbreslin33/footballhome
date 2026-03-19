@@ -20,15 +20,24 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+while [ ! -f "$PROJECT_ROOT/Makefile" ]; do
+  PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
+done
+
+# ── VPN (connect once for all sub-scripts) ────────────────────────────
+if [ "${VPN_ACTIVE:-0}" != "1" ] && [ "${NO_VPN:-0}" != "1" ]; then
+  exec "$PROJECT_ROOT/scripts/vpn-wrap.sh" env VPN_ACTIVE=1 "$0" "$@"
+fi
 
 echo "🌐 APSL: Scraping all data..."
 echo ""
 
-# 1. Standings
-"$SCRIPT_DIR/scrape-standings.sh"
+# 1. Standings (VPN_ACTIVE passed through — no reconnect)
+VPN_ACTIVE=1 "$SCRIPT_DIR/scrape-standings.sh"
 echo ""
 
 # 2. Team pages (rosters + schedule)
-"$SCRIPT_DIR/scrape-teams.sh"
+VPN_ACTIVE=1 "$SCRIPT_DIR/scrape-teams.sh"
 
 echo "✓ APSL scrape complete"

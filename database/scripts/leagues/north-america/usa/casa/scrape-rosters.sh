@@ -14,3 +14,4 @@ cd "$PROJECT_ROOT"
 
 echo "📥 CASA: Downloading roster sheets from Google Sheets..."
 node database/scripts/scrapers/CasaRosterScraper.js
+node "$PROJECT_ROOT/database/scripts/update-scrape-status.js" casa-rosters success

@@ -29,6 +29,7 @@ class AdminSystemScreen extends Screen {
           <button class="admin-tab" data-view="league-stats">🏆 League Statistics</button>
           <button class="admin-tab" data-view="groupme">📱 GroupMe</button>
           <button class="admin-tab" data-view="schema">🗂️ Schema</button>
+          <button class="admin-tab" data-view="data-pipeline">🔄 Data Pipeline</button>
           <button class="admin-tab" data-view="clubs">🏢 Clubs</button>
         </div>
         
@@ -116,6 +117,9 @@ class AdminSystemScreen extends Screen {
           break;
         case 'schema':
           await this.loadDatabaseSchema();
+          break;
+        case 'data-pipeline':
+          await this.loadDataPipeline();
           break;
         case 'clubs':
           this.navigation.goTo('club-directory');
@@ -402,6 +406,178 @@ class AdminSystemScreen extends Screen {
     return String(value);
   }
   
+  async loadDataPipeline() {
+    const content = this.element.querySelector('.admin-content');
+    
+    // Define all scrape items with their metadata
+    const scrapeItems = [
+      { key: 'apsl-standings',  league: 'APSL', type: 'Standings',  icon: '📊', command: 'make scrape-apsl-standings', source: 'Chrome --dump-dom' },
+      { key: 'apsl-teams',     league: 'APSL', type: 'Rosters & Schedule', icon: '👥', command: 'make scrape-apsl-teams', source: 'Puppeteer (team pages)' },
+      { key: 'csl-standings',  league: 'CSL',  type: 'Standings',  icon: '📊', command: 'make scrape-csl-standings', source: 'Chrome --dump-dom' },
+      { key: 'csl-teams',     league: 'CSL',  type: 'Rosters & Schedule', icon: '👥', command: 'make scrape-csl-teams', source: 'Puppeteer (team pages)' },
+      { key: 'casa-standings', league: 'CASA', type: 'Standings',  icon: '📊', command: 'make scrape-casa-standings', source: 'Puppeteer (SportsEngine)' },
+      { key: 'casa-rosters',  league: 'CASA', type: 'Rosters',    icon: '👥', command: 'make scrape-casa-rosters', source: 'Google Sheets XLSX' },
+      { key: 'casa-schedule', league: 'CASA', type: 'Schedule',   icon: '📅', command: 'make scrape-casa-schedule', source: 'SportsEngine API' },
+    ];
+    
+    // Fetch status from backend
+    let status = {};
+    try {
+      const response = await fetch('/api/system-admin/scrape-status', {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (response.ok) {
+        status = await response.json();
+      }
+    } catch (e) {
+      console.warn('Could not fetch scrape status:', e);
+    }
+    
+    // Group by league
+    const leagues = {};
+    for (const item of scrapeItems) {
+      if (!leagues[item.league]) leagues[item.league] = [];
+      leagues[item.league].push(item);
+    }
+    
+    let html = `
+      <div class="section-header">
+        <h2>🔄 Data Pipeline</h2>
+        <p style="color: var(--text-secondary); margin-top: 4px;">
+          Scrape status for each league and data type. Run <code>make</code> commands from the terminal to update.
+        </p>
+      </div>
+      <div class="pipeline-grid">
+    `;
+    
+    for (const [leagueName, items] of Object.entries(leagues)) {
+      html += `<div class="pipeline-league-card">
+        <h3 class="pipeline-league-name">${leagueName}</h3>
+        <div class="pipeline-items">`;
+      
+      for (const item of items) {
+        const s = status[item.key];
+        const age = s ? this.getScrapeAge(s.updatedAt) : null;
+        const freshnessClass = age ? this.getScrapeFreshness(age.days) : 'stale';
+        const timeAgo = s ? this.formatTimeAgo(s.updatedAt) : 'Never';
+        const details = s && s.details ? s.details : '';
+        
+        html += `
+          <div class="pipeline-item pipeline-${freshnessClass}">
+            <div class="pipeline-item-header">
+              <span class="pipeline-icon">${item.icon}</span>
+              <span class="pipeline-type">${item.type}</span>
+              <span class="pipeline-freshness-dot pipeline-dot-${freshnessClass}" title="${freshnessClass}"></span>
+            </div>
+            <div class="pipeline-item-body">
+              <div class="pipeline-time">
+                <span class="pipeline-label">Last updated:</span>
+                <span class="pipeline-value">${timeAgo}</span>
+              </div>
+              ${details ? `<div class="pipeline-details">${details}</div>` : ''}
+              <div class="pipeline-source">
+                <span class="pipeline-label">Source:</span>
+                <span class="pipeline-value">${item.source}</span>
+              </div>
+            </div>
+            <div class="pipeline-item-footer">
+              <code class="pipeline-command">${item.command}</code>
+              <button class="btn btn-small pipeline-copy-btn" data-command="${item.command}" title="Copy command">📋</button>
+            </div>
+          </div>
+        `;
+      }
+      
+      html += `</div></div>`;
+    }
+    
+    html += `</div>`;
+    
+    // Aggregate commands section
+    html += `
+      <div class="pipeline-aggregate">
+        <h3>Aggregate Commands</h3>
+        <div class="pipeline-agg-grid">
+          <div class="pipeline-agg-item">
+            <span>Scrape everything</span>
+            <code>make scrape</code>
+            <button class="btn btn-small pipeline-copy-btn" data-command="make scrape" title="Copy">📋</button>
+          </div>
+          <div class="pipeline-agg-item">
+            <span>All standings</span>
+            <code>make scrape-standings</code>
+            <button class="btn btn-small pipeline-copy-btn" data-command="make scrape-standings" title="Copy">📋</button>
+          </div>
+          <div class="pipeline-agg-item">
+            <span>All rosters</span>
+            <code>make scrape-rosters</code>
+            <button class="btn btn-small pipeline-copy-btn" data-command="make scrape-rosters" title="Copy">📋</button>
+          </div>
+          <div class="pipeline-agg-item">
+            <span>All schedules</span>
+            <code>make scrape-schedule</code>
+            <button class="btn btn-small pipeline-copy-btn" data-command="make scrape-schedule" title="Copy">📋</button>
+          </div>
+          <div class="pipeline-agg-item">
+            <span>Full sync (scrape → parse → load)</span>
+            <code>make sync</code>
+            <button class="btn btn-small pipeline-copy-btn" data-command="make sync" title="Copy">📋</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    content.innerHTML = html;
+    
+    // Bind copy buttons
+    content.querySelectorAll('.pipeline-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const command = btn.dataset.command;
+        navigator.clipboard.writeText(command).then(() => {
+          btn.textContent = '✅';
+          setTimeout(() => { btn.textContent = '📋'; }, 1500);
+        }).catch(() => {
+          // Fallback for non-HTTPS
+          const textarea = document.createElement('textarea');
+          textarea.value = command;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          btn.textContent = '✅';
+          setTimeout(() => { btn.textContent = '📋'; }, 1500);
+        });
+      });
+    });
+  }
+  
+  getScrapeAge(isoDate) {
+    const now = new Date();
+    const then = new Date(isoDate);
+    const diffMs = now - then;
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutes = Math.floor(diffMs / (1000 * 60));
+    return { days, hours, minutes };
+  }
+  
+  getScrapeFreshness(days) {
+    if (days < 3) return 'fresh';
+    if (days < 7) return 'aging';
+    return 'stale';
+  }
+  
+  formatTimeAgo(isoDate) {
+    const age = this.getScrapeAge(isoDate);
+    if (age.minutes < 1) return 'Just now';
+    if (age.minutes < 60) return `${age.minutes}m ago`;
+    if (age.hours < 24) return `${age.hours}h ago`;
+    if (age.days === 1) return 'Yesterday';
+    if (age.days < 30) return `${age.days}d ago`;
+    const date = new Date(isoDate);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
   async loadDatabaseSchema() {
     const content = this.element.querySelector('.admin-content');
     

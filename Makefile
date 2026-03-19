@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme migrate vpn-up vpn-down vpn-status vpn-scrape vpn-sync
+.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme migrate vpn-up vpn-down vpn-status
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -38,22 +38,23 @@ help:
 	@echo "  make rebuild       Destroy everything + fresh build (wipes DB)"
 	@echo "  make migrate       Apply pending schema migrations (preserves data)"
 	@echo ""
-	@echo "Scraping (fetch fresh HTML from web):"
+	@echo "Scraping (fetch fresh HTML from web — APSL/CSL auto-use VPN):"
 	@echo "  make scrape                Scrape everything for all leagues"
-	@echo "  make scrape-apsl           Scrape all APSL data (standings + teams)"
-	@echo "  make scrape-csl            Scrape all CSL data (standings + teams)"
+	@echo "  make scrape-apsl           Scrape all APSL data (standings + teams) [VPN]"
+	@echo "  make scrape-csl            Scrape all CSL data (standings + teams) [VPN]"
 	@echo "  make scrape-casa           Scrape all CASA data (standings + rosters + schedule)"
 	@echo "  make scrape-standings      Scrape standings for all leagues"
-	@echo "  make scrape-apsl-standings Scrape APSL standings only"
-	@echo "  make scrape-csl-standings  Scrape CSL standings only"
+	@echo "  make scrape-apsl-standings Scrape APSL standings only [VPN]"
+	@echo "  make scrape-csl-standings  Scrape CSL standings only [VPN]"
 	@echo "  make scrape-casa-standings Scrape CASA standings only"
-	@echo "  make scrape-teams          Scrape team pages (APSL + CSL)"
-	@echo "  make scrape-apsl-teams     Scrape APSL team pages (rosters + schedule)"
-	@echo "  make scrape-csl-teams      Scrape CSL team pages (rosters + schedule)"
+	@echo "  make scrape-teams          Scrape team pages (APSL + CSL) [VPN]"
+	@echo "  make scrape-apsl-teams     Scrape APSL team pages (rosters + schedule) [VPN]"
+	@echo "  make scrape-csl-teams      Scrape CSL team pages (rosters + schedule) [VPN]"
 	@echo "  make scrape-rosters        Scrape rosters for all leagues"
 	@echo "  make scrape-casa-rosters   Scrape CASA rosters (Google Sheets)"
 	@echo "  make scrape-schedule       Scrape schedules for all leagues"
 	@echo "  make scrape-casa-schedule  Scrape CASA schedule (SportsEngine API)"
+	@echo "  (Skip VPN: NO_VPN=1 make scrape-apsl-standings)"
 	@echo ""
 	@echo "Debugging:"
 	@echo "  make parse-apsl    Regenerate SQL from cached HTML (also: parse-csl, parse-casa)"
@@ -69,12 +70,10 @@ help:
 	@echo "  make export-user-data    Export manual attendance + lineups to SQL"
 	@echo "  make load-user-data      Load exported user data (after sync)"
 	@echo ""
-	@echo "VPN (for IP-blocked scraping):"
-	@echo "  make vpn-up              Connect WireGuard VPN"
-	@echo "  make vpn-down            Disconnect WireGuard VPN"
+	@echo "VPN (automatic for APSL/CSL — manual controls):"
+	@echo "  make vpn-up              Connect WireGuard VPN manually"
+	@echo "  make vpn-down            Disconnect WireGuard VPN manually"
 	@echo "  make vpn-status          Show VPN status + external IP"
-	@echo "  make vpn-scrape          Scrape all leagues through VPN"
-	@echo "  make vpn-sync            Full sync through VPN"
 	@echo ""
 
 # ============================================================
@@ -255,11 +254,11 @@ events: events-apsl events-csl
 
 events-apsl:
 	@echo "⚽ Scraping APSL match events..."
-	@cd database/scripts/scrapers && node ApslMatchEventScraper.js
+	@scripts/vpn-wrap.sh bash -c 'cd database/scripts/scrapers && node ApslMatchEventScraper.js'
 
 events-csl:
 	@echo "⚽ Scraping CSL match events..."
-	@cd database/scripts/scrapers && node CslMatchEventScraper.js || echo "   ℹ️  CSL event scraper not yet ready"
+	@scripts/vpn-wrap.sh bash -c 'cd database/scripts/scrapers && node CslMatchEventScraper.js' || echo "   ℹ️  CSL event scraper not yet ready"
 
 # ============================================================
 # Sync (primary workflow: scrape → parse → UPSERT, idempotent)
@@ -274,8 +273,10 @@ events-csl:
 # ============================================================
 
 sync:
-	@echo "⏬ Phase 1: Scraping all leagues in parallel..."
-	@$(MAKE) scrape-apsl & $(MAKE) scrape-csl & $(MAKE) scrape-casa & wait
+	@echo "⏬ Phase 1: Scraping all leagues..."
+	@$(MAKE) scrape-apsl
+	@$(MAKE) scrape-csl
+	@$(MAKE) scrape-casa
 	@echo ""
 	@echo "✓ All leagues scraped"
 	@echo ""
@@ -378,8 +379,5 @@ vpn-down:
 vpn-status:
 	@sudo scripts/setup/setup-wireguard.sh status
 
-vpn-scrape:
-	@sudo scripts/setup/setup-wireguard.sh scrape scrape
-
-vpn-sync:
-	@sudo scripts/setup/setup-wireguard.sh scrape sync
+# vpn-scrape / vpn-sync removed — VPN is now automatic for APSL/CSL targets.
+# Just run: make scrape  or  make sync
