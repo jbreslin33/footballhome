@@ -19,6 +19,7 @@ class GameDayLineupScreen extends Screen {
     this.sortAsc = true;
     this.dragState = null;
     this.selectingSlot = null; // When non-null, clicking a player card assigns to this slot
+    this.activeOverlay = null;  // 'match' | teamId string | null
     this._listenersAttached = false;
   }
 
@@ -47,7 +48,7 @@ class GameDayLineupScreen extends Screen {
           <!-- GroupMe sync warning (hidden by default) -->
           <div id="groupme-warning" class="groupme-warning" style="display: none;"></div>
 
-          <!-- Controls row: Formation + Roster Size + Actions -->
+          <!-- Controls row: Formation + Roster Size + Overlay Toggles + Actions -->
           <div class="lineup-controls-row">
             <div class="formation-selector">
               <label>Formation:</label>
@@ -62,6 +63,7 @@ class GameDayLineupScreen extends Screen {
                 <button id="roster-size-20" class="btn-roster-size active" data-size="20">20</button>
               </div>
             </div>
+            <div class="overlay-toggles" id="overlay-toggles"></div>
             <div class="lineup-actions-inline">
               <button id="auto-fill-btn" class="btn btn-secondary btn-sm">🤖 Auto-Fill</button>
               <button id="save-lineup-btn" class="btn btn-primary btn-sm">💾 Save</button>
@@ -74,62 +76,55 @@ class GameDayLineupScreen extends Screen {
             <button id="cancel-select-btn" class="btn btn-sm btn-secondary">Cancel</button>
           </div>
 
-          <!-- Compact Pitch -->
-          <div class="pitch-compact-wrapper lineup-zone zone-starting" id="zone-starting">
-            <div class="pitch-compact-header">
-              <span>⚽ Starting XI</span>
-              <span id="starting-count" class="zone-count">0/11</span>
-            </div>
-            <div class="pitch pitch-compact" id="pitch-canvas">
-              <div class="pitch-markings">
-                <div class="pitch-center-circle"></div>
-                <div class="pitch-center-line"></div>
-                <div class="pitch-box pitch-box-top"></div>
-                <div class="pitch-box pitch-box-bottom"></div>
-              </div>
-              <div id="pitch-players" class="pitch-players"></div>
-            </div>
-          </div>
-
-          <!-- Policy summary bar (compact) -->
-          <div id="policy-bar" class="policy-bar"></div>
-
-          <!-- Full roster table — ALL players, grouped by zone -->
-          <div class="roster-table-wrapper">
-            <div class="roster-table-header">
-              <span class="rt-counts">
-                <span id="bench-count-display">Bench: 0/<span id="bench-max">9</span></span>
-                <span class="rt-sep">·</span>
-                <span id="roster-count-display">Not Selected: 0</span>
-                <span class="rt-sep">·</span>
+          <!-- Pitch + Overlay Container -->
+          <div class="pitch-overlay-container">
+            <!-- Full-size Pitch -->
+            <div class="pitch-fullsize-wrapper lineup-zone zone-starting" id="zone-starting">
+              <div class="pitch-fullsize-header">
+                <span>⚽ <span id="starting-count">0/11</span></span>
+                <span class="header-sep">·</span>
+                <span>🪑 <span id="bench-count-display">0/<span id="bench-max">9</span></span></span>
+                <span class="header-sep">·</span>
                 <span id="total-count-display">Total: 0</span>
-              </span>
-              <div class="roster-sort-controls">
-                <label>Sort:</label>
-                <select id="roster-sort">
-                  <option value="rsvp">RSVP</option>
-                  <option value="practices">Practices</option>
-                  <option value="lastName">Name</option>
-                  <option value="eligibility">Eligibility</option>
-                </select>
-                <button id="sort-direction-btn" class="btn-sort-dir" title="Toggle sort direction">↓</button>
+              </div>
+              <div class="pitch pitch-fullsize" id="pitch-canvas">
+                <div class="pitch-markings">
+                  <div class="pitch-center-circle"></div>
+                  <div class="pitch-center-line"></div>
+                  <div class="pitch-box pitch-box-top"></div>
+                  <div class="pitch-box pitch-box-bottom"></div>
+                </div>
+                <div id="pitch-players" class="pitch-players"></div>
               </div>
             </div>
-            <table class="roster-table" id="roster-table">
-              <thead>
-                <tr>
-                  <th class="rt-col-zone">Zone</th>
-                  <th class="rt-col-name">Player</th>
-                  <th class="rt-col-rsvp">RSVP</th>
-                  <th class="rt-col-elig">Elig</th>
-                  <th class="rt-col-prac">Prac</th>
-                  <th class="rt-col-roster">Roster</th>
-                  <th class="rt-col-actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="roster-table-body"></tbody>
-            </table>
+
+            <!-- Roster Overlay Panel (floats over pitch) -->
+            <div class="roster-overlay-panel" id="roster-overlay-panel" style="display: none;">
+              <div class="overlay-panel-header">
+                <div class="overlay-tabs" id="overlay-tabs"></div>
+                <button id="overlay-close-btn" class="overlay-close-btn">✕</button>
+              </div>
+              <div class="overlay-panel-body">
+                <table class="overlay-table" id="roster-table">
+                  <thead>
+                    <tr>
+                      <th class="ot-col-name sortable-col" data-sort="lastName">Player ↕</th>
+                      <th class="ot-col-zone sortable-col" data-sort="zone">Zone ↕</th>
+                      <th class="ot-col-rsvp sortable-col" data-sort="rsvp">RSVP ↕</th>
+                      <th class="ot-col-elig sortable-col" data-sort="eligibility">Elig ↕</th>
+                      <th class="ot-col-prac sortable-col" data-sort="practices">Prac ↕</th>
+                      <th class="ot-col-proj sortable-col" data-sort="projected">Proj ↕</th>
+                      <th class="ot-col-actions">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="roster-table-body"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
+
+          <!-- Policy summary bar -->
+          <div id="policy-bar" class="policy-bar"></div>
         </div>
       </div>
     `;
@@ -199,11 +194,30 @@ class GameDayLineupScreen extends Screen {
         this.cancelSlotSelection();
         return;
       }
-      if (e.target.id === 'sort-direction-btn' || e.target.closest('#sort-direction-btn')) {
-        this.sortAsc = !this.sortAsc;
-        const btn = this.find('#sort-direction-btn');
-        if (btn) btn.textContent = this.sortAsc ? '↓' : '↑';
-        this.renderRoster();
+      // Overlay toggle buttons
+      const toggleBtn = e.target.closest('.overlay-toggle-btn');
+      if (toggleBtn) {
+        this.toggleOverlay(toggleBtn.dataset.overlay);
+        return;
+      }
+      // Overlay close button
+      if (e.target.id === 'overlay-close-btn' || e.target.closest('#overlay-close-btn')) {
+        this.activeOverlay = null;
+        this.find('#roster-overlay-panel').style.display = 'none';
+        this.renderOverlayToggles();
+        return;
+      }
+      // Sortable column headers
+      const sortCol = e.target.closest('.sortable-col');
+      if (sortCol) {
+        const field = sortCol.dataset.sort;
+        if (this.sortField === field) {
+          this.sortAsc = !this.sortAsc;
+        } else {
+          this.sortField = field;
+          this.sortAsc = true;
+        }
+        this.renderOverlayTable();
         return;
       }
 
@@ -250,14 +264,10 @@ class GameDayLineupScreen extends Screen {
       }
     });
 
-    // Sort selector
+    // Formation selector
     this.element.addEventListener('change', (e) => {
       if (e.target.id === 'formation-select') {
         this.onFormationChange(e.target.value);
-      }
-      if (e.target.id === 'roster-sort') {
-        this.sortField = e.target.value;
-        this.renderRoster();
       }
     });
 
@@ -336,6 +346,9 @@ class GameDayLineupScreen extends Screen {
 
       // Auto-classify players into zones based on eligibility + RSVP + existing lineup
       this.classifyPlayersIntoZones();
+
+      // Render overlay toggle buttons
+      this.renderOverlayToggles();
 
       // Show content
       this.find('#lineup-loading').style.display = 'none';
@@ -797,67 +810,168 @@ class GameDayLineupScreen extends Screen {
 
   renderAllZones() {
     this.renderPitchPlayers();
-    this.renderPlayerTable();
+    if (this.activeOverlay) this.renderOverlayTable();
     this.updateCounts();
   }
 
   renderPlayerTable() {
-    this.sortRoster();
+    // Replaced by overlay system — called by renderOverlayTable
+    if (this.activeOverlay) this.renderOverlayTable();
+  }
+
+  // ============================================================================
+  // Overlay Management
+  // ============================================================================
+  renderOverlayToggles() {
+    const container = this.find('#overlay-toggles');
+    if (!container) return;
+
+    // Always show "Match" toggle
+    let html = `<button class="overlay-toggle-btn ${this.activeOverlay === 'match' ? 'active' : ''}" data-overlay="match">📋 Match</button>`;
+
+    // Add team roster toggles from clubTeams
+    for (const t of (this.clubTeams || [])) {
+      const label = t.divisionName || t.teamName || `Team ${t.teamId}`;
+      const key = String(t.teamId);
+      html += `<button class="overlay-toggle-btn ${this.activeOverlay === key ? 'active' : ''}" data-overlay="${key}">${label}</button>`;
+    }
+
+    container.innerHTML = html;
+  }
+
+  toggleOverlay(key) {
+    if (this.activeOverlay === key) {
+      this.activeOverlay = null;
+      this.find('#roster-overlay-panel').style.display = 'none';
+    } else {
+      this.activeOverlay = key;
+      this.find('#roster-overlay-panel').style.display = 'flex';
+      this.renderOverlayTable();
+    }
+    this.renderOverlayToggles();
+  }
+
+  getOverlayPlayers() {
+    if (this.activeOverlay === 'match') {
+      return this.players.map(p => ({
+        ...p,
+        zone: this.findPlayerZone(p.playerId) || 'roster'
+      }));
+    }
+
+    // Team-specific roster: filter groupme members by team
+    const teamId = parseInt(this.activeOverlay);
+    const players = [];
+    const seenPersons = new Set();
+
+    for (const gm of (this.groupmeMembers || [])) {
+      const onTeam = (gm.teams || []).some(t => t.teamId === teamId);
+      if (!onTeam) continue;
+      if (gm.personId && seenPersons.has(gm.personId)) continue;
+      if (gm.personId) seenPersons.add(gm.personId);
+
+      // Try to find this person in the main players array for eligibility data
+      const ep = gm.personId ? this.players.find(p => p.personId === gm.personId) : null;
+
+      players.push({
+        playerId: ep?.playerId || (gm.teams || []).find(t => t.teamId === teamId)?.playerId || null,
+        personId: gm.personId,
+        firstName: gm.firstName || '',
+        lastName: gm.lastName || '',
+        jerseyNumber: ep?.jerseyNumber || null,
+        matchRsvp: gm.matchRsvp || ep?.matchRsvp || null,
+        sessionsAttended: ep?.sessionsAttended || 0,
+        sessionsInWindow: ep?.sessionsInWindow || this.policy?.lookbackCount || 0,
+        projectedSessions: ep?.projectedSessions || 0,
+        eligibilityStatus: ep?.eligibilityStatus || 'not_computed',
+        gmLinked: gm.linked,
+        gmNickname: gm.nickname,
+        onOfficialRoster: ep?.onOfficialRoster || false,
+        source: gm.source,
+        zone: ep ? (this.findPlayerZone(ep.playerId) || 'roster') : 'roster'
+      });
+    }
+
+    return players;
+  }
+
+  renderOverlayTable() {
+    if (!this.activeOverlay) return;
+
     const tbody = this.find('#roster-table-body');
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    // Build ordered list: starters first, then bench, then not selected
-    const sections = [
-      { zone: 'starting', label: '⚽ Starting XI', ids: this.zones.starting.filter(id => id !== null) },
-      { zone: 'bench', label: '🪑 Bench', ids: this.zones.bench },
-      { zone: 'roster', label: '📋 Not Selected', ids: this.zones.roster }
-    ];
+    let players = this.getOverlayPlayers();
 
-    for (const section of sections) {
-      // Section header row
-      const headerRow = document.createElement('tr');
-      headerRow.className = 'rt-section-header';
-      headerRow.innerHTML = `<td colspan="7" class="rt-section-label rt-section-${section.zone}">${section.label} (${section.ids.length})</td>`;
-      tbody.appendChild(headerRow);
+    // Sort
+    const statusRank = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3, 'not_computed': 4, 'not_on_roster': 5 };
+    const rsvpRank = { 'yes': 0, 'maybe': 1, 'no': 2 };
+    const zoneRank = { 'starting': 0, 'bench': 1, 'roster': 2 };
+    const dir = this.sortAsc ? 1 : -1;
 
-      if (section.ids.length === 0 && section.zone !== 'roster') {
-        const emptyRow = document.createElement('tr');
-        emptyRow.className = 'rt-empty-row';
-        emptyRow.innerHTML = `<td colspan="7" class="rt-empty">—</td>`;
-        tbody.appendChild(emptyRow);
-        continue;
+    players.sort((a, b) => {
+      let cmp = 0;
+      switch (this.sortField) {
+        case 'lastName':
+          cmp = ((a.lastName || '') + (a.firstName || '')).localeCompare((b.lastName || '') + (b.firstName || ''));
+          break;
+        case 'zone':
+          cmp = (zoneRank[a.zone] ?? 3) - (zoneRank[b.zone] ?? 3);
+          if (cmp === 0) cmp = (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
+          break;
+        case 'rsvp':
+          cmp = (rsvpRank[a.matchRsvp] ?? 3) - (rsvpRank[b.matchRsvp] ?? 3);
+          if (cmp === 0) cmp = (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
+          break;
+        case 'eligibility':
+          cmp = (statusRank[a.eligibilityStatus] ?? 6) - (statusRank[b.eligibilityStatus] ?? 6);
+          if (cmp === 0) cmp = (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
+          break;
+        case 'practices':
+          cmp = (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
+          break;
+        case 'projected':
+          cmp = (b.projectedSessions || 0) - (a.projectedSessions || 0);
+          break;
       }
+      return cmp * dir;
+    });
 
-      for (const playerId of section.ids) {
-        const player = this.getPlayerById(playerId);
-        if (!player) continue;
-        const row = this.createPlayerRow(player, section.zone);
+    for (const player of players) {
+      if (!player.playerId) continue;
+      const row = this.createPlayerRow(player, player.zone);
+      tbody.appendChild(row);
+    }
+
+    // Unmatched at the end (only for match overlay)
+    if (this.activeOverlay === 'match') {
+      for (const u of this.unmatchedRsvps) {
+        const row = this.createUnmatchedRow(u);
         tbody.appendChild(row);
       }
+    }
 
-      // Unmatched GroupMe users at the end of not-selected
-      if (section.zone === 'roster') {
-        for (const u of this.unmatchedRsvps) {
-          const row = this.createUnmatchedRow(u);
-          tbody.appendChild(row);
-        }
-      }
+    // Update sort indicators in headers
+    const table = this.find('#roster-table');
+    if (table) {
+      table.querySelectorAll('.sortable-col').forEach(th => {
+        const base = th.textContent.replace(/ [↕↑↓]$/, '');
+        th.textContent = base + (th.dataset.sort === this.sortField ? (this.sortAsc ? ' ↑' : ' ↓') : ' ↕');
+      });
     }
   }
 
   updateCounts() {
-    const sc = this.find('#starting-count');
     const starterCount = this.zones.starting.filter(id => id !== null).length;
     const maxBench = this.rosterSize - 11;
+    const rosterTotal = this.zones.roster.length + this.unmatchedRsvps.length;
+
+    const sc = this.find('#starting-count');
     if (sc) sc.textContent = `${starterCount}/11`;
 
     const bc = this.find('#bench-count-display');
-    if (bc) bc.textContent = `Bench: ${this.zones.bench.length}/${maxBench}`;
-
-    const rc = this.find('#roster-count-display');
-    const rosterTotal = this.zones.roster.length + this.unmatchedRsvps.length;
-    if (rc) rc.textContent = `Not Selected: ${rosterTotal}`;
+    if (bc) bc.textContent = `${this.zones.bench.length}/${maxBench}`;
 
     const tc = this.find('#total-count-display');
     if (tc) tc.textContent = `Total: ${starterCount + this.zones.bench.length + rosterTotal}`;
@@ -980,13 +1094,8 @@ class GameDayLineupScreen extends Screen {
     const sessions = player.sessionsAttended ?? player.practiceCount ?? 0;
     const lookback = this.policy?.lookbackCount || 0;
 
-    // Roster info
-    const teams = player.teams || [];
-    const rosterBadge = player.onOfficialRoster
-      ? '<span class="rt-tag rt-tag-official">official</span>'
-      : teams.length > 0
-        ? '<span class="rt-tag rt-tag-team">team</span>'
-        : '<span class="rt-tag rt-tag-none">none</span>';
+    // Projected sessions
+    const projected = player.projectedSessions ?? sessions;
 
     // Action buttons based on zone
     let actions = '';
@@ -1002,13 +1111,13 @@ class GameDayLineupScreen extends Screen {
     }
 
     row.innerHTML = `
-      <td class="rt-col-zone"><span class="rt-zone-badge ${zoneClass}">${zoneBadge}</span></td>
-      <td class="rt-col-name"><span class="rt-name">${name}</span> <span class="rt-jersey">${jersey}</span> ${sourceTag}</td>
-      <td class="rt-col-rsvp"><span class="rsvp-dot ${rsvpClass}">${rsvpShort}</span></td>
-      <td class="rt-col-elig">${statusIcon}</td>
-      <td class="rt-col-prac">${sessions}/${lookback}</td>
-      <td class="rt-col-roster">${rosterBadge}</td>
-      <td class="rt-col-actions">${actions}</td>
+      <td class="ot-col-name"><span class="rt-name">${name}</span> <span class="rt-jersey">${jersey}</span> ${sourceTag}</td>
+      <td class="ot-col-zone"><span class="rt-zone-badge ${zoneClass}">${zoneBadge}</span></td>
+      <td class="ot-col-rsvp"><span class="rsvp-dot ${rsvpClass}">${rsvpShort}</span></td>
+      <td class="ot-col-elig">${statusIcon}</td>
+      <td class="ot-col-prac">${sessions}/${lookback}</td>
+      <td class="ot-col-proj">${projected}/${lookback}</td>
+      <td class="ot-col-actions">${actions}</td>
     `;
 
     // Action button clicks
@@ -1038,16 +1147,16 @@ class GameDayLineupScreen extends Screen {
     const rsvpShort = this.getRsvpShort(user.matchRsvp);
 
     row.innerHTML = `
-      <td class="rt-col-zone"><span class="rt-zone-badge rt-zone-roster">—</span></td>
-      <td class="rt-col-name">
+      <td class="ot-col-name">
         <span class="rt-name">${user.externalUsername || '?'}</span>
         <span class="rt-tag rt-tag-unlinked">unlinked</span>
       </td>
-      <td class="rt-col-rsvp"><span class="rsvp-dot ${rsvpClass}">${rsvpShort}</span></td>
-      <td class="rt-col-elig">❓</td>
-      <td class="rt-col-prac">—</td>
-      <td class="rt-col-roster"><span class="rt-tag rt-tag-none">none</span></td>
-      <td class="rt-col-actions">
+      <td class="ot-col-zone"><span class="rt-zone-badge rt-zone-roster">—</span></td>
+      <td class="ot-col-rsvp"><span class="rsvp-dot ${rsvpClass}">${rsvpShort}</span></td>
+      <td class="ot-col-elig">❓</td>
+      <td class="ot-col-prac">—</td>
+      <td class="ot-col-proj">—</td>
+      <td class="ot-col-actions">
         <button class="rt-btn rt-btn-link btn-link-player"
                 data-gm-user-id="${user.externalUserId}"
                 data-gm-nickname="${(user.externalUsername || '').replace(/"/g, '&quot;')}"
@@ -1105,7 +1214,7 @@ class GameDayLineupScreen extends Screen {
     if (slot) slot.classList.add('slot-selecting');
     
     // Add selection mode class to roster for visual feedback
-    const panel = this.find('.roster-table-wrapper');
+    const panel = this.find('.roster-overlay-panel');
     if (panel) panel.classList.add('roster-selecting');
   }
 
@@ -1115,7 +1224,7 @@ class GameDayLineupScreen extends Screen {
     if (banner) banner.style.display = 'none';
     
     this.element.querySelectorAll('.pitch-slot').forEach(s => s.classList.remove('slot-selecting'));
-    const panel = this.find('.roster-table-wrapper');
+    const panel = this.find('.roster-overlay-panel');
     if (panel) panel.classList.remove('roster-selecting');
   }
 
@@ -1208,7 +1317,7 @@ class GameDayLineupScreen extends Screen {
   onDragOver(e) {
     const slot = e.target.closest('.pitch-slot');
     const zone = e.target.closest('.lineup-zone');
-    const table = e.target.closest('.roster-table-wrapper');
+    const table = e.target.closest('.roster-overlay-panel');
     if (!zone && !slot && !table) return;
 
     e.preventDefault();
@@ -1252,7 +1361,7 @@ class GameDayLineupScreen extends Screen {
     }
 
     // Dropped on the table — move to roster (not selected)
-    const table = e.target.closest('.roster-table-wrapper');
+    const table = e.target.closest('.roster-overlay-panel');
     if (table) {
       this.movePlayer(this.dragState.playerId, this.dragState.sourceZone, 'roster');
       this.dragState = null;
@@ -1590,32 +1699,136 @@ class GameDayLineupScreen extends Screen {
   }
 
   // ============================================================================
+  // Roster Reference Popup: View official rosters for all club sibling teams
+  // ============================================================================
+  openRosterPopup() {
+    const teams = this.clubTeams || [];
+    if (teams.length === 0) {
+      alert('No team rosters available');
+      return;
+    }
+
+    // Group members by team
+    const rostersByTeam = new Map(); // teamId → [{firstName, lastName, linked, gmNickname, ...}]
+    for (const t of teams) {
+      rostersByTeam.set(t.teamId, { name: t.teamName, division: t.divisionName, players: [] });
+    }
+
+    // Collect all persons on rosters from groupmeMembers
+    const seenByTeam = new Map(); // "teamId-personId" → true
+    for (const gm of this.groupmeMembers) {
+      for (const t of (gm.teams || [])) {
+        const key = `${t.teamId}-${gm.personId || gm.externalUserId}`;
+        if (seenByTeam.has(key)) continue;
+        seenByTeam.set(key, true);
+
+        const team = rostersByTeam.get(t.teamId);
+        if (!team) continue;
+
+        team.players.push({
+          firstName: gm.firstName || '',
+          lastName: gm.lastName || '',
+          nickname: gm.nickname || '',
+          linked: gm.linked,
+          source: gm.source,
+          matchRsvp: gm.matchRsvp
+        });
+      }
+    }
+
+    // Sort players within each team
+    for (const [, team] of rostersByTeam) {
+      team.players.sort((a, b) => ((a.lastName || '') + (a.firstName || '')).localeCompare((b.lastName || '') + (b.firstName || '')));
+    }
+
+    // Build popup HTML
+    const overlay = document.createElement('div');
+    overlay.className = 'attendance-overlay';
+
+    let tabsHtml = '';
+    let panelsHtml = '';
+    let first = true;
+    for (const [teamId, team] of rostersByTeam) {
+      if (team.players.length === 0) continue;
+      const label = team.division || team.name;
+      tabsHtml += `<button class="roster-popup-tab ${first ? 'active' : ''}" data-team-id="${teamId}">${label} (${team.players.length})</button>`;
+
+      panelsHtml += `<div class="roster-popup-panel ${first ? '' : 'hidden'}" data-team-id="${teamId}">
+        <table class="roster-popup-table">
+          <thead><tr><th>Player</th><th>GM</th><th>RSVP</th></tr></thead>
+          <tbody>
+            ${team.players.map(p => {
+              const name = `${p.firstName} ${p.lastName}`.trim();
+              const gmBadge = p.linked ? `<span class="rt-tag rt-tag-gm" title="${p.nickname}">✓</span>` : '<span class="rt-tag rt-tag-none">—</span>';
+              const rsvpDot = this.getRsvpShort(p.matchRsvp);
+              const rsvpClass = this.getRsvpClass(p.matchRsvp);
+              return `<tr><td>${name}</td><td>${gmBadge}</td><td><span class="rsvp-dot ${rsvpClass}">${rsvpDot}</span></td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+      first = false;
+    }
+
+    overlay.innerHTML = `
+      <div class="link-popup roster-popup">
+        <div class="link-popup-header">
+          <h3>📋 Official Rosters</h3>
+          <button class="attendance-close-btn">✕</button>
+        </div>
+        <div class="roster-popup-tabs">${tabsHtml}</div>
+        <div class="roster-popup-panels">${panelsHtml}</div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Close handlers
+    overlay.querySelector('.attendance-close-btn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    // Tab switching
+    overlay.querySelectorAll('.roster-popup-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        overlay.querySelectorAll('.roster-popup-tab').forEach(t => t.classList.remove('active'));
+        overlay.querySelectorAll('.roster-popup-panel').forEach(p => p.classList.add('hidden'));
+        tab.classList.add('active');
+        overlay.querySelector(`.roster-popup-panel[data-team-id="${tab.dataset.teamId}"]`).classList.remove('hidden');
+      });
+    });
+  }
+
+  // ============================================================================
   // Link Popup: Link a GroupMe user to an existing person
   // ============================================================================
   openLinkPopup(gmUserId, gmNickname, gmImageUrl) {
-    // Build list of unlinked roster players (persons not yet connected to GM)
+    // Build set of person IDs already linked to a GroupMe account
     const linkedPersonIds = new Set();
     for (const p of this.players) {
       if (p.gmLinked && p.personId) linkedPersonIds.add(p.personId);
     }
-
-    // Candidates: all players who have a personId but no GM link
-    const candidates = this.players
-      .filter(p => p.personId && !linkedPersonIds.has(p.personId))
-      .sort((a, b) => (a.lastName + a.firstName).localeCompare(b.lastName + b.firstName));
-
-    // Also include roster-only players from groupmeMembers
-    const candidatePersonIds = new Set(candidates.map(c => c.personId));
     for (const gm of this.groupmeMembers) {
-      if (gm.personId && gm.source === 'roster_only' && !linkedPersonIds.has(gm.personId) && !candidatePersonIds.has(gm.personId)) {
-        candidates.push({
-          personId: gm.personId,
-          firstName: gm.firstName,
-          lastName: gm.lastName,
-          teams: gm.teams || []
-        });
-        candidatePersonIds.add(gm.personId);
-      }
+      if (gm.linked && gm.personId) linkedPersonIds.add(gm.personId);
+    }
+
+    // Candidates: all persons NOT already linked to GroupMe, from any source
+    const candidatePersonIds = new Set();
+    const candidates = [];
+
+    const addCandidate = (personId, firstName, lastName, teams) => {
+      if (!personId || linkedPersonIds.has(personId) || candidatePersonIds.has(personId)) return;
+      candidatePersonIds.add(personId);
+      candidates.push({ personId, firstName, lastName, teams: teams || [] });
+    };
+
+    // From eligibility player pool
+    for (const p of this.players) {
+      addCandidate(p.personId, p.firstName, p.lastName, p.teams);
+    }
+
+    // From all groupme members (includes roster-only from ALL sibling teams)
+    for (const gm of this.groupmeMembers) {
+      addCandidate(gm.personId, gm.firstName, gm.lastName, gm.teams);
     }
 
     candidates.sort((a, b) => ((a.lastName || '') + (a.firstName || '')).localeCompare((b.lastName || '') + (b.firstName || '')));
@@ -1643,11 +1856,14 @@ class GameDayLineupScreen extends Screen {
         </div>
         <div class="link-popup-list" id="link-candidate-list">
           ${candidates.map(c => {
-            const teamLabels = (c.teams || []).map(t => t.divisionName || t.teamName || '').join(', ');
+            const teamBadges = (c.teams || []).map(t => {
+              const label = t.divisionName || t.teamName || '';
+              return `<span class="link-team-badge">${label}</span>`;
+            }).join(' ');
             return `
               <div class="link-candidate" data-person-id="${c.personId}">
                 <div class="link-candidate-name">${c.firstName} ${c.lastName}</div>
-                ${teamLabels ? `<div class="link-candidate-teams">${teamLabels}</div>` : '<div class="link-candidate-teams" style="color:var(--color-warning);">No roster</div>'}
+                <div class="link-candidate-teams">${teamBadges || '<span style="color:var(--color-warning);">No roster</span>'}</div>
               </div>`;
           }).join('')}
           ${candidates.length === 0 ? '<p class="link-empty">No unlinked players found</p>' : ''}

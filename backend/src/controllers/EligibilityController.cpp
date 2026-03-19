@@ -151,44 +151,18 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         // Step 2: Resolve effective policy
         EligibilityPolicy policy = resolvePolicy(matchId, teamId, clubId);
         
-        // Step 3: Get recent training session IDs
+        // Step 3: Get the lookback window — the N sessions before the match date.
+        // This single window is the source of truth for eligibility.
+        // Sessions in the window that are in the past count via attendance/RSVP.
+        // Sessions in the window that are in the future count via RSVP projection.
         std::vector<int> sessionIds = getRecentSessionIds(
             teamId, clubId, matchDate, policy.lookback_count,
             policy.game_counts_as_session, policy.pickup_counts_as_session
         );
         
-        // Step 3b: Get future session IDs (between today and match date)
-        // These are sessions in the lookback window that haven't happened yet
-        std::vector<int> futureSessionIds;
-        {
-            std::string safeClubId = clubId.empty() ? "0" : clubId;
-            try {
-                pqxx::result futureResult = db_->query(R"(
-                    SELECT ce.id as session_id
-                    FROM chat_events ce
-                    JOIN chats c ON ce.chat_id = c.id
-                    LEFT JOIN chat_clubs cc ON cc.chat_id = c.id
-                    LEFT JOIN teams t ON t.id = c.team_id
-                    WHERE (
-                        cc.club_id = $1::int
-                        OR t.club_id = $1::int
-                    )
-                      AND COALESCE(ce.start_at, ce.event_date::timestamptz) >= CURRENT_DATE
-                      AND COALESCE(ce.start_at, ce.event_date::timestamptz) < $2::date
-                      AND ce.is_active = true
-                    ORDER BY COALESCE(ce.start_at, ce.event_date::timestamptz) ASC
-                )", {safeClubId, matchDate});
-                
-                for (const auto& row : futureResult) {
-                    futureSessionIds.push_back(row["session_id"].as<int>());
-                }
-            } catch (const std::exception& e) {
-                std::cerr << "⚠️ Error getting future sessions: " << e.what() << std::endl;
-            }
-        }
-        
         // Step 4: Get all roster players with attendance and RSVP data
-        // Build session ID arrays for SQL
+        // All sessions go in one array — the SQL query handles
+        // past vs future split using CURRENT_TIMESTAMP
         std::string sessionArray = "{";
         for (size_t i = 0; i < sessionIds.size(); i++) {
             if (i > 0) sessionArray += ",";
@@ -196,31 +170,26 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         }
         sessionArray += "}";
         
-        std::string futureSessionArray = "{";
-        for (size_t i = 0; i < futureSessionIds.size(); i++) {
-            if (i > 0) futureSessionArray += ",";
-            futureSessionArray += std::to_string(futureSessionIds[i]);
-        }
-        futureSessionArray += "}";
-        
         std::string playerQuery = R"(
             WITH has_chat AS (
-                -- Check if this team has any GroupMe chat data
+                -- Check if this team has any GroupMe chat member data
                 SELECT EXISTS(
                     SELECT 1 FROM chats c
-                    JOIN chat_events ce ON ce.chat_id = c.id
-                    JOIN chat_event_rsvps cer ON cer.chat_event_id = ce.id
-                    WHERE c.team_id = $1::int AND cer.person_id IS NOT NULL
+                    JOIN chat_external_members cem ON cem.chat_id = c.id
+                    WHERE c.team_id = $1::int AND cem.person_id IS NOT NULL
                 ) as has_data
             ),
             chat_pool AS (
-                -- Player pool from GroupMe chat RSVPs (when chat data exists)
-                SELECT DISTINCT cer.person_id
-                FROM chat_event_rsvps cer
-                JOIN chat_events ce ON ce.id = cer.chat_event_id
-                JOIN chats c ON c.id = ce.chat_id
+                -- Player pool from GroupMe chat members (when chat data exists)
+                SELECT DISTINCT cem.person_id
+                FROM chat_external_members cem
+                JOIN chats c ON c.id = cem.chat_id
+                LEFT JOIN chat_non_players cnp
+                    ON cnp.person_id = cem.person_id
+                    OR cnp.external_username = cem.external_username
                 WHERE c.team_id = $1::int
-                  AND cer.person_id IS NOT NULL
+                  AND cem.person_id IS NOT NULL
+                  AND cnp.id IS NULL
                   AND (SELECT has_data FROM has_chat)
             ),
             roster_pool AS (
@@ -262,22 +231,58 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                          CASE WHEN r.player_id IS NOT NULL THEN 0 ELSE 1 END,
                          p.id DESC
             ),
-            -- Count actual attendance from training_attendance table
+            -- Classify each session in the window as past or future
+            window_sessions AS (
+                SELECT ce.id as session_id,
+                       COALESCE(ce.start_at, ce.event_date::timestamptz) < CURRENT_TIMESTAMP as is_past
+                FROM chat_events ce
+                WHERE ce.id = ANY($2::int[])
+            ),
+            -- Map external GroupMe user IDs to person IDs (for training/pickup
+            -- RSVPs that have NULL person_id but valid external_user_id)
+            user_person_map AS (
+                SELECT DISTINCT ON (cem.external_user_id)
+                       cem.external_user_id, cem.person_id
+                FROM chat_external_members cem
+                WHERE cem.person_id IS NOT NULL
+                ORDER BY cem.external_user_id, cem.synced_at DESC NULLS LAST
+            ),
+            -- Resolve person_id for all RSVPs in the session window
+            resolved_rsvps AS (
+                SELECT cer.chat_event_id,
+                       COALESCE(cer.person_id, upm.person_id) as person_id,
+                       COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) as eff_rsvp_status_id
+                FROM chat_event_rsvps cer
+                LEFT JOIN user_person_map upm ON upm.external_user_id = cer.external_user_id
+                                              AND cer.person_id IS NULL
+                WHERE cer.chat_event_id = ANY($2::int[])
+                  AND COALESCE(cer.person_id, upm.person_id) IS NOT NULL
+            ),
+            -- Count actual attendance for PAST sessions (training_attendance table)
             actual_attendance AS (
                 SELECT ta.player_id,
                        COUNT(*) FILTER (WHERE ta.attended = true) as sessions_attended
                 FROM training_attendance ta
+                JOIN window_sessions ws ON ws.session_id = ta.chat_event_id AND ws.is_past
                 WHERE ta.player_id IN (SELECT player_id FROM roster_players)
-                  AND ta.chat_event_id = ANY($2::int[])
                 GROUP BY ta.player_id
             ),
-            -- Count RSVP 'yes' from chat_event_rsvps (fallback when no training_attendance)
+            -- Count RSVP 'yes' for PAST sessions (fallback when no training_attendance)
             rsvp_attendance AS (
                 SELECT rp.player_id,
-                       COUNT(*) FILTER (WHERE COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) = 1) as rsvp_yes_count
+                       COUNT(*) FILTER (WHERE rr.eff_rsvp_status_id = 1) as rsvp_yes_count
                 FROM roster_players rp
-                JOIN chat_event_rsvps cer ON cer.person_id = rp.person_id
-                WHERE cer.chat_event_id = ANY($2::int[])
+                JOIN resolved_rsvps rr ON rr.person_id = rp.person_id
+                JOIN window_sessions ws ON ws.session_id = rr.chat_event_id AND ws.is_past
+                GROUP BY rp.player_id
+            ),
+            -- Count RSVP 'yes' for FUTURE sessions in the same window (projection)
+            future_rsvp AS (
+                SELECT rp.player_id,
+                       COUNT(*) FILTER (WHERE rr.eff_rsvp_status_id = 1) as future_yes_count
+                FROM roster_players rp
+                JOIN resolved_rsvps rr ON rr.person_id = rp.person_id
+                JOIN window_sessions ws ON ws.session_id = rr.chat_event_id AND NOT ws.is_past
                 GROUP BY rp.player_id
             ),
             -- Get RSVP for the match itself (via chat_events linked to matches)
@@ -285,7 +290,14 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 SELECT rp.player_id,
                        rs.name as rsvp_status
                 FROM roster_players rp
-                JOIN chat_event_rsvps cer ON cer.person_id = rp.person_id
+                JOIN chat_event_rsvps cer ON (
+                    cer.person_id = rp.person_id
+                    OR (cer.person_id IS NULL AND EXISTS(
+                        SELECT 1 FROM user_person_map upm
+                        WHERE upm.external_user_id = cer.external_user_id
+                          AND upm.person_id = rp.person_id
+                    ))
+                )
                 JOIN chat_events ce ON ce.id = cer.chat_event_id
                 JOIN rsvp_statuses rs ON rs.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)
                 WHERE ce.match_id = $3::int
@@ -302,21 +314,13 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 FROM player_positions pp
                 JOIN positions pos ON pos.id = pp.position_id
                 WHERE pp.is_primary = true
-            ),
-            -- Count future RSVP 'yes' for sessions between today and match date
-            future_rsvp AS (
-                SELECT rp.player_id,
-                       COUNT(*) FILTER (WHERE COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id) = 1) as future_yes_count
-                FROM roster_players rp
-                JOIN chat_event_rsvps cer ON cer.person_id = rp.person_id
-                WHERE cer.chat_event_id = ANY($4::int[])
-                GROUP BY rp.player_id
             )
             SELECT rp.player_id, rp.first_name, rp.last_name, rp.jersey_number,
                    rp.has_family_discount, rp.photo_url, rp.person_id,
                    rp.on_official_roster,
                    COALESCE(aa.sessions_attended, ra.rsvp_yes_count, 0) as sessions_attended,
                    COALESCE(fr.future_yes_count, 0) as future_rsvp_yes,
+                   (SELECT COUNT(*) FROM window_sessions WHERE NOT is_past) as future_session_count,
                    pp.position, pp.position_name,
                    mr.rsvp_status as match_rsvp_status,
                    lu.is_starter as lineup_is_starter,
@@ -331,7 +335,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             ORDER BY rp.last_name, rp.first_name
         )";
         
-        pqxx::result playerResult = db_->query(playerQuery, {teamId, sessionArray, matchId, futureSessionArray});
+        pqxx::result playerResult = db_->query(playerQuery, {teamId, sessionArray, matchId});
         
         // Step 5: Check GroupMe sync freshness
         std::string groupmeStatus = "no_data";
@@ -402,8 +406,12 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         json << "},";
         
         // Sessions info
+        int futureSessionCount = 0;
+        if (!playerResult.empty()) {
+            futureSessionCount = playerResult[0]["future_session_count"].as<int>();
+        }
         json << "\"sessionsInWindow\":" << sessionIds.size() << ",";
-        json << "\"futureSessionCount\":" << futureSessionIds.size() << ",";
+        json << "\"futureSessionCount\":" << futureSessionCount << ",";
         
         // Players
         json << "\"players\":[";
@@ -1250,7 +1258,8 @@ EligibilityPolicy EligibilityController::resolvePolicy(
 
 // ============================================================================
 // Helper: Get recent session IDs in the lookback window
-// Returns chat_event IDs for training sessions before the match date
+// Counts back lookbackCount training sessions (from training chat, type=5)
+// before the match date. Optionally also counts games and pickups.
 // ============================================================================
 std::vector<int> EligibilityController::getRecentSessionIds(
     const std::string& teamId, const std::string& clubId,
@@ -1258,29 +1267,49 @@ std::vector<int> EligibilityController::getRecentSessionIds(
     bool gameCountsAsSession, bool pickupCountsAsSession) {
     
     std::vector<int> sessionIds;
-    
-    // Get training/practice sessions from chats associated with this team's club
-    // Club-wide: matches any chat linked to the club (via chat_clubs) or any
-    // sibling team in the same club. This ensures Training, Pickup, and game
-    // chats for all club teams are included.
+    std::string safeClubId = clubId.empty() ? "0" : clubId;
+
+    // Build chat_type filter: always include training (5)
+    // Optionally include team games (1) and pickup (3)
+    std::string chatTypeFilter = "c.chat_type_id = 5";
+    if (gameCountsAsSession && pickupCountsAsSession) {
+        chatTypeFilter = "c.chat_type_id IN (1, 3, 5)";
+    } else if (gameCountsAsSession) {
+        chatTypeFilter = "c.chat_type_id IN (1, 5)";
+    } else if (pickupCountsAsSession) {
+        chatTypeFilter = "c.chat_type_id IN (3, 5)";
+    }
+
+    // Get the N most recent sessions before the match date
+    // from club-associated chats filtered by type.
+    // Dedup by local date (America/New_York) so two events on the same
+    // evening only count as one practice day.
     std::string query = R"(
-        SELECT ce.id as session_id
-        FROM chat_events ce
-        JOIN chats c ON ce.chat_id = c.id
-        LEFT JOIN chat_clubs cc ON cc.chat_id = c.id
-        LEFT JOIN teams t ON t.id = c.team_id
-        WHERE (
-            cc.club_id = $1::int
-            OR t.club_id = $1::int
-        )
-          AND COALESCE(ce.start_at, ce.event_date::timestamptz) < $2::date
-          AND ce.is_active = true
-        ORDER BY COALESCE(ce.start_at, ce.event_date::timestamptz) DESC
+        SELECT session_id FROM (
+            SELECT DISTINCT ON (
+                (COALESCE(ce.start_at, ce.event_date::timestamptz)
+                   AT TIME ZONE 'America/New_York')::date
+            )
+            ce.id as session_id,
+            COALESCE(ce.start_at, ce.event_date::timestamptz) as effective_ts
+            FROM chat_events ce
+            JOIN chats c ON ce.chat_id = c.id
+            LEFT JOIN chat_clubs cc ON cc.chat_id = c.id
+            LEFT JOIN teams t ON t.id = c.team_id
+            WHERE (
+                cc.club_id = $1::int
+                OR t.club_id = $1::int
+            )
+              AND )" + chatTypeFilter + R"(
+              AND COALESCE(ce.start_at, ce.event_date::timestamptz) < $2::date
+              AND ce.is_active = true
+            ORDER BY (COALESCE(ce.start_at, ce.event_date::timestamptz)
+                        AT TIME ZONE 'America/New_York')::date DESC,
+                     ce.id DESC
+        ) deduped
         LIMIT $3
     )";
-    
-    std::string safeClubId = clubId.empty() ? "0" : clubId;
-    
+
     try {
         pqxx::result result = db_->query(query, {
             safeClubId, matchDate, std::to_string(lookbackCount)
@@ -1291,45 +1320,6 @@ std::vector<int> EligibilityController::getRecentSessionIds(
         }
     } catch (const std::exception& e) {
         std::cerr << "⚠️ Error getting sessions: " << e.what() << std::endl;
-    }
-    
-    // If game_counts_as_session, also include recent matches before this match date
-    if (gameCountsAsSession && sessionIds.size() < static_cast<size_t>(lookbackCount)) {
-        try {
-            int remaining = lookbackCount - sessionIds.size();
-            std::string matchQuery = R"(
-                SELECT ce.id as session_id
-                FROM chat_events ce
-                JOIN chats c ON ce.chat_id = c.id
-                LEFT JOIN chat_clubs cc ON cc.chat_id = c.id
-                LEFT JOIN teams t ON t.id = c.team_id
-                WHERE (
-                    cc.club_id = $1::int
-                    OR t.club_id = $1::int
-                )
-                  AND ce.match_id IS NOT NULL
-                  AND COALESCE(ce.start_at, ce.event_date::timestamptz) < $2::date
-                  AND ce.is_active = true
-                ORDER BY COALESCE(ce.start_at, ce.event_date::timestamptz) DESC
-                LIMIT $3
-            )";
-            
-            pqxx::result result = db_->query(matchQuery, {
-                safeClubId, matchDate, std::to_string(remaining)
-            });
-            
-            for (const auto& row : result) {
-                int sid = row["session_id"].as<int>();
-                // Avoid duplicates
-                bool found = false;
-                for (int existingId : sessionIds) {
-                    if (existingId == sid) { found = true; break; }
-                }
-                if (!found) sessionIds.push_back(sid);
-            }
-        } catch (const std::exception& e) {
-            std::cerr << "⚠️ Error getting match sessions: " << e.what() << std::endl;
-        }
     }
     
     return sessionIds;

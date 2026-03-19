@@ -227,6 +227,43 @@ class GroupMeSync {
         this.nicknameCache[m.user_id] = m.nickname;
       }
     }
+    return group;
+  }
+
+  /**
+   * Persist GroupMe group members to chat_external_members table.
+   * This is the source of truth for player pool in eligibility queries.
+   */
+  async syncGroupMembers(chatId, group) {
+    if (DRY_RUN || !group || !group.members) return;
+
+    // Build a fallback person_id lookup from chat_event_rsvps
+    // (for when external_identities is not populated)
+    const rsvpFallback = {};
+    const fallbackRes = await this.client.query(
+      `SELECT DISTINCT ON (external_user_id) external_user_id, person_id
+       FROM chat_event_rsvps
+       WHERE person_id IS NOT NULL AND external_user_id IS NOT NULL
+       ORDER BY external_user_id, responded_at DESC NULLS LAST`
+    );
+    for (const row of fallbackRes.rows) {
+      rsvpFallback[row.external_user_id] = row.person_id;
+    }
+
+    for (const m of group.members) {
+      const personId = this.personCache[m.user_id] || rsvpFallback[m.user_id] || null;
+      await this.client.query(
+        `INSERT INTO chat_external_members
+           (chat_id, provider_id, external_user_id, external_username, person_id, synced_at)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+         ON CONFLICT (chat_id, provider_id, external_user_id) DO UPDATE SET
+           external_username = EXCLUDED.external_username,
+           person_id = COALESCE(EXCLUDED.person_id, chat_external_members.person_id),
+           synced_at = CURRENT_TIMESTAMP`,
+        [chatId, GROUPME_PROVIDER_ID, m.user_id, m.nickname, personId]
+      );
+    }
+    console.log(`  👥 Synced ${group.members.length} group members to chat_external_members`);
   }
 
   /**
@@ -725,8 +762,9 @@ async function main() {
       // 1. Ensure chat exists
       const chatId = await sync.ensureChat(groupConfig);
 
-      // 2. Load group member nicknames
-      await sync.loadGroupNicknames(groupConfig.groupmeId);
+      // 2. Load group member nicknames and persist membership
+      const group = await sync.loadGroupNicknames(groupConfig.groupmeId);
+      await sync.syncGroupMembers(chatId, group);
 
       // 3. Fetch calendar events
       const eventsResponse = await apiGet(`/conversations/${groupConfig.groupmeId}/events/list`);

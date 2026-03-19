@@ -1330,6 +1330,35 @@ CREATE INDEX idx_chat_members_role ON chat_members(chat_role_id);
 CREATE INDEX idx_chat_members_current ON chat_members(chat_id, user_id) WHERE left_at IS NULL;
 CREATE INDEX idx_chat_members_history ON chat_members(user_id, joined_at, left_at);
 
+-- Chat non-players: members who should be excluded from the lineup player pool
+CREATE TABLE chat_non_players (
+    id SERIAL PRIMARY KEY,
+    person_id INTEGER REFERENCES persons(id) ON DELETE CASCADE,
+    external_username VARCHAR(255),
+    reason VARCHAR(50) NOT NULL DEFAULT 'admin',  -- admin | manager | family | other
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(person_id),
+    UNIQUE(external_username)
+);
+
+COMMENT ON TABLE chat_non_players IS 'GroupMe chat members who should be excluded from the lineup player pool (admins, managers, non-players)';
+
+-- External chat group members (e.g. GroupMe group members)
+-- Persisted during sync so eligibility queries can use chat membership as player pool
+CREATE TABLE chat_external_members (
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    provider_id INTEGER NOT NULL REFERENCES chat_providers(id),
+    external_user_id VARCHAR(255) NOT NULL,
+    external_username VARCHAR(255),
+    person_id INTEGER REFERENCES persons(id) ON DELETE SET NULL,
+    synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (chat_id, provider_id, external_user_id)
+);
+
+CREATE INDEX idx_chat_external_members_person ON chat_external_members(person_id) WHERE person_id IS NOT NULL;
+CREATE INDEX idx_chat_external_members_chat ON chat_external_members(chat_id);
+
 CREATE TABLE chat_messages (
     id SERIAL PRIMARY KEY,
     chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,

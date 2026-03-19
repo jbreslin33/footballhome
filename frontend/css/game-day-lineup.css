@@ -154,30 +154,164 @@
 }
 
 /* ============================================================================
-   Compact Pitch (top of page)
+   Overlay Toggle Buttons
    ============================================================================ */
-.pitch-compact-wrapper {
+.overlay-toggles {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.overlay-toggle-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--gray-300, #d1d5db);
+  border-radius: var(--radius-sm, 4px);
+  background: white;
+  font-size: 0.8em;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--gray-600, #4b5563);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.overlay-toggle-btn:hover {
+  background: var(--gray-100, #f3f4f6);
+  border-color: var(--gray-400, #9ca3af);
+}
+.overlay-toggle-btn.active {
+  background: #4338ca;
+  color: white;
+  border-color: #4338ca;
+}
+
+/* ============================================================================
+   Pitch + Overlay Container
+   ============================================================================ */
+.pitch-overlay-container {
+  position: relative;
+  margin-top: var(--space-2);
+}
+
+/* Full-size Pitch Wrapper */
+.pitch-fullsize-wrapper {
   border: 2px solid #16a34a;
   border-radius: var(--radius-md);
   background: rgba(22, 163, 74, 0.03);
   padding: var(--space-1);
-  margin-bottom: var(--space-2);
 }
 
-.pitch-compact-header {
+.pitch-fullsize-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  padding: 2px var(--space-2);
+  gap: var(--space-3);
+  padding: 4px var(--space-2);
   font-size: 0.85em;
   font-weight: 600;
   color: var(--gray-700);
 }
+.header-sep { color: var(--gray-300); }
 
-.pitch-compact {
-  padding-bottom: 65% !important;
+.pitch-fullsize {
+  padding-bottom: 65%;
   max-height: none;
 }
+
+/* ============================================================================
+   Roster Overlay Panel (floats over pitch)
+   ============================================================================ */
+.roster-overlay-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 420px;
+  max-width: 100%;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.overlay-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--gray-200, #e5e7eb);
+  background: var(--gray-50, #f9fafb);
+  flex-shrink: 0;
+}
+
+.overlay-tabs {
+  display: flex;
+  gap: 0;
+}
+
+.overlay-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.1em;
+  cursor: pointer;
+  color: var(--gray-500, #6b7280);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm, 4px);
+  line-height: 1;
+}
+.overlay-close-btn:hover {
+  background: var(--gray-200, #e5e7eb);
+  color: var(--gray-800, #1f2937);
+}
+
+.overlay-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Overlay Table */
+.overlay-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8em;
+}
+
+.overlay-table thead th {
+  padding: 6px 6px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.72em;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--gray-500, #6b7280);
+  border-bottom: 2px solid var(--gray-200, #e5e7eb);
+  background: var(--gray-50, #f9fafb);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.overlay-table thead th.sortable-col {
+  cursor: pointer;
+  user-select: none;
+}
+.overlay-table thead th.sortable-col:hover {
+  color: var(--gray-800, #1f2937);
+  background: var(--gray-100, #f3f4f6);
+}
+
+/* Overlay table column widths */
+.ot-col-name { min-width: 100px; }
+.ot-col-zone { width: 34px; text-align: center; }
+.ot-col-rsvp { width: 38px; text-align: center; }
+.ot-col-elig { width: 32px; text-align: center; }
+.ot-col-prac { width: 44px; text-align: center; }
+.ot-col-proj { width: 44px; text-align: center; }
+.ot-col-actions { width: 60px; text-align: center; }
 
 .lineup-zone {
   transition: border-color 0.2s, background-color 0.2s;
@@ -712,8 +846,68 @@
 .link-candidate:hover { background: #f0f4ff; }
 .link-candidate-loading { opacity: 0.5; pointer-events: none; }
 .link-candidate-name { font-weight: 500; font-size: 0.9em; flex: 1; }
-.link-candidate-teams { font-size: 0.75em; color: var(--gray-500, #6b7280); }
+.link-candidate-teams { font-size: 0.75em; color: var(--gray-500, #6b7280); display: flex; flex-wrap: wrap; gap: 4px; }
+.link-team-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--gray-100, #f3f4f6);
+  border: 1px solid var(--gray-200, #e5e7eb);
+  font-size: 0.85em;
+}
 .link-empty { text-align: center; color: var(--gray-400, #9ca3af); padding: 20px; font-size: 0.85em; }
+
+/* ============================================================================
+   Roster Reference Popup
+   ============================================================================ */
+.roster-popup { width: min(500px, 92vw); }
+.roster-popup-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--gray-200, #e5e7eb);
+  padding: 0 16px;
+  overflow-x: auto;
+}
+.roster-popup-tab {
+  padding: 8px 14px;
+  border: none;
+  background: none;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--gray-500, #6b7280);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+}
+.roster-popup-tab:hover { color: var(--gray-700, #374151); }
+.roster-popup-tab.active {
+  color: #4338ca;
+  border-bottom-color: #4338ca;
+}
+.roster-popup-panels { overflow-y: auto; max-height: 55vh; }
+.roster-popup-panel.hidden { display: none; }
+.roster-popup-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+.roster-popup-table thead th {
+  text-align: left;
+  padding: 8px 16px;
+  font-size: 0.8em;
+  color: var(--gray-500, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--gray-200, #e5e7eb);
+  position: sticky;
+  top: 0;
+  background: white;
+}
+.roster-popup-table tbody td {
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--gray-100, #f3f4f6);
+}
 
 /* Link button on unmatched rows */
 .btn-link-player {
@@ -733,8 +927,14 @@
    ============================================================================ */
 @media (max-width: 600px) {
   .lineup-controls-row { gap: var(--space-2); }
-  .rt-col-roster, .rt-col-prac { display: none; }
-  .roster-table thead .rt-col-roster,
-  .roster-table thead .rt-col-prac { display: none; }
-  .pitch-compact { padding-bottom: 80% !important; }
+  .overlay-toggles { order: 10; width: 100%; justify-content: center; }
+  .roster-overlay-panel {
+    width: 100% !important;
+    border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
+    top: 40% !important;
+  }
+  .ot-col-proj, .ot-col-prac { display: none; }
+  .overlay-table thead .ot-col-proj,
+  .overlay-table thead .ot-col-prac { display: none; }
+  .pitch-fullsize { padding-bottom: 80% !important; }
 }
