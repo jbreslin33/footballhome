@@ -48,7 +48,14 @@ const LEAGUE_CONFIG = {
     cacheFilenamePrefix: null, // CSL uses default HtmlFetcher naming
     teamLinkPattern: /\/CSL\/Team\/(\d+)/i,
     seasonHeadingSelector: null, // CSL tables page doesn't use accordion headings
-    seasonPattern: null
+    seasonPattern: null,
+    // CSL is a JavaScript SPA — direct URL navigation redirects to homepage.
+    // Must click team links from the Tables page to get real content.
+    spaNavigation: {
+      startUrl: 'https://www.cosmosoccerleague.com/CSL/Tables/',
+      clickSelectorTemplate: 'a[href="/CSL/Team/{teamId}"]',
+      urlMustInclude: '/CSL/Team/'
+    }
   }
 };
 
@@ -191,6 +198,15 @@ async function main() {
     maxFetchesPerSession: 50
   });
 
+  const useSpa = !!leagueCfg.spaNavigation;
+  if (useSpa) {
+    console.log(`   🔗 Using SPA click-navigation (site redirects on direct URL access)`);
+    // Append season parameter to start URL if needed
+    if (config.seasonExternalId && !leagueCfg.spaNavigation.startUrl.includes('Table_Season')) {
+      leagueCfg.spaNavigation.startUrl += `?Table_Season=${config.seasonExternalId}`;
+    }
+  }
+
   let fetched = 0;
   let cached = 0;
   let failed = 0;
@@ -199,7 +215,21 @@ async function main() {
   for (const teamId of teamIds) {
     const url = buildTeamUrl(teamId, leagueCfg, config);
     try {
-      const html = await fetcher.fetch(url, !args.force);
+      let html;
+
+      if (useSpa) {
+        // SPA navigation: click link from Tables page instead of direct URL
+        const clickSelector = leagueCfg.spaNavigation.clickSelectorTemplate.replace('{teamId}', teamId);
+        html = await fetcher.fetchViaSpaClick({
+          startUrl: leagueCfg.spaNavigation.startUrl,
+          clickSelector,
+          urlMustInclude: leagueCfg.spaNavigation.urlMustInclude + teamId,
+          cacheUrl: url,
+          useCache: !args.force
+        });
+      } else {
+        html = await fetcher.fetch(url, !args.force);
+      }
 
       // Validate: reject 403 pages
       if (html && html.includes('403 - Forbidden')) {
@@ -238,8 +268,8 @@ async function main() {
     }
   }
 
-  // Retry failed teams
-  if (failedTeams.length > 0 && !args.singleTeam) {
+  // Retry failed teams (skip for SPA — re-clicking is handled in fetchViaSpaClick)
+  if (failedTeams.length > 0 && !args.singleTeam && !useSpa) {
     console.log(`\n   🔄 Retrying ${failedTeams.length} failed teams...`);
     for (const teamId of failedTeams) {
       const url = buildTeamUrl(teamId, leagueCfg, config);

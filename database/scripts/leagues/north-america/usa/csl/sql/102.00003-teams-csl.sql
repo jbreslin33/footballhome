@@ -60,7 +60,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Hoboken FC 1912 II', '116437', 115, d.id, 3
+SELECT 'Hoboken FC 1912 II', '116437', 10005, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 1'
@@ -82,7 +82,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Central Park Rangers II', '116416', 121, d.id, 3
+SELECT 'Central Park Rangers II', '116416', 10007, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 1'
@@ -104,7 +104,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Zum Schneider FC 03 II', '116498', 123, d.id, 3
+SELECT 'Zum Schneider FC 03 II', '116498', 10009, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 1'
@@ -159,7 +159,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Central Park Rangers III', '116417', 121, d.id, 3
+SELECT 'Central Park Rangers III', '116417', 10007, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 1 Reserve'
@@ -181,7 +181,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Zum Schneider FC 03 III', '116499', 123, d.id, 3
+SELECT 'Zum Schneider FC 03 III', '116499', 10009, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 1 Reserve'
@@ -192,7 +192,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Hoboken FC 1912 III', '116438', 115, d.id, 3
+SELECT 'Hoboken FC 1912 III', '116438', 10005, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 1 Reserve'
@@ -247,7 +247,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'NY International FC II', '116459', 119, d.id, 3
+SELECT 'NY International FC II', '116459', 10011, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 2'
@@ -368,7 +368,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'SC Eintracht', '116476', 162, d.id, 3
+SELECT 'SC Eintracht', '116476', 10022, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 2'
@@ -401,7 +401,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Central Park Rangers Lower East', '116422', 121, d.id, 3
+SELECT 'Central Park Rangers Lower East', '116422', 10007, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 2'
@@ -456,7 +456,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'NY International FC III', '117234', 119, d.id, 3
+SELECT 'NY International FC III', '117234', 10011, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 2 Reserve'
@@ -500,7 +500,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Central Park Rangers Lower East II', '116423', 121, d.id, 3
+SELECT 'Central Park Rangers Lower East II', '116423', 10007, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 2 Reserve'
@@ -555,7 +555,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'SC Eintracht II', '116477', 162, d.id, 3
+SELECT 'SC Eintracht II', '116477', 10022, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 2 Reserve'
@@ -643,7 +643,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'NY Athletic Club II', '116454', 124, d.id, 3
+SELECT 'NY Athletic Club II', '116454', 10029, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Division 3'
@@ -907,7 +907,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Central Park Rangers Lower East III', '135071', 121, d.id, 3
+SELECT 'Central Park Rangers Lower East III', '135071', 10007, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Spring Division'
@@ -918,7 +918,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'FC Hudson United', '138544', 100, d.id, 3
+SELECT 'FC Hudson United', '138544', 10049, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Spring Division'
@@ -962,7 +962,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Central Park Rangers Old Boys', '116421', 121, d.id, 3
+SELECT 'Central Park Rangers Old Boys', '116421', 10007, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Over-40 Division'
@@ -995,7 +995,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'Central Park Rangers Legends', '116420', 121, d.id, 3
+SELECT 'Central Park Rangers Legends', '116420', 10007, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Over-40 Division'
@@ -1050,7 +1050,7 @@ ON CONFLICT (division_id, name) DO UPDATE SET
   club_id = EXCLUDED.club_id,
   source_system_id = EXCLUDED.source_system_id;
 INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT 'SC Eintracht Legends', '116478', 162, d.id, 3
+SELECT 'SC Eintracht Legends', '116478', 10022, d.id, 3
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = 'Over-40 Division'

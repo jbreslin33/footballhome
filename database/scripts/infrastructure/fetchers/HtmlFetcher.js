@@ -74,12 +74,121 @@ class HtmlFetcher {
   }
 
   /**
+   * Fetch HTML by clicking a link within a SPA (single-page app).
+   * Maintains a persistent page so SPA routing state is preserved.
+   * Navigates to startUrl first, clicks the target link, waits for the
+   * URL to update, then captures the rendered HTML.
+   *
+   * @param {object} opts
+   * @param {string} opts.startUrl - Page to navigate to first (e.g. Tables page)
+   * @param {string} opts.clickSelector - CSS selector for the link to click
+   * @param {string} opts.urlMustInclude - Substring the URL must contain after click
+   * @param {string} opts.cacheUrl - URL string used for cache filename generation
+   * @param {boolean} [opts.useCache=true] - Whether to honour the cache
+   * @returns {Promise<string>} Rendered HTML
+   */
+  async fetchViaSpaClick({ startUrl, clickSelector, urlMustInclude, cacheUrl, useCache = true }) {
+    const cacheFile = path.join(this.cacheDir, this.getCacheFilename(cacheUrl));
+
+    // Check cache freshness
+    if (useCache) {
+      try {
+        const cached = await fs.readFile(cacheFile, 'utf-8');
+        if (cached && cached.trim().length > 0 && await this._isCacheFresh(cacheFile)) {
+          const stat = await fs.stat(cacheFile);
+          const ageDays = ((Date.now() - stat.mtimeMs) / (1000 * 60 * 60 * 24)).toFixed(1);
+          console.log(`   📂 Cache fresh (${ageDays}d old): ${path.basename(cacheFile)}`);
+          return cached;
+        }
+      } catch { /* cache miss */ }
+    }
+
+    // Check session fetch limit
+    if (this.maxFetchesPerSession > 0 && this._fetchCount >= this.maxFetchesPerSession) {
+      console.log(`   🛑 Session limit reached (${this.maxFetchesPerSession} fetches).`);
+      try {
+        const stale = await fs.readFile(cacheFile, 'utf-8');
+        if (stale && stale.trim().length > 0) return stale;
+      } catch { /* no cache */ }
+      throw new Error(`Session fetch limit (${this.maxFetchesPerSession}) reached`);
+    }
+
+    // Rate limit
+    await this._enforceRateLimit();
+    this._fetchCount++;
+
+    // Ensure SPA page is on the start URL
+    if (!this._spaPage) {
+      const browser = await this._getBrowser();
+      this._spaPage = await browser.newPage();
+      console.log(`   🌐 SPA: Loading start page: ${startUrl}`);
+      await this._spaPage.goto(startUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+      this._spaStartUrl = startUrl;
+    } else {
+      // Verify we're still on the start page
+      const currentUrl = this._spaPage.url();
+      if (!currentUrl.includes('/Tables')) {
+        console.log(`   🔄 SPA: Re-navigating to start page`);
+        await this._spaPage.goto(startUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+      }
+    }
+
+    // Find and click the link
+    console.log(`   🖱️  SPA: Clicking ${clickSelector}`);
+    let link = await this._spaPage.$(clickSelector);
+    if (!link) {
+      // Re-navigate and retry
+      console.log(`   ⚠️  Link not found, re-navigating...`);
+      await this._spaPage.goto(startUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+      link = await this._spaPage.$(clickSelector);
+      if (!link) {
+        throw new Error(`Link not found: ${clickSelector}`);
+      }
+    }
+
+    await link.click();
+
+    // Wait for URL to change to the team page
+    await this._spaPage.waitForFunction(
+      (pattern) => window.location.pathname.includes(pattern),
+      { timeout: 15000 },
+      urlMustInclude
+    );
+
+    // Wait for content to render
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const html = await this._spaPage.content();
+
+    // Navigate back to start page for the next team
+    try {
+      await this._spaPage.goBack();
+      await this._spaPage.waitForFunction(
+        () => window.location.pathname.includes('/Tables'),
+        { timeout: 10000 }
+      );
+    } catch {
+      // Fallback: re-navigate
+      await this._spaPage.goto(startUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+    }
+
+    // Cache the HTML
+    await fs.mkdir(this.cacheDir, { recursive: true });
+    await fs.writeFile(cacheFile, html, 'utf-8');
+    const sizeKB = (html.length / 1024).toFixed(1);
+    console.log(`   💾 Cached: ${path.basename(cacheFile)} (${sizeKB} KB)`);
+
+    return html;
+  }
+
+  /**
    * Close the shared browser instance (call when done scraping)
    */
   async closeBrowser() {
     if (this._browser) {
       await this._browser.close();
       this._browser = null;
+      this._spaPage = null;
     }
   }
   

@@ -152,7 +152,8 @@ class CasaSqlGenerator extends BaseGenerator {
 
     let id = this.orgIdBase;
     for (const [name, org] of this.organizations) {
-      sql += `INSERT INTO organizations (id, name) VALUES (${id}, '${this.escapeSql(name)}') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;\n`;
+      const escaped = this.escapeSql(name);
+      sql += `INSERT INTO organizations (id, name) SELECT ${id}, '${escaped}' WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE name = '${escaped}') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;\n`;
       org.id = id;
       id++;
     }
@@ -176,7 +177,9 @@ class CasaSqlGenerator extends BaseGenerator {
     let id = this.clubIdBase;
     for (const [name, club] of this.clubs) {
       const org = this.organizations.get(club.organizationName);
-      sql += `INSERT INTO clubs (id, name, organization_id) VALUES (${id}, '${this.escapeSql(name)}', ${org.id}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;\n`;
+      const escapedOrgName = this.escapeSql(org.name);
+      const escapedName = this.escapeSql(name);
+      sql += `INSERT INTO clubs (id, name, organization_id) SELECT ${id}, '${escapedName}', (SELECT id FROM organizations WHERE name = '${escapedOrgName}') WHERE NOT EXISTS (SELECT 1 FROM clubs WHERE name = '${escapedName}') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;\n`;
       club.id = id;
       id++;
     }
@@ -209,7 +212,7 @@ class CasaSqlGenerator extends BaseGenerator {
       // Lookup division_id by division name for current season
       // Team identity is now bound to division (same club in different divisions = different teams)
       sql += `INSERT INTO teams (name, external_id, club_id, division_id, source_system_id)
-SELECT '${this.escapeSql(team.name)}', '${this.escapeSql(team.externalId)}', ${club.id}, d.id, ${team.sourceSystemId}
+SELECT '${this.escapeSql(team.name)}', '${this.escapeSql(team.externalId)}', (SELECT id FROM clubs WHERE name = '${this.escapeSql(team.clubName)}' LIMIT 1), d.id, ${team.sourceSystemId}
 FROM divisions d
 JOIN seasons s ON d.season_id = s.id
 WHERE d.name = '${this.escapeSql(team.divisionName)}'
@@ -251,12 +254,12 @@ ON CONFLICT (division_id, name) DO UPDATE SET
         // Skip header/placeholder rows
         if (teamData.teamName === 'Teams' || teamData.played === 0) continue;
         
-        // Find matching team in our teams array
-        const team = this.teams.find(t => 
-          t.name === teamData.teamName || 
-          t.name.includes(teamData.teamName) || 
-          teamData.teamName.includes(t.name)
-        );
+        // Find matching team in our teams array (prefer exact match)
+        const team = this.teams.find(t => t.name === teamData.teamName) ||
+          this.teams.find(t => 
+            t.name.includes(teamData.teamName) || 
+            teamData.teamName.includes(t.name)
+          );
         
         if (!team) {
           console.log(`   ⚠️  Team not found in standings: ${teamData.teamName}`);
@@ -400,9 +403,10 @@ ON CONFLICT (division_id, name) DO UPDATE SET
       "oaklyn united nor\u2019easters ii": 'oaklyn united fc ii',  // curly apostrophe variant
       'ade united fc': 'adé united fc',
       'philly black stars': 'philly blackstars',
-      'persepolis ii': 'persepolis united fc ii',
-      'persepolis fc ii': 'persepolis united fc ii',
-      'persepolis united fc': 'persepolis united fc ii',
+      'persepolis ii': 'persepolis fc ii',
+      'persepolis united fc ii': 'persepolis fc ii',
+      'persepolis united fc': 'persepolis fc ii',
+      'lighthouse old timers club': 'lighthouse boys club u23',
       'philadelphia sc ii': 'philadelphia sc select',
       'sewells old boys ii': "sewell's old boys"
     };

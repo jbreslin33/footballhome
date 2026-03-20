@@ -1,6 +1,6 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- Matches - CASA
--- Total Records: 221
+-- Total Records: 233
 -- Match type: 1=league
 -- Match status: 1=scheduled, 3=completed
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -254,6 +254,26 @@ INSERT INTO matches (
 SELECT 
   1, '2025-09-28', NULL, 3,
   ht.id, at.id, NULL,
+  5, 0,
+  2, '0a2bf975-e9e1-4169-956d-df9f170938d4'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-lighthouse-boys-club-u23' AND at.source_system_id = 2
+WHERE ht.external_id = '9090889-adé-united-fc' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2025-09-28', NULL, 3,
+  ht.id, at.id, NULL,
   4, 2,
   2, '9394fcb2-8352-461b-b5cd-4fbc21bac687'
 FROM teams ht
@@ -299,6 +319,26 @@ SELECT
 FROM teams ht
 JOIN teams at ON at.external_id = '9090889-philly-blackstars' AND at.source_system_id = 2
 WHERE ht.external_id = '9090889-phoenix-scm' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2025-10-05', NULL, 3,
+  ht.id, at.id, NULL,
+  2, 0,
+  2, 'e5e823fc-3a6b-41ee-b965-70efeb1e03b7'
+FROM teams ht
+JOIN teams at ON at.external_id = '9090889-lighthouse-boys-club' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -612,6 +652,26 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
+  1, '2025-11-02', NULL, 3,
+  ht.id, at.id, NULL,
+  1, 9,
+  2, 'f1ee6819-519b-40a9-9c60-6e2f0f8eed9b'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-persepolis-fc-ii' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
   1, '2025-11-06', NULL, 3,
   ht.id, at.id, NULL,
   0, 1,
@@ -679,6 +739,26 @@ SELECT
 FROM teams ht
 JOIN teams at ON at.external_id = '9090889-oaklyn-united-fc-ii' AND at.source_system_id = 2
 WHERE ht.external_id = '9096430-philadelphia-sc-select' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2025-11-09', NULL, 3,
+  ht.id, at.id, NULL,
+  1, 2,
+  2, '804316a8-f57a-4351-878e-a582b8647d46'
+FROM teams ht
+JOIN teams at ON at.external_id = '9090889-philly-blackstars' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -932,6 +1012,26 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
+  1, '2026-03-12', NULL, 3,
+  ht.id, at.id, NULL,
+  2, 0,
+  2, '3dd63458-c9d3-4483-ba57-d36987284bc1'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-persepolis-fc-ii' AND at.source_system_id = 2
+WHERE ht.external_id = '9090889-oaklyn-united-fc-ii' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
   1, '2026-03-15', NULL, 3,
   ht.id, at.id, NULL,
   2, 3,
@@ -1077,7 +1177,7 @@ SELECT
   NULL, NULL,
   2, '62294e19-4b8a-481b-bcf5-6e4f80baa542'
 FROM teams ht
-JOIN teams at ON at.external_id = '9090889-lighthouse-boys-club' AND at.source_system_id = 2
+JOIN teams at ON at.external_id = '9096430-lighthouse-boys-club-u23' AND at.source_system_id = 2
 WHERE ht.external_id = '9090889-oaklyn-united-fc-ii' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
@@ -1295,6 +1395,26 @@ SELECT
   1, '2026-04-12', NULL, 1,
   ht.id, at.id, NULL,
   NULL, NULL,
+  2, 'bb5b99db-cc7f-412a-a89b-448969a627d5'
+FROM teams ht
+JOIN teams at ON at.external_id = '9090889-philadelphia-sierra-stars' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2026-04-12', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
   2, 'cc54baea-5c9b-4b38-9e5e-4f0a89c49ab0'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090889-oaklyn-united-fc-ii' AND at.source_system_id = 2
@@ -1359,6 +1479,26 @@ SELECT
 FROM teams ht
 JOIN teams at ON at.external_id = '9090889-adé-united-fc' AND at.source_system_id = 2
 WHERE ht.external_id = '9096430-persepolis-fc-ii' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2026-04-19', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  2, '171f7db4-1f3b-429d-9320-9d156fc1bd5f'
+FROM teams ht
+JOIN teams at ON at.external_id = '9090889-illyrians-fc' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -1595,6 +1735,26 @@ SELECT
   1, '2026-05-03', NULL, 1,
   ht.id, at.id, NULL,
   NULL, NULL,
+  2, '02e8b919-f787-4e2b-a5f8-693cc6f9156d'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-persepolis-fc-ii' AND at.source_system_id = 2
+WHERE ht.external_id = '9090889-phoenix-scm' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2026-05-03', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
   2, 'af153708-2f4f-4dd9-8971-2b960ee84093'
 FROM teams ht
 JOIN teams at ON at.external_id = '9090889-philadelphia-sierra-stars' AND at.source_system_id = 2
@@ -1774,11 +1934,11 @@ INSERT INTO matches (
 SELECT 
   1, '2025-09-28', NULL, 3,
   ht.id, at.id, NULL,
-  5, 0,
-  2, 'f0de1594-558a-459f-96e9-bd85082c30c7'
+  0, 8,
+  2, '4ae7d921-eb35-4bd5-973d-4542c5c9caf0'
 FROM teams ht
-JOIN teams at ON at.external_id = '9096430-lighthouse-boys-club-u23' AND at.source_system_id = 2
-WHERE ht.external_id = '9090889-adé-united-fc' AND ht.source_system_id = 2
+JOIN teams at ON at.external_id = '9096430-persepolis-fc-ii' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-phoenix-scr' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -1794,11 +1954,31 @@ INSERT INTO matches (
 SELECT 
   1, '2025-10-05', NULL, 3,
   ht.id, at.id, NULL,
-  2, 0,
-  2, '19d9976a-3d19-43d6-a7ce-8f1b95593a1d'
+  0, 3,
+  2, '03728c1d-369d-4ed4-af53-f54f0993d190'
 FROM teams ht
-JOIN teams at ON at.external_id = '9090889-lighthouse-boys-club' AND at.source_system_id = 2
-WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
+JOIN teams at ON at.external_id = '9096430-persepolis-fc-ii' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-philadelphia-sc-select' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2025-10-12', NULL, 3,
+  ht.id, at.id, NULL,
+  8, 0,
+  2, 'd4060108-b706-4f5f-a165-8a93b1d36f75'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-lighthouse-boys-club-u23' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-persepolis-fc-ii' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -1852,46 +2032,6 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2025-11-02', NULL, 1,
-  ht.id, at.id, NULL,
-  NULL, NULL,
-  2, '181b0c79-9df5-40d7-8914-059918a54bba'
-FROM teams ht
-JOIN teams at ON at.external_id = '9096430-persepolis-fc-ii' AND at.source_system_id = 2
-WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  1, '2025-11-09', NULL, 3,
-  ht.id, at.id, NULL,
-  1, 2,
-  2, '2691872e-1ba7-46c8-8734-2882ce88cd80'
-FROM teams ht
-JOIN teams at ON at.external_id = '9090889-philly-blackstars' AND at.source_system_id = 2
-WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
   1, '2025-11-16', NULL, 3,
   ht.id, at.id, NULL,
   0, 2,
@@ -1932,6 +2072,26 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
+  1, '2026-03-01', NULL, 3,
+  ht.id, at.id, NULL,
+  1, 0,
+  2, '350f8806-0194-40a3-b301-98c2c835e3ea'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-lighthouse-boys-club-u23' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-persepolis-fc-ii' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
   1, '2026-03-08', NULL, 3,
   ht.id, at.id, NULL,
   2, 0,
@@ -1952,13 +2112,13 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-15', NULL, 3,
+  1, '2026-03-08', NULL, 3,
   ht.id, at.id, NULL,
-  3, 1,
-  2, '90e6d273-4df2-4d40-99fe-b60f597f9e71'
+  2, 0,
+  2, 'aa2f28dc-4754-4fa7-a063-5c66652a0789'
 FROM teams ht
-JOIN teams at ON at.external_id = '9096430-lighthouse-boys-club-u23' AND at.source_system_id = 2
-WHERE ht.external_id = '9096430-sewell''s-old-boys' AND ht.source_system_id = 2
+JOIN teams at ON at.external_id = '9096430-persepolis-fc-ii' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-philadelphia-sc-select' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -1972,13 +2132,13 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', NULL, 1,
+  1, '2026-03-15', NULL, 3,
   ht.id, at.id, NULL,
-  NULL, NULL,
-  2, '21b167eb-781e-489f-8eda-41ec926a4ba3'
+  3, 1,
+  2, '90e6d273-4df2-4d40-99fe-b60f597f9e71'
 FROM teams ht
 JOIN teams at ON at.external_id = '9096430-lighthouse-boys-club-u23' AND at.source_system_id = 2
-WHERE ht.external_id = '9090889-oaklyn-united-fc-ii' AND ht.source_system_id = 2
+WHERE ht.external_id = '9096430-sewell''s-old-boys' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -2032,13 +2192,33 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
+  1, '2026-04-03', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  2, '9cad47d5-989d-46e9-8f0b-4756ad2453db'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-sewell''s-old-boys' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-persepolis-fc-ii' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
   1, '2026-04-12', NULL, 1,
   ht.id, at.id, NULL,
   NULL, NULL,
-  2, 'fc3a66ec-1d87-491a-85a4-8ba9322bea3e'
+  2, 'b5fd9494-8191-44d5-8489-b0c85bdc7acb'
 FROM teams ht
-JOIN teams at ON at.external_id = '9090889-philadelphia-sierra-stars' AND at.source_system_id = 2
-WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
+JOIN teams at ON at.external_id = '9096430-persepolis-fc-ii' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-phoenix-scr' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -2055,10 +2235,10 @@ SELECT
   1, '2026-04-19', NULL, 1,
   ht.id, at.id, NULL,
   NULL, NULL,
-  2, 'ff714569-61d8-4b38-a652-28243676b709'
+  2, '631ed140-a881-4ed6-8fb1-87e6b9dd6f66'
 FROM teams ht
-JOIN teams at ON at.external_id = '9090889-illyrians-fc' AND at.source_system_id = 2
-WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
+JOIN teams at ON at.external_id = '9096430-philadelphia-sc-select' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-persepolis-fc-ii' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -2115,6 +2295,26 @@ SELECT
   1, '2026-04-26', NULL, 1,
   ht.id, at.id, NULL,
   NULL, NULL,
+  2, 'ecb165b3-a21f-47df-ad53-4762827218aa'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-persepolis-fc-ii' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2026-04-26', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
   2, '0812a16e-cf25-4ba2-877d-acb125162844'
 FROM teams ht
 JOIN teams at ON at.external_id = '9096430-phoenix-scr' AND at.source_system_id = 2
@@ -2139,6 +2339,46 @@ SELECT
 FROM teams ht
 JOIN teams at ON at.external_id = '9096430-philadelphia-sc-select' AND at.source_system_id = 2
 WHERE ht.external_id = '9096430-lighthouse-boys-club-u23' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2026-05-07', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  2, '517440d7-7ccd-41b5-9a0a-36770b26fde6'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-phoenix-scr' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-persepolis-fc-ii' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
+  1, '2026-05-10', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  2, '72f6c967-4006-49ff-85d6-56810c81877a'
+FROM teams ht
+JOIN teams at ON at.external_id = '9096430-persepolis-fc-ii' AND at.source_system_id = 2
+WHERE ht.external_id = '9096430-sewell''s-old-boys' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -3772,6 +4012,26 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
+  1, '2026-03-26', NULL, 1,
+  ht.id, at.id, NULL,
+  NULL, NULL,
+  2, 'ff8b2f9f-7a1e-4ec8-9e49-0e3887786da1'
+FROM teams ht
+JOIN teams at ON at.external_id = '9090893-alloy-soccer-club-reserves' AND at.source_system_id = 2
+WHERE ht.external_id = '9270318-millersville-men''s-club-soccer' AND ht.source_system_id = 2
+ON CONFLICT (source_system_id, external_id) DO UPDATE SET
+  match_status_id = EXCLUDED.match_status_id,
+  home_score = EXCLUDED.home_score,
+  away_score = EXCLUDED.away_score,
+  match_date = EXCLUDED.match_date,
+  match_time = EXCLUDED.match_time;
+
+INSERT INTO matches (
+  match_type_id, match_date, match_time, match_status_id,
+  home_team_id, away_team_id, venue_id,
+  home_score, away_score, source_system_id, external_id
+)
+SELECT 
   1, '2026-03-29', NULL, 1,
   ht.id, at.id, NULL,
   NULL, NULL,
@@ -3899,26 +4159,6 @@ SELECT
 FROM teams ht
 JOIN teams at ON at.external_id = '9090893-f&m-fc' AND at.source_system_id = 2
 WHERE ht.external_id = '9090893-keystone-elite' AND ht.source_system_id = 2
-ON CONFLICT (source_system_id, external_id) DO UPDATE SET
-  match_status_id = EXCLUDED.match_status_id,
-  home_score = EXCLUDED.home_score,
-  away_score = EXCLUDED.away_score,
-  match_date = EXCLUDED.match_date,
-  match_time = EXCLUDED.match_time;
-
-INSERT INTO matches (
-  match_type_id, match_date, match_time, match_status_id,
-  home_team_id, away_team_id, venue_id,
-  home_score, away_score, source_system_id, external_id
-)
-SELECT 
-  1, '2026-04-16', NULL, 1,
-  ht.id, at.id, NULL,
-  NULL, NULL,
-  2, 'ff8b2f9f-7a1e-4ec8-9e49-0e3887786da1'
-FROM teams ht
-JOIN teams at ON at.external_id = '9090893-alloy-soccer-club-reserves' AND at.source_system_id = 2
-WHERE ht.external_id = '9270318-millersville-men''s-club-soccer' AND ht.source_system_id = 2
 ON CONFLICT (source_system_id, external_id) DO UPDATE SET
   match_status_id = EXCLUDED.match_status_id,
   home_score = EXCLUDED.home_score,
@@ -4152,9 +4392,9 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-18', NULL, 1,
+  1, '2026-03-18', NULL, 3,
   ht.id, at.id, NULL,
-  NULL, NULL,
+  3, 0,
   2, 'cae1c03d-bbb7-406f-9176-d0c8b691fc30'
 FROM teams ht
 JOIN teams at ON at.external_id = '9270318-yorkpa-fc' AND at.source_system_id = 2

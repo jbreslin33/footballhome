@@ -365,7 +365,7 @@ class ApslSqlGenerator extends BaseGenerator {
           homeScore: matchData.homeScore,
           awayScore: matchData.awayScore,
           matchType: matchData.matchType || 'league',
-          status: matchData.matchStatusId === 2 ? 'completed' : 'scheduled',
+          status: matchData.matchStatusId >= 2 ? 'completed' : 'scheduled',
           sourceSystemId: this.sourceSystemId,
           externalId: matchData.externalId
         });
@@ -386,7 +386,8 @@ class ApslSqlGenerator extends BaseGenerator {
 
     let id = this.orgIdBase;
     for (const [name, org] of this.organizations) {
-      sql += `INSERT INTO organizations (id, name) VALUES (${id}, '${this.escapeSql(name)}') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;\n`;
+      const escaped = this.escapeSql(name);
+      sql += `INSERT INTO organizations (id, name) SELECT ${id}, '${escaped}' WHERE NOT EXISTS (SELECT 1 FROM organizations WHERE name = '${escaped}') ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;\n`;
       org.id = id;
       id++;
     }
@@ -410,7 +411,8 @@ class ApslSqlGenerator extends BaseGenerator {
     let id = this.clubIdBase;
     for (const [name, club] of this.clubs) {
       const org = this.organizations.get(club.organizationName);
-      sql += `INSERT INTO clubs (id, name, organization_id) VALUES (${id}, '${this.escapeSql(name)}', ${org.id}) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;\n`;
+      const escapedOrgName = this.escapeSql(org.name);
+      sql += `INSERT INTO clubs (id, name, organization_id) VALUES (${id}, '${this.escapeSql(name)}', (SELECT id FROM organizations WHERE name = '${escapedOrgName}')) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, organization_id = EXCLUDED.organization_id;\n`;
       club.id = id;
       id++;
     }
