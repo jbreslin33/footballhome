@@ -101,6 +101,10 @@ class CasaRosterScraper {
       // Fallback: download each tab individually as CSV via gviz API
       // (old uploaded .xls files can't export as xlsx but per-tab CSV works)
       console.log(`      ⚠️  XLSX export failed (${xlsxErr.message}), trying per-tab CSV fallback...`);
+      // Remove stale XLSX so parseFromCache() uses the fresh CSVs
+      if (fs.existsSync(cachePath)) {
+        fs.unlinkSync(cachePath);
+      }
       return this._downloadTabsAsCsv(sheetId, divisionName, tabMap);
     }
 
