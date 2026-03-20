@@ -20,6 +20,8 @@ class GameDayLineupScreen extends Screen {
     this.dragState = null;
     this.selectingSlot = null; // When non-null, clicking a player card assigns to this slot
     this.activeOverlay = null;  // 'match' | teamId string | null
+    this.trainingEvents = [];     // Training events for this week
+    this.trainingData = new Map(); // personId → { eventId → {attended, source} }
     this._listenersAttached = false;
   }
 
@@ -63,7 +65,11 @@ class GameDayLineupScreen extends Screen {
                 <button id="roster-size-20" class="btn-roster-size active" data-size="20">20</button>
               </div>
             </div>
-            <div class="overlay-toggles" id="overlay-toggles"></div>
+            <div class="overlay-toggles" id="overlay-toggles">
+              <select id="overlay-select" class="overlay-select">
+                <option value="">📋 Show Roster...</option>
+              </select>
+            </div>
             <div class="lineup-actions-inline">
               <button id="auto-fill-btn" class="btn btn-secondary btn-sm">🤖 Auto-Fill</button>
               <button id="save-lineup-btn" class="btn btn-primary btn-sm">💾 Save</button>
@@ -112,8 +118,7 @@ class GameDayLineupScreen extends Screen {
                       <th class="ot-col-zone sortable-col" data-sort="zone">Zone ↕</th>
                       <th class="ot-col-rsvp sortable-col" data-sort="rsvp">RSVP ↕</th>
                       <th class="ot-col-elig sortable-col" data-sort="eligibility">Elig ↕</th>
-                      <th class="ot-col-prac sortable-col" data-sort="practices">Prac ↕</th>
-                      <th class="ot-col-proj sortable-col" data-sort="projected">Proj ↕</th>
+                      <th class="ot-col-prac sortable-col" data-sort="practices">Total ↕</th>
                       <th class="ot-col-actions">Actions</th>
                     </tr>
                   </thead>
@@ -204,7 +209,8 @@ class GameDayLineupScreen extends Screen {
       if (e.target.id === 'overlay-close-btn' || e.target.closest('#overlay-close-btn')) {
         this.activeOverlay = null;
         this.find('#roster-overlay-panel').style.display = 'none';
-        this.renderOverlayToggles();
+        const sel = this.find('#overlay-select');
+        if (sel) sel.value = '';
         return;
       }
       // Sortable column headers
@@ -264,10 +270,19 @@ class GameDayLineupScreen extends Screen {
       }
     });
 
-    // Formation selector
+    // Formation selector + Overlay roster selector
     this.element.addEventListener('change', (e) => {
       if (e.target.id === 'formation-select') {
         this.onFormationChange(e.target.value);
+      }
+      if (e.target.id === 'overlay-select') {
+        const val = e.target.value;
+        if (val) {
+          this.toggleOverlay(val);
+        } else {
+          this.activeOverlay = null;
+          this.find('#roster-overlay-panel').style.display = 'none';
+        }
       }
     });
 
@@ -291,6 +306,15 @@ class GameDayLineupScreen extends Screen {
         this.openAttendancePopup(playerId);
       }
     });
+
+    // Training attendance checkbox toggle
+    this.element.addEventListener('change', (e) => {
+      const cb = e.target.closest('.train-cb');
+      if (cb) {
+        e.stopPropagation();
+        this.toggleTrainingAttendance(cb);
+      }
+    });
   }
 
   // ============================================================================
@@ -307,10 +331,11 @@ class GameDayLineupScreen extends Screen {
       const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id || '';
       const teamParam = teamId ? `?teamId=${teamId}` : '';
 
-      // Fetch eligibility AND GroupMe members in parallel
-      const [eligResponse, membersResponse] = await Promise.all([
+      // Fetch eligibility, GroupMe members, AND training week in parallel
+      const [eligResponse, membersResponse, trainingResponse] = await Promise.all([
         this.auth.fetch(`/api/eligibility/match/${matchId}${teamParam}`),
-        teamId ? this.auth.fetch(`/api/groupme/members/${teamId}?matchId=${matchId}`) : Promise.resolve(null)
+        teamId ? this.auth.fetch(`/api/groupme/members/${teamId}?matchId=${matchId}`) : Promise.resolve(null),
+        teamId ? this.auth.fetch(`/api/groupme/training-week/${teamId}`) : Promise.resolve(null)
       ]);
 
       const data = await eligResponse.json();
@@ -325,14 +350,30 @@ class GameDayLineupScreen extends Screen {
       // Load GroupMe members and merge
       this.groupmeMembers = [];
       this.clubTeams = [];
+      this.allChats = [];
       if (membersResponse) {
         const membersData = await membersResponse.json();
         if (membersData.success && membersData.data?.members) {
           this.groupmeMembers = membersData.data.members;
           this.clubTeams = membersData.data.teams || [];
+          this.allChats = membersData.data.chats || [];
           this.mergeGroupMeMembers();
         }
       }
+
+      // Load training week data
+      this.trainingEvents = [];
+      this.trainingData = new Map();
+      if (trainingResponse) {
+        const trainingResult = await trainingResponse.json();
+        if (trainingResult.success && trainingResult.data) {
+          this.trainingEvents = trainingResult.data.events || [];
+          this.mergeTrainingData(trainingResult.data.players || []);
+        }
+      }
+
+      // Update training day column headers
+      this.updateTrainingHeaders();
 
       // Update subtitle
       const subtitle = this.find('#lineup-subtitle');
@@ -475,6 +516,109 @@ class GameDayLineupScreen extends Screen {
     for (const p of this.players) {
       if (!p.teams) p.teams = [];
       if (p.source === undefined) p.source = 'eligibility';
+    }
+  }
+
+  /**
+   * Merge training attendance data from training-week API onto players.
+   * Maps personId → { eventId → {attended, source} }
+   */
+  mergeTrainingData(trainingPlayers) {
+    this.trainingData = new Map();
+    for (const tp of trainingPlayers) {
+      if (!tp.personId) continue;
+      const att = {};
+      let count = 0;
+      for (const [eventId, val] of Object.entries(tp.attendance || {})) {
+        if (val) {
+          att[eventId] = val;
+          if (val.attended) count++;
+        }
+      }
+      this.trainingData.set(tp.personId, att);
+
+      // Update sessionsAttended on matching player
+      const player = this.players.find(p => p.personId === tp.personId);
+      if (player) {
+        player.sessionsAttended = count;
+      }
+    }
+  }
+
+  /**
+   * Insert per-day training column headers into the overlay table.
+   */
+  updateTrainingHeaders() {
+    const headerRow = this.element?.querySelector('#roster-table thead tr');
+    if (!headerRow) return;
+
+    // Remove old training-day headers (if re-rendering)
+    headerRow.querySelectorAll('.ot-col-train').forEach(th => th.remove());
+
+    // Insert before the "Total" (practices) column
+    const pracTh = headerRow.querySelector('[data-sort="practices"]');
+    if (!pracTh) return;
+
+    const dayAbbrev = { sunday:'Sun', monday:'Mon', tuesday:'Tue', wednesday:'Wed', thursday:'Thu', friday:'Fri', saturday:'Sat' };
+    for (const evt of this.trainingEvents) {
+      const titleLower = evt.title.toLowerCase();
+      const shortTitle = titleLower.includes('pickup') ? '⚽P'
+        : Object.entries(dayAbbrev).find(([full]) => titleLower.includes(full))?.[1] || evt.eventDate.slice(5);
+      const th = document.createElement('th');
+      th.className = 'ot-col-train';
+      th.title = `${evt.title} (${evt.eventDate})`;
+      th.textContent = shortTitle;
+      headerRow.insertBefore(th, pracTh);
+    }
+  }
+
+  /**
+   * Handle training attendance checkbox toggle — POST to backend.
+   */
+  async toggleTrainingAttendance(cb) {
+    const personId = parseInt(cb.dataset.personId);
+    const eventId = parseInt(cb.dataset.eventId);
+    const attended = cb.checked;
+
+    try {
+      const response = await this.auth.fetch('/api/groupme/training-attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ personId, chatEventId: eventId, attended })
+      });
+      const result = await response.json();
+      if (!result.success) {
+        console.error('Toggle failed:', result.message);
+        cb.checked = !attended; // revert
+        return;
+      }
+
+      // Update local training data
+      if (!this.trainingData.has(personId)) {
+        this.trainingData.set(personId, {});
+      }
+      this.trainingData.get(personId)[eventId] = { attended, source: 'manual' };
+
+      // Update sessionsAttended count on player
+      const player = this.players.find(p => p.personId === personId);
+      if (player) {
+        const pData = this.trainingData.get(personId) || {};
+        player.sessionsAttended = Object.values(pData).filter(v => v && v.attended).length;
+
+        // Update the Total cell in same row
+        const row = cb.closest('tr');
+        if (row) {
+          const pracCell = row.querySelector('.ot-col-prac');
+          if (pracCell) pracCell.textContent = player.sessionsAttended;
+        }
+
+        // Update pitch chip badge if on pitch
+        const chip = this.find(`[data-player-id="${player.playerId}"][data-zone="starting"] .chip-badge`);
+        if (chip) chip.textContent = `${player.sessionsAttended}/${this.policy?.lookbackCount || 0}`;
+      }
+    } catch (err) {
+      console.error('Toggle error:', err);
+      cb.checked = !attended;
     }
   }
 
@@ -823,32 +967,40 @@ class GameDayLineupScreen extends Screen {
   // Overlay Management
   // ============================================================================
   renderOverlayToggles() {
-    const container = this.find('#overlay-toggles');
-    if (!container) return;
+    const select = this.find('#overlay-select');
+    if (!select) return;
 
-    // Always show "Match" toggle
-    let html = `<button class="overlay-toggle-btn ${this.activeOverlay === 'match' ? 'active' : ''}" data-overlay="match">📋 Match</button>`;
+    let html = '<option value="">📋 Show Roster...</option>';
+    html += '<option value="match"' + (this.activeOverlay === 'match' ? ' selected' : '') + '>📋 Match Roster</option>';
 
-    // Add team roster toggles from clubTeams
+    // Team-linked chats
     for (const t of (this.clubTeams || [])) {
       const label = t.divisionName || t.teamName || `Team ${t.teamId}`;
       const key = String(t.teamId);
-      html += `<button class="overlay-toggle-btn ${this.activeOverlay === key ? 'active' : ''}" data-overlay="${key}">${label}</button>`;
+      html += `<option value="${key}"${this.activeOverlay === key ? ' selected' : ''}>${label}</option>`;
     }
 
-    container.innerHTML = html;
+    // Non-team chats (Training, Pickup, etc.)
+    for (const c of (this.allChats || [])) {
+      if (c.teamId) continue; // already shown as team option
+      const key = 'chat-' + c.chatId;
+      html += `<option value="${key}"${this.activeOverlay === key ? ' selected' : ''}>${c.chatName}</option>`;
+    }
+
+    select.innerHTML = html;
   }
 
   toggleOverlay(key) {
     if (this.activeOverlay === key) {
       this.activeOverlay = null;
       this.find('#roster-overlay-panel').style.display = 'none';
+      const sel = this.find('#overlay-select');
+      if (sel) sel.value = '';
     } else {
       this.activeOverlay = key;
       this.find('#roster-overlay-panel').style.display = 'flex';
       this.renderOverlayTable();
     }
-    this.renderOverlayToggles();
   }
 
   getOverlayPlayers() {
@@ -859,14 +1011,19 @@ class GameDayLineupScreen extends Screen {
       }));
     }
 
-    // Team-specific roster: filter groupme members by team
-    const teamId = parseInt(this.activeOverlay);
+    // For chat-X views (non-team chats like Training/Pickup), show ALL groupme members
+    // For team-specific views (numeric key), filter by team
+    const isChatView = this.activeOverlay?.startsWith('chat-');
+    const teamId = isChatView ? null : parseInt(this.activeOverlay);
+
     const players = [];
     const seenPersons = new Set();
 
     for (const gm of (this.groupmeMembers || [])) {
-      const onTeam = (gm.teams || []).some(t => t.teamId === teamId);
-      if (!onTeam) continue;
+      if (!isChatView) {
+        const onTeam = (gm.teams || []).some(t => t.teamId === teamId);
+        if (!onTeam) continue;
+      }
       if (gm.personId && seenPersons.has(gm.personId)) continue;
       if (gm.personId) seenPersons.add(gm.personId);
 
@@ -1090,12 +1247,23 @@ class GameDayLineupScreen extends Screen {
     // Eligibility
     const statusIcon = this.getStatusIcon(player.eligibilityStatus);
 
-    // Practices
+    // Practices — count from training data
     const sessions = player.sessionsAttended ?? player.practiceCount ?? 0;
-    const lookback = this.policy?.lookbackCount || 0;
 
-    // Projected sessions
-    const projected = player.projectedSessions ?? sessions;
+    // Build per-day training cells
+    let trainingCells = '';
+    const playerTraining = player.personId ? this.trainingData.get(player.personId) || {} : {};
+    for (const evt of this.trainingEvents) {
+      const att = playerTraining[evt.id];
+      if (!player.personId) {
+        trainingCells += '<td class="ot-col-train">—</td>';
+      } else if (att && att.attended) {
+        const cls = att.source === 'rsvp' ? 'train-rsvp' : 'train-yes';
+        trainingCells += `<td class="ot-col-train ${cls}"><input type="checkbox" class="train-cb" data-person-id="${player.personId}" data-event-id="${evt.id}" checked></td>`;
+      } else {
+        trainingCells += `<td class="ot-col-train"><input type="checkbox" class="train-cb" data-person-id="${player.personId}" data-event-id="${evt.id}"></td>`;
+      }
+    }
 
     // Action buttons based on zone
     let actions = '';
@@ -1115,8 +1283,8 @@ class GameDayLineupScreen extends Screen {
       <td class="ot-col-zone"><span class="rt-zone-badge ${zoneClass}">${zoneBadge}</span></td>
       <td class="ot-col-rsvp"><span class="rsvp-dot ${rsvpClass}">${rsvpShort}</span></td>
       <td class="ot-col-elig">${statusIcon}</td>
-      <td class="ot-col-prac">${sessions}/${lookback}</td>
-      <td class="ot-col-proj">${projected}/${lookback}</td>
+      ${trainingCells}
+      <td class="ot-col-prac">${sessions}</td>
       <td class="ot-col-actions">${actions}</td>
     `;
 

@@ -51,6 +51,16 @@ void GroupMeController::registerRoutes(Router& router, const std::string& prefix
     router.del(prefix + "/link", [this](const Request& request) {
         return this->handleUnlinkMember(request);
     });
+
+    // GET /api/groupme/training-week/:teamId — Training attendance grid for current week
+    router.get(prefix + "/training-week/:teamId", [this](const Request& request) {
+        return this->handleGetTrainingWeek(request);
+    });
+
+    // POST /api/groupme/training-attendance — Toggle attendance for a player
+    router.post(prefix + "/training-attendance", [this](const Request& request) {
+        return this->handleToggleAttendance(request);
+    });
 }
 
 // ============================================================================
@@ -246,7 +256,7 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
         std::string chatId = chatResult[0]["chat_id"].c_str();
         std::string groupmeGroupId = chatResult[0]["groupme_group_id"].c_str();
 
-        // Step 2: Find all sibling teams from the same club
+        // Step 2: Find ALL teams that have chats + all chats (including non-team ones)
         struct TeamInfo {
             std::string teamId;
             std::string teamName;
@@ -254,23 +264,39 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
         };
         std::vector<TeamInfo> clubTeams;
 
-        pqxx::result siblingResult = db_->query(
-            "SELECT t2.id, t2.name as team_name, d.name as division_name "
-            "FROM teams t1 "
-            "JOIN teams t2 ON t2.club_id = t1.club_id "
-            "LEFT JOIN divisions d ON d.id = t2.division_id "
-            "WHERE t1.id = $1::int "
-            "ORDER BY t2.id",
-            {teamId}
+        struct ChatInfo {
+            std::string chatId;
+            std::string chatName;
+            std::string teamId; // empty if no team linked
+        };
+        std::vector<ChatInfo> allChats;
+
+        // Get all chats
+        pqxx::result allChatsResult = db_->query(
+            "SELECT c.id, c.name, c.team_id, t.name as team_name, d.name as division_name "
+            "FROM chats c "
+            "LEFT JOIN teams t ON t.id = c.team_id "
+            "LEFT JOIN divisions d ON d.id = t.division_id "
+            "ORDER BY c.id"
         );
-        for (const auto& row : siblingResult) {
-            TeamInfo ti;
-            ti.teamId = row["id"].c_str();
-            ti.teamName = row["team_name"].c_str();
-            ti.divisionName = row["division_name"].is_null() ? "" : row["division_name"].c_str();
-            clubTeams.push_back(ti);
+        std::set<std::string> seenTeamIds;
+        for (const auto& row : allChatsResult) {
+            ChatInfo ci;
+            ci.chatId = row["id"].c_str();
+            ci.chatName = row["name"].is_null() ? "" : row["name"].c_str();
+            ci.teamId = row["team_id"].is_null() ? "" : row["team_id"].c_str();
+            allChats.push_back(ci);
+
+            if (!ci.teamId.empty() && seenTeamIds.find(ci.teamId) == seenTeamIds.end()) {
+                seenTeamIds.insert(ci.teamId);
+                TeamInfo ti;
+                ti.teamId = ci.teamId;
+                ti.teamName = row["team_name"].is_null() ? "" : row["team_name"].c_str();
+                ti.divisionName = row["division_name"].is_null() ? "" : row["division_name"].c_str();
+                clubTeams.push_back(ti);
+            }
         }
-        std::cout << "🏟️  Club has " << clubTeams.size() << " teams" << std::endl;
+        std::cout << "🏟️  Found " << clubTeams.size() << " teams across " << allChats.size() << " chats" << std::endl;
 
         // Step 3: Fetch all group members from GroupMe API
         std::string groupUrl = "https://api.groupme.com/v3/groups/" + groupmeGroupId + "?token=" + accessToken_;
@@ -521,6 +547,16 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
         }
         json << "],";
 
+        // Include all chats metadata (teams + non-team chats like Training, Pickup)
+        json << "\"chats\":[";
+        for (size_t i = 0; i < allChats.size(); i++) {
+            if (i > 0) json << ",";
+            json << "{\"chatId\":" << allChats[i].chatId
+                 << ",\"chatName\":\"" << escapeJson(allChats[i].chatName) << "\""
+                 << ",\"teamId\":" << (allChats[i].teamId.empty() ? "null" : allChats[i].teamId) << "}";
+        }
+        json << "],";
+
         json << "\"totalMembers\":" << members.size()
              << ",\"totalRosterPlayers\":" << allRosterPersonIds.size()
              << "}";
@@ -663,6 +699,499 @@ Response GroupMeController::handleUnlinkMember(const Request& request) {
         std::cerr << "❌ Unlink error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJsonResponse(false, std::string("Failed to unlink: ") + e.what()));
+    }
+}
+
+// ============================================================================
+// Handler: Training Week Attendance Grid
+// GET /api/groupme/training-week/:teamId
+// Returns all APSL chat members + roster-only players with per-day attendance
+// ============================================================================
+Response GroupMeController::handleGetTrainingWeek(const Request& request) {
+    std::string teamId = extractIdFromPath(request.getPath(), "/api/groupme/training-week/(\\d+)");
+    if (teamId.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJsonResponse(false, "Team ID required"));
+    }
+
+    try {
+        // Step 1: Get training/pickup events for this week (Mon-Sun around the match)
+        // We look at the 7 days before the next Sunday (or the most recent week)
+        pqxx::result eventResult = db_->query(
+            "SELECT ce.id, ce.title, ce.event_date::text as event_date, c.name as chat_name "
+            "FROM chat_events ce "
+            "JOIN chats c ON c.id = ce.chat_id "
+            "WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup') "
+            "  AND ce.event_date >= date_trunc('week', CURRENT_DATE)::date "
+            "  AND ce.event_date <= date_trunc('week', CURRENT_DATE)::date + 6 "
+            "ORDER BY ce.event_date, ce.title"
+        );
+
+        // Build events list
+        struct TrainingEvent {
+            std::string id;
+            std::string title;
+            std::string eventDate;
+            std::string chatName;
+        };
+        std::vector<TrainingEvent> events;
+        for (const auto& row : eventResult) {
+            TrainingEvent te;
+            te.id = row["id"].c_str();
+            te.title = row["title"].c_str();
+            te.eventDate = row["event_date"].c_str();
+            te.chatName = row["chat_name"].c_str();
+            events.push_back(te);
+        }
+
+        // Step 1b: Live-sync RSVPs from GroupMe API for all training events
+        if (!events.empty() && !accessToken_.empty()) {
+            // Group events by chat and find GroupMe group IDs
+            std::map<std::string, std::string> chatGroupIds; // chatName → groupmeGroupId
+            pqxx::result ciResult = db_->query(
+                "SELECT c.name, ci.external_id "
+                "FROM chat_integrations ci "
+                "JOIN chats c ON c.id = ci.chat_id "
+                "WHERE ci.provider_id = 1 AND c.name IN ('Training Lighthouse', 'Philadelphia Pickup')"
+            );
+            for (const auto& row : ciResult) {
+                chatGroupIds[row["name"].c_str()] = row["external_id"].c_str();
+            }
+
+            // Load person mappings for RSVP upsert
+            pqxx::result identResult = db_->query(
+                "SELECT external_user_id, person_id FROM external_identities WHERE provider_id = 1"
+            );
+            std::map<std::string, std::string> personMap;
+            for (const auto& row : identResult) {
+                personMap[row["external_user_id"].c_str()] = row["person_id"].c_str();
+            }
+
+            // Fetch and sync each chat's events
+            for (const auto& [chatName, groupId] : chatGroupIds) {
+                std::string eventsUrl = "https://api.groupme.com/v3/conversations/" + groupId
+                                      + "/events/list?token=" + accessToken_;
+                std::string eventsJson = httpGet(eventsUrl);
+                if (eventsJson.empty()) continue;
+
+                std::cout << "🔄 Syncing training RSVPs for " << chatName << std::endl;
+
+                for (const auto& evt : events) {
+                    if (evt.chatName != chatName) continue;
+
+                    // Find this event in GroupMe response by external_id
+                    // Load external_id from DB
+                    pqxx::result extIdResult = db_->query(
+                        "SELECT external_id FROM chat_events WHERE id = $1::int",
+                        {evt.id}
+                    );
+                    if (extIdResult.empty() || extIdResult[0]["external_id"].is_null()) continue;
+                    std::string externalId = extIdResult[0]["external_id"].c_str();
+
+                    std::string eventNeedle = "\"event_id\":\"" + externalId + "\"";
+                    size_t eventPos = eventsJson.find(eventNeedle);
+                    if (eventPos == std::string::npos) continue;
+
+                    size_t nextEventPos = eventsJson.find("\"event_id\":", eventPos + eventNeedle.length());
+                    size_t searchEnd = (nextEventPos != std::string::npos) ? nextEventPos : eventsJson.length();
+
+                    std::vector<std::string> going = extractStringArray(eventsJson, eventPos, searchEnd, "going");
+                    std::vector<std::string> notGoing = extractStringArray(eventsJson, eventPos, searchEnd, "not_going");
+
+                    // Upsert RSVPs — always key on external_user_id to avoid conflicts
+                    auto upsertTrainingRsvps = [&](const std::vector<std::string>& userIds, int statusId) {
+                        for (const auto& uid : userIds) {
+                            auto personIt = personMap.find(uid);
+                            std::string personIdVal = (personIt != personMap.end()) ? personIt->second : "";
+                            if (!personIdVal.empty()) {
+                                db_->query(
+                                    "INSERT INTO chat_event_rsvps "
+                                    "  (chat_event_id, person_id, external_user_id, rsvp_status_id, responded_at) "
+                                    "VALUES ($1::int, $2::int, $3, $4::int, CURRENT_TIMESTAMP) "
+                                    "ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET "
+                                    "  person_id = EXCLUDED.person_id, "
+                                    "  rsvp_status_id = EXCLUDED.rsvp_status_id, "
+                                    "  responded_at = EXCLUDED.responded_at",
+                                    {evt.id, personIdVal, uid, std::to_string(statusId)}
+                                );
+                            } else {
+                                db_->query(
+                                    "INSERT INTO chat_event_rsvps "
+                                    "  (chat_event_id, external_user_id, rsvp_status_id, responded_at) "
+                                    "VALUES ($1::int, $2, $3::int, CURRENT_TIMESTAMP) "
+                                    "ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET "
+                                    "  rsvp_status_id = EXCLUDED.rsvp_status_id, "
+                                    "  responded_at = EXCLUDED.responded_at",
+                                    {evt.id, uid, std::to_string(statusId)}
+                                );
+                            }
+                        }
+                    };
+
+                    upsertTrainingRsvps(going, 1);     // yes
+                    upsertTrainingRsvps(notGoing, 2);   // no
+
+                    std::cout << "  📊 " << evt.title << " (" << evt.eventDate << "): "
+                              << going.size() << " going, " << notGoing.size() << " not going" << std::endl;
+                }
+            }
+        }
+
+        // Step 2: Get all RSVP data for these events (yes=1)
+        // Map: externalUserId → eventId → rsvpStatus
+        std::map<std::string, std::map<std::string, int>> rsvpByExtUser;
+        // Map: personId → eventId → rsvpStatus
+        std::map<std::string, std::map<std::string, int>> rsvpByPerson;
+        
+        if (!events.empty()) {
+            std::string eventIds;
+            for (size_t i = 0; i < events.size(); i++) {
+                if (i > 0) eventIds += ",";
+                eventIds += events[i].id;
+            }
+            pqxx::result rsvpResult = db_->query(
+                "SELECT cer.chat_event_id::text, cer.external_user_id, "
+                "       cer.person_id::text, cer.rsvp_status_id "
+                "FROM chat_event_rsvps cer "
+                "WHERE cer.chat_event_id IN (" + eventIds + ") "
+                "  AND cer.rsvp_status_id = 1"
+            );
+            for (const auto& row : rsvpResult) {
+                std::string eventId = row["chat_event_id"].c_str();
+                int status = std::stoi(row["rsvp_status_id"].c_str());
+                if (!row["external_user_id"].is_null()) {
+                    rsvpByExtUser[row["external_user_id"].c_str()][eventId] = status;
+                }
+                if (!row["person_id"].is_null()) {
+                    rsvpByPerson[row["person_id"].c_str()][eventId] = status;
+                }
+            }
+        }
+
+        // Step 3: Load manual attendance overrides from training_attendance
+        std::map<std::string, std::map<std::string, bool>> manualAttendance; // personId → eventId → attended
+        if (!events.empty()) {
+            std::string eventIds;
+            for (size_t i = 0; i < events.size(); i++) {
+                if (i > 0) eventIds += ",";
+                eventIds += events[i].id;
+            }
+            pqxx::result manResult = db_->query(
+                "SELECT ta.chat_event_id::text, p.person_id::text, ta.attended "
+                "FROM training_attendance ta "
+                "JOIN players p ON p.id = ta.player_id "
+                "WHERE ta.chat_event_id IN (" + eventIds + ")"
+            );
+            for (const auto& row : manResult) {
+                std::string eventId = row["chat_event_id"].c_str();
+                std::string personId = row["person_id"].c_str();
+                bool attended = std::string(row["attended"].c_str()) == "t";
+                manualAttendance[personId][eventId] = attended;
+            }
+        }
+
+        // Step 4: Load person linkages from external_identities
+        struct PersonLink {
+            std::string personId;
+            std::string firstName;
+            std::string lastName;
+        };
+        std::map<std::string, PersonLink> personLinks;
+        std::map<std::string, std::string> personToGmUserId;
+
+        pqxx::result eiResult = db_->query(
+            "SELECT ei.external_user_id, ei.person_id::text, "
+            "       p.first_name, p.last_name "
+            "FROM external_identities ei "
+            "JOIN persons p ON p.id = ei.person_id "
+            "WHERE ei.provider_id = 1"
+        );
+        for (const auto& row : eiResult) {
+            PersonLink pl;
+            pl.personId = row["person_id"].c_str();
+            pl.firstName = row["first_name"].c_str();
+            pl.lastName = row["last_name"].c_str();
+            std::string extId = row["external_user_id"].c_str();
+            personLinks[extId] = pl;
+            personToGmUserId[pl.personId] = extId;
+        }
+
+        // Step 5: Load rosters for all related teams (from chats)
+        // Find all teams linked to any Lighthouse chats
+        struct RosterEntry {
+            std::string teamId;
+            std::string teamName;
+            std::string divisionName;
+            std::string playerId;
+        };
+        std::map<std::string, std::vector<RosterEntry>> rosterByPerson;
+
+        pqxx::result relatedTeamsResult = db_->query(
+            "SELECT DISTINCT t.id::text, t.name as team_name, d.name as division_name "
+            "FROM chats c "
+            "JOIN teams t ON t.id = c.team_id "
+            "LEFT JOIN divisions d ON d.id = t.division_id "
+            "WHERE c.team_id IS NOT NULL "
+            "ORDER BY t.name"
+        );
+        std::string teamIdList;
+        for (size_t i = 0; i < relatedTeamsResult.size(); i++) {
+            if (i > 0) teamIdList += ",";
+            teamIdList += relatedTeamsResult[i]["id"].c_str();
+        }
+
+        if (!teamIdList.empty()) {
+            pqxx::result rosterResult = db_->query(
+                "SELECT p.person_id::text, p.id::text as player_id, r.team_id::text, "
+                "       pe.first_name, pe.last_name "
+                "FROM players p "
+                "JOIN rosters r ON r.player_id = p.id "
+                "JOIN persons pe ON pe.id = p.person_id "
+                "WHERE r.team_id IN (" + teamIdList + ") AND r.left_at IS NULL "
+                "ORDER BY pe.last_name, pe.first_name"
+            );
+            for (const auto& row : rosterResult) {
+                std::string personId = row["person_id"].c_str();
+                RosterEntry re;
+                re.teamId = row["team_id"].c_str();
+                re.playerId = row["player_id"].c_str();
+                for (const auto& sr : relatedTeamsResult) {
+                    if (std::string(sr["id"].c_str()) == re.teamId) {
+                        re.teamName = sr["team_name"].c_str();
+                        re.divisionName = sr["division_name"].is_null() ? "" : sr["division_name"].c_str();
+                        break;
+                    }
+                }
+                rosterByPerson[personId].push_back(re);
+            }
+        }
+
+        // Step 6: Load chat_external_members for the APSL chat
+        // (to get full member list including unlinked members)
+        pqxx::result chatMemberResult = db_->query(
+            "SELECT cem.external_user_id, cem.external_username, cem.person_id::text "
+            "FROM chat_external_members cem "
+            "JOIN chats c ON c.id = cem.chat_id "
+            "WHERE c.team_id = $1::int "
+            "ORDER BY cem.external_username",
+            {teamId}
+        );
+
+        // Step 7: Build response JSON
+        std::ostringstream json;
+        json << "{\"events\":[";
+        for (size_t i = 0; i < events.size(); i++) {
+            if (i > 0) json << ",";
+            json << "{\"id\":" << events[i].id
+                 << ",\"title\":\"" << escapeJson(events[i].title) << "\""
+                 << ",\"eventDate\":\"" << events[i].eventDate << "\""
+                 << ",\"chatName\":\"" << escapeJson(events[i].chatName) << "\"}";
+        }
+        json << "],\"players\":[";
+
+        std::set<std::string> emittedPersonIds;
+        bool first = true;
+
+        auto emitPlayer = [&](const std::string& personId, const std::string& firstName,
+                              const std::string& lastName, const std::string& gmUserId,
+                              const std::string& nickname, const std::string& source) {
+            if (!first) json << ",";
+            first = false;
+
+            json << "{\"personId\":" << (personId.empty() ? "null" : personId)
+                 << ",\"firstName\":" << (firstName.empty() ? "null" : "\"" + escapeJson(firstName) + "\"")
+                 << ",\"lastName\":" << (lastName.empty() ? "null" : "\"" + escapeJson(lastName) + "\"")
+                 << ",\"externalUserId\":" << (gmUserId.empty() ? "null" : "\"" + gmUserId + "\"")
+                 << ",\"nickname\":" << (nickname.empty() ? "null" : "\"" + escapeJson(nickname) + "\"")
+                 << ",\"source\":\"" << source << "\"";
+
+            // Teams array
+            json << ",\"teams\":[";
+            if (!personId.empty()) {
+                auto rIt = rosterByPerson.find(personId);
+                if (rIt != rosterByPerson.end()) {
+                    bool firstTeam = true;
+                    for (const auto& re : rIt->second) {
+                        if (!firstTeam) json << ",";
+                        firstTeam = false;
+                        json << "{\"teamId\":" << re.teamId
+                             << ",\"teamName\":\"" << escapeJson(re.teamName) << "\""
+                             << ",\"divisionName\":\"" << escapeJson(re.divisionName) << "\""
+                             << ",\"playerId\":" << re.playerId << "}";
+                    }
+                }
+            }
+            json << "]";
+
+            // Attendance per event
+            json << ",\"attendance\":{";
+            bool firstEvent = true;
+            for (const auto& evt : events) {
+                if (!firstEvent) json << ",";
+                firstEvent = false;
+                json << "\"" << evt.id << "\":";
+
+                // Check manual override first, then RSVP
+                bool hasManual = false;
+                bool manualVal = false;
+                if (!personId.empty()) {
+                    auto mIt = manualAttendance.find(personId);
+                    if (mIt != manualAttendance.end()) {
+                        auto eIt = mIt->second.find(evt.id);
+                        if (eIt != mIt->second.end()) {
+                            hasManual = true;
+                            manualVal = eIt->second;
+                        }
+                    }
+                }
+
+                bool hasRsvp = false;
+                if (!gmUserId.empty()) {
+                    auto rIt = rsvpByExtUser.find(gmUserId);
+                    if (rIt != rsvpByExtUser.end() && rIt->second.count(evt.id)) {
+                        hasRsvp = true;
+                    }
+                }
+                if (!hasRsvp && !personId.empty()) {
+                    auto rIt = rsvpByPerson.find(personId);
+                    if (rIt != rsvpByPerson.end() && rIt->second.count(evt.id)) {
+                        hasRsvp = true;
+                    }
+                }
+
+                if (hasManual) {
+                    json << "{\"attended\":" << (manualVal ? "true" : "false") << ",\"source\":\"manual\"}";
+                } else if (hasRsvp) {
+                    json << "{\"attended\":true,\"source\":\"rsvp\"}";
+                } else {
+                    json << "null";
+                }
+            }
+            json << "}";
+
+            json << "}";
+        };
+
+        // Part A: Chat members (linked and unlinked)
+        for (const auto& row : chatMemberResult) {
+            std::string extUserId = row["external_user_id"].c_str();
+            std::string nickname = row["external_username"].c_str();
+            std::string personId = row["person_id"].is_null() ? "" : row["person_id"].c_str();
+
+            // If linked via external_identities, use that person info
+            auto plIt = personLinks.find(extUserId);
+            if (plIt != personLinks.end()) {
+                personId = plIt->second.personId;
+                emittedPersonIds.insert(personId);
+                bool isOnRoster = rosterByPerson.count(personId) > 0;
+                emitPlayer(personId, plIt->second.firstName, plIt->second.lastName,
+                           extUserId, nickname, isOnRoster ? "both" : "groupme_only");
+            } else {
+                emitPlayer("", "", "", extUserId, nickname, "groupme_only");
+            }
+        }
+
+        // Part B: Roster-only players (not in the chat)
+        for (const auto& rp : rosterByPerson) {
+            if (emittedPersonIds.count(rp.first) > 0) continue;
+            emittedPersonIds.insert(rp.first);
+
+            std::string firstName, lastName;
+            // Get name from one of the roster entries
+            pqxx::result nameResult = db_->query(
+                "SELECT first_name, last_name FROM persons WHERE id = $1::int",
+                {rp.first}
+            );
+            if (!nameResult.empty()) {
+                firstName = nameResult[0]["first_name"].c_str();
+                lastName = nameResult[0]["last_name"].c_str();
+            }
+
+            std::string gmUserId;
+            auto gmIt = personToGmUserId.find(rp.first);
+            if (gmIt != personToGmUserId.end()) gmUserId = gmIt->second;
+
+            emitPlayer(rp.first, firstName, lastName, gmUserId, "", "roster_only");
+        }
+
+        json << "]}";
+
+        return Response(HttpStatus::OK, createJsonResponse(true, "Training week loaded", json.str()));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Training week error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, std::string("Failed to load training week: ") + e.what()));
+    }
+}
+
+// ============================================================================
+// Handler: Toggle Training Attendance
+// POST /api/groupme/training-attendance
+// body: {"personId":123, "chatEventId":456, "attended":true}
+// ============================================================================
+Response GroupMeController::handleToggleAttendance(const Request& request) {
+    try {
+        std::string body = request.getBody();
+
+        auto extractJsonInt = [&](const std::string& key) -> std::string {
+            std::string search = "\"" + key + "\":";
+            size_t pos = body.find(search);
+            if (pos == std::string::npos) return "";
+            pos += search.size();
+            while (pos < body.size() && (body[pos] == ' ' || body[pos] == '\t')) pos++;
+            size_t end = pos;
+            while (end < body.size() && (body[end] >= '0' && body[end] <= '9')) end++;
+            return body.substr(pos, end - pos);
+        };
+
+        auto extractJsonBool = [&](const std::string& key) -> bool {
+            std::string search = "\"" + key + "\":";
+            size_t pos = body.find(search);
+            if (pos == std::string::npos) return false;
+            pos += search.size();
+            while (pos < body.size() && (body[pos] == ' ' || body[pos] == '\t')) pos++;
+            return pos < body.size() && body[pos] == 't';
+        };
+
+        std::string personId = extractJsonInt("personId");
+        std::string chatEventId = extractJsonInt("chatEventId");
+        bool attended = extractJsonBool("attended");
+
+        if (personId.empty() || chatEventId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST,
+                createJsonResponse(false, "personId and chatEventId required"));
+        }
+
+        // Find player_id from person_id
+        pqxx::result playerResult = db_->query(
+            "SELECT id FROM players WHERE person_id = $1::int LIMIT 1",
+            {personId}
+        );
+        if (playerResult.empty()) {
+            return Response(HttpStatus::NOT_FOUND,
+                createJsonResponse(false, "No player found for person"));
+        }
+        std::string playerId = playerResult[0]["id"].c_str();
+
+        // Upsert into training_attendance
+        db_->query(
+            "INSERT INTO training_attendance (player_id, chat_event_id, attended, source) "
+            "VALUES ($1::int, $2::int, $3::boolean, 'manual') "
+            "ON CONFLICT (player_id, chat_event_id) DO UPDATE SET "
+            "  attended = $3::boolean, source = 'manual', updated_at = NOW()",
+            {playerId, chatEventId, attended ? "true" : "false"}
+        );
+
+        std::cout << "✅ Attendance: person " << personId << " event " << chatEventId
+                  << " → " << (attended ? "YES" : "NO") << std::endl;
+
+        return Response(HttpStatus::OK,
+            createJsonResponse(true, attended ? "Marked as attended" : "Marked as not attended"));
+
+    } catch (const std::exception& e) {
+        std::cerr << "❌ Toggle attendance error: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJsonResponse(false, std::string("Failed to toggle attendance: ") + e.what()));
     }
 }
 

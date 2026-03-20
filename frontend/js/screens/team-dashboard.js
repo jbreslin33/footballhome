@@ -116,6 +116,13 @@ class TeamDashboardScreen extends Screen {
         this.navigation.goTo('game-day-lineup');
         return;
       }
+
+      // Training Attendance button
+      const trainingBtn = e.target.closest('[data-action="training-attendance"]');
+      if (trainingBtn) {
+        this.navigation.goTo('training-attendance');
+        return;
+      }
       
       // Manage roster button
       const manageBtn = e.target.closest('[data-action="manage-roster"]');
@@ -276,10 +283,11 @@ class TeamDashboardScreen extends Screen {
               ${m.venue_name ? `<div class="meta-item"><span class="meta-icon">📍</span><span>${m.venue_name}</span></div>` : ''}
             </div>
             ${rsvpSection}
-            <div class="match-card-actions" style="margin-top:var(--space-2); border-top:1px solid var(--gray-200); padding-top:var(--space-2); display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--space-2);">
+            <div class="match-card-actions" style="margin-top:var(--space-2); border-top:1px solid var(--gray-200); padding-top:var(--space-2); display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:var(--space-2);">
               <button data-action="stats" data-id="${m.id}" data-title="${m.title}" class="btn btn-secondary btn-sm">📊 Stats</button>
               <button data-action="tactics" data-id="${m.id}" data-title="${m.title}" class="btn btn-secondary btn-sm">📋 Tactics</button>
               <button data-action="lineup" data-id="${m.id}" data-title="${m.title}" class="btn btn-secondary btn-sm">⚽ Lineup</button>
+              <button data-action="training-attendance" class="btn btn-secondary btn-sm">🏋️ Training</button>
             </div>
           </div>
         `;

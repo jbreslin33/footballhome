@@ -3,7 +3,7 @@
    ============================================================================ */
 
 .screen-game-day-lineup {
-  max-width: 1100px;
+  max-width: none;
   margin: 0 auto;
 }
 
@@ -154,33 +154,25 @@
 }
 
 /* ============================================================================
-   Overlay Toggle Buttons
+   Overlay Toggle Dropdown
    ============================================================================ */
 .overlay-toggles {
   display: flex;
-  gap: 6px;
   align-items: center;
 }
-.overlay-toggle-btn {
-  padding: 4px 12px;
+.overlay-select {
+  padding: 4px 8px;
   border: 1px solid var(--gray-300, #d1d5db);
   border-radius: var(--radius-sm, 4px);
   background: white;
-  font-size: 0.8em;
+  font-size: 0.82em;
   font-weight: 500;
   cursor: pointer;
-  color: var(--gray-600, #4b5563);
-  transition: all 0.15s;
-  white-space: nowrap;
+  color: var(--gray-700, #374151);
 }
-.overlay-toggle-btn:hover {
-  background: var(--gray-100, #f3f4f6);
-  border-color: var(--gray-400, #9ca3af);
-}
-.overlay-toggle-btn.active {
-  background: #4338ca;
-  color: white;
-  border-color: #4338ca;
+.overlay-select:focus {
+  outline: 2px solid #4338ca;
+  outline-offset: 1px;
 }
 
 /* ============================================================================
@@ -222,16 +214,16 @@
 .roster-overlay-panel {
   position: absolute;
   top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
-  width: 420px;
-  max-width: 100%;
-  background: rgba(255, 255, 255, 0.97);
+  width: 100%;
+  background: rgba(255, 255, 255, 0.88);
   border: 1px solid var(--gray-200, #e5e7eb);
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
   z-index: 50;
   overflow: hidden;
 }
@@ -269,7 +261,7 @@
 .overlay-panel-body {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 /* Overlay Table */
@@ -311,6 +303,10 @@
 .ot-col-elig { width: 32px; text-align: center; }
 .ot-col-prac { width: 44px; text-align: center; }
 .ot-col-proj { width: 44px; text-align: center; }
+.ot-col-train { width: 28px; min-width: 28px; text-align: center; font-size: 11px; padding: 2px !important; }
+.ot-col-train input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: #28a745; margin: 0; }
+.train-rsvp { background: #d4edda; }
+.train-yes { background: #c3e6cb; }
 .ot-col-actions { width: 60px; text-align: center; }
 
 .lineup-zone {
@@ -931,7 +927,7 @@
   .roster-overlay-panel {
     width: 100% !important;
     border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
-    top: 40% !important;
+    top: 0 !important;
   }
   .ot-col-proj, .ot-col-prac { display: none; }
   .overlay-table thead .ot-col-proj,

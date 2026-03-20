@@ -1,0 +1,144 @@
+/* Training Attendance Grid */
+.ta-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.ta-table th,
+.ta-table td {
+  border: 1px solid #ddd;
+  padding: 4px 6px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.ta-table thead th {
+  background: #2c3e50;
+  color: white;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  font-size: 11px;
+}
+
+.ta-name-col {
+  text-align: left !important;
+  min-width: 140px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: sticky;
+  left: 0;
+  background: white;
+  z-index: 1;
+}
+
+thead .ta-name-col {
+  z-index: 3 !important;
+}
+
+.ta-teams-col {
+  min-width: 60px;
+}
+
+.ta-day-col {
+  min-width: 50px;
+  width: 55px;
+}
+
+.ta-tally-col {
+  min-width: 40px;
+  font-weight: 700;
+}
+
+/* Attendance cell states */
+.att-cell {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.att-cell:hover {
+  opacity: 0.8;
+  outline: 2px solid #3498db;
+}
+
+.att-none {
+  background: #f8f9fa;
+  color: #ccc;
+}
+
+.att-rsvp {
+  background: #d4edda;
+  color: #155724;
+  font-weight: 700;
+}
+
+.att-yes {
+  background: #c3e6cb;
+  color: #155724;
+  font-weight: 700;
+}
+
+.att-no {
+  background: #f8d7da;
+  color: #721c24;
+  font-weight: 700;
+}
+
+/* Tally coloring */
+.ta-tally-high {
+  background: #28a745;
+  color: white;
+}
+
+.ta-tally-mid {
+  background: #ffc107;
+  color: #333;
+}
+
+.ta-tally-low {
+  background: #fd7e14;
+  color: white;
+}
+
+/* Team badges */
+.ta-badge {
+  display: inline-block;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  margin: 0 1px;
+  background: #e9ecef;
+  color: #495057;
+}
+
+/* Roster-only rows (slightly dimmed) */
+.ta-roster-only {
+  opacity: 0.7;
+}
+
+.ta-roster-only .ta-name-col {
+  font-style: italic;
+}
+
+/* Zebra striping */
+.ta-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.ta-table tbody tr:nth-child(even) .ta-name-col {
+  background: #fafafa;
+}
+
+.ta-table tbody tr:hover {
+  background: #eef5ff;
+}
+
+.ta-table tbody tr:hover .ta-name-col {
+  background: #eef5ff;
+}

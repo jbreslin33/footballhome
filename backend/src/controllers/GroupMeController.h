@@ -34,6 +34,12 @@ private:
     // Handler: unlink a GroupMe user from a person
     Response handleUnlinkMember(const Request& request);
 
+    // Handler: training week attendance grid (per-day columns with editable attendance)
+    Response handleGetTrainingWeek(const Request& request);
+
+    // Handler: toggle attendance for a player on a training event
+    Response handleToggleAttendance(const Request& request);
+
     // HTTP helpers
     std::string httpGet(const std::string& url);
 
