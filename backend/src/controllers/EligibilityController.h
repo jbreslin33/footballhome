@@ -15,6 +15,7 @@ struct EligibilityPolicy {
     bool game_counts_as_session;
     bool pickup_counts_as_session;
     int family_discount;
+    int keeper_discount;
 };
 
 // Eligibility status categories
@@ -34,6 +35,7 @@ struct PlayerEligibility {
     std::string position;
     std::string photo_url;
     bool has_family_discount;
+    bool is_keeper;
     int sessions_in_window;
     int sessions_attended;
     int projected_sessions;        // sessions_attended + future RSVP "yes" count

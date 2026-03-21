@@ -210,7 +210,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 -- Resolve each person to their player record
                 SELECT DISTINCT ON (cp.person_id)
                        p.id as player_id, r.jersey_number,
-                       p.has_family_discount, p.photo_url,
+                       p.has_family_discount, p.is_keeper, p.photo_url,
                        pe.id as person_id, pe.first_name, pe.last_name,
                        -- On official roster = any sibling team in same league
                        EXISTS(
@@ -316,7 +316,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 WHERE pp.is_primary = true
             )
             SELECT rp.player_id, rp.first_name, rp.last_name, rp.jersey_number,
-                   rp.has_family_discount, rp.photo_url, rp.person_id,
+                   rp.has_family_discount, rp.is_keeper, rp.photo_url, rp.person_id,
                    rp.on_official_roster,
                    COALESCE(aa.sessions_attended, ra.rsvp_yes_count, 0) as sessions_attended,
                    COALESCE(fr.future_yes_count, 0) as future_rsvp_yes,
@@ -402,7 +402,8 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
         json << "\"priorityStarterSlots\":" << policy.priority_starter_slots << ",";
         json << "\"gameCountsAsSession\":" << (policy.game_counts_as_session ? "true" : "false") << ",";
         json << "\"pickupCountsAsSession\":" << (policy.pickup_counts_as_session ? "true" : "false") << ",";
-        json << "\"familyDiscount\":" << policy.family_discount;
+        json << "\"familyDiscount\":" << policy.family_discount << ",";
+        json << "\"keeperDiscount\":" << policy.keeper_discount;
         json << "},";
         
         // Sessions info
@@ -429,6 +430,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             pe.position = row["position"].is_null() ? "" : row["position"].c_str();
             pe.photo_url = row["photo_url"].is_null() ? "" : row["photo_url"].c_str();
             pe.has_family_discount = !row["has_family_discount"].is_null() && row["has_family_discount"].as<bool>();
+            pe.is_keeper = !row["is_keeper"].is_null() && row["is_keeper"].as<bool>();
             pe.sessions_attended = row["sessions_attended"].as<int>();
             pe.sessions_in_window = sessionIds.size();
             pe.person_id = row["person_id"].as<int>();
@@ -437,9 +439,11 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             int futureRsvpYes = row["future_rsvp_yes"].as<int>();
             pe.projected_sessions = pe.sessions_attended + futureRsvpYes;
             
-            // Compute effective minimum sessions (apply family discount)
+            // Compute effective minimum sessions (apply family/keeper discount)
             pe.effective_min_sessions = policy.min_sessions_to_start;
-            if (pe.has_family_discount) {
+            if (pe.is_keeper) {
+                pe.effective_min_sessions = std::max(0, pe.effective_min_sessions - policy.keeper_discount);
+            } else if (pe.has_family_discount) {
                 pe.effective_min_sessions = std::max(0, pe.effective_min_sessions - policy.family_discount);
             }
             
@@ -479,6 +483,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             json << "\"position\":" << (pe.position.empty() ? "null" : "\"" + pe.position + "\"") << ",";
             json << "\"photoUrl\":" << (pe.photo_url.empty() ? "null" : "\"" + escapeJson(pe.photo_url) + "\"") << ",";
             json << "\"hasFamilyDiscount\":" << (pe.has_family_discount ? "true" : "false") << ",";
+            json << "\"isKeeper\":" << (pe.is_keeper ? "true" : "false") << ",";
             json << "\"sessionsInWindow\":" << pe.sessions_in_window << ",";
             json << "\"sessionsAttended\":" << pe.sessions_attended << ",";
             json << "\"projectedSessions\":" << pe.projected_sessions << ",";
@@ -568,7 +573,8 @@ Response EligibilityController::handleGetTeamPolicy(const Request& request) {
         json << "\"priorityStarterSlots\":" << policy.priority_starter_slots << ",";
         json << "\"gameCountsAsSession\":" << (policy.game_counts_as_session ? "true" : "false") << ",";
         json << "\"pickupCountsAsSession\":" << (policy.pickup_counts_as_session ? "true" : "false") << ",";
-        json << "\"familyDiscount\":" << policy.family_discount;
+        json << "\"familyDiscount\":" << policy.family_discount << ",";
+        json << "\"keeperDiscount\":" << policy.keeper_discount;
         json << "}}";
         
         return Response(HttpStatus::OK, json.str());
@@ -605,14 +611,15 @@ Response EligibilityController::handleUpdateTeamPolicy(const Request& request) {
         bool gameCounts = parseJsonBool(body, "game_counts_as_session", true);
         bool pickupCounts = parseJsonBool(body, "pickup_counts_as_session", true);
         int familyDiscount = parseJsonInt(body, "family_discount", 1);
+        int keeperDiscount = parseJsonInt(body, "keeper_discount", 2);
         
         std::string upsertQuery = R"(
             INSERT INTO eligibility_policies 
                 (team_id, lookback_count, min_sessions_to_start, 
                  priority_starter_sessions, priority_starter_slots,
                  game_counts_as_session, pickup_counts_as_session, 
-                 family_discount, created_by_user_id)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                 family_discount, keeper_discount, created_by_user_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             ON CONFLICT (club_id, team_id, match_id)
             DO UPDATE SET
                 lookback_count = EXCLUDED.lookback_count,
@@ -621,7 +628,8 @@ Response EligibilityController::handleUpdateTeamPolicy(const Request& request) {
                 priority_starter_slots = EXCLUDED.priority_starter_slots,
                 game_counts_as_session = EXCLUDED.game_counts_as_session,
                 pickup_counts_as_session = EXCLUDED.pickup_counts_as_session,
-                family_discount = EXCLUDED.family_discount
+                family_discount = EXCLUDED.family_discount,
+                keeper_discount = EXCLUDED.keeper_discount
             RETURNING id
         )";
         
@@ -634,6 +642,7 @@ Response EligibilityController::handleUpdateTeamPolicy(const Request& request) {
             gameCounts ? "true" : "false",
             pickupCounts ? "true" : "false",
             std::to_string(familyDiscount),
+            std::to_string(keeperDiscount),
             userId
         });
         
@@ -1132,111 +1141,8 @@ Response EligibilityController::handleUpdatePlayerAttendance(const Request& requ
 EligibilityPolicy EligibilityController::resolvePolicy(
     const std::string& matchId, const std::string& teamId, const std::string& clubId) {
     
-    std::string query = R"(
-        SELECT id, lookback_count, min_sessions_to_start,
-               priority_starter_sessions, priority_starter_slots,
-               game_counts_as_session, pickup_counts_as_session, family_discount
-        FROM eligibility_policies
-        WHERE 
-            (match_id = $1::int AND $1 != '')
-            OR (team_id = $2::int AND match_id IS NULL AND $2 != '')
-            OR (club_id = $3::int AND team_id IS NULL AND match_id IS NULL AND $3 != '')
-            OR (club_id IS NULL AND team_id IS NULL AND match_id IS NULL)
-        ORDER BY 
-            CASE 
-                WHEN match_id IS NOT NULL THEN 1
-                WHEN team_id IS NOT NULL THEN 2
-                WHEN club_id IS NOT NULL THEN 3
-                ELSE 4
-            END
-        LIMIT 1
-    )";
-    
-    // Handle empty IDs by passing "0" which won't match any real IDs
-    std::string safeMatchId = matchId.empty() ? "0" : matchId;
-    std::string safeTeamId = teamId.empty() ? "0" : teamId;
-    std::string safeClubId = clubId.empty() ? "0" : clubId;
-    
     try {
-        // Simpler approach: try each level in order
-        // Match level
-        if (!matchId.empty()) {
-            auto result = db_->query(
-                "SELECT id, lookback_count, min_sessions_to_start, "
-                "priority_starter_sessions, priority_starter_slots, "
-                "game_counts_as_session, pickup_counts_as_session, family_discount "
-                "FROM eligibility_policies WHERE match_id = $1 LIMIT 1",
-                {matchId}
-            );
-            if (!result.empty()) {
-                return {
-                    result[0]["id"].as<int>(),
-                    result[0]["lookback_count"].as<int>(),
-                    result[0]["min_sessions_to_start"].as<int>(),
-                    result[0]["priority_starter_sessions"].as<int>(),
-                    result[0]["priority_starter_slots"].as<int>(),
-                    result[0]["game_counts_as_session"].as<bool>(),
-                    result[0]["pickup_counts_as_session"].as<bool>(),
-                    result[0]["family_discount"].as<int>()
-                };
-            }
-        }
-        
-        // Team level
-        if (!teamId.empty()) {
-            auto result = db_->query(
-                "SELECT id, lookback_count, min_sessions_to_start, "
-                "priority_starter_sessions, priority_starter_slots, "
-                "game_counts_as_session, pickup_counts_as_session, family_discount "
-                "FROM eligibility_policies WHERE team_id = $1 AND match_id IS NULL LIMIT 1",
-                {teamId}
-            );
-            if (!result.empty()) {
-                return {
-                    result[0]["id"].as<int>(),
-                    result[0]["lookback_count"].as<int>(),
-                    result[0]["min_sessions_to_start"].as<int>(),
-                    result[0]["priority_starter_sessions"].as<int>(),
-                    result[0]["priority_starter_slots"].as<int>(),
-                    result[0]["game_counts_as_session"].as<bool>(),
-                    result[0]["pickup_counts_as_session"].as<bool>(),
-                    result[0]["family_discount"].as<int>()
-                };
-            }
-        }
-        
-        // Club level
-        if (!clubId.empty()) {
-            auto result = db_->query(
-                "SELECT id, lookback_count, min_sessions_to_start, "
-                "priority_starter_sessions, priority_starter_slots, "
-                "game_counts_as_session, pickup_counts_as_session, family_discount "
-                "FROM eligibility_policies WHERE club_id = $1 AND team_id IS NULL AND match_id IS NULL LIMIT 1",
-                {clubId}
-            );
-            if (!result.empty()) {
-                return {
-                    result[0]["id"].as<int>(),
-                    result[0]["lookback_count"].as<int>(),
-                    result[0]["min_sessions_to_start"].as<int>(),
-                    result[0]["priority_starter_sessions"].as<int>(),
-                    result[0]["priority_starter_slots"].as<int>(),
-                    result[0]["game_counts_as_session"].as<bool>(),
-                    result[0]["pickup_counts_as_session"].as<bool>(),
-                    result[0]["family_discount"].as<int>()
-                };
-            }
-        }
-        
-        // System default (all NULL scope)
-        auto result = db_->query(
-            "SELECT id, lookback_count, min_sessions_to_start, "
-            "priority_starter_sessions, priority_starter_slots, "
-            "game_counts_as_session, pickup_counts_as_session, family_discount "
-            "FROM eligibility_policies WHERE club_id IS NULL AND team_id IS NULL AND match_id IS NULL LIMIT 1"
-        );
-        
-        if (!result.empty()) {
+        auto loadPolicy = [](const pqxx::result& result) -> EligibilityPolicy {
             return {
                 result[0]["id"].as<int>(),
                 result[0]["lookback_count"].as<int>(),
@@ -1245,15 +1151,53 @@ EligibilityPolicy EligibilityController::resolvePolicy(
                 result[0]["priority_starter_slots"].as<int>(),
                 result[0]["game_counts_as_session"].as<bool>(),
                 result[0]["pickup_counts_as_session"].as<bool>(),
-                result[0]["family_discount"].as<int>()
+                result[0]["family_discount"].as<int>(),
+                result[0]["keeper_discount"].as<int>()
             };
+        };
+
+        const char* cols = "SELECT id, lookback_count, min_sessions_to_start, "
+            "priority_starter_sessions, priority_starter_slots, "
+            "game_counts_as_session, pickup_counts_as_session, family_discount, keeper_discount ";
+
+        // Match level
+        if (!matchId.empty()) {
+            auto result = db_->query(
+                std::string(cols) + "FROM eligibility_policies WHERE match_id = $1 LIMIT 1",
+                {matchId}
+            );
+            if (!result.empty()) return loadPolicy(result);
         }
+        
+        // Team level
+        if (!teamId.empty()) {
+            auto result = db_->query(
+                std::string(cols) + "FROM eligibility_policies WHERE team_id = $1 AND match_id IS NULL LIMIT 1",
+                {teamId}
+            );
+            if (!result.empty()) return loadPolicy(result);
+        }
+        
+        // Club level
+        if (!clubId.empty()) {
+            auto result = db_->query(
+                std::string(cols) + "FROM eligibility_policies WHERE club_id = $1 AND team_id IS NULL AND match_id IS NULL LIMIT 1",
+                {clubId}
+            );
+            if (!result.empty()) return loadPolicy(result);
+        }
+        
+        // System default (all NULL scope)
+        auto result = db_->query(
+            std::string(cols) + "FROM eligibility_policies WHERE club_id IS NULL AND team_id IS NULL AND match_id IS NULL LIMIT 1"
+        );
+        if (!result.empty()) return loadPolicy(result);
     } catch (const std::exception& e) {
         std::cerr << "⚠️ Policy resolution error: " << e.what() << " - using defaults" << std::endl;
     }
     
     // Hardcoded fallback if no policy exists at all
-    return {0, 5, 2, 3, 3, true, true, 1};
+    return {0, 5, 2, 3, 3, true, true, 1, 2};
 }
 
 // ============================================================================
