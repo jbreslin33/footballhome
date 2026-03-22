@@ -1,6 +1,7 @@
 #include "GroupMeController.h"
 #include <curl/curl.h>
 #include <sstream>
+#include <iomanip>
 #include <regex>
 #include <iostream>
 #include <chrono>
@@ -170,12 +171,14 @@ Response GroupMeController::handleSyncMatchRsvps(const Request& request) {
                 auto personIt = personMap.find(uid);
                 
                 if (personIt != personMap.end()) {
-                    // Person is mapped
+                    // Person is mapped — upsert by external_user_id to avoid conflicts
+                    // when upgrading a previously-unmapped row
                     db_->query(
                         "INSERT INTO chat_event_rsvps "
                         "  (chat_event_id, person_id, external_user_id, external_username, rsvp_status_id, responded_at) "
                         "VALUES ($1::int, $2::int, $3, $4, $5::int, CURRENT_TIMESTAMP) "
-                        "ON CONFLICT (chat_event_id, person_id) DO UPDATE SET "
+                        "ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET "
+                        "  person_id = EXCLUDED.person_id, "
                         "  rsvp_status_id = EXCLUDED.rsvp_status_id, "
                         "  responded_at = EXCLUDED.responded_at, "
                         "  external_username = EXCLUDED.external_username",
@@ -429,6 +432,20 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
             }
         }
 
+        // Step 7b: Load chat membership per person (which chats each person belongs to)
+        std::map<std::string, std::vector<std::string>> chatsByPerson; // person_id → [chatId, ...]
+        {
+            pqxx::result cemResult = db_->query(
+                "SELECT DISTINCT cem.person_id::text, cem.chat_id::text "
+                "FROM chat_external_members cem "
+                "WHERE cem.person_id IS NOT NULL "
+                "ORDER BY cem.person_id::text, cem.chat_id::text"
+            );
+            for (const auto& row : cemResult) {
+                chatsByPerson[row["person_id"].c_str()].push_back(row["chat_id"].c_str());
+            }
+        }
+
         // ====================================================================
         // Step 8: Build unified response — merge GroupMe members + roster-only players
         // ====================================================================
@@ -494,7 +511,20 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
                 auto rsvpExtIt = rsvpByExternalId.find(gmUserId);
                 if (rsvpExtIt != rsvpByExternalId.end()) rsvp = rsvpExtIt->second;
             }
-            json << "\"matchRsvp\":" << (rsvp.empty() ? "null" : "\"" + escapeJson(rsvp) + "\"");
+            json << "\"matchRsvp\":" << (rsvp.empty() ? "null" : "\"" + escapeJson(rsvp) + "\"") << ",";
+
+            // Chat IDs this person belongs to
+            json << "\"chatIds\":[";
+            if (!personId.empty()) {
+                auto cIt = chatsByPerson.find(personId);
+                if (cIt != chatsByPerson.end()) {
+                    for (size_t ci = 0; ci < cIt->second.size(); ci++) {
+                        if (ci > 0) json << ",";
+                        json << cIt->second[ci];
+                    }
+                }
+            }
+            json << "]";
 
             json << "}";
         };
@@ -1432,17 +1462,23 @@ std::string GroupMeController::createJsonResponse(bool success, const std::strin
 }
 
 std::string GroupMeController::escapeJson(const std::string& str) {
-    std::string result;
-    result.reserve(str.length() + 10);
+    std::ostringstream result;
     for (char c : str) {
         switch (c) {
-            case '"': result += "\\\""; break;
-            case '\\': result += "\\\\"; break;
-            case '\n': result += "\\n"; break;
-            case '\r': result += "\\r"; break;
-            case '\t': result += "\\t"; break;
-            default: result += c;
+            case '"': result << "\\\""; break;
+            case '\\': result << "\\\\"; break;
+            case '\b': result << "\\b"; break;
+            case '\f': result << "\\f"; break;
+            case '\n': result << "\\n"; break;
+            case '\r': result << "\\r"; break;
+            case '\t': result << "\\t"; break;
+            default:
+                if (c < 0x20) {
+                    result << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
+                } else {
+                    result << c;
+                }
         }
     }
-    return result;
+    return result.str();
 }

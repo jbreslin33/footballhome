@@ -258,23 +258,30 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                 WHERE cer.chat_event_id = ANY($2::int[])
                   AND COALESCE(cer.person_id, upm.person_id) IS NOT NULL
             ),
-            -- Count actual attendance for PAST sessions (training_attendance table)
-            actual_attendance AS (
-                SELECT ta.player_id,
-                       COUNT(*) FILTER (WHERE ta.attended = true) as sessions_attended
-                FROM training_attendance ta
-                JOIN window_sessions ws ON ws.session_id = ta.chat_event_id AND ws.is_past
-                WHERE ta.player_id IN (SELECT player_id FROM roster_players)
-                GROUP BY ta.player_id
-            ),
-            -- Count RSVP 'yes' for PAST sessions (fallback when no training_attendance)
-            rsvp_attendance AS (
-                SELECT rp.player_id,
-                       COUNT(*) FILTER (WHERE rr.eff_rsvp_status_id = 1) as rsvp_yes_count
+            -- Unified attendance: per-session, manual overrides RSVP
+            -- For each (player, session): use training_attendance if it exists,
+            -- otherwise fall back to RSVP yes = attended
+            unified_attendance AS (
+                SELECT rp.player_id, ws.session_id,
+                       CASE
+                           WHEN ta.player_id IS NOT NULL THEN ta.attended
+                           WHEN rr.eff_rsvp_status_id = 1 THEN true
+                           ELSE false
+                       END as attended
                 FROM roster_players rp
-                JOIN resolved_rsvps rr ON rr.person_id = rp.person_id
-                JOIN window_sessions ws ON ws.session_id = rr.chat_event_id AND ws.is_past
-                GROUP BY rp.player_id
+                CROSS JOIN window_sessions ws
+                LEFT JOIN training_attendance ta
+                    ON ta.player_id = rp.player_id AND ta.chat_event_id = ws.session_id
+                LEFT JOIN resolved_rsvps rr
+                    ON rr.person_id = rp.person_id AND rr.chat_event_id = ws.session_id
+                WHERE ws.is_past
+            ),
+            -- Count attended sessions per player
+            actual_attendance AS (
+                SELECT player_id,
+                       COUNT(*) FILTER (WHERE attended) as sessions_attended
+                FROM unified_attendance
+                GROUP BY player_id
             ),
             -- Count RSVP 'yes' for FUTURE sessions in the same window (projection)
             future_rsvp AS (
@@ -318,7 +325,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
             SELECT rp.player_id, rp.first_name, rp.last_name, rp.jersey_number,
                    rp.has_family_discount, rp.is_keeper, rp.photo_url, rp.person_id,
                    rp.on_official_roster,
-                   COALESCE(aa.sessions_attended, ra.rsvp_yes_count, 0) as sessions_attended,
+                   COALESCE(aa.sessions_attended, 0) as sessions_attended,
                    COALESCE(fr.future_yes_count, 0) as future_rsvp_yes,
                    (SELECT COUNT(*) FROM window_sessions WHERE NOT is_past) as future_session_count,
                    pp.position, pp.position_name,
@@ -327,12 +334,12 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
                    lu.player_id IS NOT NULL as on_lineup
             FROM roster_players rp
             LEFT JOIN actual_attendance aa ON aa.player_id = rp.player_id
-            LEFT JOIN rsvp_attendance ra ON ra.player_id = rp.player_id
             LEFT JOIN match_rsvps mr ON mr.player_id = rp.player_id
             LEFT JOIN lineup lu ON lu.player_id = rp.player_id
             LEFT JOIN player_pos pp ON pp.player_id = rp.player_id
             LEFT JOIN future_rsvp fr ON fr.player_id = rp.player_id
-            ORDER BY rp.last_name, rp.first_name
+            ORDER BY COALESCE(aa.sessions_attended, 0) + COALESCE(fr.future_yes_count, 0) DESC,
+                     rp.last_name, rp.first_name
         )";
         
         pqxx::result playerResult = db_->query(playerQuery, {teamId, sessionArray, matchId});
@@ -863,6 +870,31 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
             }
         }
         
+        // Parse alternates array
+        size_t altStart = body.find("\"alternates\"");
+        size_t altArrayStart = (altStart != std::string::npos) ? body.find("[", altStart) : std::string::npos;
+        size_t altArrayEnd = (altArrayStart != std::string::npos) ? body.find("]", altArrayStart) : std::string::npos;
+        
+        if (altStart != std::string::npos && altArrayStart != std::string::npos) {
+            std::string altSection = body.substr(altArrayStart, altArrayEnd - altArrayStart + 1);
+            
+            std::regex altPlayerIdPattern(R"("playerId"\s*:\s*(\d+))");
+            auto begin = std::sregex_iterator(altSection.begin(), altSection.end(), altPlayerIdPattern);
+            auto end = std::sregex_iterator();
+            
+            for (auto it = begin; it != end; ++it) {
+                std::string playerId = (*it)[1].str();
+                
+                db_->query(
+                    "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter, zone) "
+                    "VALUES ($1, $2, $3, false, 'alternate') "
+                    "ON CONFLICT (match_id, player_id) DO UPDATE SET is_starter = false, zone = 'alternate'",
+                    {matchId, playerId, teamId}
+                );
+                insertedCount++;
+            }
+        }
+        
         std::string responseData = "{\"count\":" + std::to_string(insertedCount) + "}";
         return Response(HttpStatus::OK, createJsonResponse(true, "Lineup saved", responseData));
         
@@ -1376,7 +1408,7 @@ bool EligibilityController::parseJsonBool(const std::string& body, const std::st
 std::string EligibilityController::createJsonResponse(bool success, const std::string& message, const std::string& data) {
     std::ostringstream json;
     json << "{\"success\":" << (success ? "true" : "false") 
-         << ",\"message\":\"" << message << "\"";
+         << ",\"message\":\"" << escapeJson(message) << "\"";
     if (!data.empty()) json << ",\"data\":" << data;
     json << "}";
     return json.str();

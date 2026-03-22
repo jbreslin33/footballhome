@@ -427,12 +427,14 @@ class GroupMeSync {
 
       try {
         if (personId) {
-          // Person is mapped — upsert by person_id
+          // Person is mapped — upsert by external_user_id to avoid conflicts
+          // when upgrading a previously-unmapped row
           await this.client.query(
             `INSERT INTO chat_event_rsvps 
                (chat_event_id, person_id, external_user_id, external_username, rsvp_status_id, responded_at)
              VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (chat_event_id, person_id) DO UPDATE SET
+             ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET
+               person_id = EXCLUDED.person_id,
                rsvp_status_id = EXCLUDED.rsvp_status_id,
                responded_at = EXCLUDED.responded_at,
                external_username = EXCLUDED.external_username`,

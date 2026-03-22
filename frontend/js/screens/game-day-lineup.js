@@ -11,10 +11,12 @@ class GameDayLineupScreen extends Screen {
     this.selectedFormation = null;
     this.rosterSize = 20;  // 18 or 20 man game day roster
     this.zones = {
-      starting: [],    // Player IDs in starting XI (sparse array with nulls for empty slots)
-      bench: [],       // Player IDs on game day bench
-      roster: []       // Not selected (everyone else)
+      starting: [],    // Player IDs in starting XI (max 11)
+      bench: [],       // Player IDs on game day bench (max 9)
+      alternates: [],  // Player IDs as alternates (max 10)
+      unavailable: []  // Not selected / unavailable / no response
     };
+    this.playerPositions = {}; // {playerId: {x, y}} free-form pitch positions
     this.sortField = 'rsvp';  // Default sort
     this.sortAsc = true;
     this.dragState = null;
@@ -84,25 +86,57 @@ class GameDayLineupScreen extends Screen {
 
           <!-- Pitch + Overlay Container -->
           <div class="pitch-overlay-container">
-            <!-- Full-size Pitch -->
-            <div class="pitch-fullsize-wrapper lineup-zone zone-starting" id="zone-starting">
-              <div class="pitch-fullsize-header">
-                <span>⚽ <span id="starting-count">0/11</span></span>
-                <span class="header-sep">·</span>
-                <span>🪑 <span id="bench-count-display">0/<span id="bench-max">9</span></span></span>
-                <span class="header-sep">·</span>
-                <span id="total-count-display">Total: 0</span>
-              </div>
-              <div class="pitch pitch-fullsize" id="pitch-canvas">
-                <div class="pitch-markings">
-                  <div class="pitch-center-circle"></div>
-                  <div class="pitch-center-line"></div>
-                  <div class="pitch-box pitch-box-top"></div>
-                  <div class="pitch-box pitch-box-bottom"></div>
+            <!-- Counts header -->
+            <div class="pitch-fullsize-header">
+              <span>⚽ <span id="starting-count">0/11</span></span>
+              <span class="header-sep">·</span>
+              <span>🪑 <span id="bench-count-display">0/9</span></span>
+              <span class="header-sep">·</span>
+              <span>🔄 <span id="alternates-count-display">0/10</span></span>
+              <span class="header-sep">·</span>
+              <span id="total-count-display">Total: 0</span>
+            </div>
+
+            <!-- Pitch + Bench side-by-side -->
+            <div class="pitch-and-bench">
+              <!-- Full-size Pitch -->
+              <div class="pitch-fullsize-wrapper lineup-zone zone-starting" id="zone-starting">
+                <div class="pitch pitch-fullsize" id="pitch-canvas">
+                  <div class="pitch-markings">
+                    <div class="pitch-goal pitch-goal-top"></div>
+                    <div class="pitch-box pitch-box-top"></div>
+                    <div class="pitch-six-yard pitch-six-yard-top"></div>
+                    <div class="pitch-center-circle"></div>
+                    <div class="pitch-center-line"></div>
+                    <div class="pitch-six-yard pitch-six-yard-bottom"></div>
+                    <div class="pitch-box pitch-box-bottom"></div>
+                    <div class="pitch-goal pitch-goal-bottom"></div>
+                  </div>
+                  <div id="pitch-players" class="pitch-players"></div>
                 </div>
-                <div id="pitch-players" class="pitch-players"></div>
+              </div>
+
+              <!-- Bench Area (runs along the side) -->
+              <div class="pitch-bench-area lineup-zone" id="zone-bench">
+                <div class="bench-label">🪑 Bench</div>
+                <div class="bench-seats" id="bench-players"></div>
               </div>
             </div>
+
+            <!-- Alternates Area -->
+            <div class="pitch-alternates-area lineup-zone" id="zone-alternates">
+              <div class="alternates-label">🔄 Alternates</div>
+              <div class="alternates-chips" id="alternates-players"></div>
+            </div>
+
+            <!-- Not Selected / Unavailable -->
+            <div class="pitch-unavailable-area lineup-zone" id="zone-unavailable">
+              <div class="unavailable-label">⛔ Not Selected</div>
+              <div class="unavailable-chips" id="unavailable-players"></div>
+            </div>
+
+            <!-- Lineup Full Toast -->
+            <div id="lineup-toast" class="lineup-toast" style="display:none;"></div>
 
             <!-- Roster Overlay Panel (floats over pitch) -->
             <div class="roster-overlay-panel" id="roster-overlay-panel" style="display: none;">
@@ -257,17 +291,7 @@ class GameDayLineupScreen extends Screen {
         }
       }
 
-      // Click on empty pitch slot to enter selection mode
-      const slot = e.target.closest('.pitch-slot');
-      if (slot) {
-        const slotIndex = parseInt(slot.getAttribute('data-slot'));
-        const occupant = this.zones.starting[slotIndex];
-        if (!occupant) {
-          // Empty slot — enter selection mode
-          this.enterSlotSelection(slotIndex);
-        }
-        return;
-      }
+      // Click on empty pitch area — no-op (drag to place players)
     });
 
     // Formation selector + Overlay roster selector
@@ -703,11 +727,11 @@ class GameDayLineupScreen extends Screen {
     const benchMax = this.find('#bench-max');
     if (benchMax) benchMax.textContent = size - 11;
 
-    // If bench has too many players, move extras to roster
+    // If bench has too many players, move extras to unavailable
     const maxBench = size - 11;
     while (this.zones.bench.length > maxBench) {
       const overflow = this.zones.bench.pop();
-      this.zones.roster.unshift(overflow);
+      this.zones.unavailable.unshift(overflow);
     }
 
     this.renderAllZones();
@@ -847,27 +871,37 @@ class GameDayLineupScreen extends Screen {
   // Player Classification
   // ============================================================================
   classifyPlayersIntoZones() {
-    this.zones = { starting: [], bench: [], roster: [] };
+    this.zones = { starting: [], bench: [], alternates: [], unavailable: [] };
+    this.playerPositions = {};
+
+    const positions = this.getFormationPositions();
 
     for (const player of this.players) {
-      // If player already has lineup assignment from DB, respect it
       if (player.onLineup && player.isStarter) {
         this.zones.starting.push(player.playerId);
+        // Assign formation-based position
+        const posIdx = this.zones.starting.length - 1;
+        if (posIdx < positions.length) {
+          this.playerPositions[player.playerId] = { x: positions[posIdx].x, y: positions[posIdx].y };
+        } else {
+          this.playerPositions[player.playerId] = { x: 50, y: 50 };
+        }
         continue;
       }
       if (player.onLineup && !player.isStarter) {
-        this.zones.bench.push(player.playerId);
+        // DB zone might be 'bench' or 'alternate'
+        if (player.zone === 'alternate' && this.zones.alternates.length < 10) {
+          this.zones.alternates.push(player.playerId);
+        } else if (this.zones.bench.length < 9) {
+          this.zones.bench.push(player.playerId);
+        } else if (this.zones.alternates.length < 10) {
+          this.zones.alternates.push(player.playerId);
+        } else {
+          this.zones.unavailable.push(player.playerId);
+        }
         continue;
       }
-      // Everyone else goes to not-selected roster
-      this.zones.roster.push(player.playerId);
-    }
-
-    // Enforce bench max based on roster size
-    const maxBench = this.rosterSize - 11;
-    while (this.zones.bench.length > maxBench) {
-      const overflow = this.zones.bench.pop();
-      this.zones.roster.unshift(overflow);
+      this.zones.unavailable.push(player.playerId);
     }
   }
 
@@ -877,7 +911,7 @@ class GameDayLineupScreen extends Screen {
     const rsvpRank = { 'yes': 0, 'maybe': 1, 'no': 2 };
     const dir = this.sortAsc ? 1 : -1;
 
-    this.zones.roster.sort((idA, idB) => {
+    this.zones.unavailable.sort((idA, idB) => {
       const a = this.getPlayerById(idA);
       const b = this.getPlayerById(idB);
       if (!a || !b) return 0;
@@ -912,10 +946,9 @@ class GameDayLineupScreen extends Screen {
   }
 
   autoFillFromEligibility() {
-    // Reset all zones
-    this.zones = { starting: [], bench: [], roster: [] };
+    this.zones = { starting: [], bench: [], alternates: [], unavailable: [] };
+    this.playerPositions = {};
 
-    // Sort eligible players by attendance (highest first)
     const sorted = [...this.players].sort((a, b) => {
       const statusOrder = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3 };
       const orderA = statusOrder[a.eligibilityStatus] ?? 4;
@@ -924,21 +957,30 @@ class GameDayLineupScreen extends Screen {
       return b.sessionsAttended - a.sessionsAttended;
     });
 
-    const maxBench = this.rosterSize - 11;
+    const positions = this.getFormationPositions();
     let starterCount = 0;
     let benchCount = 0;
+    let altCount = 0;
 
     for (const player of sorted) {
       if (player.matchRsvp === 'no') {
-        this.zones.roster.push(player.playerId);
+        this.zones.unavailable.push(player.playerId);
       } else if (starterCount < 11 && player.eligibilityStatus !== 'ineligible') {
         this.zones.starting.push(player.playerId);
+        if (starterCount < positions.length) {
+          this.playerPositions[player.playerId] = { x: positions[starterCount].x, y: positions[starterCount].y };
+        } else {
+          this.playerPositions[player.playerId] = { x: 50, y: 50 };
+        }
         starterCount++;
-      } else if (benchCount < maxBench && player.eligibilityStatus !== 'ineligible') {
+      } else if (benchCount < 9) {
         this.zones.bench.push(player.playerId);
         benchCount++;
+      } else if (altCount < 10) {
+        this.zones.alternates.push(player.playerId);
+        altCount++;
       } else {
-        this.zones.roster.push(player.playerId);
+        this.zones.unavailable.push(player.playerId);
       }
     }
 
@@ -954,6 +996,9 @@ class GameDayLineupScreen extends Screen {
 
   renderAllZones() {
     this.renderPitchPlayers();
+    this.renderBenchPlayers();
+    this.renderAlternatePlayers();
+    this.renderUnavailablePlayers();
     if (this.activeOverlay) this.renderOverlayTable();
     this.updateCounts();
   }
@@ -980,11 +1025,11 @@ class GameDayLineupScreen extends Screen {
       html += `<option value="${key}"${this.activeOverlay === key ? ' selected' : ''}>${label}</option>`;
     }
 
-    // Non-team chats (Training, Pickup, etc.)
+    // All chats (GroupMe views)
     for (const c of (this.allChats || [])) {
-      if (c.teamId) continue; // already shown as team option
       const key = 'chat-' + c.chatId;
-      html += `<option value="${key}"${this.activeOverlay === key ? ' selected' : ''}>${c.chatName}</option>`;
+      const label = c.teamId ? `💬 ${c.chatName}` : c.chatName;
+      html += `<option value="${key}"${this.activeOverlay === key ? ' selected' : ''}>${label}</option>`;
     }
 
     select.innerHTML = html;
@@ -1007,20 +1052,24 @@ class GameDayLineupScreen extends Screen {
     if (this.activeOverlay === 'match') {
       return this.players.map(p => ({
         ...p,
-        zone: this.findPlayerZone(p.playerId) || 'roster'
+        zone: this.findPlayerZone(p.playerId) || 'unavailable'
       }));
     }
 
-    // For chat-X views (non-team chats like Training/Pickup), show ALL groupme members
-    // For team-specific views (numeric key), filter by team
+    // For chat-X views, filter by chat membership
+    // For team-specific views (numeric key), filter by team roster
     const isChatView = this.activeOverlay?.startsWith('chat-');
+    const chatId = isChatView ? parseInt(this.activeOverlay.replace('chat-', '')) : null;
     const teamId = isChatView ? null : parseInt(this.activeOverlay);
 
     const players = [];
     const seenPersons = new Set();
 
     for (const gm of (this.groupmeMembers || [])) {
-      if (!isChatView) {
+      if (isChatView) {
+        // Filter to members of this specific chat
+        if (!(gm.chatIds || []).includes(chatId)) continue;
+      } else {
         const onTeam = (gm.teams || []).some(t => t.teamId === teamId);
         if (!onTeam) continue;
       }
@@ -1045,7 +1094,7 @@ class GameDayLineupScreen extends Screen {
         gmNickname: gm.nickname,
         onOfficialRoster: ep?.onOfficialRoster || false,
         source: gm.source,
-        zone: ep ? (this.findPlayerZone(ep.playerId) || 'roster') : 'roster'
+        zone: ep ? (this.findPlayerZone(ep.playerId) || 'unavailable') : 'unavailable'
       });
     }
 
@@ -1064,7 +1113,7 @@ class GameDayLineupScreen extends Screen {
     // Sort
     const statusRank = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3, 'not_computed': 4, 'not_on_roster': 5 };
     const rsvpRank = { 'yes': 0, 'maybe': 1, 'no': 2 };
-    const zoneRank = { 'starting': 0, 'bench': 1, 'roster': 2 };
+    const zoneRank = { 'starting': 0, 'bench': 1, 'alternates': 2, 'unavailable': 3 };
     const dir = this.sortAsc ? 1 : -1;
 
     players.sort((a, b) => {
@@ -1120,18 +1169,22 @@ class GameDayLineupScreen extends Screen {
   }
 
   updateCounts() {
-    const starterCount = this.zones.starting.filter(id => id !== null).length;
-    const maxBench = this.rosterSize - 11;
-    const rosterTotal = this.zones.roster.length + this.unmatchedRsvps.length;
+    const starterCount = this.zones.starting.length;
+    const benchCount = this.zones.bench.length;
+    const altCount = this.zones.alternates.length;
+    const unavailCount = this.zones.unavailable.length;
 
     const sc = this.find('#starting-count');
     if (sc) sc.textContent = `${starterCount}/11`;
 
     const bc = this.find('#bench-count-display');
-    if (bc) bc.textContent = `${this.zones.bench.length}/${maxBench}`;
+    if (bc) bc.textContent = `${benchCount}/9`;
+
+    const ac = this.find('#alternates-count-display');
+    if (ac) ac.textContent = `${altCount}/10`;
 
     const tc = this.find('#total-count-display');
-    if (tc) tc.textContent = `Total: ${starterCount + this.zones.bench.length + rosterTotal}`;
+    if (tc) tc.textContent = `Total: ${starterCount + benchCount + altCount + unavailCount}`;
   }
 
   renderPitchPlayers() {
@@ -1139,33 +1192,105 @@ class GameDayLineupScreen extends Screen {
     if (!container) return;
     container.innerHTML = '';
 
-    // Formation positions (default 4-3-3 positions if no formation data)
+    // Show formation ghost positions as guides
     const positions = this.getFormationPositions();
+    positions.forEach((pos) => {
+      const ghost = document.createElement('div');
+      ghost.className = 'pitch-ghost-pos';
+      ghost.style.left = `${pos.x}%`;
+      ghost.style.top = `${pos.y}%`;
+      ghost.textContent = pos.label || '';
+      container.appendChild(ghost);
+    });
 
-    // Render all 11 slots — empty ones are drop targets, filled ones show player chip
-    positions.forEach((pos, slotIndex) => {
-      const slot = document.createElement('div');
-      slot.className = 'pitch-slot';
-      slot.setAttribute('data-slot', slotIndex);
-      slot.style.left = `${pos.x}%`;
-      slot.style.top = `${pos.y}%`;
+    // Render each starter at their free-form position
+    for (const playerId of this.zones.starting) {
+      const player = this.getPlayerById(playerId);
+      if (!player) continue;
 
-      const playerId = this.zones.starting[slotIndex];
+      const pos = this.playerPositions[playerId] || { x: 50, y: 50 };
+      const chip = this.createPitchPlayerChip(player, pos);
+      container.appendChild(chip);
+    }
+  }
+
+  renderBenchPlayers() {
+    const container = this.find('#bench-players');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Render 9 seat slots
+    for (let i = 0; i < 9; i++) {
+      const seat = document.createElement('div');
+      seat.className = 'bench-seat';
+      seat.setAttribute('data-bench-slot', i);
+
+      const playerId = this.zones.bench[i];
       const player = playerId ? this.getPlayerById(playerId) : null;
 
       if (player) {
-        const chip = this.createPitchPlayerChip(player, pos, slotIndex);
-        slot.appendChild(chip);
+        seat.classList.add('bench-seat-filled');
+        const chip = this.createZoneChip(player, 'bench');
+        seat.appendChild(chip);
       } else {
-        // Empty slot — show position label as a drop target
-        slot.innerHTML = `
-          <div class="chip-circle chip-empty">${pos.label || ''}</div>
-          <div class="chip-name">${pos.label || 'Empty'}</div>
-        `;
+        seat.innerHTML = '<div class="bench-seat-empty">&nbsp;</div>';
       }
 
-      container.appendChild(slot);
-    });
+      container.appendChild(seat);
+    }
+  }
+
+  renderAlternatePlayers() {
+    const container = this.find('#alternates-players');
+    if (!container) return;
+    container.innerHTML = '';
+
+    for (const playerId of this.zones.alternates) {
+      const player = this.getPlayerById(playerId);
+      if (!player) continue;
+      const chip = this.createZoneChip(player, 'alternates');
+      container.appendChild(chip);
+    }
+
+    // Empty slots
+    for (let i = this.zones.alternates.length; i < 10; i++) {
+      const empty = document.createElement('div');
+      empty.className = 'zone-chip-empty';
+      container.appendChild(empty);
+    }
+  }
+
+  renderUnavailablePlayers() {
+    const container = this.find('#unavailable-players');
+    if (!container) return;
+    container.innerHTML = '';
+
+    for (const playerId of this.zones.unavailable) {
+      const player = this.getPlayerById(playerId);
+      if (!player) continue;
+      const chip = this.createZoneChip(player, 'unavailable');
+      container.appendChild(chip);
+    }
+  }
+
+  createZoneChip(player, zone) {
+    const chip = document.createElement('div');
+    chip.className = `zone-chip ${this.getEligibilityClass(player)}`;
+    chip.setAttribute('draggable', 'true');
+    chip.setAttribute('data-player-id', player.playerId);
+    chip.setAttribute('data-zone', zone);
+
+    const initial = player.firstName ? player.firstName[0] : '?';
+    const jerseyDisplay = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
+    const rsvpDot = player.matchRsvp === 'no' ? ' rsvp-no' : player.matchRsvp === 'yes' ? ' rsvp-yes' : '';
+
+    chip.innerHTML = `
+      <div class="chip-circle">${jerseyDisplay || initial}</div>
+      <div class="chip-name">${player.firstName} ${player.lastName?.[0] || ''}</div>
+    `;
+    if (zone === 'unavailable') chip.classList.add('chip-dimmed');
+
+    return chip;
   }
 
   getFormationPositions() {
@@ -1198,13 +1323,16 @@ class GameDayLineupScreen extends Screen {
     return defaultPositions;
   }
 
-  createPitchPlayerChip(player, pos, slotIndex) {
+  createPitchPlayerChip(player, pos) {
     const chip = document.createElement('div');
     chip.className = `pitch-player-chip ${this.getEligibilityClass(player)}`;
     chip.setAttribute('draggable', 'true');
     chip.setAttribute('data-player-id', player.playerId);
     chip.setAttribute('data-zone', 'starting');
-    chip.setAttribute('data-slot', slotIndex);
+    chip.style.position = 'absolute';
+    chip.style.left = `${pos.x}%`;
+    chip.style.top = `${pos.y}%`;
+    chip.style.transform = 'translate(-50%, -50%)';
 
     const initial = player.firstName ? player.firstName[0] : '?';
     const jerseyDisplay = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
@@ -1226,7 +1354,8 @@ class GameDayLineupScreen extends Screen {
     row.setAttribute('data-zone', zone);
 
     // Zone badge
-    const zoneBadge = zone === 'starting' ? '⚽' : zone === 'bench' ? '🪑' : '—';
+    const zoneBadges = { starting: '⚽', bench: '🪑', alternates: '🔄', unavailable: '⛔' };
+    const zoneBadge = zoneBadges[zone] || '—';
     const zoneClass = `rt-zone-${zone}`;
 
     // Name
@@ -1267,15 +1396,22 @@ class GameDayLineupScreen extends Screen {
 
     // Action buttons based on zone
     let actions = '';
-    if (zone === 'roster') {
+    if (zone === 'unavailable') {
       actions = `<button class="rt-btn rt-btn-start" data-action="to-starting" title="Add to Starting XI">⚽</button>
-                 <button class="rt-btn rt-btn-bench" data-action="to-bench" title="Add to Bench">🪑</button>`;
+                 <button class="rt-btn rt-btn-bench" data-action="to-bench" title="Add to Bench">🪑</button>
+                 <button class="rt-btn rt-btn-alt" data-action="to-alternates" title="Add to Alternates">🔄</button>`;
+    } else if (zone === 'alternates') {
+      actions = `<button class="rt-btn rt-btn-start" data-action="to-starting" title="Move to Starting XI">⚽</button>
+                 <button class="rt-btn rt-btn-bench" data-action="to-bench" title="Move to Bench">🪑</button>
+                 <button class="rt-btn rt-btn-remove" data-action="to-unavailable" title="Remove">✕</button>`;
     } else if (zone === 'bench') {
       actions = `<button class="rt-btn rt-btn-start" data-action="to-starting" title="Move to Starting XI">⚽</button>
-                 <button class="rt-btn rt-btn-remove" data-action="to-roster" title="Remove from lineup">✕</button>`;
+                 <button class="rt-btn rt-btn-alt" data-action="to-alternates" title="Move to Alternates">🔄</button>
+                 <button class="rt-btn rt-btn-remove" data-action="to-unavailable" title="Remove">✕</button>`;
     } else if (zone === 'starting') {
       actions = `<button class="rt-btn rt-btn-bench" data-action="to-bench" title="Move to Bench">🪑</button>
-                 <button class="rt-btn rt-btn-remove" data-action="to-roster" title="Remove from lineup">✕</button>`;
+                 <button class="rt-btn rt-btn-alt" data-action="to-alternates" title="Move to Alternates">🔄</button>
+                 <button class="rt-btn rt-btn-remove" data-action="to-unavailable" title="Remove">✕</button>`;
     }
 
     row.innerHTML = `
@@ -1297,8 +1433,10 @@ class GameDayLineupScreen extends Screen {
           this.movePlayer(player.playerId, zone, 'starting');
         } else if (action === 'to-bench') {
           this.movePlayer(player.playerId, zone, 'bench');
-        } else if (action === 'to-roster') {
-          this.movePlayer(player.playerId, zone, 'roster');
+        } else if (action === 'to-alternates') {
+          this.movePlayer(player.playerId, zone, 'alternates');
+        } else if (action === 'to-unavailable') {
+          this.movePlayer(player.playerId, zone, 'unavailable');
         }
       });
     });
@@ -1391,28 +1529,23 @@ class GameDayLineupScreen extends Screen {
     const banner = this.find('#select-mode-banner');
     if (banner) banner.style.display = 'none';
     
-    this.element.querySelectorAll('.pitch-slot').forEach(s => s.classList.remove('slot-selecting'));
     const panel = this.find('.roster-overlay-panel');
     if (panel) panel.classList.remove('roster-selecting');
   }
 
   assignPlayerToSlot(playerId, slotIndex) {
-    // Remove from roster
-    this.zones.roster = this.zones.roster.filter(id => id !== playerId);
-    
-    // Pad starting array
+    // Check max 11
+    if (this.zones.starting.length >= 11) {
+      this.showLineupToast('Starting XI is full (11/11). Remove a player first.');
+      return;
+    }
+    // Remove from current zone
+    this.removePlayerFromAllZones(playerId);
+    // Add to starting with formation position
     const positions = this.getFormationPositions();
-    while (this.zones.starting.length < positions.length) {
-      this.zones.starting.push(null);
-    }
-    
-    // If slot is occupied, move occupant to roster
-    const occupant = this.zones.starting[slotIndex];
-    if (occupant && occupant !== playerId) {
-      this.zones.roster.unshift(occupant);
-    }
-    
-    this.zones.starting[slotIndex] = playerId;
+    const pos = positions[this.zones.starting.length] || { x: 50, y: 50 };
+    this.playerPositions[playerId] = { x: pos.x, y: pos.y };
+    this.zones.starting.push(playerId);
     this.renderAllZones();
   }
 
@@ -1456,7 +1589,14 @@ class GameDayLineupScreen extends Screen {
     const formation = this.formations.find(f => f.id === parseInt(formationId));
     this.selectedFormation = formation || null;
 
-    // Re-render pitch with new positions
+    // Reassign positions from new formation
+    const positions = this.getFormationPositions();
+    this.zones.starting.forEach((playerId, idx) => {
+      if (idx < positions.length) {
+        this.playerPositions[playerId] = { x: positions[idx].x, y: positions[idx].y };
+      }
+    });
+
     this.renderPitchPlayers();
 
     // Auto-save metadata
@@ -1470,11 +1610,9 @@ class GameDayLineupScreen extends Screen {
     const card = e.target.closest('[data-player-id]');
     if (!card) return;
 
-    const slot = card.closest('[data-slot]');
     this.dragState = {
       playerId: parseInt(card.getAttribute('data-player-id')),
-      sourceZone: card.getAttribute('data-zone') || this.findPlayerZone(parseInt(card.getAttribute('data-player-id'))),
-      sourceSlot: slot ? parseInt(slot.getAttribute('data-slot')) : null
+      sourceZone: card.getAttribute('data-zone') || this.findPlayerZone(parseInt(card.getAttribute('data-player-id')))
     };
 
     card.classList.add('dragging');
@@ -1483,55 +1621,50 @@ class GameDayLineupScreen extends Screen {
   }
 
   onDragOver(e) {
-    const slot = e.target.closest('.pitch-slot');
     const zone = e.target.closest('.lineup-zone');
+    const pitch = e.target.closest('.pitch');
     const table = e.target.closest('.roster-overlay-panel');
-    if (!zone && !slot && !table) return;
+    if (!zone && !pitch && !table) return;
 
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
 
     // Visual feedback
     document.querySelectorAll('.lineup-zone').forEach(z => z.classList.remove('drag-over'));
-    document.querySelectorAll('.pitch-slot').forEach(s => s.classList.remove('slot-drag-over'));
-    if (slot) {
-      slot.classList.add('slot-drag-over');
-    } else if (zone) {
-      zone.classList.add('drag-over');
-    }
+    if (zone) zone.classList.add('drag-over');
   }
 
   onDrop(e) {
     e.preventDefault();
     document.querySelectorAll('.lineup-zone').forEach(z => z.classList.remove('drag-over'));
-    document.querySelectorAll('.pitch-slot').forEach(s => s.classList.remove('slot-drag-over'));
-
     if (!this.dragState) return;
 
-    // Check if dropped on a specific pitch slot
-    const slot = e.target.closest('.pitch-slot');
-    if (slot) {
-      const targetSlot = parseInt(slot.getAttribute('data-slot'));
-      this.movePlayerToSlot(this.dragState.playerId, this.dragState.sourceZone, this.dragState.sourceSlot, targetSlot);
+    // Dropped on the pitch — free-form position
+    const pitch = e.target.closest('.pitch');
+    if (pitch) {
+      const rect = pitch.getBoundingClientRect();
+      const x = Math.max(3, Math.min(97, ((e.clientX - rect.left) / rect.width) * 100));
+      const y = Math.max(3, Math.min(97, ((e.clientY - rect.top) / rect.height) * 100));
+      this.movePlayerToPitch(this.dragState.playerId, this.dragState.sourceZone, x, y);
       this.dragState = null;
       return;
     }
 
-    // Dropped on pitch zone (but not a specific slot)
+    // Dropped on a zone section
     const zone = e.target.closest('.lineup-zone');
     if (zone) {
       const targetZone = this.getZoneKey(zone.id);
-      if (targetZone === 'starting') {
-        this.movePlayerToNextEmptySlot(this.dragState.playerId, this.dragState.sourceZone, this.dragState.sourceSlot);
-        this.dragState = null;
-        return;
+      if (targetZone && targetZone !== 'starting') {
+        this.movePlayer(this.dragState.playerId, this.dragState.sourceZone, targetZone);
       }
+      this.dragState = null;
+      return;
     }
 
-    // Dropped on the table — move to roster (not selected)
+    // Dropped on the overlay table — move to unavailable
     const table = e.target.closest('.roster-overlay-panel');
     if (table) {
-      this.movePlayer(this.dragState.playerId, this.dragState.sourceZone, 'roster');
+      this.movePlayer(this.dragState.playerId, this.dragState.sourceZone, 'unavailable');
       this.dragState = null;
       return;
     }
@@ -1552,11 +1685,9 @@ class GameDayLineupScreen extends Screen {
     const card = e.target.closest('[data-player-id]');
     if (!card) return;
 
-    const slot = card.closest('[data-slot]');
     this.dragState = {
       playerId: parseInt(card.getAttribute('data-player-id')),
       sourceZone: card.getAttribute('data-zone') || this.findPlayerZone(parseInt(card.getAttribute('data-player-id'))),
-      sourceSlot: slot ? parseInt(slot.getAttribute('data-slot')) : null,
       touchElement: card,
       startX: e.touches[0].clientX,
       startY: e.touches[0].clientY
@@ -1569,19 +1700,12 @@ class GameDayLineupScreen extends Screen {
     if (!this.dragState || !this.dragState.touchElement) return;
     e.preventDefault();
 
-    // Highlight drop zone or slot under finger
     const touch = e.touches[0];
     const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-    const slot = elementBelow?.closest('.pitch-slot');
     const zone = elementBelow?.closest('.lineup-zone');
 
     document.querySelectorAll('.lineup-zone').forEach(z => z.classList.remove('drag-over'));
-    document.querySelectorAll('.pitch-slot').forEach(s => s.classList.remove('slot-drag-over'));
-    if (slot) {
-      slot.classList.add('slot-drag-over');
-    } else if (zone) {
-      zone.classList.add('drag-over');
-    }
+    if (zone) zone.classList.add('drag-over');
   }
 
   onTouchEnd(e) {
@@ -1589,16 +1713,18 @@ class GameDayLineupScreen extends Screen {
 
     const touch = e.changedTouches[0];
     const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-    const slot = elementBelow?.closest('.pitch-slot');
+    const pitch = elementBelow?.closest('.pitch');
     const zone = elementBelow?.closest('.lineup-zone');
 
-    if (slot) {
-      const targetSlot = parseInt(slot.getAttribute('data-slot'));
-      this.movePlayerToSlot(this.dragState.playerId, this.dragState.sourceZone, this.dragState.sourceSlot, targetSlot);
+    if (pitch) {
+      const rect = pitch.getBoundingClientRect();
+      const x = Math.max(3, Math.min(97, ((touch.clientX - rect.left) / rect.width) * 100));
+      const y = Math.max(3, Math.min(97, ((touch.clientY - rect.top) / rect.height) * 100));
+      this.movePlayerToPitch(this.dragState.playerId, this.dragState.sourceZone, x, y);
     } else if (zone) {
       const targetZone = this.getZoneKey(zone.id);
       if (targetZone === 'starting') {
-        this.movePlayerToNextEmptySlot(this.dragState.playerId, this.dragState.sourceZone, this.dragState.sourceSlot);
+        this.movePlayerToPitch(this.dragState.playerId, this.dragState.sourceZone);
       } else if (targetZone) {
         this.movePlayer(this.dragState.playerId, this.dragState.sourceZone, targetZone);
       }
@@ -1606,7 +1732,6 @@ class GameDayLineupScreen extends Screen {
 
     document.querySelectorAll('.touch-dragging').forEach(el => el.classList.remove('touch-dragging'));
     document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-    document.querySelectorAll('.slot-drag-over').forEach(el => el.classList.remove('slot-drag-over'));
     this.dragState = null;
   }
 
@@ -1617,7 +1742,9 @@ class GameDayLineupScreen extends Screen {
     const map = {
       'zone-starting': 'starting',
       'zone-bench': 'bench',
-      'roster-panel': 'roster'
+      'zone-alternates': 'alternates',
+      'zone-unavailable': 'unavailable',
+      'roster-panel': 'unavailable'
     };
     return map[zoneElementId] || null;
   }
@@ -1629,100 +1756,82 @@ class GameDayLineupScreen extends Screen {
     return null;
   }
 
-  // Move a player to a specific pitch slot (with swap if occupied)
-  movePlayerToSlot(playerId, fromZone, fromSlot, targetSlot) {
-    const positions = this.getFormationPositions();
-    if (targetSlot < 0 || targetSlot >= positions.length) return;
-
-    // Pad starting array to 11 slots with null
-    while (this.zones.starting.length < positions.length) {
-      this.zones.starting.push(null);
+  removePlayerFromAllZones(playerId) {
+    for (const zone of Object.keys(this.zones)) {
+      this.zones[zone] = this.zones[zone].filter(id => id !== playerId);
     }
+    delete this.playerPositions[playerId];
+  }
 
-    const occupant = this.zones.starting[targetSlot];
+  showLineupToast(message) {
+    const toast = this.find('#lineup-toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.style.display = 'block';
+    setTimeout(() => { toast.style.display = 'none'; }, 3000);
+  }
 
-    // Remove player from current location
-    if (fromZone === 'starting' && fromSlot !== null && fromSlot !== undefined) {
-      this.zones.starting[fromSlot] = null;
-    } else if (fromZone && this.zones[fromZone]) {
-      this.zones[fromZone] = this.zones[fromZone].filter(id => id !== playerId);
-    }
-
-    // If target slot had a player, move them to source slot or roster
-    if (occupant && occupant !== playerId) {
-      if (fromZone === 'starting' && fromSlot !== null && fromSlot !== undefined) {
-        // Pitch-to-pitch swap
-        this.zones.starting[fromSlot] = occupant;
-      } else {
-        // Displaced player goes to roster
-        this.zones.roster.unshift(occupant);
+  // Move a player onto the pitch at a specific x,y (or default formation position)
+  movePlayerToPitch(playerId, fromZone, x, y) {
+    // If already on pitch, just update position
+    if (fromZone === 'starting' && this.zones.starting.includes(playerId)) {
+      if (x !== undefined && y !== undefined) {
+        this.playerPositions[playerId] = { x, y };
+        this.renderAllZones();
       }
+      return;
     }
 
-    // Place player in target slot
-    this.zones.starting[targetSlot] = playerId;
+    // Check max 11
+    if (this.zones.starting.length >= 11) {
+      this.showLineupToast('Starting XI is full (11/11). Remove a player first.');
+      return;
+    }
 
-    this.compactStarting();
+    // Remove from current zone
+    this.removePlayerFromAllZones(playerId);
+
+    // Assign position
+    if (x !== undefined && y !== undefined) {
+      this.playerPositions[playerId] = { x, y };
+    } else {
+      // Use next formation position
+      const positions = this.getFormationPositions();
+      const posIdx = this.zones.starting.length;
+      const pos = posIdx < positions.length ? positions[posIdx] : { x: 50, y: 50 };
+      this.playerPositions[playerId] = { x: pos.x, y: pos.y };
+    }
+
+    this.zones.starting.push(playerId);
     this.renderAllZones();
-  }
-
-  // Move a player to the next empty pitch slot
-  movePlayerToNextEmptySlot(playerId, fromZone, fromSlot) {
-    const positions = this.getFormationPositions();
-    while (this.zones.starting.length < positions.length) {
-      this.zones.starting.push(null);
-    }
-
-    // Find first empty slot
-    let targetSlot = this.zones.starting.indexOf(null);
-    if (targetSlot === -1) {
-      // All full — bump last slot to roster
-      const bumped = this.zones.starting[positions.length - 1];
-      this.zones.starting[positions.length - 1] = null;
-      if (bumped) this.zones.roster.unshift(bumped);
-      targetSlot = positions.length - 1;
-    }
-
-    this.movePlayerToSlot(playerId, fromZone, fromSlot, targetSlot);
-  }
-
-  // Remove null gaps but preserve slot-based ordering
-  compactStarting() {
-    // Remove trailing nulls only, keep sparse slots intact
-    while (this.zones.starting.length > 0 && this.zones.starting[this.zones.starting.length - 1] === null) {
-      this.zones.starting.pop();
-    }
   }
 
   movePlayer(playerId, fromZone, toZone) {
     if (fromZone === toZone) return;
 
-    // Remove from source
-    if (fromZone === 'starting') {
-      const idx = this.zones.starting.indexOf(playerId);
-      if (idx !== -1) this.zones.starting[idx] = null;
-      this.compactStarting();
-    } else if (fromZone && this.zones[fromZone]) {
-      this.zones[fromZone] = this.zones[fromZone].filter(id => id !== playerId);
+    // Enforce limits
+    if (toZone === 'starting' && this.zones.starting.length >= 11 && fromZone !== 'starting') {
+      this.showLineupToast('Starting XI is full (11/11). Remove a player first.');
+      return;
     }
+    if (toZone === 'bench' && this.zones.bench.length >= 9) {
+      this.showLineupToast('Bench is full (9/9). Remove a player first.');
+      return;
+    }
+    if (toZone === 'alternates' && this.zones.alternates.length >= 10) {
+      this.showLineupToast('Alternates is full (10/10). Remove a player first.');
+      return;
+    }
+
+    // Remove from source
+    this.removePlayerFromAllZones(playerId);
 
     // Add to target
     if (toZone === 'starting') {
-      this.movePlayerToNextEmptySlot(playerId, null, null);
-      return; // renderAllZones called inside
-    } else if (toZone === 'bench') {
-      // Enforce bench capacity
-      const maxBench = this.rosterSize - 11;
-      if (this.zones.bench.length >= maxBench) {
-        // Bench full — move last bench player to roster
-        const bumped = this.zones.bench.pop();
-        this.zones.roster.unshift(bumped);
-      }
-      this.zones.bench.push(playerId);
-    } else if (this.zones[toZone]) {
-      this.zones[toZone].push(playerId);
+      this.movePlayerToPitch(playerId, null);
+      return;
     }
-
+    this.zones[toZone].push(playerId);
     this.renderAllZones();
   }
 
@@ -2100,9 +2209,9 @@ class GameDayLineupScreen extends Screen {
     }
 
     const starters = this.zones.starting
-      .map((playerId, slotIndex) => playerId ? { playerId, slotNumber: slotIndex } : null)
-      .filter(Boolean);
+      .map((playerId, idx) => ({ playerId, slotNumber: idx }));
     const bench = this.zones.bench.map(playerId => ({ playerId }));
+    const alternates = this.zones.alternates.map(playerId => ({ playerId }));
 
     try {
       const response = await this.auth.fetch(`/api/eligibility/lineup/${matchId}`, {
@@ -2111,6 +2220,7 @@ class GameDayLineupScreen extends Screen {
         body: JSON.stringify({
           starters,
           bench,
+          alternates,
           formationId: this.selectedFormation?.id || 0,
           rosterSize: this.rosterSize
         })
@@ -2118,8 +2228,8 @@ class GameDayLineupScreen extends Screen {
 
       const data = await response.json();
       if (data.success) {
-        const total = starters.length + bench.length;
-        alert(`✓ Lineup saved! ${starters.length} starters + ${bench.length} bench = ${total} game day roster.`);
+        const total = starters.length + bench.length + alternates.length;
+        alert(`✓ Lineup saved! ${starters.length} starters + ${bench.length} bench + ${alternates.length} alternates = ${total} game day roster.`);
       } else {
         throw new Error(data.message || 'Failed to save');
       }

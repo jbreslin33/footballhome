@@ -183,14 +183,6 @@
   margin-top: var(--space-2);
 }
 
-/* Full-size Pitch Wrapper */
-.pitch-fullsize-wrapper {
-  border: 2px solid #16a34a;
-  border-radius: var(--radius-md);
-  background: rgba(22, 163, 74, 0.03);
-  padding: var(--space-1);
-}
-
 .pitch-fullsize-header {
   display: flex;
   justify-content: center;
@@ -203,10 +195,226 @@
 }
 .header-sep { color: var(--gray-300); }
 
+/* Pitch + Bench side-by-side layout */
+.pitch-and-bench {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+}
+
+/* Full-size Pitch Wrapper */
+.pitch-fullsize-wrapper {
+  flex: 1;
+  min-width: 0;
+  border: 2px solid #16a34a;
+  border-radius: var(--radius-md);
+  background: rgba(22, 163, 74, 0.03);
+  padding: var(--space-1);
+}
+
 .pitch-fullsize {
-  padding-bottom: 65%;
+  padding-bottom: 150%;
   max-height: none;
 }
+
+/* ============================================================================
+   Bench, Alternates, Unavailable Zones (below pitch)
+   ============================================================================ */
+.pitch-bench-area,
+.pitch-alternates-area,
+.pitch-unavailable-area {
+  margin-top: var(--space-2, 8px);
+  border-radius: var(--radius-sm, 6px);
+  padding: 6px 8px;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+/* Bench — brown sideline running down the side of the pitch */
+.pitch-bench-area {
+  width: 60px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #8B6914 0%, #6B4F10 100%);
+  border: 2px solid #5a4210;
+  border-left: none;
+  border-radius: 0 var(--radius-md, 6px) var(--radius-md, 6px) 0;
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.bench-label {
+  font-size: 0.65em;
+  font-weight: 600;
+  color: #fef3c7;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  position: absolute;
+  top: 50%;
+  transform: rotate(180deg) translateY(50%);
+  opacity: 0.4;
+  pointer-events: none;
+}
+.bench-seats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  padding: 2px 0;
+  flex: 1;
+  width: 100%;
+  align-items: center;
+}
+.bench-seat {
+  flex: 0 0 auto;
+  min-height: 46px;
+  width: 50px;
+  text-align: center;
+  border-radius: 4px;
+  padding: 2px;
+  background: rgba(0,0,0,0.15);
+  border: 1px dashed rgba(255,255,255,0.3);
+}
+.bench-seat-filled {
+  border-style: solid;
+  border-color: rgba(255,255,255,0.5);
+  background: rgba(0,0,0,0.25);
+}
+.bench-seat-empty {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6em;
+  color: rgba(255,255,255,0.3);
+}
+
+/* Alternates —grey sideline */
+.pitch-alternates-area {
+  background: #374151;
+  border: 2px solid #4b5563;
+}
+.alternates-label {
+  font-size: 0.75em;
+  font-weight: 600;
+  color: #d1d5db;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.alternates-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 2px 0;
+}
+
+/* Not Selected / Unavailable —muted */
+.pitch-unavailable-area {
+  background: var(--gray-100, #f3f4f6);
+  border: 1px solid var(--gray-200, #e5e7eb);
+}
+.unavailable-label {
+  font-size: 0.75em;
+  font-weight: 600;
+  color: var(--gray-500, #6b7280);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.unavailable-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 2px 0;
+}
+
+/* Zone Chip (used in bench/alternates/unavailable) */
+.zone-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: grab;
+  user-select: none;
+  padding: 2px;
+  border-radius: 6px;
+  transition: transform 0.15s;
+  min-width: 42px;
+}
+.zone-chip:hover { transform: scale(1.08); }
+.zone-chip.dragging,
+.zone-chip.touch-dragging { opacity: 0.5; transform: scale(1.1); }
+
+.zone-chip .chip-circle {
+  width: 28px;
+  height: 28px;
+}
+.zone-chip .chip-name {
+  font-size: 0.45em;
+  color: var(--gray-800, #1f2937);
+  white-space: nowrap;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Chip colors for bench zone chips */
+.pitch-bench-area .zone-chip .chip-name { color: #fef3c7; }
+.pitch-alternates-area .zone-chip .chip-name { color: #e5e7eb; }
+.chip-dimmed { opacity: 0.5; }
+
+.zone-chip-empty {
+  width: 42px;
+  height: 42px;
+  border: 1px dashed rgba(255,255,255,0.2);
+  border-radius: 6px;
+}
+
+/* Ghost formation positions (faded guides on pitch) */
+.pitch-ghost-pos {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.45em;
+  color: rgba(255,255,255,0.25);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Lineup toast notification */
+.lineup-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ef4444;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 9999;
+  animation: toastSlideUp 0.3s ease;
+}
+@keyframes toastSlideUp {
+  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* Zone roster badge additions */
+.rt-zone-alternates { background: #9ca3af; color: white; }
+.rt-zone-unavailable { background: #e5e7eb; color: #6b7280; }
+.rt-btn-alt { color: #6b7280; }
+.rt-btn-alt:hover { background: #f3f4f6; }
 
 /* ============================================================================
    Roster Overlay Panel (floats over pitch)
@@ -352,59 +560,55 @@
 }
 .pitch-box {
   position: absolute;
-  left: 30%;
-  right: 30%;
-  height: 18%;
+  left: 25%;
+  right: 25%;
+  height: 12%;
   border: 2px solid rgba(255, 255, 255, 0.35);
 }
 .pitch-box-top { top: 0; border-top: none; }
 .pitch-box-bottom { bottom: 0; border-bottom: none; }
 
+/* Six-yard box */
+.pitch-six-yard {
+  position: absolute;
+  left: 35%;
+  right: 35%;
+  height: 5%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+}
+.pitch-six-yard-top { top: 0; border-top: none; }
+.pitch-six-yard-bottom { bottom: 0; border-bottom: none; }
+
+/* Goal markings */
+.pitch-goal {
+  position: absolute;
+  left: 40%;
+  right: 40%;
+  height: 1.5%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+}
+.pitch-goal-top { top: 0; border-top: none; border-radius: 0 0 3px 3px; }
+.pitch-goal-bottom { bottom: 0; border-bottom: none; border-radius: 3px 3px 0 0; }
+
 .pitch-players {
   position: absolute;
   inset: 0;
+  pointer-events: none;
 }
 
-/* Pitch Slot */
-.pitch-slot {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  z-index: 10;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  border: 2px solid transparent;
-  transition: border-color 0.2s, background-color 0.2s;
-}
-.pitch-slot:hover {
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.08);
-}
-.pitch-slot.slot-drag-over {
-  border-color: #fbbf24;
-  background: rgba(251, 191, 36, 0.2);
-  z-index: 25;
-}
-
-.chip-empty {
-  background: rgba(255, 255, 255, 0.15) !important;
-  color: rgba(255, 255, 255, 0.6) !important;
-  border: 2px dashed rgba(255, 255, 255, 0.35) !important;
-  box-shadow: none !important;
-  font-size: 0.55em !important;
-}
-
-/* Pitch Player Chip */
+/* Pitch Player Chip — free-form positioned */
 .pitch-player-chip {
+  pointer-events: auto;
   cursor: grab;
   text-align: center;
   user-select: none;
+  z-index: 10;
   transition: transform 0.15s ease;
 }
-.pitch-player-chip:hover { transform: scale(1.1); z-index: 20; }
+.pitch-player-chip:hover { transform: translate(-50%, -50%) scale(1.1); z-index: 20; }
 .pitch-player-chip.dragging,
-.pitch-player-chip.touch-dragging { opacity: 0.6; transform: scale(1.2); z-index: 30; }
+.pitch-player-chip.touch-dragging { opacity: 0.6; transform: translate(-50%, -50%) scale(1.2); z-index: 30; }
 
 .chip-circle {
   width: 30px;
@@ -932,5 +1136,15 @@
   .ot-col-proj, .ot-col-prac { display: none; }
   .overlay-table thead .ot-col-proj,
   .overlay-table thead .ot-col-prac { display: none; }
-  .pitch-fullsize { padding-bottom: 80% !important; }
+  .pitch-and-bench { flex-direction: column; }
+  .pitch-bench-area {
+    width: 100% !important;
+    flex-direction: row !important;
+    border-left: 2px solid #5a4210 !important;
+    border-radius: 0 0 var(--radius-md, 6px) var(--radius-md, 6px) !important;
+    border-top: none !important;
+  }
+  .bench-seats { flex-direction: row !important; overflow-x: auto !important; overflow-y: hidden !important; }
+  .bench-seat { min-height: auto !important; min-width: 50px; }
+  .pitch-fullsize { padding-bottom: 120% !important; }
 }
