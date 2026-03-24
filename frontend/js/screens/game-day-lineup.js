@@ -19,6 +19,7 @@ class GameDayLineupScreen extends Screen {
     this.playerPositions = {}; // {playerId: {x, y}} free-form pitch positions (canonical: x=across, y=goal-to-goal)
     this.sortField = 'rsvp';  // Default sort
     this.sortAsc = true;
+    this.poolSort = 'practices'; // Pool sort: practices | eligibility | name
     this.dragState = null;
     this.selectingSlot = null; // When non-null, clicking a player card assigns to this slot
     this.activeOverlay = null;  // 'match' | teamId string | null
@@ -102,7 +103,14 @@ class GameDayLineupScreen extends Screen {
             <div class="pitch-and-bench">
               <!-- Player Pool (side panel, left) -->
               <div class="pitch-pool-area lineup-zone" id="zone-unavailable">
-                <div class="pool-label">Players</div>
+                <div class="pool-header">
+                  <span class="pool-label">Players</span>
+                  <select id="pool-sort-select" class="pool-sort-select">
+                    <option value="practices">Practices</option>
+                    <option value="eligibility">Eligibility</option>
+                    <option value="name">Last Name</option>
+                  </select>
+                </div>
                 <div class="pool-list" id="unavailable-players"></div>
               </div>
 
@@ -300,6 +308,11 @@ class GameDayLineupScreen extends Screen {
 
     // Opponent formation selector + Overlay roster selector
     this.element.addEventListener('change', (e) => {
+      if (e.target.id === 'pool-sort-select') {
+        this.poolSort = e.target.value;
+        this.renderUnavailablePlayers();
+        return;
+      }
       if (e.target.id === 'opponent-formation-select') {
         this.opponentFormation = e.target.value ? this.formations.find(f => f.id === parseInt(e.target.value))?.code || '' : '';
         this.renderPitchPlayers();
@@ -1286,7 +1299,26 @@ class GameDayLineupScreen extends Screen {
     if (!container) return;
     container.innerHTML = '';
 
-    for (const playerId of this.zones.unavailable) {
+    const eligRank = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3, 'not_computed': 4, 'not_on_roster': 5 };
+    const sorted = [...this.zones.unavailable].sort((idA, idB) => {
+      const a = this.getPlayerById(idA);
+      const b = this.getPlayerById(idB);
+      if (!a || !b) return 0;
+      switch (this.poolSort) {
+        case 'practices':
+          return (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
+        case 'eligibility': {
+          const cmp = (eligRank[a.eligibilityStatus] ?? 4) - (eligRank[b.eligibilityStatus] ?? 4);
+          return cmp !== 0 ? cmp : (b.sessionsAttended || 0) - (a.sessionsAttended || 0);
+        }
+        case 'name':
+          return ((a.lastName || '') + (a.firstName || '')).localeCompare((b.lastName || '') + (b.firstName || ''));
+        default:
+          return 0;
+      }
+    });
+
+    for (const playerId of sorted) {
       const player = this.getPlayerById(playerId);
       if (!player) continue;
       const row = this.createPoolRow(player);
@@ -1305,9 +1337,10 @@ class GameDayLineupScreen extends Screen {
     const rsvp = player.matchRsvp === 'yes' ? '✓' : player.matchRsvp === 'no' ? '✗' : '?';
     const rsvpClass = player.matchRsvp === 'yes' ? 'rsvp-yes' : player.matchRsvp === 'no' ? 'rsvp-no' : 'rsvp-unknown';
     const jersey = player.jerseyNumber ? `#${player.jerseyNumber}` : '';
-    const name = `${player.firstName} ${player.lastName?.[0] || ''}`;
+    const name = `${player.firstName} ${player.lastName || ''}`;
+    const prac = player.sessionsAttended || 0;
 
-    row.innerHTML = `<span class="pool-rsvp ${rsvpClass}">${rsvp}</span><span class="pool-jersey">${jersey}</span><span class="pool-name">${name}</span>`;
+    row.innerHTML = `<span class="pool-rsvp ${rsvpClass}">${rsvp}</span><span class="pool-jersey">${jersey}</span><span class="pool-name">${name}</span><span class="pool-prac">${prac}</span>`;
     return row;
   }
 
