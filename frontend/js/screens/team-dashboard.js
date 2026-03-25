@@ -108,10 +108,19 @@ class TeamDashboardScreen extends Screen {
         return;
       }
 
+      // Game Day Roster button
+      const rosterBtn = e.target.closest('[data-action="game-day-roster"]');
+      if (rosterBtn) {
+        this.navigation.context.match = { id: rosterBtn.getAttribute('data-id'), title: rosterBtn.getAttribute('data-title') };
+        this.navigation.context.lineupTeamId = this.navigation.context.team?.id;
+        this.navigation.goTo('game-day-roster');
+        return;
+      }
+
       // Game Day Lineup button
       const lineupBtn = e.target.closest('[data-action="lineup"]');
       if (lineupBtn) {
-        this.navigation.context.match = { id: lineupBtn.getAttribute('data-id') };
+        this.navigation.context.match = { id: lineupBtn.getAttribute('data-id'), title: lineupBtn.getAttribute('data-title') };
         this.navigation.context.lineupTeamId = this.navigation.context.team?.id;
         this.navigation.goTo('game-day-lineup');
         return;
@@ -283,9 +292,8 @@ class TeamDashboardScreen extends Screen {
               ${m.venue_name ? `<div class="meta-item"><span class="meta-icon">📍</span><span>${m.venue_name}</span></div>` : ''}
             </div>
             ${rsvpSection}
-            <div class="match-card-actions" style="margin-top:var(--space-2); border-top:1px solid var(--gray-200); padding-top:var(--space-2); display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:var(--space-2);">
-              <button data-action="stats" data-id="${m.id}" data-title="${m.title}" class="btn btn-secondary btn-sm">📊 Stats</button>
-              <button data-action="tactics" data-id="${m.id}" data-title="${m.title}" class="btn btn-secondary btn-sm">📋 Tactics</button>
+            <div class="match-card-actions" style="margin-top:var(--space-2); border-top:1px solid var(--gray-200); padding-top:var(--space-2); display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--space-2);">
+              <button data-action="game-day-roster" data-id="${m.id}" data-title="${m.title}" class="btn btn-secondary btn-sm">📋 Game Day</button>
               <button data-action="lineup" data-id="${m.id}" data-title="${m.title}" class="btn btn-secondary btn-sm">⚽ Lineup</button>
               <button data-action="training-attendance" class="btn btn-secondary btn-sm">🏋️ Training</button>
             </div>

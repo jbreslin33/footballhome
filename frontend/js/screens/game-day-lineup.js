@@ -358,11 +358,12 @@ class GameDayLineupScreen extends Screen {
       const teamId = this.navigation.context.lineupTeamId || this.navigation.context.team?.id || '';
       const teamParam = teamId ? `?teamId=${teamId}` : '';
 
-      // Fetch eligibility, GroupMe members, AND training week in parallel
-      const [eligResponse, membersResponse, trainingResponse] = await Promise.all([
+      // Fetch eligibility, GroupMe members, training week, AND game roster in parallel
+      const [eligResponse, membersResponse, trainingResponse, rosterResponse] = await Promise.all([
         this.auth.fetch(`/api/eligibility/match/${matchId}${teamParam}`),
         teamId ? this.auth.fetch(`/api/groupme/members/${teamId}?matchId=${matchId}`) : Promise.resolve(null),
-        teamId ? this.auth.fetch(`/api/groupme/training-week/${teamId}?matchId=${matchId}`) : Promise.resolve(null)
+        teamId ? this.auth.fetch(`/api/groupme/training-week/${teamId}?matchId=${matchId}`) : Promise.resolve(null),
+        this.auth.fetch(`/api/matches/${matchId}/game-roster`)
       ]);
 
       const data = await eligResponse.json();
@@ -396,6 +397,17 @@ class GameDayLineupScreen extends Screen {
         if (trainingResult.success && trainingResult.data) {
           this.trainingEvents = trainingResult.data.events || [];
           this.mergeTrainingData(trainingResult.data.players || []);
+        }
+      }
+
+      // Load game day roster — mark players on the game roster
+      this.gameDayRosterIds = new Set();
+      if (rosterResponse) {
+        const rosterResult = await rosterResponse.json();
+        if (rosterResult.success && rosterResult.data) {
+          for (const rp of rosterResult.data) {
+            this.gameDayRosterIds.add(rp.playerId);
+          }
         }
       }
 
@@ -880,11 +892,17 @@ class GameDayLineupScreen extends Screen {
 
     const positions = this.getFormationPositions();
     const maxBench = this.rosterSize - 11;
+    const hasGameRoster = this.gameDayRosterIds && this.gameDayRosterIds.size > 0;
 
     for (const player of this.players) {
+      // If game day roster is set, non-roster players go straight to unavailable
+      if (hasGameRoster && !this.gameDayRosterIds.has(player.playerId)) {
+        this.zones.unavailable.push(player.playerId);
+        continue;
+      }
+
       if (player.onLineup && player.isStarter) {
         this.zones.starting.push(player.playerId);
-        // Assign formation-based position
         const posIdx = this.zones.starting.length - 1;
         if (posIdx < positions.length) {
           this.playerPositions[player.playerId] = { x: positions[posIdx].x, y: positions[posIdx].y };
@@ -894,7 +912,6 @@ class GameDayLineupScreen extends Screen {
         continue;
       }
       if (player.onLineup && !player.isStarter) {
-        // All non-starter roster players go to bench
         if (this.zones.bench.length < maxBench) {
           this.zones.bench.push(player.playerId);
         } else {
@@ -950,6 +967,8 @@ class GameDayLineupScreen extends Screen {
     this.zones = { starting: [], bench: [], unavailable: [] };
     this.playerPositions = {};
 
+    const hasGameRoster = this.gameDayRosterIds && this.gameDayRosterIds.size > 0;
+
     const sorted = [...this.players].sort((a, b) => {
       const statusOrder = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3 };
       const orderA = statusOrder[a.eligibilityStatus] ?? 4;
@@ -964,6 +983,12 @@ class GameDayLineupScreen extends Screen {
     let benchCount = 0;
 
     for (const player of sorted) {
+      // If game day roster is set, non-roster players go straight to unavailable
+      if (hasGameRoster && !this.gameDayRosterIds.has(player.playerId)) {
+        this.zones.unavailable.push(player.playerId);
+        continue;
+      }
+
       if (player.matchRsvp === 'no') {
         this.zones.unavailable.push(player.playerId);
       } else if (starterCount < 11 && player.eligibilityStatus !== 'ineligible') {

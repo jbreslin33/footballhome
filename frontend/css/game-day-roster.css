@@ -1,0 +1,224 @@
+/* ============================================================================
+   Game Day Roster Screen
+   ============================================================================ */
+.gdr-container {
+  padding: var(--space-3);
+  max-width: 600px;
+  margin: 0 auto;
+}
+.gdr-loading {
+  text-align: center;
+  padding: var(--space-4);
+}
+
+/* Match Card (Instagram-style) */
+.gdr-match-card {
+  margin-bottom: var(--space-4);
+}
+.gdr-card-inner {
+  background: linear-gradient(135deg, #1e3a5f 0%, #0f2027 100%);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 24px 20px;
+  text-align: center;
+}
+.gdr-card-header {
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.7);
+  margin-bottom: 16px;
+}
+.gdr-card-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+.gdr-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+.gdr-logo-wrap img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.gdr-logo-placeholder {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2em;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+}
+.gdr-team-name {
+  font-size: 0.85em;
+  font-weight: 600;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gdr-vs {
+  font-size: 1.4em;
+  font-weight: 800;
+  color: rgba(255,255,255,0.5);
+}
+.gdr-card-details {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+  font-size: 0.85em;
+  color: rgba(255,255,255,0.85);
+}
+.gdr-detail {
+  white-space: nowrap;
+}
+
+/* Card roster list (shown when players selected) */
+.gdr-card-roster {
+  margin-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 12px;
+}
+.gdr-roster-title {
+  font-size: 0.75em;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 8px;
+}
+.gdr-roster-names {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+.gdr-roster-chip {
+  display: inline-block;
+  background: rgba(255,255,255,0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.72em;
+  white-space: nowrap;
+}
+
+/* Share buttons */
+.gdr-share-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+/* Selection header */
+.gdr-selection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+  gap: var(--space-2);
+}
+.gdr-count-badge {
+  font-weight: 700;
+  font-size: 1.05em;
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: var(--gray-200);
+  color: var(--gray-700);
+}
+.gdr-count-good {
+  background: #d1fae5;
+  color: #065f46;
+}
+.gdr-count-over {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Player list */
+.gdr-player-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gdr-group-header {
+  font-weight: 700;
+  font-size: 0.9em;
+  margin-top: var(--space-2);
+  padding: 2px 0;
+}
+.gdr-group-yes { color: #16a34a; }
+.gdr-group-maybe { color: #ca8a04; }
+.gdr-group-none { color: var(--gray-500); }
+.gdr-group-no { color: #dc2626; }
+
+/* Player select cards */
+.player-select-card {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--gray-100);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  gap: 10px;
+}
+.player-select-card:active {
+  transform: scale(0.98);
+}
+.player-select-card.selected {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #ffffff;
+}
+.psc-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1em;
+  flex-shrink: 0;
+}
+.psc-avatar-selected {
+  background: #ffffff;
+  color: #16a34a;
+}
+.psc-info {
+  flex: 1;
+  min-width: 0;
+}
+.psc-name {
+  font-weight: 600;
+  font-size: 0.95em;
+}
+.psc-detail {
+  font-size: 0.8em;
+  opacity: 0.75;
+}
+.psc-check {
+  font-size: 1.2em;
+  flex-shrink: 0;
+}
+
+/* Actions */
+.gdr-actions {
+  margin-top: var(--space-4);
+  display: flex;
+  gap: var(--space-2);
+}
