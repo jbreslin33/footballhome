@@ -12,8 +12,7 @@ class GameDayLineupScreen extends Screen {
     this.rosterSize = 20;  // 18 or 20 man game day roster
     this.zones = {
       starting: [],    // Player IDs in starting XI (max 11)
-      bench: [],       // Player IDs on game day bench (max 9)
-      alternates: [],  // Player IDs as alternates (max 10)
+      bench: [],       // Player IDs on game day bench (rosterSize - 11)
       unavailable: []  // Not selected / unavailable / no response
     };
     this.playerPositions = {}; // {playerId: {x, y}} free-form pitch positions (canonical: x=across, y=goal-to-goal)
@@ -92,14 +91,14 @@ class GameDayLineupScreen extends Screen {
           <div class="pitch-overlay-container">
             <!-- Counts header -->
             <div class="pitch-fullsize-header">
+              <span>📋 Roster: <span id="roster-count-display">0/20</span></span>
+              <span class="header-sep">·</span>
               <span>⚽ <span id="starting-count">0/11</span></span>
               <span class="header-sep">·</span>
-              <span>🪑 <span id="bench-count-display">0/9</span> + 🔄 <span id="alternates-count-display">0/10</span></span>
-              <span class="header-sep">·</span>
-              <span id="total-count-display">Total: 0</span>
+              <span>🪑 <span id="bench-count-display">0/9</span></span>
             </div>
 
-            <!-- Pitch row: Pitch | Bench+Alternates -->
+            <!-- Pitch row: Pitch | Bench -->
             <div class="pitch-and-bench">
               <!-- Full-size Pitch -->
               <div class="pitch-fullsize-wrapper lineup-zone zone-starting" id="zone-starting">
@@ -118,13 +117,10 @@ class GameDayLineupScreen extends Screen {
                 </div>
               </div>
 
-              <!-- Bench + Alternates Area (right strip) -->
+              <!-- Bench Area (right strip) -->
               <div class="pitch-bench-area lineup-zone" id="zone-bench">
                 <div class="bench-label">🪑 Bench</div>
                 <div class="bench-seats" id="bench-players"></div>
-                <div class="bench-alt-divider"></div>
-                <div class="bench-label bench-alt-label">🔄 Alt</div>
-                <div class="bench-seats bench-alt-seats" id="alternates-players"></div>
               </div>
             </div>
 
@@ -879,10 +875,11 @@ class GameDayLineupScreen extends Screen {
   // Player Classification
   // ============================================================================
   classifyPlayersIntoZones() {
-    this.zones = { starting: [], bench: [], alternates: [], unavailable: [] };
+    this.zones = { starting: [], bench: [], unavailable: [] };
     this.playerPositions = {};
 
     const positions = this.getFormationPositions();
+    const maxBench = this.rosterSize - 11;
 
     for (const player of this.players) {
       if (player.onLineup && player.isStarter) {
@@ -897,13 +894,9 @@ class GameDayLineupScreen extends Screen {
         continue;
       }
       if (player.onLineup && !player.isStarter) {
-        // DB zone might be 'bench' or 'alternate'
-        if (player.zone === 'alternate' && this.zones.alternates.length < 10) {
-          this.zones.alternates.push(player.playerId);
-        } else if (this.zones.bench.length < 9) {
+        // All non-starter roster players go to bench
+        if (this.zones.bench.length < maxBench) {
           this.zones.bench.push(player.playerId);
-        } else if (this.zones.alternates.length < 10) {
-          this.zones.alternates.push(player.playerId);
         } else {
           this.zones.unavailable.push(player.playerId);
         }
@@ -954,7 +947,7 @@ class GameDayLineupScreen extends Screen {
   }
 
   autoFillFromEligibility() {
-    this.zones = { starting: [], bench: [], alternates: [], unavailable: [] };
+    this.zones = { starting: [], bench: [], unavailable: [] };
     this.playerPositions = {};
 
     const sorted = [...this.players].sort((a, b) => {
@@ -966,9 +959,9 @@ class GameDayLineupScreen extends Screen {
     });
 
     const positions = this.getFormationPositions();
+    const maxBench = this.rosterSize - 11;
     let starterCount = 0;
     let benchCount = 0;
-    let altCount = 0;
 
     for (const player of sorted) {
       if (player.matchRsvp === 'no') {
@@ -981,12 +974,9 @@ class GameDayLineupScreen extends Screen {
           this.playerPositions[player.playerId] = { x: 50, y: 50 };
         }
         starterCount++;
-      } else if (benchCount < 9) {
+      } else if (benchCount < maxBench) {
         this.zones.bench.push(player.playerId);
         benchCount++;
-      } else if (altCount < 10) {
-        this.zones.alternates.push(player.playerId);
-        altCount++;
       } else {
         this.zones.unavailable.push(player.playerId);
       }
@@ -1005,7 +995,6 @@ class GameDayLineupScreen extends Screen {
   renderAllZones() {
     this.renderPitchPlayers();
     this.renderBenchPlayers();
-    this.renderAlternatePlayers();
     this.renderUnavailablePlayers();
     if (this.activeOverlay) this.renderOverlayTable();
     this.updateCounts();
@@ -1121,7 +1110,7 @@ class GameDayLineupScreen extends Screen {
     // Sort
     const statusRank = { 'priority_starter': 0, 'eligible_starter': 1, 'bench_only': 2, 'ineligible': 3, 'not_computed': 4, 'not_on_roster': 5 };
     const rsvpRank = { 'yes': 0, 'maybe': 1, 'no': 2 };
-    const zoneRank = { 'starting': 0, 'bench': 1, 'alternates': 2, 'unavailable': 3 };
+    const zoneRank = { 'starting': 0, 'bench': 1, 'unavailable': 2 };
     const dir = this.sortAsc ? 1 : -1;
 
     players.sort((a, b) => {
@@ -1179,29 +1168,25 @@ class GameDayLineupScreen extends Screen {
   updateCounts() {
     const starterCount = this.zones.starting.length;
     const benchCount = this.zones.bench.length;
-    const altCount = this.zones.alternates.length;
-    const unavailCount = this.zones.unavailable.length;
+    const maxBench = this.rosterSize - 11;
+    const rosterCount = starterCount + benchCount;
 
     const sc = this.find('#starting-count');
     if (sc) sc.textContent = `${starterCount}/11`;
 
     const bc = this.find('#bench-count-display');
-    if (bc) bc.textContent = `${benchCount}/9`;
+    if (bc) bc.textContent = `${benchCount}/${maxBench}`;
 
-    const ac = this.find('#alternates-count-display');
-    if (ac) ac.textContent = `${altCount}/10`;
-
-    const tc = this.find('#total-count-display');
-    if (tc) tc.textContent = `Total: ${starterCount + benchCount + altCount + unavailCount}`;
+    const rc = this.find('#roster-count-display');
+    if (rc) rc.textContent = `${rosterCount}/${this.rosterSize}`;
 
     // Update overlay zone counts
     const ozc = this.find('#overlay-zone-counts');
     if (ozc) {
       ozc.innerHTML = `
+        <span class="ozc-item ozc-roster">📋 ${rosterCount}/${this.rosterSize}</span>
         <span class="ozc-item ozc-starting">⚽ ${starterCount}/11</span>
-        <span class="ozc-item ozc-bench">🪑 ${benchCount}/9</span>
-        <span class="ozc-item ozc-alt">🔄 ${altCount}/10</span>
-        <span class="ozc-item ozc-unavail">⛔ ${unavailCount}</span>
+        <span class="ozc-item ozc-bench">🪑 ${benchCount}/${maxBench}</span>
       `;
     }
   }
@@ -1248,8 +1233,10 @@ class GameDayLineupScreen extends Screen {
     if (!container) return;
     container.innerHTML = '';
 
-    // Render 9 seat slots
-    for (let i = 0; i < 9; i++) {
+    const maxBench = this.rosterSize - 11;
+
+    // Render bench seat slots
+    for (let i = 0; i < maxBench; i++) {
       const seat = document.createElement('div');
       seat.className = 'bench-seat';
       seat.setAttribute('data-bench-slot', i);
@@ -1260,31 +1247,6 @@ class GameDayLineupScreen extends Screen {
       if (player) {
         seat.classList.add('bench-seat-filled');
         const chip = this.createZoneChip(player, 'bench');
-        seat.appendChild(chip);
-      } else {
-        seat.innerHTML = '<div class="bench-seat-empty">&nbsp;</div>';
-      }
-
-      container.appendChild(seat);
-    }
-  }
-
-  renderAlternatePlayers() {
-    const container = this.find('#alternates-players');
-    if (!container) return;
-    container.innerHTML = '';
-
-    for (let i = 0; i < 10; i++) {
-      const seat = document.createElement('div');
-      seat.className = 'bench-seat bench-seat-alt';
-      seat.setAttribute('data-bench-slot', 9 + i);
-
-      const playerId = this.zones.alternates[i];
-      const player = playerId ? this.getPlayerById(playerId) : null;
-
-      if (player) {
-        seat.classList.add('bench-seat-filled');
-        const chip = this.createZoneChip(player, 'alternates');
         seat.appendChild(chip);
       } else {
         seat.innerHTML = '<div class="bench-seat-empty">&nbsp;</div>';
@@ -1508,7 +1470,7 @@ class GameDayLineupScreen extends Screen {
     row.setAttribute('data-zone', zone);
 
     // Zone badge
-    const zoneBadges = { starting: '⚽', bench: '🪑', alternates: '🔄', unavailable: '⛔' };
+    const zoneBadges = { starting: '⚽', bench: '🪑', unavailable: '⛔' };
     const zoneBadge = zoneBadges[zone] || '—';
     const zoneClass = `rt-zone-${zone}`;
 
@@ -1548,24 +1510,14 @@ class GameDayLineupScreen extends Screen {
       }
     }
 
-    // Action buttons based on zone
+    // Action buttons: Stage 1 = add/remove from game day roster
+    // Players on roster (starting/bench) can be removed; unavailable can be added
     let actions = '';
     if (zone === 'unavailable') {
-      actions = `<button class="rt-btn rt-btn-start" data-action="to-starting" title="Add to Starting XI">⚽</button>
-                 <button class="rt-btn rt-btn-bench" data-action="to-bench" title="Add to Bench">🪑</button>
-                 <button class="rt-btn rt-btn-alt" data-action="to-alternates" title="Add to Alternates">🔄</button>`;
-    } else if (zone === 'alternates') {
-      actions = `<button class="rt-btn rt-btn-start" data-action="to-starting" title="Move to Starting XI">⚽</button>
-                 <button class="rt-btn rt-btn-bench" data-action="to-bench" title="Move to Bench">🪑</button>
-                 <button class="rt-btn rt-btn-remove" data-action="to-unavailable" title="Remove">✕</button>`;
-    } else if (zone === 'bench') {
-      actions = `<button class="rt-btn rt-btn-start" data-action="to-starting" title="Move to Starting XI">⚽</button>
-                 <button class="rt-btn rt-btn-alt" data-action="to-alternates" title="Move to Alternates">🔄</button>
-                 <button class="rt-btn rt-btn-remove" data-action="to-unavailable" title="Remove">✕</button>`;
-    } else if (zone === 'starting') {
-      actions = `<button class="rt-btn rt-btn-bench" data-action="to-bench" title="Move to Bench">🪑</button>
-                 <button class="rt-btn rt-btn-alt" data-action="to-alternates" title="Move to Alternates">🔄</button>
-                 <button class="rt-btn rt-btn-remove" data-action="to-unavailable" title="Remove">✕</button>`;
+      actions = `<button class="rt-btn rt-btn-roster-add" data-action="to-bench" title="Add to Game Day Roster">✅ Add</button>`;
+    } else {
+      // starting or bench — can remove from roster
+      actions = `<button class="rt-btn rt-btn-remove" data-action="to-unavailable" title="Remove from Roster">✕ Remove</button>`;
     }
 
     row.innerHTML = `
@@ -1583,12 +1535,8 @@ class GameDayLineupScreen extends Screen {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const action = btn.dataset.action;
-        if (action === 'to-starting') {
-          this.movePlayer(player.playerId, zone, 'starting');
-        } else if (action === 'to-bench') {
+        if (action === 'to-bench') {
           this.movePlayer(player.playerId, zone, 'bench');
-        } else if (action === 'to-alternates') {
-          this.movePlayer(player.playerId, zone, 'alternates');
         } else if (action === 'to-unavailable') {
           this.movePlayer(player.playerId, zone, 'unavailable');
         }
@@ -1978,24 +1926,15 @@ class GameDayLineupScreen extends Screen {
   movePlayer(playerId, fromZone, toZone) {
     if (fromZone === toZone) return;
 
+    const maxBench = this.rosterSize - 11;
+
     // Enforce limits
     if (toZone === 'starting' && this.zones.starting.length >= 11 && fromZone !== 'starting') {
       this.showLineupToast('Starting XI is full (11/11). Remove a player first.');
       return;
     }
-    if (toZone === 'bench' && this.zones.bench.length >= 9) {
-      // Overflow to alternates
-      if (this.zones.alternates.length < 10) {
-        this.removePlayerFromAllZones(playerId);
-        this.zones.alternates.push(playerId);
-        this.renderAllZones();
-        return;
-      }
-      this.showLineupToast('Bench and alternates are full.');
-      return;
-    }
-    if (toZone === 'alternates' && this.zones.alternates.length >= 10) {
-      this.showLineupToast('Alternates is full (10/10).');
+    if (toZone === 'bench' && this.zones.bench.length >= maxBench) {
+      this.showLineupToast(`Bench is full (${maxBench}/${maxBench}).`);
       return;
     }
 
@@ -2387,7 +2326,6 @@ class GameDayLineupScreen extends Screen {
     const starters = this.zones.starting
       .map((playerId, idx) => ({ playerId, slotNumber: idx }));
     const bench = this.zones.bench.map(playerId => ({ playerId }));
-    const alternates = this.zones.alternates.map(playerId => ({ playerId }));
 
     try {
       const response = await this.auth.fetch(`/api/eligibility/lineup/${matchId}`, {
@@ -2396,7 +2334,7 @@ class GameDayLineupScreen extends Screen {
         body: JSON.stringify({
           starters,
           bench,
-          alternates,
+          alternates: [],
           formationId: this.selectedFormation?.id || 0,
           rosterSize: this.rosterSize
         })
@@ -2404,8 +2342,8 @@ class GameDayLineupScreen extends Screen {
 
       const data = await response.json();
       if (data.success) {
-        const total = starters.length + bench.length + alternates.length;
-        alert(`✓ Lineup saved! ${starters.length} starters + ${bench.length} bench + ${alternates.length} alternates = ${total} game day roster.`);
+        const total = starters.length + bench.length;
+        alert(`✓ Lineup saved! ${starters.length} starters + ${bench.length} bench = ${total} game day roster.`);
       } else {
         throw new Error(data.message || 'Failed to save');
       }

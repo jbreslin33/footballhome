@@ -341,7 +341,7 @@
 }
 
 /* ============================================================================
-   Player Pool, Bench, Alternates
+   Player Pool, Bench
    ============================================================================ */
 
 /* Player Pool — scrollable list on the left side */
@@ -463,17 +463,7 @@
   text-align: center;
   margin-bottom: 2px;
 }
-.bench-alt-divider {
-  width: 80%;
-  height: 2px;
-  background: rgba(255,255,255,0.25);
-  margin: 4px 0;
-  flex-shrink: 0;
-}
-.bench-alt-label {
-  color: #d1d5db;
-  font-size: 0.5em;
-}
+
 .bench-seats {
   display: flex;
   flex-direction: column;
@@ -483,9 +473,7 @@
   width: 100%;
   align-items: center;
 }
-.bench-alt-seats {
-  /* alternate seats in the same strip */
-}
+
 .bench-seat {
   flex: 0 0 auto;
   min-height: 38px;
@@ -496,10 +484,7 @@
   background: rgba(0,0,0,0.15);
   border: 1px dashed rgba(255,255,255,0.3);
 }
-.bench-seat-alt {
-  background: rgba(0,0,0,0.08);
-  border-color: rgba(255,255,255,0.15);
-}
+
 .bench-seat-filled {
   border-style: solid;
   border-color: rgba(255,255,255,0.5);
@@ -514,7 +499,7 @@
   color: rgba(255,255,255,0.3);
 }
 
-/* Zone Chip (used in bench/alternates) */
+/* Zone Chip (used in bench) */
 .zone-chip {
   display: flex;
   flex-direction: column;
@@ -585,10 +570,9 @@
 }
 
 /* Zone roster badge additions */
-.rt-zone-alternates { background: #9ca3af; color: white; }
 .rt-zone-unavailable { background: #e5e7eb; color: #6b7280; }
-.rt-btn-alt { color: #6b7280; }
-.rt-btn-alt:hover { background: #f3f4f6; }
+.rt-btn-roster-add { color: #065f46; font-weight: 600; }
+.rt-btn-roster-add:hover { background: #d1fae5; }
 
 /* ============================================================================
    Roster Overlay Panel (floats over pitch)
@@ -635,8 +619,7 @@
 }
 .ozc-starting { background: #d1fae5; color: #065f46; }
 .ozc-bench { background: #dbeafe; color: #1e40af; }
-.ozc-alt { background: #f3f4f6; color: #4b5563; }
-.ozc-unavail { background: #fee2e2; color: #991b1b; }
+.ozc-roster { background: #fef3c7; color: #92400e; }
 
 .overlay-tabs {
   display: flex;
