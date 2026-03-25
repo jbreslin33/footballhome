@@ -249,10 +249,39 @@ make down           # Stop containers
 
 ## 🔧 Troubleshooting
 
+### Site Down?
+
 ```bash
-# Check what's running
+# 1. Check container status
 make ps
 
+# 2. If containers are stopped, start them
+make up
+```
+
+That's it. `make up` starts all three containers (db, backend, frontend). The site should be back at https://footballhome.org within seconds.
+
+### Deploying Code Changes
+
+**Frontend changes** (JS/CSS): No rebuild needed — files are volume-mounted. Just refresh the browser.
+
+**Backend changes** (C++): Must rebuild the image and replace the container:
+
+```bash
+# 1. Build new image
+make build
+
+# 2. Replace old backend container with new image
+podman stop footballhome_frontend footballhome_backend
+podman rm footballhome_frontend footballhome_backend
+make up
+```
+
+> **Why the extra steps?** `make build` creates a new image, but `podman-compose up -d` won't replace a container that already exists with the same name. You must remove the old container first. The frontend container depends on the backend, so it must be removed too.
+
+### Other Issues
+
+```bash
 # View logs for errors
 make logs-backend
 

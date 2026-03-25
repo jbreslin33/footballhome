@@ -5,7 +5,7 @@
     "details": "113 KB"
   },
   "apsl-teams": {
-    "updatedAt": "2026-03-19T18:09:33.242Z",
+    "updatedAt": "2026-03-24T18:08:11.793Z",
     "status": "success"
   },
   "casa-rosters": {
@@ -18,7 +18,12 @@
     "details": "256 matches"
   },
   "csl-teams": {
-    "updatedAt": "2026-03-19T22:05:18.853Z",
+    "updatedAt": "2026-03-24T15:35:40.468Z",
     "status": "success"
+  },
+  "csl-standings": {
+    "updatedAt": "2026-03-24T15:35:31.016Z",
+    "status": "success",
+    "details": "110 KB"
   }
 }

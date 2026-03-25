@@ -99,21 +99,8 @@ class GameDayLineupScreen extends Screen {
               <span id="total-count-display">Total: 0</span>
             </div>
 
-            <!-- Pitch row: Player Pool | Pitch | Bench+Alternates -->
+            <!-- Pitch row: Pitch | Bench+Alternates -->
             <div class="pitch-and-bench">
-              <!-- Player Pool (side panel, left) -->
-              <div class="pitch-pool-area lineup-zone" id="zone-unavailable">
-                <div class="pool-header">
-                  <span class="pool-label">Players</span>
-                  <select id="pool-sort-select" class="pool-sort-select">
-                    <option value="practices">Practices</option>
-                    <option value="eligibility">Eligibility</option>
-                    <option value="name">Last Name</option>
-                  </select>
-                </div>
-                <div class="pool-list" id="unavailable-players"></div>
-              </div>
-
               <!-- Full-size Pitch -->
               <div class="pitch-fullsize-wrapper lineup-zone zone-starting" id="zone-starting">
                 <div class="pitch pitch-fullsize" id="pitch-canvas">
@@ -148,6 +135,7 @@ class GameDayLineupScreen extends Screen {
             <div class="roster-overlay-panel" id="roster-overlay-panel" style="display: none;">
               <div class="overlay-panel-header">
                 <div class="overlay-tabs" id="overlay-tabs"></div>
+                <div class="overlay-zone-counts" id="overlay-zone-counts"></div>
                 <button id="overlay-close-btn" class="overlay-close-btn">✕</button>
               </div>
               <div class="overlay-panel-body">
@@ -341,9 +329,9 @@ class GameDayLineupScreen extends Screen {
     this.element.addEventListener('touchend', (e) => this.onTouchEnd(e));
 
     // Double-click to open attendance editor
-    this.element.addEventListener('dblclick', (e) => {
+    this.element.addEventListener('click', (e) => {
       const card = e.target.closest('[data-player-id]');
-      if (card) {
+      if (card && (card.classList.contains('pool-row') || card.classList.contains('zone-chip') || card.classList.contains('pitch-player-chip'))) {
         e.preventDefault();
         const playerId = parseInt(card.getAttribute('data-player-id'));
         this.openAttendancePopup(playerId);
@@ -378,7 +366,7 @@ class GameDayLineupScreen extends Screen {
       const [eligResponse, membersResponse, trainingResponse] = await Promise.all([
         this.auth.fetch(`/api/eligibility/match/${matchId}${teamParam}`),
         teamId ? this.auth.fetch(`/api/groupme/members/${teamId}?matchId=${matchId}`) : Promise.resolve(null),
-        teamId ? this.auth.fetch(`/api/groupme/training-week/${teamId}`) : Promise.resolve(null)
+        teamId ? this.auth.fetch(`/api/groupme/training-week/${teamId}?matchId=${matchId}`) : Promise.resolve(null)
       ]);
 
       const data = await eligResponse.json();
@@ -565,26 +553,20 @@ class GameDayLineupScreen extends Screen {
   /**
    * Merge training attendance data from training-week API onto players.
    * Maps personId → { eventId → {attended, source} }
+   * NOTE: Does NOT overwrite sessionsAttended — the eligibility API's value
+   * is the source of truth (it deduplicates by date correctly).
    */
   mergeTrainingData(trainingPlayers) {
     this.trainingData = new Map();
     for (const tp of trainingPlayers) {
       if (!tp.personId) continue;
       const att = {};
-      let count = 0;
       for (const [eventId, val] of Object.entries(tp.attendance || {})) {
         if (val) {
           att[eventId] = val;
-          if (val.attended) count++;
         }
       }
       this.trainingData.set(tp.personId, att);
-
-      // Update sessionsAttended on matching player
-      const player = this.players.find(p => p.personId === tp.personId);
-      if (player) {
-        player.sessionsAttended = count;
-      }
     }
   }
 
@@ -642,11 +624,18 @@ class GameDayLineupScreen extends Screen {
       }
       this.trainingData.get(personId)[eventId] = { attended, source: 'manual' };
 
-      // Update sessionsAttended count on player
+      // Update sessionsAttended count on player (dedup by event date)
       const player = this.players.find(p => p.personId === personId);
       if (player) {
         const pData = this.trainingData.get(personId) || {};
-        player.sessionsAttended = Object.values(pData).filter(v => v && v.attended).length;
+        const attendedDates = new Set();
+        for (const [evtId, val] of Object.entries(pData)) {
+          if (val && val.attended) {
+            const evt = this.trainingEvents.find(e => String(e.id) === String(evtId));
+            if (evt) attendedDates.add(evt.eventDate);
+          }
+        }
+        player.sessionsAttended = attendedDates.size;
 
         // Update the Total cell in same row
         const row = cb.closest('tr');
@@ -1204,6 +1193,17 @@ class GameDayLineupScreen extends Screen {
 
     const tc = this.find('#total-count-display');
     if (tc) tc.textContent = `Total: ${starterCount + benchCount + altCount + unavailCount}`;
+
+    // Update overlay zone counts
+    const ozc = this.find('#overlay-zone-counts');
+    if (ozc) {
+      ozc.innerHTML = `
+        <span class="ozc-item ozc-starting">⚽ ${starterCount}/11</span>
+        <span class="ozc-item ozc-bench">🪑 ${benchCount}/9</span>
+        <span class="ozc-item ozc-alt">🔄 ${altCount}/10</span>
+        <span class="ozc-item ozc-unavail">⛔ ${unavailCount}</span>
+      `;
+    }
   }
 
   renderPitchPlayers() {
@@ -1357,7 +1357,7 @@ class GameDayLineupScreen extends Screen {
 
     chip.innerHTML = `
       <div class="chip-circle">${jerseyDisplay || initial}</div>
-      <div class="chip-name">${player.firstName} ${player.lastName?.[0] || ''}</div>
+      <div class="chip-name">${player.firstName} ${player.lastName || ''}</div>
     `;
     if (zone === 'unavailable') chip.classList.add('chip-dimmed');
 

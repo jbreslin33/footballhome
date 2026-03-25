@@ -276,7 +276,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '20:00:00', 1,
+  1, '2026-03-22', '20:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261217_409929BA9F228F0C29A8147B9AF1F865'
@@ -694,7 +694,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '19:30:00', 1,
+  1, '2026-03-22', '19:30:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '263350_7A2CB1D5841F42F4530D3B31CBCF44FF'
@@ -1112,7 +1112,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '10:00:00', 1,
+  1, '2026-03-22', '10:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261824_8FED4CC76D78AB1E8868300C0E36FD07'
@@ -1552,7 +1552,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '11:00:00', 1,
+  1, '2026-03-22', '11:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '263349_B3701CF4F97DB3DD469B864C48723CE3'
@@ -1970,7 +1970,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '09:00:00', 1,
+  1, '2026-03-22', '09:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262278_3277F3CCF8F0132A23066D519BF3124D'
@@ -2366,7 +2366,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-21', '20:00:00', 1,
+  1, '2026-03-21', '20:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261219_9B7EC33BF7EB0754EFD0FC12E430A6DF'
@@ -2762,7 +2762,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-21', '18:00:00', 1,
+  1, '2026-03-21', '18:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261276_786BBA223D5DCFE53D609A74A16F8A04'
@@ -3950,7 +3950,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '16:00:00', 1,
+  1, '2026-03-22', '16:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '263354_E58972959CE21E1C989E2188CB82260A'
@@ -4258,7 +4258,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '16:00:00', 1,
+  1, '2026-03-22', '16:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261215_6FBB00DDA82B8F9C365A8F97A4AE71EC'
@@ -4654,7 +4654,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '14:00:00', 1,
+  1, '2026-03-22', '14:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261272_9AF4A57E95882618212CF1D3A97AC302'
@@ -5028,7 +5028,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '11:00:00', 1,
+  1, '2026-03-22', '11:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262274_34D3138BC941EA7DE6BBDFD6C9E60DA2'
@@ -5402,7 +5402,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '09:00:00', 1,
+  1, '2026-03-22', '09:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262275_0D51DC1CCF1FC59FBB4A621314B170A0'
@@ -5798,7 +5798,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '20:00:00', 1,
+  1, '2026-03-22', '20:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262431_0F240D9E0B3E91EC44B1BE6684887876'
@@ -6172,7 +6172,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '18:00:00', 1,
+  1, '2026-03-22', '18:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262503_75A5F9D543AA6C44B80864839DFE4915'
@@ -6458,7 +6458,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '10:00:00', 1,
+  1, '2026-03-22', '10:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262277_F4F556E806D53C75B159DD9CA10EA721'
@@ -7250,7 +7250,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-21', '18:00:00', 1,
+  1, '2026-03-21', '18:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261821_6ABB876EA97F5450A20A17C2174899D8'
@@ -7624,7 +7624,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '10:00:00', 1,
+  1, '2026-03-22', '10:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262435_8B34082FAB7C9C28030B6DA5859D9B93'
@@ -7976,7 +7976,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '08:00:00', 1,
+  1, '2026-03-22', '08:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262507_F6C538161B9FD744FC1962E177A524FF'
@@ -8636,7 +8636,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '18:00:00', 1,
+  1, '2026-03-22', '18:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261274_03916A29B615F1B88232CB63F0C640D4'
@@ -9714,7 +9714,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '19:00:00', 1,
+  1, '2026-03-22', '19:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261820_9D0F1B167663AD8588A4113005516914'
@@ -11056,7 +11056,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '14:00:00', 1,
+  1, '2026-03-22', '14:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261216_DB4B4B3DEE29FCA05BED0D6E04EBE0C2'
@@ -11188,7 +11188,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '12:00:00', 1,
+  1, '2026-03-22', '12:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261273_D2282E3D17BADCE57B2D1548FBB7C5D9'
@@ -11936,7 +11936,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '14:00:00', 1,
+  1, '2026-03-22', '14:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262433_C5C6AB41C5D1672062F6BD9DB43063EC'
@@ -12244,7 +12244,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '12:00:00', 1,
+  1, '2026-03-22', '12:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262505_08175ACE54AEB7BC3B05040AA9531A3B'
@@ -12860,7 +12860,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-21', '20:00:00', 1,
+  1, '2026-03-21', '20:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261823_9A79903E727FF1EA79B849653A502931'
@@ -13146,7 +13146,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '16:00:00', 1,
+  1, '2026-03-22', '16:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262434_86A84E1B5B32ECDC88654B8A38850307'
@@ -13410,7 +13410,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '14:00:00', 1,
+  1, '2026-03-22', '14:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262506_CA60F578CC38D6D02036E34EF78F0FBB'
@@ -13608,7 +13608,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '12:00:00', 1,
+  1, '2026-03-22', '12:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262276_B61AA210C63FB21D4B154B0D763C7CD0'
@@ -13762,7 +13762,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '14:00:00', 1,
+  1, '2026-03-22', '14:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261218_75F335A40C0C4AE770A50606ED31089B'
@@ -13850,7 +13850,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '12:00:00', 1,
+  1, '2026-03-22', '12:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261275_4A699504D71DD72CE492866BF59D4560'
@@ -14048,7 +14048,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '18:00:00', 1,
+  1, '2026-03-22', '18:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '263351_E1F47A1CFB3F52E04FE301DF8CE5CEFF'
@@ -14312,7 +14312,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '16:00:00', 1,
+  1, '2026-03-22', '16:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262432_306B52A9F4BC02FBEC1703898A6A0B71'
@@ -14576,7 +14576,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '14:00:00', 1,
+  1, '2026-03-22', '14:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262504_2197F5CC637072BAFC5778BFF96ABC24'
@@ -15104,7 +15104,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '12:00:00', 1,
+  1, '2026-03-22', '12:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '261822_751262E72B9353055F2606FF23E6631D'
@@ -18140,7 +18140,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '17:00:00', 1,
+  1, '2026-03-22', '17:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '263353_C97A4D385C7B7742C0B7A18FF0F29E60'
@@ -18338,7 +18338,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '16:00:00', 1,
+  1, '2026-03-22', '16:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262437_A591B0DF3C4C0BBC15A8CDACA4D3B471'
@@ -18404,7 +18404,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '14:00:00', 1,
+  1, '2026-03-22', '14:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '262509_9F5B7F0930FC3167F7B92FFAC60A69CF'
@@ -18866,7 +18866,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '15:00:00', 1,
+  1, '2026-03-22', '15:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '263352_35DCFC0E4144823C43E3A9AA69B7D8F0'
@@ -19108,7 +19108,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '13:05:00', 1,
+  1, '2026-03-22', '13:05:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '268147_51F8D510F524C8D29799E0C09114ABF3'
@@ -19306,7 +19306,7 @@ INSERT INTO matches (
   home_score, away_score, source_system_id, external_id
 )
 SELECT 
-  1, '2026-03-22', '19:00:00', 1,
+  1, '2026-03-22', '19:00:00', 3,
   ht.id, at.id, NULL,
   NULL, NULL,
   3, '268148_32E3AC3B057DCCB8DDE65796FDC658B4'

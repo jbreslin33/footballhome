@@ -1,4 +1,4 @@
-.PHONY: all help clean build up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme migrate vpn-up vpn-down vpn-status
+.PHONY: all help clean build deploy up down rebuild logs test ps shell-db load load-apsl load-csl load-casa parse parse-apsl parse-csl parse-casa scrape scrape-apsl scrape-csl scrape-casa scrape-standings scrape-apsl-standings scrape-csl-standings scrape-casa-standings scrape-teams scrape-apsl-teams scrape-csl-teams scrape-rosters scrape-casa-rosters scrape-schedule scrape-casa-schedule events events-apsl events-csl init init-apsl init-csl init-casa backup restore safe-rebuild sync sync-apsl sync-csl sync-casa sync-groupme migrate vpn-up vpn-down vpn-status
 
 # Ensure Python user bin is in PATH (for podman-compose)
 PYTHON_USER_BIN := $(shell python3 -m site --user-base 2>/dev/null)/bin
@@ -33,6 +33,7 @@ help:
 	@echo ""
 	@echo "Containers:"
 	@echo "  make build         Build images and start containers"
+	@echo "  make deploy        Build + replace backend container (for C++ changes)"
 	@echo "  make up            Start containers"
 	@echo "  make down          Stop containers"
 	@echo "  make rebuild       Destroy everything + fresh build (wipes DB)"
@@ -95,6 +96,17 @@ build:
 	@$(COMPOSE) --env-file env build
 	@$(COMPOSE) --env-file env up -d
 	@echo "✓ Build complete and containers started"
+	@echo ""
+	@echo "Frontend:  http://localhost:3000"
+	@echo "Backend:   http://localhost:3001"
+
+deploy:
+	@echo "🚀 Building and deploying backend..."
+	@$(COMPOSE) --env-file env build backend
+	@$(ENGINE) stop footballhome_frontend footballhome_backend 2>/dev/null || true
+	@$(ENGINE) rm -f footballhome_frontend footballhome_backend 2>/dev/null || true
+	@$(COMPOSE) --env-file env up -d
+	@echo "✓ Deploy complete — new backend is live"
 	@echo ""
 	@echo "Frontend:  http://localhost:3000"
 	@echo "Backend:   http://localhost:3001"

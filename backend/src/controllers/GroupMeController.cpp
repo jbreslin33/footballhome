@@ -1,5 +1,6 @@
 #include "GroupMeController.h"
 #include <curl/curl.h>
+#include <algorithm>
 #include <sstream>
 #include <iomanip>
 #include <regex>
@@ -53,7 +54,7 @@ void GroupMeController::registerRoutes(Router& router, const std::string& prefix
         return this->handleUnlinkMember(request);
     });
 
-    // GET /api/groupme/training-week/:teamId — Training attendance grid for current week
+    // GET /api/groupme/training-week/:teamId?matchId=N — Training attendance grid for sessions before match
     router.get(prefix + "/training-week/:teamId", [this](const Request& request) {
         return this->handleGetTrainingWeek(request);
     });
@@ -422,7 +423,9 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
                 "FROM training_attendance ta "
                 "JOIN players pl ON pl.id = ta.player_id "
                 "JOIN chat_events ce ON ce.id = ta.chat_event_id "
-                "WHERE ce.chat_id IN (SELECT c2.id FROM chats c2 WHERE c2.team_id = $1::int OR c2.id = 4) "
+                "JOIN chats c2 ON c2.id = ce.chat_id "
+                "LEFT JOIN teams t ON t.id = c2.team_id "
+                "WHERE (c2.team_id = $1::int OR t.club_id = (SELECT club_id FROM teams WHERE id = $1::int)) "
                 "  AND ta.attended = true "
                 "GROUP BY pl.person_id",
                 {teamId}
@@ -734,8 +737,8 @@ Response GroupMeController::handleUnlinkMember(const Request& request) {
 
 // ============================================================================
 // Handler: Training Week Attendance Grid
-// GET /api/groupme/training-week/:teamId
-// Returns all APSL chat members + roster-only players with per-day attendance
+// GET /api/groupme/training-week/:teamId?matchId=N
+// Returns last 5 training/pickup sessions before the match date
 // ============================================================================
 Response GroupMeController::handleGetTrainingWeek(const Request& request) {
     std::string teamId = extractIdFromPath(request.getPath(), "/api/groupme/training-week/(\\d+)");
@@ -744,19 +747,42 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
     }
 
     try {
-        // Step 1: Get training/pickup events for this week (Mon-Sun around the match)
-        // We look at the 7 days before the next Sunday (or the most recent week)
+        // Determine reference date: use match date if matchId provided, else today
+        std::string matchId = request.getQueryParam("matchId");
+        std::string referenceDate;
+        if (!matchId.empty()) {
+            pqxx::result matchResult = db_->query(
+                "SELECT match_date::text FROM matches WHERE id = $1::int",
+                {matchId}
+            );
+            if (!matchResult.empty()) {
+                referenceDate = matchResult[0]["match_date"].c_str();
+            }
+        }
+
+        // Step 1: Get last 5 training/pickup sessions before the reference date
+        // Dedup by date so multiple events on the same day count as one session
+        std::string dateFilter;
+        std::vector<std::string> queryParams;
+        if (!referenceDate.empty()) {
+            dateFilter = "  AND ce.event_date < $1::date ";
+            queryParams.push_back(referenceDate);
+        } else {
+            dateFilter = "  AND ce.event_date < CURRENT_DATE ";
+        }
+
         pqxx::result eventResult = db_->query(
             "SELECT ce.id, ce.title, ce.event_date::text as event_date, c.name as chat_name "
             "FROM chat_events ce "
             "JOIN chats c ON c.id = ce.chat_id "
             "WHERE c.name IN ('Training Lighthouse', 'Philadelphia Pickup') "
-            "  AND ce.event_date >= date_trunc('week', CURRENT_DATE)::date "
-            "  AND ce.event_date <= date_trunc('week', CURRENT_DATE)::date + 6 "
-            "ORDER BY ce.event_date, ce.title"
+            + dateFilter +
+            "  AND ce.is_active = true "
+            "ORDER BY ce.event_date DESC, ce.title",
+            queryParams
         );
 
-        // Build events list
+        // Build events list — limit to 5 unique dates (results are DESC, so newest first)
         struct TrainingEvent {
             std::string id;
             std::string title;
@@ -764,14 +790,20 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
             std::string chatName;
         };
         std::vector<TrainingEvent> events;
+        std::set<std::string> uniqueDates;
         for (const auto& row : eventResult) {
+            std::string date = row["event_date"].c_str();
+            uniqueDates.insert(date);
+            if (uniqueDates.size() > 5) break;  // Stop after 5 unique dates
             TrainingEvent te;
             te.id = row["id"].c_str();
             te.title = row["title"].c_str();
-            te.eventDate = row["event_date"].c_str();
+            te.eventDate = date;
             te.chatName = row["chat_name"].c_str();
             events.push_back(te);
         }
+        // Reverse to chronological order (oldest first) for display
+        std::reverse(events.begin(), events.end());
 
         // Step 1b: Live-sync RSVPs from GroupMe API for all training events
         if (!events.empty() && !accessToken_.empty()) {
