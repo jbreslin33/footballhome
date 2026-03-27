@@ -47,6 +47,10 @@ private:
     // Club Chat Events & RSVP Override
     Response handleGetClubChatEvents(const Request& request);
     Response handleOverrideRSVP(const Request& request);
+
+    // Enriched roster player data + RSVP set
+    Response handleGetRosterPlayers(const Request& request);
+    Response handleSetPlayerRSVP(const Request& request);
     
     // Helper methods
     std::string extractUserIdFromToken(const Request& request);
