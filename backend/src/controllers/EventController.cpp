@@ -274,7 +274,7 @@ Response EventController::handleCreateEvent(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ EventController::handleCreateEvent error: " << e.what() << std::endl;
-        std::string json = createJSONResponse(false, "Failed to create event: " + std::string(e.what()));
+        std::string json = createJSONResponse(false, "Failed to create event");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }
@@ -629,7 +629,7 @@ Response EventController::handleCreateMatch(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ EventController::handleCreateMatch error: " << e.what() << std::endl;
-        std::string json = createJSONResponse(false, std::string("Failed to create match: ") + e.what());
+        std::string json = createJSONResponse(false, "Failed to create match");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }
@@ -646,14 +646,22 @@ Response EventController::handleGetMatch(const Request& request) {
         
         // Query single match with all details
         std::ostringstream query;
-        query << "SELECT e.id, e.title, e.event_date, e.duration_minutes, e.venue_id, ";
-        query << "m.home_team_id, m.away_team_id, m.competition_name, m.match_status, ";
-        query << "m.home_team_score, m.away_team_score, e.description as notes, ";
-        query << "v.name as venue_name ";
-        query << "FROM events e ";
-        query << "JOIN matches m ON e.id = m.id ";
-        query << "LEFT JOIN venues v ON e.venue_id = v.id ";
-        query << "WHERE e.id = '" << match_id << "'";
+        query << "SELECT m.id, COALESCE(m.title, CONCAT(ht.name, ' vs ', awt.name)) as title, ";
+        query << "m.match_date::text || ' ' || COALESCE(m.match_time::text, '00:00:00') as event_date, ";
+        query << "90 as duration_minutes, m.venue_id, ";
+        query << "m.home_team_id, m.away_team_id, '' as competition_name, ";
+        query << "ms.name as match_status, ";
+        query << "m.home_score as home_team_score, m.away_score as away_team_score, ";
+        query << "m.description as notes, ";
+        query << "v.name as venue_name, ";
+        query << "ht.name as home_team_name, awt.name as away_team_name, ";
+        query << "ht.logo_url as home_team_logo, awt.logo_url as away_team_logo ";
+        query << "FROM matches m ";
+        query << "JOIN match_statuses ms ON m.match_status_id = ms.id ";
+        query << "LEFT JOIN venues v ON m.venue_id = v.id ";
+        query << "LEFT JOIN teams ht ON m.home_team_id = ht.id ";
+        query << "LEFT JOIN teams awt ON m.away_team_id = awt.id ";
+        query << "WHERE m.id = '" << match_id << "'";
         
         pqxx::result result = db_->query(query.str());
         
@@ -694,6 +702,18 @@ Response EventController::handleGetMatch(const Request& request) {
         }
         if (!result[0][12].is_null()) {
             match_json << ",\"venue_name\":\"" << escapeJSON(result[0][12].c_str()) << "\"";
+        }
+        if (!result[0][13].is_null()) {
+            match_json << ",\"home_team_name\":\"" << escapeJSON(result[0][13].c_str()) << "\"";
+        }
+        if (!result[0][14].is_null()) {
+            match_json << ",\"away_team_name\":\"" << escapeJSON(result[0][14].c_str()) << "\"";
+        }
+        if (!result[0][15].is_null()) {
+            match_json << ",\"home_team_logo\":\"" << escapeJSON(result[0][15].c_str()) << "\"";
+        }
+        if (!result[0][16].is_null()) {
+            match_json << ",\"away_team_logo\":\"" << escapeJSON(result[0][16].c_str()) << "\"";
         }
         
         match_json << "}";
@@ -806,7 +826,7 @@ Response EventController::handleUpdateMatch(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ EventController::handleUpdateMatch error: " << e.what() << std::endl;
-        std::string json = createJSONResponse(false, std::string("Failed to update match: ") + e.what());
+        std::string json = createJSONResponse(false, "Failed to update match");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }
@@ -832,7 +852,7 @@ Response EventController::handleDeleteMatch(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ EventController::handleDeleteMatch error: " << e.what() << std::endl;
-        std::string json = createJSONResponse(false, std::string("Failed to delete match: ") + e.what());
+        std::string json = createJSONResponse(false, "Failed to delete match");
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, json);
     }
 }
@@ -1285,7 +1305,7 @@ Response EventController::handleCreateRSVP(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Error creating/updating RSVP: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to save RSVP: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to save RSVP"));
     }
 }
 
@@ -1379,7 +1399,7 @@ Response EventController::handleGetEventRSVPs(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting RSVPs: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get RSVPs: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to get RSVPs"));
     }
 }
 
@@ -1417,7 +1437,7 @@ Response EventController::handleGetAttendanceStatuses(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting attendance statuses: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get attendance statuses: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to get attendance statuses"));
     }
 }
 
@@ -1501,7 +1521,7 @@ Response EventController::handleGetEventAttendance(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting attendance: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get attendance: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to get attendance"));
     }
 }
 
@@ -1587,7 +1607,7 @@ Response EventController::handleUpdateAttendance(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Error updating attendance: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to update attendance: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to update attendance"));
     }
 }
 
@@ -1606,22 +1626,22 @@ Response EventController::handleGetGameRoster(const Request& request) {
     try {
         std::string query = R"(
             SELECT 
-                mr.id,
-                mr.player_id,
-                u.first_name,
-                u.last_name,
-                u.email,
-                u.avatar_url,
+                ml.id,
+                ml.player_id,
+                pe.first_name,
+                pe.last_name,
+                p.photo_url as avatar_url,
                 tp.jersey_number,
                 pos.abbreviation as position,
-                mr.created_at
-            FROM match_rosters mr
-            JOIN team_division_players tp ON mr.player_id = tp.player_id AND tp.team_id = (SELECT home_team_id FROM matches WHERE id = $1)
-            JOIN players p ON mr.player_id = p.id
-            JOIN users u ON p.id = u.id
-            LEFT JOIN positions pos ON p.preferred_position_id = pos.id
-            WHERE mr.match_id = $1
-            ORDER BY u.last_name, u.first_name
+                ml.created_at
+            FROM match_lineups ml
+            JOIN players p ON ml.player_id = p.id
+            JOIN persons pe ON pe.id = p.person_id
+            LEFT JOIN team_division_players tp ON ml.player_id = tp.player_id AND tp.team_id = ml.team_id
+            LEFT JOIN player_positions pp ON pp.player_id = p.id AND pp.is_primary = true
+            LEFT JOIN positions pos ON pp.position_id = pos.id
+            WHERE ml.match_id = $1
+            ORDER BY pe.last_name, pe.first_name
         )";
         
         pqxx::result result = db_->query(query, {matchId});
@@ -1639,7 +1659,6 @@ Response EventController::handleGetGameRoster(const Request& request) {
             json << "\"playerId\":\"" << row["player_id"].c_str() << "\",";
             json << "\"firstName\":\"" << escapeJSON(row["first_name"].c_str()) << "\",";
             json << "\"lastName\":\"" << escapeJSON(row["last_name"].c_str()) << "\",";
-            json << "\"email\":\"" << escapeJSON(row["email"].c_str()) << "\",";
             json << "\"photoUrl\":" << (row["avatar_url"].is_null() ? "null" : "\"" + escapeJSON(row["avatar_url"].c_str()) + "\"") << ",";
             json << "\"jerseyNumber\":" << (row["jersey_number"].is_null() ? "null" : row["jersey_number"].c_str()) << ",";
             json << "\"position\":" << (row["position"].is_null() ? "null" : "\"" + std::string(row["position"].c_str()) + "\"");
@@ -1652,7 +1671,7 @@ Response EventController::handleGetGameRoster(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting game roster: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get game roster: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to get game roster"));
     }
 }
 
@@ -1695,8 +1714,8 @@ Response EventController::handleUpdateGameRoster(const Request& request) {
         std::cout << "📋 Player IDs to add: " << playerIds.size() << std::endl;
         
         // Start transaction: clear existing roster and add new players
-        // First, delete existing roster entries for this match
-        std::string deleteQuery = "DELETE FROM match_rosters WHERE match_id = $1";
+        // First, delete existing lineup entries for this match
+        std::string deleteQuery = "DELETE FROM match_lineups WHERE match_id = $1";
         db_->query(deleteQuery, {matchId});
         
         // Insert new roster entries
@@ -1705,18 +1724,18 @@ Response EventController::handleUpdateGameRoster(const Request& request) {
             std::string insertQuery;
             if (addedBy.empty()) {
                 insertQuery = R"(
-                    INSERT INTO match_rosters (match_id, player_id)
-                    VALUES ($1, $2)
+                    INSERT INTO match_lineups (match_id, player_id, team_id, is_starter)
+                    VALUES ($1, $2, (SELECT home_team_id FROM matches WHERE id = $1), true)
                     ON CONFLICT (match_id, player_id) DO NOTHING
                 )";
                 db_->query(insertQuery, {matchId, playerId});
             } else {
                 insertQuery = R"(
-                    INSERT INTO match_rosters (match_id, player_id, added_by)
-                    VALUES ($1, $2, $3)
+                    INSERT INTO match_lineups (match_id, player_id, team_id, is_starter)
+                    VALUES ($1, $2, (SELECT home_team_id FROM matches WHERE id = $1), true)
                     ON CONFLICT (match_id, player_id) DO NOTHING
                 )";
-                db_->query(insertQuery, {matchId, playerId, addedBy});
+                db_->query(insertQuery, {matchId, playerId});
             }
             addedCount++;
             
@@ -1729,8 +1748,8 @@ Response EventController::handleUpdateGameRoster(const Request& request) {
             // The SqlBuilder::buildUpsert expects a single ID, but here we have a composite key.
             // For now, we'll just log the INSERT statement directly as a fallback since buildUpsert isn't designed for composite keys
             std::ostringstream sqlLog;
-            sqlLog << "INSERT INTO match_rosters (match_id, player_id" << (addedBy.empty() ? "" : ", added_by") << ") "
-                   << "VALUES ('" << matchId << "', '" << playerId << "'" << (addedBy.empty() ? "" : ", '" + addedBy + "'") << ") "
+            sqlLog << "INSERT INTO match_lineups (match_id, player_id, team_id, is_starter) "
+                   << "VALUES ('" << matchId << "', '" << playerId << "', (SELECT home_team_id FROM matches WHERE id = '" << matchId << "'), true) "
                    << "ON CONFLICT (match_id, player_id) DO NOTHING;";
             SqlFileLogger::log("matches", sqlLog.str());
         }
@@ -1744,7 +1763,7 @@ Response EventController::handleUpdateGameRoster(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Error updating game roster: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to update game roster: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to update game roster"));
     }
 }
 
@@ -1764,10 +1783,10 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
         std::string query = R"(
             SELECT DISTINCT
                 p.id as player_id,
-                u.first_name,
-                u.last_name,
-                u.email,
-                u.avatar_url,
+                pe.first_name,
+                pe.last_name,
+                '' as email,
+                p.photo_url as avatar_url,
                 tp.jersey_number,
                 pos.abbreviation as position,
                 rs.name as rsvp_status,
@@ -1776,8 +1795,9 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
             FROM matches m
             JOIN team_division_players tp ON tp.team_id = m.home_team_id
             JOIN players p ON tp.player_id = p.id
-            JOIN users u ON p.id = u.id
-            LEFT JOIN positions pos ON p.preferred_position_id = pos.id
+            JOIN persons pe ON pe.id = p.person_id
+            LEFT JOIN player_positions pp ON pp.player_id = p.id AND pp.is_primary = true
+            LEFT JOIN positions pos ON pp.position_id = pos.id
             LEFT JOIN roster_statuses rost ON tp.roster_status_id = rost.id
             LEFT JOIN player_rsvps_current prc ON prc.player_id = p.id AND prc.event_id = m.id
             LEFT JOIN rsvp_statuses rs ON prc.rsvp_status_id = rs.id
@@ -1787,8 +1807,8 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
               AND (rost.show_in_rsvp = true OR rost.show_in_rsvp IS NULL)
             ORDER BY 
                 rsvp_order,
-                u.last_name, 
-                u.first_name
+                pe.last_name, 
+                pe.first_name
         )";
         
         pqxx::result result = db_->query(query, {matchId});
@@ -1820,7 +1840,7 @@ Response EventController::handleGetEligiblePlayers(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting eligible players: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to get eligible players: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to get eligible players"));
     }
 }
 
@@ -1900,7 +1920,7 @@ Response EventController::handleSendReminder(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "❌ Error sending reminder: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Failed to send reminder: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to send reminder"));
     }
 }
 
@@ -2122,7 +2142,7 @@ Response EventController::handleGetClubChatEvents(const Request& request) {
 
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJSONResponse(false, std::string("Error: ") + e.what()));
+            createJSONResponse(false, "Failed to get RSVP status"));
     }
 }
 
@@ -2204,6 +2224,6 @@ Response EventController::handleOverrideRSVP(const Request& request) {
 
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJSONResponse(false, std::string("Error: ") + e.what()));
+            createJSONResponse(false, "Failed to override RSVP"));
     }
 }

@@ -545,7 +545,7 @@ Response EligibilityController::handleGetMatchEligibility(const Request& request
     } catch (const std::exception& e) {
         std::cerr << "❌ Error computing eligibility: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
-            createJsonResponse(false, std::string("Failed to compute eligibility: ") + e.what()));
+            createJsonResponse(false, "Failed to compute eligibility"));
     }
 }
 
@@ -589,7 +589,7 @@ Response EligibilityController::handleGetTeamPolicy(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting policy: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed to get policy: ") + e.what()));
+            createJsonResponse(false, "Failed to get policy"));
     }
 }
 
@@ -660,7 +660,7 @@ Response EligibilityController::handleUpdateTeamPolicy(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Error updating policy: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed to update policy: ") + e.what()));
+            createJsonResponse(false, "Failed to update policy"));
     }
 }
 
@@ -734,7 +734,7 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting lineup: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed to get lineup: ") + e.what()));
+            createJsonResponse(false, "Failed to get lineup"));
     }
 }
 
@@ -901,7 +901,7 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Error saving lineup: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed to save lineup: ") + e.what()));
+            createJsonResponse(false, "Failed to save lineup"));
     }
 }
 
@@ -950,7 +950,7 @@ Response EligibilityController::handleGetLineupMetadata(const Request& request) 
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting lineup metadata: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed to get lineup metadata: ") + e.what()));
+            createJsonResponse(false, "Failed to get lineup metadata"));
     }
 }
 
@@ -1012,7 +1012,7 @@ Response EligibilityController::handleSaveLineupMetadata(const Request& request)
     } catch (const std::exception& e) {
         std::cerr << "❌ Error saving lineup metadata: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed to save lineup metadata: ") + e.what()));
+            createJsonResponse(false, "Failed to save lineup metadata"));
     }
 }
 
@@ -1120,7 +1120,7 @@ Response EligibilityController::handleGetPlayerAttendance(const Request& request
     } catch (const std::exception& e) {
         std::cerr << "❌ Error getting player attendance: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed: ") + e.what()));
+            createJsonResponse(false, "Failed to get player attendance"));
     }
 }
 
@@ -1162,7 +1162,7 @@ Response EligibilityController::handleUpdatePlayerAttendance(const Request& requ
     } catch (const std::exception& e) {
         std::cerr << "❌ Error updating attendance: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed: ") + e.what()));
+            createJsonResponse(false, "Failed to update attendance"));
     }
 }
 

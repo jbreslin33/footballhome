@@ -221,7 +221,7 @@ Response GroupMeController::handleSyncMatchRsvps(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ GroupMe sync error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, 
-            createJsonResponse(false, std::string("Sync failed: ") + e.what()));
+            createJsonResponse(false, "Sync failed"));
     }
 }
 
@@ -599,7 +599,7 @@ Response GroupMeController::handleGetGroupMembers(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ GroupMe members error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed to load members: ") + e.what()));
+            createJsonResponse(false, "Failed to load members"));
     }
 }
 
@@ -687,7 +687,7 @@ Response GroupMeController::handleLinkMember(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Link error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed to link: ") + e.what()));
+            createJsonResponse(false, "Failed to link"));
     }
 }
 
@@ -731,7 +731,7 @@ Response GroupMeController::handleUnlinkMember(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Unlink error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed to unlink: ") + e.what()));
+            createJsonResponse(false, "Failed to unlink"));
     }
 }
 
@@ -1182,7 +1182,7 @@ Response GroupMeController::handleGetTrainingWeek(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Training week error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed to load training week: ") + e.what()));
+            createJsonResponse(false, "Failed to load training week"));
     }
 }
 
@@ -1253,7 +1253,7 @@ Response GroupMeController::handleToggleAttendance(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "❌ Toggle attendance error: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
-            createJsonResponse(false, std::string("Failed to toggle attendance: ") + e.what()));
+            createJsonResponse(false, "Failed to toggle attendance"));
     }
 }
 

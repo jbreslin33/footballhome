@@ -93,7 +93,7 @@ Response DivisionController::handleGetDivisions(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "Error in handleGetDivisions: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Database error: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
 }
 
@@ -151,7 +151,7 @@ Response DivisionController::handleGetClubDivisions(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "Error in handleGetClubDivisions: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Database error: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
 }
 
@@ -271,7 +271,7 @@ Response DivisionController::handleGetDivisionPlayers(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "Error in handleGetDivisionPlayers: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Database error: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
 }
 
@@ -327,7 +327,7 @@ Response DivisionController::handleUpdateDivisionPlayer(const Request& request) 
         
     } catch (const std::exception& e) {
         std::cerr << "Error in handleUpdateDivisionPlayer: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Database error: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
 }
 

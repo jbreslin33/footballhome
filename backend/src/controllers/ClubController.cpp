@@ -100,7 +100,7 @@ Response ClubController::handleGetAllClubs(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "Error in handleGetAllClubs: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Database error: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
 }
 
@@ -274,6 +274,6 @@ Response ClubController::handleGetClubDetail(const Request& request) {
         
     } catch (const std::exception& e) {
         std::cerr << "Error in handleGetClubDetail: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Database error: ") + e.what()));
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
 }
