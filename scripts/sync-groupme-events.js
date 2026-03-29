@@ -427,19 +427,42 @@ class GroupMeSync {
 
       try {
         if (personId) {
-          // Person is mapped — upsert by external_user_id to avoid conflicts
-          // when upgrading a previously-unmapped row
+          // Clear stale person_id from any row where the identity mapping has changed
+          // (another external_user_id previously mapped to this person_id)
           await this.client.query(
-            `INSERT INTO chat_event_rsvps 
-               (chat_event_id, person_id, external_user_id, external_username, rsvp_status_id, responded_at)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET
-               person_id = EXCLUDED.person_id,
-               rsvp_status_id = EXCLUDED.rsvp_status_id,
-               responded_at = EXCLUDED.responded_at,
-               external_username = EXCLUDED.external_username`,
+            `UPDATE chat_event_rsvps SET person_id = NULL
+             WHERE chat_event_id = $1 AND person_id = $2 AND external_user_id IS DISTINCT FROM $3
+               AND external_user_id IS NOT NULL`,
+            [chatEventId, personId, uid]
+          );
+
+          // Try to merge onto an existing admin-only row
+          // (person_id set, external_user_id IS NULL) to avoid unique constraint violation
+          const merged = await this.client.query(
+            `UPDATE chat_event_rsvps SET
+               external_user_id = $3,
+               external_username = $4,
+               rsvp_status_id = CASE WHEN override_rsvp_status_id IS NOT NULL THEN rsvp_status_id ELSE $5 END,
+               responded_at = COALESCE($6, responded_at)
+             WHERE chat_event_id = $1 AND person_id = $2 AND external_user_id IS NULL
+             RETURNING id`,
             [chatEventId, personId, uid, nickname, statusId, respondedAt]
           );
+          if (merged.rowCount === 0) {
+            // No admin-only row — upsert by external_user_id
+            await this.client.query(
+              `INSERT INTO chat_event_rsvps 
+                 (chat_event_id, person_id, external_user_id, external_username, rsvp_status_id, responded_at)
+               VALUES ($1, $2, $3, $4, $5, $6)
+               ON CONFLICT (chat_event_id, external_user_id) DO UPDATE SET
+                 person_id = EXCLUDED.person_id,
+                 rsvp_status_id = CASE WHEN chat_event_rsvps.override_rsvp_status_id IS NOT NULL
+                   THEN chat_event_rsvps.rsvp_status_id ELSE EXCLUDED.rsvp_status_id END,
+                 responded_at = EXCLUDED.responded_at,
+                 external_username = EXCLUDED.external_username`,
+              [chatEventId, personId, uid, nickname, statusId, respondedAt]
+            );
+          }
           this.stats.personsResolved++;
         } else {
           // Unknown person — store with external_user_id only

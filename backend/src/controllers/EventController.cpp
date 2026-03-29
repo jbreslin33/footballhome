@@ -141,6 +141,11 @@ void EventController::registerRoutes(Router& router, const std::string& prefix) 
     router.put(prefix + "/chat-rsvps/:rsvpId/override", [this](const Request& request) {
         return this->handleOverrideRSVP(request);
     });
+
+    // PUT /api/events/chat-events/:chatEventId/person-rsvp - Override practice RSVP by person
+    router.put(prefix + "/chat-events/:chatEventId/person-rsvp", [this](const Request& request) {
+        return this->handleSetPracticeRSVP(request);
+    });
 }
 
 Response EventController::handleCreateEvent(const Request& request) {
@@ -1709,9 +1714,9 @@ Response EventController::handleUpdateGameRoster(const Request& request) {
             if (bracketStart != std::string::npos && bracketEnd != std::string::npos) {
                 std::string arrayContent = body.substr(bracketStart + 1, bracketEnd - bracketStart - 1);
                 
-                // Parse UUIDs from the array
-                std::regex uuidRegex("\"([0-9a-fA-F-]{36})\"");
-                std::sregex_iterator iter(arrayContent.begin(), arrayContent.end(), uuidRegex);
+                // Parse integer IDs from the array (e.g. [1346, 1347, 1348])
+                std::regex idRegex("([0-9]+)");
+                std::sregex_iterator iter(arrayContent.begin(), arrayContent.end(), idRegex);
                 std::sregex_iterator end;
                 
                 while (iter != end) {
@@ -1866,15 +1871,24 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
     std::string teamIdParam = request.getQueryParam("teamId");
 
     try {
-        // First, get the last 5 training events (chat_id=4 = Training Lighthouse)
+        // Get match date so we can find the 5 practice/pickup events before it
+        pqxx::result matchDateResult = db_->query(
+            "SELECT match_date FROM matches WHERE id = $1", {matchId});
+        std::string matchDate = "9999-12-31";
+        if (!matchDateResult.empty()) {
+            matchDate = matchDateResult[0]["match_date"].c_str();
+        }
+
+        // Last 5 training + pickup events before the match date
         std::string trainingQuery = R"(
             SELECT id, title, event_date
             FROM chat_events
-            WHERE chat_id = 4 AND is_active = true
+            WHERE chat_id IN (4, 5) AND is_active = true
+              AND event_date < $1
             ORDER BY event_date DESC, event_time DESC
             LIMIT 5
         )";
-        pqxx::result trainingEvents = db_->query(trainingQuery, {});
+        pqxx::result trainingEvents = db_->query(trainingQuery, {matchDate});
 
         std::vector<int> teIds;
         for (const auto& te : trainingEvents) {
@@ -1949,19 +1963,41 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
 
         // Build practice map (person_id -> array of RSVPs for last 5 trainings)
         std::map<int, std::vector<std::string>> practiceMap;
+        std::map<int, std::vector<bool>> practiceOverrideMap;
         if (!teIds.empty()) {
             std::string practiceQuery = R"(
-                SELECT DISTINCT ON (cem2.person_id, cer.chat_event_id)
-                       cem2.person_id,
-                       cer.chat_event_id,
-                       COALESCE(
-                           (SELECT rs2.name FROM rsvp_statuses rs2 WHERE rs2.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)),
-                           ''
-                       ) as rsvp
-                FROM chat_event_rsvps cer
-                JOIN chat_external_members cem2 ON cem2.external_user_id = cer.external_user_id
-                    AND cem2.person_id IS NOT NULL
-                WHERE cer.chat_event_id = ANY($1)
+                SELECT DISTINCT ON (person_id, chat_event_id)
+                       person_id,
+                       chat_event_id,
+                       rsvp,
+                       is_override
+                FROM (
+                    -- Rows matched via external_user_id -> chat_external_members
+                    SELECT cem2.person_id,
+                           cer.chat_event_id,
+                           COALESCE(
+                               (SELECT rs2.name FROM rsvp_statuses rs2 WHERE rs2.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)),
+                               ''
+                           ) as rsvp,
+                           (cer.override_rsvp_status_id IS NOT NULL) as is_override
+                    FROM chat_event_rsvps cer
+                    JOIN chat_external_members cem2 ON cem2.external_user_id = cer.external_user_id
+                        AND cem2.person_id IS NOT NULL
+                    WHERE cer.chat_event_id = ANY($1)
+                    UNION
+                    -- Rows inserted directly with person_id (admin overrides)
+                    SELECT cer.person_id,
+                           cer.chat_event_id,
+                           COALESCE(
+                               (SELECT rs2.name FROM rsvp_statuses rs2 WHERE rs2.id = COALESCE(cer.override_rsvp_status_id, cer.rsvp_status_id)),
+                               ''
+                           ) as rsvp,
+                           true as is_override
+                    FROM chat_event_rsvps cer
+                    WHERE cer.chat_event_id = ANY($1)
+                      AND cer.person_id IS NOT NULL
+                      AND cer.external_user_id IS NULL
+                ) combined
             )";
             std::string arrayLiteral = "{";
             for (size_t i = 0; i < teIds.size(); i++) {
@@ -1982,13 +2018,16 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
                 int personId = pr["person_id"].as<int>();
                 int eventId = pr["chat_event_id"].as<int>();
                 std::string rsvp = pr["rsvp"].c_str();
+                bool isOverride = !pr["is_override"].is_null() && pr["is_override"].as<bool>();
 
                 if (practiceMap.find(personId) == practiceMap.end()) {
                     practiceMap[personId] = std::vector<std::string>(teIds.size(), "");
+                    practiceOverrideMap[personId] = std::vector<bool>(teIds.size(), false);
                 }
                 auto it = eventIndexMap.find(eventId);
                 if (it != eventIndexMap.end()) {
                     practiceMap[personId][it->second] = rsvp;
+                    practiceOverrideMap[personId][it->second] = isOverride;
                 }
             }
         }
@@ -2018,6 +2057,7 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
 
             json << "{";
             json << "\"playerId\":" << row["player_id"].c_str() << ",";
+            json << "\"personId\":" << personId << ",";
             json << "\"firstName\":\"" << escapeJSON(row["first_name"].c_str()) << "\",";
             json << "\"lastName\":\"" << escapeJSON(row["last_name"].c_str()) << "\",";
             json << "\"isKeeper\":" << (row["is_keeper"].as<bool>() ? "true" : "false") << ",";
@@ -2039,13 +2079,15 @@ Response EventController::handleGetRosterPlayers(const Request& request) {
             json << "\"onRosterCasa\":" << (row["on_roster_casa"].as<bool>() ? "true" : "false") << ",";
             json << "\"onRosterU23\":" << (row["on_roster_u23"].as<bool>() ? "true" : "false") << ",";
 
-            // Practice RSVPs
+            // Practice RSVPs — {v:status, o:isOverride}
             json << "\"practice\":[";
             auto pit = practiceMap.find(personId);
+            auto oit = practiceOverrideMap.find(personId);
             for (size_t i = 0; i < teIds.size(); i++) {
                 if (i > 0) json << ",";
                 if (pit != practiceMap.end() && i < pit->second.size() && !pit->second[i].empty()) {
-                    json << "\"" << pit->second[i] << "\"";
+                    bool isOvr = (oit != practiceOverrideMap.end() && i < oit->second.size()) ? oit->second[i] : false;
+                    json << "{\"v\":\"" << pit->second[i] << "\",\"o\":" << (isOvr ? "true" : "false") << "}";
                 } else {
                     json << "null";
                 }
@@ -2497,5 +2539,82 @@ Response EventController::handleOverrideRSVP(const Request& request) {
     } catch (const std::exception& e) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, "Failed to override RSVP"));
+    }
+}
+
+// PUT /api/events/chat-events/:chatEventId/person-rsvp - Override practice RSVP by person_id
+Response EventController::handleSetPracticeRSVP(const Request& request) {
+    try {
+        // Extract chatEventId from path
+        std::string path = request.getPath();
+        std::regex ceIdRegex("/api/events/chat-events/(\\d+)/person-rsvp");
+        std::smatch match;
+        std::string chatEventId;
+        if (std::regex_search(path, match, ceIdRegex)) {
+            chatEventId = match[1].str();
+        }
+        if (chatEventId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing chatEventId"));
+        }
+
+        std::string body = request.getBody();
+        std::string personId = parseJSON(body, "person_id");
+        std::string rsvpStatus = parseJSON(body, "rsvp_status");
+        std::string clearStr = parseJSON(body, "clear");
+
+        if (personId.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "person_id is required"));
+        }
+
+        if (clearStr == "true") {
+            // Clear override on existing row
+            db_->query(
+                "UPDATE chat_event_rsvps SET "
+                "override_rsvp_status_id = NULL, overridden_by_user_id = NULL, "
+                "overridden_at = NULL, override_note = NULL "
+                "WHERE chat_event_id = $1 AND person_id = $2",
+                {chatEventId, personId});
+            return Response(HttpStatus::OK, createJSONResponse(true, "Override cleared"));
+        }
+
+        if (rsvpStatus.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "rsvp_status is required"));
+        }
+
+        // Look up rsvp_status_id
+        pqxx::result statusResult = db_->query(
+            "SELECT id FROM rsvp_statuses WHERE name = $1", {rsvpStatus});
+        if (statusResult.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid RSVP status"));
+        }
+        std::string statusId = statusResult[0][0].c_str();
+
+        // Try to update existing row first (set override)
+        pqxx::result updateResult = db_->query(
+            "UPDATE chat_event_rsvps SET "
+            "override_rsvp_status_id = $1, overridden_at = NOW() "
+            "WHERE chat_event_id = $2 AND person_id = $3 "
+            "RETURNING id",
+            {statusId, chatEventId, personId});
+
+        if (updateResult.empty()) {
+            // No existing row — insert with override so sync doesn't overwrite
+            db_->query(
+                "INSERT INTO chat_event_rsvps (chat_event_id, person_id, rsvp_status_id, "
+                "override_rsvp_status_id, overridden_at, responded_at) "
+                "VALUES ($1, $2, $3, $3, NOW(), NOW())",
+                {chatEventId, personId, statusId});
+        }
+
+        std::cout << "\u2705 Practice RSVP set for person " << personId << " event " << chatEventId << " -> " << rsvpStatus << std::endl;
+
+        std::ostringstream json;
+        json << "{\"success\":true,\"rsvpStatus\":\"" << escapeJSON(rsvpStatus) << "\"}";
+        return Response(HttpStatus::OK, json.str());
+
+    } catch (const std::exception& e) {
+        std::cerr << "\u274c Error setting practice RSVP: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR,
+            createJSONResponse(false, "Failed to set practice RSVP"));
     }
 }

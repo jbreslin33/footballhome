@@ -137,10 +137,11 @@ class GameDayRosterScreen extends Screen {
       if (id === 'copy-text-btn') { this.copyAsText(); return; }
       
       // Toggle player selection in overlay
-      const playerRow = target.closest('.gdr-overlay-row');
-      if (playerRow) {
-        const checkbox = playerRow.querySelector('.gdr-select-cb');
-        if (checkbox && !target.closest('.gdr-rsvp-select')) {
+      // Only toggle selection when clicking the checkbox itself or its label area
+      const checkbox = target.closest('.gdr-select-cb');
+      if (checkbox) {
+        const playerRow = target.closest('.gdr-overlay-row');
+        if (playerRow) {
           const pid = parseInt(playerRow.dataset.playerId);
           if (this.selectedPlayerIds.has(pid)) {
             this.selectedPlayerIds.delete(pid);
@@ -173,6 +174,21 @@ class GameDayRosterScreen extends Screen {
         const playerId = rsvpBtn.dataset.playerId;
         const newStatus = rsvpBtn.dataset.rsvp;
         this.setPlayerRSVP(playerId, newStatus);
+        this.renderOverlayList();
+        return;
+      }
+
+      // Practice cell click — cycle through yes → no → maybe → clear
+      const pracCell = e.target.closest('.gdr-prac-cell');
+      if (pracCell) {
+        e.stopPropagation();
+        const personId = pracCell.dataset.personId;
+        const eventId = pracCell.dataset.eventId;
+        const eventIdx = parseInt(pracCell.dataset.eventIdx);
+        const current = pracCell.dataset.current;
+        const cycle = { '': 'yes', 'yes': 'no', 'no': 'maybe', 'maybe': '' };
+        const next = cycle[current] || 'yes';
+        this.setPracticeRSVP(personId, eventId, eventIdx, next || null);
         this.renderOverlayList();
       }
     });
@@ -359,11 +375,12 @@ class GameDayRosterScreen extends Screen {
       return;
     }
 
-    // Practice column headers with tooltips from training event dates
+    // Practice column headers with day names and dates
     const practiceHeaders = (this.trainingEvents || []).map((te, i) => {
-      const d = new Date(te.date);
-      const label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric' });
-      return `<th class="gdr-th-practice" title="${te.title} - ${label}">P${i + 1}</th>`;
+      const d = new Date(te.date + 'T12:00:00');
+      const day = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const dateStr = d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+      return `<th class="gdr-th-practice" title="${te.title} - ${day} ${dateStr}">${day}<br><span class="gdr-th-date">${dateStr}</span></th>`;
     }).join('');
 
     container.innerHTML = `
@@ -382,7 +399,7 @@ class GameDayRosterScreen extends Screen {
             <th class="gdr-section-divider" colspan="3">Roster</th>
           </tr>
           <tr class="gdr-subheader">
-            <th></th><th></th><th></th><th></th><th></th><th></th>
+            <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
             ${practiceHeaders}
             <th class="gdr-th-chat" title="APSL Lighthouse">A</th>
             <th class="gdr-th-chat" title="Lighthouse Boys Club Liga 1 &amp; 2">Casa</th>
@@ -404,13 +421,15 @@ class GameDayRosterScreen extends Screen {
     const rsvpSource = p.rsvpSource || '';
     const practice = p.practice || [];
 
-    // Practice cells (P1-P5)
+    // Practice cells — clickable tri-state
     const practiceCells = (this.trainingEvents || []).map((te, i) => {
-      const v = practice[i];
-      if (v === 'yes') return '<td class="gdr-cell-center gdr-prac-yes">&check;</td>';
-      if (v === 'no') return '<td class="gdr-cell-center gdr-prac-no">&cross;</td>';
-      if (v === 'maybe') return '<td class="gdr-cell-center gdr-prac-maybe">?</td>';
-      return '<td class="gdr-cell-center gdr-prac-none"></td>';
+      const entry = practice[i];
+      const v = entry ? (typeof entry === 'object' ? entry.v : entry) : null;
+      const isOverride = entry && typeof entry === 'object' ? entry.o : false;
+      const cls = v === 'yes' ? 'gdr-prac-yes' : v === 'no' ? 'gdr-prac-no' : v === 'maybe' ? 'gdr-prac-maybe' : 'gdr-prac-none';
+      const ovrCls = isOverride ? ' gdr-prac-override' : '';
+      const sym = v === 'yes' ? '&check;' : v === 'no' ? '&cross;' : v === 'maybe' ? '?' : '&mdash;';
+      return `<td class="gdr-cell-center gdr-prac-cell ${cls}${ovrCls}" data-person-id="${p.personId}" data-event-id="${te.id}" data-event-idx="${i}" data-current="${v || ''}" title="${isOverride ? 'Admin override' : 'GroupMe'}">${sym}</td>`;
     }).join('');
 
     // Chat membership cells
@@ -446,6 +465,27 @@ class GameDayRosterScreen extends Screen {
         ${rosterCell(p.onRosterCasa)}
         ${rosterCell(p.onRosterU23)}
       </tr>`;
+  }
+
+  async setPracticeRSVP(personId, chatEventId, eventIdx, newStatus) {
+    // Update local data immediately
+    const player = this.players.find(p => String(p.personId) === String(personId));
+    if (player && player.practice) {
+      player.practice[eventIdx] = newStatus ? { v: newStatus, o: true } : null;
+    }
+
+    try {
+      const body = newStatus
+        ? { person_id: String(personId), rsvp_status: newStatus }
+        : { person_id: String(personId), clear: 'true' };
+      await this.auth.fetch(`/api/events/chat-events/${chatEventId}/person-rsvp`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    } catch (err) {
+      console.error('Failed to save practice RSVP:', err);
+    }
   }
 
   async setPlayerRSVP(playerId, newStatus) {

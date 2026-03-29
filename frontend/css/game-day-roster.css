@@ -371,11 +371,15 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Practice attendance cells */
+/* Practice attendance cells — clickable */
+.gdr-prac-cell { cursor: pointer; user-select: none; transition: background 0.1s; min-width: 36px; }
+.gdr-prac-cell:hover { background: var(--gray-100, #f3f4f6); }
 .gdr-prac-yes { color: #16a34a; font-weight: 700; }
 .gdr-prac-no { color: #dc2626; font-weight: 700; }
 .gdr-prac-maybe { color: #ca8a04; font-weight: 700; }
 .gdr-prac-none { color: var(--gray-300); }
+.gdr-prac-override { border: 2px solid #7c3aed; background: #f5f3ff; }
+.gdr-th-date { font-size: 0.75em; font-weight: 400; color: var(--gray-400); }
 /* Chat/Roster check indicators */
 .gdr-in { color: #16a34a; font-weight: 700; }
 .gdr-out { color: var(--gray-200); }

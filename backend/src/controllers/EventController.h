@@ -51,6 +51,7 @@ private:
     // Enriched roster player data + RSVP set
     Response handleGetRosterPlayers(const Request& request);
     Response handleSetPlayerRSVP(const Request& request);
+    Response handleSetPracticeRSVP(const Request& request);
     
     // Helper methods
     std::string extractUserIdFromToken(const Request& request);
