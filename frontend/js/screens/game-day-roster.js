@@ -187,13 +187,21 @@ class GameDayRosterScreen extends Screen {
         const eventIdx = parseInt(pracCell.dataset.eventIdx);
         const current = pracCell.dataset.current;
         const isOverride = pracCell.classList.contains('gdr-prac-override');
-        const cycle = { '': 'yes', 'yes': 'no', 'no': 'maybe', 'maybe': '' };
-        const next = cycle[current] || 'yes';
-        if (!next && isOverride) {
-          // Release override back to GroupMe
-          this.releasePracticeRSVP(personId, eventId, eventIdx);
+
+        if (isOverride) {
+          // Override cell: yes → no → maybe → release
+          const cycle = { 'yes': 'no', 'no': 'maybe', 'maybe': null };
+          const next = current in cycle ? cycle[current] : 'no';
+          if (next === null) {
+            this.releasePracticeRSVP(personId, eventId, eventIdx);
+          } else {
+            this.setPracticeRSVP(personId, eventId, eventIdx, next);
+          }
         } else {
-          this.setPracticeRSVP(personId, eventId, eventIdx, next || null);
+          // Non-override cell: empty → yes (sets override), or cycle yes → no → maybe → yes
+          const cycle = { '': 'yes', 'yes': 'no', 'no': 'maybe', 'maybe': 'yes' };
+          const next = cycle[current] || 'yes';
+          this.setPracticeRSVP(personId, eventId, eventIdx, next);
         }
         this.renderOverlayList();
       }
