@@ -178,7 +178,7 @@ class GameDayRosterScreen extends Screen {
         return;
       }
 
-      // Practice cell click — cycle through yes → no → maybe → clear
+      // Practice cell click — cycle through yes → no → maybe → release
       const pracCell = e.target.closest('.gdr-prac-cell');
       if (pracCell) {
         e.stopPropagation();
@@ -186,9 +186,15 @@ class GameDayRosterScreen extends Screen {
         const eventId = pracCell.dataset.eventId;
         const eventIdx = parseInt(pracCell.dataset.eventIdx);
         const current = pracCell.dataset.current;
+        const isOverride = pracCell.classList.contains('gdr-prac-override');
         const cycle = { '': 'yes', 'yes': 'no', 'no': 'maybe', 'maybe': '' };
         const next = cycle[current] || 'yes';
-        this.setPracticeRSVP(personId, eventId, eventIdx, next || null);
+        if (!next && isOverride) {
+          // Release override back to GroupMe
+          this.releasePracticeRSVP(personId, eventId, eventIdx);
+        } else {
+          this.setPracticeRSVP(personId, eventId, eventIdx, next || null);
+        }
         this.renderOverlayList();
       }
     });
@@ -485,6 +491,28 @@ class GameDayRosterScreen extends Screen {
       });
     } catch (err) {
       console.error('Failed to save practice RSVP:', err);
+    }
+  }
+
+  async releasePracticeRSVP(personId, chatEventId, eventIdx) {
+    const player = this.players.find(p => String(p.personId) === String(personId));
+    // Optimistic: show as null while loading
+    if (player && player.practice) player.practice[eventIdx] = null;
+
+    try {
+      const resp = await this.auth.fetch(`/api/events/chat-events/${chatEventId}/person-rsvp`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ person_id: String(personId), clear: 'true' })
+      });
+      const data = await resp.json();
+      // Restore underlying GroupMe value if one exists
+      if (player && player.practice && data.rsvpStatus) {
+        player.practice[eventIdx] = { v: data.rsvpStatus, o: false };
+      }
+      this.renderOverlayList();
+    } catch (err) {
+      console.error('Failed to release practice RSVP:', err);
     }
   }
 

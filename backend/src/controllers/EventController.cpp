@@ -2567,14 +2567,35 @@ Response EventController::handleSetPracticeRSVP(const Request& request) {
         }
 
         if (clearStr == "true") {
-            // Clear override on existing row
+            // Delete admin-only rows (no GroupMe data behind them)
+            db_->query(
+                "DELETE FROM chat_event_rsvps "
+                "WHERE chat_event_id = $1 AND person_id = $2 AND external_user_id IS NULL",
+                {chatEventId, personId});
+
+            // Clear override on GroupMe-synced rows so the original value shows through
             db_->query(
                 "UPDATE chat_event_rsvps SET "
                 "override_rsvp_status_id = NULL, overridden_by_user_id = NULL, "
                 "overridden_at = NULL, override_note = NULL "
                 "WHERE chat_event_id = $1 AND person_id = $2",
                 {chatEventId, personId});
-            return Response(HttpStatus::OK, createJSONResponse(true, "Override cleared"));
+
+            // Return the underlying GroupMe value (if any)
+            pqxx::result underlying = db_->query(
+                "SELECT rs.name FROM chat_event_rsvps cer "
+                "JOIN rsvp_statuses rs ON rs.id = cer.rsvp_status_id "
+                "WHERE cer.chat_event_id = $1 AND cer.person_id = $2 "
+                "LIMIT 1",
+                {chatEventId, personId});
+
+            std::ostringstream json;
+            json << "{\"success\":true,\"message\":\"Released to GroupMe\"";
+            if (!underlying.empty()) {
+                json << ",\"rsvpStatus\":\"" << escapeJSON(underlying[0][0].c_str()) << "\"";
+            }
+            json << "}";
+            return Response(HttpStatus::OK, json.str());
         }
 
         if (rsvpStatus.empty()) {
